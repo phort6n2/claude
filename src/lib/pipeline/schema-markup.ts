@@ -186,7 +186,7 @@ export function generateSchemaGraph(params: SchemaParams): string {
   ]
 
   // Add podcast if available
-  let podcastEpisode
+  let podcastEpisode: any
   if (podcast) {
     podcastEpisode = {
       '@type': 'PodcastEpisode',
