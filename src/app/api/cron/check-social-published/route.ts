@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { checkPostStatus } from '@/lib/integrations/getlate'
+export const dynamic = 'force-dynamic'
 
 // Runs every 6 hours to verify scheduled social posts were published
 export async function GET(request: Request) {
