@@ -64,7 +64,7 @@ export default function ContentForm({ initialData, isEditing = false }: ContentF
       if (client) {
         setFormData((prev) => ({
           ...prev,
-          [field]: value,
+          [field]: String(value),
           scheduledTime: client.preferredPublishTime,
         }))
       }
