@@ -1,0 +1,505 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================
+// AUTHENTICATION
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String?
+  role          UserRole  @default(ADMIN)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+enum UserRole {
+  ADMIN
+  VIEWER
+}
+
+// ============================================
+// CLIENT MANAGEMENT
+// ============================================
+
+model Client {
+  id                    String    @id @default(cuid())
+  slug                  String    @unique
+  status                ClientStatus @default(ACTIVE)
+
+  // Business Info
+  businessName          String
+  contactPerson         String?
+  phone                 String
+  email                 String
+  streetAddress         String
+  city                  String
+  state                 String
+  postalCode            String
+  country               String    @default("US")
+
+  // Service Details
+  hasShopLocation       Boolean   @default(true)
+  offersMobileService   Boolean   @default(false)
+  hasAdasCalibration    Boolean   @default(false)
+  serviceAreas          String[]  // Array of cities/neighborhoods
+  insuranceRelationships String[]
+
+  // Brand Settings
+  logoUrl               String?
+  primaryColor          String?   @default("#1e40af")
+  secondaryColor        String?   @default("#3b82f6")
+  accentColor           String?   @default("#f59e0b")
+  brandVoice            String?   @default("Professional, helpful, and knowledgeable")
+
+  // WordPress Connection
+  wordpressUrl          String?
+  wordpressUsername     String?
+  wordpressAppPassword  String?   // Encrypted
+  wordpressConnected    Boolean   @default(false)
+
+  // CTA Configuration
+  ctaText               String    @default("Get a Free Quote")
+  ctaUrl                String?
+
+  // Publishing Preferences
+  preferredPublishTime  String    @default("09:00")
+  timezone              String    @default("America/Los_Angeles")
+  postsPerWeek          Int       @default(2)
+
+  // Social Media
+  socialPlatforms       String[]  // facebook, instagram, linkedin, twitter, tiktok, gbp
+  getlateAccountId      String?
+
+  // Client Portal
+  portalPassword        String?   // Encrypted
+
+  // GBP Data (for press releases)
+  gbpPlaceId            String?
+  gbpRating             Float?
+  gbpReviewCount        Int?
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  // Relations
+  contentItems          ContentItem[]
+  blogPosts             BlogPost[]
+  images                Image[]
+  podcasts              Podcast[]
+  videos                Video[]
+  socialPosts           SocialPost[]
+  pressReleases         PressRelease[]
+  servicePages          ServicePage[]
+  locationPages         LocationPage[]
+  publishingLogs        PublishingLog[]
+}
+
+enum ClientStatus {
+  ACTIVE
+  PAUSED
+  ONBOARDING
+}
+
+// ============================================
+// CONTENT ITEMS (Master Record)
+// ============================================
+
+model ContentItem {
+  id                String    @id @default(cuid())
+  clientId          String
+  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // PAA Question
+  paaQuestion       String
+  paaSource         String?   // alsoasked, valueserp, manual, csv
+  topic             String?   // AI-suggested topic category
+
+  // Scheduling
+  scheduledDate     DateTime
+  scheduledTime     String    @default("09:00")
+  priority          Int       @default(0)
+
+  // Status
+  status            ContentStatus @default(DRAFT)
+  pipelineStep      String?   // Current step in pipeline
+  retryCount        Int       @default(0)
+  lastError         String?
+
+  // Notes
+  notes             String?
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  publishedAt       DateTime?
+
+  // Relations
+  blogPost          BlogPost?
+  images            Image[]
+  podcast           Podcast?
+  videos            Video[]
+  socialPosts       SocialPost[]
+  publishingLogs    PublishingLog[]
+
+  @@index([clientId])
+  @@index([status])
+  @@index([scheduledDate])
+}
+
+enum ContentStatus {
+  DRAFT
+  SCHEDULED
+  GENERATING
+  PUBLISHING
+  PUBLISHED
+  FAILED
+  PAUSED
+}
+
+// ============================================
+// BLOG POSTS
+// ============================================
+
+model BlogPost {
+  id                String    @id @default(cuid())
+  contentItemId     String    @unique
+  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  clientId          String
+  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Content
+  title             String
+  slug              String
+  content           String    // HTML content
+  excerpt           String?
+
+  // SEO
+  metaTitle         String?
+  metaDescription   String?
+  focusKeyword      String?
+
+  // WordPress
+  wordpressPostId   Int?
+  wordpressUrl      String?
+  featuredImageId   Int?
+
+  // Schema Markup
+  schemaJson        String?   // Full JSON-LD schema graph
+
+  // Stats
+  wordCount         Int?
+
+  // Dates
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  publishedAt       DateTime?
+
+  // Linked Pages
+  servicePageId     String?
+  servicePage       ServicePage? @relation(fields: [servicePageId], references: [id])
+  locationPageIds   String[]
+}
+
+// ============================================
+// IMAGES
+// ============================================
+
+model Image {
+  id                String    @id @default(cuid())
+  contentItemId     String
+  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  clientId          String
+  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Image Type
+  imageType         ImageType
+
+  // File Info
+  fileName          String
+  gcsUrl            String
+  width             Int
+  height            Int
+  fileSize          Int?
+
+  // Alt Text
+  altText           String?
+
+  createdAt         DateTime  @default(now())
+}
+
+enum ImageType {
+  BLOG_FEATURED     // 1200x800
+  FACEBOOK          // 1200x630
+  INSTAGRAM_FEED    // 1080x1080
+  INSTAGRAM_STORY   // 1080x1920
+  TWITTER           // 1200x675
+  LINKEDIN          // 1200x627
+  TIKTOK            // 1080x1920
+}
+
+// ============================================
+// PODCASTS
+// ============================================
+
+model Podcast {
+  id                String    @id @default(cuid())
+  contentItemId     String    @unique
+  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  clientId          String
+  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Audio File
+  audioUrl          String
+  duration          Int?      // seconds
+
+  // Script
+  script            String?
+
+  // API Reference
+  autocontentJobId  String?
+
+  // Status
+  status            MediaStatus @default(PENDING)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+enum MediaStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
+// ============================================
+// VIDEOS
+// ============================================
+
+model Video {
+  id                String    @id @default(cuid())
+  contentItemId     String
+  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  clientId          String
+  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Video Type
+  videoType         VideoType
+
+  // File Info
+  videoUrl          String
+  thumbnailUrl      String?
+  duration          Int?      // seconds
+  aspectRatio       String?   // 16:9, 9:16, 1:1
+
+  // API Reference
+  provider          VideoProvider
+  providerJobId     String?
+
+  // Status
+  status            MediaStatus @default(PENDING)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+enum VideoType {
+  SHORT             // 60-90 seconds
+  LONG              // 3-5 minutes
+}
+
+enum VideoProvider {
+  CREATIFY
+  PICTORY
+}
+
+// ============================================
+// SOCIAL POSTS
+// ============================================
+
+model SocialPost {
+  id                String    @id @default(cuid())
+  contentItemId     String
+  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  clientId          String
+  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Platform
+  platform          SocialPlatform
+
+  // Content
+  caption           String
+  hashtags          String[]
+  firstComment      String?   // Link to blog post
+
+  // Media
+  mediaUrls         String[]
+  mediaType         String?   // image, video
+
+  // Scheduling
+  scheduledTime     DateTime
+
+  // getlate.dev Reference
+  getlatePostId     String?
+
+  // Status
+  status            SocialPostStatus @default(SCHEDULED)
+  publishedUrl      String?
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  publishedAt       DateTime?
+}
+
+enum SocialPlatform {
+  FACEBOOK
+  INSTAGRAM
+  LINKEDIN
+  TWITTER
+  TIKTOK
+  GBP
+}
+
+enum SocialPostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  FAILED
+}
+
+// ============================================
+// PRESS RELEASES
+// ============================================
+
+model PressRelease {
+  id                String    @id @default(cuid())
+  clientId          String
+  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Month
+  month             DateTime  // First day of the month
+
+  // Featured Content
+  featuredPaaIds    String[]  // Top 3 PAAs from previous month
+
+  // GBP Milestones
+  newReviews        Int?
+  totalReviews      Int?
+  averageRating     Float?
+
+  // Content Stats
+  blogPostsCount    Int?
+  totalContentPieces Int?
+
+  // Press Release Content
+  headline          String?
+  content           String?   // Full press release text
+
+  // Status
+  status            PressReleaseStatus @default(DRAFT)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+enum PressReleaseStatus {
+  DRAFT
+  READY
+  SUBMITTED
+}
+
+// ============================================
+// SERVICE & LOCATION PAGES
+// ============================================
+
+model ServicePage {
+  id                String    @id @default(cuid())
+  clientId          String
+  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Page Info
+  title             String
+  url               String
+  slug              String
+
+  // Service Details
+  serviceType       String?   // windshield-replacement, adas-calibration, rock-chip-repair, etc.
+  keywords          String[]
+
+  // Auto-detected or Manual
+  isVerified        Boolean   @default(false)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  blogPosts         BlogPost[]
+}
+
+model LocationPage {
+  id                String    @id @default(cuid())
+  clientId          String
+  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Page Info
+  title             String
+  url               String
+  slug              String
+
+  // Location Details
+  cityName          String
+  neighborhood      String?
+
+  // Auto-detected or Manual
+  isVerified        Boolean   @default(false)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+// ============================================
+// PUBLISHING LOGS
+// ============================================
+
+model PublishingLog {
+  id                String    @id @default(cuid())
+  contentItemId     String?
+  contentItem       ContentItem? @relation(fields: [contentItemId], references: [id], onDelete: SetNull)
+  clientId          String
+  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Action
+  action            String    // blog_generate, image_generate, wordpress_publish, podcast_generate, etc.
+
+  // Status
+  status            LogStatus
+
+  // Details
+  requestPayload    String?   // JSON
+  responseData      String?   // JSON
+  errorMessage      String?
+
+  // Timing
+  startedAt         DateTime  @default(now())
+  completedAt       DateTime?
+  durationMs        Int?
+
+  // Retry Info
+  attemptNumber     Int       @default(1)
+}
+
+enum LogStatus {
+  STARTED
+  SUCCESS
+  FAILED
+  RETRYING
+}

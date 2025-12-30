@@ -1,0 +1,45 @@
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function POST(request: NextRequest) {
+  try {
+    const { url, username, password } = await request.json()
+
+    if (!url || !username || !password) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      )
+    }
+
+    // Test connection to WordPress REST API
+    const credentials = Buffer.from(`${username}:${password}`).toString('base64')
+
+    const response = await fetch(`${url}/wp-json/wp/v2/users/me`, {
+      headers: {
+        'Authorization': `Basic ${credentials}`,
+      },
+    })
+
+    if (response.ok) {
+      const user = await response.json()
+      return NextResponse.json({
+        success: true,
+        user: {
+          name: user.name,
+          email: user.email,
+        },
+      })
+    } else {
+      const error = await response.text()
+      return NextResponse.json(
+        { error: 'Connection failed', details: error },
+        { status: 400 }
+      )
+    }
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Connection failed', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    )
+  }
+}
