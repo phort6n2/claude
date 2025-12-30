@@ -215,7 +215,7 @@ export function generateSchemaGraph(params: SchemaParams): string {
   }
 
   // Add video if available
-  let videoObject
+  let videoObject: any
   if (video) {
     videoObject = {
       '@type': 'VideoObject',
