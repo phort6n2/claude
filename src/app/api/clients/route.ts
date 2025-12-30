@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { generateSlug } from '@/lib/utils'
 import { encrypt } from '@/lib/encryption'
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
