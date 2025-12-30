@@ -1,5 +1,6 @@
 import { SessionProvider } from 'next-auth/react'
 import Sidebar from '@/components/admin/Sidebar'
+export const dynamic = 'force-dynamic'
 
 export default function AdminLayout({
   children,
