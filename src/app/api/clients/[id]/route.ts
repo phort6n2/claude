@@ -1,7 +1,7 @@
-export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { encrypt } from '@/lib/encryption'
+export const dynamic = 'force-dynamic'
 
 interface RouteContext {
   params: Promise<{ id: string }>
