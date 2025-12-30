@@ -4,13 +4,15 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-// Only instantiate Prisma if we're not in build mode
-export const prisma = 
-  process.env.NEXT_PHASE === 'phase-production-build'
-    ? {} as PrismaClient
-    : (globalForPrisma.prisma ?? new PrismaClient())
+// Only create PrismaClient if we have a valid database URL
+export const prisma = globalForPrisma.prisma ?? 
+  (process.env.PRISMA_DATABASE_URL || process.env.DATABASE_URL
+    ? new PrismaClient({
+        accelerateUrl: process.env.PRISMA_DATABASE_URL
+      })
+    : null as any)
 
-if (process.env.NODE_ENV !== 'production' && process.env.NEXT_PHASE !== 'phase-production-build') {
+if (process.env.NODE_ENV !== 'production' && prisma) {
   globalForPrisma.prisma = prisma
 }
 
