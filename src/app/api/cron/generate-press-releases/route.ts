@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { generatePressRelease } from '@/lib/integrations/claude'
+export const dynamic = 'force-dynamic'
 
 // Runs on the 1st of every month at 2 AM
 export async function GET(request: Request) {
