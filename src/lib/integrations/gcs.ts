@@ -41,7 +41,7 @@ export async function uploadToGCS(
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': contentType,
     },
-    body: buffer,
+    body: buffer as BodyInit,
   })
 
   if (!uploadResponse.ok) {
