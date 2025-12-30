@@ -25,7 +25,27 @@ export default async function EditClientPage({ params }: PageProps) {
         subtitle="Update client settings"
       />
       <div className="flex-1 p-6 overflow-auto">
-        <ClientForm initialData={client} isEditing />
+        <ClientForm 
+          initialData={{
+            ...client,
+            contactPerson: client.contactPerson ?? undefined,
+            logoUrl: client.logoUrl ?? undefined,
+            primaryColor: client.primaryColor ?? undefined,
+            secondaryColor: client.secondaryColor ?? undefined,
+            accentColor: client.accentColor ?? undefined,
+            brandVoice: client.brandVoice ?? undefined,
+            wordpressUrl: client.wordpressUrl ?? undefined,
+            wordpressUsername: client.wordpressUsername ?? undefined,
+            wordpressAppPassword: client.wordpressAppPassword ?? undefined,
+            ctaUrl: client.ctaUrl ?? undefined,
+            getlateAccountId: client.getlateAccountId ?? undefined,
+            portalPassword: client.portalPassword ?? undefined,
+            gbpPlaceId: client.gbpPlaceId ?? undefined,
+            gbpRating: client.gbpRating ?? undefined,
+            gbpReviewCount: client.gbpReviewCount ?? undefined,
+          }} 
+          isEditing 
+        />
       </div>
     </div>
   )
