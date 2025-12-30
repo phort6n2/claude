@@ -9,7 +9,7 @@ A comprehensive content automation platform for auto glass shops that transforms
 - **Multi-Channel Publishing**: Blog posts, podcasts, videos, and social media
 - **Schema Markup**: Comprehensive LocalBusiness schema linking all content
 - **Press Releases**: Monthly automated press release generation
-- **Client Portal**: Read-only dashboard for clients to view their content
+- **Client Portal**: Read-only dashboard for clients to view their content 
 
 ## Tech Stack
 
