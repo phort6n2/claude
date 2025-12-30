@@ -1,12 +1,7 @@
 import { PrismaClient } from '@prisma/client'
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL
-    }
-  }
-})
 import bcrypt from 'bcryptjs'
+
+const prisma = new PrismaClient()
 
 async function main() {
   // Create admin user
