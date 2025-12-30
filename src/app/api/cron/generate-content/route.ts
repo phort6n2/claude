@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { runContentPipeline } from '@/lib/pipeline/content-pipeline'
+export const dynamic = 'force-dynamic'
 
 // Runs every 15 minutes to check for content scheduled in the next 2 hours
 export async function GET(request: Request) {
