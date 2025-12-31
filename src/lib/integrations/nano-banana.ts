@@ -1,6 +1,6 @@
-// Google AI Studio (Imagen) Integration for Image Generation
+// Google AI Studio (Gemini) Integration for Image Generation
 // API Key from: https://aistudio.google.com/app/apikey
-// Note: This was previously called "Nano Banana" but uses Google's Imagen API
+// Model: gemini-3-pro-image-preview
 
 interface ImageGenerationParams {
   prompt: string
@@ -31,46 +31,48 @@ const IMAGE_SIZES = {
   TIKTOK: { width: 1080, height: 1920 },
 }
 
-// Map our sizes to Imagen's supported aspect ratios
-function getImagenAspectRatio(width: number, height: number): string {
-  const ratio = width / height
-  if (ratio > 1.3) return '16:9'      // Landscape
-  if (ratio < 0.7) return '9:16'      // Portrait/Story
-  if (ratio > 0.9 && ratio < 1.1) return '1:1'  // Square
-  return '4:3'  // Default
-}
-
 export async function generateImage(params: ImageGenerationParams): Promise<ImageResult> {
   const apiKey = process.env.NANO_BANANA_API_KEY
   if (!apiKey) {
     throw new Error('NANO_BANANA_API_KEY (Google AI Studio) is not configured')
   }
 
-  // Build the enhanced prompt
-  const enhancedPrompt = `Professional auto glass blog image. ${params.prompt}.
-Style: Clean, modern, automotive industry photography.
-Business: ${params.businessName}.
-Colors: ${params.brandColors ? `Primary ${params.brandColors.primary}, accent ${params.brandColors.accent}` : 'Professional blue tones'}.
-High quality, photorealistic, suitable for business blog. No text overlays.`
+  // Build the enhanced prompt for image generation
+  const enhancedPrompt = `Generate a professional auto glass blog image.
 
-  const aspectRatio = getImagenAspectRatio(params.width, params.height)
+${params.prompt}
 
-  // Use Google AI Studio's Imagen API
+Style requirements:
+- Clean, modern, automotive industry photography
+- Professional business imagery for ${params.businessName}
+- Color scheme: ${params.brandColors ? `Primary ${params.brandColors.primary}, accent ${params.brandColors.accent}` : 'Professional blue tones'}
+- High quality, photorealistic
+- Suitable for business blog
+- No text overlays or watermarks
+- Landscape orientation preferred`
+
+  // Use Gemini 3 Pro Image Preview model
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        instances: [{ prompt: enhancedPrompt }],
-        parameters: {
-          sampleCount: 1,
-          aspectRatio: aspectRatio,
-          safetySetting: 'block_few',
-          personGeneration: 'dont_allow',
-        },
+        contents: [
+          {
+            parts: [
+              { text: enhancedPrompt }
+            ]
+          }
+        ],
+        generationConfig: {
+          responseModalities: ['IMAGE', 'TEXT'],
+          temperature: 1,
+          topP: 0.95,
+          topK: 40,
+        }
       }),
     }
   )
@@ -82,16 +84,32 @@ High quality, photorealistic, suitable for business blog. No text overlays.`
 
   const data = await response.json()
 
-  // Imagen returns base64 encoded images
-  if (!data.predictions || data.predictions.length === 0) {
-    throw new Error('No image generated')
+  // Extract image from Gemini response
+  const candidates = data.candidates
+  if (!candidates || candidates.length === 0) {
+    throw new Error('No response from model')
   }
 
-  const base64Image = data.predictions[0].bytesBase64Encoded
+  const parts = candidates[0].content?.parts
+  if (!parts) {
+    throw new Error('No content in response')
+  }
+
+  // Find the image part in the response
+  const imagePart = parts.find((part: { inlineData?: { mimeType: string; data: string } }) =>
+    part.inlineData?.mimeType?.startsWith('image/')
+  )
+
+  if (!imagePart || !imagePart.inlineData) {
+    throw new Error('No image generated - model may have returned text only')
+  }
+
+  const base64Image = imagePart.inlineData.data
+  const mimeType = imagePart.inlineData.mimeType || 'image/png'
 
   // Return as data URL (can be uploaded to GCS)
   return {
-    url: `data:image/png;base64,${base64Image}`,
+    url: `data:${mimeType};base64,${base64Image}`,
     width: params.width,
     height: params.height,
     base64: base64Image,
@@ -113,7 +131,8 @@ export async function generateAllImageSizes(params: {
 
   const results: Record<string, ImageResult> = {}
 
-  // Generate all sizes
+  // Generate all sizes - Gemini generates one size, we'll use it for all
+  // In production, you might want to resize or generate multiple times
   for (const [sizeName, dimensions] of Object.entries(IMAGE_SIZES)) {
     try {
       results[sizeName] = await generateImage({

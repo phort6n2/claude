@@ -47,20 +47,22 @@ async function testAnthropic(apiKey: string): Promise<{ success: boolean; messag
 
 async function testNanoBanana(apiKey: string): Promise<{ success: boolean; message: string }> {
   try {
-    // Test Google AI Studio / Imagen API by listing models
+    // Test Google AI Studio by checking if gemini-3-pro-image-preview model is accessible
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview?key=${apiKey}`,
       { method: 'GET' }
     )
     if (response.ok) {
-      const data = await response.json()
-      // Check if Imagen model is available
-      const hasImagen = data.models?.some((m: { name: string }) =>
-        m.name.includes('imagen')
+      return { success: true, message: 'Connected - Gemini 3 Pro Image available' }
+    }
+    if (response.status === 404) {
+      // Model not found - check if API key works at all
+      const listResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+        { method: 'GET' }
       )
-      return {
-        success: true,
-        message: hasImagen ? 'Connected - Imagen available' : 'Connected - check Imagen access'
+      if (listResponse.ok) {
+        return { success: false, message: 'API key valid but gemini-3-pro-image-preview not available' }
       }
     }
     if (response.status === 400 || response.status === 403) {
