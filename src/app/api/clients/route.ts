@@ -40,12 +40,7 @@ export async function POST(request: NextRequest) {
     // Encrypt WordPress password if provided
     let encryptedPassword = null
     if (data.wordpressAppPassword) {
-      try {
-        encryptedPassword = encrypt(data.wordpressAppPassword)
-      } catch {
-        // If encryption fails, we still want to save the client
-        console.error('Failed to encrypt password')
-      }
+      encryptedPassword = encrypt(data.wordpressAppPassword)
     }
 
     const client = await prisma.client.create({

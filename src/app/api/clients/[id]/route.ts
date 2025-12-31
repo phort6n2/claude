@@ -51,11 +51,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     // Encrypt WordPress password if changed
     let encryptedPassword = existing.wordpressAppPassword
     if (data.wordpressAppPassword && data.wordpressAppPassword !== '') {
-      try {
-        encryptedPassword = encrypt(data.wordpressAppPassword)
-      } catch {
-        console.error('Failed to encrypt password')
-      }
+      encryptedPassword = encrypt(data.wordpressAppPassword)
     }
 
     const client = await prisma.client.update({
