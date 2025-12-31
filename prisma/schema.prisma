@@ -96,6 +96,7 @@ model Client {
   images                Image[]
   podcasts              Podcast[]
   videos                Video[]
+  shortFormVideos       ShortFormVideo[]
   socialPosts           SocialPost[]
   pressReleases         PressRelease[]
   servicePages          ServicePage[]
@@ -223,6 +224,7 @@ model ContentItem {
   images            Image[]
   podcast           Podcast?
   videos            Video[]
+  shortFormVideos   ShortFormVideo[]
   socialPosts       SocialPost[]
   wrhqSocialPosts   WRHQSocialPost[]
   publishingLogs    PublishingLog[]
@@ -411,6 +413,57 @@ enum VideoType {
 enum VideoProvider {
   CREATIFY
   PICTORY
+  MANUAL      // For uploaded videos
+}
+
+// ============================================
+// SHORT FORM VIDEOS (Multiple per content item)
+// ============================================
+
+model ShortFormVideo {
+  id                String    @id @default(cuid())
+  contentItemId     String
+  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  clientId          String
+  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Video Info
+  title             String?
+  description       String?
+  videoUrl          String
+  thumbnailUrl      String?
+  duration          Int?      // seconds
+  aspectRatio       String    @default("9:16")
+
+  // Platform Assignment
+  platforms         SocialPlatform[]  // Can target multiple platforms
+
+  // Scheduling
+  scheduledDate     DateTime?
+  scheduledTime     String?   // "09:00", "13:00", "17:00"
+  dayNumber         Int?      // Which day in the schedule (1, 2, 3, etc.)
+  slotNumber        Int?      // Which slot in the day (1, 2, 3)
+
+  // Late.dev References
+  getlatePostIds    Json?     // { platform: postId } mapping
+
+  // Approval
+  approved          Boolean   @default(false)
+  approvedAt        DateTime?
+
+  // Status
+  status            SocialPostStatus @default(DRAFT)
+  publishedUrls     Json?     // { platform: url } mapping
+
+  // Order
+  sortOrder         Int       @default(0)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  publishedAt       DateTime?
+
+  @@index([contentItemId])
+  @@index([scheduledDate])
 }
 
 // ============================================

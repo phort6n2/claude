@@ -220,3 +220,119 @@ export async function injectSchemaMarkup(
     }),
   })
 }
+
+/**
+ * High-level publish function used by content pipeline
+ */
+export interface PublishToWordPressParams {
+  client: {
+    wordpressUrl: string | null
+    wordpressUsername: string | null
+    wordpressAppPassword: string | null
+  }
+  title: string
+  content: string
+  excerpt?: string
+  slug: string
+  scheduledDate: Date
+  featuredImageUrl?: string
+  metaTitle?: string
+  metaDescription?: string
+  schemaJson?: string
+}
+
+export interface PublishResult {
+  postId: number
+  url: string
+  featuredImageId?: number
+}
+
+export async function publishToWordPress(params: PublishToWordPressParams): Promise<PublishResult> {
+  if (!params.client.wordpressUrl || !params.client.wordpressUsername || !params.client.wordpressAppPassword) {
+    throw new Error('WordPress credentials not configured')
+  }
+
+  const credentials: WordPressCredentials = {
+    url: params.client.wordpressUrl,
+    username: params.client.wordpressUsername,
+    password: params.client.wordpressAppPassword,
+  }
+
+  let featuredImageId: number | undefined
+
+  // Upload featured image if provided
+  if (params.featuredImageUrl) {
+    try {
+      const mediaResult = await uploadMedia(
+        credentials,
+        params.featuredImageUrl,
+        `${params.slug}-featured.jpg`,
+        params.title
+      )
+      featuredImageId = mediaResult.id
+    } catch (error) {
+      console.error('Failed to upload featured image:', error)
+    }
+  }
+
+  // Create the post
+  const post = await createPost(credentials, {
+    title: params.title,
+    slug: params.slug,
+    content: params.content,
+    excerpt: params.excerpt,
+    status: 'publish',
+    featuredMediaId: featuredImageId,
+    meta: {
+      ...(params.metaTitle && { _yoast_wpseo_title: params.metaTitle }),
+      ...(params.metaDescription && { _yoast_wpseo_metadesc: params.metaDescription }),
+    },
+  })
+
+  // Inject schema markup if provided
+  if (params.schemaJson) {
+    await injectSchemaMarkup(credentials, post.id, params.schemaJson)
+  }
+
+  return {
+    postId: post.id,
+    url: post.link,
+    featuredImageId,
+  }
+}
+
+/**
+ * Update an existing WordPress post
+ */
+export interface UpdateWordPressPostParams {
+  client: {
+    wordpressUrl: string | null
+    wordpressUsername: string | null
+    wordpressAppPassword: string | null
+  }
+  postId: number
+  content?: string
+  schemaJson?: string
+}
+
+export async function updateWordPressPost(params: UpdateWordPressPostParams): Promise<void> {
+  if (!params.client.wordpressUrl || !params.client.wordpressUsername || !params.client.wordpressAppPassword) {
+    throw new Error('WordPress credentials not configured')
+  }
+
+  const credentials: WordPressCredentials = {
+    url: params.client.wordpressUrl,
+    username: params.client.wordpressUsername,
+    password: params.client.wordpressAppPassword,
+  }
+
+  if (params.content) {
+    await updatePost(credentials, params.postId, {
+      content: params.content,
+    })
+  }
+
+  if (params.schemaJson) {
+    await injectSchemaMarkup(credentials, params.postId, params.schemaJson)
+  }
+}

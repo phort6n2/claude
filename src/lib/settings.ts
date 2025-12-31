@@ -4,6 +4,9 @@ import { encrypt, decrypt } from '@/lib/encryption'
 
 // WRHQ Configuration Keys
 export const WRHQ_SETTINGS_KEYS = {
+  // Master Enable/Disable
+  WRHQ_ENABLED: 'WRHQ_ENABLED',
+
   // WordPress Config
   WRHQ_WORDPRESS_URL: 'WRHQ_WORDPRESS_URL',
   WRHQ_WORDPRESS_USERNAME: 'WRHQ_WORDPRESS_USERNAME',

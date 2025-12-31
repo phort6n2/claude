@@ -1,0 +1,295 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/db'
+import { publishToWordPress } from '@/lib/integrations/wordpress'
+import { schedulePost } from '@/lib/integrations/getlate'
+import { getSetting, WRHQ_SETTINGS_KEYS } from '@/lib/settings'
+import { validateScheduledDate } from '@/lib/scheduling'
+import { Image, SocialPost, WRHQSocialPost } from '@prisma/client'
+
+interface RouteContext {
+  params: Promise<{ id: string }>
+}
+
+/**
+ * POST /api/content/[id]/publish - Publish content to WordPress and schedule social
+ * Body: {
+ *   publishClientBlog?: boolean,
+ *   publishWrhqBlog?: boolean,
+ *   scheduleSocial?: boolean,
+ *   scheduleWrhqSocial?: boolean
+ * }
+ */
+export async function POST(request: NextRequest, { params }: RouteContext) {
+  const session = await auth()
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { id } = await params
+
+  try {
+    const body = await request.json()
+    const {
+      publishClientBlog = true,
+      publishWrhqBlog = true,
+      scheduleSocial = true,
+      scheduleWrhqSocial = true,
+    } = body
+
+    // Get content item with all related data
+    const contentItem = await prisma.contentItem.findUnique({
+      where: { id },
+      include: {
+        client: true,
+        blogPost: true,
+        images: true,
+        socialPosts: true,
+        wrhqSocialPosts: true,
+      },
+    })
+
+    if (!contentItem) {
+      return NextResponse.json({ error: 'Content item not found' }, { status: 404 })
+    }
+
+    // Validate scheduled date
+    const validationError = await validateScheduledDate(
+      contentItem.scheduledDate,
+      contentItem.clientId,
+      id
+    )
+
+    if (validationError) {
+      return NextResponse.json({ error: validationError }, { status: 400 })
+    }
+
+    // Check approvals
+    if (contentItem.blogApproved !== 'APPROVED') {
+      return NextResponse.json({ error: 'Blog must be approved before publishing' }, { status: 400 })
+    }
+
+    // Update status to PUBLISHING
+    await prisma.contentItem.update({
+      where: { id },
+      data: {
+        status: 'PUBLISHING',
+        pipelineStep: 'publishing',
+      },
+    })
+
+    const results: Record<string, unknown> = {}
+
+    // Publish client blog to WordPress
+    if (publishClientBlog && contentItem.blogPost) {
+      try {
+        const featuredImage = contentItem.images.find((img: Image) => img.imageType === 'BLOG_FEATURED')
+
+        const wpResult = await publishToWordPress({
+          client: contentItem.client,
+          title: contentItem.blogPost.title,
+          content: contentItem.blogPost.content,
+          excerpt: contentItem.blogPost.excerpt || undefined,
+          slug: contentItem.blogPost.slug,
+          scheduledDate: contentItem.scheduledDate,
+          featuredImageUrl: featuredImage?.gcsUrl,
+          metaTitle: contentItem.blogPost.metaTitle || undefined,
+          metaDescription: contentItem.blogPost.metaDescription || undefined,
+          schemaJson: contentItem.blogPost.schemaJson || undefined,
+        })
+
+        await prisma.blogPost.update({
+          where: { id: contentItem.blogPost.id },
+          data: {
+            wordpressPostId: wpResult.postId,
+            wordpressUrl: wpResult.url,
+            featuredImageId: wpResult.featuredImageId,
+            publishedAt: contentItem.scheduledDate,
+          },
+        })
+
+        await prisma.contentItem.update({
+          where: { id },
+          data: {
+            clientBlogPublished: true,
+            clientBlogPublishedAt: new Date(),
+            clientBlogUrl: wpResult.url,
+          },
+        })
+
+        results.clientBlog = { success: true, url: wpResult.url }
+      } catch (error) {
+        console.error('Client blog publish error:', error)
+        results.clientBlog = { success: false, error: String(error) }
+      }
+    }
+
+    // Publish WRHQ blog to WordPress (if enabled)
+    if (publishWrhqBlog) {
+      try {
+        const wrhqEnabled = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_ENABLED)
+
+        if (wrhqEnabled === 'true' && contentItem.wrhqBlogApproved === 'APPROVED') {
+          const wrhqWpUrl = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_URL)
+          const wrhqWpUser = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_USERNAME)
+          const wrhqWpPass = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_APP_PASSWORD)
+
+          if (wrhqWpUrl && wrhqWpUser && wrhqWpPass) {
+            const wpResult = await publishToWordPress({
+              client: {
+                ...contentItem.client,
+                wordpressUrl: wrhqWpUrl,
+                wordpressUsername: wrhqWpUser,
+                wordpressAppPassword: wrhqWpPass,
+              },
+              title: `Partner Spotlight: ${contentItem.blogPost?.title}`,
+              content: `<!-- WRHQ blog content -->`,
+              slug: `partner-${contentItem.blogPost?.slug}`,
+              scheduledDate: contentItem.scheduledDate,
+            })
+
+            await prisma.contentItem.update({
+              where: { id },
+              data: {
+                wrhqBlogPublished: true,
+                wrhqBlogPublishedAt: new Date(),
+                wrhqBlogUrl: wpResult.url,
+              },
+            })
+
+            results.wrhqBlog = { success: true, url: wpResult.url }
+          }
+        }
+      } catch (error) {
+        console.error('WRHQ blog publish error:', error)
+        results.wrhqBlog = { success: false, error: String(error) }
+      }
+    }
+
+    // Schedule client social posts
+    if (scheduleSocial && contentItem.socialApproved === 'APPROVED') {
+      try {
+        const socialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
+
+        for (const socialPost of contentItem.socialPosts) {
+          if (!socialPost.approved) continue
+
+          const accountId = socialAccountIds?.[socialPost.platform.toLowerCase()]
+          if (!accountId) continue
+
+          const image = contentItem.images.find(
+            (img: Image) => img.imageType === socialPost.platform || img.imageType === 'BLOG_FEATURED'
+          )
+
+          const lateResult = await schedulePost({
+            accountId,
+            platform: socialPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
+            caption: socialPost.caption,
+            mediaUrls: image ? [image.gcsUrl] : [],
+            scheduledTime: contentItem.scheduledDate,
+            hashtags: socialPost.hashtags,
+            firstComment: socialPost.firstComment || undefined,
+          })
+
+          await prisma.socialPost.update({
+            where: { id: socialPost.id },
+            data: {
+              getlatePostId: lateResult.postId,
+              status: 'SCHEDULED',
+            },
+          })
+        }
+
+        await prisma.contentItem.update({
+          where: { id },
+          data: {
+            socialPublished: true,
+            socialPublishedAt: new Date(),
+          },
+        })
+
+        results.social = { success: true, count: contentItem.socialPosts.filter((p: SocialPost) => p.approved).length }
+      } catch (error) {
+        console.error('Social scheduling error:', error)
+        results.social = { success: false, error: String(error) }
+      }
+    }
+
+    // Schedule WRHQ social posts
+    if (scheduleWrhqSocial && contentItem.wrhqSocialApproved === 'APPROVED') {
+      try {
+        const wrhqEnabled = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_ENABLED)
+
+        if (wrhqEnabled === 'true') {
+          for (const wrhqPost of contentItem.wrhqSocialPosts) {
+            if (!wrhqPost.approved) continue
+
+            const accountIdKey = `WRHQ_LATE_${wrhqPost.platform}_ID` as keyof typeof WRHQ_SETTINGS_KEYS
+            const accountId = await getSetting(WRHQ_SETTINGS_KEYS[accountIdKey])
+
+            if (!accountId) continue
+
+            const image = contentItem.images.find(
+              (img: Image) => img.imageType === wrhqPost.platform || img.imageType === 'BLOG_FEATURED'
+            )
+
+            const lateResult = await schedulePost({
+              accountId,
+              platform: wrhqPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
+              caption: wrhqPost.caption,
+              mediaUrls: image ? [image.gcsUrl] : [],
+              scheduledTime: contentItem.scheduledDate,
+              hashtags: wrhqPost.hashtags,
+              firstComment: wrhqPost.firstComment || undefined,
+            })
+
+            await prisma.wRHQSocialPost.update({
+              where: { id: wrhqPost.id },
+              data: {
+                getlatePostId: lateResult.postId,
+                status: 'SCHEDULED',
+              },
+            })
+          }
+
+          results.wrhqSocial = { success: true, count: contentItem.wrhqSocialPosts.filter((p: WRHQSocialPost) => p.approved).length }
+        }
+      } catch (error) {
+        console.error('WRHQ social scheduling error:', error)
+        results.wrhqSocial = { success: false, error: String(error) }
+      }
+    }
+
+    // Update final status
+    const allSuccessful = Object.values(results).every(
+      (r: unknown) => (r as { success: boolean }).success !== false
+    )
+
+    await prisma.contentItem.update({
+      where: { id },
+      data: {
+        status: allSuccessful ? 'SCHEDULED' : 'FAILED',
+        pipelineStep: allSuccessful ? 'scheduled' : 'failed',
+        lastError: allSuccessful ? null : JSON.stringify(results),
+      },
+    })
+
+    return NextResponse.json({
+      success: allSuccessful,
+      results,
+    })
+  } catch (error) {
+    console.error('Content publish error:', error)
+
+    await prisma.contentItem.update({
+      where: { id },
+      data: {
+        status: 'FAILED',
+        pipelineStep: 'failed',
+        lastError: String(error),
+      },
+    })
+
+    return NextResponse.json({ error: 'Failed to publish content' }, { status: 500 })
+  }
+}
