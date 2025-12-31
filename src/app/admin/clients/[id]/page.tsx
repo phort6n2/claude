@@ -4,13 +4,14 @@ import { notFound } from 'next/navigation'
 import Header from '@/components/admin/Header'
 import ClientForm from '@/components/forms/ClientForm'
 import { prisma } from '@/lib/db'
+import type { Client } from '@prisma/client'
 
 interface PageProps {
   params: Promise<{ id: string }>
 }
 
 // Transform null values to undefined for form compatibility
-function transformClientForForm(client: NonNullable<Awaited<ReturnType<typeof prisma.client.findUnique>>>) {
+function transformClientForForm(client: Client) {
   return {
     id: client.id,
     businessName: client.businessName,
