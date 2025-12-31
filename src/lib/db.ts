@@ -4,16 +4,23 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-// Get the Accelerate URL from environment
-const accelerateUrl = process.env.PRISMA_DATABASE_URL
+function createPrismaClient(): PrismaClient {
+  // Get the Accelerate URL - required for Prisma 7
+  const accelerateUrl = process.env.PRISMA_DATABASE_URL || process.env.DATABASE_URL
 
-// Create Prisma Client with Accelerate URL if available
-export const prisma = globalForPrisma.prisma ??
-  (accelerateUrl
-    ? new PrismaClient({ accelerateUrl })
-    : new PrismaClient())
+  if (!accelerateUrl) {
+    throw new Error(
+      'Database URL not configured. Please set PRISMA_DATABASE_URL or DATABASE_URL environment variable.'
+    )
+  }
 
-if (process.env.NODE_ENV !== 'production' && prisma) {
+  return new PrismaClient({ accelerateUrl })
+}
+
+// Use lazy initialization to ensure env vars are available
+export const prisma = globalForPrisma.prisma ?? createPrismaClient()
+
+if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma
 }
 
