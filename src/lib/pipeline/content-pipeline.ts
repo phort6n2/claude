@@ -231,7 +231,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
     const podcastJob = await createPodcast({
       script: podcastScript,
       title: blogResult.title,
-      length: 'short',
+      duration: 'long', // 3-5 min podcasts
     })
 
     const podcastResult = await waitForPodcast(podcastJob.jobId)
