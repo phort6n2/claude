@@ -66,10 +66,29 @@ export async function uploadFromUrl(
   sourceUrl: string,
   filename: string
 ): Promise<UploadResult> {
+  // Handle base64 data URLs (from Imagen API)
+  if (sourceUrl.startsWith('data:')) {
+    const matches = sourceUrl.match(/^data:([^;]+);base64,(.+)$/)
+    if (matches) {
+      const contentType = matches[1]
+      const base64Data = matches[2]
+      return uploadFromBase64(base64Data, filename, contentType)
+    }
+  }
+
   const response = await fetch(sourceUrl)
   const buffer = await response.arrayBuffer()
   const contentType = response.headers.get('content-type') || 'application/octet-stream'
 
+  return uploadToGCS(buffer, filename, contentType)
+}
+
+export async function uploadFromBase64(
+  base64Data: string,
+  filename: string,
+  contentType: string = 'image/png'
+): Promise<UploadResult> {
+  const buffer = Buffer.from(base64Data, 'base64')
   return uploadToGCS(buffer, filename, contentType)
 }
 

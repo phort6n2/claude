@@ -47,14 +47,24 @@ async function testAnthropic(apiKey: string): Promise<{ success: boolean; messag
 
 async function testNanoBanana(apiKey: string): Promise<{ success: boolean; message: string }> {
   try {
-    const response = await fetch('https://api.nanobanana.com/v1/status', {
-      headers: { 'Authorization': `Bearer ${apiKey}` },
-    })
-    if (response.ok || response.status === 401) {
-      // Even 401 means the API endpoint is reachable
-      return response.ok
-        ? { success: true, message: 'Connected successfully' }
-        : { success: false, message: 'Invalid API key' }
+    // Test Google AI Studio / Imagen API by listing models
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+      { method: 'GET' }
+    )
+    if (response.ok) {
+      const data = await response.json()
+      // Check if Imagen model is available
+      const hasImagen = data.models?.some((m: { name: string }) =>
+        m.name.includes('imagen')
+      )
+      return {
+        success: true,
+        message: hasImagen ? 'Connected - Imagen available' : 'Connected - check Imagen access'
+      }
+    }
+    if (response.status === 400 || response.status === 403) {
+      return { success: false, message: 'Invalid API key' }
     }
     return { success: false, message: `API error: ${response.status}` }
   } catch (error) {
