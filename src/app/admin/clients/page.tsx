@@ -9,6 +9,7 @@ import { StatusBadge } from '@/components/ui/Badge'
 import { prisma } from '@/lib/db'
 import { formatDate } from '@/lib/utils'
 import { Plus, MoreVertical, Globe, RefreshCw } from 'lucide-react'
+import ClientLogo from '@/components/ui/ClientLogo'
 
 async function getClients() {
   return prisma.client.findMany({
@@ -89,20 +90,11 @@ async function ClientList() {
               <tr key={client.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-3">
-                    {client.logoUrl ? (
-                      <img
-                        src={client.logoUrl}
-                        alt={client.businessName}
-                        className="h-10 w-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div
-                        className="h-10 w-10 rounded-full flex items-center justify-center text-white font-medium"
-                        style={{ backgroundColor: client.primaryColor || '#1e40af' }}
-                      >
-                        {client.businessName[0]}
-                      </div>
-                    )}
+                    <ClientLogo
+                      logoUrl={client.logoUrl}
+                      businessName={client.businessName}
+                      primaryColor={client.primaryColor}
+                    />
                     <div>
                       <p className="font-medium text-gray-900">{client.businessName}</p>
                       <p className="text-sm text-gray-500">{client.city}, {client.state}</p>
