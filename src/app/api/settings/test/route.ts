@@ -95,11 +95,28 @@ async function testAutocontent(apiKey: string): Promise<{ success: boolean; mess
 
 async function testCreatify(apiKey: string): Promise<{ success: boolean; message: string }> {
   try {
-    const response = await fetch('https://api.creatify.ai/v1/account', {
-      headers: { 'Authorization': `Bearer ${apiKey}` },
+    // Creatify uses X-API-ID and X-API-KEY headers
+    // API key format should be "api_id:api_key"
+    const [apiId, apiSecret] = apiKey.includes(':') ? apiKey.split(':') : [apiKey, '']
+
+    if (!apiSecret) {
+      return { success: false, message: 'API key should be in format "api_id:api_key"' }
+    }
+
+    // Test with the lipsyncs endpoint (list renders)
+    const response = await fetch('https://api.creatify.ai/api/lipsyncs/', {
+      method: 'GET',
+      headers: {
+        'X-API-ID': apiId,
+        'X-API-KEY': apiSecret,
+      },
     })
+
     if (response.ok) {
       return { success: true, message: 'Connected successfully' }
+    }
+    if (response.status === 401 || response.status === 403) {
+      return { success: false, message: 'Invalid API credentials' }
     }
     return { success: false, message: `API error: ${response.status}` }
   } catch (error) {
