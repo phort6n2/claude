@@ -1,9 +1,15 @@
 import Link from 'next/link'
 import Header from '@/components/admin/Header'
 import { Card, CardContent } from '@/components/ui/Card'
-import { Key, ChevronRight } from 'lucide-react'
+import { Key, ChevronRight, Building2 } from 'lucide-react'
 
 const settingsSections = [
+  {
+    title: 'WRHQ Settings',
+    description: 'Windshield Repair HQ directory site configuration for dual publishing',
+    href: '/admin/settings/wrhq',
+    icon: Building2,
+  },
   {
     title: 'API Settings',
     description: 'Configure external API keys and integrations',

@@ -188,6 +188,138 @@ Return JSON with:
   return JSON.parse(jsonMatch[0])
 }
 
+// WRHQ Directory Blog Post Generation
+interface WRHQBlogPostParams {
+  clientBlogTitle: string
+  clientBlogUrl: string
+  clientBlogExcerpt: string
+  clientBusinessName: string
+  clientCity: string
+  clientState: string
+  paaQuestion: string
+}
+
+interface WRHQBlogPostResult {
+  title: string
+  slug: string
+  content: string
+  excerpt: string
+  metaTitle: string
+  metaDescription: string
+  focusKeyword: string
+}
+
+export async function generateWRHQBlogPost(params: WRHQBlogPostParams): Promise<WRHQBlogPostResult> {
+  const prompt = `You are creating a directory-style blog post for Windshield Repair HQ (WRHQ), an auto glass industry directory site.
+
+This post should highlight and link to a client's detailed blog post.
+
+Client Information:
+- Business: ${params.clientBusinessName} in ${params.clientCity}, ${params.clientState}
+- Their Blog Title: "${params.clientBlogTitle}"
+- Their Blog URL: ${params.clientBlogUrl}
+- Their Blog Summary: "${params.clientBlogExcerpt}"
+
+Original Topic (PAA Question): "${params.paaQuestion}"
+
+Requirements:
+- 400-600 words (shorter than the client's post)
+- Start with a directory-style introduction: "If you're looking for answers about [topic], ${params.clientBusinessName} in ${params.clientCity}, ${params.clientState} has put together a comprehensive guide..."
+- Summarize 3-4 key points from the client's article
+- Include a prominent link to the client's full article with CTA like "Read the full guide at ${params.clientBusinessName}"
+- End with a section about WRHQ: "At Windshield Repair HQ, we connect car owners with trusted auto glass professionals across the country."
+- Use H2/H3 headings
+- Educational but clearly directing readers to the client's detailed content
+- Do NOT duplicate the client's full content - this is a teaser/directory listing
+
+Generate as semantic HTML (h2, h3, p, ul, li tags).
+Also provide:
+- Title: Include city name, e.g., "${params.clientCity} Auto Glass Expert Answers: [Topic]"
+- URL slug
+- Excerpt (150-160 characters)
+- Meta title (50-60 characters)
+- Meta description (150-160 characters)
+- Focus keyword
+
+Return as JSON with keys: title, slug, content, excerpt, metaTitle, metaDescription, focusKeyword`
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 2048,
+    messages: [{ role: 'user', content: prompt }],
+  })
+
+  const text = response.content[0].type === 'text' ? response.content[0].text : ''
+  const jsonMatch = text.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) {
+    throw new Error('Failed to parse WRHQ blog post response')
+  }
+
+  return JSON.parse(jsonMatch[0])
+}
+
+// WRHQ Social Caption Generation
+interface WRHQSocialCaptionParams {
+  platform: 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok'
+  clientBusinessName: string
+  clientCity: string
+  clientState: string
+  blogTitle: string
+  blogExcerpt: string
+  wrhqBlogUrl: string
+  clientBlogUrl: string
+}
+
+export async function generateWRHQSocialCaption(params: WRHQSocialCaptionParams): Promise<{
+  caption: string
+  hashtags: string[]
+  firstComment: string
+}> {
+  const platformGuidelines = {
+    facebook: 'Longer, directory-style post featuring the client. Include both WRHQ and client links.',
+    instagram: 'Engaging, community-focused. Feature the client as a trusted provider. Mention "link in bio".',
+    linkedin: 'Professional industry directory angle. Position as connecting consumers with quality providers.',
+    twitter: 'Concise spotlight on the client expert. Include WRHQ link.',
+    tiktok: 'Casual, helpful content discovery angle. Mention link in bio.',
+  }
+
+  const prompt = `Generate a ${params.platform} post for Windshield Repair HQ (WRHQ) - an auto glass industry directory.
+
+This post features a member business:
+- Business: ${params.clientBusinessName} in ${params.clientCity}, ${params.clientState}
+- Topic: "${params.blogTitle}"
+- Summary: "${params.blogExcerpt}"
+- WRHQ Article URL: ${params.wrhqBlogUrl}
+- Client's Full Article: ${params.clientBlogUrl}
+
+Platform Guidelines: ${platformGuidelines[params.platform]}
+
+Voice: WRHQ is a trusted directory connecting car owners with quality auto glass professionals.
+Example angles:
+- "Looking for expert auto glass advice? ${params.clientBusinessName} shares their expertise on..."
+- "Our network of trusted professionals includes ${params.clientBusinessName}..."
+- "Featured Expert: ${params.clientBusinessName} breaks down..."
+
+Return JSON with:
+- caption: The main post text (feature the client, WRHQ as the connector)
+- hashtags: Array of relevant hashtags (autoglass, windshieldrepair, local city, etc.)
+- firstComment: A follow-up comment with additional context or link`
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 1024,
+    messages: [{ role: 'user', content: prompt }],
+  })
+
+  const text = response.content[0].type === 'text' ? response.content[0].text : ''
+  const jsonMatch = text.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) {
+    throw new Error('Failed to parse WRHQ social caption response')
+  }
+
+  return JSON.parse(jsonMatch[0])
+}
+
 export async function generatePodcastScript(params: {
   businessName: string
   city: string
