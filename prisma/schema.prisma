@@ -502,3 +502,16 @@ enum LogStatus {
   FAILED
   RETRYING
 }
+
+// ============================================
+// SETTINGS
+// ============================================
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   // Encrypted for sensitive values
+  encrypted Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
