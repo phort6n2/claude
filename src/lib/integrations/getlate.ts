@@ -1,6 +1,6 @@
 // getlate.dev API Integration for Social Media Scheduling
 
-type Platform = 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp'
+type Platform = 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram'
 
 interface SchedulePostParams {
   accountId: string
@@ -108,11 +108,17 @@ export async function scheduleSocialPosts(params: {
   // Stagger posts across platforms
   const staggerMinutes: Record<Platform, number> = {
     twitter: 0,        // First
+    bluesky: 15,       // +15 min
+    threads: 30,       // +30 min
     facebook: 60,      // +1 hour
     linkedin: 120,     // +2 hours
     instagram: 180,    // +3 hours
+    pinterest: 240,    // +4 hours
     tiktok: 300,       // +5 hours
     gbp: 360,          // +6 hours
+    youtube: 420,      // +7 hours
+    reddit: 480,       // +8 hours
+    telegram: 540,     // +9 hours
   }
 
   for (const platform of params.platforms) {

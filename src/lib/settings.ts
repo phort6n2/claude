@@ -16,6 +16,12 @@ export const WRHQ_SETTINGS_KEYS = {
   WRHQ_LATE_TWITTER_ID: 'WRHQ_LATE_TWITTER_ID',
   WRHQ_LATE_TIKTOK_ID: 'WRHQ_LATE_TIKTOK_ID',
   WRHQ_LATE_GBP_ID: 'WRHQ_LATE_GBP_ID',
+  WRHQ_LATE_YOUTUBE_ID: 'WRHQ_LATE_YOUTUBE_ID',
+  WRHQ_LATE_BLUESKY_ID: 'WRHQ_LATE_BLUESKY_ID',
+  WRHQ_LATE_THREADS_ID: 'WRHQ_LATE_THREADS_ID',
+  WRHQ_LATE_REDDIT_ID: 'WRHQ_LATE_REDDIT_ID',
+  WRHQ_LATE_PINTEREST_ID: 'WRHQ_LATE_PINTEREST_ID',
+  WRHQ_LATE_TELEGRAM_ID: 'WRHQ_LATE_TELEGRAM_ID',
 
   // Publishing Preferences
   WRHQ_PUBLISH_TIME: 'WRHQ_PUBLISH_TIME',
@@ -42,6 +48,12 @@ export interface WRHQConfig {
     twitter: string | null
     tiktok: string | null
     gbp: string | null
+    youtube: string | null
+    bluesky: string | null
+    threads: string | null
+    reddit: string | null
+    pinterest: string | null
+    telegram: string | null
     enabledPlatforms: string[]
   }
   publishing: {
@@ -163,6 +175,12 @@ export async function getWRHQConfig(): Promise<WRHQConfig> {
       twitter: settings[WRHQ_SETTINGS_KEYS.WRHQ_LATE_TWITTER_ID],
       tiktok: settings[WRHQ_SETTINGS_KEYS.WRHQ_LATE_TIKTOK_ID],
       gbp: settings[WRHQ_SETTINGS_KEYS.WRHQ_LATE_GBP_ID],
+      youtube: settings[WRHQ_SETTINGS_KEYS.WRHQ_LATE_YOUTUBE_ID],
+      bluesky: settings[WRHQ_SETTINGS_KEYS.WRHQ_LATE_BLUESKY_ID],
+      threads: settings[WRHQ_SETTINGS_KEYS.WRHQ_LATE_THREADS_ID],
+      reddit: settings[WRHQ_SETTINGS_KEYS.WRHQ_LATE_REDDIT_ID],
+      pinterest: settings[WRHQ_SETTINGS_KEYS.WRHQ_LATE_PINTEREST_ID],
+      telegram: settings[WRHQ_SETTINGS_KEYS.WRHQ_LATE_TELEGRAM_ID],
       enabledPlatforms,
     },
     publishing: {
@@ -205,6 +223,12 @@ export async function updateWRHQSocialMedia(accounts: {
   twitter?: string
   tiktok?: string
   gbp?: string
+  youtube?: string
+  bluesky?: string
+  threads?: string
+  reddit?: string
+  pinterest?: string
+  telegram?: string
   enabledPlatforms?: string[]
 }): Promise<void> {
   const updates: Promise<void>[] = []
@@ -226,6 +250,24 @@ export async function updateWRHQSocialMedia(accounts: {
   }
   if (accounts.gbp !== undefined) {
     updates.push(setSetting(WRHQ_SETTINGS_KEYS.WRHQ_LATE_GBP_ID, accounts.gbp))
+  }
+  if (accounts.youtube !== undefined) {
+    updates.push(setSetting(WRHQ_SETTINGS_KEYS.WRHQ_LATE_YOUTUBE_ID, accounts.youtube))
+  }
+  if (accounts.bluesky !== undefined) {
+    updates.push(setSetting(WRHQ_SETTINGS_KEYS.WRHQ_LATE_BLUESKY_ID, accounts.bluesky))
+  }
+  if (accounts.threads !== undefined) {
+    updates.push(setSetting(WRHQ_SETTINGS_KEYS.WRHQ_LATE_THREADS_ID, accounts.threads))
+  }
+  if (accounts.reddit !== undefined) {
+    updates.push(setSetting(WRHQ_SETTINGS_KEYS.WRHQ_LATE_REDDIT_ID, accounts.reddit))
+  }
+  if (accounts.pinterest !== undefined) {
+    updates.push(setSetting(WRHQ_SETTINGS_KEYS.WRHQ_LATE_PINTEREST_ID, accounts.pinterest))
+  }
+  if (accounts.telegram !== undefined) {
+    updates.push(setSetting(WRHQ_SETTINGS_KEYS.WRHQ_LATE_TELEGRAM_ID, accounts.telegram))
   }
   if (accounts.enabledPlatforms !== undefined) {
     updates.push(setSetting(WRHQ_SETTINGS_KEYS.WRHQ_ENABLED_PLATFORMS, accounts.enabledPlatforms.join(',')))
@@ -266,6 +308,12 @@ export async function getWRHQLateAccountIds(): Promise<Record<string, string>> {
   if (config.socialMedia.twitter) accounts.twitter = config.socialMedia.twitter
   if (config.socialMedia.tiktok) accounts.tiktok = config.socialMedia.tiktok
   if (config.socialMedia.gbp) accounts.gbp = config.socialMedia.gbp
+  if (config.socialMedia.youtube) accounts.youtube = config.socialMedia.youtube
+  if (config.socialMedia.bluesky) accounts.bluesky = config.socialMedia.bluesky
+  if (config.socialMedia.threads) accounts.threads = config.socialMedia.threads
+  if (config.socialMedia.reddit) accounts.reddit = config.socialMedia.reddit
+  if (config.socialMedia.pinterest) accounts.pinterest = config.socialMedia.pinterest
+  if (config.socialMedia.telegram) accounts.telegram = config.socialMedia.telegram
 
   return accounts
 }

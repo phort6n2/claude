@@ -17,6 +17,12 @@ interface WRHQConfig {
     twitter: string | null
     tiktok: string | null
     gbp: string | null
+    youtube: string | null
+    bluesky: string | null
+    threads: string | null
+    reddit: string | null
+    pinterest: string | null
+    telegram: string | null
     enabledPlatforms: string[]
   }
   publishing: {
@@ -42,6 +48,12 @@ const SOCIAL_PLATFORMS = [
   { key: 'twitter', label: 'Twitter/X', icon: '🐦' },
   { key: 'tiktok', label: 'TikTok', icon: '🎵' },
   { key: 'gbp', label: 'Google Business', icon: '📍' },
+  { key: 'youtube', label: 'YouTube', icon: '📺' },
+  { key: 'bluesky', label: 'Bluesky', icon: '🦋' },
+  { key: 'threads', label: 'Threads', icon: '🧵' },
+  { key: 'reddit', label: 'Reddit', icon: '🤖' },
+  { key: 'pinterest', label: 'Pinterest', icon: '📌' },
+  { key: 'telegram', label: 'Telegram', icon: '✈️' },
 ]
 
 export default function WRHQSettingsPage() {

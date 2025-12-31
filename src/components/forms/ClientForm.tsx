@@ -77,6 +77,12 @@ const socialPlatformOptions = [
   { value: 'twitter', label: 'Twitter/X' },
   { value: 'tiktok', label: 'TikTok' },
   { value: 'gbp', label: 'Google Business Profile' },
+  { value: 'youtube', label: 'YouTube' },
+  { value: 'bluesky', label: 'Bluesky' },
+  { value: 'threads', label: 'Threads' },
+  { value: 'reddit', label: 'Reddit' },
+  { value: 'pinterest', label: 'Pinterest' },
+  { value: 'telegram', label: 'Telegram' },
 ]
 
 const timezones = [

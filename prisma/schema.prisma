@@ -366,6 +366,12 @@ enum SocialPlatform {
   TWITTER
   TIKTOK
   GBP
+  YOUTUBE
+  BLUESKY
+  THREADS
+  REDDIT
+  PINTEREST
+  TELEGRAM
 }
 
 enum SocialPostStatus {

@@ -77,8 +77,10 @@ Return as JSON with keys: title, slug, content, excerpt, metaTitle, metaDescript
   return JSON.parse(jsonMatch[0])
 }
 
+type SocialPlatform = 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram'
+
 interface SocialCaptionParams {
-  platform: 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok'
+  platform: SocialPlatform
   blogTitle: string
   blogExcerpt: string
   businessName: string
@@ -90,12 +92,19 @@ export async function generateSocialCaption(params: SocialCaptionParams): Promis
   hashtags: string[]
   firstComment: string
 }> {
-  const platformGuidelines = {
+  const platformGuidelines: Record<SocialPlatform, string> = {
     facebook: 'Longer, conversational, storytelling approach. Can include the blog link inline.',
     instagram: 'Shorter, emoji-friendly, hashtag-heavy. Mention "link in bio" for the blog post.',
     linkedin: 'Professional, industry insights focused. Include the blog link inline.',
     twitter: 'Concise, punchy, engaging. Thread-worthy if needed. Include link.',
     tiktok: 'Casual, trend-aligned, relatable. Mention link in bio.',
+    gbp: 'Local business focused, professional, include call-to-action for the local area.',
+    youtube: 'Video description style, detailed, include timestamps if applicable. SEO-optimized.',
+    bluesky: 'Similar to Twitter - concise, authentic, community-focused. Include link.',
+    threads: 'Conversational, Instagram-adjacent style. Can be longer form. Include link.',
+    reddit: 'Community-focused, informative, avoid promotional tone. Add value to the subreddit.',
+    pinterest: 'Visual description, keyword-rich, inspirational. Include the blog link.',
+    telegram: 'Direct, informative, can include formatting like bold/italic. Include link.',
   }
 
   const prompt = `Generate a ${params.platform} post for an auto glass company.
@@ -260,7 +269,7 @@ Return as JSON with keys: title, slug, content, excerpt, metaTitle, metaDescript
 
 // WRHQ Social Caption Generation
 interface WRHQSocialCaptionParams {
-  platform: 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok'
+  platform: SocialPlatform
   clientBusinessName: string
   clientCity: string
   clientState: string
@@ -275,12 +284,19 @@ export async function generateWRHQSocialCaption(params: WRHQSocialCaptionParams)
   hashtags: string[]
   firstComment: string
 }> {
-  const platformGuidelines = {
+  const platformGuidelines: Record<SocialPlatform, string> = {
     facebook: 'Longer, directory-style post featuring the client. Include both WRHQ and client links.',
     instagram: 'Engaging, community-focused. Feature the client as a trusted provider. Mention "link in bio".',
     linkedin: 'Professional industry directory angle. Position as connecting consumers with quality providers.',
     twitter: 'Concise spotlight on the client expert. Include WRHQ link.',
     tiktok: 'Casual, helpful content discovery angle. Mention link in bio.',
+    gbp: 'Local business directory focus, highlight the featured provider in the area.',
+    youtube: 'Video description featuring the expert provider. Include both WRHQ and client links.',
+    bluesky: 'Authentic, concise spotlight on the featured expert. Include WRHQ link.',
+    threads: 'Conversational directory post, feature the client business. Include WRHQ link.',
+    reddit: 'Community-helpful, informative post. Avoid overly promotional tone.',
+    pinterest: 'Visual, inspirational pin description featuring the expert. Include both links.',
+    telegram: 'Direct, informative message about the featured provider. Include WRHQ link.',
   }
 
   const prompt = `Generate a ${params.platform} post for Windshield Repair HQ (WRHQ) - an auto glass industry directory.

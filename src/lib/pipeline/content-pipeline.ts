@@ -426,7 +426,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
 
       for (const platform of contentItem.client.socialPlatforms) {
         const captionResult = await generateSocialCaption({
-          platform: platform as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok',
+          platform: platform as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
           blogTitle: blogResult.title,
           blogExcerpt: blogResult.excerpt,
           businessName: contentItem.client.businessName,
@@ -441,7 +441,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
 
       const clientScheduledPosts = await scheduleSocialPosts({
         accountIds: socialAccountIds,
-        platforms: contentItem.client.socialPlatforms as ('facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok')[],
+        platforms: contentItem.client.socialPlatforms as ('facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram')[],
         captions: clientCaptions,
         mediaUrls,
         mediaType: 'image',
@@ -454,7 +454,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           data: {
             contentItemId,
             clientId: contentItem.clientId,
-            platform: post.platform.toUpperCase() as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP',
+            platform: post.platform.toUpperCase() as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
             caption: clientCaptions[post.platform]?.caption || '',
             hashtags: clientCaptions[post.platform]?.hashtags || [],
             firstComment: clientCaptions[post.platform]?.firstComment,
@@ -474,7 +474,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       try {
         const wrhqPlatforms = wrhqConfig.socialMedia.enabledPlatforms.filter(
           p => wrhqLateAccountIds[p]
-        ) as ('facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok')[]
+        ) as ('facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram')[]
 
         // Generate WRHQ captions for each platform
         const wrhqCaptions: Record<string, { caption: string; hashtags: string[]; firstComment: string }> = {}
