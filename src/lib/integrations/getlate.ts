@@ -95,7 +95,7 @@ export async function checkPostStatus(postId: string): Promise<ScheduledPostResu
 }
 
 export async function scheduleSocialPosts(params: {
-  accountId: string
+  accountIds: Record<string, string>  // Per-platform account IDs
   platforms: Platform[]
   captions: Record<Platform, { caption: string; hashtags: string[]; firstComment: string }>
   mediaUrls: string[]
@@ -116,14 +116,15 @@ export async function scheduleSocialPosts(params: {
 
   for (const platform of params.platforms) {
     const captionData = params.captions[platform]
-    if (!captionData) continue
+    const accountId = params.accountIds[platform]
+    if (!captionData || !accountId) continue
 
     const scheduledTime = new Date(params.baseTime)
     scheduledTime.setMinutes(scheduledTime.getMinutes() + staggerMinutes[platform])
 
     try {
       const result = await schedulePost({
-        accountId: params.accountId,
+        accountId,
         platform,
         caption: captionData.caption,
         hashtags: captionData.hashtags,

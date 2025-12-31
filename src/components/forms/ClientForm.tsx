@@ -32,7 +32,7 @@ interface ClientFormData {
   timezone: string
   postsPerWeek: number
   socialPlatforms: string[]
-  getlateAccountId: string
+  socialAccountIds: Record<string, string>
 }
 
 interface ClientFormProps {
@@ -67,7 +67,7 @@ const defaultData: ClientFormData = {
   timezone: 'America/Los_Angeles',
   postsPerWeek: 2,
   socialPlatforms: [],
-  getlateAccountId: '',
+  socialAccountIds: {},
 }
 
 const socialPlatformOptions = [
@@ -112,6 +112,16 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
       socialPlatforms: prev.socialPlatforms.includes(platform)
         ? prev.socialPlatforms.filter((p) => p !== platform)
         : [...prev.socialPlatforms, platform],
+    }))
+  }
+
+  const updateSocialAccountId = (platform: string, accountId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      socialAccountIds: {
+        ...prev.socialAccountIds,
+        [platform]: accountId,
+      },
     }))
   }
 
@@ -603,21 +613,33 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                   </label>
                 ))}
               </div>
-              <div className="mt-6 pt-6 border-t">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Late Account ID
-                </label>
-                <input
-                  type="text"
-                  value={formData.getlateAccountId}
-                  onChange={(e) => updateField('getlateAccountId', e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="694f35914207e06f4ca82b79"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Unique account ID from getlate.dev for social media scheduling
-                </p>
-              </div>
+              {formData.socialPlatforms.length > 0 && (
+                <div className="mt-6 pt-6 border-t space-y-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Late Account IDs</p>
+                    <p className="text-xs text-gray-500">
+                      Enter the unique Late account ID for each platform from getlate.dev
+                    </p>
+                  </div>
+                  {formData.socialPlatforms.map((platform) => {
+                    const platformLabel = socialPlatformOptions.find(p => p.value === platform)?.label || platform
+                    return (
+                      <div key={platform}>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {platformLabel} Account ID
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.socialAccountIds[platform] || ''}
+                          onChange={(e) => updateSocialAccountId(platform, e.target.value)}
+                          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="694f35914207e06f4ca82b79"
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         )

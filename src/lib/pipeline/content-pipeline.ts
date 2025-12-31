@@ -329,7 +329,8 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
     })
     await logAction(ctx, 'social_schedule', 'STARTED')
 
-    if (contentItem.client.socialPlatforms.length > 0 && contentItem.client.getlateAccountId) {
+    const socialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
+    if (contentItem.client.socialPlatforms.length > 0 && socialAccountIds && Object.keys(socialAccountIds).length > 0) {
       const blogPostRecord = await prisma.blogPost.findUnique({ where: { contentItemId } })
       const blogUrl = blogPostRecord?.wordpressUrl || ''
 
@@ -360,7 +361,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       socialBaseTime.setHours(socialBaseTime.getHours() + 2)
 
       const scheduledPosts = await scheduleSocialPosts({
-        accountId: contentItem.client.getlateAccountId,
+        accountIds: socialAccountIds,
         platforms: contentItem.client.socialPlatforms as ('facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok')[],
         captions,
         mediaUrls: socialImages.map(i => i.gcsUrl),

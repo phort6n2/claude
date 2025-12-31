@@ -83,7 +83,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         timezone: data.timezone,
         postsPerWeek: data.postsPerWeek,
         socialPlatforms: data.socialPlatforms || [],
-        getlateAccountId: data.getlateAccountId || null,
+        socialAccountIds: data.socialAccountIds || null,
         status: data.status || existing.status,
       },
     })

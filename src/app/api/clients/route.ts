@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         timezone: data.timezone || 'America/Los_Angeles',
         postsPerWeek: data.postsPerWeek || 2,
         socialPlatforms: data.socialPlatforms || [],
-        getlateAccountId: data.getlateAccountId || null,
+        socialAccountIds: data.socialAccountIds || null,
         status: 'ACTIVE',
       },
     })

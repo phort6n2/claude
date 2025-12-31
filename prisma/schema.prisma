@@ -77,7 +77,7 @@ model Client {
 
   // Social Media
   socialPlatforms       String[]  // facebook, instagram, linkedin, twitter, tiktok, gbp
-  getlateAccountId      String?
+  socialAccountIds      Json?     // { facebook: "lateId1", instagram: "lateId2", ... }
 
   // Client Portal
   portalPassword        String?   // Encrypted
