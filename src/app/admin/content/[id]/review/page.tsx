@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect, use, useCallback } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import {
   FileText,
   Image as ImageIcon,
@@ -132,17 +131,12 @@ const PLATFORM_ICONS: Record<string, string> = {
 
 export default function ContentReviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const router = useRouter()
   const [content, setContent] = useState<ContentItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('review')
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    loadContent()
-  }, [id])
-
-  async function loadContent() {
+  const loadContent = useCallback(async () => {
     try {
       const response = await fetch(`/api/content/${id}`)
       if (response.ok) {
@@ -154,7 +148,11 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
     } finally {
       setLoading(false)
     }
-  }
+  }, [id])
+
+  useEffect(() => {
+    loadContent()
+  }, [loadContent])
 
   async function updateApproval(field: string, value: string) {
     if (!content) return
