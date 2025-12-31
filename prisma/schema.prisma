@@ -141,27 +141,115 @@ model ContentItem {
   updatedAt         DateTime  @updatedAt
   publishedAt       DateTime?
 
+  // ============================================
+  // APPROVAL TRACKING
+  // ============================================
+  blogApproved          ApprovalStatus @default(PENDING)
+  imagesApproved        ApprovalStatus @default(PENDING)
+  socialApproved        ApprovalStatus @default(PENDING)
+  wrhqBlogApproved      ApprovalStatus @default(PENDING)
+  wrhqSocialApproved    ApprovalStatus @default(PENDING)
+  podcastDescApproved   ApprovalStatus @default(PENDING)
+  videoDescApproved     ApprovalStatus @default(PENDING)
+  longformVideoApproved ApprovalStatus @default(PENDING)
+
+  // ============================================
+  // GENERATION STATUS
+  // ============================================
+  blogGenerated         Boolean @default(false)
+  imagesGenerated       Boolean @default(false)
+  socialGenerated       Boolean @default(false)
+  wrhqBlogGenerated     Boolean @default(false)
+  wrhqSocialGenerated   Boolean @default(false)
+
+  // ============================================
+  // APPROVAL COUNTS (for multi-item approvals)
+  // ============================================
+  imagesApprovedCount     Int @default(0)
+  imagesTotalCount        Int @default(0)
+  socialApprovedCount     Int @default(0)
+  socialTotalCount        Int @default(0)
+  wrhqSocialApprovedCount Int @default(0)
+  wrhqSocialTotalCount    Int @default(0)
+
+  // ============================================
+  // PUBLISHING STATUS
+  // ============================================
+  clientBlogPublished     Boolean   @default(false)
+  clientBlogPublishedAt   DateTime?
+  clientBlogUrl           String?
+  wrhqBlogPublished       Boolean   @default(false)
+  wrhqBlogPublishedAt     DateTime?
+  wrhqBlogUrl             String?
+  socialPublished         Boolean   @default(false)
+  socialPublishedAt       DateTime?
+
+  // ============================================
+  // MEDIA STATUS
+  // ============================================
+  podcastGenerated        Boolean   @default(false)
+  podcastStatus           String?   // 'generating', 'ready', 'approved', 'failed'
+  podcastDescription      String?
+  podcastAddedToPost      Boolean   @default(false)
+  podcastAddedAt          DateTime?
+
+  shortVideoGenerated     Boolean   @default(false)
+  shortVideoStatus        String?   // 'generating', 'ready', 'approved', 'failed'
+  shortVideoDescription   String?
+  shortVideoAddedToPost   Boolean   @default(false)
+  shortVideoAddedAt       DateTime?
+
+  longVideoUploaded       Boolean   @default(false)
+  longformVideoUrl        String?
+  longformVideoDesc       String?
+  longVideoAddedToPost    Boolean   @default(false)
+  longVideoAddedAt        DateTime?
+
+  // ============================================
+  // SCHEMA STATUS
+  // ============================================
+  schemaGenerated         Boolean   @default(false)
+  schemaUpdateCount       Int       @default(0)
+  schemaLastUpdated       DateTime?
+
+  // ============================================
+  // DASHBOARD FLAGS
+  // ============================================
+  needsAttention          Boolean   @default(false)
+  completionPercent       Int       @default(0)
+
   // Relations
   blogPost          BlogPost?
   images            Image[]
   podcast           Podcast?
   videos            Video[]
   socialPosts       SocialPost[]
+  wrhqSocialPosts   WRHQSocialPost[]
   publishingLogs    PublishingLog[]
 
   @@index([clientId])
   @@index([status])
   @@index([scheduledDate])
+  @@index([needsAttention])
 }
 
 enum ContentStatus {
   DRAFT
   SCHEDULED
   GENERATING
+  REVIEW        // New - waiting for approval
+  APPROVED      // New - all items approved
   PUBLISHING
   PUBLISHED
   FAILED
   PAUSED
+}
+
+// Approval status for individual content pieces
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  NEEDS_REVISION
 }
 
 // ============================================
@@ -231,6 +319,10 @@ model Image {
 
   // Alt Text
   altText           String?
+
+  // Approval
+  approved          Boolean   @default(false)
+  approvedAt        DateTime?
 
   createdAt         DateTime  @default(now())
 }
@@ -349,6 +441,50 @@ model SocialPost {
 
   // getlate.dev Reference
   getlatePostId     String?
+
+  // Approval
+  approved          Boolean   @default(false)
+  approvedAt        DateTime?
+
+  // Status
+  status            SocialPostStatus @default(SCHEDULED)
+  publishedUrl      String?
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  publishedAt       DateTime?
+}
+
+// ============================================
+// WRHQ SOCIAL POSTS (separate from client posts)
+// ============================================
+
+model WRHQSocialPost {
+  id                String    @id @default(cuid())
+  contentItemId     String
+  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+
+  // Platform
+  platform          SocialPlatform
+
+  // Content
+  caption           String
+  hashtags          String[]
+  firstComment      String?
+
+  // Media
+  mediaUrls         String[]
+  mediaType         String?   // image, video
+
+  // Scheduling
+  scheduledTime     DateTime
+
+  // getlate.dev Reference
+  getlatePostId     String?
+
+  // Approval
+  approved          Boolean   @default(false)
+  approvedAt        DateTime?
 
   // Status
   status            SocialPostStatus @default(SCHEDULED)
