@@ -87,6 +87,20 @@ model Client {
   gbpRating             Float?
   gbpReviewCount        Int?
 
+  // Podbean Connection (for podcast publishing)
+  podbeanClientId       String?
+  podbeanClientSecret   String?   // Encrypted
+  podbeanConnected      Boolean   @default(false)
+
+  // Subscription Management
+  subscriptionStatus    SubscriptionStatus @default(TRIAL)
+  subscriptionPlan      SubscriptionPlan   @default(STARTER)
+  subscriptionStartDate DateTime?
+  subscriptionEndDate   DateTime?
+  billingEmail          String?
+  stripeCustomerId      String?
+  stripeSubscriptionId  String?
+
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
@@ -114,6 +128,20 @@ enum ClientStatus {
   ACTIVE
   PAUSED
   ONBOARDING
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum SubscriptionPlan {
+  STARTER     // Basic plan
+  GROWTH      // Mid-tier
+  ENTERPRISE  // Full service
 }
 
 // ============================================
