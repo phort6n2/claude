@@ -34,6 +34,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const body = await request.json()
     const {
       generateBlog = true,
+      generatePodcast = true, // Phase 1: Generate podcast WITH blog
       generateImages: genImages = true,
       generateSocial = true,
       generateWrhqBlog = true,
@@ -120,6 +121,61 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         })
 
         results.blog = { success: true, title: blogResult.title }
+
+        // Phase 1: Generate podcast immediately after blog (using blog content as script)
+        if (generatePodcast) {
+          try {
+            await prisma.contentItem.update({
+              where: { id },
+              data: { pipelineStep: 'podcast' },
+            })
+
+            // Import the createPodcast function dynamically to avoid circular deps
+            const { createPodcast } = await import('@/lib/integrations/autocontent')
+
+            const podcastResult = await createPodcast({
+              title: blogResult.title,
+              script: blogResult.content, // Use blog content as script
+              duration: 'medium',
+            })
+
+            // Create or update podcast record
+            await prisma.podcast.upsert({
+              where: { contentItemId: id },
+              update: {
+                audioUrl: podcastResult.audioUrl || '',
+                duration: podcastResult.duration,
+                script: blogResult.content,
+                autocontentJobId: podcastResult.jobId,
+                status: 'READY',
+              },
+              create: {
+                contentItemId: id,
+                clientId: contentItem.clientId,
+                audioUrl: podcastResult.audioUrl || '',
+                duration: podcastResult.duration,
+                script: blogResult.content,
+                autocontentJobId: podcastResult.jobId,
+                status: 'READY',
+              },
+            })
+
+            await prisma.contentItem.update({
+              where: { id },
+              data: {
+                podcastGenerated: true,
+                podcastStatus: 'ready',
+                podcastUrl: podcastResult.audioUrl,
+              },
+            })
+
+            results.podcast = { success: true }
+          } catch (error) {
+            console.error('Podcast generation error:', error)
+            results.podcast = { success: false, error: String(error) }
+            // Don't fail the whole pipeline if podcast fails
+          }
+        }
       } catch (error) {
         console.error('Blog generation error:', error)
         results.blog = { success: false, error: String(error) }

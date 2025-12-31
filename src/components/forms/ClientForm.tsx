@@ -1,9 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Plus, Trash2, MapPin, Building2 } from 'lucide-react'
+
+interface ServiceLocation {
+  id?: string
+  city: string
+  state: string
+  neighborhood: string
+  isHeadquarters: boolean
+}
 
 interface ClientFormData {
   businessName: string
@@ -100,6 +109,10 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
   const [testingConnection, setTestingConnection] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'success' | 'error' | null>(null)
 
+  // Service Locations state
+  const [serviceLocations, setServiceLocations] = useState<ServiceLocation[]>([])
+  const [loadingLocations, setLoadingLocations] = useState(false)
+
   const [formData, setFormData] = useState<ClientFormData>({
     ...defaultData,
     ...initialData,
@@ -110,6 +123,67 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
 
   const updateField = (field: keyof ClientFormData, value: string | boolean | number | string[]) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  // Load service locations if editing
+  useEffect(() => {
+    if (isEditing && initialData?.id) {
+      setLoadingLocations(true)
+      fetch(`/api/clients/${initialData.id}/locations`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setServiceLocations(data.map((loc: ServiceLocation) => ({
+              id: loc.id,
+              city: loc.city,
+              state: loc.state,
+              neighborhood: loc.neighborhood || '',
+              isHeadquarters: loc.isHeadquarters,
+            })))
+          }
+        })
+        .catch(console.error)
+        .finally(() => setLoadingLocations(false))
+    }
+  }, [isEditing, initialData?.id])
+
+  // Add location from headquarters (auto-create first location)
+  useEffect(() => {
+    if (!isEditing && formData.city && formData.state && serviceLocations.length === 0) {
+      setServiceLocations([{
+        city: formData.city,
+        state: formData.state,
+        neighborhood: '',
+        isHeadquarters: true,
+      }])
+    }
+  }, [formData.city, formData.state, isEditing, serviceLocations.length])
+
+  const addServiceLocation = () => {
+    setServiceLocations((prev) => [
+      ...prev,
+      { city: '', state: formData.state, neighborhood: '', isHeadquarters: false },
+    ])
+  }
+
+  const updateServiceLocation = (index: number, field: keyof ServiceLocation, value: string | boolean) => {
+    setServiceLocations((prev) => {
+      const updated = [...prev]
+      updated[index] = { ...updated[index], [field]: value }
+
+      // If setting as headquarters, unset others
+      if (field === 'isHeadquarters' && value === true) {
+        updated.forEach((loc, i) => {
+          if (i !== index) loc.isHeadquarters = false
+        })
+      }
+
+      return updated
+    })
+  }
+
+  const removeServiceLocation = (index: number) => {
+    setServiceLocations((prev) => prev.filter((_, i) => i !== index))
   }
 
   const toggleSocialPlatform = (platform: string) => {
@@ -177,6 +251,23 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
       if (!response.ok) {
         const data = await response.json()
         throw new Error(data.error || 'Failed to save client')
+      }
+
+      const clientData = await response.json()
+      const clientId = clientData.id || initialData?.id
+
+      // Save service locations if we have any with valid data
+      const validLocations = serviceLocations.filter((loc) => loc.city && loc.state)
+      if (validLocations.length > 0 && clientId) {
+        const locResponse = await fetch(`/api/clients/${clientId}/locations`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ locations: validLocations }),
+        })
+
+        if (!locResponse.ok) {
+          console.error('Failed to save service locations')
+        }
       }
 
       router.push('/admin/clients')
@@ -356,7 +447,118 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
         return (
           <Card>
             <CardHeader>
-              <CardTitle>Step 3: Brand Settings</CardTitle>
+              <CardTitle>Step 3: Service Locations</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Add the cities/areas you serve. Content will be generated for each location.
+              </p>
+
+              {loadingLocations ? (
+                <div className="py-8 text-center text-gray-500">Loading locations...</div>
+              ) : (
+                <div className="space-y-3">
+                  {serviceLocations.map((location, index) => (
+                    <div
+                      key={index}
+                      className={`p-4 border rounded-lg ${
+                        location.isHeadquarters ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          {location.isHeadquarters ? (
+                            <Building2 size={18} className="text-blue-600" />
+                          ) : (
+                            <MapPin size={18} className="text-gray-400" />
+                          )}
+                          <span className="text-sm font-medium">
+                            {location.isHeadquarters ? 'Headquarters' : `Location ${index + 1}`}
+                          </span>
+                        </div>
+                        {!location.isHeadquarters && (
+                          <button
+                            type="button"
+                            onClick={() => removeServiceLocation(index)}
+                            className="p-1 text-gray-400 hover:text-red-600"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">City *</label>
+                          <input
+                            type="text"
+                            value={location.city}
+                            onChange={(e) => updateServiceLocation(index, 'city', e.target.value)}
+                            className="w-full px-3 py-2 border rounded-md text-sm"
+                            placeholder="City name"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">State *</label>
+                          <input
+                            type="text"
+                            value={location.state}
+                            onChange={(e) => updateServiceLocation(index, 'state', e.target.value)}
+                            className="w-full px-3 py-2 border rounded-md text-sm"
+                            placeholder="State"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Neighborhood</label>
+                          <input
+                            type="text"
+                            value={location.neighborhood}
+                            onChange={(e) => updateServiceLocation(index, 'neighborhood', e.target.value)}
+                            className="w-full px-3 py-2 border rounded-md text-sm"
+                            placeholder="Optional"
+                          />
+                        </div>
+                      </div>
+
+                      {!location.isHeadquarters && (
+                        <label className="flex items-center gap-2 mt-3">
+                          <input
+                            type="checkbox"
+                            checked={location.isHeadquarters}
+                            onChange={(e) => updateServiceLocation(index, 'isHeadquarters', e.target.checked)}
+                            className="rounded border-gray-300"
+                          />
+                          <span className="text-xs text-gray-600">Set as headquarters</span>
+                        </label>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={addServiceLocation}
+                className="flex items-center gap-2 px-4 py-2 text-sm text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50"
+              >
+                <Plus size={16} />
+                Add Another Location
+              </button>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                <strong>Pro tip:</strong> Adding multiple locations creates unique, location-specific
+                content for each area. With 200 PAA questions × {serviceLocations.length || 1} locations,
+                you&apos;ll have {200 * (serviceLocations.length || 1)} unique content pieces.
+              </div>
+            </CardContent>
+          </Card>
+        )
+
+      case 4:
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Step 4: Brand Settings</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -446,11 +648,11 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
           </Card>
         )
 
-      case 4:
+      case 5:
         return (
           <Card>
             <CardHeader>
-              <CardTitle>Step 4: WordPress Connection</CardTitle>
+              <CardTitle>Step 5: WordPress Connection</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -511,11 +713,11 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
           </Card>
         )
 
-      case 5:
+      case 6:
         return (
           <Card>
             <CardHeader>
-              <CardTitle>Step 5: CTA & Publishing</CardTitle>
+              <CardTitle>Step 6: CTA & Publishing</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -589,11 +791,11 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
           </Card>
         )
 
-      case 6:
+      case 7:
         return (
           <Card>
             <CardHeader>
-              <CardTitle>Step 6: Social Media Platforms</CardTitle>
+              <CardTitle>Step 7: Social Media Platforms</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-gray-500">
@@ -650,11 +852,11 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
           </Card>
         )
 
-      case 7:
+      case 8:
         return (
           <Card>
             <CardHeader>
-              <CardTitle>Step 7: Review & Save</CardTitle>
+              <CardTitle>Step 8: Review & Save</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="bg-gray-50 rounded-lg p-4 space-y-3">
@@ -665,6 +867,10 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                 <div className="flex justify-between">
                   <span className="text-gray-500">Location:</span>
                   <span className="font-medium">{formData.city}, {formData.state}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Service Locations:</span>
+                  <span className="font-medium">{serviceLocations.length} areas</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Services:</span>
@@ -696,6 +902,12 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                     {formData.postsPerWeek}x/week at {formData.preferredPublishTime}
                   </span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Content Potential:</span>
+                  <span className="font-medium text-green-600">
+                    {200 * serviceLocations.length} unique pieces
+                  </span>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -710,7 +922,7 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Progress */}
       <div className="flex items-center justify-between mb-8">
-        {[1, 2, 3, 4, 5, 6, 7].map((s) => (
+        {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
           <div key={s} className="flex items-center">
             <button
               onClick={() => setStep(s)}
@@ -724,9 +936,9 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
             >
               {s}
             </button>
-            {s < 7 && (
+            {s < 8 && (
               <div
-                className={`w-12 h-0.5 ${s < step ? 'bg-green-500' : 'bg-gray-200'}`}
+                className={`w-8 h-0.5 ${s < step ? 'bg-green-500' : 'bg-gray-200'}`}
               />
             )}
           </div>
@@ -750,8 +962,8 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
         >
           Previous
         </Button>
-        {step < 7 ? (
-          <Button onClick={() => setStep((s) => Math.min(7, s + 1))}>
+        {step < 8 ? (
+          <Button onClick={() => setStep((s) => Math.min(8, s + 1))}>
             Next
           </Button>
         ) : (

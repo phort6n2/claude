@@ -90,6 +90,11 @@ model Client {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
+  // Calendar Generation
+  calendarGenerated     Boolean   @default(false)
+  calendarGeneratedAt   DateTime?
+  calendarEndDate       DateTime? // How far out the calendar is populated
+
   // Relations
   contentItems          ContentItem[]
   blogPosts             BlogPost[]
@@ -101,6 +106,7 @@ model Client {
   pressReleases         PressRelease[]
   servicePages          ServicePage[]
   locationPages         LocationPage[]
+  serviceLocations      ServiceLocation[]
   publishingLogs        PublishingLog[]
 }
 
@@ -119,10 +125,16 @@ model ContentItem {
   clientId          String
   client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
-  // PAA Question
-  paaQuestion       String
-  paaSource         String?   // alsoasked, valueserp, manual, csv
+  // PAA Question (link to library OR legacy string)
+  paaQuestionId     String?
+  paaQuestionRef    PAAQuestion? @relation(fields: [paaQuestionId], references: [id])
+  paaQuestion       String    // Rendered/final question text (with location substituted)
+  paaSource         String?   // alsoasked, valueserp, manual, csv, library
   topic             String?   // AI-suggested topic category
+
+  // Service Location (link to client location)
+  serviceLocationId String?
+  serviceLocation   ServiceLocation? @relation(fields: [serviceLocationId], references: [id])
 
   // Scheduling
   scheduledDate     DateTime
@@ -191,6 +203,7 @@ model ContentItem {
   podcastGenerated        Boolean   @default(false)
   podcastStatus           String?   // 'generating', 'ready', 'approved', 'failed'
   podcastDescription      String?
+  podcastUrl              String?   // Direct URL to podcast audio file
   podcastAddedToPost      Boolean   @default(false)
   podcastAddedAt          DateTime?
 
@@ -233,6 +246,8 @@ model ContentItem {
   @@index([status])
   @@index([scheduledDate])
   @@index([needsAttention])
+  @@index([paaQuestionId])
+  @@index([serviceLocationId])
 }
 
 enum ContentStatus {
@@ -696,6 +711,56 @@ enum LogStatus {
   SUCCESS
   FAILED
   RETRYING
+}
+
+// ============================================
+// PAA QUESTION LIBRARY (Global Master List)
+// ============================================
+
+model PAAQuestion {
+  id           String        @id @default(cuid())
+  question     String        // Template: "How much does {service} cost in {location}?"
+  service      String        // "windshield repair", "rock chip repair", "ADAS calibration"
+  priority     Int           @default(100) // 1-10 = high priority, 11-200 = regular
+  category     String?       // "cost", "process", "safety", "insurance"
+  isActive     Boolean       @default(true)
+
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relations
+  contentItems ContentItem[]
+
+  @@unique([question, service])
+  @@index([service])
+  @@index([priority])
+  @@index([isActive])
+}
+
+// ============================================
+// SERVICE LOCATIONS (Client-specific)
+// ============================================
+
+model ServiceLocation {
+  id           String   @id @default(cuid())
+  clientId     String
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  city         String
+  state        String
+  neighborhood String?  // Optional: specific neighborhood
+  isHeadquarters Boolean @default(false)
+  isActive     Boolean  @default(true)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  contentItems ContentItem[]
+
+  @@unique([clientId, city, state, neighborhood])
+  @@index([clientId])
+  @@index([isActive])
 }
 
 // ============================================

@@ -38,6 +38,13 @@ interface ContentItem {
   blogGenerated: boolean
   imagesGenerated: boolean
   socialGenerated: boolean
+  podcastGenerated: boolean
+  podcastStatus: string | null
+  serviceLocation: {
+    city: string
+    state: string
+    neighborhood: string | null
+  } | null
   client: {
     id: string
     businessName: string
@@ -285,6 +292,9 @@ export default function ContentCalendarPage() {
                   Client
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Location
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   PAA Question
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -304,7 +314,7 @@ export default function ContentCalendarPage() {
             <tbody className="divide-y">
               {contentItems.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                     No content items found
                   </td>
                 </tr>
@@ -325,6 +335,9 @@ export default function ContentCalendarPage() {
                         />
                         <span className="text-sm">{item.client.businessName}</span>
                       </div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <LocationBadge location={item.serviceLocation} />
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-2">
@@ -669,6 +682,7 @@ function ApprovalIndicators({ item }: { item: ContentItem }) {
   const getIndicatorClass = (status: string) => {
     switch (status) {
       case 'APPROVED':
+      case 'ready':
         return 'bg-green-500'
       case 'NEEDS_REVISION':
         return 'bg-red-500'
@@ -679,6 +693,7 @@ function ApprovalIndicators({ item }: { item: ContentItem }) {
 
   const indicators = [
     { label: 'B', status: item.blogApproved, generated: item.blogGenerated, title: 'Blog' },
+    { label: 'P', status: item.podcastStatus || 'PENDING', generated: item.podcastGenerated, title: 'Podcast' },
     { label: 'I', status: item.imagesApproved, generated: item.imagesGenerated, title: 'Images' },
     { label: 'S', status: item.socialApproved, generated: item.socialGenerated, title: 'Social' },
   ]
@@ -690,10 +705,10 @@ function ApprovalIndicators({ item }: { item: ContentItem }) {
           key={ind.label}
           className={`h-5 w-5 rounded text-xs font-medium flex items-center justify-center ${
             !ind.generated ? 'bg-gray-100 text-gray-400' : getIndicatorClass(ind.status)
-          } ${ind.status === 'APPROVED' ? 'text-white' : ind.status === 'NEEDS_REVISION' ? 'text-white' : 'text-gray-600'}`}
+          } ${ind.status === 'APPROVED' || ind.status === 'ready' ? 'text-white' : ind.status === 'NEEDS_REVISION' ? 'text-white' : 'text-gray-600'}`}
           title={`${ind.title}: ${ind.generated ? ind.status : 'Not Generated'}`}
         >
-          {ind.generated && ind.status === 'APPROVED' ? (
+          {ind.generated && (ind.status === 'APPROVED' || ind.status === 'ready') ? (
             <CheckCircle className="h-3 w-3" />
           ) : (
             ind.label
@@ -701,5 +716,16 @@ function ApprovalIndicators({ item }: { item: ContentItem }) {
         </div>
       ))}
     </div>
+  )
+}
+
+function LocationBadge({ location }: { location: ContentItem['serviceLocation'] }) {
+  if (!location) return <span className="text-xs text-gray-400">-</span>
+
+  return (
+    <span className="text-xs text-gray-600">
+      {location.neighborhood ? `${location.neighborhood}, ` : ''}
+      {location.city}
+    </span>
   )
 }
