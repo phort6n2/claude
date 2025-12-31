@@ -32,6 +32,7 @@ interface ClientFormData {
   timezone: string
   postsPerWeek: number
   socialPlatforms: string[]
+  getlateAccountId: string
 }
 
 interface ClientFormProps {
@@ -66,6 +67,7 @@ const defaultData: ClientFormData = {
   timezone: 'America/Los_Angeles',
   postsPerWeek: 2,
   socialPlatforms: [],
+  getlateAccountId: '',
 }
 
 const socialPlatformOptions = [
@@ -600,6 +602,21 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                     <span className="text-sm font-medium">{platform.label}</span>
                   </label>
                 ))}
+              </div>
+              <div className="mt-6 pt-6 border-t">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Late Account ID
+                </label>
+                <input
+                  type="text"
+                  value={formData.getlateAccountId}
+                  onChange={(e) => updateField('getlateAccountId', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="694f35914207e06f4ca82b79"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Unique account ID from getlate.dev for social media scheduling
+                </p>
               </div>
             </CardContent>
           </Card>

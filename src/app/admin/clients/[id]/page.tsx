@@ -40,6 +40,7 @@ function transformClientForForm(client: Client) {
     timezone: client.timezone,
     postsPerWeek: client.postsPerWeek,
     socialPlatforms: client.socialPlatforms,
+    getlateAccountId: client.getlateAccountId ?? '',
   }
 }
 
