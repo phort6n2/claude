@@ -126,11 +126,15 @@ async function testCreatify(apiKey: string): Promise<{ success: boolean; message
 
 async function testGetlate(apiKey: string): Promise<{ success: boolean; message: string }> {
   try {
-    const response = await fetch('https://api.getlate.dev/v1/account', {
+    // Late API uses getlate.dev/api/v1/ (not api.getlate.dev)
+    const response = await fetch('https://getlate.dev/api/v1/profiles', {
       headers: { 'Authorization': `Bearer ${apiKey}` },
     })
     if (response.ok) {
       return { success: true, message: 'Connected successfully' }
+    }
+    if (response.status === 401 || response.status === 403) {
+      return { success: false, message: 'Invalid API key' }
     }
     return { success: false, message: `API error: ${response.status}` }
   } catch (error) {

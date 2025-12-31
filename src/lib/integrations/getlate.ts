@@ -33,7 +33,8 @@ export async function schedulePost(params: SchedulePostParams): Promise<Schedule
     fullCaption = `${params.caption}\n\n${hashtagsText}`
   }
 
-  const response = await fetch('https://api.getlate.dev/v1/posts/schedule', {
+  // Late API: https://getlate.dev/api/v1/
+  const response = await fetch('https://getlate.dev/api/v1/posts', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
@@ -73,7 +74,7 @@ export async function checkPostStatus(postId: string): Promise<ScheduledPostResu
     throw new Error('GETLATE_API_KEY is not configured')
   }
 
-  const response = await fetch(`https://api.getlate.dev/v1/posts/${postId}`, {
+  const response = await fetch(`https://getlate.dev/api/v1/posts/${postId}`, {
     headers: {
       'Authorization': `Bearer ${apiKey}`,
     },
