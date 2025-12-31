@@ -64,10 +64,15 @@ async function testNanoBanana(apiKey: string): Promise<{ success: boolean; messa
 
 async function testAutocontent(apiKey: string): Promise<{ success: boolean; message: string }> {
   try {
-    const response = await fetch('https://api.autocontent.dev/v1/account', {
+    // Use the status endpoint with a dummy ID - 401 means bad key, 404 means key works
+    const response = await fetch('https://api.autocontentapi.com/content/Status/test', {
       headers: { 'Authorization': `Bearer ${apiKey}` },
     })
-    if (response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      return { success: false, message: 'Invalid API key' }
+    }
+    // 404 or 400 means the key is valid but request ID doesn't exist (expected)
+    if (response.ok || response.status === 404 || response.status === 400) {
       return { success: true, message: 'Connected successfully' }
     }
     return { success: false, message: `API error: ${response.status}` }
