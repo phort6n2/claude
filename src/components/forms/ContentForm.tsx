@@ -56,18 +56,23 @@ export default function ContentForm({ initialData, isEditing = false }: ContentF
   }, [])
 
   const updateField = (field: keyof ContentFormData, value: string | number) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-
     // Update time when client changes
-    if (field === 'clientId') {
+    if (field === 'clientId' && typeof value === 'string') {
       const client = clients.find((c) => c.id === value)
       if (client) {
         setFormData((prev) => ({
           ...prev,
-          [field]: value,
+          clientId: value,
           scheduledTime: client.preferredPublishTime,
         }))
+        return
       }
+    }
+
+    if (field === 'priority' && typeof value === 'number') {
+      setFormData((prev) => ({ ...prev, priority: value }))
+    } else if (typeof value === 'string') {
+      setFormData((prev) => ({ ...prev, [field]: value }))
     }
   }
 

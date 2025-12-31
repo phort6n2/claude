@@ -246,7 +246,7 @@ export function generateSchemaGraph(params: SchemaParams): string {
   }
 
   // Combine into graph
-  const graph = [localBusiness, blogPosting, faqPage, itemList]
+  const graph: Record<string, unknown>[] = [localBusiness, blogPosting, faqPage, itemList]
 
   if (podcastEpisode) graph.push(podcastEpisode)
   if (videoObject) graph.push(videoObject)

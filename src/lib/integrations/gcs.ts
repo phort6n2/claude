@@ -35,13 +35,18 @@ export async function uploadToGCS(
   // Upload to GCS
   const uploadUrl = `https://storage.googleapis.com/upload/storage/v1/b/${bucketName}/o?uploadType=media&name=${encodeURIComponent(filename)}`
 
+  // Convert Buffer to Uint8Array for fetch compatibility
+  const uint8Array = buffer instanceof ArrayBuffer
+    ? new Uint8Array(buffer)
+    : new Uint8Array(buffer)
+
   const uploadResponse = await fetch(uploadUrl, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': contentType,
     },
-    body: buffer,
+    body: uint8Array,
   })
 
   if (!uploadResponse.ok) {

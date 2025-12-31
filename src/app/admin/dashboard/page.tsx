@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { Suspense } from 'react'
 import Header from '@/components/admin/Header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
