@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
   try {
-    const { url, username, password } = await request.json()
+    const { url, username, password, clientId } = await request.json()
 
     if (!url || !username || !password) {
       return NextResponse.json(
@@ -22,6 +23,15 @@ export async function POST(request: NextRequest) {
 
     if (response.ok) {
       const user = await response.json()
+
+      // Update client's wordpressConnected status if clientId provided
+      if (clientId) {
+        await prisma.client.update({
+          where: { id: clientId },
+          data: { wordpressConnected: true },
+        })
+      }
+
       return NextResponse.json({
         success: true,
         user: {
@@ -30,6 +40,14 @@ export async function POST(request: NextRequest) {
         },
       })
     } else {
+      // Update client's wordpressConnected status to false if clientId provided
+      if (clientId) {
+        await prisma.client.update({
+          where: { id: clientId },
+          data: { wordpressConnected: false },
+        })
+      }
+
       const error = await response.text()
       return NextResponse.json(
         { error: 'Connection failed', details: error },

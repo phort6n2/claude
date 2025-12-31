@@ -124,6 +124,7 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
           url: formData.wordpressUrl,
           username: formData.wordpressUsername,
           password: formData.wordpressAppPassword,
+          clientId: initialData?.id, // Pass clientId to update wordpressConnected status
         }),
       })
       if (response.ok) {
