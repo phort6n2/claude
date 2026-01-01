@@ -219,11 +219,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     if (scheduleSocial && contentItem.socialGenerated) {
       try {
         const socialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
+        const activePlatforms = (contentItem.client.socialPlatforms || []) as string[]
 
         for (const socialPost of contentItem.socialPosts) {
+          // Only post to platforms that are active AND have an account ID
+          const platformLower = socialPost.platform.toLowerCase()
+          const isActive = activePlatforms.map(p => p.toLowerCase()).includes(platformLower)
+          const accountId = socialAccountIds?.[platformLower]
 
-          const accountId = socialAccountIds?.[socialPost.platform.toLowerCase()]
-          if (!accountId) continue
+          if (!isActive || !accountId) {
+            console.log(`Skipping ${socialPost.platform} - active: ${isActive}, hasAccountId: ${!!accountId}`)
+            continue
+          }
 
           // Select correct image based on platform:
           // - Instagram uses square 1:1 image (INSTAGRAM_FEED)
