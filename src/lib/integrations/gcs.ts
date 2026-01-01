@@ -61,6 +61,19 @@ export async function uploadFromUrl(
   sourceUrl: string,
   filename: string
 ): Promise<UploadResult> {
+  // Handle base64 data URIs (e.g., data:image/jpeg;base64,/9j/4AAQ...)
+  if (sourceUrl.startsWith('data:')) {
+    const matches = sourceUrl.match(/^data:([^;]+);base64,(.+)$/)
+    if (!matches) {
+      throw new Error('Invalid data URI format')
+    }
+    const contentType = matches[1]
+    const base64Data = matches[2]
+    const buffer = Buffer.from(base64Data, 'base64')
+    return uploadToGCS(buffer, filename, contentType)
+  }
+
+  // Handle regular URLs
   const response = await fetch(sourceUrl)
   const buffer = await response.arrayBuffer()
   const contentType = response.headers.get('content-type') || 'application/octet-stream'
