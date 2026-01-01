@@ -328,6 +328,16 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
+      {/* Error Banner */}
+      {content.status === 'FAILED' && content.lastError && (
+        <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <h3 className="font-medium text-red-800 mb-2">Generation Error Details:</h3>
+          <pre className="text-xs text-red-700 whitespace-pre-wrap overflow-x-auto bg-red-100 p-3 rounded">
+            {content.lastError}
+          </pre>
+        </div>
+      )}
+
       {/* Tab Content */}
       <div className="p-6">
         {activeTab === 'review' && (
