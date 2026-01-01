@@ -1,6 +1,6 @@
-// Google AI Studio - Gemini 2.0 Flash Image Generation
+// Google AI Studio - Gemini Image Generation
 // API Key from: https://aistudio.google.com/app/apikey
-// Model: gemini-2.0-flash-exp-image-generation
+// Model: gemini-2.5-flash-image (aka "Nano Banana")
 
 interface ImageGenerationParams {
   businessName: string
@@ -57,9 +57,9 @@ CONTACT INFO TO INCLUDE:
 
 STYLE: Modern professional automotive marketing with bold typography, geometric elements, and dynamic energy suitable for social media.`
 
-  // Use Gemini 2.0 Flash for image generation
+  // Use Gemini 2.5 Flash Image (Nano Banana) for image generation
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${params.apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${params.apiKey}`,
     {
       method: 'POST',
       headers: {
@@ -75,6 +75,9 @@ STYLE: Modern professional automotive marketing with bold typography, geometric 
         ],
         generationConfig: {
           responseModalities: ['TEXT', 'IMAGE'],
+          imageConfig: {
+            aspectRatio: dimensions.ratio,
+          }
         }
       }),
     }
@@ -140,7 +143,7 @@ export async function generateBothImages(params: {
     return results
   }
 
-  console.log('Starting image generation with Gemini 2.0 Flash...')
+  console.log('Starting image generation with Gemini 2.5 Flash Image...')
 
   // Generate 16:9 landscape image
   try {
