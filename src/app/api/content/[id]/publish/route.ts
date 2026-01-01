@@ -135,22 +135,17 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
     }
 
-    // Publish WRHQ blog to WordPress (if enabled)
+    // Publish WRHQ blog to WordPress (if credentials are configured)
     if (publishWrhqBlog && contentItem.wrhqBlogPost) {
       try {
-        const wrhqEnabled = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_ENABLED)
+        const wrhqWpUrl = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_URL)
+        const wrhqWpUser = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_USERNAME)
+        const wrhqWpPass = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_APP_PASSWORD)
 
-        // Check if WRHQ is enabled
-        if (wrhqEnabled !== 'true') {
-          results.wrhqBlog = { success: false, error: 'WRHQ is not enabled in settings' }
+        // Check if WRHQ WordPress credentials are configured
+        if (!wrhqWpUrl || !wrhqWpUser || !wrhqWpPass) {
+          results.wrhqBlog = { success: false, error: 'WRHQ WordPress credentials not configured in settings' }
         } else {
-          const wrhqWpUrl = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_URL)
-          const wrhqWpUser = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_USERNAME)
-          const wrhqWpPass = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_APP_PASSWORD)
-
-          if (!wrhqWpUrl || !wrhqWpUser || !wrhqWpPass) {
-            results.wrhqBlog = { success: false, error: 'WRHQ WordPress credentials not configured in settings' }
-          } else {
             // Use the 16:9 landscape image for WRHQ blog
             const featuredImage = contentItem.images.find((img: Image) => img.imageType === 'BLOG_FEATURED')
 
@@ -192,7 +187,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
             results.wrhqBlog = { success: true, url: wpResult.url }
           }
-        }
       } catch (error) {
         console.error('WRHQ blog publish error:', error)
         results.wrhqBlog = { success: false, error: String(error) }
@@ -243,7 +237,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           },
         })
 
-        results.social = { success: true, count: contentItem.socialPosts.filter((p: SocialPost) => p.approved).length }
+        results.social = { success: true, count: contentItem.socialPosts.length }
       } catch (error) {
         console.error('Social scheduling error:', error)
         results.social = { success: false, error: String(error) }
@@ -253,42 +247,37 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     // Schedule WRHQ social posts
     if (scheduleWrhqSocial && contentItem.wrhqSocialGenerated) {
       try {
-        const wrhqEnabled = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_ENABLED)
+        for (const wrhqPost of contentItem.wrhqSocialPosts) {
+          const accountIdKey = `WRHQ_LATE_${wrhqPost.platform}_ID` as keyof typeof WRHQ_SETTINGS_KEYS
+          const accountId = await getSetting(WRHQ_SETTINGS_KEYS[accountIdKey])
 
-        if (wrhqEnabled === 'true') {
-          for (const wrhqPost of contentItem.wrhqSocialPosts) {
+          if (!accountId) continue
 
-            const accountIdKey = `WRHQ_LATE_${wrhqPost.platform}_ID` as keyof typeof WRHQ_SETTINGS_KEYS
-            const accountId = await getSetting(WRHQ_SETTINGS_KEYS[accountIdKey])
-
-            if (!accountId) continue
-
-            // Select correct image based on platform
+          // Select correct image based on platform
           const imageType = wrhqPost.platform === 'INSTAGRAM' ? 'INSTAGRAM_FEED' : 'BLOG_FEATURED'
           const image = contentItem.images.find((img: Image) => img.imageType === imageType)
             || contentItem.images.find((img: Image) => img.imageType === 'BLOG_FEATURED')
 
-            const lateResult = await schedulePost({
-              accountId,
-              platform: wrhqPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
-              caption: wrhqPost.caption,
-              mediaUrls: image ? [image.gcsUrl] : [],
-              scheduledTime: contentItem.scheduledDate,
-              hashtags: wrhqPost.hashtags,
-              firstComment: wrhqPost.firstComment || undefined,
-            })
+          const lateResult = await schedulePost({
+            accountId,
+            platform: wrhqPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
+            caption: wrhqPost.caption,
+            mediaUrls: image ? [image.gcsUrl] : [],
+            scheduledTime: contentItem.scheduledDate,
+            hashtags: wrhqPost.hashtags,
+            firstComment: wrhqPost.firstComment || undefined,
+          })
 
-            await prisma.wRHQSocialPost.update({
-              where: { id: wrhqPost.id },
-              data: {
-                getlatePostId: lateResult.postId,
-                status: 'SCHEDULED',
-              },
-            })
-          }
-
-          results.wrhqSocial = { success: true, count: contentItem.wrhqSocialPosts.filter((p: WRHQSocialPost) => p.approved).length }
+          await prisma.wRHQSocialPost.update({
+            where: { id: wrhqPost.id },
+            data: {
+              getlatePostId: lateResult.postId,
+              status: 'SCHEDULED',
+            },
+          })
         }
+
+        results.wrhqSocial = { success: true, count: contentItem.wrhqSocialPosts.length }
       } catch (error) {
         console.error('WRHQ social scheduling error:', error)
         results.wrhqSocial = { success: false, error: String(error) }

@@ -9,8 +9,6 @@ import {
   Share2,
   Building2,
   Mic,
-  Video,
-  Code,
   Check,
   RefreshCw,
   ExternalLink,
@@ -128,7 +126,7 @@ interface ContentItem {
   }>
 }
 
-type Tab = 'review' | 'published' | 'media'
+type Tab = 'review' | 'published'
 
 const PLATFORM_ICONS: Record<string, string> = {
   FACEBOOK: '📘',
@@ -356,17 +354,6 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
             <ExternalLink className="h-4 w-4 inline mr-2" />
             Published
           </button>
-          <button
-            onClick={() => setActiveTab('media')}
-            className={`px-4 py-2 rounded-t-lg font-medium text-sm ${
-              activeTab === 'media'
-                ? 'bg-white border-t border-l border-r text-blue-600'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <Video className="h-4 w-4 inline mr-2" />
-            Media Enhancement
-          </button>
         </div>
       </div>
 
@@ -387,9 +374,6 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
         )}
         {activeTab === 'published' && (
           <PublishedTab content={content} />
-        )}
-        {activeTab === 'media' && (
-          <MediaTab content={content} onUpdate={loadContent} />
         )}
       </div>
 
@@ -1096,266 +1080,6 @@ function PublishedTab({ content }: { content: ContentItem }) {
               </span>
             </div>
           ))}
-        </div>
-      </section>
-    </div>
-  )
-}
-
-// ============================================
-// TAB 3: MEDIA ENHANCEMENT
-// ============================================
-
-function MediaTab({ content, onUpdate }: { content: ContentItem; onUpdate: () => void }) {
-  const [generating, setGenerating] = useState<string | null>(null)
-  const [podcastPolling, setPodcastPolling] = useState(false)
-
-  // Poll for podcast status when processing
-  useEffect(() => {
-    if (content.podcast?.status !== 'PROCESSING' && content.podcastStatus !== 'processing') {
-      return
-    }
-
-    setPodcastPolling(true)
-    const interval = setInterval(async () => {
-      try {
-        const response = await fetch(`/api/content/${content.id}/podcast-status`)
-        const data = await response.json()
-
-        if (data.status === 'ready' || data.status === 'failed') {
-          clearInterval(interval)
-          setPodcastPolling(false)
-          onUpdate() // Refresh content
-        }
-      } catch (error) {
-        console.error('Error polling podcast status:', error)
-      }
-    }, 10000) // Poll every 10 seconds
-
-    return () => clearInterval(interval)
-  }, [content.id, content.podcast?.status, content.podcastStatus, onUpdate])
-
-  async function generatePodcast() {
-    setGenerating('podcast')
-    try {
-      await fetch(`/api/content/${content.id}/podcast`, { method: 'POST' })
-      onUpdate()
-    } catch (error) {
-      console.error('Failed to generate podcast:', error)
-    } finally {
-      setGenerating(null)
-    }
-  }
-
-  async function generateVideo() {
-    setGenerating('video')
-    try {
-      await fetch(`/api/content/${content.id}/video`, { method: 'POST' })
-      onUpdate()
-    } catch (error) {
-      console.error('Failed to generate video:', error)
-    } finally {
-      setGenerating(null)
-    }
-  }
-
-  return (
-    <div className="space-y-6 max-w-3xl">
-      {/* Podcast Section */}
-      <section className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Mic className="h-5 w-5 text-gray-400" />
-          <h2 className="text-lg font-semibold">Podcast</h2>
-        </div>
-
-        {content.podcast?.status === 'READY' && content.podcast.audioUrl ? (
-          <div className="space-y-4">
-            <audio controls className="w-full" src={content.podcast.audioUrl} />
-            {content.podcast.duration && (
-              <p className="text-sm text-gray-500">
-                Duration: {Math.floor(content.podcast.duration / 60)}:{String(Math.round(content.podcast.duration) % 60).padStart(2, '0')}
-              </p>
-            )}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Podcast Description
-              </label>
-              <div
-                className="w-full border rounded-lg p-3 bg-gray-50 text-sm text-gray-700 max-h-48 overflow-y-auto prose prose-sm"
-                dangerouslySetInnerHTML={{
-                  __html: content.podcastDescription || content.podcast?.description || '<em class="text-gray-400">No description generated yet</em>'
-                }}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-500">
-                {content.podcastAddedToPost
-                  ? `✓ Added to post on ${new Date(content.podcastAddedAt!).toLocaleDateString()}`
-                  : 'Not added to blog post yet'}
-              </div>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                Add to Blog Post
-              </button>
-            </div>
-          </div>
-        ) : content.podcast?.status === 'PROCESSING' || content.podcastStatus === 'processing' || podcastPolling ? (
-          <div className="text-center py-8">
-            <Mic className="h-12 w-12 text-blue-400 mx-auto mb-4 animate-pulse" />
-            <p className="text-blue-600 font-medium mb-2">Podcast is being generated...</p>
-            <p className="text-sm text-gray-500">This usually takes 2-5 minutes. The page will update automatically.</p>
-            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-400">
-              <RefreshCw className="h-4 w-4 animate-spin" />
-              Checking status...
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <Mic className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 mb-4">No podcast generated yet</p>
-            <button
-              onClick={generatePodcast}
-              disabled={generating === 'podcast'}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            >
-              {generating === 'podcast' ? (
-                <>
-                  <RefreshCw className="h-4 w-4 inline mr-2 animate-spin" />
-                  Starting...
-                </>
-              ) : (
-                'Generate Podcast'
-              )}
-            </button>
-          </div>
-        )}
-      </section>
-
-      {/* Short Video Section */}
-      <section className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Video className="h-5 w-5 text-gray-400" />
-          <h2 className="text-lg font-semibold">Short Video (Creatify)</h2>
-        </div>
-
-        {content.videos.find(v => v.videoType === 'SHORT') ? (
-          <div className="space-y-4">
-            <video
-              controls
-              className="w-full max-w-md rounded-lg"
-              src={content.videos.find(v => v.videoType === 'SHORT')?.videoUrl}
-            />
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Video Description
-              </label>
-              <textarea
-                className="w-full border rounded-lg p-3"
-                rows={3}
-                defaultValue={content.shortVideoDescription || ''}
-                placeholder="Enter video description..."
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-500">
-                {content.shortVideoAddedToPost
-                  ? `✓ Added to post`
-                  : 'Not added to blog post yet'}
-              </div>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                Add to Blog Post
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <Video className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 mb-4">No short video generated yet</p>
-            <button
-              onClick={generateVideo}
-              disabled={generating === 'video'}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            >
-              {generating === 'video' ? (
-                <>
-                  <RefreshCw className="h-4 w-4 inline mr-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                'Generate Video'
-              )}
-            </button>
-          </div>
-        )}
-      </section>
-
-      {/* Long-Form Video Section */}
-      <section className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Video className="h-5 w-5 text-gray-400" />
-          <h2 className="text-lg font-semibold">Long-Form Video</h2>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              YouTube URL
-            </label>
-            <input
-              type="url"
-              className="w-full border rounded-lg p-3"
-              placeholder="https://youtube.com/watch?v=..."
-              defaultValue={content.longformVideoUrl || ''}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Video Description
-            </label>
-            <textarea
-              className="w-full border rounded-lg p-3"
-              rows={4}
-              defaultValue={content.longformVideoDesc || ''}
-              placeholder="Enter long-form video description..."
-            />
-          </div>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            Save & Add to Blog Post
-          </button>
-        </div>
-      </section>
-
-      {/* Schema Section */}
-      <section className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Code className="h-5 w-5 text-gray-400" />
-          <h2 className="text-lg font-semibold">Schema Markup</h2>
-        </div>
-
-        <div className="space-y-4">
-          <div className="flex items-center gap-4 text-sm text-gray-500">
-            <span>
-              Last updated: {content.schemaLastUpdated
-                ? new Date(content.schemaLastUpdated).toLocaleString()
-                : 'Never'}
-            </span>
-            <span>Update count: {content.schemaUpdateCount}</span>
-          </div>
-
-          {content.blogPost?.schemaJson && (
-            <pre className="bg-gray-50 border rounded-lg p-4 text-xs overflow-auto max-h-64">
-              {JSON.stringify(JSON.parse(content.blogPost.schemaJson), null, 2)}
-            </pre>
-          )}
-
-          <div className="flex gap-3">
-            <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
-              <RefreshCw className="h-4 w-4 inline mr-2" />
-              Regenerate Schema
-            </button>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              Update Blog Post with Schema
-            </button>
-          </div>
         </div>
       </section>
     </div>
