@@ -143,9 +143,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         let wrhqWpPass: string | null = null
 
         try {
+          // Get URL and username normally (not encrypted)
           wrhqWpUrl = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_URL)
           wrhqWpUser = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_USERNAME)
-          wrhqWpPass = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_APP_PASSWORD)
+
+          // Get password RAW (still encrypted) - WordPress will decrypt it
+          // This mirrors how client passwords work (stored encrypted, WordPress decrypts)
+          const wrhqWpPassSetting = await prisma.setting.findUnique({
+            where: { key: WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_APP_PASSWORD }
+          })
+          wrhqWpPass = wrhqWpPassSetting?.value || null
         } catch (settingsError) {
           console.error('Error reading WRHQ settings:', settingsError)
           results.wrhqBlog = { success: false, error: 'WRHQ credentials could not be read. Please go to Settings → WRHQ and re-enter the WordPress App Password.' }
