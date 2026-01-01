@@ -19,6 +19,7 @@ import {
   CheckCircle,
   Eye,
   FileText,
+  Trash2,
 } from 'lucide-react'
 
 type ViewMode = 'month' | 'list' | 'timeline'
@@ -155,6 +156,27 @@ export default function ContentCalendarPage() {
       .then(setClients)
       .catch(console.error)
   }, [])
+
+  const handleDeleteContent = async (id: string, question: string) => {
+    if (!confirm(`Delete this content item?\n\n"${question.substring(0, 60)}${question.length > 60 ? '...' : ''}"\n\nThis cannot be undone.`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/content/${id}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        // Remove from local state
+        setContentItems(prev => prev.filter(item => item.id !== id))
+        // Refresh counts
+        fetchAllContent()
+      }
+    } catch (error) {
+      console.error('Failed to delete content:', error)
+    }
+  }
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear()
@@ -373,6 +395,16 @@ export default function ContentCalendarPage() {
                             <FileText className="h-3 w-3" />
                           </Button>
                         </Link>
+                        {(item.status === 'DRAFT' || item.status === 'SCHEDULED') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteContent(item.id, item.paaQuestion)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -423,11 +455,23 @@ export default function ContentCalendarPage() {
                       <p className="text-sm text-gray-600 mt-1">{item.paaQuestion}</p>
                     </div>
                     <StatusBadge status={item.status} />
-                    <Link href={`/admin/content/${item.id}`}>
-                      <Button variant="outline" size="sm">
-                        View
-                      </Button>
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/admin/content/${item.id}`}>
+                        <Button variant="outline" size="sm">
+                          View
+                        </Button>
+                      </Link>
+                      {(item.status === 'DRAFT' || item.status === 'SCHEDULED') && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteContent(item.id, item.paaQuestion)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

@@ -70,10 +70,9 @@ model Client {
   ctaText               String    @default("Get a Free Quote")
   ctaUrl                String?
 
-  // Publishing Preferences
+  // Publishing Preferences (Tue/Thu schedule)
   preferredPublishTime  String    @default("09:00")
   timezone              String    @default("America/Los_Angeles")
-  postsPerWeek          Int       @default(2)
 
   // Social Media
   socialPlatforms       String[]  // facebook, instagram, linkedin, twitter, tiktok, gbp

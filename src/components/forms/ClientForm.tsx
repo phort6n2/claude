@@ -58,7 +58,6 @@ interface ClientFormData {
   ctaUrl: string
   preferredPublishTime: string
   timezone: string
-  postsPerWeek: number
   socialPlatforms: string[]
   socialAccountIds: Record<string, string>
   podbeanPodcastId: string
@@ -99,7 +98,6 @@ const defaultData: ClientFormData = {
   ctaUrl: '',
   preferredPublishTime: '09:00',
   timezone: 'America/Los_Angeles',
-  postsPerWeek: 2,
   socialPlatforms: [],
   socialAccountIds: {},
   podbeanPodcastId: '',
@@ -1207,19 +1205,6 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Posts Per Week
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="7"
-                    value={formData.postsPerWeek}
-                    onChange={(e) => updateField('postsPerWeek', parseInt(e.target.value))}
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -1345,7 +1330,7 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                 <div className="flex justify-between">
                   <span className="text-gray-500">Publishing:</span>
                   <span className="font-medium">
-                    {formData.postsPerWeek}x/week at {formData.preferredPublishTime}
+                    Tue/Thu at {formData.preferredPublishTime}
                   </span>
                 </div>
                 <div className="flex justify-between">

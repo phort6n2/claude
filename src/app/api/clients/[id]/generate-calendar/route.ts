@@ -94,8 +94,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     // Calculate available dates (Tuesdays and Thursdays only)
     const availableDates = getAvailableDates(
       startDate ? new Date(startDate) : undefined,
-      yearsAhead,
-      client.postsPerWeek
+      yearsAhead
     )
 
     // Build content plan: PAA × Location
@@ -291,8 +290,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
  */
 function getAvailableDates(
   startDate: Date = new Date(),
-  yearsAhead: number = 2,
-  postsPerWeek: number = 2
+  yearsAhead: number = 2
 ): Date[] {
   const dates: Date[] = []
   const endDate = new Date(startDate)
@@ -312,17 +310,11 @@ function getAvailableDates(
   while (current < endDate) {
     dates.push(new Date(current))
 
-    // Move to next publishing day based on postsPerWeek
-    if (postsPerWeek >= 2) {
-      // Alternate between Tuesday and Thursday
-      if (current.getDay() === 2) {
-        current.setDate(current.getDate() + 2) // Tue -> Thu
-      } else {
-        current.setDate(current.getDate() + 5) // Thu -> Tue
-      }
+    // Alternate between Tuesday and Thursday
+    if (current.getDay() === 2) {
+      current.setDate(current.getDate() + 2) // Tue -> Thu
     } else {
-      // One post per week on Tuesday
-      current.setDate(current.getDate() + 7)
+      current.setDate(current.getDate() + 5) // Thu -> Tue
     }
   }
 

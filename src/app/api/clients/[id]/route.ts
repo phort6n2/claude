@@ -84,7 +84,6 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         ctaUrl: data.ctaUrl || null,
         preferredPublishTime: data.preferredPublishTime,
         timezone: data.timezone,
-        postsPerWeek: data.postsPerWeek,
         socialPlatforms: data.socialPlatforms || [],
         socialAccountIds: data.socialAccountIds || null,
         podbeanPodcastId: data.podbeanPodcastId || null,

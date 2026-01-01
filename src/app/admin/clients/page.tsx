@@ -10,9 +10,10 @@ import { prisma } from '@/lib/db'
 import { formatDate } from '@/lib/utils'
 import { Plus, MoreVertical, Globe, RefreshCw, MapPin, Podcast, Building2, CheckCircle } from 'lucide-react'
 import ClientLogo from '@/components/ui/ClientLogo'
+import ScheduleActions from '@/components/admin/ScheduleActions'
 
 async function getClients() {
-  return prisma.client.findMany({
+  const clients = await prisma.client.findMany({
     orderBy: { createdAt: 'desc' },
     include: {
       _count: {
@@ -35,6 +36,24 @@ async function getClients() {
       },
     },
   })
+
+  // Get scheduled counts separately since Prisma doesn't support multiple _count conditions
+  const scheduledCounts = await prisma.contentItem.groupBy({
+    by: ['clientId'],
+    where: {
+      status: {
+        in: ['DRAFT', 'SCHEDULED'],
+      },
+    },
+    _count: { id: true },
+  })
+
+  const countMap = new Map(scheduledCounts.map(c => [c.clientId, c._count.id]))
+
+  return clients.map(client => ({
+    ...client,
+    scheduledCount: countMap.get(client.id) || 0,
+  }))
 }
 
 async function ClientList() {
@@ -196,6 +215,12 @@ async function ClientList() {
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap text-right">
                   <div className="flex items-center justify-end gap-1">
+                    <ScheduleActions
+                      clientId={client.id}
+                      clientName={client.businessName}
+                      hasSchedule={client.calendarGenerated}
+                      scheduledCount={client.scheduledCount}
+                    />
                     <Link href={`/admin/clients/${client.id}`}>
                       <Button variant="outline" size="sm" className="text-xs px-2 py-1 h-7">
                         Edit

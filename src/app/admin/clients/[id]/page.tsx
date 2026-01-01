@@ -41,7 +41,6 @@ function transformClientForForm(client: Client) {
     ctaUrl: client.ctaUrl ?? '',
     preferredPublishTime: client.preferredPublishTime,
     timezone: client.timezone,
-    postsPerWeek: client.postsPerWeek,
     socialPlatforms: client.socialPlatforms,
     socialAccountIds: (client.socialAccountIds as Record<string, string>) || {},
     podbeanPodcastId: client.podbeanPodcastId ?? '',

@@ -74,7 +74,6 @@ export async function POST(request: NextRequest) {
         ctaUrl: data.ctaUrl || null,
         preferredPublishTime: data.preferredPublishTime || '09:00',
         timezone: data.timezone || 'America/Los_Angeles',
-        postsPerWeek: data.postsPerWeek || 2,
         socialPlatforms: data.socialPlatforms || [],
         socialAccountIds: data.socialAccountIds || null,
         podbeanPodcastId: data.podbeanPodcastId || null,
