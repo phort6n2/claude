@@ -1,6 +1,6 @@
-// Google AI Studio (Gemini) Integration for Image Generation
+// Google AI Studio - Imagen 3 Integration for Image Generation
 // API Key from: https://aistudio.google.com/app/apikey
-// Model: gemini-2.0-flash-exp (experimental with image generation)
+// Model: imagen-3.0-generate-001
 
 interface ImageGenerationParams {
   businessName: string
@@ -11,7 +11,7 @@ interface ImageGenerationParams {
   website: string
   address: string
   aspectRatio: '16:9' | '1:1'
-  apiKey: string // API key passed from caller
+  apiKey: string
 }
 
 interface ImageResult {
@@ -21,7 +21,6 @@ interface ImageResult {
   base64?: string
 }
 
-// Only generate 2 sizes: 16:9 for social/blog and 1:1 for Instagram
 const IMAGE_SIZES = {
   LANDSCAPE: { width: 1920, height: 1080, aspectRatio: '16:9' as const },
   SQUARE: { width: 1080, height: 1080, aspectRatio: '1:1' as const },
@@ -34,97 +33,77 @@ export async function generateImage(params: ImageGenerationParams): Promise<Imag
 
   const location = `${params.city}, ${params.state}`
   const dimensions = params.aspectRatio === '16:9'
-    ? { width: 1920, height: 1080, size: '1920x1080px' }
-    : { width: 1080, height: 1080, size: '1080x1080px' }
+    ? { width: 1920, height: 1080, size: '1920x1080px', ratio: '16:9' }
+    : { width: 1080, height: 1080, size: '1080x1080px', ratio: '1:1' }
 
-  const prompt = `Create a professional ${params.aspectRatio} social media marketing banner (${dimensions.size}) for ${params.businessName} with the following specifications:
+  const prompt = `Create a professional ${dimensions.ratio} social media marketing banner for ${params.businessName}, an auto glass company.
 
-HEADLINE AND TEXT CONTENT:
-Main headline in extra bold white sans-serif font (80-100pt, similar to Montserrat Black): "${params.paaQuestion}"
+DESIGN REQUIREMENTS:
+- Professional automotive marketing banner
+- Main headline text: "${params.paaQuestion}"
+- Company name: "${params.businessName}"
+- Location badge: "${location}"
+- Dark background with bright accent colors (NOT just blue - use varied colors like teal, purple, orange, or green)
+- Pure white text for readability
+- Modern geometric shapes and diagonal lines
+- Include a modern sports car image (wet/rainy conditions preferred)
+- Gear icons to represent automotive technical service
+- Professional, dynamic composition
+- NO watermarks or placeholder text
 
-Company branding: "${params.businessName}" with circular badge logo showing "${location}" in red and white on dark background
+CONTACT INFO TO INCLUDE:
+- Phone: ${params.phone}
+- Website: ${params.website}
 
-Contact information with circular icons:
-- Phone: ${params.phone} (phone icon)
-- Website: ${params.website} (globe icon)
-- Address: ${params.address}
+STYLE: Modern professional automotive marketing with bold typography, geometric elements, and dynamic energy suitable for social media.`
 
-LAYOUT AND COMPOSITION:
-${params.aspectRatio === '16:9'
-  ? 'Split design with text-dominant left side (60%) and image-focused right side (40%). Left side contains all text elements aligned left: headline in upper quadrant, circular logo badge below headline, company name below logo, and contact section with icons at bottom. Right side features automotive photograph bleeding to edge.'
-  : 'Centered design with headline at top, automotive image in middle, and contact info at bottom. Logo badge centered below headline.'}
-
-COLOR PALETTE:
-Choose a random dark color for primary background with a brighter version of that same color as accent. Pure white (#FFFFFF) text throughout. Light colored geometric shapes with transparency for visual interest.
-
-GEOMETRIC ELEMENTS:
-Large angular geometric shapes creating diagonal movement. Chevron arrows pointing right. Two white mechanical gear icons representing automotive technical service. Sharp diagonal lines creating dynamic negative space between sections.
-
-AUTOMOTIVE PHOTOGRAPHY:
-Random-colored modern sports car (Japanese or American) photographed from front three-quarter angle in wet/rainy conditions with water droplets visible on paint. Outdoor rainy/overcast setting with front grille, headlights, wheel, and windshield clearly visible. Photo slightly darkened and desaturated to blend with dark background, partially overlapped by geometric shapes.
-
-DESIGN STYLE:
-Modern professional automotive marketing with bold typography and dynamic geometric elements. Layered shapes create depth and movement. Strong contrast between dark background and white text ensures readability. Diagonal shapes guide eye from headline through company info to vehicle image. Gear icons and angular design suggest precision and technical expertise. Overall composition balances professionalism with dynamic energy suitable for digital marketing and social media use.`
-
-  // Use Gemini 2.0 Flash Experimental for image generation
+  // Use Imagen 3 for image generation
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${params.apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${params.apiKey}`,
     {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { text: prompt }
-            ]
-          }
+        instances: [
+          { prompt: prompt }
         ],
-        generationConfig: {
-          responseModalities: ['TEXT', 'IMAGE'],
+        parameters: {
+          sampleCount: 1,
+          aspectRatio: dimensions.ratio,
+          safetyFilterLevel: 'block_only_high',
+          personGeneration: 'dont_allow',
         }
       }),
     }
   )
 
   if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`Google AI Studio API error: ${error}`)
+    const errorText = await response.text()
+    console.error('Imagen API error response:', errorText)
+    throw new Error(`Imagen API error (${response.status}): ${errorText}`)
   }
 
   const data = await response.json()
+  console.log('Imagen API response structure:', JSON.stringify(data, null, 2).substring(0, 500))
 
-  // Extract image from Gemini response
-  const candidates = data.candidates
-  if (!candidates || candidates.length === 0) {
-    throw new Error('No response from model')
+  // Extract image from Imagen response
+  const predictions = data.predictions
+  if (!predictions || predictions.length === 0) {
+    throw new Error('No predictions in Imagen response')
   }
 
-  const parts = candidates[0].content?.parts
-  if (!parts) {
-    throw new Error('No content in response')
+  const imageData = predictions[0].bytesBase64Encoded
+  if (!imageData) {
+    throw new Error('No image data in Imagen response')
   }
 
-  // Find the image part in the response
-  const imagePart = parts.find((part: { inlineData?: { mimeType: string; data: string } }) =>
-    part.inlineData?.mimeType?.startsWith('image/')
-  )
-
-  if (!imagePart || !imagePart.inlineData) {
-    throw new Error('No image generated - model may have returned text only')
-  }
-
-  const base64Image = imagePart.inlineData.data
-  const mimeType = imagePart.inlineData.mimeType || 'image/png'
-
-  // Return as data URL (can be uploaded to GCS)
   return {
-    url: `data:${mimeType};base64,${base64Image}`,
+    url: `data:image/png;base64,${imageData}`,
     width: dimensions.width,
     height: dimensions.height,
-    base64: base64Image,
+    base64: imageData,
   }
 }
 
@@ -136,34 +115,37 @@ export async function generateBothImages(params: {
   phone: string
   website: string
   address: string
-  apiKey: string // API key from database settings
+  apiKey: string
 }): Promise<{ landscape?: ImageResult; square?: ImageResult }> {
   const results: { landscape?: ImageResult; square?: ImageResult } = {}
 
-  // Skip if no API key
   if (!params.apiKey) {
     console.log('Skipping image generation - NANO_BANANA_API_KEY not configured')
     return results
   }
 
+  console.log('Starting image generation with Imagen 3...')
+
   // Generate 16:9 landscape image
   try {
+    console.log('Generating landscape (16:9) image...')
     results.landscape = await generateImage({
       ...params,
       aspectRatio: '16:9',
     })
-    console.log('Generated landscape image successfully')
+    console.log('Landscape image generated successfully')
   } catch (error) {
     console.error('Failed to generate landscape image:', error)
   }
 
   // Generate 1:1 square image
   try {
+    console.log('Generating square (1:1) image...')
     results.square = await generateImage({
       ...params,
       aspectRatio: '1:1',
     })
-    console.log('Generated square image successfully')
+    console.log('Square image generated successfully')
   } catch (error) {
     console.error('Failed to generate square image:', error)
   }
