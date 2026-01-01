@@ -1,17 +1,16 @@
 // Google AI Studio (Gemini) Integration for Image Generation
 // API Key from: https://aistudio.google.com/app/apikey
-// Model: gemini-3-pro-image-preview
+// Model: gemini-2.0-flash-preview-image-generation
 
 interface ImageGenerationParams {
-  prompt: string
-  width: number
-  height: number
   businessName: string
-  brandColors?: {
-    primary: string
-    secondary: string
-    accent: string
-  }
+  city: string
+  state: string
+  paaQuestion: string
+  phone: string
+  website: string
+  address: string
+  aspectRatio: '16:9' | '1:1'
 }
 
 interface ImageResult {
@@ -21,14 +20,10 @@ interface ImageResult {
   base64?: string
 }
 
+// Only generate 2 sizes: 16:9 for social/blog and 1:1 for Instagram
 const IMAGE_SIZES = {
-  BLOG_FEATURED: { width: 1200, height: 800 },
-  FACEBOOK: { width: 1200, height: 630 },
-  INSTAGRAM_FEED: { width: 1080, height: 1080 },
-  INSTAGRAM_STORY: { width: 1080, height: 1920 },
-  TWITTER: { width: 1200, height: 675 },
-  LINKEDIN: { width: 1200, height: 627 },
-  TIKTOK: { width: 1080, height: 1920 },
+  LANDSCAPE: { width: 1920, height: 1080, aspectRatio: '16:9' as const },
+  SQUARE: { width: 1080, height: 1080, aspectRatio: '1:1' as const },
 }
 
 export async function generateImage(params: ImageGenerationParams): Promise<ImageResult> {
@@ -37,23 +32,43 @@ export async function generateImage(params: ImageGenerationParams): Promise<Imag
     throw new Error('NANO_BANANA_API_KEY (Google AI Studio) is not configured')
   }
 
-  // Build the enhanced prompt for image generation
-  const enhancedPrompt = `Generate a professional auto glass blog image.
+  const location = `${params.city}, ${params.state}`
+  const dimensions = params.aspectRatio === '16:9'
+    ? { width: 1920, height: 1080, size: '1920x1080px' }
+    : { width: 1080, height: 1080, size: '1080x1080px' }
 
-${params.prompt}
+  const prompt = `Create a professional ${params.aspectRatio} social media marketing banner (${dimensions.size}) for ${params.businessName} with the following specifications:
 
-Style requirements:
-- Clean, modern, automotive industry photography
-- Professional business imagery for ${params.businessName}
-- Color scheme: ${params.brandColors ? `Primary ${params.brandColors.primary}, accent ${params.brandColors.accent}` : 'Professional blue tones'}
-- High quality, photorealistic
-- Suitable for business blog
-- No text overlays or watermarks
-- Landscape orientation preferred`
+HEADLINE AND TEXT CONTENT:
+Main headline in extra bold white sans-serif font (80-100pt, similar to Montserrat Black): "${params.paaQuestion}"
 
-  // Use Gemini 3 Pro Image Preview model
+Company branding: "${params.businessName}" with circular badge logo showing "${location}" in red and white on dark background
+
+Contact information with circular icons:
+- Phone: ${params.phone} (phone icon)
+- Website: ${params.website} (globe icon)
+- Address: ${params.address}
+
+LAYOUT AND COMPOSITION:
+${params.aspectRatio === '16:9'
+  ? 'Split design with text-dominant left side (60%) and image-focused right side (40%). Left side contains all text elements aligned left: headline in upper quadrant, circular logo badge below headline, company name below logo, and contact section with icons at bottom. Right side features automotive photograph bleeding to edge.'
+  : 'Centered design with headline at top, automotive image in middle, and contact info at bottom. Logo badge centered below headline.'}
+
+COLOR PALETTE:
+Choose a random dark color for primary background with a brighter version of that same color as accent. Pure white (#FFFFFF) text throughout. Light colored geometric shapes with transparency for visual interest.
+
+GEOMETRIC ELEMENTS:
+Large angular geometric shapes creating diagonal movement. Chevron arrows pointing right. Two white mechanical gear icons representing automotive technical service. Sharp diagonal lines creating dynamic negative space between sections.
+
+AUTOMOTIVE PHOTOGRAPHY:
+Random-colored modern sports car (Japanese or American) photographed from front three-quarter angle in wet/rainy conditions with water droplets visible on paint. Outdoor rainy/overcast setting with front grille, headlights, wheel, and windshield clearly visible. Photo slightly darkened and desaturated to blend with dark background, partially overlapped by geometric shapes.
+
+DESIGN STYLE:
+Modern professional automotive marketing with bold typography and dynamic geometric elements. Layered shapes create depth and movement. Strong contrast between dark background and white text ensures readability. Diagonal shapes guide eye from headline through company info to vehicle image. Gear icons and angular design suggest precision and technical expertise. Overall composition balances professionalism with dynamic energy suitable for digital marketing and social media use.`
+
+  // Use Gemini 2.0 Flash for image generation
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: {
@@ -63,15 +78,12 @@ Style requirements:
         contents: [
           {
             parts: [
-              { text: enhancedPrompt }
+              { text: prompt }
             ]
           }
         ],
         generationConfig: {
-          responseModalities: ['IMAGE', 'TEXT'],
-          temperature: 1,
-          topP: 0.95,
-          topK: 40,
+          responseModalities: ['TEXT', 'IMAGE'],
         }
       }),
     }
@@ -110,42 +122,41 @@ Style requirements:
   // Return as data URL (can be uploaded to GCS)
   return {
     url: `data:${mimeType};base64,${base64Image}`,
-    width: params.width,
-    height: params.height,
+    width: dimensions.width,
+    height: dimensions.height,
     base64: base64Image,
   }
 }
 
-export async function generateAllImageSizes(params: {
-  topic: string
-  blogTitle: string
+export async function generateBothImages(params: {
   businessName: string
   city: string
-  brandColors?: {
-    primary: string
-    secondary: string
-    accent: string
+  state: string
+  paaQuestion: string
+  phone: string
+  website: string
+  address: string
+}): Promise<{ landscape?: ImageResult; square?: ImageResult }> {
+  const results: { landscape?: ImageResult; square?: ImageResult } = {}
+
+  // Generate 16:9 landscape image
+  try {
+    results.landscape = await generateImage({
+      ...params,
+      aspectRatio: '16:9',
+    })
+  } catch (error) {
+    console.error('Failed to generate landscape image:', error)
   }
-}): Promise<Record<string, ImageResult>> {
-  const basePrompt = `Topic: ${params.topic}. Blog title: "${params.blogTitle}". Location: ${params.city}.`
 
-  const results: Record<string, ImageResult> = {}
-
-  // Generate all sizes - Gemini generates one size, we'll use it for all
-  // In production, you might want to resize or generate multiple times
-  for (const [sizeName, dimensions] of Object.entries(IMAGE_SIZES)) {
-    try {
-      results[sizeName] = await generateImage({
-        prompt: basePrompt,
-        width: dimensions.width,
-        height: dimensions.height,
-        businessName: params.businessName,
-        brandColors: params.brandColors,
-      })
-    } catch (error) {
-      console.error(`Failed to generate ${sizeName} image:`, error)
-      // Continue with other sizes
-    }
+  // Generate 1:1 square image
+  try {
+    results.square = await generateImage({
+      ...params,
+      aspectRatio: '1:1',
+    })
+  } catch (error) {
+    console.error('Failed to generate square image:', error)
   }
 
   return results

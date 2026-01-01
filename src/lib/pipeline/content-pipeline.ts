@@ -1,6 +1,6 @@
 import { prisma } from '../db'
 import { generateBlogPost, generateSocialCaption, generatePodcastScript, generateWRHQBlogPost, generateWRHQSocialCaption } from '../integrations/claude'
-import { generateAllImageSizes } from '../integrations/nano-banana'
+import { generateBothImages } from '../integrations/nano-banana'
 import { createPodcast, waitForPodcast } from '../integrations/autocontent'
 import { createShortVideo, waitForVideo } from '../integrations/creatify'
 import { scheduleSocialPosts } from '../integrations/getlate'
@@ -113,34 +113,53 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
     })
     await logAction(ctx, 'images_generate', 'STARTED')
 
+    // Build address string
+    const address = `${contentItem.client.streetAddress}, ${contentItem.client.city}, ${contentItem.client.state} ${contentItem.client.postalCode}`
+
     const images = await retryWithBackoff(async () => {
-      return generateAllImageSizes({
-        topic: contentItem.topic || contentItem.paaQuestion,
-        blogTitle: blogResult.title,
+      return generateBothImages({
         businessName: contentItem.client.businessName,
         city: contentItem.client.city,
-        brandColors: {
-          primary: contentItem.client.primaryColor || '#1e40af',
-          secondary: contentItem.client.secondaryColor || '#3b82f6',
-          accent: contentItem.client.accentColor || '#f59e0b',
-        },
+        state: contentItem.client.state,
+        paaQuestion: contentItem.paaQuestion,
+        phone: contentItem.client.phone,
+        website: contentItem.client.ctaUrl || contentItem.client.wordpressUrl || '',
+        address: address,
       })
     })
 
     // Upload images to GCS and save to database
-    for (const [imageType, imageResult] of Object.entries(images)) {
-      const filename = `${contentItem.client.slug}/${blogResult.slug}/${imageType.toLowerCase()}.jpg`
-      const gcsResult = await uploadFromUrl(imageResult.url, filename)
+    if (images.landscape) {
+      const filename = `${contentItem.client.slug}/${blogResult.slug}/landscape.png`
+      const gcsResult = await uploadFromUrl(images.landscape.url, filename)
 
       await prisma.image.create({
         data: {
           contentItemId,
           clientId: contentItem.clientId,
-          imageType: imageType as 'BLOG_FEATURED' | 'FACEBOOK' | 'INSTAGRAM_FEED' | 'INSTAGRAM_STORY' | 'TWITTER' | 'LINKEDIN' | 'TIKTOK',
+          imageType: 'BLOG_FEATURED',
           fileName: filename,
           gcsUrl: gcsResult.url,
-          width: imageResult.width,
-          height: imageResult.height,
+          width: images.landscape.width,
+          height: images.landscape.height,
+          altText: `${blogResult.title} - ${contentItem.client.businessName}`,
+        },
+      })
+    }
+
+    if (images.square) {
+      const filename = `${contentItem.client.slug}/${blogResult.slug}/square.png`
+      const gcsResult = await uploadFromUrl(images.square.url, filename)
+
+      await prisma.image.create({
+        data: {
+          contentItemId,
+          clientId: contentItem.clientId,
+          imageType: 'INSTAGRAM_FEED',
+          fileName: filename,
+          gcsUrl: gcsResult.url,
+          width: images.square.width,
+          height: images.square.height,
           altText: `${blogResult.title} - ${contentItem.client.businessName}`,
         },
       })

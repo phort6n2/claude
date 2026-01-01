@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { generateBlogPost } from '@/lib/integrations/claude'
+import { generateBothImages } from '@/lib/integrations/nano-banana'
 import { getSetting, WRHQ_SETTINGS_KEYS } from '@/lib/settings'
 import { ImageType } from '@prisma/client'
 
@@ -184,7 +185,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
     }
 
-    // Generate images (placeholder - would call Google AI Studio)
+    // Generate images using Google AI Studio (Gemini)
     if (genImages) {
       try {
         await prisma.contentItem.update({
@@ -192,53 +193,76 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           data: { pipelineStep: 'images' },
         })
 
-        // For now, create placeholder image records
-        const imageTypes: ImageType[] = [
-          'BLOG_FEATURED',
-          'FACEBOOK',
-          'INSTAGRAM_FEED',
-          'INSTAGRAM_STORY',
-          'TWITTER',
-          'LINKEDIN',
-        ]
+        // Build address string
+        const address = `${contentItem.client.streetAddress}, ${contentItem.client.city}, ${contentItem.client.state} ${contentItem.client.postalCode}`
+
+        // Generate both 16:9 and 1:1 images
+        const generatedImages = await generateBothImages({
+          businessName: contentItem.client.businessName,
+          city: contentItem.client.city,
+          state: contentItem.client.state,
+          paaQuestion: contentItem.paaQuestion,
+          phone: contentItem.client.phone,
+          website: contentItem.client.ctaUrl || contentItem.client.wordpressUrl || '',
+          address: address,
+        })
 
         // Delete existing images and create new ones
         await prisma.image.deleteMany({
           where: { contentItemId: id },
         })
 
-        const imageResults: ImageResult[] = imageTypes.map(imageType => ({
-          imageType,
-          fileName: `${contentItem.paaQuestion.substring(0, 30).replace(/\s+/g, '-')}-${imageType.toLowerCase()}.jpg`,
-          gcsUrl: `https://storage.googleapis.com/placeholder/${id}/${imageType.toLowerCase()}.jpg`,
-          width: imageType.includes('STORY') ? 1080 : 1200,
-          height: imageType.includes('STORY') ? 1920 : imageType === 'INSTAGRAM_FEED' ? 1080 : 675,
-          altText: contentItem.paaQuestion,
-        }))
+        const imageRecords: ImageResult[] = []
 
-        await prisma.image.createMany({
-          data: imageResults.map((img: ImageResult) => ({
-            contentItemId: id,
-            clientId: contentItem.clientId,
-            imageType: img.imageType,
-            fileName: img.fileName,
-            gcsUrl: img.gcsUrl,
-            width: img.width,
-            height: img.height,
-            fileSize: img.fileSize,
-            altText: img.altText,
-          })),
-        })
+        // Add landscape image (16:9) - used for blog, Facebook, Twitter, LinkedIn
+        if (generatedImages.landscape) {
+          imageRecords.push({
+            imageType: 'BLOG_FEATURED' as ImageType,
+            fileName: `${contentItem.paaQuestion.substring(0, 30).replace(/\s+/g, '-')}-landscape.png`,
+            gcsUrl: generatedImages.landscape.url, // Data URL with base64
+            width: generatedImages.landscape.width,
+            height: generatedImages.landscape.height,
+            altText: contentItem.paaQuestion,
+          })
+        }
+
+        // Add square image (1:1) - used for Instagram
+        if (generatedImages.square) {
+          imageRecords.push({
+            imageType: 'INSTAGRAM_FEED' as ImageType,
+            fileName: `${contentItem.paaQuestion.substring(0, 30).replace(/\s+/g, '-')}-square.png`,
+            gcsUrl: generatedImages.square.url, // Data URL with base64
+            width: generatedImages.square.width,
+            height: generatedImages.square.height,
+            altText: contentItem.paaQuestion,
+          })
+        }
+
+        if (imageRecords.length > 0) {
+          await prisma.image.createMany({
+            data: imageRecords.map((img: ImageResult) => ({
+              contentItemId: id,
+              clientId: contentItem.clientId,
+              imageType: img.imageType,
+              fileName: img.fileName,
+              gcsUrl: img.gcsUrl,
+              width: img.width,
+              height: img.height,
+              fileSize: img.fileSize,
+              altText: img.altText,
+            })),
+          })
+        }
 
         await prisma.contentItem.update({
           where: { id },
           data: {
-            imagesGenerated: true,
-            imagesTotalCount: imageResults.length,
+            imagesGenerated: imageRecords.length > 0,
+            imagesTotalCount: imageRecords.length,
           },
         })
 
-        results.images = { success: true, count: imageResults.length }
+        results.images = { success: true, count: imageRecords.length }
       } catch (error) {
         console.error('Image generation error:', error)
         results.images = { success: false, error: String(error) }
