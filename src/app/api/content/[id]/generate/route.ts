@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { generateBlogPost, generatePodcastDescription } from '@/lib/integrations/claude'
 import { generateBothImages } from '@/lib/integrations/nano-banana'
+import { uploadFromUrl } from '@/lib/integrations/gcs'
 import { getSetting, WRHQ_SETTINGS_KEYS } from '@/lib/settings'
 import { ImageType } from '@prisma/client'
 
@@ -271,12 +272,22 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
         const imageRecords: ImageResult[] = []
 
+        // Generate a slug from the PAA question for filenames
+        const contentSlug = contentItem.paaQuestion
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .substring(0, 50)
+          .replace(/-+$/, '')
+
         // Add landscape image (16:9) - used for blog, Facebook, Twitter, LinkedIn
         if (generatedImages.landscape) {
+          const landscapeFilename = `${contentItem.client.slug}/${contentSlug}/landscape.jpg`
+          const gcsResult = await uploadFromUrl(generatedImages.landscape.url, landscapeFilename)
+
           imageRecords.push({
             imageType: 'BLOG_FEATURED' as ImageType,
-            fileName: `${contentItem.paaQuestion.substring(0, 30).replace(/\s+/g, '-')}-landscape.png`,
-            gcsUrl: generatedImages.landscape.url, // Data URL with base64
+            fileName: landscapeFilename,
+            gcsUrl: gcsResult.url,
             width: generatedImages.landscape.width,
             height: generatedImages.landscape.height,
             altText: contentItem.paaQuestion,
@@ -285,10 +296,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
         // Add square image (1:1) - used for Instagram
         if (generatedImages.square) {
+          const squareFilename = `${contentItem.client.slug}/${contentSlug}/square.jpg`
+          const gcsResult = await uploadFromUrl(generatedImages.square.url, squareFilename)
+
           imageRecords.push({
             imageType: 'INSTAGRAM_FEED' as ImageType,
-            fileName: `${contentItem.paaQuestion.substring(0, 30).replace(/\s+/g, '-')}-square.png`,
-            gcsUrl: generatedImages.square.url, // Data URL with base64
+            fileName: squareFilename,
+            gcsUrl: gcsResult.url,
             width: generatedImages.square.width,
             height: generatedImages.square.height,
             altText: contentItem.paaQuestion,
