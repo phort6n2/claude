@@ -316,6 +316,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             continue
           }
 
+          // For GBP posts, include the blog URL as the CTA "Learn More" link
+          const gbpCtaUrl = socialPost.platform === 'GBP' && contentItem.blogPost?.wordpressUrl
+            ? contentItem.blogPost.wordpressUrl
+            : undefined
+
           // Use postNowAndCheckStatus for immediate posting (polls for result), schedulePost for scheduling
           const lateResult = postImmediate
             ? await postNowAndCheckStatus({
@@ -326,6 +331,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 mediaType,
                 hashtags: socialPost.hashtags,
                 firstComment: socialPost.firstComment || undefined,
+                ctaUrl: gbpCtaUrl,
               })
             : await schedulePost({
                 accountId,
@@ -336,6 +342,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 scheduledTime: contentItem.scheduledDate,
                 hashtags: socialPost.hashtags,
                 firstComment: socialPost.firstComment || undefined,
+                ctaUrl: gbpCtaUrl,
               })
 
           // Determine the status based on Late API response

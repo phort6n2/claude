@@ -9,12 +9,21 @@ function toTitleCase(str: string): string {
   // Words that should remain lowercase (unless first word)
   const exceptions = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'by', 'of', 'in', 'with']
 
-  return str.toLowerCase().split(' ').map((word, index) => {
-    // Always capitalize first word, otherwise check exceptions
-    if (index === 0 || !exceptions.includes(word)) {
-      return word.charAt(0).toUpperCase() + word.slice(1)
+  // US state abbreviations that should remain uppercase
+  const stateAbbreviations = ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC']
+
+  return str.split(' ').map((word, index) => {
+    // Preserve state abbreviations (check original word before lowercasing)
+    if (stateAbbreviations.includes(word.toUpperCase()) && word.toUpperCase() === word) {
+      return word.toUpperCase()
     }
-    return word
+
+    const lowerWord = word.toLowerCase()
+    // Always capitalize first word, otherwise check exceptions
+    if (index === 0 || !exceptions.includes(lowerWord)) {
+      return lowerWord.charAt(0).toUpperCase() + lowerWord.slice(1)
+    }
+    return lowerWord
   }).join(' ')
 }
 

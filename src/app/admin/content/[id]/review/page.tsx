@@ -88,6 +88,7 @@ interface ContentItem {
     approved: boolean
     status: string
     publishedUrl: string | null
+    errorMessage: string | null
   }>
   wrhqSocialPosts: Array<{
     id: string
@@ -97,6 +98,7 @@ interface ContentItem {
     approved: boolean
     status: string
     publishedUrl: string | null
+    errorMessage: string | null
   }>
   wrhqBlogPost: {
     id: string
@@ -448,6 +450,31 @@ function ReviewTab({
 
     return () => clearInterval(interval)
   }, [content.id, content.podcast?.status, onUpdate])
+
+  // Poll for social post status when any post is PROCESSING
+  useEffect(() => {
+    const hasProcessingPosts = content.socialPosts.some(p => p.status === 'PROCESSING') ||
+                               content.wrhqSocialPosts.some(p => p.status === 'PROCESSING')
+
+    if (!hasProcessingPosts) return
+
+    const interval = setInterval(async () => {
+      try {
+        // Call the social-status endpoint to check Late API for updates
+        const response = await fetch(`/api/content/${content.id}/social-status`)
+        const data = await response.json()
+
+        // If any posts were updated or failed, refresh the content
+        if (data.updated > 0 || data.failed > 0 || data.stillProcessing === 0) {
+          onUpdate()
+        }
+      } catch (err) {
+        console.error('Error polling social post status:', err)
+      }
+    }, 5000) // Poll every 5 seconds for social posts
+
+    return () => clearInterval(interval)
+  }, [content.id, content.socialPosts, content.wrhqSocialPosts, onUpdate])
 
   // Step status helpers
   const isStep1Complete = content.clientBlogPublished

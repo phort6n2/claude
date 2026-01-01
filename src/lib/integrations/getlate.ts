@@ -31,6 +31,7 @@ interface SchedulePostParams {
   mediaType?: 'image' | 'video'
   scheduledTime: Date
   firstComment?: string
+  ctaUrl?: string  // For GBP "Learn More" button - links to the blog post
 }
 
 interface ScheduledPostResult {
@@ -89,6 +90,16 @@ export async function schedulePost(params: SchedulePostParams): Promise<Schedule
   // Add first comment if provided
   if (params.firstComment) {
     requestBody.firstComment = params.firstComment
+  }
+
+  // Add GBP-specific "Learn More" call-to-action button
+  if (params.platform === 'gbp' && params.ctaUrl) {
+    requestBody.platformSpecificData = {
+      callToAction: {
+        type: 'LEARN_MORE',
+        url: params.ctaUrl,
+      },
+    }
   }
 
   console.log('Late API request:', JSON.stringify(requestBody, null, 2))
