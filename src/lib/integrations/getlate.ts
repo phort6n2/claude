@@ -174,46 +174,57 @@ export async function checkPostStatus(postId: string): Promise<ScheduledPostResu
   const data = await response.json()
   console.log('Late API status check response:', JSON.stringify(data, null, 2))
 
-  // Extract platform from platforms array if present
-  const platformData = data.platforms?.[0]
+  // Late wraps the post in a "post" object
+  const post = data.post || data
+
+  // Extract platform from platforms array
+  const platformData = post.platforms?.[0]
 
   // Log all the fields we're checking to help debug
   console.log('Late status parsing:', {
-    'data.status': data.status,
+    'post.status': post.status,
     'platformData?.status': platformData?.status,
-    'platformData?.postUrl': platformData?.postUrl,
-    'platformData?.url': platformData?.url,
-    'data.postUrl': data.postUrl,
-    'data.url': data.url,
+    'platformData?.platformPostUrl': platformData?.platformPostUrl,
   })
 
-  // Normalize status - Late may use different status names
-  // Check both top-level status and platform-specific status
+  // Normalize status - check platform-specific status first, then post-level status
+  // Platform statuses: "pending", "published", "failed"
+  // Post statuses: "draft", "scheduled", "published", "failed"
   let status: 'scheduled' | 'published' | 'failed' | 'processing' = 'processing'
-  const rawStatus = (platformData?.status || data.status || '').toLowerCase()
+  const platformStatus = (platformData?.status || '').toLowerCase()
+  const postStatus = (post.status || '').toLowerCase()
 
-  if (rawStatus === 'published' || rawStatus === 'completed' || rawStatus === 'success' || rawStatus === 'sent') {
+  // Check platform-specific status first (more accurate)
+  if (platformStatus === 'published') {
     status = 'published'
-  } else if (rawStatus === 'failed' || rawStatus === 'error') {
+  } else if (platformStatus === 'failed') {
     status = 'failed'
-  } else if (rawStatus === 'scheduled' || rawStatus === 'pending' || rawStatus === 'queued') {
-    status = 'scheduled'
+  } else if (platformStatus === 'pending') {
+    // Pending means waiting to be published
+    status = postStatus === 'scheduled' ? 'scheduled' : 'processing'
+  } else {
+    // Fallback to post-level status
+    if (postStatus === 'published') {
+      status = 'published'
+    } else if (postStatus === 'failed') {
+      status = 'failed'
+    } else if (postStatus === 'scheduled') {
+      status = 'scheduled'
+    }
   }
 
   // Get error message if present
-  const error = data.error || data.errorMessage || platformData?.error || platformData?.errorMessage
+  const error = platformData?.error || platformData?.errorMessage || post.error || post.errorMessage
 
-  // Try multiple possible field names for the post URL
-  const platformPostUrl = platformData?.postUrl || platformData?.url || platformData?.link ||
-                          data.postUrl || data.url || data.link ||
-                          data.platformPostUrl || data.platform_post_url
+  // Get the platform post URL (only available when published)
+  const platformPostUrl = platformData?.platformPostUrl
 
   console.log('Late status result:', { status, platformPostUrl, error })
 
   return {
-    postId: data._id || data.id || data.post_id || postId,
-    platform: platformData?.platform || data.platform,
-    scheduledTime: new Date(data.scheduledFor || data.scheduled_at || Date.now()),
+    postId: post._id || post.id || postId,
+    platform: platformData?.platform || post.platform,
+    scheduledTime: new Date(post.scheduledFor || post.publishedAt || Date.now()),
     status,
     platformPostUrl,
     error,
