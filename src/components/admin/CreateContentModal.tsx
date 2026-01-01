@@ -107,12 +107,10 @@ export default function CreateContentModal({ isOpen, onClose, onSuccess }: Creat
       const data = await response.json()
 
       if (response.ok) {
-        setResult({
-          success: true,
-          message: 'Content created and generation started!',
-          contentId: data.id,
-        })
         onSuccess()
+        // Close modal and redirect to review page
+        handleClose()
+        router.push(`/admin/content/${data.id}/review`)
       } else {
         setResult({
           success: false,

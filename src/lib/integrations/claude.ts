@@ -172,19 +172,67 @@ export async function generateSocialCaption(params: SocialCaptionParams): Promis
   hashtags: string[]
   firstComment: string
 }> {
+  // Special handling for GBP - uses specific prompt format
+  if (params.platform === 'gbp') {
+    const gbpPrompt = `Write a Google Business Profile post for this auto glass business.
+
+**CRITICAL RULES:**
+- Length: 100-300 characters TOTAL (STRICT - count carefully!)
+- NO phone numbers (Google rejects posts with phone numbers)
+- NO emojis
+- NO hashtags in main text
+- Professional, conversational tone
+- Create curiosity to click the link
+
+**Business Info:**
+Business: ${params.businessName}
+Location: ${params.blogExcerpt.includes(',') ? params.blogExcerpt.split(',')[0] : 'your area'}
+Topic: ${params.blogTitle}
+
+**Writing Guidelines:**
+1. Start with attention-grabbing question or statement
+2. Provide 1-2 key insights
+3. Mention business name naturally
+4. End with soft call-to-action
+5. COUNT CHARACTERS - must be 100-300 total
+
+**Example (185 characters):**
+Wondering about windshield chip repair? Most chips under a quarter are fixable and cost less than replacement. Collision Auto Glass explains what Portland drivers need to know.
+
+**Output Format:**
+Return ONLY the post text. No quotes, no labels. Just the post content.
+
+Write the post now.`
+
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 500,
+      messages: [{ role: 'user', content: gbpPrompt }],
+    })
+
+    const caption = response.content[0].type === 'text' ? response.content[0].text.trim() : ''
+
+    return {
+      caption,
+      hashtags: [], // GBP doesn't use hashtags
+      firstComment: '', // GBP doesn't have comments
+    }
+  }
+
+  // For other platforms, use the general prompt
   const platformGuidelines: Record<SocialPlatform, string> = {
-    facebook: 'Longer, conversational, storytelling approach. Can include the blog link inline.',
-    instagram: 'Shorter, emoji-friendly, hashtag-heavy. Mention "link in bio" for the blog post.',
-    linkedin: 'Professional, industry insights focused. Include the blog link inline.',
-    twitter: 'Concise, punchy, engaging. Thread-worthy if needed. Include link.',
-    tiktok: 'Casual, trend-aligned, relatable. Mention link in bio.',
-    gbp: 'Local business focused, professional, include call-to-action for the local area.',
-    youtube: 'Video description style, detailed, include timestamps if applicable. SEO-optimized.',
-    bluesky: 'Similar to Twitter - concise, authentic, community-focused. Include link.',
-    threads: 'Conversational, Instagram-adjacent style. Can be longer form. Include link.',
-    reddit: 'Community-focused, informative, avoid promotional tone. Add value to the subreddit.',
-    pinterest: 'Visual description, keyword-rich, inspirational. Include the blog link.',
-    telegram: 'Direct, informative, can include formatting like bold/italic. Include link.',
+    facebook: 'Longer, conversational, storytelling approach. 200-500 characters. Can include the blog link inline.',
+    instagram: 'Shorter, emoji-friendly. 150-300 characters. Mention "link in bio" for the blog post.',
+    linkedin: 'Professional, industry insights focused. 200-400 characters. Include the blog link inline.',
+    twitter: 'Concise, punchy, engaging. Max 280 characters. Include link.',
+    tiktok: 'Casual, trend-aligned, relatable. 100-200 characters. Mention link in bio.',
+    gbp: 'Local business focused, professional. 100-300 characters. No phone numbers or emojis.',
+    youtube: 'Video description style, detailed. 300-500 characters. SEO-optimized.',
+    bluesky: 'Similar to Twitter - concise, authentic. Max 300 characters. Include link.',
+    threads: 'Conversational, Instagram-adjacent style. 200-400 characters. Include link.',
+    reddit: 'Community-focused, informative. 200-400 characters. Avoid promotional tone.',
+    pinterest: 'Visual description, keyword-rich. 150-300 characters. Include the blog link.',
+    telegram: 'Direct, informative. 200-400 characters. Include link.',
   }
 
   const prompt = `Generate a ${params.platform} post for an auto glass company.
@@ -197,8 +245,8 @@ Blog URL: ${params.blogUrl}
 Platform Guidelines: ${platformGuidelines[params.platform]}
 
 Return JSON with:
-- caption: The main post text
-- hashtags: Array of relevant hashtags (without #)
+- caption: The main post text (follow character guidelines above)
+- hashtags: Array of 3-5 relevant hashtags (without #)
 - firstComment: A follow-up comment with the blog link (for platforms that support it)`
 
   const response = await anthropic.messages.create({

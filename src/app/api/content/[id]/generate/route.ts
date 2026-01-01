@@ -278,27 +278,58 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           data: { pipelineStep: 'social' },
         })
 
+        // Get the blog post for this content item
+        const blogPost = await prisma.blogPost.findUnique({
+          where: { contentItemId: id },
+        })
+
         // Use client's configured platforms or default to common ones
         const configuredPlatforms = (contentItem.client.socialPlatforms || []) as string[]
         const platforms = configuredPlatforms.length > 0
           ? configuredPlatforms
-          : ['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'TWITTER'] // Default platforms
+          : ['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'TWITTER', 'GBP'] // Default platforms
 
         // Delete existing social posts
         await prisma.socialPost.deleteMany({
           where: { contentItemId: id },
         })
 
-        // Generate social posts for each platform
-        const socialPosts = platforms.map(platform => ({
-          platform: platform as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
-          caption: `${contentItem.paaQuestion}\n\nLearn more on our blog!\n\n#${contentItem.client.businessName.replace(/\s+/g, '')} #AutoGlass`,
-          hashtags: ['AutoGlass', 'WindshieldRepair', contentItem.client.businessName.replace(/\s+/g, '')],
-          firstComment: 'Link to blog post in bio!',
-        }))
+        // Import the generateSocialCaption function
+        const { generateSocialCaption } = await import('@/lib/integrations/claude')
+
+        // Generate social posts for each platform using Claude
+        const socialPostsData = await Promise.all(
+          platforms.map(async (platform) => {
+            try {
+              const result = await generateSocialCaption({
+                platform: platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
+                blogTitle: blogPost?.title || contentItem.paaQuestion,
+                blogExcerpt: blogPost?.excerpt || contentItem.paaQuestion,
+                businessName: contentItem.client.businessName,
+                blogUrl: contentItem.client.wordpressUrl || '',
+              })
+
+              return {
+                platform: platform as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
+                caption: result.caption,
+                hashtags: result.hashtags,
+                firstComment: result.firstComment,
+              }
+            } catch (error) {
+              console.error(`Failed to generate ${platform} post:`, error)
+              // Fallback to simple template
+              return {
+                platform: platform as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
+                caption: `${contentItem.paaQuestion}\n\nLearn more on our blog!`,
+                hashtags: ['AutoGlass', 'WindshieldRepair'],
+                firstComment: '',
+              }
+            }
+          })
+        )
 
         await prisma.socialPost.createMany({
-          data: socialPosts.map(post => ({
+          data: socialPostsData.map(post => ({
             contentItemId: id,
             clientId: contentItem.clientId,
             platform: post.platform,
@@ -314,11 +345,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           where: { id },
           data: {
             socialGenerated: true,
-            socialTotalCount: socialPosts.length,
+            socialTotalCount: socialPostsData.length,
           },
         })
 
-        results.social = { success: true, count: socialPosts.length }
+        results.social = { success: true, count: socialPostsData.length }
       } catch (error) {
         console.error('Social generation error:', error)
         results.social = { success: false, error: String(error) }
