@@ -339,14 +339,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           where: { contentItemId: id },
         })
 
-        // Use client's configured platforms or default to common ones
+        // Only generate posts for platforms with configured account IDs
         // Skip video platforms (TIKTOK, YOUTUBE) until video generation is added
         const VIDEO_PLATFORMS = ['TIKTOK', 'YOUTUBE']
-        const configuredPlatforms = (contentItem.client.socialPlatforms || []) as string[]
-        const allPlatforms = configuredPlatforms.length > 0
-          ? configuredPlatforms
-          : ['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'TWITTER', 'GBP'] // Default platforms
-        const platforms = allPlatforms.filter(p => !VIDEO_PLATFORMS.includes(p.toUpperCase()))
+        const socialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
+        const configuredPlatforms = socialAccountIds
+          ? Object.keys(socialAccountIds).filter(key => socialAccountIds[key]) // Only platforms with actual account IDs
+          : []
+        const platforms = configuredPlatforms
+          .map(p => p.toUpperCase())
+          .filter(p => !VIDEO_PLATFORMS.includes(p))
 
         // Delete existing social posts
         await prisma.socialPost.deleteMany({
