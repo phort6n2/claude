@@ -1062,27 +1062,56 @@ function PublishedTab({ content }: { content: ContentItem }) {
         </section>
       )}
 
-      {/* Social Posts Status */}
-      <section className="bg-white rounded-lg shadow-sm border p-6">
-        <h2 className="text-lg font-semibold mb-4">Social Posts Status</h2>
-        <div className="space-y-2">
-          {content.socialPosts.map((post) => (
-            <div key={post.id} className="flex items-center justify-between py-2 border-b last:border-0">
-              <div className="flex items-center gap-2">
-                <span>{PLATFORM_ICONS[post.platform] || '📱'}</span>
-                <span>{post.platform}</span>
+      {/* Client Social Posts Status */}
+      {content.socialPosts.length > 0 && (
+        <section className="bg-white rounded-lg shadow-sm border p-6">
+          <h2 className="text-lg font-semibold mb-4">Client Social Posts</h2>
+          <div className="space-y-2">
+            {content.socialPosts.map((post) => (
+              <div key={post.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                <div className="flex items-center gap-2">
+                  <span>{PLATFORM_ICONS[post.platform] || '📱'}</span>
+                  <span>{post.platform}</span>
+                </div>
+                <span className={`px-2 py-1 rounded text-xs ${
+                  post.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' :
+                  post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
+                  'bg-gray-100 text-gray-700'
+                }`}>
+                  {post.status === 'PUBLISHED' ? 'Posted' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
+                </span>
               </div>
-              <span className={`px-2 py-1 rounded text-xs ${
-                post.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' :
-                post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
-                'bg-gray-100 text-gray-700'
-              }`}>
-                {post.status}
-              </span>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* WRHQ Social Posts Status */}
+      {content.wrhqSocialPosts.length > 0 && (
+        <section className="bg-white rounded-lg shadow-sm border p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <span className="text-xs bg-purple-500 text-white px-2 py-0.5 rounded">WRHQ</span>
+            Social Posts
+          </h2>
+          <div className="space-y-2">
+            {content.wrhqSocialPosts.map((post) => (
+              <div key={post.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                <div className="flex items-center gap-2">
+                  <span>{PLATFORM_ICONS[post.platform] || '📱'}</span>
+                  <span>{post.platform}</span>
+                </div>
+                <span className={`px-2 py-1 rounded text-xs ${
+                  post.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' :
+                  post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
+                  'bg-gray-100 text-gray-700'
+                }`}>
+                  {post.status === 'PUBLISHED' ? 'Posted' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   )
 }

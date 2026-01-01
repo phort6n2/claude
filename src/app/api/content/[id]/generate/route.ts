@@ -359,6 +359,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         // Generate social posts for each platform using Claude
         const socialPostsData = await Promise.all(
           platforms.map(async (platform) => {
+            const platformUpper = platform.toUpperCase() as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM'
             try {
               const result = await generateSocialCaption({
                 platform: platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
@@ -369,7 +370,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
               })
 
               return {
-                platform: platform as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
+                platform: platformUpper,
                 caption: result.caption,
                 hashtags: result.hashtags,
                 firstComment: result.firstComment,
@@ -378,7 +379,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
               console.error(`Failed to generate ${platform} post:`, error)
               // Fallback to simple template
               return {
-                platform: platform as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
+                platform: platformUpper,
                 caption: `${contentItem.paaQuestion}\n\nLearn more on our blog!`,
                 hashtags: ['AutoGlass', 'WindshieldRepair'],
                 firstComment: '',
