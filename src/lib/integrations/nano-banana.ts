@@ -63,10 +63,18 @@ export async function generateImage(params: ImageGenerationParams): Promise<Imag
 
   const prompt = `Create a professional ${dimensions.ratio} social media marketing banner (${dimensions.size}) for ${params.businessName} with the following specifications:
 
+EXACT TEXT TO USE (copy these exactly - do not use placeholders):
+- Headline: "${headlineText}"
+- Business Name: "${params.businessName}"
+- Location Text: "${location}"
+- Phone Number: "${params.phone}"
+- Website URL: "${params.website}"
+- Address: "${params.address}"
+
 HEADLINE AND TEXT CONTENT:
 Main headline in extra bold white sans-serif font (80-100pt, similar to Montserrat Black): "${headlineText}"
 
-Company branding: "${params.businessName}" with circular badge logo showing "${location}" in red and white on dark background
+Company branding: "${params.businessName}" with circular badge logo showing the text "${location}" in red and white on dark background
 
 Contact information with blue circular icons:
 - Phone: ${params.phone} (blue phone icon)
@@ -88,7 +96,12 @@ Random-colored modern sports car (Japanese or American) photographed from front 
 DESIGN STYLE:
 Modern professional automotive marketing with bold typography and dynamic geometric elements. Layered shapes create depth and movement. Strong contrast between dark background and white text ensures readability. Diagonal shapes guide eye from headline through company info to vehicle image. Gear icons and angular design suggest precision and technical expertise. Overall composition balances professionalism with dynamic energy suitable for digital marketing and social media use.
 
-CRITICAL: Use the exact text values provided above. Do NOT use placeholder text like {location} or {phone}. No watermarks.`
+CRITICAL REQUIREMENTS:
+1. Use ONLY the exact text values provided in "EXACT TEXT TO USE" section above
+2. The location badge must display "${location}" - NOT "{location}" or any placeholder
+3. The website must show "${params.website}" exactly as written
+4. Do NOT use any placeholder syntax like {variable} or [placeholder]
+5. No watermarks or attribution marks`
 
   // Use Gemini 3 Pro Image Preview for image generation
   const response = await fetch(

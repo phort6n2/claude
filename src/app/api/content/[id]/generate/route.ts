@@ -259,7 +259,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           state: contentItem.client.state,
           paaQuestion: contentItem.paaQuestion,
           phone: contentItem.client.phone,
-          website: contentItem.client.ctaUrl || contentItem.client.wordpressUrl || '',
+          website: contentItem.client.wordpressUrl || contentItem.client.ctaUrl || '',
           address: address,
           apiKey: imageApiKey || '',
         })
