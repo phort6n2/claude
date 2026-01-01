@@ -140,6 +140,7 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
   const [activeTab, setActiveTab] = useState<Tab>('review')
   const [saving, setSaving] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const [lightboxImage, setLightboxImage] = useState<{ url: string; alt: string; type: string } | null>(null)
 
   const handleCancelDelete = async () => {
     if (!confirm('Cancel generation and delete this content item? This cannot be undone.')) {
@@ -186,6 +187,17 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
 
     return () => clearInterval(interval)
   }, [content?.status, loadContent])
+
+  // Close lightbox on ESC key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setLightboxImage(null)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   async function updateApproval(field: string, value: string) {
     if (!content) return
@@ -342,7 +354,7 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
       {/* Tab Content */}
       <div className="p-6">
         {activeTab === 'review' && (
-          <ReviewTab content={content} onApprove={updateApproval} saving={saving} />
+          <ReviewTab content={content} onApprove={updateApproval} saving={saving} onImageClick={setLightboxImage} />
         )}
         {activeTab === 'published' && (
           <PublishedTab content={content} />
@@ -351,6 +363,35 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
           <MediaTab content={content} onUpdate={loadContent} />
         )}
       </div>
+
+      {/* Image Lightbox Modal */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          onClick={() => setLightboxImage(null)}
+        >
+          <div className="relative max-w-6xl max-h-[90vh] w-full">
+            <button
+              onClick={() => setLightboxImage(null)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 text-xl font-bold"
+            >
+              Close (ESC)
+            </button>
+            <div className="bg-white rounded-lg overflow-hidden shadow-2xl">
+              <img
+                src={lightboxImage.url}
+                alt={lightboxImage.alt}
+                className="w-full h-auto max-h-[80vh] object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+              <div className="p-4 bg-gray-50 border-t">
+                <p className="font-medium text-gray-800">{lightboxImage.type}</p>
+                <p className="text-sm text-gray-500">{lightboxImage.alt}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -363,10 +404,12 @@ function ReviewTab({
   content,
   onApprove,
   saving,
+  onImageClick,
 }: {
   content: ContentItem
   onApprove: (field: string, value: string) => void
   saving: boolean
+  onImageClick: (image: { url: string; alt: string; type: string }) => void
 }) {
   return (
     <div className="space-y-6 max-w-5xl">
@@ -439,7 +482,15 @@ function ReviewTab({
         {content.images.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {content.images.map((image) => (
-              <div key={image.id} className="border rounded-lg overflow-hidden">
+              <div
+                key={image.id}
+                className="border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => onImageClick({
+                  url: image.gcsUrl,
+                  alt: image.altText || image.imageType,
+                  type: image.imageType.replace(/_/g, ' ')
+                })}
+              >
                 <img
                   src={image.gcsUrl}
                   alt={image.altText || image.imageType}
@@ -450,6 +501,7 @@ function ReviewTab({
                     {image.imageType.replace(/_/g, ' ')}
                   </p>
                   <p className="text-xs text-gray-400">{image.width}x{image.height}</p>
+                  <p className="text-xs text-blue-500 mt-1">Click to enlarge</p>
                 </div>
               </div>
             ))}
