@@ -143,7 +143,10 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
   const [lightboxImage, setLightboxImage] = useState<{ url: string; alt: string; type: string } | null>(null)
 
   const handleCancelDelete = async () => {
-    if (!confirm('Cancel generation and delete this content item? This cannot be undone.')) {
+    const message = content?.status === 'GENERATING'
+      ? 'Cancel generation and delete this content item? This cannot be undone.'
+      : 'Delete this content item? This cannot be undone.'
+    if (!confirm(message)) {
       return
     }
     setCancelling(true)
@@ -285,10 +288,23 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
                   Delete
                 </button>
               </>
+            ) : content.status !== 'PUBLISHED' ? (
+              <>
+                <div className="text-sm text-gray-500">
+                  {approvedCount} of {totalRequired} approved
+                </div>
+                <button
+                  onClick={handleCancelDelete}
+                  disabled={cancelling}
+                  className="flex items-center gap-1 px-3 py-1 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+                  title="Delete this content"
+                >
+                  <XCircle className="h-4 w-4" />
+                  {cancelling ? 'Deleting...' : 'Trash'}
+                </button>
+              </>
             ) : (
-              <div className="text-sm text-gray-500">
-                {approvedCount} of {totalRequired} approved
-              </div>
+              <div className="text-sm text-green-600">Published</div>
             )}
             <div className={`px-3 py-1 rounded-full text-sm font-medium ${
               content.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' :
@@ -703,6 +719,32 @@ function PublishedTab({ content }: { content: ContentItem }) {
 
 function MediaTab({ content, onUpdate }: { content: ContentItem; onUpdate: () => void }) {
   const [generating, setGenerating] = useState<string | null>(null)
+  const [podcastPolling, setPodcastPolling] = useState(false)
+
+  // Poll for podcast status when processing
+  useEffect(() => {
+    if (content.podcast?.status !== 'PROCESSING' && content.podcastStatus !== 'processing') {
+      return
+    }
+
+    setPodcastPolling(true)
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/content/${content.id}/podcast-status`)
+        const data = await response.json()
+
+        if (data.status === 'ready' || data.status === 'failed') {
+          clearInterval(interval)
+          setPodcastPolling(false)
+          onUpdate() // Refresh content
+        }
+      } catch (error) {
+        console.error('Error polling podcast status:', error)
+      }
+    }, 10000) // Poll every 10 seconds
+
+    return () => clearInterval(interval)
+  }, [content.id, content.podcast?.status, content.podcastStatus, onUpdate])
 
   async function generatePodcast() {
     setGenerating('podcast')
@@ -737,12 +779,12 @@ function MediaTab({ content, onUpdate }: { content: ContentItem; onUpdate: () =>
           <h2 className="text-lg font-semibold">Podcast</h2>
         </div>
 
-        {content.podcast ? (
+        {content.podcast?.status === 'READY' && content.podcast.audioUrl ? (
           <div className="space-y-4">
             <audio controls className="w-full" src={content.podcast.audioUrl} />
             {content.podcast.duration && (
               <p className="text-sm text-gray-500">
-                Duration: {Math.floor(content.podcast.duration / 60)}:{String(content.podcast.duration % 60).padStart(2, '0')}
+                Duration: {Math.floor(content.podcast.duration / 60)}:{String(Math.round(content.podcast.duration) % 60).padStart(2, '0')}
               </p>
             )}
             <div>
@@ -767,6 +809,16 @@ function MediaTab({ content, onUpdate }: { content: ContentItem; onUpdate: () =>
               </button>
             </div>
           </div>
+        ) : content.podcast?.status === 'PROCESSING' || content.podcastStatus === 'processing' || podcastPolling ? (
+          <div className="text-center py-8">
+            <Mic className="h-12 w-12 text-blue-400 mx-auto mb-4 animate-pulse" />
+            <p className="text-blue-600 font-medium mb-2">Podcast is being generated...</p>
+            <p className="text-sm text-gray-500">This usually takes 2-5 minutes. The page will update automatically.</p>
+            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-400">
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              Checking status...
+            </div>
+          </div>
         ) : (
           <div className="text-center py-8">
             <Mic className="h-12 w-12 text-gray-300 mx-auto mb-4" />
@@ -779,7 +831,7 @@ function MediaTab({ content, onUpdate }: { content: ContentItem; onUpdate: () =>
               {generating === 'podcast' ? (
                 <>
                   <RefreshCw className="h-4 w-4 inline mr-2 animate-spin" />
-                  Generating...
+                  Starting...
                 </>
               ) : (
                 'Generate Podcast'

@@ -67,7 +67,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       },
     })
 
-    const results: Record<string, { success: boolean; error?: string; title?: string; count?: number }> = {}
+    const results: Record<string, { success: boolean; error?: string; title?: string; count?: number; status?: string; jobId?: string }> = {}
 
     // Generate client blog post
     if (generateBlog) {
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
         results.blog = { success: true, title: blogResult.title }
 
-        // Phase 1: Generate podcast immediately after blog (using blog content as script)
+        // Phase 1: Start podcast generation (async - don't wait for completion)
         if (generatePodcast) {
           try {
             await prisma.contentItem.update({
@@ -133,50 +133,43 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
               data: { pipelineStep: 'podcast', podcastStatus: 'generating' },
             })
 
-            // Import the podcast functions
-            const { createPodcast, waitForPodcast } = await import('@/lib/integrations/autocontent')
+            // Import the podcast function
+            const { createPodcast } = await import('@/lib/integrations/autocontent')
 
-            // Create podcast job
+            // Create podcast job (returns immediately with job ID)
             const podcastJob = await createPodcast({
               title: blogResult.title,
               script: blogResult.content,
               duration: 'default', // 8-12 minutes
             })
 
-            // Wait for podcast to complete (polls every 10 seconds, max 30 attempts = 5 minutes)
-            const podcastResult = await waitForPodcast(podcastJob.jobId)
-
-            // Create or update podcast record with the completed audio
+            // Save job ID - podcast will be polled separately
             await prisma.podcast.upsert({
               where: { contentItemId: id },
               update: {
-                audioUrl: podcastResult.audioUrl || '',
-                duration: podcastResult.duration,
                 script: blogResult.content,
                 autocontentJobId: podcastJob.jobId,
-                status: 'READY',
+                status: 'PROCESSING',
               },
               create: {
                 contentItemId: id,
                 clientId: contentItem.clientId,
-                audioUrl: podcastResult.audioUrl || '',
-                duration: podcastResult.duration,
+                audioUrl: '',
                 script: blogResult.content,
                 autocontentJobId: podcastJob.jobId,
-                status: 'READY',
+                status: 'PROCESSING',
               },
             })
 
             await prisma.contentItem.update({
               where: { id },
               data: {
-                podcastGenerated: true,
-                podcastStatus: 'ready',
-                podcastUrl: podcastResult.audioUrl,
+                podcastGenerated: false,
+                podcastStatus: 'processing',
               },
             })
 
-            results.podcast = { success: true }
+            results.podcast = { success: true, status: 'processing', jobId: podcastJob.jobId }
           } catch (error) {
             console.error('Podcast generation error:', error)
             results.podcast = { success: false, error: String(error) }
