@@ -542,9 +542,21 @@ function ReviewTab({
           body: JSON.stringify(flags),
         })
 
+        const data = await response.json()
+
         if (!response.ok) {
-          const data = await response.json()
           throw new Error(data.error || 'Publishing failed')
+        }
+
+        // Check for errors in the results even on 200 OK
+        if (data.results) {
+          const failedResults = Object.entries(data.results as Record<string, { success: boolean; error?: string }>)
+            .filter(([, result]) => !result.success && result.error)
+            .map(([key, result]) => `${key}: ${result.error}`)
+
+          if (failedResults.length > 0) {
+            throw new Error(failedResults.join('; '))
+          }
         }
       }
 

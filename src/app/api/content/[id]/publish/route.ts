@@ -140,12 +140,17 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       try {
         const wrhqEnabled = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_ENABLED)
 
-        if (wrhqEnabled === 'true' && contentItem.wrhqBlogApproved === 'APPROVED') {
+        // Check if WRHQ is enabled
+        if (wrhqEnabled !== 'true') {
+          results.wrhqBlog = { success: false, error: 'WRHQ is not enabled in settings' }
+        } else {
           const wrhqWpUrl = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_URL)
           const wrhqWpUser = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_USERNAME)
           const wrhqWpPass = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_APP_PASSWORD)
 
-          if (wrhqWpUrl && wrhqWpUser && wrhqWpPass) {
+          if (!wrhqWpUrl || !wrhqWpUser || !wrhqWpPass) {
+            results.wrhqBlog = { success: false, error: 'WRHQ WordPress credentials not configured in settings' }
+          } else {
             // Use the 16:9 landscape image for WRHQ blog
             const featuredImage = contentItem.images.find((img: Image) => img.imageType === 'BLOG_FEATURED')
 
@@ -195,12 +200,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
 
     // Schedule client social posts
-    if (scheduleSocial && contentItem.socialApproved === 'APPROVED') {
+    if (scheduleSocial && contentItem.socialGenerated) {
       try {
         const socialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
 
         for (const socialPost of contentItem.socialPosts) {
-          if (!socialPost.approved) continue
 
           const accountId = socialAccountIds?.[socialPost.platform.toLowerCase()]
           if (!accountId) continue
@@ -247,13 +251,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
 
     // Schedule WRHQ social posts
-    if (scheduleWrhqSocial && contentItem.wrhqSocialApproved === 'APPROVED') {
+    if (scheduleWrhqSocial && contentItem.wrhqSocialGenerated) {
       try {
         const wrhqEnabled = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_ENABLED)
 
         if (wrhqEnabled === 'true') {
           for (const wrhqPost of contentItem.wrhqSocialPosts) {
-            if (!wrhqPost.approved) continue
 
             const accountIdKey = `WRHQ_LATE_${wrhqPost.platform}_ID` as keyof typeof WRHQ_SETTINGS_KEYS
             const accountId = await getSetting(WRHQ_SETTINGS_KEYS[accountIdKey])
