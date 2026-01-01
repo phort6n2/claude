@@ -18,14 +18,16 @@ export async function uploadToGCS(
     process.env.GCS_BUCKET_NAME ||
     await getSetting('GCS_BUCKET_NAME') ||
     await getSetting('GCS_BUCKET') ||
-    await getSetting('GOOGLE_CLOUD_BUCKET')
+    await getSetting('GOOGLE_CLOUD_BUCKET') ||
+    await getSetting('GOOGLE_CLOUD_STORAGE_BUCKET')
 
   const credentialsJson =
     process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
     await getSetting('GCS_CREDENTIALS_JSON') ||
     await getSetting('GOOGLE_APPLICATION_CREDENTIALS_JSON') ||
     await getSetting('GCS_CREDENTIALS') ||
-    await getSetting('GCS_SERVICE_ACCOUNT_KEY')
+    await getSetting('GCS_SERVICE_ACCOUNT_KEY') ||
+    await getSetting('GOOGLE_CLOUD_CREDENTIALS')
 
   if (!bucketName) {
     throw new Error('GCS bucket name not configured. Add GCS_BUCKET_NAME to Settings > API Keys.')
