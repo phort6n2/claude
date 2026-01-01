@@ -1,6 +1,6 @@
-// Google AI Studio - Imagen 3 Integration for Image Generation
+// Google AI Studio - Gemini 2.0 Flash Image Generation
 // API Key from: https://aistudio.google.com/app/apikey
-// Model: imagen-3.0-generate-001
+// Model: gemini-2.0-flash-exp-image-generation
 
 interface ImageGenerationParams {
   businessName: string
@@ -57,23 +57,24 @@ CONTACT INFO TO INCLUDE:
 
 STYLE: Modern professional automotive marketing with bold typography, geometric elements, and dynamic energy suitable for social media.`
 
-  // Use Imagen 3 for image generation
+  // Use Gemini 2.0 Flash for image generation
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${params.apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${params.apiKey}`,
     {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        instances: [
-          { prompt: prompt }
+        contents: [
+          {
+            parts: [
+              { text: prompt }
+            ]
+          }
         ],
-        parameters: {
-          sampleCount: 1,
-          aspectRatio: dimensions.ratio,
-          safetyFilterLevel: 'block_only_high',
-          personGeneration: 'dont_allow',
+        generationConfig: {
+          responseModalities: ['TEXT', 'IMAGE'],
         }
       }),
     }
@@ -81,29 +82,44 @@ STYLE: Modern professional automotive marketing with bold typography, geometric 
 
   if (!response.ok) {
     const errorText = await response.text()
-    console.error('Imagen API error response:', errorText)
-    throw new Error(`Imagen API error (${response.status}): ${errorText}`)
+    console.error('Gemini API error response:', errorText)
+    throw new Error(`Gemini API error (${response.status}): ${errorText}`)
   }
 
   const data = await response.json()
-  console.log('Imagen API response structure:', JSON.stringify(data, null, 2).substring(0, 500))
+  console.log('Gemini API response received')
 
-  // Extract image from Imagen response
-  const predictions = data.predictions
-  if (!predictions || predictions.length === 0) {
-    throw new Error('No predictions in Imagen response')
+  // Extract image from Gemini response
+  const candidates = data.candidates
+  if (!candidates || candidates.length === 0) {
+    console.error('No candidates in response:', JSON.stringify(data, null, 2))
+    throw new Error('No candidates in Gemini response')
   }
 
-  const imageData = predictions[0].bytesBase64Encoded
-  if (!imageData) {
-    throw new Error('No image data in Imagen response')
+  const parts = candidates[0].content?.parts
+  if (!parts || parts.length === 0) {
+    console.error('No parts in response:', JSON.stringify(candidates[0], null, 2))
+    throw new Error('No parts in Gemini response')
   }
+
+  // Find the image part
+  const imagePart = parts.find((part: { inlineData?: { mimeType: string; data: string } }) =>
+    part.inlineData?.mimeType?.startsWith('image/')
+  )
+
+  if (!imagePart || !imagePart.inlineData) {
+    console.error('No image in parts:', JSON.stringify(parts, null, 2).substring(0, 500))
+    throw new Error('No image generated - model returned text only')
+  }
+
+  const base64Image = imagePart.inlineData.data
+  const mimeType = imagePart.inlineData.mimeType || 'image/png'
 
   return {
-    url: `data:image/png;base64,${imageData}`,
+    url: `data:${mimeType};base64,${base64Image}`,
     width: dimensions.width,
     height: dimensions.height,
-    base64: imageData,
+    base64: base64Image,
   }
 }
 
@@ -124,7 +140,7 @@ export async function generateBothImages(params: {
     return results
   }
 
-  console.log('Starting image generation with Imagen 3...')
+  console.log('Starting image generation with Gemini 2.0 Flash...')
 
   // Generate 16:9 landscape image
   try {
