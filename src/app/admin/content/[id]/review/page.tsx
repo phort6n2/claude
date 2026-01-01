@@ -830,7 +830,7 @@ function ReviewTab({
                 </button>
                 <button
                   onClick={() => publishContent('social')}
-                  disabled={publishing === 'social' || !content.socialGenerated || content.socialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED')}
+                  disabled={publishing === 'social' || !content.socialGenerated || content.socialPosts.every(p => p.status === 'PUBLISHED')}
                   className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {publishing === 'social' ? (
@@ -838,13 +838,13 @@ function ReviewTab({
                       <RefreshCw className="h-4 w-4 animate-spin" />
                       Posting...
                     </>
-                  ) : content.socialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED') ? (
+                  ) : content.socialPosts.every(p => p.status === 'PUBLISHED') ? (
                     <>
                       <Check className="h-4 w-4" />
                       Posted
                     </>
                   ) : (
-                    'Post Now'
+                    'Post'
                   )}
                 </button>
               </div>
@@ -884,7 +884,7 @@ function ReviewTab({
                 </button>
                 <button
                   onClick={() => publishContent('wrhqSocial')}
-                  disabled={publishing === 'wrhqSocial' || !content.wrhqSocialGenerated || content.wrhqSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED')}
+                  disabled={publishing === 'wrhqSocial' || !content.wrhqSocialGenerated || content.wrhqSocialPosts.every(p => p.status === 'PUBLISHED')}
                   className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {publishing === 'wrhqSocial' ? (
@@ -892,13 +892,13 @@ function ReviewTab({
                       <RefreshCw className="h-4 w-4 animate-spin" />
                       Posting...
                     </>
-                  ) : content.wrhqSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED') ? (
+                  ) : content.wrhqSocialPosts.every(p => p.status === 'PUBLISHED') ? (
                     <>
                       <Check className="h-4 w-4" />
                       Posted
                     </>
                   ) : (
-                    'Post Now'
+                    'Post'
                   )}
                 </button>
               </div>
@@ -1359,7 +1359,7 @@ function SocialPostPreview({
             Learn more
           </button>
         </div>
-        <CharacterCount caption={post.caption} platform={post.platform} limit={1500} />
+        <CharacterCount caption={post.caption} platform={post.platform} limit={300} />
       </div>
     )
   }
@@ -1413,7 +1413,7 @@ function StatusBadge({ status }: { status: string }) {
 
 // Helper component for character count
 function CharacterCount({ caption, platform, limit }: { caption: string; platform: string; limit?: number }) {
-  const charLimit = limit || (platform === 'TWITTER' ? 280 : platform === 'GBP' ? 1500 : undefined)
+  const charLimit = limit || (platform === 'TWITTER' ? 280 : platform === 'GBP' ? 300 : undefined)
   const isOverLimit = charLimit && caption.length > charLimit
 
   return (

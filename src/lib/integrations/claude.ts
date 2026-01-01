@@ -182,6 +182,7 @@ interface SocialCaptionParams {
   blogExcerpt: string
   businessName: string
   blogUrl: string
+  location?: string  // City, State format for GBP
 }
 
 export async function generateSocialCaption(params: SocialCaptionParams): Promise<{
@@ -203,7 +204,7 @@ export async function generateSocialCaption(params: SocialCaptionParams): Promis
 
 **Business Info:**
 Business: ${params.businessName}
-Location: ${params.blogExcerpt.includes(',') ? params.blogExcerpt.split(',')[0] : 'your area'}
+Location: ${params.location || 'your area'}
 Topic: ${params.blogTitle}
 
 **Writing Guidelines:**

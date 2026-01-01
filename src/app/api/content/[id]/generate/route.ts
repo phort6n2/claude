@@ -367,6 +367,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 blogExcerpt: blogPost?.excerpt || contentItem.paaQuestion,
                 businessName: contentItem.client.businessName,
                 blogUrl: contentItem.client.wordpressUrl || '',
+                location: `${contentItem.client.city}, ${contentItem.client.state}`,
               })
 
               return {
