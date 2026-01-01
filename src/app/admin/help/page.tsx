@@ -11,7 +11,12 @@ import {
   Plus,
   Settings,
   ArrowRight,
-  Lightbulb
+  Lightbulb,
+  Key,
+  Image,
+  Mic,
+  Pencil,
+  ExternalLink
 } from 'lucide-react'
 
 export default function HelpPage() {
@@ -329,6 +334,122 @@ export default function HelpPage() {
             </CardContent>
           </Card>
 
+          {/* API Keys Setup */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-5 w-5 text-amber-500" />
+                API Keys Setup
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <p className="text-gray-600">
+                The content generation pipeline requires several API keys. Add these in Settings &gt; API Keys.
+              </p>
+
+              {/* Blog Generation */}
+              <div className="p-4 border rounded-lg space-y-3">
+                <h4 className="font-medium flex items-center gap-2">
+                  <Pencil className="h-4 w-4 text-blue-500" />
+                  Blog Post Generation (Required)
+                </h4>
+                <div className="text-sm text-gray-600 space-y-2">
+                  <p><strong>Key:</strong> ANTHROPIC_API_KEY</p>
+                  <p>
+                    Uses Claude AI to generate SEO-optimized blog posts. Get your API key from the Anthropic Console.
+                  </p>
+                  <a
+                    href="https://console.anthropic.com/settings/keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700"
+                  >
+                    Get API Key <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              </div>
+
+              {/* Image Generation */}
+              <div className="p-4 border rounded-lg space-y-3">
+                <h4 className="font-medium flex items-center gap-2">
+                  <Image className="h-4 w-4 text-green-500" />
+                  Image Generation (Optional)
+                </h4>
+                <div className="text-sm text-gray-600 space-y-2">
+                  <p><strong>Key:</strong> NANO_BANANA_API_KEY</p>
+                  <p>
+                    Uses Google AI Studio (Gemini) to generate blog featured images and social media graphics.
+                    The model creates professional automotive imagery customized for each client&apos;s brand.
+                  </p>
+                  <div className="bg-green-50 p-3 rounded-lg mt-2">
+                    <h5 className="font-medium text-green-900 mb-2">Setup Steps:</h5>
+                    <ol className="space-y-1 text-green-800">
+                      <li>1. Go to Google AI Studio</li>
+                      <li>2. Sign in with your Google account</li>
+                      <li>3. Click &quot;Get API key&quot; in the top navigation</li>
+                      <li>4. Create a new API key or use an existing one</li>
+                      <li>5. Add the key in Settings &gt; API Keys as &quot;NANO_BANANA_API_KEY&quot;</li>
+                    </ol>
+                  </div>
+                  <div className="mt-2">
+                    <a
+                      href="https://aistudio.google.com/app/apikey"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700"
+                    >
+                      Get Google AI Studio API Key <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Images generated: Blog featured, Facebook, Instagram (feed &amp; story), Twitter, LinkedIn
+                  </p>
+                </div>
+              </div>
+
+              {/* Podcast Generation */}
+              <div className="p-4 border rounded-lg space-y-3">
+                <h4 className="font-medium flex items-center gap-2">
+                  <Mic className="h-4 w-4 text-purple-500" />
+                  Podcast Generation (Optional)
+                </h4>
+                <div className="text-sm text-gray-600 space-y-2">
+                  <p><strong>Key:</strong> AUTOCONTENT_API_KEY</p>
+                  <p>
+                    Uses AutoContent service to convert blog posts into audio podcasts with
+                    AI-generated voice narration.
+                  </p>
+                  <div className="bg-purple-50 p-3 rounded-lg mt-2">
+                    <p className="text-purple-800 text-xs">
+                      Contact your administrator for AutoContent API access.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 p-4 rounded-lg">
+                <h4 className="font-medium text-yellow-900 mb-2">Generation Order</h4>
+                <p className="text-sm text-yellow-800">
+                  When content is generated, the pipeline runs in order:
+                  <strong> Blog → Podcast → Images → Social Posts → WRHQ Content</strong>.
+                  If any step fails (e.g., missing API key), the status will show &quot;Failed&quot;
+                  but earlier completed steps are saved.
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <Link
+                  href="/admin/settings"
+                  className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700"
+                >
+                  <Settings className="h-4 w-4" />
+                  Configure API Keys
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Settings */}
           <Card>
             <CardHeader>
@@ -345,7 +466,7 @@ export default function HelpPage() {
               <ul className="space-y-2 text-sm text-gray-600">
                 <li className="flex items-start gap-2">
                   <ArrowRight className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <strong>API Keys</strong> - OpenAI, Podbean, Google Places, etc.
+                  <strong>API Keys</strong> - Anthropic, Google AI Studio, AutoContent, etc.
                 </li>
                 <li className="flex items-start gap-2">
                   <ArrowRight className="h-4 w-4 mt-0.5 flex-shrink-0" />
