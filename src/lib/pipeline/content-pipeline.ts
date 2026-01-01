@@ -9,7 +9,7 @@ import { uploadFromUrl } from '../integrations/gcs'
 import { generateSchemaGraph } from './schema-markup'
 import { countWords, retryWithBackoff } from '../utils'
 import { decrypt } from '../encryption'
-import { getWRHQConfig, getWRHQLateAccountIds } from '../settings'
+import { getSetting, getWRHQConfig, getWRHQLateAccountIds } from '../settings'
 
 type PipelineStep = 'blog' | 'images' | 'wordpress' | 'wrhq' | 'podcast' | 'videos' | 'social'
 
@@ -116,6 +116,9 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
     // Build address string
     const address = `${contentItem.client.streetAddress}, ${contentItem.client.city}, ${contentItem.client.state} ${contentItem.client.postalCode}`
 
+    // Get image generation API key from database settings
+    const imageApiKey = await getSetting('NANO_BANANA_API_KEY')
+
     const images = await retryWithBackoff(async () => {
       return generateBothImages({
         businessName: contentItem.client.businessName,
@@ -125,6 +128,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         phone: contentItem.client.phone,
         website: contentItem.client.ctaUrl || contentItem.client.wordpressUrl || '',
         address: address,
+        apiKey: imageApiKey || '',
       })
     })
 

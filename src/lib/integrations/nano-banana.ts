@@ -1,6 +1,6 @@
 // Google AI Studio (Gemini) Integration for Image Generation
 // API Key from: https://aistudio.google.com/app/apikey
-// Model: gemini-2.0-flash-preview-image-generation
+// Model: gemini-2.0-flash-exp (experimental with image generation)
 
 interface ImageGenerationParams {
   businessName: string
@@ -11,6 +11,7 @@ interface ImageGenerationParams {
   website: string
   address: string
   aspectRatio: '16:9' | '1:1'
+  apiKey: string // API key passed from caller
 }
 
 interface ImageResult {
@@ -27,8 +28,7 @@ const IMAGE_SIZES = {
 }
 
 export async function generateImage(params: ImageGenerationParams): Promise<ImageResult> {
-  const apiKey = process.env.NANO_BANANA_API_KEY
-  if (!apiKey) {
+  if (!params.apiKey) {
     throw new Error('NANO_BANANA_API_KEY (Google AI Studio) is not configured')
   }
 
@@ -66,9 +66,9 @@ Random-colored modern sports car (Japanese or American) photographed from front 
 DESIGN STYLE:
 Modern professional automotive marketing with bold typography and dynamic geometric elements. Layered shapes create depth and movement. Strong contrast between dark background and white text ensures readability. Diagonal shapes guide eye from headline through company info to vehicle image. Gear icons and angular design suggest precision and technical expertise. Overall composition balances professionalism with dynamic energy suitable for digital marketing and social media use.`
 
-  // Use Gemini 2.0 Flash for image generation
+  // Use Gemini 2.0 Flash Experimental for image generation
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${params.apiKey}`,
     {
       method: 'POST',
       headers: {
@@ -136,8 +136,15 @@ export async function generateBothImages(params: {
   phone: string
   website: string
   address: string
+  apiKey: string // API key from database settings
 }): Promise<{ landscape?: ImageResult; square?: ImageResult }> {
   const results: { landscape?: ImageResult; square?: ImageResult } = {}
+
+  // Skip if no API key
+  if (!params.apiKey) {
+    console.log('Skipping image generation - NANO_BANANA_API_KEY not configured')
+    return results
+  }
 
   // Generate 16:9 landscape image
   try {
@@ -145,6 +152,7 @@ export async function generateBothImages(params: {
       ...params,
       aspectRatio: '16:9',
     })
+    console.log('Generated landscape image successfully')
   } catch (error) {
     console.error('Failed to generate landscape image:', error)
   }
@@ -155,6 +163,7 @@ export async function generateBothImages(params: {
       ...params,
       aspectRatio: '1:1',
     })
+    console.log('Generated square image successfully')
   } catch (error) {
     console.error('Failed to generate square image:', error)
   }

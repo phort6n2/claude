@@ -193,6 +193,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           data: { pipelineStep: 'images' },
         })
 
+        // Get image generation API key from database settings
+        const imageApiKey = await getSetting('NANO_BANANA_API_KEY')
+
         // Build address string
         const address = `${contentItem.client.streetAddress}, ${contentItem.client.city}, ${contentItem.client.state} ${contentItem.client.postalCode}`
 
@@ -205,6 +208,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           phone: contentItem.client.phone,
           website: contentItem.client.ctaUrl || contentItem.client.wordpressUrl || '',
           address: address,
+          apiKey: imageApiKey || '',
         })
 
         // Delete existing images and create new ones
