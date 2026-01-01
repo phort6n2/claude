@@ -53,13 +53,11 @@ export async function compressImageForPlatform(
 
   console.log(`Image check for ${platform}: ${(originalSize / 1024 / 1024).toFixed(2)}MB, format: ${originalFormat} (limit: ${(sizeLimit / 1024 / 1024).toFixed(2)}MB)`)
 
-  // GBP requires PNG format (JPEG/JPG causes issues with their API)
-  // Always convert to PNG for GBP regardless of size
-  const isGbp = platformLower === 'gbp'
-  const needsFormatConversion = isGbp && originalFormat !== 'png'
+  // Always convert to PNG for all platforms for consistency
+  const needsFormatConversion = originalFormat !== 'png'
   const needsSizeReduction = originalSize > sizeLimit
 
-  // If no conversion needed and under size limit, return original
+  // If already PNG and under size limit, return original
   if (!needsFormatConversion && !needsSizeReduction) {
     return {
       url: imageUrl,
@@ -70,12 +68,6 @@ export async function compressImageForPlatform(
   }
 
   console.log(`Processing image for ${platform}... (format conversion: ${needsFormatConversion}, size reduction: ${needsSizeReduction})`)
-
-  // Start compression with progressive quality reduction
-  let compressedBuffer: Buffer
-  let quality = 85
-  const minQuality = 30
-  const qualityStep = 10
 
   // Calculate target dimensions (maintain aspect ratio, reduce if very large)
   let targetWidth = metadata.width || 1200
@@ -88,49 +80,30 @@ export async function compressImageForPlatform(
     targetHeight = Math.round(targetHeight * scale)
   }
 
-  // GBP: Always use PNG to avoid JPEG/JPG confusion
-  // Others: Use JPEG for better compression
-  const outputFormat = isGbp ? 'png' : 'jpeg'
+  // Always use PNG format for all platforms
+  let compressedBuffer: Buffer
 
   do {
-    const sharpInstance = sharp(originalBuffer)
+    compressedBuffer = await sharp(originalBuffer)
       .resize(targetWidth, targetHeight, {
         fit: 'inside',
         withoutEnlargement: true,
       })
+      .png({
+        compressionLevel: 9,
+        palette: true,
+      })
+      .toBuffer()
 
-    if (outputFormat === 'png') {
-      compressedBuffer = await sharpInstance
-        .png({
-          compressionLevel: 9,
-          palette: true,
-        })
-        .toBuffer()
-    } else {
-      compressedBuffer = await sharpInstance
-        .jpeg({
-          quality,
-          progressive: true,
-          mozjpeg: true,
-        })
-        .toBuffer()
-    }
+    console.log(`Compression attempt: format=png, size=${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
 
-    console.log(`Compression attempt: format=${outputFormat}, quality=${quality}, size=${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
-
-    // If still too large, reduce quality or dimensions
+    // If still too large, reduce dimensions
     if (compressedBuffer.length > sizeLimit) {
-      quality -= qualityStep
-
-      // If quality is already at minimum, reduce dimensions
-      if (quality < minQuality) {
-        quality = 60 // Reset quality
-        targetWidth = Math.round(targetWidth * 0.8)
-        targetHeight = Math.round(targetHeight * 0.8)
-        console.log(`Reducing dimensions to ${targetWidth}x${targetHeight}`)
-      }
+      targetWidth = Math.round(targetWidth * 0.8)
+      targetHeight = Math.round(targetHeight * 0.8)
+      console.log(`Reducing dimensions to ${targetWidth}x${targetHeight}`)
     }
-  } while (compressedBuffer.length > sizeLimit && (quality >= minQuality || targetWidth > 400))
+  } while (compressedBuffer.length > sizeLimit && targetWidth > 400)
 
   // If we still couldn't get under the limit, throw an error
   if (compressedBuffer.length > sizeLimit) {
@@ -139,11 +112,9 @@ export async function compressImageForPlatform(
 
   // Upload compressed image to GCS
   const timestamp = Date.now()
-  const extension = outputFormat
-  const filename = `content/${contentItemId}/compressed-${platform}-${timestamp}.${extension}`
-  const contentType = outputFormat === 'png' ? 'image/png' : 'image/jpeg'
+  const filename = `content/${contentItemId}/compressed-${platform}-${timestamp}.png`
 
-  const uploadResult = await uploadToGCS(compressedBuffer, filename, contentType)
+  const uploadResult = await uploadToGCS(compressedBuffer, filename, 'image/png')
 
   console.log(`Compressed image uploaded: ${uploadResult.url} (${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB)`)
 
@@ -196,6 +167,7 @@ const BLOG_IMAGE_CONFIG = {
  * Compresses an image optimized for blog display
  * - Targets 2MB or less for fast page loading
  * - Resizes to max 1600px width for web display
+ * - Always outputs PNG format for consistency
  * - Returns original URL if already optimized
  */
 export async function compressImageForBlog(
@@ -220,9 +192,10 @@ export async function compressImageForBlog(
   // Check if compression/resize is needed
   const needsResize = currentWidth > BLOG_IMAGE_CONFIG.maxWidth || currentHeight > BLOG_IMAGE_CONFIG.maxHeight
   const needsSizeReduction = originalSize > BLOG_IMAGE_CONFIG.maxSizeBytes
+  const needsFormatConversion = metadata.format !== 'png'
 
-  if (!needsResize && !needsSizeReduction) {
-    console.log(`Blog image already optimized: ${(originalSize / 1024 / 1024).toFixed(2)}MB, ${currentWidth}x${currentHeight}`)
+  if (!needsResize && !needsSizeReduction && !needsFormatConversion) {
+    console.log(`Blog image already optimized: ${(originalSize / 1024 / 1024).toFixed(2)}MB, ${currentWidth}x${currentHeight}, format: png`)
     return {
       url: imageUrl,
       originalSize,
@@ -231,13 +204,9 @@ export async function compressImageForBlog(
     }
   }
 
-  console.log(`Compressing blog image: ${(originalSize / 1024 / 1024).toFixed(2)}MB, ${currentWidth}x${currentHeight}`)
-
-  const isJpeg = metadata.format === 'jpeg' || metadata.format === 'jpg'
-  const outputFormat = isJpeg ? 'jpeg' : 'jpeg' // Convert all to JPEG for better compression
+  console.log(`Compressing blog image: ${(originalSize / 1024 / 1024).toFixed(2)}MB, ${currentWidth}x${currentHeight}, format: ${metadata.format}`)
 
   let compressedBuffer: Buffer
-  let quality = BLOG_IMAGE_CONFIG.quality
   let targetWidth = Math.min(currentWidth, BLOG_IMAGE_CONFIG.maxWidth)
   let targetHeight = Math.min(currentHeight, BLOG_IMAGE_CONFIG.maxHeight)
 
@@ -247,33 +216,27 @@ export async function compressImageForBlog(
         fit: 'inside',
         withoutEnlargement: true,
       })
-      .jpeg({
-        quality,
-        progressive: true,
-        mozjpeg: true,
+      .png({
+        compressionLevel: 9,
+        palette: true,
       })
       .toBuffer()
 
-    console.log(`Blog compression: quality=${quality}, size=${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
+    console.log(`Blog compression: format=png, size=${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
 
     if (compressedBuffer.length > BLOG_IMAGE_CONFIG.maxSizeBytes) {
-      quality -= 5
-
-      if (quality < BLOG_IMAGE_CONFIG.minQuality) {
-        // Reduce dimensions if quality alone isn't enough
-        quality = 75
-        targetWidth = Math.round(targetWidth * 0.85)
-        targetHeight = Math.round(targetHeight * 0.85)
-        console.log(`Reducing blog image dimensions to ${targetWidth}x${targetHeight}`)
-      }
+      // Reduce dimensions if still too large
+      targetWidth = Math.round(targetWidth * 0.85)
+      targetHeight = Math.round(targetHeight * 0.85)
+      console.log(`Reducing blog image dimensions to ${targetWidth}x${targetHeight}`)
     }
-  } while (compressedBuffer.length > BLOG_IMAGE_CONFIG.maxSizeBytes && (quality >= BLOG_IMAGE_CONFIG.minQuality || targetWidth > 800))
+  } while (compressedBuffer.length > BLOG_IMAGE_CONFIG.maxSizeBytes && targetWidth > 800)
 
   // Upload compressed image to GCS
   const timestamp = Date.now()
-  const filename = `content/${contentItemId}/compressed-${suffix}-${timestamp}.jpg`
+  const filename = `content/${contentItemId}/compressed-${suffix}-${timestamp}.png`
 
-  const uploadResult = await uploadToGCS(compressedBuffer, filename, 'image/jpeg')
+  const uploadResult = await uploadToGCS(compressedBuffer, filename, 'image/png')
 
   console.log(`Blog image compressed: ${(originalSize / 1024 / 1024).toFixed(2)}MB → ${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
 
