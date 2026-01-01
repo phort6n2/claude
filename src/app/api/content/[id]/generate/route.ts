@@ -432,10 +432,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
               where: { contentItemId: id, imageType: 'BLOG_FEATURED' },
             })
 
-            // Construct client blog URL
-            const clientBlogUrl = contentItem.client.wordpressUrl && blogPost
-              ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${blogPost.slug}`
-              : ''
+            // Use the published blog URL if available, otherwise construct from slug
+            // The published URL is set after Step 1 completes and the blog is on WordPress
+            const clientBlogUrl = blogPost?.wordpressUrl
+              ? blogPost.wordpressUrl
+              : (contentItem.client.wordpressUrl && blogPost
+                ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${blogPost.slug}`
+                : '')
 
             // Import and call the WRHQ blog generation function
             const { generateWRHQBlogPost } = await import('@/lib/integrations/claude')

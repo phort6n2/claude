@@ -2,6 +2,20 @@
 // API Key from: https://aistudio.google.com/app/apikey
 // Model: gemini-3-pro-image-preview (aka "Nano Banana Pro")
 
+// Helper function to convert string to Title Case
+function toTitleCase(str: string): string {
+  // Words that should remain lowercase (unless first word)
+  const exceptions = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'by', 'of', 'in', 'with']
+
+  return str.toLowerCase().split(' ').map((word, index) => {
+    // Always capitalize first word, otherwise check exceptions
+    if (index === 0 || !exceptions.includes(word)) {
+      return word.charAt(0).toUpperCase() + word.slice(1)
+    }
+    return word
+  }).join(' ')
+}
+
 interface ImageGenerationParams {
   businessName: string
   city: string
@@ -31,7 +45,13 @@ export async function generateImage(params: ImageGenerationParams): Promise<Imag
     throw new Error('NANO_BANANA_API_KEY (Google AI Studio) is not configured')
   }
 
-  const location = `${params.city}, ${params.state}`
+  // Ensure state is uppercase (e.g., "OR" not "Or")
+  const stateUpper = params.state.toUpperCase()
+  const location = `${params.city}, ${stateUpper}`
+
+  // Apply Title Case to PAA question for the headline
+  const headlineText = toTitleCase(params.paaQuestion)
+
   const dimensions = params.aspectRatio === '16:9'
     ? { width: 1920, height: 1080, size: '1920x1080px', ratio: '16:9' }
     : { width: 1080, height: 1080, size: '1080x1080px', ratio: '1:1' }
@@ -44,7 +64,7 @@ export async function generateImage(params: ImageGenerationParams): Promise<Imag
   const prompt = `Create a professional ${dimensions.ratio} social media marketing banner (${dimensions.size}) for ${params.businessName} with the following specifications:
 
 HEADLINE AND TEXT CONTENT:
-Main headline in extra bold white sans-serif font (80-100pt, similar to Montserrat Black): "${params.paaQuestion}"
+Main headline in extra bold white sans-serif font (80-100pt, similar to Montserrat Black): "${headlineText}"
 
 Company branding: "${params.businessName}" with circular badge logo showing "${location}" in red and white on dark background
 
