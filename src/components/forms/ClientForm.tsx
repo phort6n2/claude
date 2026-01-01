@@ -12,6 +12,7 @@ interface PodbeanPodcast {
   title: string
   logo: string
   description: string
+  website: string
 }
 
 interface ServiceLocation {
@@ -62,6 +63,7 @@ interface ClientFormData {
   socialAccountIds: Record<string, string>
   podbeanPodcastId: string
   podbeanPodcastTitle: string
+  podbeanPodcastUrl: string
 }
 
 interface ClientFormProps {
@@ -102,6 +104,7 @@ const defaultData: ClientFormData = {
   socialAccountIds: {},
   podbeanPodcastId: '',
   podbeanPodcastTitle: '',
+  podbeanPodcastUrl: '',
 }
 
 const socialPlatformOptions = [
@@ -331,6 +334,7 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
       ...prev,
       podbeanPodcastId: podcastId,
       podbeanPodcastTitle: podcast?.title || '',
+      podbeanPodcastUrl: podcast?.website || '',
     }))
   }
 

@@ -89,6 +89,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         socialAccountIds: data.socialAccountIds || null,
         podbeanPodcastId: data.podbeanPodcastId || null,
         podbeanPodcastTitle: data.podbeanPodcastTitle || null,
+        podbeanPodcastUrl: data.podbeanPodcastUrl || null,
         status: data.status || existing.status,
       },
     })

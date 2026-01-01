@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
         socialAccountIds: data.socialAccountIds || null,
         podbeanPodcastId: data.podbeanPodcastId || null,
         podbeanPodcastTitle: data.podbeanPodcastTitle || null,
+        podbeanPodcastUrl: data.podbeanPodcastUrl || null,
         status: 'ACTIVE',
       },
     })

@@ -167,9 +167,9 @@ async function ClientList() {
                         <MapPin className="h-5 w-5" />
                       </a>
                     )}
-                    {client.podbeanPodcastId && (
+                    {client.podbeanPodcastUrl && (
                       <a
-                        href={`https://www.podbean.com/podcast-detail/${client.podbeanPodcastId}`}
+                        href={client.podbeanPodcastUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-purple-500 hover:text-purple-700 transition-colors"
@@ -189,7 +189,7 @@ async function ClientList() {
                         <Building2 className="h-5 w-5" />
                       </a>
                     )}
-                    {!client.wordpressUrl && !client.googleMapsUrl && !client.podbeanPodcastId && !client.wrhqDirectoryUrl && (
+                    {!client.wordpressUrl && !client.googleMapsUrl && !client.podbeanPodcastUrl && !client.wrhqDirectoryUrl && (
                       <span className="text-gray-300 text-sm">—</span>
                     )}
                   </div>

@@ -46,6 +46,7 @@ function transformClientForForm(client: Client) {
     socialAccountIds: (client.socialAccountIds as Record<string, string>) || {},
     podbeanPodcastId: client.podbeanPodcastId ?? '',
     podbeanPodcastTitle: client.podbeanPodcastTitle ?? '',
+    podbeanPodcastUrl: client.podbeanPodcastUrl ?? '',
   }
 }
 
