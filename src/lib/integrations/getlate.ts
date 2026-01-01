@@ -65,17 +65,39 @@ export async function schedulePost(params: SchedulePostParams): Promise<Schedule
     fullCaption = `${params.caption}\n\n${hashtagsText}`
   }
 
-  // Build request body according to Late API docs
-  // https://docs.getlate.dev/
+  // Build platform-specific data object
+  // According to Late docs, platformSpecificData goes INSIDE each platform object
+  const platformSpecificData: Record<string, unknown> = {}
+
+  // Add first comment for platforms that support it (Facebook, Instagram, etc.)
+  if (params.firstComment) {
+    platformSpecificData.firstComment = params.firstComment
+  }
+
+  // Add GBP-specific "Learn More" call-to-action button
+  if (params.platform === 'gbp' && params.ctaUrl) {
+    platformSpecificData.callToAction = {
+      type: 'LEARN_MORE',
+      url: params.ctaUrl,
+    }
+  }
+
+  // Build the platform object with platformSpecificData inside it
   const latePlatform = getLatePlatform(params.platform)
+  const platformObj: Record<string, unknown> = {
+    platform: latePlatform,
+    accountId: params.accountId,
+  }
+
+  // Only add platformSpecificData if we have any
+  if (Object.keys(platformSpecificData).length > 0) {
+    platformObj.platformSpecificData = platformSpecificData
+  }
+
+  // Build request body according to Late API docs
   const requestBody: Record<string, unknown> = {
     content: fullCaption,
-    platforms: [
-      {
-        platform: latePlatform,
-        accountId: params.accountId,
-      }
-    ],
+    platforms: [platformObj],
   }
 
   // Add media if provided
@@ -94,32 +116,6 @@ export async function schedulePost(params: SchedulePostParams): Promise<Schedule
     requestBody.publishNow = true
   } else {
     requestBody.scheduledFor = params.scheduledTime.toISOString()
-  }
-
-  // Add first comment if provided
-  if (params.firstComment) {
-    requestBody.firstComment = params.firstComment
-  }
-
-  // Add GBP-specific "Learn More" call-to-action button
-  // Try multiple field name variations for compatibility
-  if (params.platform === 'gbp' && params.ctaUrl) {
-    // Primary format based on similar APIs (Ayrshare uses gbpOptions)
-    requestBody.gbpOptions = {
-      callToAction: {
-        actionType: 'LEARN_MORE',
-        url: params.ctaUrl,
-      },
-    }
-    // Also try the platformSpecificData format as fallback
-    requestBody.platformSpecificData = {
-      googlebusiness: {
-        callToAction: {
-          actionType: 'LEARN_MORE',
-          url: params.ctaUrl,
-        },
-      },
-    }
   }
 
   console.log('Late API request:', JSON.stringify(requestBody, null, 2))
