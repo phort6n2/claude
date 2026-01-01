@@ -1,6 +1,15 @@
 // getlate.dev API Integration for Social Media Scheduling
 
+import { getSetting } from '@/lib/settings'
+
 type Platform = 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram'
+
+// Helper to get Late API key from environment or settings
+async function getLateApiKey(): Promise<string | null> {
+  return process.env.GETLATE_API_KEY ||
+    await getSetting('GETLATE_API_KEY') ||
+    await getSetting('LATE_API_KEY')
+}
 
 // Map our internal platform names to Late API platform names
 const LATE_PLATFORM_MAP: Record<Platform, string> = {
@@ -44,9 +53,9 @@ interface ScheduledPostResult {
 }
 
 export async function schedulePost(params: SchedulePostParams): Promise<ScheduledPostResult> {
-  const apiKey = process.env.GETLATE_API_KEY
+  const apiKey = await getLateApiKey()
   if (!apiKey) {
-    throw new Error('GETLATE_API_KEY is not configured')
+    throw new Error('GETLATE_API_KEY is not configured. Add it to Settings > API Keys.')
   }
 
   // Format caption with hashtags for platforms that use them
@@ -93,11 +102,22 @@ export async function schedulePost(params: SchedulePostParams): Promise<Schedule
   }
 
   // Add GBP-specific "Learn More" call-to-action button
+  // Try multiple field name variations for compatibility
   if (params.platform === 'gbp' && params.ctaUrl) {
-    requestBody.platformSpecificData = {
+    // Primary format based on similar APIs (Ayrshare uses gbpOptions)
+    requestBody.gbpOptions = {
       callToAction: {
-        type: 'LEARN_MORE',
+        actionType: 'LEARN_MORE',
         url: params.ctaUrl,
+      },
+    }
+    // Also try the platformSpecificData format as fallback
+    requestBody.platformSpecificData = {
+      googlebusiness: {
+        callToAction: {
+          actionType: 'LEARN_MORE',
+          url: params.ctaUrl,
+        },
       },
     }
   }
@@ -139,9 +159,9 @@ export async function postNow(params: Omit<SchedulePostParams, 'scheduledTime'>)
 }
 
 export async function checkPostStatus(postId: string): Promise<ScheduledPostResult> {
-  const apiKey = process.env.GETLATE_API_KEY
+  const apiKey = await getLateApiKey()
   if (!apiKey) {
-    throw new Error('GETLATE_API_KEY is not configured')
+    throw new Error('GETLATE_API_KEY is not configured. Add it to Settings > API Keys.')
   }
 
   const response = await fetch(`https://getlate.dev/api/v1/posts/${postId}`, {
