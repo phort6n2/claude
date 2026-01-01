@@ -7,7 +7,7 @@ interface PodcastGenerationParams {
   script: string
   title: string
   blogUrl?: string
-  duration?: 'short' | 'medium' | 'long'
+  duration?: 'short' | 'default' | 'long'
 }
 
 interface PodcastResult {

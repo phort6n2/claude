@@ -139,7 +139,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             const podcastResult = await createPodcast({
               title: blogResult.title,
               script: blogResult.content, // Use blog content as script
-              duration: 'medium',
+              duration: 'default', // 8-12 minutes
             })
 
             // Create or update podcast record

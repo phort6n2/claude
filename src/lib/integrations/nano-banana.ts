@@ -36,26 +36,25 @@ export async function generateImage(params: ImageGenerationParams): Promise<Imag
     ? { width: 1920, height: 1080, size: '1920x1080px', ratio: '16:9' }
     : { width: 1080, height: 1080, size: '1080x1080px', ratio: '1:1' }
 
-  const prompt = `Create a professional ${dimensions.ratio} social media marketing banner for ${params.businessName}, an auto glass company.
+  const prompt = `Create a professional ${dimensions.ratio} social media marketing banner for ${params.businessName}, an auto glass company located in ${location}.
+
+EXACT TEXT TO INCLUDE ON THE IMAGE:
+1. Main headline: "${params.paaQuestion}"
+2. Business name: "${params.businessName}"
+3. City/Location: "${location}"
+4. Phone number: "${params.phone}"
+5. Website: "${params.website}"
 
 DESIGN REQUIREMENTS:
-- Professional automotive marketing banner
-- Main headline text: "${params.paaQuestion}"
-- Company name: "${params.businessName}"
-- Location badge: "${location}"
-- Dark background with bright accent colors (NOT just blue - use varied colors like teal, purple, orange, or green)
+- Dark background with bright accent colors (use teal, purple, orange, or green - NOT blue)
 - Pure white text for readability
 - Modern geometric shapes and diagonal lines
-- Include a modern sports car image (wet/rainy conditions preferred)
-- Gear icons to represent automotive technical service
+- Include a modern car with windshield visible
 - Professional, dynamic composition
-- NO watermarks or placeholder text
+- DO NOT use any placeholder text like {location} or {phone} - use the exact values provided above
+- NO watermarks
 
-CONTACT INFO TO INCLUDE:
-- Phone: ${params.phone}
-- Website: ${params.website}
-
-STYLE: Modern professional automotive marketing with bold typography, geometric elements, and dynamic energy suitable for social media.`
+STYLE: Modern professional automotive marketing with bold typography and dynamic energy.`
 
   // Use Gemini 3 Pro Image Preview for image generation
   const response = await fetch(
