@@ -23,6 +23,7 @@ interface ContentItem {
   id: string
   paaQuestion: string
   status: string
+  lastError: string | null
   scheduledDate: string
   blogApproved: string
   imagesApproved: string
