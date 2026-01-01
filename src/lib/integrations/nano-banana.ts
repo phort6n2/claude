@@ -1,6 +1,6 @@
 // Google AI Studio - Gemini Image Generation
 // API Key from: https://aistudio.google.com/app/apikey
-// Model: gemini-2.5-flash-image (aka "Nano Banana")
+// Model: gemini-3-pro-image-preview (aka "Nano Banana Pro")
 
 interface ImageGenerationParams {
   businessName: string
@@ -57,9 +57,9 @@ CONTACT INFO TO INCLUDE:
 
 STYLE: Modern professional automotive marketing with bold typography, geometric elements, and dynamic energy suitable for social media.`
 
-  // Use Gemini 2.5 Flash Image (Nano Banana) for image generation
+  // Use Gemini 3 Pro Image Preview for image generation
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${params.apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${params.apiKey}`,
     {
       method: 'POST',
       headers: {
@@ -143,7 +143,7 @@ export async function generateBothImages(params: {
     return results
   }
 
-  console.log('Starting image generation with Gemini 2.5 Flash Image...')
+  console.log('Starting image generation with Gemini 3 Pro Image...')
 
   // Generate 16:9 landscape image
   try {
