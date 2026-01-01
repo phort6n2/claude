@@ -22,6 +22,11 @@ async function getPodbeanCredentials(): Promise<{ clientId: string; clientSecret
   const clientId = clientIdSetting.encrypted ? decrypt(clientIdSetting.value) : clientIdSetting.value
   const clientSecret = clientSecretSetting.encrypted ? decrypt(clientSecretSetting.value) : clientSecretSetting.value
 
+  // Handle case where decryption fails
+  if (!clientId || !clientSecret) {
+    return null
+  }
+
   return { clientId, clientSecret }
 }
 

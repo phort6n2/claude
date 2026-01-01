@@ -47,11 +47,8 @@ export async function GET() {
     if (setting) {
       let value = setting.value
       if (setting.encrypted) {
-        try {
-          value = decrypt(setting.value)
-        } catch {
-          value = ''
-        }
+        const decrypted = decrypt(setting.value)
+        value = decrypted ?? ''
       }
       const isSensitive = SENSITIVE_KEYS.includes(key)
       result[key] = {

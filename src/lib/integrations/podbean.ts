@@ -349,6 +349,11 @@ async function getGlobalPodbeanCredentials(): Promise<PodbeanCredentials> {
   const clientId = clientIdSetting.encrypted ? decrypt(clientIdSetting.value) : clientIdSetting.value
   const clientSecret = clientSecretSetting.encrypted ? decrypt(clientSecretSetting.value) : clientSecretSetting.value
 
+  // Handle case where decryption fails
+  if (!clientId || !clientSecret) {
+    throw new Error('Podbean credentials could not be decrypted. Please re-save them in Settings.')
+  }
+
   return { clientId, clientSecret }
 }
 
