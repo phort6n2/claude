@@ -1189,7 +1189,7 @@ function SocialPostPreview({
   isWRHQ = false,
   images = [],
 }: {
-  post: { platform: string; caption: string; hashtags: string[]; approved: boolean; status: string }
+  post: { platform: string; caption: string; hashtags: string[]; approved: boolean; status: string; errorMessage?: string | null }
   isWRHQ?: boolean
   images?: Array<{ imageType: string; gcsUrl: string; altText: string | null }>
 }) {
@@ -1221,7 +1221,7 @@ function SocialPostPreview({
               <p className="text-xs text-gray-500">Just now · 🌐</p>
             </div>
           </div>
-          <StatusBadge status={post.status} />
+          <StatusBadge status={post.status} errorMessage={post.errorMessage} />
         </div>
         {/* Content */}
         <div className="px-4 py-3">
@@ -1265,7 +1265,7 @@ function SocialPostPreview({
             </div>
             <p className="font-semibold text-sm">{businessName.toLowerCase().replace(/\s+/g, '')}</p>
           </div>
-          <StatusBadge status={post.status} />
+          <StatusBadge status={post.status} errorMessage={post.errorMessage} />
         </div>
         {/* Image - square aspect ratio */}
         {platformImage ? (
@@ -1312,7 +1312,7 @@ function SocialPostPreview({
               <p className="text-xs text-gray-500">Just now · 🌐</p>
             </div>
           </div>
-          <StatusBadge status={post.status} />
+          <StatusBadge status={post.status} errorMessage={post.errorMessage} />
         </div>
         {/* Content */}
         <div className="px-4 py-3">
@@ -1355,7 +1355,7 @@ function SocialPostPreview({
               <span className="font-bold text-sm">{businessName}</span>
               <span className="text-gray-500 text-sm">@{businessName.toLowerCase().replace(/\s+/g, '')}</span>
               <span className="text-gray-500 text-sm">· Now</span>
-              <div className="ml-auto"><StatusBadge status={post.status} /></div>
+              <div className="ml-auto"><StatusBadge status={post.status} errorMessage={post.errorMessage} /></div>
             </div>
             {/* Content */}
             <p className="text-sm mt-1 whitespace-pre-wrap">{post.caption}</p>
@@ -1398,7 +1398,7 @@ function SocialPostPreview({
             <p className="font-semibold text-sm text-gray-900">{businessName}</p>
             <p className="text-xs text-gray-500">Posted an update</p>
           </div>
-          <StatusBadge status={post.status} />
+          <StatusBadge status={post.status} errorMessage={post.errorMessage} />
         </div>
         {/* Image */}
         {platformImage ? (
@@ -1441,7 +1441,7 @@ function SocialPostPreview({
           <span className={`font-semibold ${config.accent}`}>{config.name}</span>
           {isWRHQ && <span className="text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full">WRHQ</span>}
         </div>
-        <StatusBadge status={post.status} />
+        <StatusBadge status={post.status} errorMessage={post.errorMessage} />
       </div>
       {/* Image */}
       {platformImage ? (
@@ -1463,7 +1463,7 @@ function SocialPostPreview({
 }
 
 // Helper component for status badge
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, errorMessage }: { status: string; errorMessage?: string | null }) {
   const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
     PUBLISHED: { bg: 'bg-green-100', text: 'text-green-700', label: 'Posted' },
     SCHEDULED: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Scheduled' },
@@ -1474,9 +1474,16 @@ function StatusBadge({ status }: { status: string }) {
   const config = statusConfig[status] || statusConfig.DRAFT
 
   return (
-    <span className={`text-xs px-2 py-1 rounded-full ${config.bg} ${config.text}`}>
-      {config.label}
-    </span>
+    <div className="flex flex-col items-end gap-1">
+      <span className={`text-xs px-2 py-1 rounded-full ${config.bg} ${config.text}`}>
+        {config.label}
+      </span>
+      {status === 'FAILED' && errorMessage && (
+        <span className="text-xs text-red-600 max-w-[200px] text-right" title={errorMessage}>
+          {errorMessage.length > 50 ? errorMessage.substring(0, 50) + '...' : errorMessage}
+        </span>
+      )}
+    </div>
   )
 }
 

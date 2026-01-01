@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { publishToWordPress } from '@/lib/integrations/wordpress'
-import { schedulePost, postNow } from '@/lib/integrations/getlate'
+import { schedulePost, postNowAndCheckStatus } from '@/lib/integrations/getlate'
 import { getSetting, WRHQ_SETTINGS_KEYS } from '@/lib/settings'
 import { validateScheduledDate } from '@/lib/scheduling'
 import { compressImageForPlatform, compressImageForBlog } from '@/lib/utils/image-compression'
@@ -316,9 +316,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             continue
           }
 
-          // Use postNow for immediate posting, schedulePost for scheduling
+          // Use postNowAndCheckStatus for immediate posting (polls for result), schedulePost for scheduling
           const lateResult = postImmediate
-            ? await postNow({
+            ? await postNowAndCheckStatus({
                 accountId,
                 platform: socialPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
                 caption: socialPost.caption,
@@ -338,15 +338,25 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 firstComment: socialPost.firstComment || undefined,
               })
 
+          // Determine the status based on Late API response
+          let dbStatus: 'PUBLISHED' | 'SCHEDULED' | 'PROCESSING' | 'FAILED' = 'PROCESSING'
+          if (lateResult.status === 'failed') {
+            dbStatus = 'FAILED'
+            console.error(`${socialPost.platform} post failed:`, lateResult.error)
+          } else if (lateResult.status === 'published' && lateResult.platformPostUrl) {
+            dbStatus = 'PUBLISHED'
+          } else if (!postImmediate) {
+            dbStatus = 'SCHEDULED'
+          }
+
           await prisma.socialPost.update({
             where: { id: socialPost.id },
             data: {
               getlatePostId: lateResult.postId,
-              // Only mark as PUBLISHED if we have a confirmed post URL
-              // Otherwise mark as PROCESSING (Late accepted it but platform hasn't confirmed)
-              status: lateResult.platformPostUrl ? 'PUBLISHED' : (postImmediate ? 'PROCESSING' : 'SCHEDULED'),
+              status: dbStatus,
               publishedUrl: lateResult.platformPostUrl || null,
-              publishedAt: lateResult.platformPostUrl ? new Date() : null,
+              publishedAt: dbStatus === 'PUBLISHED' ? new Date() : null,
+              errorMessage: lateResult.error || null,
             },
           })
         }
@@ -424,9 +434,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             continue
           }
 
-          // Use postNow for immediate posting, schedulePost for scheduling
+          // Use postNowAndCheckStatus for immediate posting (polls for result), schedulePost for scheduling
           const lateResult = postImmediate
-            ? await postNow({
+            ? await postNowAndCheckStatus({
                 accountId,
                 platform: wrhqPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
                 caption: wrhqPost.caption,
@@ -446,14 +456,25 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 firstComment: wrhqPost.firstComment || undefined,
               })
 
+          // Determine the status based on Late API response
+          let wrhqDbStatus: 'PUBLISHED' | 'SCHEDULED' | 'PROCESSING' | 'FAILED' = 'PROCESSING'
+          if (lateResult.status === 'failed') {
+            wrhqDbStatus = 'FAILED'
+            console.error(`WRHQ ${wrhqPost.platform} post failed:`, lateResult.error)
+          } else if (lateResult.status === 'published' && lateResult.platformPostUrl) {
+            wrhqDbStatus = 'PUBLISHED'
+          } else if (!postImmediate) {
+            wrhqDbStatus = 'SCHEDULED'
+          }
+
           await prisma.wRHQSocialPost.update({
             where: { id: wrhqPost.id },
             data: {
               getlatePostId: lateResult.postId,
-              // Only mark as PUBLISHED if we have a confirmed post URL
-              status: lateResult.platformPostUrl ? 'PUBLISHED' : (postImmediate ? 'PROCESSING' : 'SCHEDULED'),
+              status: wrhqDbStatus,
               publishedUrl: lateResult.platformPostUrl || null,
-              publishedAt: lateResult.platformPostUrl ? new Date() : null,
+              publishedAt: wrhqDbStatus === 'PUBLISHED' ? new Date() : null,
+              errorMessage: lateResult.error || null,
             },
           })
         }

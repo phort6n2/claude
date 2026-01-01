@@ -37,8 +37,9 @@ interface ScheduledPostResult {
   postId: string
   platform: Platform
   scheduledTime: Date
-  status: 'scheduled' | 'published' | 'failed'
+  status: 'scheduled' | 'published' | 'failed' | 'processing'
   platformPostUrl?: string  // URL to view the post on the social platform
+  error?: string  // Error message if status is 'failed'
 }
 
 export async function schedulePost(params: SchedulePostParams): Promise<ScheduledPostResult> {
@@ -144,17 +145,74 @@ export async function checkPostStatus(postId: string): Promise<ScheduledPostResu
   }
 
   const data = await response.json()
+  console.log('Late API status check response:', JSON.stringify(data, null, 2))
 
   // Extract platform from platforms array if present
   const platformData = data.platforms?.[0]
+
+  // Normalize status - Late may use different status names
+  let status: 'scheduled' | 'published' | 'failed' | 'processing' = 'processing'
+  const rawStatus = (data.status || '').toLowerCase()
+  if (rawStatus === 'published' || rawStatus === 'completed' || rawStatus === 'success') {
+    status = 'published'
+  } else if (rawStatus === 'failed' || rawStatus === 'error') {
+    status = 'failed'
+  } else if (rawStatus === 'scheduled' || rawStatus === 'pending') {
+    status = 'scheduled'
+  }
+
+  // Get error message if present
+  const error = data.error || data.errorMessage || platformData?.error || platformData?.errorMessage
 
   return {
     postId: data._id || data.id || data.post_id,
     platform: platformData?.platform || data.platform,
     scheduledTime: new Date(data.scheduledFor || data.scheduled_at),
-    status: data.status,
-    platformPostUrl: data.platformPostUrl || data.platform_post_url,
+    status,
+    platformPostUrl: data.platformPostUrl || data.platform_post_url || platformData?.postUrl,
+    error,
   }
+}
+
+/**
+ * Post immediately and poll for status to detect platform errors
+ * Polls up to 3 times with 2-second intervals
+ */
+export async function postNowAndCheckStatus(
+  params: Omit<SchedulePostParams, 'scheduledTime'>
+): Promise<ScheduledPostResult> {
+  // First, submit the post
+  const initialResult = await postNow(params)
+
+  // If we got a platform URL immediately, it's definitely published
+  if (initialResult.platformPostUrl) {
+    return { ...initialResult, status: 'published' }
+  }
+
+  // Poll for status to check if it succeeded or failed
+  const maxAttempts = 3
+  const pollInterval = 2000 // 2 seconds
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, pollInterval))
+
+    try {
+      const statusResult = await checkPostStatus(initialResult.postId)
+      console.log(`Status check attempt ${attempt}:`, statusResult.status, statusResult.error || '')
+
+      // If we have a definitive status (published or failed), return it
+      if (statusResult.status === 'published' || statusResult.status === 'failed') {
+        return statusResult
+      }
+
+      // If still processing, continue polling
+    } catch (error) {
+      console.error(`Status check attempt ${attempt} failed:`, error)
+    }
+  }
+
+  // After polling, still processing - return as processing
+  return { ...initialResult, status: 'processing' }
 }
 
 export async function scheduleSocialPosts(params: {

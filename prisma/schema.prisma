@@ -598,6 +598,7 @@ model SocialPost {
   // Status
   status            SocialPostStatus @default(SCHEDULED)
   publishedUrl      String?
+  errorMessage      String?   // Error message if post failed
 
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
@@ -638,6 +639,7 @@ model WRHQSocialPost {
   // Status
   status            SocialPostStatus @default(SCHEDULED)
   publishedUrl      String?
+  errorMessage      String?   // Error message if post failed
 
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt

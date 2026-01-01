@@ -47,10 +47,20 @@ export async function compressImageForPlatform(
   const originalBuffer = Buffer.from(await response.arrayBuffer())
   const originalSize = originalBuffer.length
 
-  console.log(`Image size check for ${platform}: ${(originalSize / 1024 / 1024).toFixed(2)}MB (limit: ${(sizeLimit / 1024 / 1024).toFixed(2)}MB)`)
+  // Get image metadata
+  const metadata = await sharp(originalBuffer).metadata()
+  const originalFormat = metadata.format
 
-  // If image is already under the limit, return original URL
-  if (originalSize <= sizeLimit) {
+  console.log(`Image check for ${platform}: ${(originalSize / 1024 / 1024).toFixed(2)}MB, format: ${originalFormat} (limit: ${(sizeLimit / 1024 / 1024).toFixed(2)}MB)`)
+
+  // GBP requires PNG format (JPEG/JPG causes issues with their API)
+  // Always convert to PNG for GBP regardless of size
+  const isGbp = platformLower === 'gbp'
+  const needsFormatConversion = isGbp && originalFormat !== 'png'
+  const needsSizeReduction = originalSize > sizeLimit
+
+  // If no conversion needed and under size limit, return original
+  if (!needsFormatConversion && !needsSizeReduction) {
     return {
       url: imageUrl,
       originalSize,
@@ -59,12 +69,7 @@ export async function compressImageForPlatform(
     }
   }
 
-  console.log(`Compressing image for ${platform}...`)
-
-  // Get image metadata
-  const metadata = await sharp(originalBuffer).metadata()
-  const isJpeg = metadata.format === 'jpeg' || metadata.format === 'jpg'
-  const isPng = metadata.format === 'png'
+  console.log(`Processing image for ${platform}... (format conversion: ${needsFormatConversion}, size reduction: ${needsSizeReduction})`)
 
   // Start compression with progressive quality reduction
   let compressedBuffer: Buffer
@@ -83,8 +88,9 @@ export async function compressImageForPlatform(
     targetHeight = Math.round(targetHeight * scale)
   }
 
-  // GBP only supports JPG and PNG
-  const outputFormat = platformLower === 'gbp' && !isJpeg && !isPng ? 'jpeg' : (isJpeg ? 'jpeg' : 'png')
+  // GBP: Always use PNG to avoid JPEG/JPG confusion
+  // Others: Use JPEG for better compression
+  const outputFormat = isGbp ? 'png' : 'jpeg'
 
   do {
     const sharpInstance = sharp(originalBuffer)
@@ -93,7 +99,14 @@ export async function compressImageForPlatform(
         withoutEnlargement: true,
       })
 
-    if (outputFormat === 'jpeg') {
+    if (outputFormat === 'png') {
+      compressedBuffer = await sharpInstance
+        .png({
+          compressionLevel: 9,
+          palette: true,
+        })
+        .toBuffer()
+    } else {
       compressedBuffer = await sharpInstance
         .jpeg({
           quality,
@@ -101,16 +114,9 @@ export async function compressImageForPlatform(
           mozjpeg: true,
         })
         .toBuffer()
-    } else {
-      compressedBuffer = await sharpInstance
-        .png({
-          quality,
-          compressionLevel: 9,
-        })
-        .toBuffer()
     }
 
-    console.log(`Compression attempt: quality=${quality}, size=${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
+    console.log(`Compression attempt: format=${outputFormat}, quality=${quality}, size=${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
 
     // If still too large, reduce quality or dimensions
     if (compressedBuffer.length > sizeLimit) {
@@ -133,9 +139,9 @@ export async function compressImageForPlatform(
 
   // Upload compressed image to GCS
   const timestamp = Date.now()
-  const extension = outputFormat === 'jpeg' ? 'jpg' : 'png'
+  const extension = outputFormat
   const filename = `content/${contentItemId}/compressed-${platform}-${timestamp}.${extension}`
-  const contentType = outputFormat === 'jpeg' ? 'image/jpeg' : 'image/png'
+  const contentType = outputFormat === 'png' ? 'image/png' : 'image/jpeg'
 
   const uploadResult = await uploadToGCS(compressedBuffer, filename, contentType)
 
