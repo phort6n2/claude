@@ -128,6 +128,7 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
   const [podbeanPodcasts, setPodbeanPodcasts] = useState<PodbeanPodcast[]>([])
   const [podbeanConnected, setPodbeanConnected] = useState(false)
   const [loadingPodcasts, setLoadingPodcasts] = useState(false)
+  const [podbeanError, setPodbeanError] = useState<string | null>(null)
 
   const [formData, setFormData] = useState<ClientFormData>({
     ...defaultData,
@@ -178,18 +179,22 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
   // Load Podbean podcasts
   useEffect(() => {
     setLoadingPodcasts(true)
+    setPodbeanError(null)
     fetch('/api/integrations/podbean/podcasts')
       .then((res) => res.json())
       .then((data) => {
         if (data.connected && data.podcasts) {
           setPodbeanConnected(true)
           setPodbeanPodcasts(data.podcasts)
+          setPodbeanError(null)
         } else {
           setPodbeanConnected(false)
+          setPodbeanError(data.error || null)
         }
       })
-      .catch(() => {
+      .catch((err) => {
         setPodbeanConnected(false)
+        setPodbeanError(err.message || 'Failed to connect')
       })
       .finally(() => setLoadingPodcasts(false))
   }, [])
@@ -765,11 +770,26 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                   <div className="text-sm text-gray-500">Loading podcasts...</div>
                 ) : !podbeanConnected ? (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
-                    Podbean is not connected. Configure Podbean API credentials in{' '}
-                    <a href="/admin/settings/api" className="underline font-medium">
-                      Settings → API
-                    </a>{' '}
-                    to enable podcast publishing.
+                    {podbeanError ? (
+                      <>
+                        <strong>Podbean Error:</strong> {podbeanError}
+                        <br />
+                        <span className="text-xs mt-1 block">
+                          Check your credentials in{' '}
+                          <a href="/admin/settings/api" className="underline font-medium">
+                            Settings → API
+                          </a>
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        Podbean is not connected. Configure Podbean API credentials in{' '}
+                        <a href="/admin/settings/api" className="underline font-medium">
+                          Settings → API
+                        </a>{' '}
+                        to enable podcast publishing.
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-3">
