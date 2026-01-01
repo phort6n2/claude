@@ -139,7 +139,7 @@ async function ClientList() {
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap">
                   <div className="flex justify-center gap-0.5">
-                    {client.socialPlatforms.slice(0, 3).map((platform) => (
+                    {client.socialPlatforms.slice(0, 3).map((platform: string) => (
                       <span
                         key={platform}
                         className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-gray-100 text-[10px] font-medium text-gray-600"

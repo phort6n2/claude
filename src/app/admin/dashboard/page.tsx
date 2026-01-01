@@ -190,7 +190,7 @@ async function DashboardContent() {
               <p className="text-gray-500 text-sm">No upcoming content scheduled</p>
             ) : (
               <div className="space-y-4">
-                {stats.upcomingContent.map((item: { id: string; paaQuestion: string; scheduledDate: string; status: string; client: { businessName: string } }) => (
+                {stats.upcomingContent.map((item: { id: string; paaQuestion: string; scheduledDate: Date; status: string; client: { businessName: string } }) => (
                   <div key={item.id} className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">
