@@ -340,10 +340,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         })
 
         // Use client's configured platforms or default to common ones
+        // Skip video platforms (TIKTOK, YOUTUBE) until video generation is added
+        const VIDEO_PLATFORMS = ['TIKTOK', 'YOUTUBE']
         const configuredPlatforms = (contentItem.client.socialPlatforms || []) as string[]
-        const platforms = configuredPlatforms.length > 0
+        const allPlatforms = configuredPlatforms.length > 0
           ? configuredPlatforms
           : ['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'TWITTER', 'GBP'] // Default platforms
+        const platforms = allPlatforms.filter(p => !VIDEO_PLATFORMS.includes(p.toUpperCase()))
 
         // Delete existing social posts
         await prisma.socialPost.deleteMany({
@@ -516,14 +519,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             data: { pipelineStep: 'wrhq_social' },
           })
 
-          // Get WRHQ platforms from settings
+          // Get WRHQ platforms from settings (skip video platforms - TikTok, YouTube)
           const wrhqPlatforms: string[] = []
           const platformKeys = [
             { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_FACEBOOK_ID, platform: 'FACEBOOK' },
             { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_INSTAGRAM_ID, platform: 'INSTAGRAM' },
             { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_LINKEDIN_ID, platform: 'LINKEDIN' },
             { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_TWITTER_ID, platform: 'TWITTER' },
-            { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_TIKTOK_ID, platform: 'TIKTOK' },
+            // TIKTOK and YOUTUBE skipped until video generation is added
           ]
 
           for (const { key, platform } of platformKeys) {
@@ -536,15 +539,60 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             where: { contentItemId: id },
           })
 
-          // Create WRHQ social posts
+          // Create WRHQ social posts using Claude
           if (wrhqPlatforms.length > 0) {
+            const { generateWRHQSocialCaption } = await import('@/lib/integrations/claude')
+
+            // Get WRHQ blog post for URLs
+            const wrhqBlogPost = await prisma.wRHQBlogPost.findUnique({
+              where: { contentItemId: id },
+            })
+            const clientBlogPost = await prisma.blogPost.findUnique({
+              where: { contentItemId: id },
+            })
+
+            const wrhqSocialPostsData = await Promise.all(
+              wrhqPlatforms.map(async (platform) => {
+                try {
+                  const result = await generateWRHQSocialCaption({
+                    platform: platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'gbp' | 'bluesky' | 'threads',
+                    clientBusinessName: contentItem.client.businessName,
+                    clientCity: contentItem.client.city,
+                    clientState: contentItem.client.state,
+                    paaQuestion: contentItem.paaQuestion,
+                    wrhqBlogUrl: wrhqBlogPost?.wordpressUrl || '',
+                    clientBlogUrl: clientBlogPost?.wordpressUrl || '',
+                    wrhqDirectoryUrl: contentItem.client.wrhqDirectoryUrl || '',
+                    googleMapsUrl: contentItem.client.googleMapsUrl || '',
+                    clientWebsite: contentItem.client.wordpressUrl || '',
+                  })
+
+                  return {
+                    platform: platform as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
+                    caption: result.caption,
+                    hashtags: result.hashtags,
+                    firstComment: result.firstComment,
+                  }
+                } catch (error) {
+                  console.error(`Failed to generate WRHQ ${platform} post:`, error)
+                  // Fallback to simple template
+                  return {
+                    platform: platform as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
+                    caption: `WRHQ Partner Spotlight: ${contentItem.client.businessName} in ${contentItem.client.city}, ${contentItem.client.state} shares their expertise on ${contentItem.paaQuestion}. Looking for trusted auto glass advice? Read more on WindshieldRepairHQ.com.`,
+                    hashtags: ['WRHQ', 'AutoGlass', 'WindshieldRepair'],
+                    firstComment: 'Read the full article on WindshieldRepairHQ.com',
+                  }
+                }
+              })
+            )
+
             await prisma.wRHQSocialPost.createMany({
-              data: wrhqPlatforms.map(platform => ({
+              data: wrhqSocialPostsData.map(post => ({
                 contentItemId: id,
-                platform: platform as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
-                caption: `WRHQ Partner Spotlight: ${contentItem.client.businessName} on ${contentItem.paaQuestion}\n\n#WRHQ #AutoGlassPartner`,
-                hashtags: ['WRHQ', 'AutoGlassPartner', 'IndustryExpert'],
-                firstComment: 'Check out the full article!',
+                platform: post.platform,
+                caption: post.caption,
+                hashtags: post.hashtags,
+                firstComment: post.firstComment,
                 mediaUrls: [],
                 scheduledTime: contentItem.scheduledDate,
               })),
@@ -554,11 +602,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
               where: { id },
               data: {
                 wrhqSocialGenerated: true,
-                wrhqSocialTotalCount: wrhqPlatforms.length,
+                wrhqSocialTotalCount: wrhqSocialPostsData.length,
               },
             })
 
-            results.wrhqSocial = { success: true, count: wrhqPlatforms.length }
+            results.wrhqSocial = { success: true, count: wrhqSocialPostsData.length }
           }
         }
       } catch (error) {

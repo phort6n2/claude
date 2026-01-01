@@ -1115,7 +1115,7 @@ function ApprovalCheckbox({
   )
 }
 
-// Platform-specific social post preview with styling to match each platform
+// Platform-specific social post preview styled to look like actual platform cards
 function SocialPostPreview({
   post,
   isWRHQ = false,
@@ -1123,76 +1123,242 @@ function SocialPostPreview({
   post: { platform: string; caption: string; hashtags: string[]; approved: boolean; status: string }
   isWRHQ?: boolean
 }) {
-  const platformStyles: Record<string, { bg: string; border: string; accent: string; name: string }> = {
-    FACEBOOK: { bg: 'bg-blue-50', border: 'border-blue-200', accent: 'text-blue-600', name: 'Facebook' },
-    INSTAGRAM: { bg: 'bg-gradient-to-br from-purple-50 to-pink-50', border: 'border-pink-200', accent: 'text-pink-600', name: 'Instagram' },
-    LINKEDIN: { bg: 'bg-sky-50', border: 'border-sky-200', accent: 'text-sky-700', name: 'LinkedIn' },
-    TWITTER: { bg: 'bg-gray-50', border: 'border-gray-300', accent: 'text-gray-800', name: 'X (Twitter)' },
-    TIKTOK: { bg: 'bg-gray-900', border: 'border-gray-700', accent: 'text-white', name: 'TikTok' },
-    GBP: { bg: 'bg-green-50', border: 'border-green-200', accent: 'text-green-700', name: 'Google Business' },
-    YOUTUBE: { bg: 'bg-red-50', border: 'border-red-200', accent: 'text-red-600', name: 'YouTube' },
-    BLUESKY: { bg: 'bg-blue-50', border: 'border-blue-300', accent: 'text-blue-500', name: 'Bluesky' },
-    THREADS: { bg: 'bg-gray-50', border: 'border-gray-300', accent: 'text-gray-900', name: 'Threads' },
+  const businessName = isWRHQ ? 'Windshield Repair HQ' : 'Your Business'
+
+  // Facebook-style card
+  if (post.platform === 'FACEBOOK') {
+    return (
+      <div className={`rounded-lg overflow-hidden border shadow-sm bg-white ${isWRHQ ? 'ring-2 ring-purple-300' : ''}`}>
+        {/* Facebook Header */}
+        <div className="px-4 py-3 flex items-center justify-between border-b">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
+              {businessName.charAt(0)}
+            </div>
+            <div>
+              <p className="font-semibold text-sm text-gray-900">{businessName}</p>
+              <p className="text-xs text-gray-500">Just now · 🌐</p>
+            </div>
+          </div>
+          <StatusBadge status={post.status} />
+        </div>
+        {/* Content */}
+        <div className="px-4 py-3">
+          <p className="text-sm text-gray-900 whitespace-pre-wrap">{post.caption}</p>
+          {post.hashtags.length > 0 && (
+            <p className="text-sm text-blue-600 mt-2">{post.hashtags.map(h => `#${h}`).join(' ')}</p>
+          )}
+        </div>
+        {/* Facebook Actions */}
+        <div className="px-4 py-2 border-t flex justify-around text-gray-500 text-sm">
+          <span>👍 Like</span>
+          <span>💬 Comment</span>
+          <span>↗️ Share</span>
+        </div>
+        <CharacterCount caption={post.caption} platform={post.platform} />
+      </div>
+    )
   }
 
-  const style = platformStyles[post.platform] || { bg: 'bg-gray-50', border: 'border-gray-200', accent: 'text-gray-700', name: post.platform }
+  // Instagram-style card
+  if (post.platform === 'INSTAGRAM') {
+    return (
+      <div className={`rounded-lg overflow-hidden border shadow-sm bg-white ${isWRHQ ? 'ring-2 ring-purple-300' : ''}`}>
+        {/* Instagram Header */}
+        <div className="px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 p-0.5">
+              <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
+                <span className="text-xs font-bold bg-gradient-to-br from-purple-500 to-pink-500 bg-clip-text text-transparent">
+                  {businessName.charAt(0)}
+                </span>
+              </div>
+            </div>
+            <p className="font-semibold text-sm">{businessName.toLowerCase().replace(/\s+/g, '')}</p>
+          </div>
+          <StatusBadge status={post.status} />
+        </div>
+        {/* Image placeholder */}
+        <div className="bg-gradient-to-br from-gray-100 to-gray-200 h-48 flex items-center justify-center">
+          <span className="text-gray-400 text-sm">Image will be attached</span>
+        </div>
+        {/* Instagram Actions */}
+        <div className="px-4 py-2 flex gap-4 text-gray-800">
+          <span>♡</span>
+          <span>💬</span>
+          <span>↗️</span>
+        </div>
+        {/* Caption */}
+        <div className="px-4 pb-3">
+          <p className="text-sm">
+            <span className="font-semibold">{businessName.toLowerCase().replace(/\s+/g, '')} </span>
+            {post.caption}
+          </p>
+          {post.hashtags.length > 0 && (
+            <p className="text-sm text-blue-900 mt-1">{post.hashtags.map(h => `#${h}`).join(' ')}</p>
+          )}
+        </div>
+        <CharacterCount caption={post.caption} platform={post.platform} />
+      </div>
+    )
+  }
+
+  // LinkedIn-style card
+  if (post.platform === 'LINKEDIN') {
+    return (
+      <div className={`rounded-lg overflow-hidden border shadow-sm bg-white ${isWRHQ ? 'ring-2 ring-purple-300' : ''}`}>
+        {/* LinkedIn Header */}
+        <div className="px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-sky-700 flex items-center justify-center text-white font-bold">
+              {businessName.charAt(0)}
+            </div>
+            <div>
+              <p className="font-semibold text-sm text-gray-900">{businessName}</p>
+              <p className="text-xs text-gray-500">Auto Glass Industry</p>
+              <p className="text-xs text-gray-500">Just now · 🌐</p>
+            </div>
+          </div>
+          <StatusBadge status={post.status} />
+        </div>
+        {/* Content */}
+        <div className="px-4 py-3">
+          <p className="text-sm text-gray-900 whitespace-pre-wrap">{post.caption}</p>
+          {post.hashtags.length > 0 && (
+            <p className="text-sm text-sky-700 mt-2">{post.hashtags.map(h => `#${h}`).join(' ')}</p>
+          )}
+        </div>
+        {/* LinkedIn Actions */}
+        <div className="px-4 py-2 border-t flex justify-around text-gray-600 text-sm">
+          <span>👍 Like</span>
+          <span>💬 Comment</span>
+          <span>🔄 Repost</span>
+          <span>📤 Send</span>
+        </div>
+        <CharacterCount caption={post.caption} platform={post.platform} />
+      </div>
+    )
+  }
+
+  // Twitter/X-style card
+  if (post.platform === 'TWITTER') {
+    return (
+      <div className={`rounded-xl overflow-hidden border shadow-sm bg-white ${isWRHQ ? 'ring-2 ring-purple-300' : ''}`}>
+        {/* X Header */}
+        <div className="px-4 py-3 flex items-start gap-3">
+          <div className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-bold">
+            {businessName.charAt(0)}
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-1">
+              <span className="font-bold text-sm">{businessName}</span>
+              <span className="text-gray-500 text-sm">@{businessName.toLowerCase().replace(/\s+/g, '')}</span>
+              <span className="text-gray-500 text-sm">· Now</span>
+              <div className="ml-auto"><StatusBadge status={post.status} /></div>
+            </div>
+            {/* Content */}
+            <p className="text-sm mt-1 whitespace-pre-wrap">{post.caption}</p>
+            {post.hashtags.length > 0 && (
+              <p className="text-sm text-blue-500 mt-1">{post.hashtags.map(h => `#${h}`).join(' ')}</p>
+            )}
+            {/* X Actions */}
+            <div className="mt-3 flex gap-8 text-gray-500 text-sm">
+              <span>💬</span>
+              <span>🔄</span>
+              <span>♡</span>
+              <span>📊</span>
+              <span>↗️</span>
+            </div>
+          </div>
+        </div>
+        <CharacterCount caption={post.caption} platform={post.platform} limit={280} />
+      </div>
+    )
+  }
+
+  // Google Business Profile-style card
+  if (post.platform === 'GBP') {
+    return (
+      <div className={`rounded-lg overflow-hidden border shadow-sm bg-white ${isWRHQ ? 'ring-2 ring-purple-300' : ''}`}>
+        {/* GBP Header */}
+        <div className="px-4 py-3 flex items-center gap-3 bg-white border-b">
+          <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-white font-bold">
+            {businessName.charAt(0)}
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-sm text-gray-900">{businessName}</p>
+            <p className="text-xs text-gray-500">Posted an update</p>
+          </div>
+          <StatusBadge status={post.status} />
+        </div>
+        {/* Content */}
+        <div className="px-4 py-3 bg-gray-50">
+          <p className="text-sm text-gray-800 whitespace-pre-wrap">{post.caption}</p>
+        </div>
+        {/* GBP Call to Action */}
+        <div className="px-4 py-3 border-t bg-white">
+          <button className="w-full py-2 bg-blue-600 text-white text-sm rounded-full font-medium">
+            Learn more
+          </button>
+        </div>
+        <CharacterCount caption={post.caption} platform={post.platform} limit={1500} />
+      </div>
+    )
+  }
+
+  // Default card for other platforms
+  const platformConfig: Record<string, { bg: string; accent: string; name: string }> = {
+    BLUESKY: { bg: 'bg-sky-50', accent: 'text-sky-600', name: 'Bluesky' },
+    THREADS: { bg: 'bg-gray-50', accent: 'text-gray-900', name: 'Threads' },
+    TIKTOK: { bg: 'bg-gray-900', accent: 'text-white', name: 'TikTok' },
+    YOUTUBE: { bg: 'bg-red-50', accent: 'text-red-600', name: 'YouTube' },
+  }
+  const config = platformConfig[post.platform] || { bg: 'bg-gray-50', accent: 'text-gray-700', name: post.platform }
   const isDark = post.platform === 'TIKTOK'
 
   return (
-    <div className={`rounded-xl overflow-hidden border-2 ${style.border} ${isWRHQ ? 'ring-2 ring-purple-300' : ''}`}>
-      {/* Platform Header */}
-      <div className={`px-4 py-2 ${style.bg} flex items-center justify-between`}>
+    <div className={`rounded-lg overflow-hidden border shadow-sm ${isDark ? 'bg-gray-900' : 'bg-white'} ${isWRHQ ? 'ring-2 ring-purple-300' : ''}`}>
+      <div className={`px-4 py-3 flex items-center justify-between ${config.bg}`}>
         <div className="flex items-center gap-2">
           <span className="text-xl">{PLATFORM_ICONS[post.platform] || '📱'}</span>
-          <span className={`font-semibold ${style.accent}`}>{style.name}</span>
-          {isWRHQ && (
-            <span className="text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full">WRHQ</span>
-          )}
+          <span className={`font-semibold ${config.accent}`}>{config.name}</span>
+          {isWRHQ && <span className="text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full">WRHQ</span>}
         </div>
-        <span className={`text-xs px-2 py-1 rounded-full ${
-          post.status === 'SCHEDULED' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-        }`}>
-          {post.status === 'SCHEDULED' ? 'Scheduled' : 'Draft'}
-        </span>
+        <StatusBadge status={post.status} />
       </div>
-
-      {/* Post Content - Platform Specific Styling */}
-      <div className={`p-4 ${isDark ? 'bg-gray-900 text-white' : 'bg-white'}`}>
-        {/* Simulated Profile Section */}
-        <div className="flex items-center gap-3 mb-3">
-          <div className={`w-10 h-10 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-200'} flex items-center justify-center`}>
-            <Building2 className={`h-5 w-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
-          </div>
-          <div>
-            <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {isWRHQ ? 'Windshield Repair HQ' : 'Your Business'}
-            </p>
-            <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Just now</p>
-          </div>
-        </div>
-
-        {/* Caption */}
-        <p className={`text-sm whitespace-pre-wrap mb-3 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
-          {post.caption}
-        </p>
-
-        {/* Hashtags */}
+      <div className={`px-4 py-3 ${isDark ? 'text-white' : ''}`}>
+        <p className="text-sm whitespace-pre-wrap">{post.caption}</p>
         {post.hashtags.length > 0 && (
-          <p className={`text-sm ${style.accent}`}>
-            {post.hashtags.map(h => `#${h}`).join(' ')}
-          </p>
+          <p className={`text-sm mt-2 ${config.accent}`}>{post.hashtags.map(h => `#${h}`).join(' ')}</p>
         )}
-
-        {/* Character Count */}
-        <div className={`mt-3 pt-3 border-t ${isDark ? 'border-gray-700' : 'border-gray-100'} flex justify-between items-center`}>
-          <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-            {post.caption.length} characters
-          </span>
-          {post.platform === 'TWITTER' && post.caption.length > 280 && (
-            <span className="text-xs text-red-500 font-medium">Over limit!</span>
-          )}
-        </div>
       </div>
+      <CharacterCount caption={post.caption} platform={post.platform} />
+    </div>
+  )
+}
+
+// Helper component for status badge
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <span className={`text-xs px-2 py-1 rounded-full ${
+      status === 'SCHEDULED' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+    }`}>
+      {status === 'SCHEDULED' ? 'Scheduled' : 'Draft'}
+    </span>
+  )
+}
+
+// Helper component for character count
+function CharacterCount({ caption, platform, limit }: { caption: string; platform: string; limit?: number }) {
+  const charLimit = limit || (platform === 'TWITTER' ? 280 : platform === 'GBP' ? 1500 : undefined)
+  const isOverLimit = charLimit && caption.length > charLimit
+
+  return (
+    <div className="px-4 py-2 border-t bg-gray-50 flex justify-between items-center">
+      <span className="text-xs text-gray-500">
+        {caption.length} characters{charLimit ? ` / ${charLimit}` : ''}
+      </span>
+      {isOverLimit && <span className="text-xs text-red-500 font-medium">Over limit!</span>}
     </div>
   )
 }

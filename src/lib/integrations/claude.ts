@@ -493,10 +493,12 @@ interface WRHQSocialCaptionParams {
   clientBusinessName: string
   clientCity: string
   clientState: string
-  blogTitle: string
-  blogExcerpt: string
-  wrhqBlogUrl: string
-  clientBlogUrl: string
+  paaQuestion: string
+  wrhqBlogUrl?: string
+  clientBlogUrl?: string
+  wrhqDirectoryUrl?: string
+  googleMapsUrl?: string
+  clientWebsite?: string
 }
 
 export async function generateWRHQSocialCaption(params: WRHQSocialCaptionParams): Promise<{
@@ -504,56 +506,49 @@ export async function generateWRHQSocialCaption(params: WRHQSocialCaptionParams)
   hashtags: string[]
   firstComment: string
 }> {
-  const platformGuidelines: Record<SocialPlatform, string> = {
-    facebook: 'Longer, directory-style post featuring the client. Include both WRHQ and client links.',
-    instagram: 'Engaging, community-focused. Feature the client as a trusted provider. Mention "link in bio".',
-    linkedin: 'Professional industry directory angle. Position as connecting consumers with quality providers.',
-    twitter: 'Concise spotlight on the client expert. Include WRHQ link.',
-    tiktok: 'Casual, helpful content discovery angle. Mention link in bio.',
-    gbp: 'Local business directory focus, highlight the featured provider in the area.',
-    youtube: 'Video description featuring the expert provider. Include both WRHQ and client links.',
-    bluesky: 'Authentic, concise spotlight on the featured expert. Include WRHQ link.',
-    threads: 'Conversational directory post, feature the client business. Include WRHQ link.',
-    reddit: 'Community-helpful, informative post. Avoid overly promotional tone.',
-    pinterest: 'Visual, inspirational pin description featuring the expert. Include both links.',
-    telegram: 'Direct, informative message about the featured provider. Include WRHQ link.',
-  }
+  const location = `${params.clientCity}, ${params.clientState}`
 
-  const prompt = `Generate a ${params.platform} post for Windshield Repair HQ (WRHQ) - an auto glass industry directory.
+  const prompt = `Create a social media post for Windshield Repair HQ featuring content from one of our directory partners.
 
-This post features a member business:
-- Business: ${params.clientBusinessName} in ${params.clientCity}, ${params.clientState}
-- Topic: "${params.blogTitle}"
-- Summary: "${params.blogExcerpt}"
-- WRHQ Article URL: ${params.wrhqBlogUrl}
-- Client's Full Article: ${params.clientBlogUrl}
+**TOPIC:** ${params.paaQuestion}
 
-Platform Guidelines: ${platformGuidelines[params.platform]}
+**FEATURED BUSINESS:**
+- Business Name: ${params.clientBusinessName}
+- Location: ${location}
 
-Voice: WRHQ is a trusted directory connecting car owners with quality auto glass professionals.
-Example angles:
-- "Looking for expert auto glass advice? ${params.clientBusinessName} shares their expertise on..."
-- "Our network of trusted professionals includes ${params.clientBusinessName}..."
-- "Featured Expert: ${params.clientBusinessName} breaks down..."
+**CONTENT AVAILABLE:**
+- Blog Post: ${params.clientBlogUrl || 'Available'}
+- WRHQ Directory Article: ${params.wrhqBlogUrl || 'Available'}
+- Google Maps: ${params.googleMapsUrl || 'Available'}
+- Website: ${params.clientWebsite || 'Available'}
 
-Return JSON with:
-- caption: The main post text (feature the client, WRHQ as the connector)
-- hashtags: Array of relevant hashtags (autoglass, windshieldrepair, local city, etc.)
-- firstComment: A follow-up comment with additional context or link`
+**REQUIREMENTS:**
+- 250-350 characters
+- Position WRHQ as featuring/spotlighting this trusted shop
+- Mention the business name and location
+- Highlight that viewers can read to learn about this topic
+- Professional, helpful tone
+- NO emojis
+- End with a question to drive engagement
+
+OUTPUT ONLY THE POST TEXT. NO QUOTES. NO LABELS. NO EXPLANATION.`
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 1024,
+    max_tokens: 500,
     messages: [{ role: 'user', content: prompt }],
   })
 
-  const text = response.content[0].type === 'text' ? response.content[0].text : ''
-  const jsonMatch = text.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) {
-    throw new Error('Failed to parse WRHQ social caption response')
-  }
+  const caption = response.content[0].type === 'text' ? response.content[0].text.trim() : ''
 
-  return JSON.parse(jsonMatch[0])
+  // Generate hashtags based on platform
+  const hashtags = ['AutoGlass', 'WindshieldRepair', params.clientCity.replace(/\s+/g, ''), 'WRHQ', 'AutoGlassExperts']
+
+  return {
+    caption,
+    hashtags,
+    firstComment: `Read the full article on WindshieldRepairHQ.com`,
+  }
 }
 
 export async function generatePodcastScript(params: {

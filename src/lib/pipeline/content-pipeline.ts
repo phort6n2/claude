@@ -513,16 +513,22 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         // Generate WRHQ captions for each platform
         const wrhqCaptions: Record<string, { caption: string; hashtags: string[]; firstComment: string }> = {}
 
-        for (const platform of wrhqPlatforms) {
+        // Skip video platforms until video generation is added
+        const VIDEO_PLATFORMS = ['tiktok', 'youtube']
+        const filteredPlatforms = wrhqPlatforms.filter(p => !VIDEO_PLATFORMS.includes(p))
+
+        for (const platform of filteredPlatforms) {
           const captionResult = await generateWRHQSocialCaption({
             platform,
             clientBusinessName: contentItem.client.businessName,
             clientCity: contentItem.client.city,
             clientState: contentItem.client.state,
-            blogTitle: blogResult.title,
-            blogExcerpt: blogResult.excerpt,
+            paaQuestion: contentItem.paaQuestion,
             wrhqBlogUrl: wrhqBlogUrl,
             clientBlogUrl,
+            wrhqDirectoryUrl: contentItem.client.wrhqDirectoryUrl || undefined,
+            googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+            clientWebsite: contentItem.client.wordpressUrl || undefined,
           })
           wrhqCaptions[platform] = captionResult
         }
