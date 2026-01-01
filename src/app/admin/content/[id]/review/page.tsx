@@ -851,7 +851,7 @@ function ReviewTab({
             </div>
 
             {content.socialPosts.length > 0 ? (
-              <div className="grid gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {content.socialPosts.map((post) => (
                   <SocialPostPreview key={post.id} post={post} />
                 ))}
@@ -905,7 +905,7 @@ function ReviewTab({
             </div>
 
             {content.wrhqSocialPosts.length > 0 ? (
-              <div className="grid gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {content.wrhqSocialPosts.map((post) => (
                   <SocialPostPreview key={post.id} post={post} isWRHQ />
                 ))}
@@ -1236,8 +1236,8 @@ function SocialPostPreview({
           </div>
           <StatusBadge status={post.status} />
         </div>
-        {/* Image placeholder */}
-        <div className="bg-gradient-to-br from-gray-100 to-gray-200 h-48 flex items-center justify-center">
+        {/* Image placeholder - square aspect ratio */}
+        <div className="bg-gradient-to-br from-gray-100 to-gray-200 aspect-square flex items-center justify-center">
           <span className="text-gray-400 text-sm">Image will be attached</span>
         </div>
         {/* Instagram Actions */}
