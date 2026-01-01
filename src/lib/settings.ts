@@ -67,24 +67,28 @@ export interface WRHQConfig {
 
 /**
  * Get a setting value by key
+ * Checks database first, then falls back to environment variables
  */
 export async function getSetting(key: string): Promise<string | null> {
+  // First check database
   const setting = await prisma.setting.findUnique({
     where: { key },
   })
 
-  if (!setting) return null
-
-  if (setting.encrypted) {
-    try {
-      return decrypt(setting.value)
-    } catch {
-      console.error(`Failed to decrypt setting: ${key}`)
-      return null
+  if (setting) {
+    if (setting.encrypted) {
+      try {
+        return decrypt(setting.value)
+      } catch {
+        console.error(`Failed to decrypt setting: ${key}`)
+        return null
+      }
     }
+    return setting.value
   }
 
-  return setting.value
+  // Fall back to environment variable
+  return process.env[key] || null
 }
 
 /**
