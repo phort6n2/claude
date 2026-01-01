@@ -853,7 +853,7 @@ function ReviewTab({
             {content.socialPosts.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {content.socialPosts.map((post) => (
-                  <SocialPostPreview key={post.id} post={post} />
+                  <SocialPostPreview key={post.id} post={post} images={content.images} />
                 ))}
               </div>
             ) : (
@@ -907,7 +907,7 @@ function ReviewTab({
             {content.wrhqSocialPosts.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {content.wrhqSocialPosts.map((post) => (
-                  <SocialPostPreview key={post.id} post={post} isWRHQ />
+                  <SocialPostPreview key={post.id} post={post} isWRHQ images={content.images} />
                 ))}
               </div>
             ) : (
@@ -1177,11 +1177,24 @@ function ApprovalCheckbox({
 function SocialPostPreview({
   post,
   isWRHQ = false,
+  images = [],
 }: {
   post: { platform: string; caption: string; hashtags: string[]; approved: boolean; status: string }
   isWRHQ?: boolean
+  images?: Array<{ imageType: string; gcsUrl: string; altText: string | null }>
 }) {
   const businessName = isWRHQ ? 'Windshield Repair HQ' : 'Your Business'
+
+  // Find the appropriate image for this platform
+  const platformImageMap: Record<string, string> = {
+    FACEBOOK: 'FACEBOOK',
+    INSTAGRAM: 'INSTAGRAM_FEED',
+    LINKEDIN: 'LINKEDIN',
+    TWITTER: 'TWITTER',
+    GBP: 'BLOG_FEATURED', // GBP uses blog featured image
+  }
+  const imageType = platformImageMap[post.platform]
+  const platformImage = images.find(img => img.imageType === imageType) || images.find(img => img.imageType === 'BLOG_FEATURED')
 
   // Facebook-style card
   if (post.platform === 'FACEBOOK') {
@@ -1207,6 +1220,14 @@ function SocialPostPreview({
             <p className="text-sm text-blue-600 mt-2">{post.hashtags.map(h => `#${h}`).join(' ')}</p>
           )}
         </div>
+        {/* Image */}
+        {platformImage ? (
+          <img src={platformImage.gcsUrl} alt={platformImage.altText || 'Post image'} className="w-full aspect-[1200/630] object-cover" />
+        ) : (
+          <div className="w-full aspect-[1200/630] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+            <span className="text-gray-400 text-sm">Image will be attached</span>
+          </div>
+        )}
         {/* Facebook Actions */}
         <div className="px-4 py-2 border-t flex justify-around text-gray-500 text-sm">
           <span>👍 Like</span>
@@ -1236,10 +1257,14 @@ function SocialPostPreview({
           </div>
           <StatusBadge status={post.status} />
         </div>
-        {/* Image placeholder - square aspect ratio */}
-        <div className="bg-gradient-to-br from-gray-100 to-gray-200 aspect-square flex items-center justify-center">
-          <span className="text-gray-400 text-sm">Image will be attached</span>
-        </div>
+        {/* Image - square aspect ratio */}
+        {platformImage ? (
+          <img src={platformImage.gcsUrl} alt={platformImage.altText || 'Post image'} className="w-full aspect-square object-cover" />
+        ) : (
+          <div className="bg-gradient-to-br from-gray-100 to-gray-200 aspect-square flex items-center justify-center">
+            <span className="text-gray-400 text-sm">Image will be attached</span>
+          </div>
+        )}
         {/* Instagram Actions */}
         <div className="px-4 py-2 flex gap-4 text-gray-800">
           <span>♡</span>
@@ -1286,6 +1311,14 @@ function SocialPostPreview({
             <p className="text-sm text-sky-700 mt-2">{post.hashtags.map(h => `#${h}`).join(' ')}</p>
           )}
         </div>
+        {/* Image */}
+        {platformImage ? (
+          <img src={platformImage.gcsUrl} alt={platformImage.altText || 'Post image'} className="w-full aspect-[1200/627] object-cover" />
+        ) : (
+          <div className="w-full aspect-[1200/627] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+            <span className="text-gray-400 text-sm">Image will be attached</span>
+          </div>
+        )}
         {/* LinkedIn Actions */}
         <div className="px-4 py-2 border-t flex justify-around text-gray-600 text-sm">
           <span>👍 Like</span>
@@ -1319,6 +1352,14 @@ function SocialPostPreview({
             {post.hashtags.length > 0 && (
               <p className="text-sm text-blue-500 mt-1">{post.hashtags.map(h => `#${h}`).join(' ')}</p>
             )}
+            {/* Image */}
+            {platformImage ? (
+              <img src={platformImage.gcsUrl} alt={platformImage.altText || 'Post image'} className="w-full aspect-[1200/675] object-cover rounded-xl mt-2" />
+            ) : (
+              <div className="w-full aspect-[1200/675] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center rounded-xl mt-2">
+                <span className="text-gray-400 text-sm">Image will be attached</span>
+              </div>
+            )}
             {/* X Actions */}
             <div className="mt-3 flex gap-8 text-gray-500 text-sm">
               <span>💬</span>
@@ -1349,6 +1390,14 @@ function SocialPostPreview({
           </div>
           <StatusBadge status={post.status} />
         </div>
+        {/* Image */}
+        {platformImage ? (
+          <img src={platformImage.gcsUrl} alt={platformImage.altText || 'Post image'} className="w-full aspect-[4/3] object-cover" />
+        ) : (
+          <div className="w-full aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+            <span className="text-gray-400 text-sm">Image will be attached</span>
+          </div>
+        )}
         {/* Content */}
         <div className="px-4 py-3 bg-gray-50">
           <p className="text-sm text-gray-800 whitespace-pre-wrap">{post.caption}</p>
@@ -1359,7 +1408,7 @@ function SocialPostPreview({
             Learn more
           </button>
         </div>
-        <CharacterCount caption={post.caption} platform={post.platform} limit={300} />
+        <CharacterCount caption={post.caption} platform={post.platform} limit={400} />
       </div>
     )
   }
@@ -1384,6 +1433,14 @@ function SocialPostPreview({
         </div>
         <StatusBadge status={post.status} />
       </div>
+      {/* Image */}
+      {platformImage ? (
+        <img src={platformImage.gcsUrl} alt={platformImage.altText || 'Post image'} className="w-full aspect-video object-cover" />
+      ) : (
+        <div className="w-full aspect-video bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+          <span className="text-gray-400 text-sm">Image will be attached</span>
+        </div>
+      )}
       <div className={`px-4 py-3 ${isDark ? 'text-white' : ''}`}>
         <p className="text-sm whitespace-pre-wrap">{post.caption}</p>
         {post.hashtags.length > 0 && (
@@ -1413,7 +1470,7 @@ function StatusBadge({ status }: { status: string }) {
 
 // Helper component for character count
 function CharacterCount({ caption, platform, limit }: { caption: string; platform: string; limit?: number }) {
-  const charLimit = limit || (platform === 'TWITTER' ? 280 : platform === 'GBP' ? 300 : undefined)
+  const charLimit = limit || (platform === 'TWITTER' ? 280 : platform === 'GBP' ? 400 : undefined)
   const isOverLimit = charLimit && caption.length > charLimit
 
   return (

@@ -368,6 +368,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 businessName: contentItem.client.businessName,
                 blogUrl: contentItem.client.wordpressUrl || '',
                 location: `${contentItem.client.city}, ${contentItem.client.state}`,
+                googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
               })
 
               return {

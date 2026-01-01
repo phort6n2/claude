@@ -183,6 +183,7 @@ interface SocialCaptionParams {
   businessName: string
   blogUrl: string
   location?: string  // City, State format for GBP
+  googleMapsUrl?: string  // Google Maps profile URL for GBP
 }
 
 export async function generateSocialCaption(params: SocialCaptionParams): Promise<{
@@ -192,33 +193,37 @@ export async function generateSocialCaption(params: SocialCaptionParams): Promis
 }> {
   // Special handling for GBP - uses specific prompt format
   if (params.platform === 'gbp') {
+    const mapsLink = params.googleMapsUrl || ''
     const gbpPrompt = `Write a Google Business Profile post for this auto glass business.
 
 **CRITICAL RULES:**
-- Length: 100-300 characters TOTAL (STRICT - count carefully!)
+- Length: 150-400 characters TOTAL (STRICT - count carefully!)
 - NO phone numbers (Google rejects posts with phone numbers)
-- NO emojis
+- Emojis are allowed and encouraged (1-3 relevant emojis)
 - NO hashtags in main text
 - Professional, conversational tone
-- Create curiosity to click the link
+- MUST include the Google Maps link at the end
 
 **Business Info:**
 Business: ${params.businessName}
 Location: ${params.location || 'your area'}
 Topic: ${params.blogTitle}
+Google Maps Link: ${mapsLink}
 
 **Writing Guidelines:**
 1. Start with attention-grabbing question or statement
-2. Provide 1-2 key insights
-3. Mention business name naturally
-4. End with soft call-to-action
-5. COUNT CHARACTERS - must be 100-300 total
+2. Use 1-3 relevant emojis naturally in the text
+3. Provide 1-2 key insights about the topic
+4. Mention business name naturally
+5. End with the Google Maps link on its own line
 
-**Example (185 characters):**
-Wondering about windshield chip repair? Most chips under a quarter are fixable and cost less than replacement. Collision Auto Glass explains what Portland drivers need to know.
+**Example:**
+🚗 Wondering about windshield chip repair? Most chips under a quarter are fixable and cost less than replacement. Visit Collision Auto Glass in Portland to learn more!
+
+${mapsLink ? mapsLink : 'https://maps.google.com/...'}
 
 **Output Format:**
-Return ONLY the post text. No quotes, no labels. Just the post content.
+Return ONLY the post text with the link. No quotes, no labels. Just the post content.
 
 Write the post now.`
 
