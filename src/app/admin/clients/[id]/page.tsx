@@ -41,6 +41,8 @@ function transformClientForForm(client: Client) {
     postsPerWeek: client.postsPerWeek,
     socialPlatforms: client.socialPlatforms,
     socialAccountIds: (client.socialAccountIds as Record<string, string>) || {},
+    podbeanPodcastId: client.podbeanPodcastId ?? '',
+    podbeanPodcastTitle: client.podbeanPodcastTitle ?? '',
   }
 }
 
