@@ -176,6 +176,7 @@ export async function GET(request: NextRequest) {
 
           const lateResult = await schedulePost({
             accountId,
+            platform: socialPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
             caption: socialPost.caption,
             mediaUrls: socialPost.mediaUrls,
             scheduledTime: socialPost.scheduledTime,
