@@ -58,8 +58,8 @@ export async function POST(request: NextRequest) {
         scheduledTime: data.scheduledTime || '09:00',
         priority: data.priority || 0,
         notes: data.notes || null,
-        status: data.status || 'SCHEDULED',
-        pipelineStep: data.triggerGeneration ? 'BLOG' : null,
+        status: data.triggerGeneration ? 'GENERATING' : (data.status || 'SCHEDULED'),
+        pipelineStep: data.triggerGeneration ? 'starting' : null,
       },
       include: {
         client: {
@@ -71,9 +71,31 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // TODO: If triggerGeneration is true, trigger the content pipeline
-    // This would call the generation service/worker
-    // For now, we just set the status to GENERATING
+    // If triggerGeneration is true, call the generate endpoint
+    if (data.triggerGeneration) {
+      // Get the base URL from the request
+      const baseUrl = request.nextUrl.origin
+
+      // Trigger generation in the background (don't await)
+      fetch(`${baseUrl}/api/content/${contentItem.id}/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Forward cookies for auth
+          'Cookie': request.headers.get('cookie') || '',
+        },
+        body: JSON.stringify({
+          generateBlog: true,
+          generatePodcast: true,
+          generateImages: true,
+          generateSocial: true,
+          generateWrhqBlog: true,
+          generateWrhqSocial: true,
+        }),
+      }).catch(err => {
+        console.error('Failed to trigger generation:', err)
+      })
+    }
 
     return NextResponse.json(contentItem, { status: 201 })
   } catch (error) {
