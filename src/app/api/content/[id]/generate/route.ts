@@ -130,26 +130,30 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           try {
             await prisma.contentItem.update({
               where: { id },
-              data: { pipelineStep: 'podcast' },
+              data: { pipelineStep: 'podcast', podcastStatus: 'generating' },
             })
 
-            // Import the createPodcast function dynamically to avoid circular deps
-            const { createPodcast } = await import('@/lib/integrations/autocontent')
+            // Import the podcast functions
+            const { createPodcast, waitForPodcast } = await import('@/lib/integrations/autocontent')
 
-            const podcastResult = await createPodcast({
+            // Create podcast job
+            const podcastJob = await createPodcast({
               title: blogResult.title,
-              script: blogResult.content, // Use blog content as script
+              script: blogResult.content,
               duration: 'default', // 8-12 minutes
             })
 
-            // Create or update podcast record
+            // Wait for podcast to complete (polls every 10 seconds, max 30 attempts = 5 minutes)
+            const podcastResult = await waitForPodcast(podcastJob.jobId)
+
+            // Create or update podcast record with the completed audio
             await prisma.podcast.upsert({
               where: { contentItemId: id },
               update: {
                 audioUrl: podcastResult.audioUrl || '',
                 duration: podcastResult.duration,
                 script: blogResult.content,
-                autocontentJobId: podcastResult.jobId,
+                autocontentJobId: podcastJob.jobId,
                 status: 'READY',
               },
               create: {
@@ -158,7 +162,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 audioUrl: podcastResult.audioUrl || '',
                 duration: podcastResult.duration,
                 script: blogResult.content,
-                autocontentJobId: podcastResult.jobId,
+                autocontentJobId: podcastJob.jobId,
                 status: 'READY',
               },
             })
@@ -281,7 +285,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           data: { pipelineStep: 'social' },
         })
 
-        const platforms = (contentItem.client.socialPlatforms || []) as string[]
+        // Use client's configured platforms or default to common ones
+        const configuredPlatforms = (contentItem.client.socialPlatforms || []) as string[]
+        const platforms = configuredPlatforms.length > 0
+          ? configuredPlatforms
+          : ['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'TWITTER'] // Default platforms
 
         // Delete existing social posts
         await prisma.socialPost.deleteMany({
