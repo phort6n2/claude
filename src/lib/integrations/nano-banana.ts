@@ -36,25 +36,39 @@ export async function generateImage(params: ImageGenerationParams): Promise<Imag
     ? { width: 1920, height: 1080, size: '1920x1080px', ratio: '16:9' }
     : { width: 1080, height: 1080, size: '1080x1080px', ratio: '1:1' }
 
-  const prompt = `Create a professional ${dimensions.ratio} social media marketing banner for ${params.businessName}, an auto glass company located in ${location}.
+  // For square images, use a simplified layout
+  const layoutDescription = params.aspectRatio === '16:9'
+    ? `Split design with text-dominant left side (60%) and image-focused right side (40%). Left side contains all text elements aligned left: headline in upper quadrant, circular logo badge below headline, company name below logo, and contact section with icons at bottom. Right side features automotive photograph bleeding to edge.`
+    : `Centered design with headline at top, circular logo badge in center, company info below, and automotive image as background with overlay.`
 
-EXACT TEXT TO INCLUDE ON THE IMAGE:
-1. Main headline: "${params.paaQuestion}"
-2. Business name: "${params.businessName}"
-3. City/Location: "${location}"
-4. Phone number: "${params.phone}"
-5. Website: "${params.website}"
+  const prompt = `Create a professional ${dimensions.ratio} social media marketing banner (${dimensions.size}) for ${params.businessName} with the following specifications:
 
-DESIGN REQUIREMENTS:
-- Dark background with bright accent colors (use teal, purple, orange, or green - NOT blue)
-- Pure white text for readability
-- Modern geometric shapes and diagonal lines
-- Include a modern car with windshield visible
-- Professional, dynamic composition
-- DO NOT use any placeholder text like {location} or {phone} - use the exact values provided above
-- NO watermarks
+HEADLINE AND TEXT CONTENT:
+Main headline in extra bold white sans-serif font (80-100pt, similar to Montserrat Black): "${params.paaQuestion}"
 
-STYLE: Modern professional automotive marketing with bold typography and dynamic energy.`
+Company branding: "${params.businessName}" with circular badge logo showing "${location}" in red and white on dark background
+
+Contact information with blue circular icons:
+- Phone: ${params.phone} (blue phone icon)
+- Website: ${params.website} (blue globe icon)
+- Address: ${params.address}
+
+LAYOUT AND COMPOSITION:
+${layoutDescription}
+
+COLOR PALETTE:
+Choose a random dark color for primary background with a brighter version of that same color as accent. Pure white (#FFFFFF) text throughout. Light colored geometric shapes with transparency for visual interest.
+
+GEOMETRIC ELEMENTS:
+Large angular geometric shapes creating diagonal movement from upper left to middle right. Three chevron arrows pointing right in lower right quadrant. Two white mechanical gear icons in bottom right corner representing automotive technical service. Sharp diagonal lines creating dynamic negative space between sections.
+
+AUTOMOTIVE PHOTOGRAPHY:
+Random-colored modern sports car (Japanese or American) photographed from front three-quarter angle in wet/rainy conditions with water droplets visible on paint. Outdoor rainy/overcast setting with front grille, headlights, wheel, and windshield clearly visible. Photo slightly darkened and desaturated to blend with dark background, bleeding to right edge and partially overlapped by geometric shapes.
+
+DESIGN STYLE:
+Modern professional automotive marketing with bold typography and dynamic geometric elements. Layered shapes create depth and movement. Strong contrast between dark background and white text ensures readability. Diagonal shapes guide eye from headline through company info to vehicle image. Gear icons and angular design suggest precision and technical expertise. Overall composition balances professionalism with dynamic energy suitable for digital marketing and social media use.
+
+CRITICAL: Use the exact text values provided above. Do NOT use placeholder text like {location} or {phone}. No watermarks.`
 
   // Use Gemini 3 Pro Image Preview for image generation
   const response = await fetch(
