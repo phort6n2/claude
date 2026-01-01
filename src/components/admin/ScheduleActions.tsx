@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
-import { Calendar, Trash2, Play, Loader2, AlertCircle, CheckCircle } from 'lucide-react'
+import { Calendar, Trash2, Play, Loader2, AlertCircle, CheckCircle, X } from 'lucide-react'
 
 interface ScheduleActionsProps {
   clientId: string
@@ -95,13 +95,18 @@ export default function ScheduleActions({
     }
   }
 
+  const handleClose = () => {
+    setIsOpen(false)
+    setResult(null)
+  }
+
   return (
-    <div className="relative">
+    <>
       <Button
         variant="ghost"
         size="sm"
         className="px-1.5 py-1 h-7"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => setIsOpen(true)}
         title={hasSchedule ? `${scheduledCount} scheduled` : 'Generate schedule'}
       >
         <Calendar className={`h-4 w-4 ${hasSchedule ? 'text-green-600' : 'text-gray-400'}`} />
@@ -111,21 +116,32 @@ export default function ScheduleActions({
       </Button>
 
       {isOpen && (
-        <>
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-10"
-            onClick={() => setIsOpen(false)}
+            className="absolute inset-0 bg-black/50"
+            onClick={handleClose}
           />
 
-          {/* Dropdown */}
-          <div className="absolute right-0 top-full mt-1 z-20 bg-white rounded-lg shadow-lg border p-3 w-64">
-            <div className="text-sm font-medium text-gray-900 mb-3">
-              Content Schedule
+          {/* Modal */}
+          <div className="relative bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
+            {/* Close button */}
+            <button
+              onClick={handleClose}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Header */}
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Content Schedule</h3>
+              <p className="text-sm text-gray-500 mt-1">{clientName}</p>
             </div>
 
+            {/* Result message */}
             {result && (
-              <div className={`mb-3 p-2 rounded text-sm flex items-center gap-2 ${
+              <div className={`mb-4 p-3 rounded-lg text-sm flex items-center gap-2 ${
                 result.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
               }`}>
                 {result.success ? (
@@ -137,55 +153,68 @@ export default function ScheduleActions({
               </div>
             )}
 
-            <div className="space-y-2">
+            {/* Status info */}
+            {hasSchedule && (
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Scheduled items:</span>
+                  <span className="text-lg font-semibold text-green-600">{scheduledCount}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="space-y-3">
               {!hasSchedule ? (
                 <button
                   onClick={handleGenerate}
                   disabled={isLoading}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left rounded-md hover:bg-gray-100 disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
                 >
                   {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
-                    <Play className="h-4 w-4 text-green-600" />
+                    <Play className="h-5 w-5" />
                   )}
                   Generate Schedule
                 </button>
               ) : (
                 <>
-                  <div className="px-3 py-2 text-sm text-gray-500">
-                    {scheduledCount} items scheduled
-                  </div>
                   <button
                     onClick={handleGenerate}
                     disabled={isLoading}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left rounded-md hover:bg-gray-100 disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
                   >
                     {isLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-5 w-5 animate-spin" />
                     ) : (
-                      <Play className="h-4 w-4 text-blue-600" />
+                      <Play className="h-5 w-5" />
                     )}
                     Add More Content
                   </button>
                   <button
                     onClick={handleClear}
                     disabled={isLoading}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left text-red-600 rounded-md hover:bg-red-50 disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
                   >
                     {isLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-5 w-5 animate-spin" />
                     ) : (
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-5 w-5" />
                     )}
                     Clear All Scheduled
                   </button>
                 </>
               )}
             </div>
+
+            {/* Help text */}
+            <p className="mt-4 text-xs text-gray-500 text-center">
+              Content publishes every Tuesday and Thursday
+            </p>
           </div>
-        </>
+        </div>
       )}
-    </div>
+    </>
   )
 }
