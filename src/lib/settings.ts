@@ -82,8 +82,13 @@ export async function getSetting(key: string): Promise<string | null> {
       try {
         return decrypt(setting.value)
       } catch (error) {
+        // Decryption failed - the value might not actually be encrypted
+        // Try returning the raw value as a fallback
+        console.warn(`Decryption failed for ${key}, trying raw value`)
+        if (setting.value && setting.value.length > 0) {
+          return setting.value
+        }
         console.error(`Failed to decrypt setting: ${key}`, error)
-        // Return null so the calling code can handle missing credentials gracefully
         return null
       }
     }
