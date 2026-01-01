@@ -413,138 +413,154 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
 
     // Generate WRHQ content
+    console.log('WRHQ generation check:', { generateWrhqBlog, generateWrhqSocial })
     if (generateWrhqBlog || generateWrhqSocial) {
       try {
         // Generate WRHQ blog when requested (regardless of global setting - user explicitly requested it)
         if (generateWrhqBlog) {
-            await prisma.contentItem.update({
-              where: { id },
-              data: { pipelineStep: 'wrhq_blog' },
-            })
+          console.log('Starting WRHQ blog generation...')
+          await prisma.contentItem.update({
+            where: { id },
+            data: { pipelineStep: 'wrhq_blog' },
+          })
 
-            // Get the client's blog post for reference
-            const blogPost = await prisma.blogPost.findUnique({
-              where: { contentItemId: id },
-            })
+          // Get the client's blog post for reference
+          const blogPost = await prisma.blogPost.findUnique({
+            where: { contentItemId: id },
+          })
+          console.log('Blog post for WRHQ:', blogPost ? { title: blogPost.title, slug: blogPost.slug, wordpressUrl: blogPost.wordpressUrl } : 'not found')
 
-            // Get the landscape image for the WRHQ post
-            const landscapeImage = await prisma.image.findFirst({
-              where: { contentItemId: id, imageType: 'BLOG_FEATURED' },
-            })
+          // Get the landscape image for the WRHQ post
+          const landscapeImage = await prisma.image.findFirst({
+            where: { contentItemId: id, imageType: 'BLOG_FEATURED' },
+          })
+          console.log('Landscape image found:', !!landscapeImage)
 
-            // Use the published blog URL if available, otherwise construct from slug
-            // The published URL is set after Step 1 completes and the blog is on WordPress
-            const clientBlogUrl = blogPost?.wordpressUrl
-              ? blogPost.wordpressUrl
-              : (contentItem.client.wordpressUrl && blogPost
-                ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${blogPost.slug}`
-                : '')
+          // Use the published blog URL if available, otherwise construct from slug
+          // The published URL is set after Step 1 completes and the blog is on WordPress
+          const clientBlogUrl = blogPost?.wordpressUrl
+            ? blogPost.wordpressUrl
+            : (contentItem.client.wordpressUrl && blogPost
+              ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${blogPost.slug}`
+              : '')
+          console.log('Client blog URL for WRHQ:', clientBlogUrl)
 
-            // Import and call the WRHQ blog generation function
-            const { generateWRHQBlogPost } = await import('@/lib/integrations/claude')
+          // Import and call the WRHQ blog generation function
+          const { generateWRHQBlogPost } = await import('@/lib/integrations/claude')
 
-            const wrhqBlogResult = await generateWRHQBlogPost({
-              clientBlogTitle: blogPost?.title || contentItem.paaQuestion,
-              clientBlogUrl: clientBlogUrl,
-              clientBlogExcerpt: blogPost?.excerpt || '',
-              clientBusinessName: contentItem.client.businessName,
-              clientCity: contentItem.client.city,
-              clientState: contentItem.client.state,
-              paaQuestion: contentItem.paaQuestion,
-              wrhqDirectoryUrl: contentItem.client.wrhqDirectoryUrl || '',
-              googleMapsUrl: contentItem.client.googleMapsUrl || '',
-              phone: contentItem.client.phone,
-              featuredImageUrl: landscapeImage?.gcsUrl || undefined,
-            })
+          console.log('Calling generateWRHQBlogPost with params:', {
+            clientBlogTitle: blogPost?.title || contentItem.paaQuestion,
+            clientBlogUrl: clientBlogUrl,
+            clientBusinessName: contentItem.client.businessName,
+            wrhqDirectoryUrl: contentItem.client.wrhqDirectoryUrl || '',
+            googleMapsUrl: contentItem.client.googleMapsUrl || '',
+          })
 
-            // Save WRHQ blog post
-            await prisma.wRHQBlogPost.upsert({
-              where: { contentItemId: id },
-              update: {
-                title: wrhqBlogResult.title,
-                slug: wrhqBlogResult.slug,
-                content: wrhqBlogResult.content,
-                excerpt: wrhqBlogResult.excerpt,
-                metaTitle: wrhqBlogResult.metaTitle,
-                metaDescription: wrhqBlogResult.metaDescription,
-                focusKeyword: wrhqBlogResult.focusKeyword,
-                wordCount: wrhqBlogResult.content.split(/\s+/).length,
-                featuredImageUrl: landscapeImage?.gcsUrl || null,
-              },
-              create: {
+          const wrhqBlogResult = await generateWRHQBlogPost({
+            clientBlogTitle: blogPost?.title || contentItem.paaQuestion,
+            clientBlogUrl: clientBlogUrl,
+            clientBlogExcerpt: blogPost?.excerpt || '',
+            clientBusinessName: contentItem.client.businessName,
+            clientCity: contentItem.client.city,
+            clientState: contentItem.client.state,
+            paaQuestion: contentItem.paaQuestion,
+            wrhqDirectoryUrl: contentItem.client.wrhqDirectoryUrl || '',
+            googleMapsUrl: contentItem.client.googleMapsUrl || '',
+            phone: contentItem.client.phone,
+            featuredImageUrl: landscapeImage?.gcsUrl || undefined,
+          })
+
+          console.log('WRHQ blog result:', { title: wrhqBlogResult.title, slug: wrhqBlogResult.slug })
+
+          // Save WRHQ blog post
+          await prisma.wRHQBlogPost.upsert({
+            where: { contentItemId: id },
+            update: {
+              title: wrhqBlogResult.title,
+              slug: wrhqBlogResult.slug,
+              content: wrhqBlogResult.content,
+              excerpt: wrhqBlogResult.excerpt,
+              metaTitle: wrhqBlogResult.metaTitle,
+              metaDescription: wrhqBlogResult.metaDescription,
+              focusKeyword: wrhqBlogResult.focusKeyword,
+              wordCount: wrhqBlogResult.content.split(/\s+/).length,
+              featuredImageUrl: landscapeImage?.gcsUrl || null,
+            },
+            create: {
+              contentItemId: id,
+              clientId: contentItem.clientId,
+              title: wrhqBlogResult.title,
+              slug: wrhqBlogResult.slug,
+              content: wrhqBlogResult.content,
+              excerpt: wrhqBlogResult.excerpt,
+              metaTitle: wrhqBlogResult.metaTitle,
+              metaDescription: wrhqBlogResult.metaDescription,
+              focusKeyword: wrhqBlogResult.focusKeyword,
+              wordCount: wrhqBlogResult.content.split(/\s+/).length,
+              featuredImageUrl: landscapeImage?.gcsUrl || null,
+            },
+          })
+
+          await prisma.contentItem.update({
+            where: { id },
+            data: { wrhqBlogGenerated: true },
+          })
+
+          results.wrhqBlog = { success: true, title: wrhqBlogResult.title }
+          console.log('WRHQ blog generation complete')
+        }
+
+        if (generateWrhqSocial) {
+          await prisma.contentItem.update({
+            where: { id },
+            data: { pipelineStep: 'wrhq_social' },
+          })
+
+          // Get WRHQ platforms from settings
+          const wrhqPlatforms: string[] = []
+          const platformKeys = [
+            { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_FACEBOOK_ID, platform: 'FACEBOOK' },
+            { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_INSTAGRAM_ID, platform: 'INSTAGRAM' },
+            { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_LINKEDIN_ID, platform: 'LINKEDIN' },
+            { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_TWITTER_ID, platform: 'TWITTER' },
+            { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_TIKTOK_ID, platform: 'TIKTOK' },
+          ]
+
+          for (const { key, platform } of platformKeys) {
+            const value = await getSetting(key)
+            if (value) wrhqPlatforms.push(platform)
+          }
+
+          // Delete existing WRHQ social posts
+          await prisma.wRHQSocialPost.deleteMany({
+            where: { contentItemId: id },
+          })
+
+          // Create WRHQ social posts
+          if (wrhqPlatforms.length > 0) {
+            await prisma.wRHQSocialPost.createMany({
+              data: wrhqPlatforms.map(platform => ({
                 contentItemId: id,
-                clientId: contentItem.clientId,
-                title: wrhqBlogResult.title,
-                slug: wrhqBlogResult.slug,
-                content: wrhqBlogResult.content,
-                excerpt: wrhqBlogResult.excerpt,
-                metaTitle: wrhqBlogResult.metaTitle,
-                metaDescription: wrhqBlogResult.metaDescription,
-                focusKeyword: wrhqBlogResult.focusKeyword,
-                wordCount: wrhqBlogResult.content.split(/\s+/).length,
-                featuredImageUrl: landscapeImage?.gcsUrl || null,
+                platform: platform as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
+                caption: `WRHQ Partner Spotlight: ${contentItem.client.businessName} on ${contentItem.paaQuestion}\n\n#WRHQ #AutoGlassPartner`,
+                hashtags: ['WRHQ', 'AutoGlassPartner', 'IndustryExpert'],
+                firstComment: 'Check out the full article!',
+                mediaUrls: [],
+                scheduledTime: contentItem.scheduledDate,
+              })),
+            })
+
+            await prisma.contentItem.update({
+              where: { id },
+              data: {
+                wrhqSocialGenerated: true,
+                wrhqSocialTotalCount: wrhqPlatforms.length,
               },
             })
 
-            await prisma.contentItem.update({
-              where: { id },
-              data: { wrhqBlogGenerated: true },
-            })
-
-            results.wrhqBlog = { success: true, title: wrhqBlogResult.title }
+            results.wrhqSocial = { success: true, count: wrhqPlatforms.length }
           }
-
-          if (generateWrhqSocial) {
-            await prisma.contentItem.update({
-              where: { id },
-              data: { pipelineStep: 'wrhq_social' },
-            })
-
-            // Get WRHQ platforms from settings
-            const wrhqPlatforms: string[] = []
-            const platformKeys = [
-              { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_FACEBOOK_ID, platform: 'FACEBOOK' },
-              { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_INSTAGRAM_ID, platform: 'INSTAGRAM' },
-              { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_LINKEDIN_ID, platform: 'LINKEDIN' },
-              { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_TWITTER_ID, platform: 'TWITTER' },
-              { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_TIKTOK_ID, platform: 'TIKTOK' },
-            ]
-
-            for (const { key, platform } of platformKeys) {
-              const value = await getSetting(key)
-              if (value) wrhqPlatforms.push(platform)
-            }
-
-            // Delete existing WRHQ social posts
-            await prisma.wRHQSocialPost.deleteMany({
-              where: { contentItemId: id },
-            })
-
-            // Create WRHQ social posts
-            if (wrhqPlatforms.length > 0) {
-              await prisma.wRHQSocialPost.createMany({
-                data: wrhqPlatforms.map(platform => ({
-                  contentItemId: id,
-                  platform: platform as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
-                  caption: `WRHQ Partner Spotlight: ${contentItem.client.businessName} on ${contentItem.paaQuestion}\n\n#WRHQ #AutoGlassPartner`,
-                  hashtags: ['WRHQ', 'AutoGlassPartner', 'IndustryExpert'],
-                  firstComment: 'Check out the full article!',
-                  mediaUrls: [],
-                  scheduledTime: contentItem.scheduledDate,
-                })),
-              })
-
-              await prisma.contentItem.update({
-                where: { id },
-                data: {
-                  wrhqSocialGenerated: true,
-                  wrhqSocialTotalCount: wrhqPlatforms.length,
-                },
-              })
-
-              results.wrhqSocial = { success: true, count: wrhqPlatforms.length }
-            }
-          }
+        }
       } catch (error) {
         console.error('WRHQ content generation error:', error)
         if (generateWrhqBlog) results.wrhqBlog = { success: false, error: String(error) }
