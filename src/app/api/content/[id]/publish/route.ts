@@ -182,6 +182,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
               featuredImageUrl: featuredImage?.gcsUrl,
               metaTitle: contentItem.wrhqBlogPost.metaTitle || undefined,
               metaDescription: contentItem.wrhqBlogPost.metaDescription || undefined,
+              categorySlug: 'auto-glass-repair',
+              categoryName: 'Auto Glass Repair',
             })
 
             // Update the WRHQ blog post with WordPress info

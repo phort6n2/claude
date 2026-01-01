@@ -199,6 +199,56 @@ export async function getPages(credentials: WordPressCredentials): Promise<Array
   }))
 }
 
+/**
+ * Get category ID by slug, or create it if it doesn't exist
+ */
+export async function getCategoryBySlug(
+  credentials: WordPressCredentials,
+  slug: string,
+  name?: string
+): Promise<number | null> {
+  const authHeader = getAuthHeader(credentials.username, credentials.password)
+
+  // Try to find existing category
+  const response = await fetch(
+    `${credentials.url}/wp-json/wp/v2/categories?slug=${encodeURIComponent(slug)}`,
+    {
+      headers: {
+        'Authorization': authHeader,
+      },
+    }
+  )
+
+  if (response.ok) {
+    const categories = await response.json()
+    if (categories.length > 0) {
+      return categories[0].id
+    }
+  }
+
+  // Category doesn't exist, try to create it
+  if (name) {
+    const createResponse = await fetch(`${credentials.url}/wp-json/wp/v2/categories`, {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name,
+        slug,
+      }),
+    })
+
+    if (createResponse.ok) {
+      const newCategory = await createResponse.json()
+      return newCategory.id
+    }
+  }
+
+  return null
+}
+
 export async function injectSchemaMarkup(
   credentials: WordPressCredentials,
   postId: number,
@@ -239,6 +289,8 @@ export interface PublishToWordPressParams {
   metaTitle?: string
   metaDescription?: string
   schemaJson?: string
+  categorySlug?: string  // Optional category slug (e.g., 'auto-glass-repair')
+  categoryName?: string  // Display name if category needs to be created
 }
 
 export interface PublishResult {
@@ -259,6 +311,7 @@ export async function publishToWordPress(params: PublishToWordPressParams): Prom
   }
 
   let featuredImageId: number | undefined
+  let categoryIds: number[] | undefined
 
   // Upload featured image if provided
   if (params.featuredImageUrl) {
@@ -275,6 +328,22 @@ export async function publishToWordPress(params: PublishToWordPressParams): Prom
     }
   }
 
+  // Look up category if provided
+  if (params.categorySlug) {
+    try {
+      const categoryId = await getCategoryBySlug(
+        credentials,
+        params.categorySlug,
+        params.categoryName
+      )
+      if (categoryId) {
+        categoryIds = [categoryId]
+      }
+    } catch (error) {
+      console.error('Failed to get category:', error)
+    }
+  }
+
   // Create the post
   const post = await createPost(credentials, {
     title: params.title,
@@ -283,6 +352,7 @@ export async function publishToWordPress(params: PublishToWordPressParams): Prom
     excerpt: params.excerpt,
     status: 'publish',
     featuredMediaId: featuredImageId,
+    categories: categoryIds,
     meta: {
       ...(params.metaTitle && { _yoast_wpseo_title: params.metaTitle }),
       ...(params.metaDescription && { _yoast_wpseo_metadesc: params.metaDescription }),
