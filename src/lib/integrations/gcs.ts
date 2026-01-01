@@ -1,4 +1,5 @@
 // Google Cloud Storage Integration
+import sharp from 'sharp'
 
 interface UploadResult {
   url: string
@@ -70,16 +71,32 @@ export async function uploadFromUrl(
   if (sourceUrl.startsWith('data:')) {
     const matches = sourceUrl.match(/^data:([^;]+);base64,(.+)$/)
     if (matches) {
-      const contentType = matches[1]
       const base64Data = matches[2]
-      return uploadFromBase64(base64Data, filename, contentType)
+      // Always convert to PNG
+      return uploadFromBase64(base64Data, filename, 'image/png')
     }
   }
 
   const response = await fetch(sourceUrl)
   const buffer = await response.arrayBuffer()
-  const contentType = response.headers.get('content-type') || 'application/octet-stream'
 
+  // Always convert images to PNG format for consistency
+  const isImage = (response.headers.get('content-type') || '').startsWith('image/')
+  if (isImage) {
+    const pngBuffer = await sharp(Buffer.from(buffer))
+      .png({
+        compressionLevel: 9,
+        palette: true,
+      })
+      .toBuffer()
+
+    // Ensure filename has .png extension
+    const pngFilename = filename.replace(/\.(jpg|jpeg|webp|gif)$/i, '.png')
+
+    return uploadToGCS(pngBuffer, pngFilename, 'image/png')
+  }
+
+  const contentType = response.headers.get('content-type') || 'application/octet-stream'
   return uploadToGCS(buffer, filename, contentType)
 }
 
@@ -89,6 +106,22 @@ export async function uploadFromBase64(
   contentType: string = 'image/png'
 ): Promise<UploadResult> {
   const buffer = Buffer.from(base64Data, 'base64')
+
+  // Always convert images to PNG format
+  if (contentType.startsWith('image/')) {
+    const pngBuffer = await sharp(buffer)
+      .png({
+        compressionLevel: 9,
+        palette: true,
+      })
+      .toBuffer()
+
+    // Ensure filename has .png extension
+    const pngFilename = filename.replace(/\.(jpg|jpeg|webp|gif)$/i, '.png')
+
+    return uploadToGCS(pngBuffer, pngFilename, 'image/png')
+  }
+
   return uploadToGCS(buffer, filename, contentType)
 }
 
