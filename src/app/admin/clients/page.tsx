@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { StatusBadge } from '@/components/ui/Badge'
 import { prisma } from '@/lib/db'
 import { formatDate } from '@/lib/utils'
-import { Plus, MoreVertical, Globe, RefreshCw, MapPin, Podcast, Building2 } from 'lucide-react'
+import { Plus, MoreVertical, Globe, RefreshCw, MapPin, Podcast, Building2, CheckCircle } from 'lucide-react'
 import ClientLogo from '@/components/ui/ClientLogo'
 
 async function getClients() {
@@ -59,31 +59,31 @@ async function ClientList() {
   return (
     <Card>
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-gray-50">
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Client
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Next Post
+              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Next
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Published This Month
+              <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Posts
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Social Platforms
+              <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Social
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                WordPress
+              <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                WP
               </th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Links
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -91,60 +91,60 @@ async function ClientList() {
           <tbody className="divide-y">
             {clients.map((client) => (
               <tr key={client.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-3">
+                <td className="px-3 py-2 whitespace-nowrap">
+                  <div className="flex items-center gap-2">
                     <ClientLogo
                       logoUrl={client.logoUrl}
                       businessName={client.businessName}
                       primaryColor={client.primaryColor}
+                      size="sm"
                     />
-                    <div>
-                      <p className="font-medium text-gray-900">{client.businessName}</p>
-                      <p className="text-sm text-gray-500">{client.city}, {client.state}</p>
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-900 text-sm truncate max-w-[180px]">
+                        {client.businessName}
+                      </p>
+                      <p className="text-xs text-gray-500">{client.city}, {client.state}</p>
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-3 py-2 whitespace-nowrap">
                   <StatusBadge status={client.status} />
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
                   {client.contentItems[0]
                     ? formatDate(client.contentItems[0].scheduledDate)
-                    : 'None scheduled'}
+                    : <span className="text-gray-400">—</span>}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                <td className="px-3 py-2 whitespace-nowrap text-center text-sm text-gray-900 font-medium">
                   {client._count.contentItems}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex gap-1">
+                <td className="px-3 py-2 whitespace-nowrap">
+                  <div className="flex justify-center gap-0.5">
                     {client.socialPlatforms.slice(0, 3).map((platform) => (
                       <span
                         key={platform}
-                        className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-gray-100 text-xs font-medium text-gray-600"
+                        className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-gray-100 text-[10px] font-medium text-gray-600"
                         title={platform}
                       >
                         {platform[0].toUpperCase()}
                       </span>
                     ))}
                     {client.socialPlatforms.length > 3 && (
-                      <span className="text-xs text-gray-500">
+                      <span className="text-[10px] text-gray-500 ml-0.5">
                         +{client.socialPlatforms.length - 3}
                       </span>
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-3 py-2 whitespace-nowrap text-center">
                   {client.wordpressConnected ? (
-                    <span className="inline-flex items-center gap-1 text-green-600 text-sm">
-                      <Globe className="h-4 w-4" />
-                      Connected
-                    </span>
+                    <CheckCircle className="h-4 w-4 text-green-500 mx-auto" />
                   ) : (
-                    <span className="text-gray-400 text-sm">Not connected</span>
+                    <span className="text-gray-300">—</span>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center justify-center gap-2">
+                <td className="px-3 py-2 whitespace-nowrap">
+                  <div className="flex items-center justify-center gap-1">
                     {client.wordpressUrl && (
                       <a
                         href={client.wordpressUrl}
@@ -153,7 +153,7 @@ async function ClientList() {
                         className="text-blue-500 hover:text-blue-700 transition-colors"
                         title="Website"
                       >
-                        <Globe className="h-5 w-5" />
+                        <Globe className="h-4 w-4" />
                       </a>
                     )}
                     {client.googleMapsUrl && (
@@ -164,7 +164,7 @@ async function ClientList() {
                         className="text-red-500 hover:text-red-700 transition-colors"
                         title="Google Maps"
                       >
-                        <MapPin className="h-5 w-5" />
+                        <MapPin className="h-4 w-4" />
                       </a>
                     )}
                     {client.podbeanPodcastUrl && (
@@ -175,7 +175,7 @@ async function ClientList() {
                         className="text-purple-500 hover:text-purple-700 transition-colors"
                         title="Podbean Podcast"
                       >
-                        <Podcast className="h-5 w-5" />
+                        <Podcast className="h-4 w-4" />
                       </a>
                     )}
                     {client.wrhqDirectoryUrl && (
@@ -186,20 +186,22 @@ async function ClientList() {
                         className="text-orange-500 hover:text-orange-700 transition-colors"
                         title="WRHQ Directory"
                       >
-                        <Building2 className="h-5 w-5" />
+                        <Building2 className="h-4 w-4" />
                       </a>
                     )}
                     {!client.wordpressUrl && !client.googleMapsUrl && !client.podbeanPodcastUrl && !client.wrhqDirectoryUrl && (
-                      <span className="text-gray-300 text-sm">—</span>
+                      <span className="text-gray-300">—</span>
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <div className="flex items-center justify-end gap-2">
+                <td className="px-3 py-2 whitespace-nowrap text-right">
+                  <div className="flex items-center justify-end gap-1">
                     <Link href={`/admin/clients/${client.id}`}>
-                      <Button variant="outline" size="sm">Edit</Button>
+                      <Button variant="outline" size="sm" className="text-xs px-2 py-1 h-7">
+                        Edit
+                      </Button>
                     </Link>
-                    <Button variant="ghost" size="sm">
+                    <Button variant="ghost" size="sm" className="px-1 py-1 h-7">
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </div>
