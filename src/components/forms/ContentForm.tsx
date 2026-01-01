@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Zap, Calendar } from 'lucide-react'
 
 interface Client {
   id: string
@@ -48,6 +49,7 @@ export default function ContentForm({ initialData, isEditing = false }: ContentF
   const [customQuestion, setCustomQuestion] = useState(initialData?.paaQuestion || '')
   const [useCustom, setUseCustom] = useState(!!initialData?.paaQuestion)
   const [selectedLocation, setSelectedLocation] = useState(initialData?.serviceLocationId || '')
+  const [publishNow, setPublishNow] = useState(false)
 
   // Fetch clients on mount
   useEffect(() => {
@@ -111,6 +113,7 @@ export default function ContentForm({ initialData, isEditing = false }: ContentF
     }
 
     const client = clients.find(c => c.id === clientId)
+    const today = new Date().toISOString().split('T')[0]
 
     try {
       const url = isEditing ? `/api/content/${initialData?.id}` : '/api/content'
@@ -124,9 +127,10 @@ export default function ContentForm({ initialData, isEditing = false }: ContentF
           clientPAAId: useCustom ? null : selectedPAA,
           serviceLocationId: selectedLocation || null,
           paaQuestion: question,
-          scheduledDate: getNextPublishDate(),
+          scheduledDate: publishNow ? today : getNextPublishDate(),
           scheduledTime: client?.preferredPublishTime || '09:00',
-          status: 'DRAFT',
+          status: publishNow ? 'GENERATING' : 'DRAFT',
+          triggerGeneration: publishNow,
         }),
       })
 
@@ -135,7 +139,14 @@ export default function ContentForm({ initialData, isEditing = false }: ContentF
         throw new Error(data.error || 'Failed to save content')
       }
 
-      router.push('/admin/content')
+      const data = await response.json()
+
+      if (publishNow && data.id) {
+        // Redirect to review page for immediate content
+        router.push(`/admin/content/${data.id}/review`)
+      } else {
+        router.push('/admin/content')
+      }
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -148,6 +159,8 @@ export default function ContentForm({ initialData, isEditing = false }: ContentF
     return loc.neighborhood ? `${loc.neighborhood}, ${loc.city}` : `${loc.city}, ${loc.state}`
   }
 
+  const isFormValid = clientId && (useCustom ? customQuestion.trim() : selectedPAA)
+
   return (
     <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-6">
       {error && (
@@ -158,7 +171,7 @@ export default function ContentForm({ initialData, isEditing = false }: ContentF
 
       <Card>
         <CardHeader>
-          <CardTitle>Schedule Content</CardTitle>
+          <CardTitle>Create Content</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Client Selection */}
@@ -253,10 +266,43 @@ export default function ContentForm({ initialData, isEditing = false }: ContentF
             </div>
           )}
 
-          {/* Info */}
+          {/* Publish Option */}
           {clientId && (
-            <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-600">
-              Content will be scheduled for the next available Tuesday or Thursday.
+            <div className="pt-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                When to publish
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPublishNow(false)}
+                  className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-colors ${
+                    !publishNow
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                  }`}
+                >
+                  <Calendar className="h-5 w-5" />
+                  <span className="font-medium">Schedule</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPublishNow(true)}
+                  className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-colors ${
+                    publishNow
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                  }`}
+                >
+                  <Zap className="h-5 w-5" />
+                  <span className="font-medium">Create Now</span>
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                {publishNow
+                  ? 'Content will be generated immediately and ready for review.'
+                  : 'Content will be scheduled for the next Tuesday or Thursday.'}
+              </p>
             </div>
           )}
         </CardContent>
@@ -270,8 +316,16 @@ export default function ContentForm({ initialData, isEditing = false }: ContentF
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={loading || !clientId}>
-          {loading ? 'Saving...' : isEditing ? 'Update Content' : 'Schedule Content'}
+        <Button
+          type="submit"
+          disabled={loading || !isFormValid}
+          className={publishNow ? 'bg-green-600 hover:bg-green-700' : ''}
+        >
+          {loading
+            ? (publishNow ? 'Creating...' : 'Scheduling...')
+            : isEditing
+              ? 'Update Content'
+              : (publishNow ? 'Create Now' : 'Schedule Content')}
         </Button>
       </div>
     </form>
