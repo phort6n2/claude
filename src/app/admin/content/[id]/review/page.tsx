@@ -154,6 +154,17 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
     loadContent()
   }, [loadContent])
 
+  // Auto-refresh when content is generating
+  useEffect(() => {
+    if (content?.status !== 'GENERATING') return
+
+    const interval = setInterval(() => {
+      loadContent()
+    }, 3000) // Refresh every 3 seconds
+
+    return () => clearInterval(interval)
+  }, [content?.status, loadContent])
+
   async function updateApproval(field: string, value: string) {
     if (!content) return
     setSaving(true)
@@ -213,13 +224,20 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
             <p className="text-sm text-gray-500">{content.client.businessName}</p>
           </div>
           <div className="ml-auto flex items-center gap-4">
-            <div className="text-sm text-gray-500">
-              {approvedCount} of {totalRequired} approved
-            </div>
+            {content.status === 'GENERATING' ? (
+              <div className="flex items-center gap-2 text-blue-600">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                <span className="text-sm font-medium">Generating content...</span>
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500">
+                {approvedCount} of {totalRequired} approved
+              </div>
+            )}
             <div className={`px-3 py-1 rounded-full text-sm font-medium ${
               content.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' :
               content.status === 'REVIEW' ? 'bg-yellow-100 text-yellow-700' :
-              content.status === 'GENERATING' ? 'bg-blue-100 text-blue-700' :
+              content.status === 'GENERATING' ? 'bg-blue-100 text-blue-700 animate-pulse' :
               'bg-gray-100 text-gray-700'
             }`}>
               {content.status}

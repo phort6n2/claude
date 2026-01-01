@@ -160,6 +160,19 @@ export default function ContentCalendarPage() {
       .catch(console.error)
   }, [])
 
+  // Auto-refresh when there are GENERATING items
+  useEffect(() => {
+    const hasGenerating = contentItems.some(item => item.status === 'GENERATING')
+    if (!hasGenerating) return
+
+    const interval = setInterval(() => {
+      fetchContent()
+      fetchAllContent()
+    }, 5000) // Refresh every 5 seconds
+
+    return () => clearInterval(interval)
+  }, [contentItems, fetchContent, fetchAllContent])
+
   const handleDeleteContent = async (id: string, question: string) => {
     if (!confirm(`Delete this content item?\n\n"${question.substring(0, 60)}${question.length > 60 ? '...' : ''}"\n\nThis cannot be undone.`)) {
       return
@@ -384,16 +397,14 @@ export default function ContentCalendarPage() {
                     </td>
                     <td className="px-2 py-2 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {(item.status === 'REVIEW' || item.status === 'GENERATING' || item.blogGenerated) && (
-                          <Link href={`/admin/content/${item.id}/review`}>
-                            <Button variant="outline" size="sm" className="h-6 px-2 text-xs">
-                              <Eye className="h-3 w-3" />
-                            </Button>
-                          </Link>
-                        )}
-                        <Link href={`/admin/content/${item.id}`}>
-                          <Button variant="ghost" size="sm" className="h-6 px-1">
-                            <FileText className="h-3 w-3" />
+                        <Link href={`/admin/content/${item.id}/review`}>
+                          <Button
+                            variant={item.status === 'GENERATING' ? 'primary' : 'outline'}
+                            size="sm"
+                            className={`h-6 px-2 text-xs ${item.status === 'GENERATING' ? 'animate-pulse' : ''}`}
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            {item.status === 'GENERATING' ? 'View' : 'View'}
                           </Button>
                         </Link>
                         {(item.status === 'DRAFT' || item.status === 'SCHEDULED') && (

@@ -22,6 +22,14 @@ export async function GET(request: NextRequest) {
             primaryColor: true,
           },
         },
+        serviceLocation: {
+          select: {
+            id: true,
+            city: true,
+            state: true,
+            neighborhood: true,
+          },
+        },
       },
     })
 
@@ -42,13 +50,16 @@ export async function POST(request: NextRequest) {
     const contentItem = await prisma.contentItem.create({
       data: {
         clientId: data.clientId,
+        clientPAAId: data.clientPAAId || null,
+        serviceLocationId: data.serviceLocationId || null,
         paaQuestion: data.paaQuestion,
         topic: data.topic || null,
         scheduledDate: new Date(data.scheduledDate),
         scheduledTime: data.scheduledTime || '09:00',
         priority: data.priority || 0,
         notes: data.notes || null,
-        status: 'SCHEDULED',
+        status: data.status || 'SCHEDULED',
+        pipelineStep: data.triggerGeneration ? 'BLOG' : null,
       },
       include: {
         client: {
@@ -59,6 +70,10 @@ export async function POST(request: NextRequest) {
         },
       },
     })
+
+    // TODO: If triggerGeneration is true, trigger the content pipeline
+    // This would call the generation service/worker
+    // For now, we just set the status to GENERATING
 
     return NextResponse.json(contentItem, { status: 201 })
   } catch (error) {
