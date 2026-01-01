@@ -36,10 +36,10 @@ export async function generateImage(params: ImageGenerationParams): Promise<Imag
     ? { width: 1920, height: 1080, size: '1920x1080px', ratio: '16:9' }
     : { width: 1080, height: 1080, size: '1080x1080px', ratio: '1:1' }
 
-  // For square images, use a simplified layout
+  // For square images, use an adapted layout that maintains the same style
   const layoutDescription = params.aspectRatio === '16:9'
     ? `Split design with text-dominant left side (60%) and image-focused right side (40%). Left side contains all text elements aligned left: headline in upper quadrant, circular logo badge below headline, company name below logo, and contact section with icons at bottom. Right side features automotive photograph bleeding to edge.`
-    : `Centered design with headline at top, circular logo badge in center, company info below, and automotive image as background with overlay.`
+    : `Stacked vertical design optimized for Instagram. Top third: headline text. Middle section: circular logo badge with company name and location. Bottom third: contact information with blue icons. Automotive photograph as background with dark semi-transparent overlay for text readability. Geometric shapes in corners and along edges create visual interest while maintaining the same dynamic style as landscape version.`
 
   const prompt = `Create a professional ${dimensions.ratio} social media marketing banner (${dimensions.size}) for ${params.businessName} with the following specifications:
 

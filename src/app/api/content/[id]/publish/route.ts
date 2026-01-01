@@ -43,7 +43,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       include: {
         client: true,
         blogPost: true,
+        wrhqBlogPost: true,
         images: true,
+        podcast: true,
         socialPosts: true,
         wrhqSocialPosts: true,
       },
@@ -125,7 +127,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
 
     // Publish WRHQ blog to WordPress (if enabled)
-    if (publishWrhqBlog) {
+    if (publishWrhqBlog && contentItem.wrhqBlogPost) {
       try {
         const wrhqEnabled = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_ENABLED)
 
@@ -135,6 +137,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           const wrhqWpPass = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_APP_PASSWORD)
 
           if (wrhqWpUrl && wrhqWpUser && wrhqWpPass) {
+            // Use the 16:9 landscape image for WRHQ blog
+            const featuredImage = contentItem.images.find((img: Image) => img.imageType === 'BLOG_FEATURED')
+
             const wpResult = await publishToWordPress({
               client: {
                 ...contentItem.client,
@@ -142,10 +147,24 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 wordpressUsername: wrhqWpUser,
                 wordpressAppPassword: wrhqWpPass,
               },
-              title: `Partner Spotlight: ${contentItem.blogPost?.title}`,
-              content: `<!-- WRHQ blog content -->`,
-              slug: `partner-${contentItem.blogPost?.slug}`,
+              title: contentItem.wrhqBlogPost.title,
+              content: contentItem.wrhqBlogPost.content,
+              excerpt: contentItem.wrhqBlogPost.excerpt || undefined,
+              slug: contentItem.wrhqBlogPost.slug,
               scheduledDate: contentItem.scheduledDate,
+              featuredImageUrl: featuredImage?.gcsUrl,
+              metaTitle: contentItem.wrhqBlogPost.metaTitle || undefined,
+              metaDescription: contentItem.wrhqBlogPost.metaDescription || undefined,
+            })
+
+            // Update the WRHQ blog post with WordPress info
+            await prisma.wRHQBlogPost.update({
+              where: { id: contentItem.wrhqBlogPost.id },
+              data: {
+                wordpressPostId: wpResult.postId,
+                wordpressUrl: wpResult.url,
+                publishedAt: contentItem.scheduledDate,
+              },
             })
 
             await prisma.contentItem.update({
@@ -177,9 +196,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           const accountId = socialAccountIds?.[socialPost.platform.toLowerCase()]
           if (!accountId) continue
 
-          const image = contentItem.images.find(
-            (img: Image) => img.imageType === socialPost.platform || img.imageType === 'BLOG_FEATURED'
-          )
+          // Select correct image based on platform:
+          // - Instagram uses square 1:1 image (INSTAGRAM_FEED)
+          // - All others use 16:9 landscape image (BLOG_FEATURED)
+          const imageType = socialPost.platform === 'INSTAGRAM' ? 'INSTAGRAM_FEED' : 'BLOG_FEATURED'
+          const image = contentItem.images.find((img: Image) => img.imageType === imageType)
+            || contentItem.images.find((img: Image) => img.imageType === 'BLOG_FEATURED')
 
           const lateResult = await schedulePost({
             accountId,
@@ -229,9 +251,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
             if (!accountId) continue
 
-            const image = contentItem.images.find(
-              (img: Image) => img.imageType === wrhqPost.platform || img.imageType === 'BLOG_FEATURED'
-            )
+            // Select correct image based on platform
+          const imageType = wrhqPost.platform === 'INSTAGRAM' ? 'INSTAGRAM_FEED' : 'BLOG_FEATURED'
+          const image = contentItem.images.find((img: Image) => img.imageType === imageType)
+            || contentItem.images.find((img: Image) => img.imageType === 'BLOG_FEATURED')
 
             const lateResult = await schedulePost({
               accountId,
@@ -257,6 +280,63 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       } catch (error) {
         console.error('WRHQ social scheduling error:', error)
         results.wrhqSocial = { success: false, error: String(error) }
+      }
+    }
+
+    // Publish podcast to Podbean and embed in blog post
+    if (contentItem.podcast?.audioUrl && contentItem.podcast.status === 'READY') {
+      try {
+        const { publishToPodbean } = await import('@/lib/integrations/podbean')
+        const { updatePost } = await import('@/lib/integrations/wordpress')
+
+        // Publish to Podbean
+        const podbeanResult = await publishToPodbean({
+          title: contentItem.blogPost?.title || contentItem.paaQuestion,
+          description: contentItem.podcast.description || contentItem.podcastDescription || '',
+          audioUrl: contentItem.podcast.audioUrl,
+        })
+
+        // Generate iframe embed code
+        const podcastEmbed = `<iframe title="${contentItem.blogPost?.title || contentItem.paaQuestion}" allowtransparency="true" height="150" width="100%" style="border: none; min-width: min(100%, 430px);height:150px;" scrolling="no" data-name="pb-iframe-player" src="${podbeanResult.playerUrl}&from=pb6admin&share=1&download=1&rtl=0&fonts=Arial&skin=1&font-color=&logo_link=episode_page&btn-skin=7" loading="lazy"></iframe>`
+
+        // Update WordPress blog post with podcast embed
+        if (contentItem.blogPost?.wordpressPostId && contentItem.client.wordpressUrl) {
+          const updatedContent = contentItem.blogPost.content + `\n\n<!-- Podcast Episode -->\n<div class="podcast-embed" style="margin: 30px 0;">\n<h3>Listen to This Episode</h3>\n${podcastEmbed}\n</div>`
+
+          await updatePost(
+            {
+              url: contentItem.client.wordpressUrl,
+              username: contentItem.client.wordpressUsername || '',
+              password: contentItem.client.wordpressAppPassword || '',
+            },
+            contentItem.blogPost.wordpressPostId,
+            { content: updatedContent }
+          )
+        }
+
+        // Update podcast record
+        await prisma.podcast.update({
+          where: { id: contentItem.podcast.id },
+          data: {
+            status: 'READY',
+          },
+        })
+
+        // Update content item
+        await prisma.contentItem.update({
+          where: { id },
+          data: {
+            podcastGenerated: true,
+            podcastAddedToPost: true,
+            podcastAddedAt: new Date(),
+            podcastUrl: podbeanResult.url,
+          },
+        })
+
+        results.podcast = { success: true, url: podbeanResult.url, playerUrl: podbeanResult.playerUrl }
+      } catch (error) {
+        console.error('Podcast publishing error:', error)
+        results.podcast = { success: false, error: String(error) }
       }
     }
 
