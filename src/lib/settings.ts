@@ -215,6 +215,10 @@ export async function updateWRHQWordPress(config: {
     updates.push(setSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_USERNAME, config.username))
   }
   if (config.appPassword !== undefined) {
+    // Delete the old setting first to clear any encrypted value that can't be decrypted
+    await prisma.setting.deleteMany({
+      where: { key: WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_APP_PASSWORD }
+    })
     updates.push(setSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_APP_PASSWORD, config.appPassword))
   }
 

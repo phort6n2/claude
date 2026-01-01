@@ -31,7 +31,7 @@ export function encrypt(text: string): string {
   return iv.toString('hex') + ':' + encrypted
 }
 
-export function decrypt(encryptedText: string): string {
+export function decrypt(encryptedText: string): string | null {
   // Handle base64 fallback
   if (encryptedText.startsWith('b64:')) {
     return Buffer.from(encryptedText.slice(4), 'base64').toString('utf8')
@@ -39,14 +39,22 @@ export function decrypt(encryptedText: string): string {
 
   const key = getKey()
   if (!key) {
-    throw new Error('Cannot decrypt: ENCRYPTION_KEY not configured')
+    // Can't decrypt without key - return null so calling code can handle it
+    console.error('Cannot decrypt: ENCRYPTION_KEY not configured. Please re-save the setting.')
+    return null
   }
-  const [ivHex, encrypted] = encryptedText.split(':')
-  const iv = Buffer.from(ivHex, 'hex')
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv)
-  let decrypted = decipher.update(encrypted, 'hex', 'utf8')
-  decrypted += decipher.final('utf8')
-  return decrypted
+
+  try {
+    const [ivHex, encrypted] = encryptedText.split(':')
+    const iv = Buffer.from(ivHex, 'hex')
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv)
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8')
+    decrypted += decipher.final('utf8')
+    return decrypted
+  } catch (error) {
+    console.error('Decryption failed:', error)
+    return null
+  }
 }
 
 export function isEncryptionConfigured(): boolean {
