@@ -1,9 +1,34 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Plus, Trash2, MapPin, Building2, Podcast, FileQuestion, Search, Loader2 } from 'lucide-react'
+import { SAMPLE_PAAS } from '@/lib/sample-paas'
+
+interface PodbeanPodcast {
+  id: string
+  title: string
+  logo: string
+  description: string
+  website: string
+}
+
+interface ServiceLocation {
+  id?: string
+  city: string
+  state: string
+  neighborhood: string
+  isHeadquarters: boolean
+}
+
+interface PlacePrediction {
+  placeId: string
+  description: string
+  mainText: string
+  secondaryText: string
+}
 
 interface ClientFormData {
   businessName: string
@@ -14,6 +39,9 @@ interface ClientFormData {
   city: string
   state: string
   postalCode: string
+  googlePlaceId: string
+  googleMapsUrl: string
+  wrhqDirectoryUrl: string
   hasShopLocation: boolean
   offersMobileService: boolean
   hasAdasCalibration: boolean
@@ -30,8 +58,11 @@ interface ClientFormData {
   ctaUrl: string
   preferredPublishTime: string
   timezone: string
-  postsPerWeek: number
   socialPlatforms: string[]
+  socialAccountIds: Record<string, string>
+  podbeanPodcastId: string
+  podbeanPodcastTitle: string
+  podbeanPodcastUrl: string
 }
 
 interface ClientFormProps {
@@ -48,6 +79,9 @@ const defaultData: ClientFormData = {
   city: '',
   state: '',
   postalCode: '',
+  googlePlaceId: '',
+  googleMapsUrl: '',
+  wrhqDirectoryUrl: '',
   hasShopLocation: true,
   offersMobileService: false,
   hasAdasCalibration: false,
@@ -64,8 +98,11 @@ const defaultData: ClientFormData = {
   ctaUrl: '',
   preferredPublishTime: '09:00',
   timezone: 'America/Los_Angeles',
-  postsPerWeek: 2,
   socialPlatforms: [],
+  socialAccountIds: {},
+  podbeanPodcastId: '',
+  podbeanPodcastTitle: '',
+  podbeanPodcastUrl: '',
 }
 
 const socialPlatformOptions = [
@@ -75,6 +112,12 @@ const socialPlatformOptions = [
   { value: 'twitter', label: 'Twitter/X' },
   { value: 'tiktok', label: 'TikTok' },
   { value: 'gbp', label: 'Google Business Profile' },
+  { value: 'youtube', label: 'YouTube' },
+  { value: 'bluesky', label: 'Bluesky' },
+  { value: 'threads', label: 'Threads' },
+  { value: 'reddit', label: 'Reddit' },
+  { value: 'pinterest', label: 'Pinterest' },
+  { value: 'telegram', label: 'Telegram' },
 ]
 
 const timezones = [
@@ -92,6 +135,32 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
   const [testingConnection, setTestingConnection] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'success' | 'error' | null>(null)
 
+  // Service Locations state
+  const [serviceLocations, setServiceLocations] = useState<ServiceLocation[]>([])
+  const [loadingLocations, setLoadingLocations] = useState(false)
+
+  // Podbean state
+  const [podbeanPodcasts, setPodbeanPodcasts] = useState<PodbeanPodcast[]>([])
+  const [podbeanConnected, setPodbeanConnected] = useState(false)
+  const [loadingPodcasts, setLoadingPodcasts] = useState(false)
+  const [podbeanError, setPodbeanError] = useState<string | null>(null)
+
+  // PAA Questions state
+  const [paaText, setPaaText] = useState('')
+  const [paaValidation, setPaaValidation] = useState({
+    total: 0,
+    valid: 0,
+    invalid: 0,
+    errors: [] as string[],
+  })
+
+  // Place search state
+  const [placeSearch, setPlaceSearch] = useState('')
+  const [placePredictions, setPlacePredictions] = useState<PlacePrediction[]>([])
+  const [placeSearchLoading, setPlaceSearchLoading] = useState(false)
+  const [showPredictions, setShowPredictions] = useState(false)
+  const [placeSelected, setPlaceSelected] = useState(false)
+
   const [formData, setFormData] = useState<ClientFormData>({
     ...defaultData,
     ...initialData,
@@ -104,6 +173,140 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
+  // Load service locations if editing
+  useEffect(() => {
+    if (isEditing && initialData?.id) {
+      setLoadingLocations(true)
+      fetch(`/api/clients/${initialData.id}/locations`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setServiceLocations(data.map((loc: ServiceLocation) => ({
+              id: loc.id,
+              city: loc.city,
+              state: loc.state,
+              neighborhood: loc.neighborhood || '',
+              isHeadquarters: loc.isHeadquarters,
+            })))
+          }
+        })
+        .catch(console.error)
+        .finally(() => setLoadingLocations(false))
+    }
+  }, [isEditing, initialData?.id])
+
+  // Add location from headquarters (auto-create first location)
+  useEffect(() => {
+    if (!isEditing && formData.city && formData.state && serviceLocations.length === 0) {
+      setServiceLocations([{
+        city: formData.city,
+        state: formData.state,
+        neighborhood: '',
+        isHeadquarters: true,
+      }])
+    }
+  }, [formData.city, formData.state, isEditing, serviceLocations.length])
+
+  // Load Podbean podcasts
+  useEffect(() => {
+    setLoadingPodcasts(true)
+    setPodbeanError(null)
+    fetch('/api/integrations/podbean/podcasts')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.connected && data.podcasts) {
+          setPodbeanConnected(true)
+          setPodbeanPodcasts(data.podcasts)
+          setPodbeanError(null)
+        } else {
+          setPodbeanConnected(false)
+          setPodbeanError(data.error || null)
+        }
+      })
+      .catch((err) => {
+        setPodbeanConnected(false)
+        setPodbeanError(err.message || 'Failed to connect')
+      })
+      .finally(() => setLoadingPodcasts(false))
+  }, [])
+
+  // Load existing PAAs when editing
+  useEffect(() => {
+    if (isEditing && initialData?.id) {
+      fetch(`/api/clients/${initialData.id}/paas`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.paas && Array.isArray(data.paas)) {
+            const text = data.paas.map((paa: { question: string }) => paa.question).join('\n')
+            setPaaText(text)
+          }
+        })
+        .catch(console.error)
+    }
+  }, [isEditing, initialData?.id])
+
+  // Validate PAA text as user types
+  useEffect(() => {
+    const lines = paaText
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0)
+
+    const errors: string[] = []
+    let valid = 0
+    let invalid = 0
+
+    lines.forEach((line, index) => {
+      const lineErrors: string[] = []
+      if (!line.includes('{location}')) {
+        lineErrors.push('missing {location}')
+      }
+      if (!line.endsWith('?')) {
+        lineErrors.push('must end with ?')
+      }
+      if (lineErrors.length > 0) {
+        errors.push(`Line ${index + 1}: ${lineErrors.join(', ')}`)
+        invalid++
+      } else {
+        valid++
+      }
+    })
+
+    setPaaValidation({
+      total: lines.length,
+      valid,
+      invalid,
+      errors,
+    })
+  }, [paaText])
+
+  const addServiceLocation = () => {
+    setServiceLocations((prev) => [
+      ...prev,
+      { city: '', state: formData.state, neighborhood: '', isHeadquarters: false },
+    ])
+  }
+
+  const updateServiceLocation = (index: number, field: keyof ServiceLocation, value: string | boolean) => {
+    setServiceLocations((prev) => {
+      const updated = [...prev]
+      updated[index] = { ...updated[index], [field]: value }
+
+      // If setting as headquarters, unset others
+      if (field === 'isHeadquarters' && value === true) {
+        updated.forEach((loc, i) => {
+          if (i !== index) loc.isHeadquarters = false
+        })
+      }
+
+      return updated
+    })
+  }
+
+  const removeServiceLocation = (index: number) => {
+    setServiceLocations((prev) => prev.filter((_, i) => i !== index))
+  }
+
   const toggleSocialPlatform = (platform: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -111,6 +314,102 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
         ? prev.socialPlatforms.filter((p) => p !== platform)
         : [...prev.socialPlatforms, platform],
     }))
+  }
+
+  const updateSocialAccountId = (platform: string, accountId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      socialAccountIds: {
+        ...prev.socialAccountIds,
+        [platform]: accountId,
+      },
+    }))
+  }
+
+  const selectPodbeanPodcast = (podcastId: string) => {
+    const podcast = podbeanPodcasts.find((p) => p.id === podcastId)
+    setFormData((prev) => ({
+      ...prev,
+      podbeanPodcastId: podcastId,
+      podbeanPodcastTitle: podcast?.title || '',
+      podbeanPodcastUrl: podcast?.website || '',
+    }))
+  }
+
+  // Place search with debounce
+  useEffect(() => {
+    if (!placeSearch || placeSearch.length < 3 || placeSelected) {
+      setPlacePredictions([])
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      setPlaceSearchLoading(true)
+      try {
+        const response = await fetch(`/api/integrations/google-places/search?query=${encodeURIComponent(placeSearch)}`)
+        const data = await response.json()
+        if (data.predictions) {
+          setPlacePredictions(data.predictions)
+          setShowPredictions(true)
+        }
+      } catch (err) {
+        console.error('Place search error:', err)
+      } finally {
+        setPlaceSearchLoading(false)
+      }
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [placeSearch, placeSelected])
+
+  const selectPlace = async (prediction: PlacePrediction) => {
+    setPlaceSearchLoading(true)
+    setShowPredictions(false)
+    setPlaceSelected(true)
+
+    try {
+      const response = await fetch(`/api/integrations/google-places/details?placeId=${prediction.placeId}`)
+      const details = await response.json()
+
+      if (!response.ok) {
+        console.error('Failed to fetch place details:', details.error)
+        return
+      }
+
+      // Update form with place details
+      setFormData((prev) => ({
+        ...prev,
+        businessName: details.businessName || prev.businessName,
+        phone: details.phone || prev.phone,
+        streetAddress: details.streetAddress || prev.streetAddress,
+        city: details.city || prev.city,
+        state: details.state || prev.state,
+        postalCode: details.postalCode || prev.postalCode,
+        googlePlaceId: details.placeId,
+        googleMapsUrl: details.googleMapsUrl,
+      }))
+
+      setPlaceSearch(details.businessName)
+    } catch (err) {
+      console.error('Error fetching place details:', err)
+    } finally {
+      setPlaceSearchLoading(false)
+    }
+  }
+
+  const clearPlaceSelection = () => {
+    setPlaceSearch('')
+    setPlaceSelected(false)
+    setPlacePredictions([])
+    setFormData((prev) => ({
+      ...prev,
+      googlePlaceId: '',
+      googleMapsUrl: '',
+    }))
+  }
+
+  const loadSampleQuestions = () => {
+    setPaaText(SAMPLE_PAAS)
   }
 
   const testWordPressConnection = async () => {
@@ -124,6 +423,7 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
           url: formData.wordpressUrl,
           username: formData.wordpressUsername,
           password: formData.wordpressAppPassword,
+          clientId: initialData?.id, // Pass clientId to update wordpressConnected status
         }),
       })
       if (response.ok) {
@@ -160,6 +460,36 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
         throw new Error(data.error || 'Failed to save client')
       }
 
+      const clientData = await response.json()
+      const clientId = clientData.id || initialData?.id
+
+      // Save service locations if we have any with valid data
+      const validLocations = serviceLocations.filter((loc) => loc.city && loc.state)
+      if (validLocations.length > 0 && clientId) {
+        const locResponse = await fetch(`/api/clients/${clientId}/locations`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ locations: validLocations }),
+        })
+
+        if (!locResponse.ok) {
+          console.error('Failed to save service locations')
+        }
+      }
+
+      // Save PAA questions if we have valid ones
+      if (paaText.trim() && paaValidation.valid > 0 && clientId) {
+        const paaResponse = await fetch(`/api/clients/${clientId}/paas`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paaText }),
+        })
+
+        if (!paaResponse.ok) {
+          console.error('Failed to save PAA questions')
+        }
+      }
+
       router.push('/admin/clients')
       router.refresh()
     } catch (err) {
@@ -178,6 +508,65 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
               <CardTitle>Step 1: Basic Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Google Places Search */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Search size={18} className="text-blue-600" />
+                  <label className="block text-sm font-medium text-blue-900">
+                    Search for Business on Google
+                  </label>
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={placeSearch}
+                    onChange={(e) => {
+                      setPlaceSearch(e.target.value)
+                      setPlaceSelected(false)
+                    }}
+                    placeholder="Start typing business name..."
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {placeSearchLoading && (
+                    <div className="absolute right-3 top-2.5">
+                      <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                    </div>
+                  )}
+                  {showPredictions && placePredictions.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                      {placePredictions.map((prediction) => (
+                        <button
+                          key={prediction.placeId}
+                          type="button"
+                          onClick={() => selectPlace(prediction)}
+                          className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b last:border-b-0"
+                        >
+                          <div className="font-medium text-gray-900">{prediction.mainText}</div>
+                          <div className="text-sm text-gray-500">{prediction.secondaryText}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {formData.googlePlaceId && (
+                  <div className="mt-2 flex items-center justify-between text-sm">
+                    <span className="text-green-600 flex items-center gap-1">
+                      ✓ Business found - details populated below
+                    </span>
+                    <button
+                      type="button"
+                      onClick={clearPlaceSelection}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      Clear & search again
+                    </button>
+                  </div>
+                )}
+                <p className="text-xs text-blue-700 mt-2">
+                  Search to auto-fill business info from Google, or enter manually below.
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -317,18 +706,6 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                   <span className="text-sm">Has ADAS calibration</span>
                 </label>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Service Areas (comma-separated cities/neighborhoods)
-                </label>
-                <textarea
-                  value={formData.serviceAreas}
-                  onChange={(e) => updateField('serviceAreas', e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={3}
-                  placeholder="Portland, Beaverton, Lake Oswego, Tigard"
-                />
-              </div>
             </CardContent>
           </Card>
         )
@@ -337,7 +714,201 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
         return (
           <Card>
             <CardHeader>
-              <CardTitle>Step 3: Brand Settings</CardTitle>
+              <CardTitle>Step 3: Service Locations</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Add the cities/areas you serve. Content will be generated for each location.
+              </p>
+
+              {loadingLocations ? (
+                <div className="py-8 text-center text-gray-500">Loading locations...</div>
+              ) : (
+                <div className="space-y-3">
+                  {serviceLocations.map((location, index) => (
+                    <div
+                      key={index}
+                      className={`p-4 border rounded-lg ${
+                        location.isHeadquarters ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          {location.isHeadquarters ? (
+                            <Building2 size={18} className="text-blue-600" />
+                          ) : (
+                            <MapPin size={18} className="text-gray-400" />
+                          )}
+                          <span className="text-sm font-medium">
+                            {location.isHeadquarters ? 'Headquarters' : `Location ${index + 1}`}
+                          </span>
+                        </div>
+                        {!location.isHeadquarters && (
+                          <button
+                            type="button"
+                            onClick={() => removeServiceLocation(index)}
+                            className="p-1 text-gray-400 hover:text-red-600"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">City *</label>
+                          <input
+                            type="text"
+                            value={location.city}
+                            onChange={(e) => updateServiceLocation(index, 'city', e.target.value)}
+                            className="w-full px-3 py-2 border rounded-md text-sm"
+                            placeholder="City name"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">State *</label>
+                          <input
+                            type="text"
+                            value={location.state}
+                            onChange={(e) => updateServiceLocation(index, 'state', e.target.value)}
+                            className="w-full px-3 py-2 border rounded-md text-sm"
+                            placeholder="State"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Neighborhood</label>
+                          <input
+                            type="text"
+                            value={location.neighborhood}
+                            onChange={(e) => updateServiceLocation(index, 'neighborhood', e.target.value)}
+                            className="w-full px-3 py-2 border rounded-md text-sm"
+                            placeholder="Optional"
+                          />
+                        </div>
+                      </div>
+
+                      {!location.isHeadquarters && (
+                        <label className="flex items-center gap-2 mt-3">
+                          <input
+                            type="checkbox"
+                            checked={location.isHeadquarters}
+                            onChange={(e) => updateServiceLocation(index, 'isHeadquarters', e.target.checked)}
+                            className="rounded border-gray-300"
+                          />
+                          <span className="text-xs text-gray-600">Set as headquarters</span>
+                        </label>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={addServiceLocation}
+                className="flex items-center gap-2 px-4 py-2 text-sm text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50"
+              >
+                <Plus size={16} />
+                Add Another Location
+              </button>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                <strong>Pro tip:</strong> Adding multiple locations creates unique, location-specific
+                content for each area. With 200 PAA questions × {serviceLocations.length || 1} locations,
+                you&apos;ll have {200 * (serviceLocations.length || 1)} unique content pieces.
+              </div>
+            </CardContent>
+          </Card>
+        )
+
+      case 4:
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Step 4: Content Questions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <FileQuestion size={20} className="text-blue-600" />
+                <p className="text-sm text-gray-600">
+                  Enter the PAA questions for this client. Each question must include{' '}
+                  <code className="bg-gray-100 px-1 rounded">{'{location}'}</code> as a placeholder
+                  and end with a question mark.
+                </p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Questions (one per line)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={loadSampleQuestions}
+                    className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    [Load Sample Questions]
+                  </button>
+                </div>
+                <textarea
+                  value={paaText}
+                  onChange={(e) => setPaaText(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  rows={12}
+                  placeholder={`How much does windshield replacement cost in {location}?\nIs it illegal to drive with a cracked windshield in {location}?\nWhere can I get my windshield replaced in {location}?`}
+                />
+              </div>
+
+              {/* Validation Status */}
+              {paaValidation.total > 0 && (
+                <div className="flex items-center gap-4 text-sm">
+                  {paaValidation.valid > 0 && (
+                    <span className="text-green-600 font-medium">
+                      ✓ {paaValidation.valid} valid
+                    </span>
+                  )}
+                  {paaValidation.invalid > 0 && (
+                    <span className="text-amber-600 font-medium">
+                      ⚠️ {paaValidation.invalid} invalid
+                    </span>
+                  )}
+                  <span className="text-gray-500">
+                    ({paaValidation.total} total questions)
+                  </span>
+                </div>
+              )}
+
+              {/* Error List */}
+              {paaValidation.errors.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <p className="text-sm font-medium text-amber-800 mb-2">Issues to fix:</p>
+                  <ul className="text-sm text-amber-700 space-y-1">
+                    {paaValidation.errors.slice(0, 5).map((error, i) => (
+                      <li key={i}>{error}</li>
+                    ))}
+                    {paaValidation.errors.length > 5 && (
+                      <li className="text-amber-600">
+                        ... and {paaValidation.errors.length - 5} more
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                <strong>Pro tip:</strong> With {paaValidation.valid || 0} questions ×{' '}
+                {serviceLocations.length || 1} locations, you&apos;ll generate{' '}
+                {(paaValidation.valid || 0) * (serviceLocations.length || 1)} unique content pieces.
+              </div>
+            </CardContent>
+          </Card>
+        )
+
+      case 5:
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Step 5: Brand Settings</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -427,11 +998,11 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
           </Card>
         )
 
-      case 4:
+      case 6:
         return (
           <Card>
             <CardHeader>
-              <CardTitle>Step 4: WordPress Connection</CardTitle>
+              <CardTitle>Step 6: Integrations</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -488,15 +1059,97 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                   <span className="text-red-600 text-sm">Connection failed</span>
                 )}
               </div>
+
+              {/* Podbean Podcast Section */}
+              <div className="mt-6 pt-6 border-t">
+                <div className="flex items-center gap-2 mb-4">
+                  <Podcast size={20} className="text-purple-600" />
+                  <h3 className="text-sm font-medium text-gray-700">Podcast Publishing</h3>
+                </div>
+
+                {loadingPodcasts ? (
+                  <div className="text-sm text-gray-500">Loading podcasts...</div>
+                ) : !podbeanConnected ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                    {podbeanError ? (
+                      <>
+                        <strong>Podbean Error:</strong> {podbeanError}
+                        <br />
+                        <span className="text-xs mt-1 block">
+                          Check your credentials in{' '}
+                          <a href="/admin/settings/api" className="underline font-medium">
+                            Settings → API
+                          </a>
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        Podbean is not connected. Configure Podbean API credentials in{' '}
+                        <a href="/admin/settings/api" className="underline font-medium">
+                          Settings → API
+                        </a>{' '}
+                        to enable podcast publishing.
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Select Podcast
+                    </label>
+                    <select
+                      value={formData.podbeanPodcastId}
+                      onChange={(e) => selectPodbeanPodcast(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="">-- Select a podcast --</option>
+                      {podbeanPodcasts.map((podcast) => (
+                        <option key={podcast.id} value={podcast.id}>
+                          {podcast.title}
+                        </option>
+                      ))}
+                    </select>
+                    {formData.podbeanPodcastId && (
+                      <div className="flex items-center gap-2 text-sm text-green-600">
+                        <span>✓</span>
+                        <span>Podcasts will be published to: {formData.podbeanPodcastTitle}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* WRHQ Directory Section */}
+              <div className="mt-6 pt-6 border-t">
+                <div className="flex items-center gap-2 mb-4">
+                  <Building2 size={20} className="text-orange-600" />
+                  <h3 className="text-sm font-medium text-gray-700">WRHQ Directory Listing</h3>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    WRHQ Directory URL
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.wrhqDirectoryUrl}
+                    onChange={(e) => updateField('wrhqDirectoryUrl', e.target.value)}
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="https://windshieldreplacementhq.com/directory/your-business"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Link to the client&apos;s listing on the WRHQ directory
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         )
 
-      case 5:
+      case 7:
         return (
           <Card>
             <CardHeader>
-              <CardTitle>Step 5: CTA & Publishing</CardTitle>
+              <CardTitle>Step 7: CTA & Publishing</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -552,29 +1205,16 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Posts Per Week
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="7"
-                    value={formData.postsPerWeek}
-                    onChange={(e) => updateField('postsPerWeek', parseInt(e.target.value))}
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
               </div>
             </CardContent>
           </Card>
         )
 
-      case 6:
+      case 8:
         return (
           <Card>
             <CardHeader>
-              <CardTitle>Step 6: Social Media Platforms</CardTitle>
+              <CardTitle>Step 8: Social Media Platforms</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-gray-500">
@@ -600,15 +1240,42 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                   </label>
                 ))}
               </div>
+              {formData.socialPlatforms.length > 0 && (
+                <div className="mt-6 pt-6 border-t space-y-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Late Account IDs</p>
+                    <p className="text-xs text-gray-500">
+                      Enter the unique Late account ID for each platform from getlate.dev
+                    </p>
+                  </div>
+                  {formData.socialPlatforms.map((platform) => {
+                    const platformLabel = socialPlatformOptions.find(p => p.value === platform)?.label || platform
+                    return (
+                      <div key={platform}>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {platformLabel} Account ID
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.socialAccountIds[platform] || ''}
+                          onChange={(e) => updateSocialAccountId(platform, e.target.value)}
+                          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="694f35914207e06f4ca82b79"
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         )
 
-      case 7:
+      case 9:
         return (
           <Card>
             <CardHeader>
-              <CardTitle>Step 7: Review & Save</CardTitle>
+              <CardTitle>Step 9: Review & Save</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="bg-gray-50 rounded-lg p-4 space-y-3">
@@ -619,6 +1286,10 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                 <div className="flex justify-between">
                   <span className="text-gray-500">Location:</span>
                   <span className="font-medium">{formData.city}, {formData.state}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Service Locations:</span>
+                  <span className="font-medium">{serviceLocations.length} areas</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Services:</span>
@@ -639,6 +1310,18 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                   </span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-gray-500">Podcast:</span>
+                  <span className="font-medium">
+                    {formData.podbeanPodcastTitle || 'Not configured'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Content Questions:</span>
+                  <span className="font-medium">
+                    {paaValidation.valid} questions
+                  </span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-gray-500">Social Platforms:</span>
                   <span className="font-medium">
                     {formData.socialPlatforms.length} selected
@@ -647,7 +1330,13 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                 <div className="flex justify-between">
                   <span className="text-gray-500">Publishing:</span>
                   <span className="font-medium">
-                    {formData.postsPerWeek}x/week at {formData.preferredPublishTime}
+                    Tue/Thu at {formData.preferredPublishTime}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Content Potential:</span>
+                  <span className="font-medium text-green-600">
+                    {paaValidation.valid * (serviceLocations.length || 1)} unique pieces
                   </span>
                 </div>
               </div>
@@ -664,7 +1353,7 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Progress */}
       <div className="flex items-center justify-between mb-8">
-        {[1, 2, 3, 4, 5, 6, 7].map((s) => (
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((s) => (
           <div key={s} className="flex items-center">
             <button
               onClick={() => setStep(s)}
@@ -678,9 +1367,9 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
             >
               {s}
             </button>
-            {s < 7 && (
+            {s < 9 && (
               <div
-                className={`w-12 h-0.5 ${s < step ? 'bg-green-500' : 'bg-gray-200'}`}
+                className={`w-6 h-0.5 ${s < step ? 'bg-green-500' : 'bg-gray-200'}`}
               />
             )}
           </div>
@@ -704,8 +1393,8 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
         >
           Previous
         </Button>
-        {step < 7 ? (
-          <Button onClick={() => setStep((s) => Math.min(7, s + 1))}>
+        {step < 9 ? (
+          <Button onClick={() => setStep((s) => Math.min(9, s + 1))}>
             Next
           </Button>
         ) : (

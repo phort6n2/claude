@@ -1,4 +1,5 @@
 // Google Cloud Storage Integration
+import sharp from 'sharp'
 
 interface UploadResult {
   url: string
@@ -35,13 +36,18 @@ export async function uploadToGCS(
   // Upload to GCS
   const uploadUrl = `https://storage.googleapis.com/upload/storage/v1/b/${bucketName}/o?uploadType=media&name=${encodeURIComponent(filename)}`
 
+  // Convert Buffer to Uint8Array for fetch compatibility
+  const uint8Array = buffer instanceof ArrayBuffer
+    ? new Uint8Array(buffer)
+    : new Uint8Array(buffer)
+
   const uploadResponse = await fetch(uploadUrl, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': contentType,
     },
-    body: buffer as BodyInit,
+    body: uint8Array,
   })
 
   if (!uploadResponse.ok) {
@@ -61,22 +67,61 @@ export async function uploadFromUrl(
   sourceUrl: string,
   filename: string
 ): Promise<UploadResult> {
-  // Handle base64 data URIs (e.g., data:image/jpeg;base64,/9j/4AAQ...)
+  // Handle base64 data URLs (from Imagen API)
   if (sourceUrl.startsWith('data:')) {
     const matches = sourceUrl.match(/^data:([^;]+);base64,(.+)$/)
-    if (!matches) {
-      throw new Error('Invalid data URI format')
+    if (matches) {
+      const base64Data = matches[2]
+      // Always convert to JPG
+      return uploadFromBase64(base64Data, filename, 'image/jpeg')
     }
-    const contentType = matches[1]
-    const base64Data = matches[2]
-    const buffer = Buffer.from(base64Data, 'base64')
-    return uploadToGCS(buffer, filename, contentType)
   }
 
-  // Handle regular URLs
+
   const response = await fetch(sourceUrl)
   const buffer = await response.arrayBuffer()
+
+  // Always convert images to JPG format for consistency
+  const isImage = (response.headers.get('content-type') || '').startsWith('image/')
+  if (isImage) {
+    const jpgBuffer = await sharp(Buffer.from(buffer))
+      .jpeg({
+        quality: 85,
+        progressive: true,
+      })
+      .toBuffer()
+
+    // Ensure filename has .jpg extension
+    const jpgFilename = filename.replace(/\.(png|jpeg|webp|gif)$/i, '.jpg')
+
+    return uploadToGCS(jpgBuffer, jpgFilename, 'image/jpeg')
+  }
+
   const contentType = response.headers.get('content-type') || 'application/octet-stream'
+  return uploadToGCS(buffer, filename, contentType)
+}
+
+export async function uploadFromBase64(
+  base64Data: string,
+  filename: string,
+  contentType: string = 'image/jpeg'
+): Promise<UploadResult> {
+  const buffer = Buffer.from(base64Data, 'base64')
+
+  // Always convert images to JPG format
+  if (contentType.startsWith('image/')) {
+    const jpgBuffer = await sharp(buffer)
+      .jpeg({
+        quality: 85,
+        progressive: true,
+      })
+      .toBuffer()
+
+    // Ensure filename has .jpg extension
+    const jpgFilename = filename.replace(/\.(png|jpeg|webp|gif)$/i, '.jpg')
+
+    return uploadToGCS(jpgBuffer, jpgFilename, 'image/jpeg')
+  }
 
   return uploadToGCS(buffer, filename, contentType)
 }

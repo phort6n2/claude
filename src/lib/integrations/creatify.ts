@@ -1,4 +1,6 @@
 // Creatify API Integration for Short Video Generation
+// Docs: https://docs.creatify.ai/api-reference/introduction
+// API uses X-API-ID and X-API-KEY headers
 
 interface VideoGenerationParams {
   script: string
@@ -16,26 +18,45 @@ interface VideoResult {
   duration?: number
 }
 
-export async function createShortVideo(params: VideoGenerationParams): Promise<VideoResult> {
-  const apiKey = process.env.CREATIFY_API_KEY
-  if (!apiKey) {
+function getCredentials(): { apiId: string; apiKey: string } {
+  const apiKeyRaw = process.env.CREATIFY_API_KEY
+  if (!apiKeyRaw) {
     throw new Error('CREATIFY_API_KEY is not configured')
   }
 
-  const response = await fetch('https://api.creatify.ai/v1/videos', {
+  // API key format: "api_id:api_key"
+  const [apiId, apiKey] = apiKeyRaw.includes(':') ? apiKeyRaw.split(':') : [apiKeyRaw, '']
+
+  if (!apiKey) {
+    throw new Error('CREATIFY_API_KEY should be in format "api_id:api_key"')
+  }
+
+  return { apiId, apiKey }
+}
+
+export async function createShortVideo(params: VideoGenerationParams): Promise<VideoResult> {
+  const { apiId, apiKey } = getCredentials()
+
+  // Use AI Shorts or Lipsync v2 endpoint for video generation
+  const response = await fetch('https://api.creatify.ai/api/lipsyncs_v2/', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
+      'X-API-ID': apiId,
+      'X-API-KEY': apiKey,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       script: params.script,
-      title: params.title,
-      media: params.imageUrls.map(url => ({ type: 'image', url })),
       aspect_ratio: params.aspectRatio || '9:16',
-      duration: params.duration || 60,
-      style: 'professional',
-      music: 'upbeat',
+      // Creatify-specific parameters
+      creator: 'maya', // Default avatar
+      style: 'video_editing',
+      caption: true,
+      caption_style: 'default',
+      // Add images as b-roll if provided
+      ...(params.imageUrls.length > 0 && {
+        b_roll_media: params.imageUrls.map(url => ({ url, type: 'image' })),
+      }),
     }),
   })
 
@@ -47,20 +68,18 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
   const data = await response.json()
 
   return {
-    jobId: data.job_id,
+    jobId: data.id || data.task_id,
     status: 'pending',
   }
 }
 
 export async function checkVideoStatus(jobId: string): Promise<VideoResult> {
-  const apiKey = process.env.CREATIFY_API_KEY
-  if (!apiKey) {
-    throw new Error('CREATIFY_API_KEY is not configured')
-  }
+  const { apiId, apiKey } = getCredentials()
 
-  const response = await fetch(`https://api.creatify.ai/v1/videos/${jobId}`, {
+  const response = await fetch(`https://api.creatify.ai/api/lipsyncs_v2/${jobId}/`, {
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
+      'X-API-ID': apiId,
+      'X-API-KEY': apiKey,
     },
   })
 
@@ -71,10 +90,17 @@ export async function checkVideoStatus(jobId: string): Promise<VideoResult> {
 
   const data = await response.json()
 
+  // Map Creatify status to our status
+  let status: 'pending' | 'processing' | 'completed' | 'failed' = 'pending'
+  if (data.status === 'pending' || data.status === 'queued') status = 'pending'
+  if (data.status === 'processing' || data.status === 'running') status = 'processing'
+  if (data.status === 'done' || data.status === 'completed') status = 'completed'
+  if (data.status === 'failed' || data.status === 'error') status = 'failed'
+
   return {
-    jobId: data.job_id,
-    status: data.status,
-    videoUrl: data.video_url,
+    jobId: data.id,
+    status,
+    videoUrl: data.output || data.video_url,
     thumbnailUrl: data.thumbnail_url,
     duration: data.duration,
   }

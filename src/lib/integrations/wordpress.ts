@@ -199,6 +199,56 @@ export async function getPages(credentials: WordPressCredentials): Promise<Array
   }))
 }
 
+/**
+ * Get category ID by slug, or create it if it doesn't exist
+ */
+export async function getCategoryBySlug(
+  credentials: WordPressCredentials,
+  slug: string,
+  name?: string
+): Promise<number | null> {
+  const authHeader = getAuthHeader(credentials.username, credentials.password)
+
+  // Try to find existing category
+  const response = await fetch(
+    `${credentials.url}/wp-json/wp/v2/categories?slug=${encodeURIComponent(slug)}`,
+    {
+      headers: {
+        'Authorization': authHeader,
+      },
+    }
+  )
+
+  if (response.ok) {
+    const categories = await response.json()
+    if (categories.length > 0) {
+      return categories[0].id
+    }
+  }
+
+  // Category doesn't exist, try to create it
+  if (name) {
+    const createResponse = await fetch(`${credentials.url}/wp-json/wp/v2/categories`, {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name,
+        slug,
+      }),
+    })
+
+    if (createResponse.ok) {
+      const newCategory = await createResponse.json()
+      return newCategory.id
+    }
+  }
+
+  return null
+}
+
 export async function injectSchemaMarkup(
   credentials: WordPressCredentials,
   postId: number,
@@ -219,4 +269,140 @@ export async function injectSchemaMarkup(
       },
     }),
   })
+}
+
+/**
+ * High-level publish function used by content pipeline
+ */
+export interface PublishToWordPressParams {
+  client: {
+    wordpressUrl: string | null
+    wordpressUsername: string | null
+    wordpressAppPassword: string | null
+  }
+  title: string
+  content: string
+  excerpt?: string
+  slug: string
+  scheduledDate: Date
+  featuredImageUrl?: string
+  metaTitle?: string
+  metaDescription?: string
+  schemaJson?: string
+  categorySlug?: string  // Optional category slug (e.g., 'auto-glass-repair')
+  categoryName?: string  // Display name if category needs to be created
+}
+
+export interface PublishResult {
+  postId: number
+  url: string
+  featuredImageId?: number
+}
+
+export async function publishToWordPress(params: PublishToWordPressParams): Promise<PublishResult> {
+  if (!params.client.wordpressUrl || !params.client.wordpressUsername || !params.client.wordpressAppPassword) {
+    throw new Error('WordPress credentials not configured')
+  }
+
+  const credentials: WordPressCredentials = {
+    url: params.client.wordpressUrl,
+    username: params.client.wordpressUsername,
+    password: params.client.wordpressAppPassword,
+  }
+
+  let featuredImageId: number | undefined
+  let categoryIds: number[] | undefined
+
+  // Upload featured image if provided
+  if (params.featuredImageUrl) {
+    try {
+      const mediaResult = await uploadMedia(
+        credentials,
+        params.featuredImageUrl,
+        `${params.slug}-featured.jpg`,
+        params.title
+      )
+      featuredImageId = mediaResult.id
+    } catch (error) {
+      console.error('Failed to upload featured image:', error)
+    }
+  }
+
+  // Look up category if provided
+  if (params.categorySlug) {
+    try {
+      const categoryId = await getCategoryBySlug(
+        credentials,
+        params.categorySlug,
+        params.categoryName
+      )
+      if (categoryId) {
+        categoryIds = [categoryId]
+      }
+    } catch (error) {
+      console.error('Failed to get category:', error)
+    }
+  }
+
+  // Create the post
+  const post = await createPost(credentials, {
+    title: params.title,
+    slug: params.slug,
+    content: params.content,
+    excerpt: params.excerpt,
+    status: 'publish',
+    featuredMediaId: featuredImageId,
+    categories: categoryIds,
+    meta: {
+      ...(params.metaTitle && { _yoast_wpseo_title: params.metaTitle }),
+      ...(params.metaDescription && { _yoast_wpseo_metadesc: params.metaDescription }),
+    },
+  })
+
+  // Inject schema markup if provided
+  if (params.schemaJson) {
+    await injectSchemaMarkup(credentials, post.id, params.schemaJson)
+  }
+
+  return {
+    postId: post.id,
+    url: post.link,
+    featuredImageId,
+  }
+}
+
+/**
+ * Update an existing WordPress post
+ */
+export interface UpdateWordPressPostParams {
+  client: {
+    wordpressUrl: string | null
+    wordpressUsername: string | null
+    wordpressAppPassword: string | null
+  }
+  postId: number
+  content?: string
+  schemaJson?: string
+}
+
+export async function updateWordPressPost(params: UpdateWordPressPostParams): Promise<void> {
+  if (!params.client.wordpressUrl || !params.client.wordpressUsername || !params.client.wordpressAppPassword) {
+    throw new Error('WordPress credentials not configured')
+  }
+
+  const credentials: WordPressCredentials = {
+    url: params.client.wordpressUrl,
+    username: params.client.wordpressUsername,
+    password: params.client.wordpressAppPassword,
+  }
+
+  if (params.content) {
+    await updatePost(credentials, params.postId, {
+      content: params.content,
+    })
+  }
+
+  if (params.schemaJson) {
+    await injectSchemaMarkup(credentials, params.postId, params.schemaJson)
+  }
 }

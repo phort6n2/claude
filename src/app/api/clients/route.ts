@@ -41,12 +41,7 @@ export async function POST(request: NextRequest) {
     // Encrypt WordPress password if provided
     let encryptedPassword = null
     if (data.wordpressAppPassword) {
-      try {
-        encryptedPassword = encrypt(data.wordpressAppPassword)
-      } catch {
-        // If encryption fails, we still want to save the client
-        console.error('Failed to encrypt password')
-      }
+      encryptedPassword = encrypt(data.wordpressAppPassword)
     }
 
     const client = await prisma.client.create({
@@ -60,6 +55,9 @@ export async function POST(request: NextRequest) {
         city: data.city,
         state: data.state,
         postalCode: data.postalCode,
+        googlePlaceId: data.googlePlaceId || null,
+        googleMapsUrl: data.googleMapsUrl || null,
+        wrhqDirectoryUrl: data.wrhqDirectoryUrl || null,
         hasShopLocation: data.hasShopLocation ?? true,
         offersMobileService: data.offersMobileService ?? false,
         hasAdasCalibration: data.hasAdasCalibration ?? false,
@@ -77,8 +75,11 @@ export async function POST(request: NextRequest) {
         ctaUrl: data.ctaUrl || null,
         preferredPublishTime: data.preferredPublishTime || '09:00',
         timezone: data.timezone || 'America/Los_Angeles',
-        postsPerWeek: data.postsPerWeek || 2,
         socialPlatforms: data.socialPlatforms || [],
+        socialAccountIds: data.socialAccountIds || null,
+        podbeanPodcastId: data.podbeanPodcastId || null,
+        podbeanPodcastTitle: data.podbeanPodcastTitle || null,
+        podbeanPodcastUrl: data.podbeanPodcastUrl || null,
         status: 'ACTIVE',
       },
     })

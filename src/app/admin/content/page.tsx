@@ -15,7 +15,14 @@ import {
   ChevronLeft,
   ChevronRight,
   RefreshCw,
+  AlertCircle,
+  CheckCircle,
+  Eye,
+  FileText,
+  Trash2,
+  Zap,
 } from 'lucide-react'
+import CreateContentModal from '@/components/admin/CreateContentModal'
 
 type ViewMode = 'month' | 'list' | 'timeline'
 
@@ -26,6 +33,21 @@ interface ContentItem {
   scheduledTime: string
   status: string
   pipelineStep: string | null
+  needsAttention: boolean
+  completionPercent: number
+  blogApproved: string
+  imagesApproved: string
+  socialApproved: string
+  blogGenerated: boolean
+  imagesGenerated: boolean
+  socialGenerated: boolean
+  podcastGenerated: boolean
+  podcastStatus: string | null
+  serviceLocation: {
+    city: string
+    state: string
+    neighborhood: string | null
+  } | null
   client: {
     id: string
     businessName: string
@@ -38,6 +60,18 @@ interface Client {
   businessName: string
 }
 
+interface StatusCounts {
+  all: number
+  draft: number
+  scheduled: number
+  generating: number
+  review: number
+  approved: number
+  published: number
+  failed: number
+  needsAttention: number
+}
+
 export default function ContentCalendarPage() {
   const [view, setView] = useState<ViewMode>('list')
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -46,16 +80,63 @@ export default function ContentCalendarPage() {
   const [loading, setLoading] = useState(true)
   const [selectedClient, setSelectedClient] = useState<string>('all')
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
+  const [statusCounts, setStatusCounts] = useState<StatusCounts>({
+    all: 0,
+    draft: 0,
+    scheduled: 0,
+    generating: 0,
+    review: 0,
+    approved: 0,
+    published: 0,
+    failed: 0,
+    needsAttention: 0,
+  })
+  const [showCreateModal, setShowCreateModal] = useState(false)
+
+  // Fetch all content for status counts
+  const fetchAllContent = useCallback(async () => {
+    try {
+      const params = new URLSearchParams()
+      if (selectedClient !== 'all') params.append('clientId', selectedClient)
+
+      const response = await fetch(`/api/content?${params}`)
+      const data = await response.json()
+
+      // Calculate status counts
+      const counts: StatusCounts = {
+        all: data.length,
+        draft: data.filter((i: ContentItem) => i.status === 'DRAFT').length,
+        scheduled: data.filter((i: ContentItem) => i.status === 'SCHEDULED').length,
+        generating: data.filter((i: ContentItem) => i.status === 'GENERATING').length,
+        review: data.filter((i: ContentItem) => i.status === 'REVIEW').length,
+        approved: data.filter((i: ContentItem) => i.status === 'APPROVED').length,
+        published: data.filter((i: ContentItem) => i.status === 'PUBLISHED').length,
+        failed: data.filter((i: ContentItem) => i.status === 'FAILED').length,
+        needsAttention: data.filter((i: ContentItem) => i.needsAttention).length,
+      }
+      setStatusCounts(counts)
+    } catch (error) {
+      console.error('Failed to fetch all content:', error)
+    }
+  }, [selectedClient])
 
   const fetchContent = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
       if (selectedClient !== 'all') params.append('clientId', selectedClient)
-      if (selectedStatus !== 'all') params.append('status', selectedStatus)
+      if (selectedStatus !== 'all' && selectedStatus !== 'needsAttention') {
+        params.append('status', selectedStatus)
+      }
 
       const response = await fetch(`/api/content?${params}`)
-      const data = await response.json()
+      let data = await response.json()
+
+      // Filter for needsAttention locally
+      if (selectedStatus === 'needsAttention') {
+        data = data.filter((i: ContentItem) => i.needsAttention)
+      }
+
       setContentItems(data)
     } catch (error) {
       console.error('Failed to fetch content:', error)
@@ -69,11 +150,49 @@ export default function ContentCalendarPage() {
   }, [fetchContent])
 
   useEffect(() => {
+    fetchAllContent()
+  }, [fetchAllContent])
+
+  useEffect(() => {
     fetch('/api/clients')
       .then((res) => res.json())
       .then(setClients)
       .catch(console.error)
   }, [])
+
+  // Auto-refresh when there are GENERATING items
+  useEffect(() => {
+    const hasGenerating = contentItems.some(item => item.status === 'GENERATING')
+    if (!hasGenerating) return
+
+    const interval = setInterval(() => {
+      fetchContent()
+      fetchAllContent()
+    }, 5000) // Refresh every 5 seconds
+
+    return () => clearInterval(interval)
+  }, [contentItems, fetchContent, fetchAllContent])
+
+  const handleDeleteContent = async (id: string, question: string) => {
+    if (!confirm(`Delete this content item?\n\n"${question.substring(0, 60)}${question.length > 60 ? '...' : ''}"\n\nThis cannot be undone.`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/content/${id}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        // Remove from local state
+        setContentItems(prev => prev.filter(item => item.id !== id))
+        // Refresh counts
+        fetchAllContent()
+      }
+    } catch (error) {
+      console.error('Failed to delete content:', error)
+    }
+  }
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear()
@@ -201,71 +320,105 @@ export default function ContentCalendarPage() {
     return (
       <Card>
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gray-50">
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Scheduled
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                  Date
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                   Client
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  PAA Question
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">
+                  Loc
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                  Question
+                </th>
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Progress
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">
+                  BPIS
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                  Actions
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">
+                  Prog
+                </th>
+                <th className="px-2 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                  Act
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {contentItems.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={8} className="px-4 py-12 text-center text-gray-500">
                     No content items found
                   </td>
                 </tr>
               ) : (
                 contentItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="font-medium text-gray-900">
+                  <tr key={item.id} className={`hover:bg-gray-50 ${item.needsAttention ? 'bg-yellow-50' : ''}`}>
+                    <td className="px-2 py-2 whitespace-nowrap">
+                      <div className="font-medium text-gray-900 text-xs">
                         {formatDate(item.scheduledDate)}
                       </div>
-                      <div className="text-gray-500">{formatTime(item.scheduledTime)}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
+                    <td className="px-2 py-2 whitespace-nowrap">
+                      <div className="flex items-center gap-1">
                         <div
-                          className="h-3 w-3 rounded-full"
+                          className="h-2 w-2 rounded-full flex-shrink-0"
                           style={{ backgroundColor: item.client.primaryColor || '#1e40af' }}
                         />
-                        <span className="text-sm">{item.client.businessName}</span>
+                        <span className="text-xs truncate max-w-[100px]">{item.client.businessName}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 max-w-md truncate">
-                        {item.paaQuestion}
+                    <td className="px-2 py-2 whitespace-nowrap hidden md:table-cell">
+                      <LocationBadge location={item.serviceLocation} />
+                    </td>
+                    <td className="px-2 py-2">
+                      <div className="flex items-center gap-1">
+                        {item.needsAttention && (
+                          <AlertCircle className="h-3 w-3 text-yellow-500 flex-shrink-0" />
+                        )}
+                        <div className="text-xs text-gray-900 truncate max-w-[200px]">
+                          {item.paaQuestion}
+                        </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-2 py-2 whitespace-nowrap text-center">
                       <StatusBadge status={item.status} />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-2 py-2 whitespace-nowrap hidden lg:table-cell">
+                      <ApprovalIndicators item={item} />
+                    </td>
+                    <td className="px-2 py-2 whitespace-nowrap hidden lg:table-cell">
                       <PipelineProgress step={item.pipelineStep} status={item.status} />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <Link href={`/admin/content/${item.id}`}>
-                        <Button variant="outline" size="sm">
-                          View
-                        </Button>
-                      </Link>
+                    <td className="px-2 py-2 whitespace-nowrap text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Link href={`/admin/content/${item.id}/review`}>
+                          <Button
+                            variant={item.status === 'GENERATING' ? 'primary' : 'outline'}
+                            size="sm"
+                            className={`h-6 px-2 text-xs ${item.status === 'GENERATING' ? 'animate-pulse' : ''}`}
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            {item.status === 'GENERATING' ? 'View' : 'View'}
+                          </Button>
+                        </Link>
+                        {(item.status === 'DRAFT' || item.status === 'SCHEDULED' || item.status === 'GENERATING' || item.status === 'FAILED') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteContent(item.id, item.paaQuestion)}
+                            className="h-6 px-1 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            title={item.status === 'GENERATING' ? 'Cancel & Delete' : 'Delete'}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -315,11 +468,24 @@ export default function ContentCalendarPage() {
                       <p className="text-sm text-gray-600 mt-1">{item.paaQuestion}</p>
                     </div>
                     <StatusBadge status={item.status} />
-                    <Link href={`/admin/content/${item.id}`}>
-                      <Button variant="outline" size="sm">
-                        View
-                      </Button>
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/admin/content/${item.id}`}>
+                        <Button variant="outline" size="sm">
+                          View
+                        </Button>
+                      </Link>
+                      {(item.status === 'DRAFT' || item.status === 'SCHEDULED' || item.status === 'GENERATING' || item.status === 'FAILED') && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteContent(item.id, item.paaQuestion)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          title={item.status === 'GENERATING' ? 'Cancel & Delete' : 'Delete'}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -334,6 +500,70 @@ export default function ContentCalendarPage() {
     <div className="flex flex-col h-full">
       <Header title="Content Calendar" subtitle="Manage your content pipeline" />
       <div className="flex-1 p-6 overflow-auto">
+        {/* Status Filter Badges */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          <StatusFilterBadge
+            label="All"
+            count={statusCounts.all}
+            active={selectedStatus === 'all'}
+            onClick={() => setSelectedStatus('all')}
+          />
+          <StatusFilterBadge
+            label="Needs Attention"
+            count={statusCounts.needsAttention}
+            active={selectedStatus === 'needsAttention'}
+            onClick={() => setSelectedStatus('needsAttention')}
+            variant="warning"
+          />
+          <StatusFilterBadge
+            label="Review"
+            count={statusCounts.review}
+            active={selectedStatus === 'REVIEW'}
+            onClick={() => setSelectedStatus('REVIEW')}
+            variant="info"
+          />
+          <StatusFilterBadge
+            label="Generating"
+            count={statusCounts.generating}
+            active={selectedStatus === 'GENERATING'}
+            onClick={() => setSelectedStatus('GENERATING')}
+            variant="processing"
+          />
+          <StatusFilterBadge
+            label="Scheduled"
+            count={statusCounts.scheduled}
+            active={selectedStatus === 'SCHEDULED'}
+            onClick={() => setSelectedStatus('SCHEDULED')}
+          />
+          <StatusFilterBadge
+            label="Approved"
+            count={statusCounts.approved}
+            active={selectedStatus === 'APPROVED'}
+            onClick={() => setSelectedStatus('APPROVED')}
+            variant="success"
+          />
+          <StatusFilterBadge
+            label="Published"
+            count={statusCounts.published}
+            active={selectedStatus === 'PUBLISHED'}
+            onClick={() => setSelectedStatus('PUBLISHED')}
+            variant="success"
+          />
+          <StatusFilterBadge
+            label="Failed"
+            count={statusCounts.failed}
+            active={selectedStatus === 'FAILED'}
+            onClick={() => setSelectedStatus('FAILED')}
+            variant="danger"
+          />
+          <StatusFilterBadge
+            label="Draft"
+            count={statusCounts.draft}
+            active={selectedStatus === 'DRAFT'}
+            onClick={() => setSelectedStatus('DRAFT')}
+          />
+        </div>
+
         {/* Controls */}
         <div className="flex flex-wrap gap-4 mb-6">
           <div className="flex gap-2">
@@ -378,28 +608,20 @@ export default function ContentCalendarPage() {
             ))}
           </select>
 
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-3 py-1.5 border rounded-md text-sm"
-          >
-            <option value="all">All Status</option>
-            <option value="DRAFT">Draft</option>
-            <option value="SCHEDULED">Scheduled</option>
-            <option value="GENERATING">Generating</option>
-            <option value="PUBLISHED">Published</option>
-            <option value="FAILED">Failed</option>
-          </select>
-
-          <Button variant="outline" size="sm" onClick={fetchContent}>
+          <Button variant="outline" size="sm" onClick={() => { fetchContent(); fetchAllContent(); }}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
 
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Zap className="h-4 w-4 mr-2" />
+            Create Now
+          </Button>
+
           <Link href="/admin/content/new">
-            <Button>
+            <Button variant="outline">
               <Plus className="h-4 w-4 mr-2" />
-              Add Content
+              Schedule
             </Button>
           </Link>
         </div>
@@ -417,6 +639,16 @@ export default function ContentCalendarPage() {
           </>
         )}
       </div>
+
+      {/* Create Content Modal */}
+      <CreateContentModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={() => {
+          fetchContent()
+          fetchAllContent()
+        }}
+      />
     </div>
   )
 }
@@ -477,5 +709,96 @@ function PipelineProgress({
         />
       ))}
     </div>
+  )
+}
+
+function StatusFilterBadge({
+  label,
+  count,
+  active,
+  onClick,
+  variant = 'default',
+}: {
+  label: string
+  count: number
+  active: boolean
+  onClick: () => void
+  variant?: 'default' | 'warning' | 'info' | 'processing' | 'success' | 'danger'
+}) {
+  const variantStyles = {
+    default: active ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+    warning: active ? 'bg-yellow-500 text-white' : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200',
+    info: active ? 'bg-blue-500 text-white' : 'bg-blue-100 text-blue-800 hover:bg-blue-200',
+    processing: active ? 'bg-purple-500 text-white' : 'bg-purple-100 text-purple-800 hover:bg-purple-200',
+    success: active ? 'bg-green-500 text-white' : 'bg-green-100 text-green-800 hover:bg-green-200',
+    danger: active ? 'bg-red-500 text-white' : 'bg-red-100 text-red-800 hover:bg-red-200',
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${variantStyles[variant]}`}
+    >
+      {label}
+      {count > 0 && (
+        <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-xs ${
+          active ? 'bg-white/20' : 'bg-black/10'
+        }`}>
+          {count}
+        </span>
+      )}
+    </button>
+  )
+}
+
+function ApprovalIndicators({ item }: { item: ContentItem }) {
+  const getIndicatorClass = (status: string) => {
+    switch (status) {
+      case 'APPROVED':
+      case 'ready':
+        return 'bg-green-500'
+      case 'NEEDS_REVISION':
+        return 'bg-red-500'
+      default:
+        return 'bg-gray-300'
+    }
+  }
+
+  const indicators = [
+    { label: 'B', status: item.blogApproved, generated: item.blogGenerated, title: 'Blog' },
+    { label: 'P', status: item.podcastStatus || 'PENDING', generated: item.podcastGenerated, title: 'Podcast' },
+    { label: 'I', status: item.imagesApproved, generated: item.imagesGenerated, title: 'Images' },
+    { label: 'S', status: item.socialApproved, generated: item.socialGenerated, title: 'Social' },
+  ]
+
+  return (
+    <div className="flex gap-1">
+      {indicators.map((ind) => (
+        <div
+          key={ind.label}
+          className={`h-5 w-5 rounded text-xs font-medium flex items-center justify-center ${
+            !ind.generated ? 'bg-gray-100 text-gray-400' : getIndicatorClass(ind.status)
+          } ${ind.status === 'APPROVED' || ind.status === 'ready' ? 'text-white' : ind.status === 'NEEDS_REVISION' ? 'text-white' : 'text-gray-600'}`}
+          title={`${ind.title}: ${ind.generated ? ind.status : 'Not Generated'}`}
+        >
+          {ind.generated && (ind.status === 'APPROVED' || ind.status === 'ready') ? (
+            <CheckCircle className="h-3 w-3" />
+          ) : (
+            ind.label
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function LocationBadge({ location }: { location: ContentItem['serviceLocation'] }) {
+  if (!location) return <span className="text-xs text-gray-400">-</span>
+
+  return (
+    <span className="text-xs text-gray-600">
+      {location.neighborhood ? `${location.neighborhood}, ` : ''}
+      {location.city}
+    </span>
   )
 }

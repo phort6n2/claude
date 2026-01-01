@@ -45,7 +45,6 @@ async function main() {
       ctaText: 'Get a Free Quote',
       preferredPublishTime: '09:00',
       timezone: 'America/Los_Angeles',
-      postsPerWeek: 2,
       socialPlatforms: ['facebook', 'instagram', 'linkedin'],
       status: 'ACTIVE',
     },

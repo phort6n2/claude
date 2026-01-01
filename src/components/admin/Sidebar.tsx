@@ -11,6 +11,7 @@ import {
   Settings,
   LogOut,
   Activity,
+  HelpCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -21,6 +22,7 @@ const navigation = [
   { name: 'Press Releases', href: '/admin/press-releases', icon: FileText },
   { name: 'API Status', href: '/admin/api-status', icon: Activity },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
+  { name: 'Help', href: '/admin/help', icon: HelpCircle },
 ]
 
 export default function Sidebar() {
