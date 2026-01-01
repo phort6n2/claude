@@ -84,6 +84,8 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         locationPageUrls: contentItem.client.locationPages.map(p => p.url),
         ctaText: contentItem.client.ctaText,
         ctaUrl: contentItem.client.ctaUrl || contentItem.client.wordpressUrl || '',
+        phone: contentItem.client.phone,
+        website: contentItem.client.ctaUrl || contentItem.client.wordpressUrl || '',
       })
     })
 
