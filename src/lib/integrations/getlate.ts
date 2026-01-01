@@ -177,26 +177,45 @@ export async function checkPostStatus(postId: string): Promise<ScheduledPostResu
   // Extract platform from platforms array if present
   const platformData = data.platforms?.[0]
 
+  // Log all the fields we're checking to help debug
+  console.log('Late status parsing:', {
+    'data.status': data.status,
+    'platformData?.status': platformData?.status,
+    'platformData?.postUrl': platformData?.postUrl,
+    'platformData?.url': platformData?.url,
+    'data.postUrl': data.postUrl,
+    'data.url': data.url,
+  })
+
   // Normalize status - Late may use different status names
+  // Check both top-level status and platform-specific status
   let status: 'scheduled' | 'published' | 'failed' | 'processing' = 'processing'
-  const rawStatus = (data.status || '').toLowerCase()
-  if (rawStatus === 'published' || rawStatus === 'completed' || rawStatus === 'success') {
+  const rawStatus = (platformData?.status || data.status || '').toLowerCase()
+
+  if (rawStatus === 'published' || rawStatus === 'completed' || rawStatus === 'success' || rawStatus === 'sent') {
     status = 'published'
   } else if (rawStatus === 'failed' || rawStatus === 'error') {
     status = 'failed'
-  } else if (rawStatus === 'scheduled' || rawStatus === 'pending') {
+  } else if (rawStatus === 'scheduled' || rawStatus === 'pending' || rawStatus === 'queued') {
     status = 'scheduled'
   }
 
   // Get error message if present
   const error = data.error || data.errorMessage || platformData?.error || platformData?.errorMessage
 
+  // Try multiple possible field names for the post URL
+  const platformPostUrl = platformData?.postUrl || platformData?.url || platformData?.link ||
+                          data.postUrl || data.url || data.link ||
+                          data.platformPostUrl || data.platform_post_url
+
+  console.log('Late status result:', { status, platformPostUrl, error })
+
   return {
-    postId: data._id || data.id || data.post_id,
+    postId: data._id || data.id || data.post_id || postId,
     platform: platformData?.platform || data.platform,
-    scheduledTime: new Date(data.scheduledFor || data.scheduled_at),
+    scheduledTime: new Date(data.scheduledFor || data.scheduled_at || Date.now()),
     status,
-    platformPostUrl: data.platformPostUrl || data.platform_post_url || platformData?.postUrl,
+    platformPostUrl,
     error,
   }
 }
