@@ -34,24 +34,50 @@ export async function schedulePost(params: SchedulePostParams): Promise<Schedule
     fullCaption = `${params.caption}\n\n${hashtagsText}`
   }
 
-  // Late API: https://getlate.dev/api/v1/
+  // Build request body according to Late API docs
+  // https://docs.getlate.dev/
+  const requestBody: Record<string, unknown> = {
+    content: fullCaption,
+    platforms: [
+      {
+        platform: params.platform,
+        accountId: params.accountId,
+      }
+    ],
+  }
+
+  // Add media if provided
+  if (params.mediaUrls && params.mediaUrls.length > 0) {
+    requestBody.mediaItems = params.mediaUrls.map(url => ({
+      type: params.mediaType || 'image',
+      url,
+    }))
+  }
+
+  // Check if posting immediately (scheduled time is within 1 minute of now)
+  const now = new Date()
+  const isImmediate = Math.abs(params.scheduledTime.getTime() - now.getTime()) < 60000
+
+  if (isImmediate) {
+    requestBody.publishNow = true
+  } else {
+    requestBody.scheduledFor = params.scheduledTime.toISOString()
+  }
+
+  // Add first comment if provided
+  if (params.firstComment) {
+    requestBody.firstComment = params.firstComment
+  }
+
+  console.log('Late API request:', JSON.stringify(requestBody, null, 2))
+
   const response = await fetch('https://getlate.dev/api/v1/posts', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      account_id: params.accountId,
-      platform: params.platform,
-      content: fullCaption,
-      media: params.mediaUrls?.map(url => ({
-        url,
-        type: params.mediaType || 'image',
-      })),
-      scheduled_at: params.scheduledTime.toISOString(),
-      first_comment: params.firstComment,
-    }),
+    body: JSON.stringify(requestBody),
   })
 
   if (!response.ok) {
@@ -60,13 +86,14 @@ export async function schedulePost(params: SchedulePostParams): Promise<Schedule
   }
 
   const data = await response.json()
+  console.log('Late API response:', JSON.stringify(data, null, 2))
 
   return {
-    postId: data.post_id,
+    postId: data._id || data.id || data.post_id,
     platform: params.platform,
-    scheduledTime: new Date(data.scheduled_at),
-    status: data.status || 'scheduled',
-    platformPostUrl: data.platform_post_url || data.platformPostUrl,  // URL to view post on social platform
+    scheduledTime: new Date(data.scheduledFor || data.scheduled_at || params.scheduledTime),
+    status: data.status || (isImmediate ? 'published' : 'scheduled'),
+    platformPostUrl: data.platformPostUrl || data.platform_post_url,
   }
 }
 
@@ -97,12 +124,15 @@ export async function checkPostStatus(postId: string): Promise<ScheduledPostResu
 
   const data = await response.json()
 
+  // Extract platform from platforms array if present
+  const platformData = data.platforms?.[0]
+
   return {
-    postId: data.post_id,
-    platform: data.platform,
-    scheduledTime: new Date(data.scheduled_at),
+    postId: data._id || data.id || data.post_id,
+    platform: platformData?.platform || data.platform,
+    scheduledTime: new Date(data.scheduledFor || data.scheduled_at),
     status: data.status,
-    platformPostUrl: data.platform_post_url || data.platformPostUrl,
+    platformPostUrl: data.platformPostUrl || data.platform_post_url,
   }
 }
 
