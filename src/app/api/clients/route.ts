@@ -54,6 +54,8 @@ export async function POST(request: NextRequest) {
         city: data.city,
         state: data.state,
         postalCode: data.postalCode,
+        googlePlaceId: data.googlePlaceId || null,
+        googleMapsUrl: data.googleMapsUrl || null,
         hasShopLocation: data.hasShopLocation ?? true,
         offersMobileService: data.offersMobileService ?? false,
         hasAdasCalibration: data.hasAdasCalibration ?? false,

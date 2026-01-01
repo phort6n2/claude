@@ -186,6 +186,30 @@ async function testPodbean(clientId: string, clientSecret: string): Promise<{ su
   }
 }
 
+async function testGooglePlaces(apiKey: string): Promise<{ success: boolean; message: string }> {
+  try {
+    // Test the Places API with a simple autocomplete query
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=test&key=${apiKey}`
+    )
+
+    if (response.ok) {
+      const data = await response.json()
+      if (data.status === 'OK' || data.status === 'ZERO_RESULTS') {
+        return { success: true, message: 'Connected successfully' }
+      }
+      if (data.status === 'REQUEST_DENIED') {
+        return { success: false, message: data.error_message || 'API key not authorized for Places API' }
+      }
+      return { success: false, message: `API error: ${data.status}` }
+    }
+
+    return { success: false, message: `HTTP error: ${response.status}` }
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : 'Connection failed' }
+  }
+}
+
 export async function POST(request: Request) {
   const session = await auth()
   if (!session) {
@@ -235,6 +259,9 @@ export async function POST(request: Request) {
       } else {
         result = await testPodbean(podbeanClientId, apiKey)
       }
+      break
+    case 'GOOGLE_PLACES_API_KEY':
+      result = await testGooglePlaces(apiKey)
       break
     case 'PODBEAN_CLIENT_ID':
     case 'GOOGLE_CLOUD_PROJECT_ID':

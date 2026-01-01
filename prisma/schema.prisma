@@ -82,6 +82,10 @@ model Client {
   // Client Portal
   portalPassword        String?   // Encrypted
 
+  // Google Places / Maps
+  googlePlaceId         String?   // Google Places API place_id
+  googleMapsUrl         String?   // Direct link to Google Maps
+
   // GBP Data (for press releases)
   gbpPlaceId            String?
   gbpRating             Float?

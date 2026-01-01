@@ -58,6 +58,12 @@ const API_KEYS: ApiKeyConfig[] = [
     testable: true,
   },
   {
+    key: 'GOOGLE_PLACES_API_KEY',
+    label: 'Google Places API Key',
+    description: 'Used for business search and auto-populating client info',
+    testable: true,
+  },
+  {
     key: 'GOOGLE_CLOUD_PROJECT_ID',
     label: 'Google Cloud Project ID',
     description: 'Your GCP project identifier',
