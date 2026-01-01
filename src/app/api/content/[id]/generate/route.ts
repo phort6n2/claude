@@ -339,24 +339,26 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           where: { contentItemId: id },
         })
 
-        // Only generate posts for platforms with configured account IDs
+        // Only generate posts for platforms that are:
+        // 1. Selected as active in socialPlatforms
+        // 2. Have an account ID configured in socialAccountIds
         // Skip video platforms (TIKTOK, YOUTUBE) until video generation is added
         const VIDEO_PLATFORMS = ['TIKTOK', 'YOUTUBE']
+        const activePlatforms = (contentItem.client.socialPlatforms || []) as string[]
         const socialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
-        console.log('Client socialAccountIds:', JSON.stringify(socialAccountIds))
+        console.log('Active platforms (socialPlatforms):', activePlatforms)
+        console.log('Account IDs (socialAccountIds):', JSON.stringify(socialAccountIds))
 
-        const configuredPlatforms = socialAccountIds
-          ? Object.keys(socialAccountIds).filter(key => {
-              const value = socialAccountIds[key]
-              // Only include if value is a non-empty string
-              return typeof value === 'string' && value.trim().length > 0
-            })
-          : []
-        console.log('Configured platforms after filtering:', configuredPlatforms)
-
-        const platforms = configuredPlatforms
+        // Filter to only platforms that are active AND have a valid account ID
+        const platforms = activePlatforms
           .map(p => p.toUpperCase())
-          .filter(p => !VIDEO_PLATFORMS.includes(p))
+          .filter(platform => {
+            const platformLower = platform.toLowerCase()
+            const hasAccountId = socialAccountIds &&
+              typeof socialAccountIds[platformLower] === 'string' &&
+              socialAccountIds[platformLower].trim().length > 0
+            return hasAccountId && !VIDEO_PLATFORMS.includes(platform)
+          })
         console.log('Final platforms to generate:', platforms)
 
         // Delete existing social posts
