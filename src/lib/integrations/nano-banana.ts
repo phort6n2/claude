@@ -137,6 +137,7 @@ export async function generateBothImages(params: {
   apiKey: string
 }): Promise<{ landscape?: ImageResult; square?: ImageResult }> {
   const results: { landscape?: ImageResult; square?: ImageResult } = {}
+  const errors: string[] = []
 
   if (!params.apiKey) {
     console.log('Skipping image generation - NANO_BANANA_API_KEY not configured')
@@ -155,6 +156,7 @@ export async function generateBothImages(params: {
     console.log('Landscape image generated successfully')
   } catch (error) {
     console.error('Failed to generate landscape image:', error)
+    errors.push(`Landscape: ${error}`)
   }
 
   // Generate 1:1 square image
@@ -167,6 +169,12 @@ export async function generateBothImages(params: {
     console.log('Square image generated successfully')
   } catch (error) {
     console.error('Failed to generate square image:', error)
+    errors.push(`Square: ${error}`)
+  }
+
+  // If both failed, throw the errors so they show up in the UI
+  if (!results.landscape && !results.square && errors.length > 0) {
+    throw new Error(`Image generation failed: ${errors.join('; ')}`)
   }
 
   return results
