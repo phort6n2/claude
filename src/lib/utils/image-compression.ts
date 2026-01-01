@@ -27,8 +27,8 @@ interface CompressedImageResult {
 }
 
 /**
- * Fetches an image from URL, compresses if needed for the target platform,
- * and returns a URL (either original or compressed version in GCS)
+ * Fetches an image from URL, ALWAYS converts to PNG format,
+ * and returns a new URL in GCS
  */
 export async function compressImageForPlatform(
   imageUrl: string,
@@ -53,22 +53,6 @@ export async function compressImageForPlatform(
 
   console.log(`Image check for ${platform}: ${(originalSize / 1024 / 1024).toFixed(2)}MB, format: ${originalFormat} (limit: ${(sizeLimit / 1024 / 1024).toFixed(2)}MB)`)
 
-  // Always convert to PNG for all platforms for consistency
-  const needsFormatConversion = originalFormat !== 'png'
-  const needsSizeReduction = originalSize > sizeLimit
-
-  // If already PNG and under size limit, return original
-  if (!needsFormatConversion && !needsSizeReduction) {
-    return {
-      url: imageUrl,
-      originalSize,
-      compressedSize: originalSize,
-      wasCompressed: false,
-    }
-  }
-
-  console.log(`Processing image for ${platform}... (format conversion: ${needsFormatConversion}, size reduction: ${needsSizeReduction})`)
-
   // Calculate target dimensions (maintain aspect ratio, reduce if very large)
   let targetWidth = metadata.width || 1200
   let targetHeight = metadata.height || 1200
@@ -80,7 +64,7 @@ export async function compressImageForPlatform(
     targetHeight = Math.round(targetHeight * scale)
   }
 
-  // Always use PNG format for all platforms
+  // ALWAYS convert to PNG - never trust the original format
   let compressedBuffer: Buffer
 
   do {
@@ -91,11 +75,10 @@ export async function compressImageForPlatform(
       })
       .png({
         compressionLevel: 9,
-        palette: true,
       })
       .toBuffer()
 
-    console.log(`Compression attempt: format=png, size=${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
+    console.log(`PNG conversion: ${targetWidth}x${targetHeight}, size=${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
 
     // If still too large, reduce dimensions
     if (compressedBuffer.length > sizeLimit) {
@@ -110,13 +93,13 @@ export async function compressImageForPlatform(
     throw new Error(`Unable to compress image below ${(sizeLimit / 1024 / 1024).toFixed(2)}MB limit for ${platform}`)
   }
 
-  // Upload compressed image to GCS
+  // Upload converted PNG to GCS
   const timestamp = Date.now()
-  const filename = `content/${contentItemId}/compressed-${platform}-${timestamp}.png`
+  const filename = `content/${contentItemId}/png-${platform}-${timestamp}.png`
 
   const uploadResult = await uploadToGCS(compressedBuffer, filename, 'image/png')
 
-  console.log(`Compressed image uploaded: ${uploadResult.url} (${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB)`)
+  console.log(`PNG uploaded: ${uploadResult.url} (${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB)`)
 
   return {
     url: uploadResult.url,
@@ -167,8 +150,7 @@ const BLOG_IMAGE_CONFIG = {
  * Compresses an image optimized for blog display
  * - Targets 2MB or less for fast page loading
  * - Resizes to max 1600px width for web display
- * - Always outputs PNG format for consistency
- * - Returns original URL if already optimized
+ * - ALWAYS converts to PNG format
  */
 export async function compressImageForBlog(
   imageUrl: string,
@@ -189,27 +171,13 @@ export async function compressImageForBlog(
   const currentWidth = metadata.width || 1200
   const currentHeight = metadata.height || 800
 
-  // Check if compression/resize is needed
-  const needsResize = currentWidth > BLOG_IMAGE_CONFIG.maxWidth || currentHeight > BLOG_IMAGE_CONFIG.maxHeight
-  const needsSizeReduction = originalSize > BLOG_IMAGE_CONFIG.maxSizeBytes
-  const needsFormatConversion = metadata.format !== 'png'
-
-  if (!needsResize && !needsSizeReduction && !needsFormatConversion) {
-    console.log(`Blog image already optimized: ${(originalSize / 1024 / 1024).toFixed(2)}MB, ${currentWidth}x${currentHeight}, format: png`)
-    return {
-      url: imageUrl,
-      originalSize,
-      compressedSize: originalSize,
-      wasCompressed: false,
-    }
-  }
-
-  console.log(`Compressing blog image: ${(originalSize / 1024 / 1024).toFixed(2)}MB, ${currentWidth}x${currentHeight}, format: ${metadata.format}`)
+  console.log(`Blog image: ${(originalSize / 1024 / 1024).toFixed(2)}MB, ${currentWidth}x${currentHeight}, format: ${metadata.format}`)
 
   let compressedBuffer: Buffer
   let targetWidth = Math.min(currentWidth, BLOG_IMAGE_CONFIG.maxWidth)
   let targetHeight = Math.min(currentHeight, BLOG_IMAGE_CONFIG.maxHeight)
 
+  // ALWAYS convert to PNG - never trust the original format
   do {
     compressedBuffer = await sharp(originalBuffer)
       .resize(targetWidth, targetHeight, {
@@ -218,11 +186,10 @@ export async function compressImageForBlog(
       })
       .png({
         compressionLevel: 9,
-        palette: true,
       })
       .toBuffer()
 
-    console.log(`Blog compression: format=png, size=${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
+    console.log(`Blog PNG conversion: ${targetWidth}x${targetHeight}, size=${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
 
     if (compressedBuffer.length > BLOG_IMAGE_CONFIG.maxSizeBytes) {
       // Reduce dimensions if still too large
@@ -232,13 +199,13 @@ export async function compressImageForBlog(
     }
   } while (compressedBuffer.length > BLOG_IMAGE_CONFIG.maxSizeBytes && targetWidth > 800)
 
-  // Upload compressed image to GCS
+  // Upload converted PNG to GCS
   const timestamp = Date.now()
-  const filename = `content/${contentItemId}/compressed-${suffix}-${timestamp}.png`
+  const filename = `content/${contentItemId}/png-${suffix}-${timestamp}.png`
 
   const uploadResult = await uploadToGCS(compressedBuffer, filename, 'image/png')
 
-  console.log(`Blog image compressed: ${(originalSize / 1024 / 1024).toFixed(2)}MB → ${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
+  console.log(`Blog PNG uploaded: ${uploadResult.url} (${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB)`)
 
   return {
     url: uploadResult.url,
