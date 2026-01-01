@@ -43,11 +43,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       generateWrhqSocial = true,
     } = body
 
-    // Get content item with client data
+    // Get content item with client data and service location
     const contentItem = await prisma.contentItem.findUnique({
       where: { id },
       include: {
         client: true,
+        serviceLocation: true,
         blogPost: true,
         images: true,
         socialPosts: true,
@@ -58,6 +59,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     if (!contentItem) {
       return NextResponse.json({ error: 'Content item not found' }, { status: 404 })
     }
+
+    // Use service location if set, otherwise fall back to client's default location
+    const contentCity = contentItem.serviceLocation?.city || contentItem.client.city
+    const contentState = contentItem.serviceLocation?.state || contentItem.client.state
 
     // Only set GENERATING status for initial blog+images generation
     const isInitialGeneration = generateBlog && genImages
@@ -111,8 +116,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         const blogResult = await generateBlogPost({
           paaQuestion: contentItem.paaQuestion,
           businessName: contentItem.client.businessName,
-          city: contentItem.client.city,
-          state: contentItem.client.state,
+          city: contentCity,
+          state: contentState,
           brandVoice: contentItem.client.brandVoice || 'Professional, helpful, and knowledgeable',
           serviceAreas: contentItem.client.serviceAreas || [],
           hasAdas: contentItem.client.hasAdasCalibration,
@@ -185,8 +190,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
               podcastDescription = await generatePodcastDescription({
                 businessName: contentItem.client.businessName,
-                city: contentItem.client.city,
-                state: contentItem.client.state,
+                city: contentCity,
+                state: contentState,
                 paaQuestion: contentItem.paaQuestion,
                 blogPostUrl: blogUrl,
                 servicePageUrl: servicePageUrl,
@@ -251,13 +256,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         const imageApiKey = await getSetting('NANO_BANANA_API_KEY')
 
         // Build address string
-        const address = `${contentItem.client.streetAddress}, ${contentItem.client.city}, ${contentItem.client.state} ${contentItem.client.postalCode}`
+        const address = `${contentItem.client.streetAddress}, ${contentCity}, ${contentState} ${contentItem.client.postalCode}`
 
         // Generate both 16:9 and 1:1 images
         const generatedImages = await generateBothImages({
           businessName: contentItem.client.businessName,
-          city: contentItem.client.city,
-          state: contentItem.client.state,
+          city: contentCity,
+          state: contentState,
           paaQuestion: contentItem.paaQuestion,
           phone: contentItem.client.phone,
           website: contentItem.client.wordpressUrl || contentItem.client.ctaUrl || '',
@@ -394,7 +399,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 blogExcerpt: blogPost?.excerpt || contentItem.paaQuestion,
                 businessName: contentItem.client.businessName,
                 blogUrl: contentItem.client.wordpressUrl || '',
-                location: `${contentItem.client.city}, ${contentItem.client.state}`,
+                location: `${contentCity}, ${contentState}`,
                 googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
               })
 
@@ -494,8 +499,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             clientBlogUrl: clientBlogUrl,
             clientBlogExcerpt: blogPost?.excerpt || '',
             clientBusinessName: contentItem.client.businessName,
-            clientCity: contentItem.client.city,
-            clientState: contentItem.client.state,
+            clientCity: contentCity,
+            clientState: contentState,
             paaQuestion: contentItem.paaQuestion,
             wrhqDirectoryUrl: contentItem.client.wrhqDirectoryUrl || '',
             googleMapsUrl: contentItem.client.googleMapsUrl || '',
@@ -587,8 +592,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                   const result = await generateWRHQSocialCaption({
                     platform: platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'gbp' | 'bluesky' | 'threads',
                     clientBusinessName: contentItem.client.businessName,
-                    clientCity: contentItem.client.city,
-                    clientState: contentItem.client.state,
+                    clientCity: contentCity,
+                    clientState: contentState,
                     paaQuestion: contentItem.paaQuestion,
                     wrhqBlogUrl: wrhqBlogPost?.wordpressUrl || '',
                     clientBlogUrl: clientBlogPost?.wordpressUrl || '',
@@ -608,7 +613,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                   // Fallback to simple template
                   return {
                     platform: platform as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
-                    caption: `WRHQ Partner Spotlight: ${contentItem.client.businessName} in ${contentItem.client.city}, ${contentItem.client.state} shares their expertise on ${contentItem.paaQuestion}. Looking for trusted auto glass advice? Read more on WindshieldRepairHQ.com.`,
+                    caption: `WRHQ Partner Spotlight: ${contentItem.client.businessName} in ${contentCity}, ${contentState} shares their expertise on ${contentItem.paaQuestion}. Looking for trusted auto glass advice? Read more on WindshieldRepairHQ.com.`,
                     hashtags: ['WRHQ', 'AutoGlass', 'WindshieldRepair'],
                     firstComment: 'Read the full article on WindshieldRepairHQ.com',
                   }

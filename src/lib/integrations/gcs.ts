@@ -13,12 +13,19 @@ export async function uploadToGCS(
   contentType: string
 ): Promise<UploadResult> {
   // Check environment variables first, then database settings
-  // Support multiple key names for credentials JSON
-  const bucketName = process.env.GCS_BUCKET_NAME || await getSetting('GCS_BUCKET_NAME')
+  // Support multiple key names for bucket and credentials
+  const bucketName =
+    process.env.GCS_BUCKET_NAME ||
+    await getSetting('GCS_BUCKET_NAME') ||
+    await getSetting('GCS_BUCKET') ||
+    await getSetting('GOOGLE_CLOUD_BUCKET')
+
   const credentialsJson =
     process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
     await getSetting('GCS_CREDENTIALS_JSON') ||
-    await getSetting('GOOGLE_APPLICATION_CREDENTIALS_JSON')
+    await getSetting('GOOGLE_APPLICATION_CREDENTIALS_JSON') ||
+    await getSetting('GCS_CREDENTIALS') ||
+    await getSetting('GCS_SERVICE_ACCOUNT_KEY')
 
   if (!bucketName) {
     throw new Error('GCS bucket name not configured. Add GCS_BUCKET_NAME to Settings > API Keys.')
