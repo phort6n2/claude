@@ -66,9 +66,21 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: validationError }, { status: 400 })
     }
 
-    // Check approvals
-    if (contentItem.blogApproved !== 'APPROVED') {
+    // Check approvals for what's being published
+    if (publishClientBlog && contentItem.blogApproved !== 'APPROVED') {
       return NextResponse.json({ error: 'Blog must be approved before publishing' }, { status: 400 })
+    }
+    if (publishClientBlog && contentItem.imagesApproved !== 'APPROVED') {
+      return NextResponse.json({ error: 'Images must be approved before publishing' }, { status: 400 })
+    }
+    if (publishWrhqBlog && contentItem.wrhqBlogApproved !== 'APPROVED') {
+      return NextResponse.json({ error: 'WRHQ Blog must be approved before publishing' }, { status: 400 })
+    }
+    if (scheduleSocial && contentItem.socialApproved !== 'APPROVED') {
+      return NextResponse.json({ error: 'Social posts must be approved before scheduling' }, { status: 400 })
+    }
+    if (scheduleWrhqSocial && contentItem.wrhqSocialApproved !== 'APPROVED') {
+      return NextResponse.json({ error: 'WRHQ Social posts must be approved before scheduling' }, { status: 400 })
     }
 
     // Update status to PUBLISHING

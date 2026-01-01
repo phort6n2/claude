@@ -58,14 +58,17 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Content item not found' }, { status: 404 })
     }
 
-    // Update status to GENERATING
-    await prisma.contentItem.update({
-      where: { id },
-      data: {
-        status: 'GENERATING',
-        pipelineStep: 'starting',
-      },
-    })
+    // Only set GENERATING status for initial blog+images generation
+    const isInitialGeneration = generateBlog && genImages
+    if (isInitialGeneration) {
+      await prisma.contentItem.update({
+        where: { id },
+        data: {
+          status: 'GENERATING',
+          pipelineStep: 'starting',
+        },
+      })
+    }
 
     const results: Record<string, { success: boolean; error?: string; title?: string; count?: number; status?: string; jobId?: string }> = {}
 
@@ -549,17 +552,28 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
     }
 
-    // Update final status
+    // Update final status - only update overall status if generating initial content (blog + images)
     const allSuccessful = Object.values(results).every(r => r.success)
 
-    await prisma.contentItem.update({
-      where: { id },
-      data: {
-        status: allSuccessful ? 'REVIEW' : 'FAILED',
-        pipelineStep: allSuccessful ? 'complete' : 'failed',
-        lastError: allSuccessful ? null : JSON.stringify(results),
-      },
-    })
+    if (isInitialGeneration) {
+      // Full initial generation - set to REVIEW
+      await prisma.contentItem.update({
+        where: { id },
+        data: {
+          status: allSuccessful ? 'REVIEW' : 'FAILED',
+          pipelineStep: allSuccessful ? 'complete' : 'failed',
+          lastError: allSuccessful ? null : JSON.stringify(results),
+        },
+      })
+    } else if (!allSuccessful) {
+      // Partial generation failed - just update error
+      await prisma.contentItem.update({
+        where: { id },
+        data: {
+          lastError: JSON.stringify(results),
+        },
+      })
+    }
 
     return NextResponse.json({
       success: allSuccessful,

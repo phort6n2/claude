@@ -383,7 +383,7 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
       {/* Tab Content */}
       <div className="p-6">
         {activeTab === 'review' && (
-          <ReviewTab content={content} onApprove={updateApproval} saving={saving} onImageClick={setLightboxImage} />
+          <ReviewTab content={content} onApprove={updateApproval} saving={saving} onImageClick={setLightboxImage} onUpdate={loadContent} />
         )}
         {activeTab === 'published' && (
           <PublishedTab content={content} />
@@ -426,7 +426,7 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
 }
 
 // ============================================
-// TAB 1: REVIEW CONTENT
+// TAB 1: REVIEW CONTENT - STEP-BY-STEP WORKFLOW
 // ============================================
 
 function ReviewTab({
@@ -434,236 +434,618 @@ function ReviewTab({
   onApprove,
   saving,
   onImageClick,
+  onUpdate,
 }: {
   content: ContentItem
   onApprove: (field: string, value: string) => void
   saving: boolean
   onImageClick: (image: { url: string; alt: string; type: string }) => void
+  onUpdate: () => void
 }) {
+  const [generating, setGenerating] = useState<string | null>(null)
+  const [publishing, setPublishing] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  // Poll for podcast status when processing
+  useEffect(() => {
+    if (content.podcast?.status !== 'PROCESSING') return
+
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/content/${content.id}/podcast-status`)
+        const data = await response.json()
+
+        if (data.status === 'ready' || data.status === 'failed') {
+          clearInterval(interval)
+          onUpdate()
+        }
+      } catch (err) {
+        console.error('Error polling podcast status:', err)
+      }
+    }, 10000) // Poll every 10 seconds
+
+    return () => clearInterval(interval)
+  }, [content.id, content.podcast?.status, onUpdate])
+
+  // Step status helpers
+  const isStep1Complete = content.clientBlogPublished
+  const isStep2Ready = content.blogGenerated && content.imagesGenerated
+  const isStep2Complete = content.wrhqBlogPublished
+  const isStep3Ready = isStep1Complete // Can generate social after blog published
+  const isStep3Complete = content.socialPosts.every(p => p.status === 'SCHEDULED')
+  const isStep4Ready = isStep1Complete // Can generate podcast after blog published
+  const isStep4Complete = content.podcastAddedToPost
+
+  async function generateContent(type: 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast') {
+    setGenerating(type)
+    setError(null)
+    try {
+      const flags: Record<string, boolean> = {
+        generateBlog: false,
+        generateImages: false,
+        generatePodcast: type === 'podcast',
+        generateSocial: type === 'social',
+        generateWrhqBlog: type === 'wrhqBlog',
+        generateWrhqSocial: type === 'wrhqSocial',
+      }
+
+      const response = await fetch(`/api/content/${content.id}/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(flags),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Generation failed')
+      }
+
+      onUpdate()
+    } catch (err) {
+      setError(String(err))
+    } finally {
+      setGenerating(null)
+    }
+  }
+
+  async function publishContent(type: 'clientBlog' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast') {
+    setPublishing(type)
+    setError(null)
+    try {
+      const flags: Record<string, boolean> = {
+        publishClientBlog: type === 'clientBlog',
+        publishWrhqBlog: type === 'wrhqBlog',
+        scheduleSocial: type === 'social',
+        scheduleWrhqSocial: type === 'wrhqSocial',
+      }
+
+      // For podcast, use a separate endpoint
+      if (type === 'podcast') {
+        const response = await fetch(`/api/content/${content.id}/publish-podcast`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Podcast publishing failed')
+        }
+      } else {
+        const response = await fetch(`/api/content/${content.id}/publish`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(flags),
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Publishing failed')
+        }
+      }
+
+      onUpdate()
+    } catch (err) {
+      setError(String(err))
+    } finally {
+      setPublishing(null)
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-5xl">
+      {/* Error Alert */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-red-700">
+            <AlertCircle className="h-5 w-5" />
+            <span className="font-medium">Error:</span>
+            <span>{error}</span>
+          </div>
+        </div>
+      )}
+
       {/* PAA Question */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-sm text-blue-600 font-medium">PAA Question</p>
         <p className="text-lg text-blue-900">{content.paaQuestion}</p>
       </div>
 
-      {/* Blog Post Section */}
-      <section className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-gray-400" />
-            <h2 className="text-lg font-semibold">Blog Post</h2>
-            {content.blogGenerated && (
-              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
-                Generated
-              </span>
-            )}
-          </div>
-          <ApprovalCheckbox
-            approved={content.blogApproved === 'APPROVED'}
-            onChange={(checked) => onApprove('blogApproved', checked ? 'APPROVED' : 'PENDING')}
-            label="Approve Blog"
-            disabled={saving}
-          />
-        </div>
-
-        {content.blogPost ? (
-          <div>
-            <h3 className="text-xl font-bold mb-2">{content.blogPost.title}</h3>
-            {content.blogPost.excerpt && (
-              <p className="text-gray-600 mb-4 italic">{content.blogPost.excerpt}</p>
-            )}
-            <div className="flex gap-4 text-sm text-gray-500 mb-4">
-              <span>{content.blogPost.wordCount} words</span>
-              {content.blogPost.metaDescription && (
-                <span>Meta: {content.blogPost.metaDescription.length} chars</span>
-              )}
+      {/* ============================================ */}
+      {/* STEP 1: Client Blog - Review & Publish */}
+      {/* ============================================ */}
+      <section className="bg-white rounded-lg shadow-sm border overflow-hidden">
+        <div className={`px-6 py-4 flex items-center justify-between ${isStep1Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${isStep1Complete ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'}`}>
+              {isStep1Complete ? <Check className="h-5 w-5" /> : '1'}
             </div>
-            <div
-              className="prose max-w-none border rounded-lg p-4 bg-gray-50"
-              dangerouslySetInnerHTML={{ __html: content.blogPost.content }}
-            />
+            <div>
+              <h2 className="text-lg font-semibold">Client Blog Post</h2>
+              <p className="text-sm text-gray-500">Review blog and images, then publish to WordPress</p>
+            </div>
           </div>
-        ) : (
-          <p className="text-gray-500">Blog post not yet generated</p>
-        )}
-      </section>
-
-      {/* Images Section */}
-      <section className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <ImageIcon className="h-5 w-5 text-gray-400" />
-            <h2 className="text-lg font-semibold">Images</h2>
-            <span className="text-sm text-gray-500">
-              ({content.images.filter(i => i.approved).length}/{content.images.length} approved)
-            </span>
-          </div>
-          <ApprovalCheckbox
-            approved={content.imagesApproved === 'APPROVED'}
-            onChange={(checked) => onApprove('imagesApproved', checked ? 'APPROVED' : 'PENDING')}
-            label="Approve All Images"
-            disabled={saving}
-          />
-        </div>
-
-        {content.images.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {content.images.map((image) => (
-              <div
-                key={image.id}
-                className="border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => onImageClick({
-                  url: image.gcsUrl,
-                  alt: image.altText || image.imageType,
-                  type: image.imageType.replace(/_/g, ' ')
-                })}
+          <div className="flex items-center gap-3">
+            {isStep1Complete ? (
+              <div className="flex items-center gap-2 text-green-600">
+                <Check className="h-5 w-5" />
+                <span className="text-sm font-medium">Published</span>
+                {content.clientBlogUrl && (
+                  <a href={content.clientBlogUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={() => publishContent('clientBlog')}
+                disabled={publishing === 'clientBlog' || !content.blogGenerated || !content.imagesGenerated || content.blogApproved !== 'APPROVED'}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                <img
-                  src={image.gcsUrl}
-                  alt={image.altText || image.imageType}
-                  className="w-full h-32 object-cover"
-                />
-                <div className="p-2">
-                  <p className="text-xs font-medium text-gray-600">
-                    {image.imageType.replace(/_/g, ' ')}
-                  </p>
-                  <p className="text-xs text-gray-400">{image.width}x{image.height}</p>
-                  <p className="text-xs text-blue-500 mt-1">Click to enlarge</p>
-                </div>
+                {publishing === 'clientBlog' ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Publishing...
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="h-4 w-4" />
+                    Publish to WordPress
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* Blog Post */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-gray-400" />
+                <h3 className="font-semibold">Blog Content</h3>
+                {content.blogGenerated && (
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Generated</span>
+                )}
               </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-500">No images generated yet</p>
-        )}
-      </section>
+              <ApprovalCheckbox
+                approved={content.blogApproved === 'APPROVED'}
+                onChange={(checked) => onApprove('blogApproved', checked ? 'APPROVED' : 'PENDING')}
+                label="Approve Blog"
+                disabled={saving || isStep1Complete}
+              />
+            </div>
 
-      {/* Client Social Posts */}
-      <section className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Share2 className="h-5 w-5 text-gray-400" />
-            <h2 className="text-lg font-semibold">Client Social Posts</h2>
-            <span className="text-sm text-gray-500">
-              ({content.socialPosts.filter(p => p.approved).length}/{content.socialPosts.length} approved)
-            </span>
-          </div>
-          <ApprovalCheckbox
-            approved={content.socialApproved === 'APPROVED'}
-            onChange={(checked) => onApprove('socialApproved', checked ? 'APPROVED' : 'PENDING')}
-            label="Approve All Social"
-            disabled={saving}
-          />
-        </div>
-
-        {content.socialPosts.length > 0 ? (
-          <div className="grid gap-4">
-            {content.socialPosts.map((post) => (
-              <SocialPostCard key={post.id} post={post} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-500">No social posts generated yet</p>
-        )}
-      </section>
-
-      {/* WRHQ Content */}
-      <section className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Building2 className="h-5 w-5 text-gray-400" />
-          <h2 className="text-lg font-semibold">WRHQ Content</h2>
-        </div>
-
-        {/* WRHQ Blog */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-medium">WRHQ Blog Post</h3>
-            <ApprovalCheckbox
-              approved={content.wrhqBlogApproved === 'APPROVED'}
-              onChange={(checked) => onApprove('wrhqBlogApproved', checked ? 'APPROVED' : 'PENDING')}
-              label="Approve"
-              disabled={saving}
-            />
-          </div>
-          {content.wrhqBlogPost ? (
-            <div className="space-y-4">
+            {content.blogPost ? (
               <div>
-                <h4 className="text-lg font-semibold">{content.wrhqBlogPost.title}</h4>
-                <p className="text-sm text-gray-500">
-                  {content.wrhqBlogPost.wordCount} words | Slug: {content.wrhqBlogPost.slug}
-                </p>
+                <h4 className="text-xl font-bold mb-2">{content.blogPost.title}</h4>
+                {content.blogPost.excerpt && (
+                  <p className="text-gray-600 mb-4 italic">{content.blogPost.excerpt}</p>
+                )}
+                <div className="flex gap-4 text-sm text-gray-500 mb-4">
+                  <span>{content.blogPost.wordCount} words</span>
+                  {content.blogPost.metaDescription && (
+                    <span>Meta: {content.blogPost.metaDescription.length} chars</span>
+                  )}
+                </div>
+                <details className="group">
+                  <summary className="cursor-pointer text-sm text-blue-600 hover:text-blue-700 mb-2">
+                    Show full content
+                  </summary>
+                  <div
+                    className="prose max-w-none border rounded-lg p-4 bg-gray-50 max-h-96 overflow-y-auto"
+                    dangerouslySetInnerHTML={{ __html: content.blogPost.content }}
+                  />
+                </details>
               </div>
+            ) : (
+              <p className="text-gray-500">Blog post not yet generated</p>
+            )}
+          </div>
+
+          {/* Images */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="h-5 w-5 text-gray-400" />
+                <h3 className="font-semibold">Images</h3>
+                <span className="text-sm text-gray-500">({content.images.length} generated)</span>
+              </div>
+              <ApprovalCheckbox
+                approved={content.imagesApproved === 'APPROVED'}
+                onChange={(checked) => onApprove('imagesApproved', checked ? 'APPROVED' : 'PENDING')}
+                label="Approve Images"
+                disabled={saving || isStep1Complete}
+              />
+            </div>
+
+            {content.images.length > 0 ? (
+              <div className="grid grid-cols-2 gap-4">
+                {content.images.map((image) => (
+                  <div
+                    key={image.id}
+                    className="border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+                    onClick={() => onImageClick({
+                      url: image.gcsUrl,
+                      alt: image.altText || image.imageType,
+                      type: image.imageType.replace(/_/g, ' ')
+                    })}
+                  >
+                    <img
+                      src={image.gcsUrl}
+                      alt={image.altText || image.imageType}
+                      className="w-full h-40 object-cover"
+                    />
+                    <div className="p-2">
+                      <p className="text-xs font-medium text-gray-600">{image.imageType.replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-gray-400">{image.width}x{image.height}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500">No images generated yet</p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================ */}
+      {/* STEP 2: WRHQ Blog - Generate & Publish */}
+      {/* ============================================ */}
+      <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
+        <div className={`px-6 py-4 flex items-center justify-between ${isStep2Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${isStep2Complete ? 'bg-green-500 text-white' : isStep1Complete ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
+              {isStep2Complete ? <Check className="h-5 w-5" /> : '2'}
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">WRHQ Blog Post</h2>
+              <p className="text-sm text-gray-500">Generate and publish WRHQ partner article</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {!content.wrhqBlogGenerated ? (
+              <button
+                onClick={() => generateContent('wrhqBlog')}
+                disabled={generating === 'wrhqBlog' || !isStep1Complete}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {generating === 'wrhqBlog' ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Building2 className="h-4 w-4" />
+                    Generate WRHQ Blog
+                  </>
+                )}
+              </button>
+            ) : isStep2Complete ? (
+              <div className="flex items-center gap-2 text-green-600">
+                <Check className="h-5 w-5" />
+                <span className="text-sm font-medium">Published</span>
+                {content.wrhqBlogUrl && (
+                  <a href={content.wrhqBlogUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={() => publishContent('wrhqBlog')}
+                disabled={publishing === 'wrhqBlog' || content.wrhqBlogApproved !== 'APPROVED'}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {publishing === 'wrhqBlog' ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Publishing...
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="h-4 w-4" />
+                    Publish WRHQ Blog
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {content.wrhqBlogPost && (
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold">{content.wrhqBlogPost.title}</h4>
+              <ApprovalCheckbox
+                approved={content.wrhqBlogApproved === 'APPROVED'}
+                onChange={(checked) => onApprove('wrhqBlogApproved', checked ? 'APPROVED' : 'PENDING')}
+                label="Approve WRHQ Blog"
+                disabled={saving || isStep2Complete}
+              />
+            </div>
+            <p className="text-sm text-gray-500 mb-4">{content.wrhqBlogPost.wordCount} words | Slug: {content.wrhqBlogPost.slug}</p>
+            <details className="group">
+              <summary className="cursor-pointer text-sm text-purple-600 hover:text-purple-700 mb-2">
+                Show full content
+              </summary>
               <div
-                className="prose prose-sm max-w-none bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto"
+                className="prose prose-sm max-w-none bg-purple-50 rounded-lg p-4 max-h-96 overflow-y-auto"
                 dangerouslySetInnerHTML={{ __html: content.wrhqBlogPost.content }}
               />
-              {content.wrhqBlogPost.excerpt && (
-                <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase mb-1">Excerpt</p>
-                  <p className="text-sm text-gray-700">{content.wrhqBlogPost.excerpt}</p>
-                </div>
-              )}
+            </details>
+          </div>
+        )}
+      </section>
+
+      {/* ============================================ */}
+      {/* STEP 3: Social Media - Generate & Publish */}
+      {/* ============================================ */}
+      <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
+        <div className={`px-6 py-4 flex items-center justify-between ${isStep3Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${isStep3Complete ? 'bg-green-500 text-white' : isStep1Complete ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
+              {isStep3Complete ? <Check className="h-5 w-5" /> : '3'}
             </div>
-          ) : (
-            <p className="text-sm text-gray-500">
-              {content.wrhqBlogGenerated ? 'Generated - loading content...' : 'Not yet generated'}
-            </p>
-          )}
+            <div>
+              <h2 className="text-lg font-semibold">Social Media Posts</h2>
+              <p className="text-sm text-gray-500">Generate and schedule social media content</p>
+            </div>
+          </div>
         </div>
 
-        {/* WRHQ Social */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-medium">WRHQ Social Posts</h3>
-            <ApprovalCheckbox
-              approved={content.wrhqSocialApproved === 'APPROVED'}
-              onChange={(checked) => onApprove('wrhqSocialApproved', checked ? 'APPROVED' : 'PENDING')}
-              label="Approve All"
-              disabled={saving}
-            />
-          </div>
-          {content.wrhqSocialPosts.length > 0 ? (
-            <div className="grid gap-4">
-              {content.wrhqSocialPosts.map((post) => (
-                <SocialPostCard key={post.id} post={post} isWRHQ />
-              ))}
+        <div className="p-6 space-y-6">
+          {/* Client Social Posts */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Share2 className="h-5 w-5 text-gray-400" />
+                <h3 className="font-semibold">Client Social Posts</h3>
+                <span className="text-sm text-gray-500">({content.socialPosts.length} posts)</span>
+              </div>
+              <div className="flex items-center gap-3">
+                {!content.socialGenerated ? (
+                  <button
+                    onClick={() => generateContent('social')}
+                    disabled={generating === 'social' || !isStep1Complete}
+                    className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {generating === 'social' ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      'Generate Posts'
+                    )}
+                  </button>
+                ) : (
+                  <>
+                    <ApprovalCheckbox
+                      approved={content.socialApproved === 'APPROVED'}
+                      onChange={(checked) => onApprove('socialApproved', checked ? 'APPROVED' : 'PENDING')}
+                      label="Approve All"
+                      disabled={saving}
+                    />
+                    <button
+                      onClick={() => publishContent('social')}
+                      disabled={publishing === 'social' || content.socialApproved !== 'APPROVED' || content.socialPosts.every(p => p.status === 'SCHEDULED')}
+                      className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {publishing === 'social' ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          Scheduling...
+                        </>
+                      ) : content.socialPosts.every(p => p.status === 'SCHEDULED') ? (
+                        <>
+                          <Check className="h-4 w-4" />
+                          Scheduled
+                        </>
+                      ) : (
+                        'Schedule All'
+                      )}
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-          ) : (
-            <p className="text-sm text-gray-500">Not yet generated</p>
-          )}
+
+            {content.socialPosts.length > 0 ? (
+              <div className="grid gap-3">
+                {content.socialPosts.map((post) => (
+                  <SocialPostCard key={post.id} post={post} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm">Click "Generate Posts" to create social content</p>
+            )}
+          </div>
+
+          {/* WRHQ Social Posts */}
+          <div className="border-t pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-purple-400" />
+                <h3 className="font-semibold">WRHQ Social Posts</h3>
+                <span className="text-sm text-gray-500">({content.wrhqSocialPosts.length} posts)</span>
+              </div>
+              <div className="flex items-center gap-3">
+                {!content.wrhqSocialGenerated ? (
+                  <button
+                    onClick={() => generateContent('wrhqSocial')}
+                    disabled={generating === 'wrhqSocial' || !isStep1Complete}
+                    className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {generating === 'wrhqSocial' ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      'Generate WRHQ Posts'
+                    )}
+                  </button>
+                ) : (
+                  <>
+                    <ApprovalCheckbox
+                      approved={content.wrhqSocialApproved === 'APPROVED'}
+                      onChange={(checked) => onApprove('wrhqSocialApproved', checked ? 'APPROVED' : 'PENDING')}
+                      label="Approve All"
+                      disabled={saving}
+                    />
+                    <button
+                      onClick={() => publishContent('wrhqSocial')}
+                      disabled={publishing === 'wrhqSocial' || content.wrhqSocialApproved !== 'APPROVED' || content.wrhqSocialPosts.every(p => p.status === 'SCHEDULED')}
+                      className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {publishing === 'wrhqSocial' ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          Scheduling...
+                        </>
+                      ) : content.wrhqSocialPosts.every(p => p.status === 'SCHEDULED') ? (
+                        <>
+                          <Check className="h-4 w-4" />
+                          Scheduled
+                        </>
+                      ) : (
+                        'Schedule All'
+                      )}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {content.wrhqSocialPosts.length > 0 ? (
+              <div className="grid gap-3">
+                {content.wrhqSocialPosts.map((post) => (
+                  <SocialPostCard key={post.id} post={post} isWRHQ />
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm">Click "Generate WRHQ Posts" to create WRHQ social content</p>
+            )}
+          </div>
         </div>
       </section>
 
-      {/* Action Bar */}
-      <div className="bg-white rounded-lg shadow-sm border p-4 sticky bottom-4 flex items-center justify-between">
-        <div className="text-sm text-gray-600">
-          {saving ? 'Saving...' : `${content.completionPercent}% complete`}
+      {/* ============================================ */}
+      {/* STEP 4: Podcast - Generate, Publish & Embed */}
+      {/* ============================================ */}
+      <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
+        <div className={`px-6 py-4 flex items-center justify-between ${isStep4Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${isStep4Complete ? 'bg-green-500 text-white' : isStep1Complete ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
+              {isStep4Complete ? <Check className="h-5 w-5" /> : '4'}
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Podcast</h2>
+              <p className="text-sm text-gray-500">Generate audio, publish to Podbean, embed in blog</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {!content.podcastGenerated && (!content.podcast || content.podcast.status !== 'PROCESSING') ? (
+              <button
+                onClick={() => generateContent('podcast')}
+                disabled={generating === 'podcast' || !isStep1Complete}
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {generating === 'podcast' ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Starting...
+                  </>
+                ) : (
+                  <>
+                    <Mic className="h-4 w-4" />
+                    Generate Podcast
+                  </>
+                )}
+              </button>
+            ) : content.podcast?.status === 'PROCESSING' ? (
+              <div className="flex items-center gap-2 text-orange-600">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Generating audio (2-5 min)...</span>
+              </div>
+            ) : isStep4Complete ? (
+              <div className="flex items-center gap-2 text-green-600">
+                <Check className="h-5 w-5" />
+                <span className="text-sm font-medium">Published & Embedded</span>
+              </div>
+            ) : content.podcast?.status === 'READY' ? (
+              <button
+                onClick={() => publishContent('podcast')}
+                disabled={publishing === 'podcast'}
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {publishing === 'podcast' ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Publishing...
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="h-4 w-4" />
+                    Publish to Podbean & Embed
+                  </>
+                )}
+              </button>
+            ) : null}
+          </div>
         </div>
-        <div className="flex gap-3">
-          <button
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-            onClick={() => {
-              // Approve all
-              onApprove('blogApproved', 'APPROVED')
-              onApprove('imagesApproved', 'APPROVED')
-              onApprove('socialApproved', 'APPROVED')
-              onApprove('wrhqBlogApproved', 'APPROVED')
-              onApprove('wrhqSocialApproved', 'APPROVED')
-            }}
-          >
-            <Check className="h-4 w-4 inline mr-2" />
-            Approve All
-          </button>
-          <button
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            disabled={content.status !== 'REVIEW'}
-          >
-            Publish Now
-          </button>
-        </div>
-      </div>
+
+        {(content.podcast?.status === 'READY' || content.podcastDescription) && (
+          <div className="p-6 space-y-4">
+            {content.podcast?.audioUrl && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Audio Preview</label>
+                <audio controls className="w-full" src={content.podcast.audioUrl} />
+                {content.podcast.duration && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Duration: {Math.floor(content.podcast.duration / 60)}:{String(Math.round(content.podcast.duration) % 60).padStart(2, '0')}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {(content.podcastDescription || content.podcast?.description) && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Podcast Description</label>
+                <div
+                  className="border rounded-lg p-4 bg-orange-50 prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{
+                    __html: content.podcastDescription || content.podcast?.description || ''
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </section>
     </div>
   )
 }

@@ -450,6 +450,11 @@ model Podcast {
   // API Reference
   autocontentJobId  String?
 
+  // Podbean Publishing
+  podbeanEpisodeId  String?
+  podbeanUrl        String?
+  podbeanPlayerUrl  String?
+
   // Status
   status            MediaStatus @default(PENDING)
 
@@ -461,6 +466,7 @@ enum MediaStatus {
   PENDING
   PROCESSING
   READY
+  PUBLISHED
   FAILED
 }
 

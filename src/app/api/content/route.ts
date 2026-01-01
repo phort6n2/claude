@@ -86,11 +86,11 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           generateBlog: true,
-          generatePodcast: true,
+          generatePodcast: false, // Will be triggered in Step 4
           generateImages: true,
-          generateSocial: true,
-          generateWrhqBlog: true,
-          generateWrhqSocial: true,
+          generateSocial: false, // Will be triggered in Step 3
+          generateWrhqBlog: false, // Will be triggered in Step 2
+          generateWrhqSocial: false, // Will be triggered in Step 3
         }),
       }).catch(err => {
         console.error('Failed to trigger generation:', err)
