@@ -18,6 +18,8 @@ async function getPressReleases() {
   })
 }
 
+type PressRelease = Awaited<ReturnType<typeof getPressReleases>>[number]
+
 async function PressReleaseList() {
   const pressReleases = await getPressReleases()
 
@@ -36,7 +38,7 @@ async function PressReleaseList() {
 
   return (
     <div className="space-y-6">
-      {pressReleases.map((pr) => (
+      {pressReleases.map((pr: PressRelease) => (
         <Card key={pr.id}>
           <CardHeader className="flex flex-row items-start justify-between">
             <div>

@@ -80,7 +80,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         brandVoice: contentItem.client.brandVoice || 'Professional and helpful',
         paaQuestion: contentItem.paaQuestion,
         servicePageUrl: contentItem.client.servicePages[0]?.url,
-        locationPageUrls: contentItem.client.locationPages.map(p => p.url),
+        locationPageUrls: contentItem.client.locationPages.map((p: { url: string }) => p.url),
         ctaText: contentItem.client.ctaText,
         ctaUrl: contentItem.client.ctaUrl || contentItem.client.wordpressUrl || '',
       })
@@ -289,7 +289,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       const videoJob = await createShortVideo({
         script: podcastScript.substring(0, 500),
         title: blogResult.title,
-        imageUrls: imageUrls.map(i => i.gcsUrl),
+        imageUrls: imageUrls.map((i: { gcsUrl: string }) => i.gcsUrl),
         aspectRatio: '9:16',
         duration: 60,
       })
@@ -363,7 +363,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         accountId: contentItem.client.getlateAccountId,
         platforms: contentItem.client.socialPlatforms as ('facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok')[],
         captions,
-        mediaUrls: socialImages.map(i => i.gcsUrl),
+        mediaUrls: socialImages.map((i: { gcsUrl: string }) => i.gcsUrl),
         mediaType: 'image',
         baseTime: socialBaseTime,
       })

@@ -91,7 +91,7 @@ export async function GET(request: Request) {
           state: client.state,
           month: monthName,
           year: lastMonth.getFullYear(),
-          featuredTopics: publishedContent.map((c) => ({
+          featuredTopics: publishedContent.map((c: { paaQuestion: string; blogPost: { wordpressUrl: string | null } | null }) => ({
             question: c.paaQuestion,
             url: c.blogPost?.wordpressUrl || '',
           })),
@@ -108,7 +108,7 @@ export async function GET(request: Request) {
           data: {
             clientId: client.id,
             month: lastMonth,
-            featuredPaaIds: publishedContent.map((c) => c.id),
+            featuredPaaIds: publishedContent.map((c: { id: string }) => c.id),
             newReviews: 0,
             totalReviews: client.gbpReviewCount,
             averageRating: client.gbpRating,
