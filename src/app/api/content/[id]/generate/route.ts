@@ -86,6 +86,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           hasAdas: contentItem.client.hasAdasCalibration,
           ctaText: contentItem.client.ctaText,
           ctaUrl: contentItem.client.ctaUrl || '',
+          phone: contentItem.client.phone,
+          website: contentItem.client.ctaUrl || contentItem.client.wordpressUrl || '',
         })
 
         // Create or update blog post

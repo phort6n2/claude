@@ -16,6 +16,8 @@ interface BlogPostParams {
   locationPageUrls?: string[]
   ctaText: string
   ctaUrl: string
+  phone: string
+  website: string
 }
 
 interface BlogPostResult {
@@ -29,40 +31,118 @@ interface BlogPostResult {
 }
 
 export async function generateBlogPost(params: BlogPostParams): Promise<BlogPostResult> {
-  const prompt = `You are an expert auto glass content writer creating SEO-optimized blog posts.
+  const location = `${params.city}, ${params.state}`
+  const servicePageUrl = params.servicePageUrl || params.ctaUrl
 
-Client: ${params.businessName} in ${params.city}, ${params.state}
-Services: ${params.hasAdas ? 'Includes ADAS calibration' : 'Standard auto glass services'}
-Service Areas: ${params.serviceAreas.join(', ')}
-Brand Voice: ${params.brandVoice}
+  const prompt = `You are an expert local SEO content writer specializing in auto glass services. Write a comprehensive, SEO-optimized blog post following these exact specifications:
 
-PAA Question: "${params.paaQuestion}"
+**CLIENT & PAA INFORMATION:**
+- Business Name: ${params.businessName}
+- Location (City, State): ${location}
+- PAA Question: ${params.paaQuestion}
+- Main Service Page URL: ${servicePageUrl}
+- Phone Number: ${params.phone}
+- Website: ${params.website}
+${params.hasAdas ? '- Services Include: ADAS Calibration' : ''}
 
-Requirements:
-- 800-1500 words
-- Answer the question directly in the first sentence
-- Use H2/H3 headings for clear structure
-- Naturally mention service areas throughout the content
-${params.servicePageUrl ? `- Link to service page: ${params.servicePageUrl}` : ''}
-${params.locationPageUrls?.length ? `- Link to location pages: ${params.locationPageUrls.join(', ')}` : ''}
-- Include CTA: "${params.ctaText}" with link to ${params.ctaUrl}
-- Educational, professional tone matching the brand voice
-- Include relevant auto glass industry expertise
+**BLOG POST STRUCTURE:**
 
-Generate the blog post as semantic HTML (using h2, h3, p, ul, li tags).
-Also provide:
-- A compelling title (50-60 characters)
-- URL slug
-- Excerpt (150-160 characters)
-- Meta title (50-60 characters)
-- Meta description (150-160 characters)
-- Focus keyword
+**Title (H1):**
+Use the PAA question as the title. Add location if it flows naturally.
 
-Return as JSON with keys: title, slug, content, excerpt, metaTitle, metaDescription, focusKeyword`
+**Opening Paragraph (Critical for SEO):**
+- First sentence MUST directly answer the PAA question in a clear, concise way (the "featured snippet" answer)
+- Second sentence should expand on that answer with 1-2 key details
+- Third sentence should naturally mention ${params.businessName} and ${location}
+- Keep opening paragraph to 80-100 words maximum
+- Make it compelling and informative
+
+**Body Content - Create 6-7 H2 Sections:**
+
+Each H2 section should:
+- Have an H2 heading that's either a question or compelling statement
+- Contain 2-3 paragraphs (150-200 words per section)
+- Include practical, actionable information
+- Use conversational but professional language
+- Incorporate local references naturally
+
+**Required H2 Topics to Include:**
+1. Overview/Basics section (explaining the fundamentals)
+2. Cost/Pricing section (addressing "how much does it cost")
+3. Process/Timeline section (explaining "how long does it take" or "what's the process")
+4. Benefits/Advantages section
+5. Common concerns/FAQs section
+6. Local angle section ("Why Choose ${params.businessName} in ${location}")
+7. Optional: Technical details or related services${params.hasAdas ? ' including ADAS calibration' : ''}
+
+**INTERNAL LINKING REQUIREMENTS (CRITICAL):**
+You MUST link to ${servicePageUrl} at least TWICE in the content using these guidelines:
+- Use descriptive, keyword-rich anchor text like "professional windshield replacement services" or "expert auto glass repair"${params.hasAdas ? ' or "certified ADAS calibration services"' : ''}
+- NEVER use generic anchor text like "click here" or "learn more" or "our services"
+- Make links flow naturally within sentences
+- Place links in different sections (not both in the same paragraph)
+- Use HTML format: <a href="${servicePageUrl}">descriptive anchor text</a>
+
+Example implementations:
+- "When you need <a href="${servicePageUrl}">professional windshield replacement services</a>, it's essential to choose a certified installer."
+- "Our <a href="${servicePageUrl}">expert auto glass repair</a> team uses only OEM-quality materials."
+
+**Call to Action (Final Paragraph):**
+Create a compelling final paragraph that:
+- Creates urgency or emphasizes expertise
+- Encourages immediate contact
+- Includes phone number: ${params.phone}
+- Mentions location: ${location}
+- References the business name: ${params.businessName}
+- Can optionally include another link to ${servicePageUrl}
+
+**WRITING STYLE REQUIREMENTS:**
+- Conversational yet professional tone
+- Use "you" and "your" to address the reader directly
+- Short paragraphs: 3-4 sentences maximum per paragraph
+- Include relevant auto glass terminology naturally (${params.hasAdas ? 'ADAS, ' : ''}OEM, resin, chip, crack, etc.)
+- Write at 8th-9th grade reading level
+- Avoid marketing fluff - every sentence should provide value
+- Target word count: 1000-1100 words
+
+**SEO REQUIREMENTS:**
+- Use the exact PAA question in the H1 title
+- Include variations of the main keyword throughout naturally
+- Incorporate local keywords: ${location} + auto glass, windshield repair, etc.
+- Include the business name ${params.businessName} 3-4 times throughout
+- Use natural language - avoid keyword stuffing
+
+**FORMATTING REQUIREMENTS:**
+- Use proper HTML: <h2> for sections, <p> for paragraphs, <a href=""> for links
+- Use <strong> tags sparingly for emphasis
+- NO bullet points unless absolutely necessary
+- Write in full, flowing paragraphs
+
+**QUALITY CHECKLIST:**
+Before finishing, ensure:
+- ✓ Opening paragraph directly answers PAA question in first sentence
+- ✓ 6-7 comprehensive H2 sections included
+- ✓ Service page linked AT LEAST TWICE with descriptive anchor text
+- ✓ Business name, location, and phone number incorporated naturally
+- ✓ Strong CTA at the end
+- ✓ 1000-1100 word count achieved
+- ✓ No marketing fluff or filler content
+
+**CRITICAL OUTPUT FORMAT:**
+Return a JSON object with these keys:
+- title: The H1 title (PAA question, optionally with location)
+- slug: URL-friendly slug
+- content: The complete HTML blog post body (NO h1, NO doctype/html/head/body tags - just the article content starting with the opening paragraph)
+- excerpt: 150-160 character summary for meta/previews
+- metaTitle: 50-60 character meta title
+- metaDescription: 150-160 character meta description
+- focusKeyword: The primary keyword to target
+
+Return ONLY valid JSON. Do not include any commentary outside the JSON.`
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 4096,
+    max_tokens: 8192,
     messages: [{ role: 'user', content: prompt }],
   })
 
