@@ -67,6 +67,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         postalCode: data.postalCode,
         googlePlaceId: data.googlePlaceId || null,
         googleMapsUrl: data.googleMapsUrl || null,
+        wrhqDirectoryUrl: data.wrhqDirectoryUrl || null,
         hasShopLocation: data.hasShopLocation ?? true,
         offersMobileService: data.offersMobileService ?? false,
         hasAdasCalibration: data.hasAdasCalibration ?? false,

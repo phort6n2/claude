@@ -24,6 +24,7 @@ function transformClientForForm(client: Client) {
     postalCode: client.postalCode,
     googlePlaceId: client.googlePlaceId ?? '',
     googleMapsUrl: client.googleMapsUrl ?? '',
+    wrhqDirectoryUrl: client.wrhqDirectoryUrl ?? '',
     hasShopLocation: client.hasShopLocation,
     offersMobileService: client.offersMobileService,
     hasAdasCalibration: client.hasAdasCalibration,

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { StatusBadge } from '@/components/ui/Badge'
 import { prisma } from '@/lib/db'
 import { formatDate } from '@/lib/utils'
-import { Plus, MoreVertical, Globe, RefreshCw } from 'lucide-react'
+import { Plus, MoreVertical, Globe, RefreshCw, MapPin, Podcast, Building2 } from 'lucide-react'
 import ClientLogo from '@/components/ui/ClientLogo'
 
 async function getClients() {
@@ -80,6 +80,9 @@ async function ClientList() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 WordPress
               </th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Links
+              </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
@@ -139,6 +142,57 @@ async function ClientList() {
                   ) : (
                     <span className="text-gray-400 text-sm">Not connected</span>
                   )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center justify-center gap-2">
+                    {client.wordpressUrl && (
+                      <a
+                        href={client.wordpressUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-500 hover:text-blue-700 transition-colors"
+                        title="Website"
+                      >
+                        <Globe className="h-5 w-5" />
+                      </a>
+                    )}
+                    {client.googleMapsUrl && (
+                      <a
+                        href={client.googleMapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-red-500 hover:text-red-700 transition-colors"
+                        title="Google Maps"
+                      >
+                        <MapPin className="h-5 w-5" />
+                      </a>
+                    )}
+                    {client.podbeanPodcastId && (
+                      <a
+                        href={`https://www.podbean.com/podcast-detail/${client.podbeanPodcastId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-purple-500 hover:text-purple-700 transition-colors"
+                        title="Podbean Podcast"
+                      >
+                        <Podcast className="h-5 w-5" />
+                      </a>
+                    )}
+                    {client.wrhqDirectoryUrl && (
+                      <a
+                        href={client.wrhqDirectoryUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-orange-500 hover:text-orange-700 transition-colors"
+                        title="WRHQ Directory"
+                      >
+                        <Building2 className="h-5 w-5" />
+                      </a>
+                    )}
+                    {!client.wordpressUrl && !client.googleMapsUrl && !client.podbeanPodcastId && !client.wrhqDirectoryUrl && (
+                      <span className="text-gray-300 text-sm">—</span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
                   <div className="flex items-center justify-end gap-2">

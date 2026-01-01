@@ -40,6 +40,7 @@ interface ClientFormData {
   postalCode: string
   googlePlaceId: string
   googleMapsUrl: string
+  wrhqDirectoryUrl: string
   hasShopLocation: boolean
   offersMobileService: boolean
   hasAdasCalibration: boolean
@@ -79,6 +80,7 @@ const defaultData: ClientFormData = {
   postalCode: '',
   googlePlaceId: '',
   googleMapsUrl: '',
+  wrhqDirectoryUrl: '',
   hasShopLocation: true,
   offersMobileService: false,
   hasAdasCalibration: false,
@@ -1113,6 +1115,29 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                     )}
                   </div>
                 )}
+              </div>
+
+              {/* WRHQ Directory Section */}
+              <div className="mt-6 pt-6 border-t">
+                <div className="flex items-center gap-2 mb-4">
+                  <Building2 size={20} className="text-orange-600" />
+                  <h3 className="text-sm font-medium text-gray-700">WRHQ Directory Listing</h3>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    WRHQ Directory URL
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.wrhqDirectoryUrl}
+                    onChange={(e) => updateField('wrhqDirectoryUrl', e.target.value)}
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="https://windshieldreplacementhq.com/directory/your-business"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Link to the client&apos;s listing on the WRHQ directory
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -86,6 +86,9 @@ model Client {
   googlePlaceId         String?   // Google Places API place_id
   googleMapsUrl         String?   // Direct link to Google Maps
 
+  // WRHQ Directory
+  wrhqDirectoryUrl      String?   // Link to WRHQ directory listing
+
   // GBP Data (for press releases)
   gbpPlaceId            String?
   gbpRating             Float?
