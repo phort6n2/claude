@@ -50,6 +50,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         podcast: true,
         socialPosts: true,
         wrhqSocialPosts: true,
+        shortFormVideos: true,
       },
     })
 
@@ -232,17 +233,40 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             continue
           }
 
-          // Select correct image based on platform:
-          // - Instagram uses square 1:1 image (INSTAGRAM_FEED)
-          // - All others use 16:9 landscape image (BLOG_FEATURED)
-          const imageType = socialPost.platform === 'INSTAGRAM' ? 'INSTAGRAM_FEED' : 'BLOG_FEATURED'
-          const image = contentItem.images.find((img: Image) => img.imageType === imageType)
-            || contentItem.images.find((img: Image) => img.imageType === 'BLOG_FEATURED')
+          // Determine if this is a video platform
+          const videoPlatforms = ['TIKTOK', 'YOUTUBE']
+          const isVideoPlatform = videoPlatforms.includes(socialPost.platform)
 
-          // Skip platforms that require media when no image is available
-          const platformsRequiringMedia = ['INSTAGRAM', 'TIKTOK', 'PINTEREST']
-          if (platformsRequiringMedia.includes(socialPost.platform) && !image) {
-            console.log(`Skipping ${socialPost.platform} - no image available and platform requires media`)
+          // Select correct media based on platform
+          let mediaUrl: string | null = null
+          let mediaType: 'image' | 'video' = 'image'
+
+          if (isVideoPlatform) {
+            // For video platforms, look for short-form videos
+            const video = contentItem.shortFormVideos?.find(v =>
+              v.platforms.includes(socialPost.platform as any)
+            ) || contentItem.shortFormVideos?.[0]
+            if (video) {
+              mediaUrl = video.videoUrl
+              mediaType = 'video'
+            }
+          } else {
+            // For image platforms, select correct image type
+            // - Instagram uses square 1:1 image (INSTAGRAM_FEED)
+            // - All others use 16:9 landscape image (BLOG_FEATURED)
+            const imageType = socialPost.platform === 'INSTAGRAM' ? 'INSTAGRAM_FEED' : 'BLOG_FEATURED'
+            const image = contentItem.images.find((img: Image) => img.imageType === imageType)
+              || contentItem.images.find((img: Image) => img.imageType === 'BLOG_FEATURED')
+            if (image) {
+              mediaUrl = image.gcsUrl
+              mediaType = 'image'
+            }
+          }
+
+          // Skip platforms that require media when none is available
+          const platformsRequiringMedia = ['INSTAGRAM', 'TIKTOK', 'YOUTUBE', 'PINTEREST']
+          if (platformsRequiringMedia.includes(socialPost.platform) && !mediaUrl) {
+            console.log(`Skipping ${socialPost.platform} - no ${isVideoPlatform ? 'video' : 'image'} available and platform requires media`)
             continue
           }
 
@@ -252,7 +276,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 accountId,
                 platform: socialPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
                 caption: socialPost.caption,
-                mediaUrls: image ? [image.gcsUrl] : [],
+                mediaUrls: mediaUrl ? [mediaUrl] : [],
+                mediaType,
                 hashtags: socialPost.hashtags,
                 firstComment: socialPost.firstComment || undefined,
               })
@@ -260,7 +285,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 accountId,
                 platform: socialPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
                 caption: socialPost.caption,
-                mediaUrls: image ? [image.gcsUrl] : [],
+                mediaUrls: mediaUrl ? [mediaUrl] : [],
+                mediaType,
                 scheduledTime: contentItem.scheduledDate,
                 hashtags: socialPost.hashtags,
                 firstComment: socialPost.firstComment || undefined,
@@ -301,15 +327,38 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
           if (!accountId) continue
 
-          // Select correct image based on platform
-          const imageType = wrhqPost.platform === 'INSTAGRAM' ? 'INSTAGRAM_FEED' : 'BLOG_FEATURED'
-          const image = contentItem.images.find((img: Image) => img.imageType === imageType)
-            || contentItem.images.find((img: Image) => img.imageType === 'BLOG_FEATURED')
+          // Determine if this is a video platform
+          const videoPlatforms = ['TIKTOK', 'YOUTUBE']
+          const isVideoPlatform = videoPlatforms.includes(wrhqPost.platform)
 
-          // Skip platforms that require media when no image is available
-          const platformsRequiringMedia = ['INSTAGRAM', 'TIKTOK', 'PINTEREST']
-          if (platformsRequiringMedia.includes(wrhqPost.platform) && !image) {
-            console.log(`Skipping WRHQ ${wrhqPost.platform} - no image available and platform requires media`)
+          // Select correct media based on platform
+          let mediaUrl: string | null = null
+          let mediaType: 'image' | 'video' = 'image'
+
+          if (isVideoPlatform) {
+            // For video platforms, look for short-form videos
+            const video = contentItem.shortFormVideos?.find(v =>
+              v.platforms.includes(wrhqPost.platform as any)
+            ) || contentItem.shortFormVideos?.[0]
+            if (video) {
+              mediaUrl = video.videoUrl
+              mediaType = 'video'
+            }
+          } else {
+            // For image platforms, select correct image type
+            const imageType = wrhqPost.platform === 'INSTAGRAM' ? 'INSTAGRAM_FEED' : 'BLOG_FEATURED'
+            const image = contentItem.images.find((img: Image) => img.imageType === imageType)
+              || contentItem.images.find((img: Image) => img.imageType === 'BLOG_FEATURED')
+            if (image) {
+              mediaUrl = image.gcsUrl
+              mediaType = 'image'
+            }
+          }
+
+          // Skip platforms that require media when none is available
+          const platformsRequiringMedia = ['INSTAGRAM', 'TIKTOK', 'YOUTUBE', 'PINTEREST']
+          if (platformsRequiringMedia.includes(wrhqPost.platform) && !mediaUrl) {
+            console.log(`Skipping WRHQ ${wrhqPost.platform} - no ${isVideoPlatform ? 'video' : 'image'} available and platform requires media`)
             continue
           }
 
@@ -319,7 +368,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 accountId,
                 platform: wrhqPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
                 caption: wrhqPost.caption,
-                mediaUrls: image ? [image.gcsUrl] : [],
+                mediaUrls: mediaUrl ? [mediaUrl] : [],
+                mediaType,
                 hashtags: wrhqPost.hashtags,
                 firstComment: wrhqPost.firstComment || undefined,
               })
@@ -327,7 +377,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 accountId,
                 platform: wrhqPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
                 caption: wrhqPost.caption,
-                mediaUrls: image ? [image.gcsUrl] : [],
+                mediaUrls: mediaUrl ? [mediaUrl] : [],
+                mediaType,
                 scheduledTime: contentItem.scheduledDate,
                 hashtags: wrhqPost.hashtags,
                 firstComment: wrhqPost.firstComment || undefined,
