@@ -257,6 +257,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             data: {
               getlatePostId: lateResult.postId,
               status: postImmediate ? 'PUBLISHED' : 'SCHEDULED',
+              publishedUrl: lateResult.platformPostUrl || null,
+              publishedAt: postImmediate ? new Date() : null,
             },
           })
         }
@@ -315,6 +317,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             data: {
               getlatePostId: lateResult.postId,
               status: postImmediate ? 'PUBLISHED' : 'SCHEDULED',
+              publishedUrl: lateResult.platformPostUrl || null,
+              publishedAt: postImmediate ? new Date() : null,
             },
           })
         }

@@ -18,6 +18,7 @@ interface ScheduledPostResult {
   platform: Platform
   scheduledTime: Date
   status: 'scheduled' | 'published' | 'failed'
+  platformPostUrl?: string  // URL to view the post on the social platform
 }
 
 export async function schedulePost(params: SchedulePostParams): Promise<ScheduledPostResult> {
@@ -64,7 +65,8 @@ export async function schedulePost(params: SchedulePostParams): Promise<Schedule
     postId: data.post_id,
     platform: params.platform,
     scheduledTime: new Date(data.scheduled_at),
-    status: 'scheduled',
+    status: data.status || 'scheduled',
+    platformPostUrl: data.platform_post_url || data.platformPostUrl,  // URL to view post on social platform
   }
 }
 
@@ -100,6 +102,7 @@ export async function checkPostStatus(postId: string): Promise<ScheduledPostResu
     platform: data.platform,
     scheduledTime: new Date(data.scheduled_at),
     status: data.status,
+    platformPostUrl: data.platform_post_url || data.platformPostUrl,
   }
 }
 

@@ -87,6 +87,7 @@ interface ContentItem {
     hashtags: string[]
     approved: boolean
     status: string
+    publishedUrl: string | null
   }>
   wrhqSocialPosts: Array<{
     id: string
@@ -95,6 +96,7 @@ interface ContentItem {
     hashtags: string[]
     approved: boolean
     status: string
+    publishedUrl: string | null
   }>
   wrhqBlogPost: {
     id: string
@@ -1073,13 +1075,26 @@ function PublishedTab({ content }: { content: ContentItem }) {
                   <span>{PLATFORM_ICONS[post.platform] || '📱'}</span>
                   <span>{post.platform}</span>
                 </div>
-                <span className={`px-2 py-1 rounded text-xs ${
-                  post.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' :
-                  post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
-                  'bg-gray-100 text-gray-700'
-                }`}>
-                  {post.status === 'PUBLISHED' ? 'Posted' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
-                </span>
+                <div className="flex items-center gap-3">
+                  {post.publishedUrl && (
+                    <a
+                      href={post.publishedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline text-sm flex items-center gap-1"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      View Post
+                    </a>
+                  )}
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    post.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' :
+                    post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {post.status === 'PUBLISHED' ? 'Posted' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
@@ -1100,13 +1115,26 @@ function PublishedTab({ content }: { content: ContentItem }) {
                   <span>{PLATFORM_ICONS[post.platform] || '📱'}</span>
                   <span>{post.platform}</span>
                 </div>
-                <span className={`px-2 py-1 rounded text-xs ${
-                  post.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' :
-                  post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
-                  'bg-gray-100 text-gray-700'
-                }`}>
-                  {post.status === 'PUBLISHED' ? 'Posted' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
-                </span>
+                <div className="flex items-center gap-3">
+                  {post.publishedUrl && (
+                    <a
+                      href={post.publishedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline text-sm flex items-center gap-1"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      View Post
+                    </a>
+                  )}
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    post.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' :
+                    post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {post.status === 'PUBLISHED' ? 'Posted' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
