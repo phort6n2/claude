@@ -43,7 +43,6 @@ export async function POST(request: NextRequest) {
       data: {
         clientId: data.clientId,
         paaQuestion: data.paaQuestion,
-        paaSource: data.paaSource || 'manual',
         topic: data.topic || null,
         scheduledDate: new Date(data.scheduledDate),
         scheduledTime: data.scheduledTime || '09:00',

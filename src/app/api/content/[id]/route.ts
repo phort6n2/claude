@@ -152,7 +152,6 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       where: { id },
       data: {
         paaQuestion: data.paaQuestion,
-        paaSource: data.paaSource,
         topic: data.topic,
         scheduledDate: data.scheduledDate ? new Date(data.scheduledDate) : undefined,
         scheduledTime: data.scheduledTime,

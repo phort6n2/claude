@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Plus, Trash2, MapPin, Building2, Podcast } from 'lucide-react'
+import { Plus, Trash2, MapPin, Building2, Podcast, FileQuestion } from 'lucide-react'
+import { SAMPLE_PAAS } from '@/lib/sample-paas'
 
 interface PodbeanPodcast {
   id: string
@@ -130,6 +131,15 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
   const [loadingPodcasts, setLoadingPodcasts] = useState(false)
   const [podbeanError, setPodbeanError] = useState<string | null>(null)
 
+  // PAA Questions state
+  const [paaText, setPaaText] = useState('')
+  const [paaValidation, setPaaValidation] = useState({
+    total: 0,
+    valid: 0,
+    invalid: 0,
+    errors: [] as string[],
+  })
+
   const [formData, setFormData] = useState<ClientFormData>({
     ...defaultData,
     ...initialData,
@@ -199,6 +209,56 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
       .finally(() => setLoadingPodcasts(false))
   }, [])
 
+  // Load existing PAAs when editing
+  useEffect(() => {
+    if (isEditing && initialData?.id) {
+      fetch(`/api/clients/${initialData.id}/paas`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.paas && Array.isArray(data.paas)) {
+            const text = data.paas.map((paa: { question: string }) => paa.question).join('\n')
+            setPaaText(text)
+          }
+        })
+        .catch(console.error)
+    }
+  }, [isEditing, initialData?.id])
+
+  // Validate PAA text as user types
+  useEffect(() => {
+    const lines = paaText
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0)
+
+    const errors: string[] = []
+    let valid = 0
+    let invalid = 0
+
+    lines.forEach((line, index) => {
+      const lineErrors: string[] = []
+      if (!line.includes('{location}')) {
+        lineErrors.push('missing {location}')
+      }
+      if (!line.endsWith('?')) {
+        lineErrors.push('must end with ?')
+      }
+      if (lineErrors.length > 0) {
+        errors.push(`Line ${index + 1}: ${lineErrors.join(', ')}`)
+        invalid++
+      } else {
+        valid++
+      }
+    })
+
+    setPaaValidation({
+      total: lines.length,
+      valid,
+      invalid,
+      errors,
+    })
+  }, [paaText])
+
   const addServiceLocation = () => {
     setServiceLocations((prev) => [
       ...prev,
@@ -252,6 +312,10 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
       podbeanPodcastId: podcastId,
       podbeanPodcastTitle: podcast?.title || '',
     }))
+  }
+
+  const loadSampleQuestions = () => {
+    setPaaText(SAMPLE_PAAS)
   }
 
   const testWordPressConnection = async () => {
@@ -316,6 +380,19 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
 
         if (!locResponse.ok) {
           console.error('Failed to save service locations')
+        }
+      }
+
+      // Save PAA questions if we have valid ones
+      if (paaText.trim() && paaValidation.valid > 0 && clientId) {
+        const paaResponse = await fetch(`/api/clients/${clientId}/paas`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paaText }),
+        })
+
+        if (!paaResponse.ok) {
+          console.error('Failed to save PAA questions')
         }
       }
 
@@ -595,7 +672,90 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
         return (
           <Card>
             <CardHeader>
-              <CardTitle>Step 4: Brand Settings</CardTitle>
+              <CardTitle>Step 4: Content Questions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <FileQuestion size={20} className="text-blue-600" />
+                <p className="text-sm text-gray-600">
+                  Enter the PAA questions for this client. Each question must include{' '}
+                  <code className="bg-gray-100 px-1 rounded">{'{location}'}</code> as a placeholder
+                  and end with a question mark.
+                </p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Questions (one per line)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={loadSampleQuestions}
+                    className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    [Load Sample Questions]
+                  </button>
+                </div>
+                <textarea
+                  value={paaText}
+                  onChange={(e) => setPaaText(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  rows={12}
+                  placeholder={`How much does windshield replacement cost in {location}?\nIs it illegal to drive with a cracked windshield in {location}?\nWhere can I get my windshield replaced in {location}?`}
+                />
+              </div>
+
+              {/* Validation Status */}
+              {paaValidation.total > 0 && (
+                <div className="flex items-center gap-4 text-sm">
+                  {paaValidation.valid > 0 && (
+                    <span className="text-green-600 font-medium">
+                      ✓ {paaValidation.valid} valid
+                    </span>
+                  )}
+                  {paaValidation.invalid > 0 && (
+                    <span className="text-amber-600 font-medium">
+                      ⚠️ {paaValidation.invalid} invalid
+                    </span>
+                  )}
+                  <span className="text-gray-500">
+                    ({paaValidation.total} total questions)
+                  </span>
+                </div>
+              )}
+
+              {/* Error List */}
+              {paaValidation.errors.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <p className="text-sm font-medium text-amber-800 mb-2">Issues to fix:</p>
+                  <ul className="text-sm text-amber-700 space-y-1">
+                    {paaValidation.errors.slice(0, 5).map((error, i) => (
+                      <li key={i}>{error}</li>
+                    ))}
+                    {paaValidation.errors.length > 5 && (
+                      <li className="text-amber-600">
+                        ... and {paaValidation.errors.length - 5} more
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                <strong>Pro tip:</strong> With {paaValidation.valid || 0} questions ×{' '}
+                {serviceLocations.length || 1} locations, you&apos;ll generate{' '}
+                {(paaValidation.valid || 0) * (serviceLocations.length || 1)} unique content pieces.
+              </div>
+            </CardContent>
+          </Card>
+        )
+
+      case 5:
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Step 5: Brand Settings</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -685,11 +845,11 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
           </Card>
         )
 
-      case 5:
+      case 6:
         return (
           <Card>
             <CardHeader>
-              <CardTitle>Step 5: Integrations</CardTitle>
+              <CardTitle>Step 6: Integrations</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -809,11 +969,11 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
           </Card>
         )
 
-      case 6:
+      case 7:
         return (
           <Card>
             <CardHeader>
-              <CardTitle>Step 6: CTA & Publishing</CardTitle>
+              <CardTitle>Step 7: CTA & Publishing</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -887,11 +1047,11 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
           </Card>
         )
 
-      case 7:
+      case 8:
         return (
           <Card>
             <CardHeader>
-              <CardTitle>Step 7: Social Media Platforms</CardTitle>
+              <CardTitle>Step 8: Social Media Platforms</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-gray-500">
@@ -948,11 +1108,11 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
           </Card>
         )
 
-      case 8:
+      case 9:
         return (
           <Card>
             <CardHeader>
-              <CardTitle>Step 8: Review & Save</CardTitle>
+              <CardTitle>Step 9: Review & Save</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="bg-gray-50 rounded-lg p-4 space-y-3">
@@ -993,6 +1153,12 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                   </span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-gray-500">Content Questions:</span>
+                  <span className="font-medium">
+                    {paaValidation.valid} questions
+                  </span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-gray-500">Social Platforms:</span>
                   <span className="font-medium">
                     {formData.socialPlatforms.length} selected
@@ -1007,7 +1173,7 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                 <div className="flex justify-between">
                   <span className="text-gray-500">Content Potential:</span>
                   <span className="font-medium text-green-600">
-                    {200 * serviceLocations.length} unique pieces
+                    {paaValidation.valid * (serviceLocations.length || 1)} unique pieces
                   </span>
                 </div>
               </div>
@@ -1024,7 +1190,7 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Progress */}
       <div className="flex items-center justify-between mb-8">
-        {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((s) => (
           <div key={s} className="flex items-center">
             <button
               onClick={() => setStep(s)}
@@ -1038,9 +1204,9 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
             >
               {s}
             </button>
-            {s < 8 && (
+            {s < 9 && (
               <div
-                className={`w-8 h-0.5 ${s < step ? 'bg-green-500' : 'bg-gray-200'}`}
+                className={`w-6 h-0.5 ${s < step ? 'bg-green-500' : 'bg-gray-200'}`}
               />
             )}
           </div>
@@ -1064,8 +1230,8 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
         >
           Previous
         </Button>
-        {step < 8 ? (
-          <Button onClick={() => setStep((s) => Math.min(8, s + 1))}>
+        {step < 9 ? (
+          <Button onClick={() => setStep((s) => Math.min(9, s + 1))}>
             Next
           </Button>
         ) : (

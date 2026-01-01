@@ -120,6 +120,7 @@ model Client {
   servicePages          ServicePage[]
   locationPages         LocationPage[]
   serviceLocations      ServiceLocation[]
+  clientPAAs            ClientPAA[]
   publishingLogs        PublishingLog[]
 }
 
@@ -152,11 +153,10 @@ model ContentItem {
   clientId          String
   client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
-  // PAA Question (link to library OR legacy string)
-  paaQuestionId     String?
-  paaQuestionRef    PAAQuestion? @relation(fields: [paaQuestionId], references: [id])
+  // PAA Question (link to client's PAA)
+  clientPAAId       String?
+  clientPAA         ClientPAA? @relation(fields: [clientPAAId], references: [id])
   paaQuestion       String    // Rendered/final question text (with location substituted)
-  paaSource         String?   // alsoasked, valueserp, manual, csv, library
   topic             String?   // AI-suggested topic category
 
   // Service Location (link to client location)
@@ -273,7 +273,7 @@ model ContentItem {
   @@index([status])
   @@index([scheduledDate])
   @@index([needsAttention])
-  @@index([paaQuestionId])
+  @@index([clientPAAId])
   @@index([serviceLocationId])
 }
 
@@ -741,15 +741,15 @@ enum LogStatus {
 }
 
 // ============================================
-// PAA QUESTION LIBRARY (Global Master List)
+// CLIENT PAA QUESTIONS (Client-specific)
 // ============================================
 
-model PAAQuestion {
+model ClientPAA {
   id           String        @id @default(cuid())
-  question     String        // Template: "How much does {service} cost in {location}?"
-  service      String        // "windshield repair", "rock chip repair", "ADAS calibration"
-  priority     Int           @default(100) // 1-10 = high priority, 11-200 = regular
-  category     String?       // "cost", "process", "safety", "insurance"
+  clientId     String
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  question     String        // Template with {location} placeholder
+  priority     Int           // Order pasted (1, 2, 3...)
   isActive     Boolean       @default(true)
 
   createdAt    DateTime      @default(now())
@@ -758,8 +758,7 @@ model PAAQuestion {
   // Relations
   contentItems ContentItem[]
 
-  @@unique([question, service])
-  @@index([service])
+  @@index([clientId])
   @@index([priority])
   @@index([isActive])
 }

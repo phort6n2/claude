@@ -64,15 +64,15 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       )
     }
 
-    // Get active PAA questions, ordered by priority
-    const paaQuestions = await prisma.pAAQuestion.findMany({
-      where: { isActive: true },
-      orderBy: [{ priority: 'asc' }, { service: 'asc' }],
+    // Get client's PAA questions, ordered by priority
+    const paaQuestions = await prisma.clientPAA.findMany({
+      where: { clientId: id, isActive: true },
+      orderBy: { priority: 'asc' },
     })
 
     if (paaQuestions.length === 0) {
       return NextResponse.json(
-        { error: 'No PAA questions in library. Seed the library first.' },
+        { error: 'No content questions configured. Add questions in client settings first.' },
         { status: 400 }
       )
     }
@@ -81,14 +81,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const existingContent = await prisma.contentItem.findMany({
       where: { clientId: id },
       select: {
-        paaQuestionId: true,
+        clientPAAId: true,
         serviceLocationId: true,
         paaQuestion: true,
       },
     })
 
     const existingCombos = new Set(
-      existingContent.map((c) => `${c.paaQuestionId || ''}-${c.serviceLocationId || ''}`)
+      existingContent.map((c) => `${c.clientPAAId || ''}-${c.serviceLocationId || ''}`)
     )
 
     // Calculate available dates (Tuesdays and Thursdays only)
@@ -180,11 +180,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       await prisma.contentItem.createMany({
         data: batch.map((item) => ({
           clientId: id,
-          paaQuestionId: item.paaQuestion.id,
+          clientPAAId: item.paaQuestion.id,
           serviceLocationId: item.location.id,
           paaQuestion: renderQuestion(item.paaQuestion.question, item.location),
-          paaSource: 'library',
-          topic: item.paaQuestion.category,
           scheduledDate: item.scheduledDate,
           scheduledTime: client.preferredPublishTime,
           status: 'DRAFT',
@@ -270,8 +268,8 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     _count: { id: true },
   })
 
-  const paaCount = await prisma.pAAQuestion.count({
-    where: { isActive: true },
+  const paaCount = await prisma.clientPAA.count({
+    where: { clientId: id, isActive: true },
   })
 
   return NextResponse.json({
