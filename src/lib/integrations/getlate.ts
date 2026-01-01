@@ -2,6 +2,26 @@
 
 type Platform = 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram'
 
+// Map our internal platform names to Late API platform names
+const LATE_PLATFORM_MAP: Record<Platform, string> = {
+  facebook: 'facebook',
+  instagram: 'instagram',
+  linkedin: 'linkedin',
+  twitter: 'twitter',  // Late may also accept 'x'
+  tiktok: 'tiktok',
+  gbp: 'googlebusiness',  // Late uses 'googlebusiness' not 'gbp'
+  youtube: 'youtube',
+  bluesky: 'bluesky',
+  threads: 'threads',
+  reddit: 'reddit',
+  pinterest: 'pinterest',
+  telegram: 'telegram',
+}
+
+function getLatePlatform(platform: Platform): string {
+  return LATE_PLATFORM_MAP[platform] || platform
+}
+
 interface SchedulePostParams {
   accountId: string
   platform: Platform
@@ -36,11 +56,12 @@ export async function schedulePost(params: SchedulePostParams): Promise<Schedule
 
   // Build request body according to Late API docs
   // https://docs.getlate.dev/
+  const latePlatform = getLatePlatform(params.platform)
   const requestBody: Record<string, unknown> = {
     content: fullCaption,
     platforms: [
       {
-        platform: params.platform,
+        platform: latePlatform,
         accountId: params.accountId,
       }
     ],
