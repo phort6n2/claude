@@ -77,6 +77,33 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           data: { pipelineStep: 'blog' },
         })
 
+        // Find the best service page to link to
+        let servicePageUrl = contentItem.client.ctaUrl || ''
+        const websiteUrl = contentItem.client.wordpressUrl
+
+        if (websiteUrl) {
+          try {
+            const { scanAndMatchServicePage } = await import('@/lib/integrations/sitemap')
+            console.log(`Scanning sitemap for ${websiteUrl} to find best service page...`)
+
+            const result = await scanAndMatchServicePage({
+              websiteUrl,
+              topic: contentItem.paaQuestion,
+              businessName: contentItem.client.businessName,
+            })
+
+            if (result.url) {
+              console.log(`Found matching service page: ${result.url}`)
+              servicePageUrl = result.url
+            } else {
+              console.log('No matching service page found, using default CTA URL')
+            }
+          } catch (error) {
+            console.error('Error scanning sitemap:', error)
+            // Fall back to CTA URL
+          }
+        }
+
         const blogResult = await generateBlogPost({
           paaQuestion: contentItem.paaQuestion,
           businessName: contentItem.client.businessName,
@@ -86,9 +113,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           serviceAreas: contentItem.client.serviceAreas || [],
           hasAdas: contentItem.client.hasAdasCalibration,
           ctaText: contentItem.client.ctaText,
-          ctaUrl: contentItem.client.ctaUrl || '',
+          ctaUrl: servicePageUrl || contentItem.client.ctaUrl || '',
           phone: contentItem.client.phone,
-          website: contentItem.client.ctaUrl || contentItem.client.wordpressUrl || '',
+          website: contentItem.client.wordpressUrl || servicePageUrl || '',
+          servicePageUrl, // Pass the matched service page
         })
 
         // Create or update blog post
