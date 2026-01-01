@@ -1,5 +1,6 @@
 // Google Cloud Storage Integration
 import sharp from 'sharp'
+import { getSetting } from '../settings'
 
 interface UploadResult {
   url: string
@@ -11,11 +12,12 @@ export async function uploadToGCS(
   filename: string,
   contentType: string
 ): Promise<UploadResult> {
-  const bucketName = process.env.GCS_BUCKET_NAME
-  const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+  // Check environment variables first, then database settings
+  const bucketName = process.env.GCS_BUCKET_NAME || await getSetting('GCS_BUCKET_NAME')
+  const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || await getSetting('GCS_CREDENTIALS_JSON')
 
   if (!bucketName || !credentialsJson) {
-    throw new Error('GCS credentials not configured')
+    throw new Error('GCS credentials not configured. Add GCS_BUCKET_NAME and GCS_CREDENTIALS_JSON to Settings > API Keys.')
   }
 
   const credentials = JSON.parse(credentialsJson)
