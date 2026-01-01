@@ -140,8 +140,7 @@ export async function generateBothImages(params: {
   const errors: string[] = []
 
   if (!params.apiKey) {
-    console.log('Skipping image generation - NANO_BANANA_API_KEY not configured')
-    return results
+    throw new Error('NANO_BANANA_API_KEY (Google AI Studio) is not configured. Go to Settings > API Keys to add it.')
   }
 
   console.log('Starting image generation with Gemini 3 Pro Image...')
