@@ -138,13 +138,24 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     // Publish WRHQ blog to WordPress (if credentials are configured)
     if (publishWrhqBlog && contentItem.wrhqBlogPost) {
       try {
-        const wrhqWpUrl = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_URL)
-        const wrhqWpUser = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_USERNAME)
-        const wrhqWpPass = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_APP_PASSWORD)
+        let wrhqWpUrl: string | null = null
+        let wrhqWpUser: string | null = null
+        let wrhqWpPass: string | null = null
+
+        try {
+          wrhqWpUrl = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_URL)
+          wrhqWpUser = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_USERNAME)
+          wrhqWpPass = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_APP_PASSWORD)
+        } catch (settingsError) {
+          console.error('Error reading WRHQ settings:', settingsError)
+          results.wrhqBlog = { success: false, error: 'WRHQ credentials could not be read. Please go to Settings → WRHQ and re-enter the WordPress App Password.' }
+        }
 
         // Check if WRHQ WordPress credentials are configured
         if (!wrhqWpUrl || !wrhqWpUser || !wrhqWpPass) {
-          results.wrhqBlog = { success: false, error: 'WRHQ WordPress credentials not configured in settings' }
+          if (!results.wrhqBlog) {
+            results.wrhqBlog = { success: false, error: 'WRHQ WordPress credentials not configured. Please go to Settings → WRHQ and re-enter the WordPress App Password.' }
+          }
         } else {
             // Use the 16:9 landscape image for WRHQ blog
             const featuredImage = contentItem.images.find((img: Image) => img.imageType === 'BLOG_FEATURED')

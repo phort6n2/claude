@@ -79,8 +79,9 @@ export async function getSetting(key: string): Promise<string | null> {
     if (setting.encrypted) {
       try {
         return decrypt(setting.value)
-      } catch {
-        console.error(`Failed to decrypt setting: ${key}`)
+      } catch (error) {
+        console.error(`Failed to decrypt setting: ${key}`, error)
+        // Return null so the calling code can handle missing credentials gracefully
         return null
       }
     }
