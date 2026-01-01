@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { generateBlogPost } from '@/lib/integrations/claude'
+import { generateBlogPost, generatePodcastDescription } from '@/lib/integrations/claude'
 import { generateBothImages } from '@/lib/integrations/nano-banana'
 import { getSetting, WRHQ_SETTINGS_KEYS } from '@/lib/settings'
 import { ImageType } from '@prisma/client'
@@ -171,11 +171,34 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
               duration: 'default', // 8-12 minutes
             })
 
-            // Save job ID - podcast will be polled separately
+            // Generate podcast description
+            let podcastDescription = ''
+            try {
+              // Construct the blog post URL (will be updated after actual publishing)
+              const blogUrl = contentItem.client.wordpressUrl
+                ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${blogResult.slug}`
+                : ''
+
+              podcastDescription = await generatePodcastDescription({
+                businessName: contentItem.client.businessName,
+                city: contentItem.client.city,
+                state: contentItem.client.state,
+                paaQuestion: contentItem.paaQuestion,
+                blogPostUrl: blogUrl,
+                servicePageUrl: servicePageUrl,
+                googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+              })
+            } catch (descError) {
+              console.error('Error generating podcast description:', descError)
+              // Non-fatal - continue without description
+            }
+
+            // Save job ID and description - podcast will be polled separately
             await prisma.podcast.upsert({
               where: { contentItemId: id },
               update: {
                 script: blogResult.content,
+                description: podcastDescription || null,
                 autocontentJobId: podcastJob.jobId,
                 status: 'PROCESSING',
               },
@@ -184,6 +207,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 clientId: contentItem.clientId,
                 audioUrl: '',
                 script: blogResult.content,
+                description: podcastDescription || null,
                 autocontentJobId: podcastJob.jobId,
                 status: 'PROCESSING',
               },
@@ -194,6 +218,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
               data: {
                 podcastGenerated: false,
                 podcastStatus: 'processing',
+                podcastDescription: podcastDescription || null,
               },
             })
 

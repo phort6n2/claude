@@ -103,6 +103,7 @@ interface ContentItem {
     audioUrl: string
     duration: number | null
     script: string | null
+    description: string | null
     status: string
   } | null
   videos: Array<{
@@ -791,11 +792,11 @@ function MediaTab({ content, onUpdate }: { content: ContentItem; onUpdate: () =>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Podcast Description
               </label>
-              <textarea
-                className="w-full border rounded-lg p-3"
-                rows={4}
-                defaultValue={content.podcastDescription || ''}
-                placeholder="Enter podcast description for the blog post..."
+              <div
+                className="w-full border rounded-lg p-3 bg-gray-50 text-sm text-gray-700 max-h-48 overflow-y-auto prose prose-sm"
+                dangerouslySetInnerHTML={{
+                  __html: content.podcastDescription || content.podcast?.description || '<em class="text-gray-400">No description generated yet</em>'
+                }}
               />
             </div>
             <div className="flex items-center justify-between">

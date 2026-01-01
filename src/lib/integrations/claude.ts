@@ -497,3 +497,94 @@ Return only the script text, ready to be read aloud.`
 
   return response.content[0].type === 'text' ? response.content[0].text : ''
 }
+
+/**
+ * Generate a podcast episode description in HTML format
+ */
+export async function generatePodcastDescription(params: {
+  businessName: string
+  city: string
+  state: string
+  paaQuestion: string
+  blogPostUrl: string
+  servicePageUrl: string
+  googleMapsUrl?: string
+}): Promise<string> {
+  const location = `${params.city}, ${params.state}`
+
+  const prompt = `Write a podcast episode description for this auto glass topic.
+
+**Business Details:**
+- Business Name: ${params.businessName}
+- Location: ${location}
+- PAA Question: ${params.paaQuestion}
+- Blog Post URL: ${params.blogPostUrl}
+- Service Page URL: ${params.servicePageUrl}
+${params.googleMapsUrl ? `- Google Maps: ${params.googleMapsUrl}` : ''}
+
+**FORMAT REQUIREMENTS:**
+- Output in HTML with <p> tags
+- 4-5 paragraphs total
+- Include hyperlinks (blog post, service page${params.googleMapsUrl ? ', Google Maps' : ''})
+- End with call-to-action and hashtags
+- Use <strong> tags for emphasis (sparingly - max 4-5 uses)
+- Professional, engaging tone
+
+**CRITICAL FORMATTING RULES (to avoid firewall blocks):**
+- Use regular hyphens (-) NEVER em-dashes (—)
+- NO emojis anywhere in the description
+- Avoid overusing the word "insurance" - maximum 3 times total
+- Avoid trigger phrases: "zero-cost", "zero-deductible", "claims approved", "handle claims directly", "file a claim"
+- Use softer alternatives: "coverage options" instead of "insurance claims", "may be covered" instead of "fully covered"
+- Keep financial language minimal and natural
+
+**STRUCTURE:**
+
+Paragraph 1: Hook with the PAA question
+- Start with "In this episode, we answer the question:"
+- Bold the PAA question with <strong> tags
+- Give a brief teaser answer
+- Keep it conversational and inviting
+
+Paragraph 2: Business introduction with blog link
+- "Join the experts from [Business Name with link to BLOG POST] in ${location}..."
+- Explain what listeners will learn (2-3 key points)
+- Make it educational and valuable
+
+Paragraph 3: Expand on benefits
+- What specific insights or tips are covered
+- Why this matters to the listener
+- Keep it conversational
+
+Paragraph 4: Business description with service page link
+- Link business name to SERVICE PAGE
+- List main services in bold: windshield replacement, windshield repair, ADAS calibration, mobile service
+- Mention service area
+${params.googleMapsUrl ? '- Include Google Maps link with text "Find them on Google Maps"' : ''}
+
+Paragraph 5: Call-to-action
+- Start with "Listen now to learn..." (NO emoji before this)
+- Make it compelling
+- End with encouragement to take action
+
+Final line: Hashtags
+- Include: #AutoGlass #WindshieldRepair #${params.city.replace(/\s+/g, '')}${params.state} #WindshieldReplacement #${params.businessName.replace(/\s+/g, '')} #CarCare
+- Format as a <p> tag
+
+**OUTPUT:**
+Return ONLY the HTML description. No markdown, no code blocks, no explanation. Just the raw HTML.`
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 1500,
+    messages: [{ role: 'user', content: prompt }],
+  })
+
+  const result = response.content[0].type === 'text' ? response.content[0].text : ''
+
+  // Clean up any markdown code blocks if present
+  return result
+    .replace(/```html\n?/g, '')
+    .replace(/```\n?/g, '')
+    .trim()
+}

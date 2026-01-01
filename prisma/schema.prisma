@@ -406,6 +406,9 @@ model Podcast {
   // Script
   script            String?
 
+  // Description (HTML for podcast platforms)
+  description       String?   @db.Text
+
   // API Reference
   autocontentJobId  String?
 
