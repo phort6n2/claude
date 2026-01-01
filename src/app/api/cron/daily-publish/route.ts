@@ -58,8 +58,7 @@ export async function GET(request: NextRequest) {
             wordpressUrl: true,
             wordpressUsername: true,
             wordpressAppPassword: true,
-            podbeanClientId: true,
-            podbeanClientSecret: true,
+            podbeanPodcastId: true,
             subscriptionStatus: true,
             socialAccountIds: true,
           },
@@ -208,18 +207,16 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Publish Podcast to Podbean
+      // Publish Podcast to Podbean (only if client has a podcast configured)
       if (
         item.podcast &&
         item.podcast.status === 'READY' &&
-        item.client.podbeanClientId &&
-        item.client.podbeanClientSecret
+        item.client.podbeanPodcastId
       ) {
         try {
           const { publishToPodbean } = await import('@/lib/integrations/podbean')
 
           const podbeanResult = await publishToPodbean({
-            client: item.client,
             title: item.blogPost?.title || item.paaQuestion,
             description: item.podcastDescription || item.paaQuestion,
             audioUrl: item.podcast.audioUrl,

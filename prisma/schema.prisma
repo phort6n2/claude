@@ -87,10 +87,9 @@ model Client {
   gbpRating             Float?
   gbpReviewCount        Int?
 
-  // Podbean Connection (for podcast publishing)
-  podbeanClientId       String?
-  podbeanClientSecret   String?   // Encrypted
-  podbeanConnected      Boolean   @default(false)
+  // Podbean Podcast Association
+  podbeanPodcastId      String?   // Selected podcast ID from global Podbean account
+  podbeanPodcastTitle   String?   // Cached podcast title for display
 
   // Subscription Management
   subscriptionStatus    SubscriptionStatus @default(TRIAL)

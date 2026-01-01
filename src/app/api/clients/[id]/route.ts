@@ -84,6 +84,8 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         postsPerWeek: data.postsPerWeek,
         socialPlatforms: data.socialPlatforms || [],
         socialAccountIds: data.socialAccountIds || null,
+        podbeanPodcastId: data.podbeanPodcastId || null,
+        podbeanPodcastTitle: data.podbeanPodcastTitle || null,
         status: data.status || existing.status,
       },
     })

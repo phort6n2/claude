@@ -156,6 +156,36 @@ async function testGoogleCloud(projectId: string, credentials: string): Promise<
   }
 }
 
+async function testPodbean(clientId: string, clientSecret: string): Promise<{ success: boolean; message: string }> {
+  try {
+    const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+
+    const response = await fetch('https://api.podbean.com/v1/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${basicAuth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'grant_type=client_credentials',
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      if (data.access_token) {
+        return { success: true, message: 'Connected successfully' }
+      }
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      return { success: false, message: 'Invalid credentials' }
+    }
+
+    return { success: false, message: `API error: ${response.status}` }
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : 'Connection failed' }
+  }
+}
+
 export async function POST(request: Request) {
   const session = await auth()
   if (!session) {
@@ -198,6 +228,15 @@ export async function POST(request: Request) {
         apiKey
       )
       break
+    case 'PODBEAN_CLIENT_SECRET':
+      const podbeanClientId = await getApiKey('PODBEAN_CLIENT_ID')
+      if (!podbeanClientId) {
+        result = { success: false, message: 'Podbean Client ID must be configured first' }
+      } else {
+        result = await testPodbean(podbeanClientId, apiKey)
+      }
+      break
+    case 'PODBEAN_CLIENT_ID':
     case 'GOOGLE_CLOUD_PROJECT_ID':
     case 'GOOGLE_CLOUD_STORAGE_BUCKET':
       // These are just config values, not testable APIs

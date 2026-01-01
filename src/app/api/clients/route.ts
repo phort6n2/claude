@@ -74,6 +74,8 @@ export async function POST(request: NextRequest) {
         postsPerWeek: data.postsPerWeek || 2,
         socialPlatforms: data.socialPlatforms || [],
         socialAccountIds: data.socialAccountIds || null,
+        podbeanPodcastId: data.podbeanPodcastId || null,
+        podbeanPodcastTitle: data.podbeanPodcastTitle || null,
         status: 'ACTIVE',
       },
     })

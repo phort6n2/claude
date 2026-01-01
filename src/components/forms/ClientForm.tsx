@@ -4,7 +4,14 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Plus, Trash2, MapPin, Building2 } from 'lucide-react'
+import { Plus, Trash2, MapPin, Building2, Podcast } from 'lucide-react'
+
+interface PodbeanPodcast {
+  id: string
+  title: string
+  logo: string
+  description: string
+}
 
 interface ServiceLocation {
   id?: string
@@ -42,6 +49,8 @@ interface ClientFormData {
   postsPerWeek: number
   socialPlatforms: string[]
   socialAccountIds: Record<string, string>
+  podbeanPodcastId: string
+  podbeanPodcastTitle: string
 }
 
 interface ClientFormProps {
@@ -77,6 +86,8 @@ const defaultData: ClientFormData = {
   postsPerWeek: 2,
   socialPlatforms: [],
   socialAccountIds: {},
+  podbeanPodcastId: '',
+  podbeanPodcastTitle: '',
 }
 
 const socialPlatformOptions = [
@@ -112,6 +123,11 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
   // Service Locations state
   const [serviceLocations, setServiceLocations] = useState<ServiceLocation[]>([])
   const [loadingLocations, setLoadingLocations] = useState(false)
+
+  // Podbean state
+  const [podbeanPodcasts, setPodbeanPodcasts] = useState<PodbeanPodcast[]>([])
+  const [podbeanConnected, setPodbeanConnected] = useState(false)
+  const [loadingPodcasts, setLoadingPodcasts] = useState(false)
 
   const [formData, setFormData] = useState<ClientFormData>({
     ...defaultData,
@@ -159,6 +175,25 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
     }
   }, [formData.city, formData.state, isEditing, serviceLocations.length])
 
+  // Load Podbean podcasts
+  useEffect(() => {
+    setLoadingPodcasts(true)
+    fetch('/api/integrations/podbean/podcasts')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.connected && data.podcasts) {
+          setPodbeanConnected(true)
+          setPodbeanPodcasts(data.podcasts)
+        } else {
+          setPodbeanConnected(false)
+        }
+      })
+      .catch(() => {
+        setPodbeanConnected(false)
+      })
+      .finally(() => setLoadingPodcasts(false))
+  }, [])
+
   const addServiceLocation = () => {
     setServiceLocations((prev) => [
       ...prev,
@@ -202,6 +237,15 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
         ...prev.socialAccountIds,
         [platform]: accountId,
       },
+    }))
+  }
+
+  const selectPodbeanPodcast = (podcastId: string) => {
+    const podcast = podbeanPodcasts.find((p) => p.id === podcastId)
+    setFormData((prev) => ({
+      ...prev,
+      podbeanPodcastId: podcastId,
+      podbeanPodcastTitle: podcast?.title || '',
     }))
   }
 
@@ -652,7 +696,7 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
         return (
           <Card>
             <CardHeader>
-              <CardTitle>Step 5: WordPress Connection</CardTitle>
+              <CardTitle>Step 5: Integrations</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -707,6 +751,50 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                 )}
                 {connectionStatus === 'error' && (
                   <span className="text-red-600 text-sm">Connection failed</span>
+                )}
+              </div>
+
+              {/* Podbean Podcast Section */}
+              <div className="mt-6 pt-6 border-t">
+                <div className="flex items-center gap-2 mb-4">
+                  <Podcast size={20} className="text-purple-600" />
+                  <h3 className="text-sm font-medium text-gray-700">Podcast Publishing</h3>
+                </div>
+
+                {loadingPodcasts ? (
+                  <div className="text-sm text-gray-500">Loading podcasts...</div>
+                ) : !podbeanConnected ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                    Podbean is not connected. Configure Podbean API credentials in{' '}
+                    <a href="/admin/settings/api" className="underline font-medium">
+                      Settings → API
+                    </a>{' '}
+                    to enable podcast publishing.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Select Podcast
+                    </label>
+                    <select
+                      value={formData.podbeanPodcastId}
+                      onChange={(e) => selectPodbeanPodcast(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="">-- Select a podcast --</option>
+                      {podbeanPodcasts.map((podcast) => (
+                        <option key={podcast.id} value={podcast.id}>
+                          {podcast.title}
+                        </option>
+                      ))}
+                    </select>
+                    {formData.podbeanPodcastId && (
+                      <div className="flex items-center gap-2 text-sm text-green-600">
+                        <span>✓</span>
+                        <span>Podcasts will be published to: {formData.podbeanPodcastTitle}</span>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </CardContent>
@@ -888,6 +976,12 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                   <span className="text-gray-500">WordPress:</span>
                   <span className="font-medium">
                     {formData.wordpressUrl ? 'Configured' : 'Not configured'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Podcast:</span>
+                  <span className="font-medium">
+                    {formData.podbeanPodcastTitle || 'Not configured'}
                   </span>
                 </div>
                 <div className="flex justify-between">

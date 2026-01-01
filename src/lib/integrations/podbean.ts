@@ -315,12 +315,9 @@ export async function listEpisodes(
 
 /**
  * High-level publish function used by content pipeline
+ * Uses global Podbean credentials from settings
  */
 export interface PublishToPodbeanParams {
-  client: {
-    podbeanClientId: string | null
-    podbeanClientSecret: string | null
-  }
   title: string
   description: string
   audioUrl: string
@@ -334,15 +331,29 @@ export interface PodbeanPublishResult {
   playerUrl: string
 }
 
-export async function publishToPodbean(params: PublishToPodbeanParams): Promise<PodbeanPublishResult> {
-  if (!params.client.podbeanClientId || !params.client.podbeanClientSecret) {
-    throw new Error('Podbean credentials not configured')
+/**
+ * Get global Podbean credentials from settings
+ */
+async function getGlobalPodbeanCredentials(): Promise<PodbeanCredentials> {
+  // Dynamic import to avoid circular dependencies
+  const { prisma } = await import('@/lib/db')
+  const { decrypt } = await import('@/lib/encryption')
+
+  const clientIdSetting = await prisma.setting.findUnique({ where: { key: 'PODBEAN_CLIENT_ID' } })
+  const clientSecretSetting = await prisma.setting.findUnique({ where: { key: 'PODBEAN_CLIENT_SECRET' } })
+
+  if (!clientIdSetting || !clientSecretSetting) {
+    throw new Error('Podbean credentials not configured in settings')
   }
 
-  const credentials: PodbeanCredentials = {
-    clientId: params.client.podbeanClientId,
-    clientSecret: params.client.podbeanClientSecret,
-  }
+  const clientId = clientIdSetting.encrypted ? decrypt(clientIdSetting.value) : clientIdSetting.value
+  const clientSecret = clientSecretSetting.encrypted ? decrypt(clientSecretSetting.value) : clientSecretSetting.value
+
+  return { clientId, clientSecret }
+}
+
+export async function publishToPodbean(params: PublishToPodbeanParams): Promise<PodbeanPublishResult> {
+  const credentials = await getGlobalPodbeanCredentials()
 
   const episode = await createEpisode(credentials, {
     title: params.title,

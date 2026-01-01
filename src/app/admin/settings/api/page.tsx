@@ -46,6 +46,18 @@ const API_KEYS: ApiKeyConfig[] = [
     testable: true,
   },
   {
+    key: 'PODBEAN_CLIENT_ID',
+    label: 'Podbean Client ID',
+    description: 'OAuth client ID for Podbean podcast publishing',
+    testable: false,
+  },
+  {
+    key: 'PODBEAN_CLIENT_SECRET',
+    label: 'Podbean Client Secret',
+    description: 'OAuth client secret for Podbean podcast publishing',
+    testable: true,
+  },
+  {
     key: 'GOOGLE_CLOUD_PROJECT_ID',
     label: 'Google Cloud Project ID',
     description: 'Your GCP project identifier',
