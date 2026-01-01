@@ -72,28 +72,28 @@ export async function uploadFromUrl(
     const matches = sourceUrl.match(/^data:([^;]+);base64,(.+)$/)
     if (matches) {
       const base64Data = matches[2]
-      // Always convert to PNG
-      return uploadFromBase64(base64Data, filename, 'image/png')
+      // Always convert to JPG
+      return uploadFromBase64(base64Data, filename, 'image/jpeg')
     }
   }
 
   const response = await fetch(sourceUrl)
   const buffer = await response.arrayBuffer()
 
-  // Always convert images to PNG format for consistency
+  // Always convert images to JPG format for consistency
   const isImage = (response.headers.get('content-type') || '').startsWith('image/')
   if (isImage) {
-    const pngBuffer = await sharp(Buffer.from(buffer))
-      .png({
-        compressionLevel: 9,
-        palette: true,
+    const jpgBuffer = await sharp(Buffer.from(buffer))
+      .jpeg({
+        quality: 85,
+        progressive: true,
       })
       .toBuffer()
 
-    // Ensure filename has .png extension
-    const pngFilename = filename.replace(/\.(jpg|jpeg|webp|gif)$/i, '.png')
+    // Ensure filename has .jpg extension
+    const jpgFilename = filename.replace(/\.(png|jpeg|webp|gif)$/i, '.jpg')
 
-    return uploadToGCS(pngBuffer, pngFilename, 'image/png')
+    return uploadToGCS(jpgBuffer, jpgFilename, 'image/jpeg')
   }
 
   const contentType = response.headers.get('content-type') || 'application/octet-stream'
@@ -103,23 +103,23 @@ export async function uploadFromUrl(
 export async function uploadFromBase64(
   base64Data: string,
   filename: string,
-  contentType: string = 'image/png'
+  contentType: string = 'image/jpeg'
 ): Promise<UploadResult> {
   const buffer = Buffer.from(base64Data, 'base64')
 
-  // Always convert images to PNG format
+  // Always convert images to JPG format
   if (contentType.startsWith('image/')) {
-    const pngBuffer = await sharp(buffer)
-      .png({
-        compressionLevel: 9,
-        palette: true,
+    const jpgBuffer = await sharp(buffer)
+      .jpeg({
+        quality: 85,
+        progressive: true,
       })
       .toBuffer()
 
-    // Ensure filename has .png extension
-    const pngFilename = filename.replace(/\.(jpg|jpeg|webp|gif)$/i, '.png')
+    // Ensure filename has .jpg extension
+    const jpgFilename = filename.replace(/\.(png|jpeg|webp|gif)$/i, '.jpg')
 
-    return uploadToGCS(pngBuffer, pngFilename, 'image/png')
+    return uploadToGCS(jpgBuffer, jpgFilename, 'image/jpeg')
   }
 
   return uploadToGCS(buffer, filename, contentType)

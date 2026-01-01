@@ -64,7 +64,7 @@ export async function compressImageForPlatform(
     targetHeight = Math.round(targetHeight * scale)
   }
 
-  // ALWAYS convert to PNG - never trust the original format
+  // ALWAYS convert to JPG format
   let compressedBuffer: Buffer
 
   do {
@@ -73,12 +73,13 @@ export async function compressImageForPlatform(
         fit: 'inside',
         withoutEnlargement: true,
       })
-      .png({
-        compressionLevel: 9,
+      .jpeg({
+        quality: 85,
+        progressive: true,
       })
       .toBuffer()
 
-    console.log(`PNG conversion: ${targetWidth}x${targetHeight}, size=${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
+    console.log(`JPG conversion: ${targetWidth}x${targetHeight}, size=${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
 
     // If still too large, reduce dimensions
     if (compressedBuffer.length > sizeLimit) {
@@ -93,13 +94,13 @@ export async function compressImageForPlatform(
     throw new Error(`Unable to compress image below ${(sizeLimit / 1024 / 1024).toFixed(2)}MB limit for ${platform}`)
   }
 
-  // Upload converted PNG to GCS
+  // Upload converted JPG to GCS
   const timestamp = Date.now()
-  const filename = `content/${contentItemId}/png-${platform}-${timestamp}.png`
+  const filename = `content/${contentItemId}/img-${platform}-${timestamp}.jpg`
 
-  const uploadResult = await uploadToGCS(compressedBuffer, filename, 'image/png')
+  const uploadResult = await uploadToGCS(compressedBuffer, filename, 'image/jpeg')
 
-  console.log(`PNG uploaded: ${uploadResult.url} (${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB)`)
+  console.log(`JPG uploaded: ${uploadResult.url} (${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB)`)
 
   return {
     url: uploadResult.url,
@@ -177,19 +178,20 @@ export async function compressImageForBlog(
   let targetWidth = Math.min(currentWidth, BLOG_IMAGE_CONFIG.maxWidth)
   let targetHeight = Math.min(currentHeight, BLOG_IMAGE_CONFIG.maxHeight)
 
-  // ALWAYS convert to PNG - never trust the original format
+  // ALWAYS convert to JPG format
   do {
     compressedBuffer = await sharp(originalBuffer)
       .resize(targetWidth, targetHeight, {
         fit: 'inside',
         withoutEnlargement: true,
       })
-      .png({
-        compressionLevel: 9,
+      .jpeg({
+        quality: 85,
+        progressive: true,
       })
       .toBuffer()
 
-    console.log(`Blog PNG conversion: ${targetWidth}x${targetHeight}, size=${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
+    console.log(`Blog JPG conversion: ${targetWidth}x${targetHeight}, size=${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
 
     if (compressedBuffer.length > BLOG_IMAGE_CONFIG.maxSizeBytes) {
       // Reduce dimensions if still too large
@@ -199,13 +201,13 @@ export async function compressImageForBlog(
     }
   } while (compressedBuffer.length > BLOG_IMAGE_CONFIG.maxSizeBytes && targetWidth > 800)
 
-  // Upload converted PNG to GCS
+  // Upload converted JPG to GCS
   const timestamp = Date.now()
-  const filename = `content/${contentItemId}/png-${suffix}-${timestamp}.png`
+  const filename = `content/${contentItemId}/img-${suffix}-${timestamp}.jpg`
 
-  const uploadResult = await uploadToGCS(compressedBuffer, filename, 'image/png')
+  const uploadResult = await uploadToGCS(compressedBuffer, filename, 'image/jpeg')
 
-  console.log(`Blog PNG uploaded: ${uploadResult.url} (${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB)`)
+  console.log(`Blog JPG uploaded: ${uploadResult.url} (${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB)`)
 
   return {
     url: uploadResult.url,
