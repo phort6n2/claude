@@ -98,6 +98,18 @@ interface ContentItem {
     approved: boolean
     status: string
   }>
+  wrhqBlogPost: {
+    id: string
+    title: string
+    slug: string
+    content: string
+    excerpt: string | null
+    metaTitle: string | null
+    metaDescription: string | null
+    wordCount: number | null
+    wordpressUrl: string | null
+    featuredImageUrl: string | null
+  } | null
   podcast: {
     id: string
     audioUrl: string
@@ -575,9 +587,30 @@ function ReviewTab({
               disabled={saving}
             />
           </div>
-          <p className="text-sm text-gray-500">
-            {content.wrhqBlogGenerated ? 'Generated - ready for review' : 'Not yet generated'}
-          </p>
+          {content.wrhqBlogPost ? (
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-lg font-semibold">{content.wrhqBlogPost.title}</h4>
+                <p className="text-sm text-gray-500">
+                  {content.wrhqBlogPost.wordCount} words | Slug: {content.wrhqBlogPost.slug}
+                </p>
+              </div>
+              <div
+                className="prose prose-sm max-w-none bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto"
+                dangerouslySetInnerHTML={{ __html: content.wrhqBlogPost.content }}
+              />
+              {content.wrhqBlogPost.excerpt && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500 uppercase mb-1">Excerpt</p>
+                  <p className="text-sm text-gray-700">{content.wrhqBlogPost.excerpt}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">
+              {content.wrhqBlogGenerated ? 'Generated - loading content...' : 'Not yet generated'}
+            </p>
+          )}
         </div>
 
         {/* WRHQ Social */}

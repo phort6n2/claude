@@ -14,6 +14,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       include: {
         client: true,
         blogPost: true,
+        wrhqBlogPost: true,
         images: {
           orderBy: { imageType: 'asc' },
         },

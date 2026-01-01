@@ -255,6 +255,11 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         const clientBlogPost = await prisma.blogPost.findUnique({ where: { contentItemId } })
         const clientBlogUrl = clientBlogPost?.wordpressUrl || ''
 
+        // Get the landscape image for the WRHQ post
+        const featuredImageForWrhq = await prisma.image.findFirst({
+          where: { contentItemId, imageType: 'BLOG_FEATURED' },
+        })
+
         // Generate WRHQ directory-style blog post
         const wrhqBlogResult = await retryWithBackoff(async () => {
           return generateWRHQBlogPost({
@@ -265,6 +270,10 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             clientCity: contentItem.client.city,
             clientState: contentItem.client.state,
             paaQuestion: contentItem.paaQuestion,
+            wrhqDirectoryUrl: contentItem.client.wrhqDirectoryUrl || '',
+            googleMapsUrl: contentItem.client.googleMapsUrl || '',
+            phone: contentItem.client.phone,
+            featuredImageUrl: featuredImageForWrhq?.gcsUrl || undefined,
           })
         })
 

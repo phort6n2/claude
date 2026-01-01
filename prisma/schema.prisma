@@ -118,6 +118,7 @@ model Client {
   // Relations
   contentItems          ContentItem[]
   blogPosts             BlogPost[]
+  wrhqBlogPosts         WRHQBlogPost[]
   images                Image[]
   podcasts              Podcast[]
   videos                Video[]
@@ -268,6 +269,7 @@ model ContentItem {
 
   // Relations
   blogPost          BlogPost?
+  wrhqBlogPost      WRHQBlogPost?
   images            Image[]
   podcast           Podcast?
   videos            Video[]
@@ -345,6 +347,42 @@ model BlogPost {
   servicePageId     String?
   servicePage       ServicePage? @relation(fields: [servicePageId], references: [id])
   locationPageIds   String[]
+}
+
+// ============================================
+// WRHQ BLOG POSTS (for WindshieldRepairHQ.com directory)
+// ============================================
+
+model WRHQBlogPost {
+  id                String    @id @default(cuid())
+  contentItemId     String    @unique
+  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  clientId          String
+  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Content
+  title             String
+  slug              String
+  content           String    @db.Text  // HTML content
+  excerpt           String?
+
+  // SEO
+  metaTitle         String?
+  metaDescription   String?
+  focusKeyword      String?
+
+  // WordPress (WRHQ site)
+  wordpressPostId   Int?
+  wordpressUrl      String?
+  featuredImageUrl  String?   // URL to the image used in the post
+
+  // Stats
+  wordCount         Int?
+
+  // Dates
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  publishedAt       DateTime?
 }
 
 // ============================================

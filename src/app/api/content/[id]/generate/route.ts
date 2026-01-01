@@ -418,12 +418,76 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           if (generateWrhqBlog) {
             await prisma.contentItem.update({
               where: { id },
-              data: {
-                pipelineStep: 'wrhq_blog',
-                wrhqBlogGenerated: true,
+              data: { pipelineStep: 'wrhq_blog' },
+            })
+
+            // Get the client's blog post for reference
+            const blogPost = await prisma.blogPost.findUnique({
+              where: { contentItemId: id },
+            })
+
+            // Get the landscape image for the WRHQ post
+            const landscapeImage = await prisma.image.findFirst({
+              where: { contentItemId: id, imageType: 'BLOG_FEATURED' },
+            })
+
+            // Construct client blog URL
+            const clientBlogUrl = contentItem.client.wordpressUrl && blogPost
+              ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${blogPost.slug}`
+              : ''
+
+            // Import and call the WRHQ blog generation function
+            const { generateWRHQBlogPost } = await import('@/lib/integrations/claude')
+
+            const wrhqBlogResult = await generateWRHQBlogPost({
+              clientBlogTitle: blogPost?.title || contentItem.paaQuestion,
+              clientBlogUrl: clientBlogUrl,
+              clientBlogExcerpt: blogPost?.excerpt || '',
+              clientBusinessName: contentItem.client.businessName,
+              clientCity: contentItem.client.city,
+              clientState: contentItem.client.state,
+              paaQuestion: contentItem.paaQuestion,
+              wrhqDirectoryUrl: contentItem.client.wrhqDirectoryUrl || '',
+              googleMapsUrl: contentItem.client.googleMapsUrl || '',
+              phone: contentItem.client.phone,
+              featuredImageUrl: landscapeImage?.gcsUrl || undefined,
+            })
+
+            // Save WRHQ blog post
+            await prisma.wRHQBlogPost.upsert({
+              where: { contentItemId: id },
+              update: {
+                title: wrhqBlogResult.title,
+                slug: wrhqBlogResult.slug,
+                content: wrhqBlogResult.content,
+                excerpt: wrhqBlogResult.excerpt,
+                metaTitle: wrhqBlogResult.metaTitle,
+                metaDescription: wrhqBlogResult.metaDescription,
+                focusKeyword: wrhqBlogResult.focusKeyword,
+                wordCount: wrhqBlogResult.content.split(/\s+/).length,
+                featuredImageUrl: landscapeImage?.gcsUrl || null,
+              },
+              create: {
+                contentItemId: id,
+                clientId: contentItem.clientId,
+                title: wrhqBlogResult.title,
+                slug: wrhqBlogResult.slug,
+                content: wrhqBlogResult.content,
+                excerpt: wrhqBlogResult.excerpt,
+                metaTitle: wrhqBlogResult.metaTitle,
+                metaDescription: wrhqBlogResult.metaDescription,
+                focusKeyword: wrhqBlogResult.focusKeyword,
+                wordCount: wrhqBlogResult.content.split(/\s+/).length,
+                featuredImageUrl: landscapeImage?.gcsUrl || null,
               },
             })
-            results.wrhqBlog = { success: true }
+
+            await prisma.contentItem.update({
+              where: { id },
+              data: { wrhqBlogGenerated: true },
+            })
+
+            results.wrhqBlog = { success: true, title: wrhqBlogResult.title }
           }
 
           if (generateWrhqSocial) {

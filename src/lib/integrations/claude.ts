@@ -334,6 +334,10 @@ interface WRHQBlogPostParams {
   clientCity: string
   clientState: string
   paaQuestion: string
+  wrhqDirectoryUrl: string
+  googleMapsUrl: string
+  phone: string
+  featuredImageUrl?: string
 }
 
 interface WRHQBlogPostResult {
@@ -347,42 +351,106 @@ interface WRHQBlogPostResult {
 }
 
 export async function generateWRHQBlogPost(params: WRHQBlogPostParams): Promise<WRHQBlogPostResult> {
-  const prompt = `You are creating a directory-style blog post for Windshield Repair HQ (WRHQ), an auto glass industry directory site.
+  const location = `${params.clientCity}, ${params.clientState}`
 
-This post should highlight and link to a client's detailed blog post.
+  // Build image HTML if provided
+  const imageHtml = params.featuredImageUrl
+    ? `<img src="${params.featuredImageUrl}" alt="${params.paaQuestion} | ${params.clientBusinessName} in ${location}" style="width:100%; max-width:1200px; height:auto; margin:30px auto; display:block; border-radius:8px;" loading="lazy"/>`
+    : ''
 
-Client Information:
-- Business: ${params.clientBusinessName} in ${params.clientCity}, ${params.clientState}
-- Their Blog Title: "${params.clientBlogTitle}"
-- Their Blog URL: ${params.clientBlogUrl}
-- Their Blog Summary: "${params.clientBlogExcerpt}"
+  const prompt = `Write a blog post for WindshieldRepairHQ.com (an auto glass industry directory) about this topic.
 
-Original Topic (PAA Question): "${params.paaQuestion}"
+**CONTENT DETAILS:**
+- PAA Question (Use as Title): ${params.paaQuestion}
+- Business Name: ${params.clientBusinessName}
+- Location: ${location}
+- Client Blog Post URL: ${params.clientBlogUrl}
+- WRHQ Directory Listing URL: ${params.wrhqDirectoryUrl}
+- Google Maps URL: ${params.googleMapsUrl}
+- Phone Number: ${params.phone}
 
-Requirements:
-- 400-600 words (shorter than the client's post)
-- Start with a directory-style introduction: "If you're looking for answers about [topic], ${params.clientBusinessName} in ${params.clientCity}, ${params.clientState} has put together a comprehensive guide..."
-- Summarize 3-4 key points from the client's article
-- Include a prominent link to the client's full article with CTA like "Read the full guide at ${params.clientBusinessName}"
-- End with a section about WRHQ: "At Windshield Repair HQ, we connect car owners with trusted auto glass professionals across the country."
-- Use H2/H3 headings
-- Educational but clearly directing readers to the client's detailed content
-- Do NOT duplicate the client's full content - this is a teaser/directory listing
+${params.featuredImageUrl ? `**IMAGE TO INSERT:**
+You have been provided with 1 professionally designed image that MUST be inserted into the blog post:
 
-Generate as semantic HTML (h2, h3, p, ul, li tags).
-Also provide:
-- Title: Include city name, e.g., "${params.clientCity} Auto Glass Expert Answers: [Topic]"
-- URL slug
-- Excerpt (150-160 characters)
-- Meta title (50-60 characters)
-- Meta description (150-160 characters)
-- Focus keyword
+Image HTML (insert IMMEDIATELY after opening paragraph):
+${imageHtml}
 
-Return as JSON with keys: title, slug, content, excerpt, metaTitle, metaDescription, focusKeyword`
+**CRITICAL:** You MUST include the image using the exact HTML provided above.` : ''}
+
+**PURPOSE:**
+This post lives on WindshieldRepairHQ.com and should:
+- Provide helpful, general information answering the PAA question
+- Drive traffic to the featured shop's full blog post
+- Promote the shop's WRHQ directory listing
+- Be valuable to readers searching for auto glass information
+
+**FORMAT REQUIREMENTS:**
+- Output in clean HTML with <p> and <h2> tags
+- 400-500 words total (shorter than the main blog post)
+- Professional, helpful, third-party tone (you're the directory, not the shop)
+- Include all 3 links naturally within the content
+
+**STRUCTURE:**
+
+Opening Paragraph:
+- Directly answer the PAA question in 2-3 sentences
+- Mention this is a common question auto glass customers ask
+- Tease that a local expert has written a comprehensive guide
+${params.featuredImageUrl ? '\n[INSERT IMAGE HERE - immediately after opening paragraph]' : ''}
+
+H2: What You Need to Know About [Topic from PAA]
+- 2 paragraphs covering the key points
+- General, helpful information
+- Educational tone
+
+H2: Expert Insights from ${params.clientBusinessName}
+- Introduce the business as a featured shop on WindshieldRepairHQ.com
+- Link to their FULL BLOG POST: ${params.clientBlogUrl} with anchor text like "comprehensive guide" or "in-depth article"
+- Mention 1-2 key takeaways from their expertise
+- Link to their WRHQ DIRECTORY LISTING: ${params.wrhqDirectoryUrl} with anchor text like "view their full profile" or "see customer reviews"
+
+H2: Find ${params.clientBusinessName} in ${location}
+- Brief description of services offered
+- Link to GOOGLE MAPS: ${params.googleMapsUrl} with anchor text like "get directions" or "view location"
+- Mention service area
+
+Closing Paragraph:
+- Encourage readers to read the full guide (link to client blog post again)
+- Mention WindshieldRepairHQ.com helps connect customers with trusted local shops
+- Soft CTA to explore more shops in the directory
+
+**LINK PLACEMENT (CRITICAL):**
+1. Client blog post (${params.clientBlogUrl}) - link at least TWICE with descriptive anchor text
+2. WRHQ directory listing (${params.wrhqDirectoryUrl}) - link ONCE
+3. Google Maps (${params.googleMapsUrl}) - link ONCE
+
+**TONE:**
+- Third-party/editorial (WindshieldRepairHQ featuring a shop, not the shop talking about itself)
+- Helpful and informative
+- Professional but approachable
+- Position the featured shop as a trusted local expert
+
+**DO NOT INCLUDE:**
+- Phone numbers in the body text
+- Pricing claims or guarantees
+- First-person language ("we" or "our") referring to the shop
+- H1 tag (WordPress handles the title)
+
+**OUTPUT FORMAT:**
+Return as JSON with these keys:
+- title: The PAA question as the title
+- slug: URL-friendly slug
+- content: The complete HTML blog post body (starting with first <p> tag)
+- excerpt: 150-160 character summary
+- metaTitle: 50-60 character meta title
+- metaDescription: 150-160 character meta description
+- focusKeyword: Primary keyword to target
+
+Return ONLY valid JSON. No markdown code blocks.`
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 2048,
+    max_tokens: 3000,
     messages: [{ role: 'user', content: prompt }],
   })
 
