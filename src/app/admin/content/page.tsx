@@ -20,7 +20,9 @@ import {
   Eye,
   FileText,
   Trash2,
+  Zap,
 } from 'lucide-react'
+import CreateContentModal from '@/components/admin/CreateContentModal'
 
 type ViewMode = 'month' | 'list' | 'timeline'
 
@@ -89,6 +91,7 @@ export default function ContentCalendarPage() {
     failed: 0,
     needsAttention: 0,
   })
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
   // Fetch all content for status counts
   const fetchAllContent = useCallback(async () => {
@@ -304,94 +307,92 @@ export default function ContentCalendarPage() {
     return (
       <Card>
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gray-50">
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Scheduled
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                  Date
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                   Client
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Location
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">
+                  Loc
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  PAA Question
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                  Question
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">
                   Status
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Approval
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">
+                  BPIS
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Progress
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">
+                  Prog
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                  Actions
+                <th className="px-2 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                  Act
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {contentItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={8} className="px-4 py-12 text-center text-gray-500">
                     No content items found
                   </td>
                 </tr>
               ) : (
                 contentItems.map((item) => (
                   <tr key={item.id} className={`hover:bg-gray-50 ${item.needsAttention ? 'bg-yellow-50' : ''}`}>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm">
-                      <div className="font-medium text-gray-900">
+                    <td className="px-2 py-2 whitespace-nowrap">
+                      <div className="font-medium text-gray-900 text-xs">
                         {formatDate(item.scheduledDate)}
                       </div>
-                      <div className="text-gray-500">{formatTime(item.scheduledTime)}</div>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
+                    <td className="px-2 py-2 whitespace-nowrap">
+                      <div className="flex items-center gap-1">
                         <div
-                          className="h-3 w-3 rounded-full"
+                          className="h-2 w-2 rounded-full flex-shrink-0"
                           style={{ backgroundColor: item.client.primaryColor || '#1e40af' }}
                         />
-                        <span className="text-sm">{item.client.businessName}</span>
+                        <span className="text-xs truncate max-w-[100px]">{item.client.businessName}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
+                    <td className="px-2 py-2 whitespace-nowrap hidden md:table-cell">
                       <LocationBadge location={item.serviceLocation} />
                     </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-2">
+                    <td className="px-2 py-2">
+                      <div className="flex items-center gap-1">
                         {item.needsAttention && (
-                          <AlertCircle className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+                          <AlertCircle className="h-3 w-3 text-yellow-500 flex-shrink-0" />
                         )}
-                        <div className="text-sm text-gray-900 max-w-xs truncate">
+                        <div className="text-xs text-gray-900 truncate max-w-[200px]">
                           {item.paaQuestion}
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
+                    <td className="px-2 py-2 whitespace-nowrap text-center">
                       <StatusBadge status={item.status} />
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
+                    <td className="px-2 py-2 whitespace-nowrap hidden lg:table-cell">
                       <ApprovalIndicators item={item} />
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
+                    <td className="px-2 py-2 whitespace-nowrap hidden lg:table-cell">
                       <PipelineProgress step={item.pipelineStep} status={item.status} />
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-2 py-2 whitespace-nowrap text-right">
+                      <div className="flex items-center justify-end gap-1">
                         {(item.status === 'REVIEW' || item.status === 'GENERATING' || item.blogGenerated) && (
                           <Link href={`/admin/content/${item.id}/review`}>
-                            <Button variant="outline" size="sm">
-                              <Eye className="h-3 w-3 mr-1" />
-                              Review
+                            <Button variant="outline" size="sm" className="h-6 px-2 text-xs">
+                              <Eye className="h-3 w-3" />
                             </Button>
                           </Link>
                         )}
                         <Link href={`/admin/content/${item.id}`}>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" className="h-6 px-1">
                             <FileText className="h-3 w-3" />
                           </Button>
                         </Link>
@@ -400,7 +401,7 @@ export default function ContentCalendarPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteContent(item.id, item.paaQuestion)}
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            className="h-6 px-1 text-red-500 hover:text-red-700 hover:bg-red-50"
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
@@ -599,10 +600,15 @@ export default function ContentCalendarPage() {
             Refresh
           </Button>
 
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Zap className="h-4 w-4 mr-2" />
+            Create Now
+          </Button>
+
           <Link href="/admin/content/new">
-            <Button>
+            <Button variant="outline">
               <Plus className="h-4 w-4 mr-2" />
-              Add Content
+              Schedule
             </Button>
           </Link>
         </div>
@@ -620,6 +626,16 @@ export default function ContentCalendarPage() {
           </>
         )}
       </div>
+
+      {/* Create Content Modal */}
+      <CreateContentModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={() => {
+          fetchContent()
+          fetchAllContent()
+        }}
+      />
     </div>
   )
 }
