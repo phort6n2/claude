@@ -383,7 +383,7 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
       {/* Tab Content */}
       <div className="p-6">
         {activeTab === 'review' && (
-          <ReviewTab content={content} onApprove={updateApproval} saving={saving} onImageClick={setLightboxImage} onUpdate={loadContent} />
+          <ReviewTab content={content} onImageClick={setLightboxImage} onUpdate={loadContent} />
         )}
         {activeTab === 'published' && (
           <PublishedTab content={content} />
@@ -431,14 +431,10 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
 
 function ReviewTab({
   content,
-  onApprove,
-  saving,
   onImageClick,
   onUpdate,
 }: {
   content: ContentItem
-  onApprove: (field: string, value: string) => void
-  saving: boolean
   onImageClick: (image: { url: string; alt: string; type: string }) => void
   onUpdate: () => void
 }) {
@@ -469,20 +465,17 @@ function ReviewTab({
 
   // Step status helpers
   const isStep1Complete = content.clientBlogPublished
-  const isStep2Ready = content.blogGenerated && content.imagesGenerated
   const isStep2Complete = content.wrhqBlogPublished
-  const isStep3Ready = isStep1Complete // Can generate social after blog published
-  const isStep3Complete = content.socialPosts.every(p => p.status === 'SCHEDULED')
-  const isStep4Ready = isStep1Complete // Can generate podcast after blog published
+  const isStep3Complete = content.socialPosts.length > 0 && content.socialPosts.every(p => p.status === 'SCHEDULED')
   const isStep4Complete = content.podcastAddedToPost
 
-  async function generateContent(type: 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast') {
+  async function regenerateContent(type: 'blog' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast') {
     setGenerating(type)
     setError(null)
     try {
       const flags: Record<string, boolean> = {
-        generateBlog: false,
-        generateImages: false,
+        generateBlog: type === 'blog',
+        generateImages: type === 'blog',
         generatePodcast: type === 'podcast',
         generateSocial: type === 'social',
         generateWrhqBlog: type === 'wrhqBlog',
@@ -584,7 +577,7 @@ function ReviewTab({
               <p className="text-sm text-gray-500">Review blog and images, then publish to WordPress</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {isStep1Complete ? (
               <div className="flex items-center gap-2 text-green-600">
                 <Check className="h-5 w-5" />
@@ -596,23 +589,37 @@ function ReviewTab({
                 )}
               </div>
             ) : (
-              <button
-                onClick={() => publishContent('clientBlog')}
-                disabled={publishing === 'clientBlog' || !content.blogGenerated || !content.imagesGenerated || content.blogApproved !== 'APPROVED'}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {publishing === 'clientBlog' ? (
-                  <>
+              <>
+                <button
+                  onClick={() => regenerateContent('blog')}
+                  disabled={generating === 'blog'}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {generating === 'blog' ? (
                     <RefreshCw className="h-4 w-4 animate-spin" />
-                    Publishing...
-                  </>
-                ) : (
-                  <>
-                    <ExternalLink className="h-4 w-4" />
-                    Publish to WordPress
-                  </>
-                )}
-              </button>
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  Regenerate
+                </button>
+                <button
+                  onClick={() => publishContent('clientBlog')}
+                  disabled={publishing === 'clientBlog' || !content.blogGenerated || !content.imagesGenerated}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {publishing === 'clientBlog' ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Publishing...
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="h-4 w-4" />
+                      Publish
+                    </>
+                  )}
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -620,20 +627,12 @@ function ReviewTab({
         <div className="p-6 space-y-6">
           {/* Blog Post */}
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-gray-400" />
-                <h3 className="font-semibold">Blog Content</h3>
-                {content.blogGenerated && (
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Generated</span>
-                )}
-              </div>
-              <ApprovalCheckbox
-                approved={content.blogApproved === 'APPROVED'}
-                onChange={(checked) => onApprove('blogApproved', checked ? 'APPROVED' : 'PENDING')}
-                label="Approve Blog"
-                disabled={saving || isStep1Complete}
-              />
+            <div className="flex items-center gap-2 mb-4">
+              <FileText className="h-5 w-5 text-gray-400" />
+              <h3 className="font-semibold">Blog Content</h3>
+              {content.blogGenerated && (
+                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Generated</span>
+              )}
             </div>
 
             {content.blogPost ? (
@@ -665,18 +664,10 @@ function ReviewTab({
 
           {/* Images */}
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <ImageIcon className="h-5 w-5 text-gray-400" />
-                <h3 className="font-semibold">Images</h3>
-                <span className="text-sm text-gray-500">({content.images.length} generated)</span>
-              </div>
-              <ApprovalCheckbox
-                approved={content.imagesApproved === 'APPROVED'}
-                onChange={(checked) => onApprove('imagesApproved', checked ? 'APPROVED' : 'PENDING')}
-                label="Approve Images"
-                disabled={saving || isStep1Complete}
-              />
+            <div className="flex items-center gap-2 mb-4">
+              <ImageIcon className="h-5 w-5 text-gray-400" />
+              <h3 className="font-semibold">Images</h3>
+              <span className="text-sm text-gray-500">({content.images.length} generated)</span>
             </div>
 
             {content.images.length > 0 ? (
@@ -724,26 +715,8 @@ function ReviewTab({
               <p className="text-sm text-gray-500">Generate and publish WRHQ partner article</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            {!content.wrhqBlogGenerated ? (
-              <button
-                onClick={() => generateContent('wrhqBlog')}
-                disabled={generating === 'wrhqBlog' || !isStep1Complete}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {generating === 'wrhqBlog' ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Building2 className="h-4 w-4" />
-                    Generate WRHQ Blog
-                  </>
-                )}
-              </button>
-            ) : isStep2Complete ? (
+          <div className="flex items-center gap-2">
+            {isStep2Complete ? (
               <div className="flex items-center gap-2 text-green-600">
                 <Check className="h-5 w-5" />
                 <span className="text-sm font-medium">Published</span>
@@ -754,38 +727,44 @@ function ReviewTab({
                 )}
               </div>
             ) : (
-              <button
-                onClick={() => publishContent('wrhqBlog')}
-                disabled={publishing === 'wrhqBlog' || content.wrhqBlogApproved !== 'APPROVED'}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {publishing === 'wrhqBlog' ? (
-                  <>
+              <>
+                <button
+                  onClick={() => regenerateContent('wrhqBlog')}
+                  disabled={generating === 'wrhqBlog' || !isStep1Complete}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {generating === 'wrhqBlog' ? (
                     <RefreshCw className="h-4 w-4 animate-spin" />
-                    Publishing...
-                  </>
-                ) : (
-                  <>
-                    <ExternalLink className="h-4 w-4" />
-                    Publish WRHQ Blog
-                  </>
-                )}
-              </button>
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  {content.wrhqBlogGenerated ? 'Regenerate' : 'Generate'}
+                </button>
+                <button
+                  onClick={() => publishContent('wrhqBlog')}
+                  disabled={publishing === 'wrhqBlog' || !content.wrhqBlogGenerated}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {publishing === 'wrhqBlog' ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Publishing...
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="h-4 w-4" />
+                      Publish
+                    </>
+                  )}
+                </button>
+              </>
             )}
           </div>
         </div>
 
         {content.wrhqBlogPost && (
           <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-lg font-semibold">{content.wrhqBlogPost.title}</h4>
-              <ApprovalCheckbox
-                approved={content.wrhqBlogApproved === 'APPROVED'}
-                onChange={(checked) => onApprove('wrhqBlogApproved', checked ? 'APPROVED' : 'PENDING')}
-                label="Approve WRHQ Blog"
-                disabled={saving || isStep2Complete}
-              />
-            </div>
+            <h4 className="text-lg font-semibold mb-2">{content.wrhqBlogPost.title}</h4>
             <p className="text-sm text-gray-500 mb-4">{content.wrhqBlogPost.wordCount} words | Slug: {content.wrhqBlogPost.slug}</p>
             <details className="group">
               <summary className="cursor-pointer text-sm text-purple-600 hover:text-purple-700 mb-2">
@@ -825,62 +804,49 @@ function ReviewTab({
                 <h3 className="font-semibold">Client Social Posts</h3>
                 <span className="text-sm text-gray-500">({content.socialPosts.length} posts)</span>
               </div>
-              <div className="flex items-center gap-3">
-                {!content.socialGenerated ? (
-                  <button
-                    onClick={() => generateContent('social')}
-                    disabled={generating === 'social' || !isStep1Complete}
-                    className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {generating === 'social' ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      'Generate Posts'
-                    )}
-                  </button>
-                ) : (
-                  <>
-                    <ApprovalCheckbox
-                      approved={content.socialApproved === 'APPROVED'}
-                      onChange={(checked) => onApprove('socialApproved', checked ? 'APPROVED' : 'PENDING')}
-                      label="Approve All"
-                      disabled={saving}
-                    />
-                    <button
-                      onClick={() => publishContent('social')}
-                      disabled={publishing === 'social' || content.socialApproved !== 'APPROVED' || content.socialPosts.every(p => p.status === 'SCHEDULED')}
-                      className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                      {publishing === 'social' ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 animate-spin" />
-                          Scheduling...
-                        </>
-                      ) : content.socialPosts.every(p => p.status === 'SCHEDULED') ? (
-                        <>
-                          <Check className="h-4 w-4" />
-                          Scheduled
-                        </>
-                      ) : (
-                        'Schedule All'
-                      )}
-                    </button>
-                  </>
-                )}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => regenerateContent('social')}
+                  disabled={generating === 'social' || !isStep1Complete}
+                  className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {generating === 'social' ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  {content.socialGenerated ? 'Regenerate' : 'Generate'}
+                </button>
+                <button
+                  onClick={() => publishContent('social')}
+                  disabled={publishing === 'social' || !content.socialGenerated || content.socialPosts.every(p => p.status === 'SCHEDULED')}
+                  className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {publishing === 'social' ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Scheduling...
+                    </>
+                  ) : content.socialPosts.every(p => p.status === 'SCHEDULED') ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Scheduled
+                    </>
+                  ) : (
+                    'Schedule'
+                  )}
+                </button>
               </div>
             </div>
 
             {content.socialPosts.length > 0 ? (
               <div className="grid gap-3">
                 {content.socialPosts.map((post) => (
-                  <SocialPostCard key={post.id} post={post} />
+                  <SocialPostPreview key={post.id} post={post} />
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-sm">Click "Generate Posts" to create social content</p>
+              <p className="text-gray-500 text-sm">Click "Generate" to create social content</p>
             )}
           </div>
 
@@ -892,62 +858,49 @@ function ReviewTab({
                 <h3 className="font-semibold">WRHQ Social Posts</h3>
                 <span className="text-sm text-gray-500">({content.wrhqSocialPosts.length} posts)</span>
               </div>
-              <div className="flex items-center gap-3">
-                {!content.wrhqSocialGenerated ? (
-                  <button
-                    onClick={() => generateContent('wrhqSocial')}
-                    disabled={generating === 'wrhqSocial' || !isStep1Complete}
-                    className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {generating === 'wrhqSocial' ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      'Generate WRHQ Posts'
-                    )}
-                  </button>
-                ) : (
-                  <>
-                    <ApprovalCheckbox
-                      approved={content.wrhqSocialApproved === 'APPROVED'}
-                      onChange={(checked) => onApprove('wrhqSocialApproved', checked ? 'APPROVED' : 'PENDING')}
-                      label="Approve All"
-                      disabled={saving}
-                    />
-                    <button
-                      onClick={() => publishContent('wrhqSocial')}
-                      disabled={publishing === 'wrhqSocial' || content.wrhqSocialApproved !== 'APPROVED' || content.wrhqSocialPosts.every(p => p.status === 'SCHEDULED')}
-                      className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                      {publishing === 'wrhqSocial' ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 animate-spin" />
-                          Scheduling...
-                        </>
-                      ) : content.wrhqSocialPosts.every(p => p.status === 'SCHEDULED') ? (
-                        <>
-                          <Check className="h-4 w-4" />
-                          Scheduled
-                        </>
-                      ) : (
-                        'Schedule All'
-                      )}
-                    </button>
-                  </>
-                )}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => regenerateContent('wrhqSocial')}
+                  disabled={generating === 'wrhqSocial' || !isStep1Complete}
+                  className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {generating === 'wrhqSocial' ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  {content.wrhqSocialGenerated ? 'Regenerate' : 'Generate'}
+                </button>
+                <button
+                  onClick={() => publishContent('wrhqSocial')}
+                  disabled={publishing === 'wrhqSocial' || !content.wrhqSocialGenerated || content.wrhqSocialPosts.every(p => p.status === 'SCHEDULED')}
+                  className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {publishing === 'wrhqSocial' ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Scheduling...
+                    </>
+                  ) : content.wrhqSocialPosts.every(p => p.status === 'SCHEDULED') ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Scheduled
+                    </>
+                  ) : (
+                    'Schedule'
+                  )}
+                </button>
               </div>
             </div>
 
             {content.wrhqSocialPosts.length > 0 ? (
               <div className="grid gap-3">
                 {content.wrhqSocialPosts.map((post) => (
-                  <SocialPostCard key={post.id} post={post} isWRHQ />
+                  <SocialPostPreview key={post.id} post={post} isWRHQ />
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-sm">Click "Generate WRHQ Posts" to create WRHQ social content</p>
+              <p className="text-gray-500 text-sm">Click "Generate" to create WRHQ social content</p>
             )}
           </div>
         </div>
@@ -967,26 +920,8 @@ function ReviewTab({
               <p className="text-sm text-gray-500">Generate audio, publish to Podbean, embed in blog</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            {!content.podcastGenerated && (!content.podcast || content.podcast.status !== 'PROCESSING') ? (
-              <button
-                onClick={() => generateContent('podcast')}
-                disabled={generating === 'podcast' || !isStep1Complete}
-                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {generating === 'podcast' ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    Starting...
-                  </>
-                ) : (
-                  <>
-                    <Mic className="h-4 w-4" />
-                    Generate Podcast
-                  </>
-                )}
-              </button>
-            ) : content.podcast?.status === 'PROCESSING' ? (
+          <div className="flex items-center gap-2">
+            {content.podcast?.status === 'PROCESSING' ? (
               <div className="flex items-center gap-2 text-orange-600">
                 <RefreshCw className="h-4 w-4 animate-spin" />
                 <span className="text-sm">Generating audio (2-5 min)...</span>
@@ -996,25 +931,39 @@ function ReviewTab({
                 <Check className="h-5 w-5" />
                 <span className="text-sm font-medium">Published & Embedded</span>
               </div>
-            ) : content.podcast?.status === 'READY' ? (
-              <button
-                onClick={() => publishContent('podcast')}
-                disabled={publishing === 'podcast'}
-                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {publishing === 'podcast' ? (
-                  <>
+            ) : (
+              <>
+                <button
+                  onClick={() => regenerateContent('podcast')}
+                  disabled={generating === 'podcast' || !isStep1Complete}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {generating === 'podcast' ? (
                     <RefreshCw className="h-4 w-4 animate-spin" />
-                    Publishing...
-                  </>
-                ) : (
-                  <>
-                    <ExternalLink className="h-4 w-4" />
-                    Publish to Podbean & Embed
-                  </>
-                )}
-              </button>
-            ) : null}
+                  ) : (
+                    <Mic className="h-4 w-4" />
+                  )}
+                  {content.podcastGenerated ? 'Regenerate' : 'Generate'}
+                </button>
+                <button
+                  onClick={() => publishContent('podcast')}
+                  disabled={publishing === 'podcast' || !content.podcast || content.podcast.status !== 'READY'}
+                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {publishing === 'podcast' ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Publishing...
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="h-4 w-4" />
+                      Publish
+                    </>
+                  )}
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -1415,6 +1364,88 @@ function ApprovalCheckbox({
       />
       <span className="text-sm text-gray-600">{label}</span>
     </label>
+  )
+}
+
+// Platform-specific social post preview with styling to match each platform
+function SocialPostPreview({
+  post,
+  isWRHQ = false,
+}: {
+  post: { platform: string; caption: string; hashtags: string[]; approved: boolean; status: string }
+  isWRHQ?: boolean
+}) {
+  const platformStyles: Record<string, { bg: string; border: string; accent: string; name: string }> = {
+    FACEBOOK: { bg: 'bg-blue-50', border: 'border-blue-200', accent: 'text-blue-600', name: 'Facebook' },
+    INSTAGRAM: { bg: 'bg-gradient-to-br from-purple-50 to-pink-50', border: 'border-pink-200', accent: 'text-pink-600', name: 'Instagram' },
+    LINKEDIN: { bg: 'bg-sky-50', border: 'border-sky-200', accent: 'text-sky-700', name: 'LinkedIn' },
+    TWITTER: { bg: 'bg-gray-50', border: 'border-gray-300', accent: 'text-gray-800', name: 'X (Twitter)' },
+    TIKTOK: { bg: 'bg-gray-900', border: 'border-gray-700', accent: 'text-white', name: 'TikTok' },
+    GBP: { bg: 'bg-green-50', border: 'border-green-200', accent: 'text-green-700', name: 'Google Business' },
+    YOUTUBE: { bg: 'bg-red-50', border: 'border-red-200', accent: 'text-red-600', name: 'YouTube' },
+    BLUESKY: { bg: 'bg-blue-50', border: 'border-blue-300', accent: 'text-blue-500', name: 'Bluesky' },
+    THREADS: { bg: 'bg-gray-50', border: 'border-gray-300', accent: 'text-gray-900', name: 'Threads' },
+  }
+
+  const style = platformStyles[post.platform] || { bg: 'bg-gray-50', border: 'border-gray-200', accent: 'text-gray-700', name: post.platform }
+  const isDark = post.platform === 'TIKTOK'
+
+  return (
+    <div className={`rounded-xl overflow-hidden border-2 ${style.border} ${isWRHQ ? 'ring-2 ring-purple-300' : ''}`}>
+      {/* Platform Header */}
+      <div className={`px-4 py-2 ${style.bg} flex items-center justify-between`}>
+        <div className="flex items-center gap-2">
+          <span className="text-xl">{PLATFORM_ICONS[post.platform] || '📱'}</span>
+          <span className={`font-semibold ${style.accent}`}>{style.name}</span>
+          {isWRHQ && (
+            <span className="text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full">WRHQ</span>
+          )}
+        </div>
+        <span className={`text-xs px-2 py-1 rounded-full ${
+          post.status === 'SCHEDULED' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+        }`}>
+          {post.status === 'SCHEDULED' ? 'Scheduled' : 'Draft'}
+        </span>
+      </div>
+
+      {/* Post Content - Platform Specific Styling */}
+      <div className={`p-4 ${isDark ? 'bg-gray-900 text-white' : 'bg-white'}`}>
+        {/* Simulated Profile Section */}
+        <div className="flex items-center gap-3 mb-3">
+          <div className={`w-10 h-10 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-200'} flex items-center justify-center`}>
+            <Building2 className={`h-5 w-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+          </div>
+          <div>
+            <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              {isWRHQ ? 'Windshield Repair HQ' : 'Your Business'}
+            </p>
+            <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Just now</p>
+          </div>
+        </div>
+
+        {/* Caption */}
+        <p className={`text-sm whitespace-pre-wrap mb-3 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
+          {post.caption}
+        </p>
+
+        {/* Hashtags */}
+        {post.hashtags.length > 0 && (
+          <p className={`text-sm ${style.accent}`}>
+            {post.hashtags.map(h => `#${h}`).join(' ')}
+          </p>
+        )}
+
+        {/* Character Count */}
+        <div className={`mt-3 pt-3 border-t ${isDark ? 'border-gray-700' : 'border-gray-100'} flex justify-between items-center`}>
+          <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+            {post.caption.length} characters
+          </span>
+          {post.platform === 'TWITTER' && post.caption.length > 280 && (
+            <span className="text-xs text-red-500 font-medium">Over limit!</span>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 

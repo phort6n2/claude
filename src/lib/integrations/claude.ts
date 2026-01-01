@@ -4,6 +4,20 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 })
 
+// Helper function to convert string to Title Case
+function toTitleCase(str: string): string {
+  // Words that should remain lowercase (unless first word)
+  const exceptions = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'by', 'of', 'in', 'with']
+
+  return str.toLowerCase().split(' ').map((word, index) => {
+    // Always capitalize first word, otherwise check exceptions
+    if (index === 0 || !exceptions.includes(word)) {
+      return word.charAt(0).toUpperCase() + word.slice(1)
+    }
+    return word
+  }).join(' ')
+}
+
 interface BlogPostParams {
   businessName: string
   city: string
@@ -154,7 +168,10 @@ Return ONLY valid JSON. Do not include any commentary outside the JSON.`
     throw new Error('Failed to parse blog post response')
   }
 
-  return JSON.parse(jsonMatch[0])
+  const result = JSON.parse(jsonMatch[0]) as BlogPostResult
+  // Apply Title Case to the title
+  result.title = toTitleCase(result.title)
+  return result
 }
 
 type SocialPlatform = 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram'
@@ -460,7 +477,10 @@ Return ONLY valid JSON. No markdown code blocks.`
     throw new Error('Failed to parse WRHQ blog post response')
   }
 
-  return JSON.parse(jsonMatch[0])
+  const result = JSON.parse(jsonMatch[0]) as WRHQBlogPostResult
+  // Apply Title Case to the title
+  result.title = toTitleCase(result.title)
+  return result
 }
 
 // WRHQ Social Caption Generation

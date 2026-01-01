@@ -412,13 +412,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
     }
 
-    // Generate WRHQ content (if enabled)
+    // Generate WRHQ content
     if (generateWrhqBlog || generateWrhqSocial) {
       try {
-        const wrhqEnabled = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_ENABLED)
-
-        if (wrhqEnabled === 'true') {
-          if (generateWrhqBlog) {
+        // Generate WRHQ blog when requested (regardless of global setting - user explicitly requested it)
+        if (generateWrhqBlog) {
             await prisma.contentItem.update({
               where: { id },
               data: { pipelineStep: 'wrhq_blog' },
@@ -544,7 +542,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
               results.wrhqSocial = { success: true, count: wrhqPlatforms.length }
             }
           }
-        }
       } catch (error) {
         console.error('WRHQ content generation error:', error)
         if (generateWrhqBlog) results.wrhqBlog = { success: false, error: String(error) }
