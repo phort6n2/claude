@@ -232,6 +232,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           const image = contentItem.images.find((img: Image) => img.imageType === imageType)
             || contentItem.images.find((img: Image) => img.imageType === 'BLOG_FEATURED')
 
+          // Skip platforms that require media when no image is available
+          const platformsRequiringMedia = ['INSTAGRAM', 'TIKTOK', 'PINTEREST']
+          if (platformsRequiringMedia.includes(socialPost.platform) && !image) {
+            console.log(`Skipping ${socialPost.platform} - no image available and platform requires media`)
+            continue
+          }
+
           // Use postNow for immediate posting, schedulePost for scheduling
           const lateResult = postImmediate
             ? await postNow({
@@ -291,6 +298,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           const imageType = wrhqPost.platform === 'INSTAGRAM' ? 'INSTAGRAM_FEED' : 'BLOG_FEATURED'
           const image = contentItem.images.find((img: Image) => img.imageType === imageType)
             || contentItem.images.find((img: Image) => img.imageType === 'BLOG_FEATURED')
+
+          // Skip platforms that require media when no image is available
+          const platformsRequiringMedia = ['INSTAGRAM', 'TIKTOK', 'PINTEREST']
+          if (platformsRequiringMedia.includes(wrhqPost.platform) && !image) {
+            console.log(`Skipping WRHQ ${wrhqPost.platform} - no image available and platform requires media`)
+            continue
+          }
 
           // Use postNow for immediate posting, schedulePost for scheduling
           const lateResult = postImmediate
