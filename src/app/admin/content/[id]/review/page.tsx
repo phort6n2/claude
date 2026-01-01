@@ -450,7 +450,7 @@ function ReviewTab({
   // Step status helpers
   const isStep1Complete = content.clientBlogPublished
   const isStep2Complete = content.wrhqBlogPublished
-  const isStep3Complete = content.socialPosts.length > 0 && content.socialPosts.every(p => p.status === 'SCHEDULED')
+  const isStep3Complete = content.socialPosts.length > 0 && content.socialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED')
   const isStep4Complete = content.podcastAddedToPost
 
   async function regenerateContent(type: 'blog' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast') {
@@ -497,7 +497,7 @@ function ReviewTab({
     }
   }
 
-  async function publishContent(type: 'clientBlog' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast') {
+  async function publishContent(type: 'clientBlog' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast', postImmediate = true) {
     setPublishing(type)
     setError(null)
     try {
@@ -506,6 +506,7 @@ function ReviewTab({
         publishWrhqBlog: type === 'wrhqBlog',
         scheduleSocial: type === 'social',
         scheduleWrhqSocial: type === 'wrhqSocial',
+        postImmediate, // Post now instead of scheduling
       }
 
       // For podcast, use a separate endpoint
@@ -827,21 +828,21 @@ function ReviewTab({
                 </button>
                 <button
                   onClick={() => publishContent('social')}
-                  disabled={publishing === 'social' || !content.socialGenerated || content.socialPosts.every(p => p.status === 'SCHEDULED')}
+                  disabled={publishing === 'social' || !content.socialGenerated || content.socialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED')}
                   className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {publishing === 'social' ? (
                     <>
                       <RefreshCw className="h-4 w-4 animate-spin" />
-                      Scheduling...
+                      Posting...
                     </>
-                  ) : content.socialPosts.every(p => p.status === 'SCHEDULED') ? (
+                  ) : content.socialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED') ? (
                     <>
                       <Check className="h-4 w-4" />
-                      Scheduled
+                      Posted
                     </>
                   ) : (
-                    'Schedule'
+                    'Post Now'
                   )}
                 </button>
               </div>
@@ -881,21 +882,21 @@ function ReviewTab({
                 </button>
                 <button
                   onClick={() => publishContent('wrhqSocial')}
-                  disabled={publishing === 'wrhqSocial' || !content.wrhqSocialGenerated || content.wrhqSocialPosts.every(p => p.status === 'SCHEDULED')}
+                  disabled={publishing === 'wrhqSocial' || !content.wrhqSocialGenerated || content.wrhqSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED')}
                   className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {publishing === 'wrhqSocial' ? (
                     <>
                       <RefreshCw className="h-4 w-4 animate-spin" />
-                      Scheduling...
+                      Posting...
                     </>
-                  ) : content.wrhqSocialPosts.every(p => p.status === 'SCHEDULED') ? (
+                  ) : content.wrhqSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED') ? (
                     <>
                       <Check className="h-4 w-4" />
-                      Scheduled
+                      Posted
                     </>
                   ) : (
-                    'Schedule'
+                    'Post Now'
                   )}
                 </button>
               </div>
@@ -1339,11 +1340,16 @@ function SocialPostPreview({
 
 // Helper component for status badge
 function StatusBadge({ status }: { status: string }) {
+  const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
+    PUBLISHED: { bg: 'bg-green-100', text: 'text-green-700', label: 'Posted' },
+    SCHEDULED: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Scheduled' },
+    DRAFT: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Draft' },
+  }
+  const config = statusConfig[status] || statusConfig.DRAFT
+
   return (
-    <span className={`text-xs px-2 py-1 rounded-full ${
-      status === 'SCHEDULED' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-    }`}>
-      {status === 'SCHEDULED' ? 'Scheduled' : 'Draft'}
+    <span className={`text-xs px-2 py-1 rounded-full ${config.bg} ${config.text}`}>
+      {config.label}
     </span>
   )
 }

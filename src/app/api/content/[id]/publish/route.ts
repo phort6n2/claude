@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { publishToWordPress } from '@/lib/integrations/wordpress'
-import { schedulePost } from '@/lib/integrations/getlate'
+import { schedulePost, postNow } from '@/lib/integrations/getlate'
 import { getSetting, WRHQ_SETTINGS_KEYS } from '@/lib/settings'
 import { validateScheduledDate } from '@/lib/scheduling'
 import { Image, SocialPost, WRHQSocialPost } from '@prisma/client'
@@ -12,12 +12,13 @@ interface RouteContext {
 }
 
 /**
- * POST /api/content/[id]/publish - Publish content to WordPress and schedule social
+ * POST /api/content/[id]/publish - Publish content to WordPress and schedule/post social
  * Body: {
  *   publishClientBlog?: boolean,
  *   publishWrhqBlog?: boolean,
  *   scheduleSocial?: boolean,
- *   scheduleWrhqSocial?: boolean
+ *   scheduleWrhqSocial?: boolean,
+ *   postImmediate?: boolean  // If true, post now instead of scheduling
  * }
  */
 export async function POST(request: NextRequest, { params }: RouteContext) {
@@ -35,6 +36,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       publishWrhqBlog = true,
       scheduleSocial = true,
       scheduleWrhqSocial = true,
+      postImmediate = false,  // Post immediately instead of scheduling
     } = body
 
     // Get content item with all related data
@@ -213,7 +215,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
     }
 
-    // Schedule client social posts
+    // Post/Schedule client social posts
     if (scheduleSocial && contentItem.socialGenerated) {
       try {
         const socialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
@@ -230,21 +232,31 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           const image = contentItem.images.find((img: Image) => img.imageType === imageType)
             || contentItem.images.find((img: Image) => img.imageType === 'BLOG_FEATURED')
 
-          const lateResult = await schedulePost({
-            accountId,
-            platform: socialPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
-            caption: socialPost.caption,
-            mediaUrls: image ? [image.gcsUrl] : [],
-            scheduledTime: contentItem.scheduledDate,
-            hashtags: socialPost.hashtags,
-            firstComment: socialPost.firstComment || undefined,
-          })
+          // Use postNow for immediate posting, schedulePost for scheduling
+          const lateResult = postImmediate
+            ? await postNow({
+                accountId,
+                platform: socialPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
+                caption: socialPost.caption,
+                mediaUrls: image ? [image.gcsUrl] : [],
+                hashtags: socialPost.hashtags,
+                firstComment: socialPost.firstComment || undefined,
+              })
+            : await schedulePost({
+                accountId,
+                platform: socialPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
+                caption: socialPost.caption,
+                mediaUrls: image ? [image.gcsUrl] : [],
+                scheduledTime: contentItem.scheduledDate,
+                hashtags: socialPost.hashtags,
+                firstComment: socialPost.firstComment || undefined,
+              })
 
           await prisma.socialPost.update({
             where: { id: socialPost.id },
             data: {
               getlatePostId: lateResult.postId,
-              status: 'SCHEDULED',
+              status: postImmediate ? 'PUBLISHED' : 'SCHEDULED',
             },
           })
         }
@@ -259,12 +271,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
         results.social = { success: true, count: contentItem.socialPosts.length }
       } catch (error) {
-        console.error('Social scheduling error:', error)
+        console.error('Social posting error:', error)
         results.social = { success: false, error: String(error) }
       }
     }
 
-    // Schedule WRHQ social posts
+    // Post/Schedule WRHQ social posts
     if (scheduleWrhqSocial && contentItem.wrhqSocialGenerated) {
       try {
         for (const wrhqPost of contentItem.wrhqSocialPosts) {
@@ -278,28 +290,38 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           const image = contentItem.images.find((img: Image) => img.imageType === imageType)
             || contentItem.images.find((img: Image) => img.imageType === 'BLOG_FEATURED')
 
-          const lateResult = await schedulePost({
-            accountId,
-            platform: wrhqPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
-            caption: wrhqPost.caption,
-            mediaUrls: image ? [image.gcsUrl] : [],
-            scheduledTime: contentItem.scheduledDate,
-            hashtags: wrhqPost.hashtags,
-            firstComment: wrhqPost.firstComment || undefined,
-          })
+          // Use postNow for immediate posting, schedulePost for scheduling
+          const lateResult = postImmediate
+            ? await postNow({
+                accountId,
+                platform: wrhqPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
+                caption: wrhqPost.caption,
+                mediaUrls: image ? [image.gcsUrl] : [],
+                hashtags: wrhqPost.hashtags,
+                firstComment: wrhqPost.firstComment || undefined,
+              })
+            : await schedulePost({
+                accountId,
+                platform: wrhqPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
+                caption: wrhqPost.caption,
+                mediaUrls: image ? [image.gcsUrl] : [],
+                scheduledTime: contentItem.scheduledDate,
+                hashtags: wrhqPost.hashtags,
+                firstComment: wrhqPost.firstComment || undefined,
+              })
 
           await prisma.wRHQSocialPost.update({
             where: { id: wrhqPost.id },
             data: {
               getlatePostId: lateResult.postId,
-              status: 'SCHEDULED',
+              status: postImmediate ? 'PUBLISHED' : 'SCHEDULED',
             },
           })
         }
 
         results.wrhqSocial = { success: true, count: contentItem.wrhqSocialPosts.length }
       } catch (error) {
-        console.error('WRHQ social scheduling error:', error)
+        console.error('WRHQ social posting error:', error)
         results.wrhqSocial = { success: false, error: String(error) }
       }
     }

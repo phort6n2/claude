@@ -68,6 +68,14 @@ export async function schedulePost(params: SchedulePostParams): Promise<Schedule
   }
 }
 
+// Post immediately by setting scheduled time to now
+export async function postNow(params: Omit<SchedulePostParams, 'scheduledTime'>): Promise<ScheduledPostResult> {
+  return schedulePost({
+    ...params,
+    scheduledTime: new Date(), // Post immediately
+  })
+}
+
 export async function checkPostStatus(postId: string): Promise<ScheduledPostResult> {
   const apiKey = process.env.GETLATE_API_KEY
   if (!apiKey) {
