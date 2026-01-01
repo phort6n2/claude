@@ -13,14 +13,31 @@ export async function uploadToGCS(
   contentType: string
 ): Promise<UploadResult> {
   // Check environment variables first, then database settings
+  // Support multiple key names for credentials JSON
   const bucketName = process.env.GCS_BUCKET_NAME || await getSetting('GCS_BUCKET_NAME')
-  const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || await getSetting('GCS_CREDENTIALS_JSON')
+  const credentialsJson =
+    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+    await getSetting('GCS_CREDENTIALS_JSON') ||
+    await getSetting('GOOGLE_APPLICATION_CREDENTIALS_JSON')
 
-  if (!bucketName || !credentialsJson) {
-    throw new Error('GCS credentials not configured. Add GCS_BUCKET_NAME and GCS_CREDENTIALS_JSON to Settings > API Keys.')
+  if (!bucketName) {
+    throw new Error('GCS bucket name not configured. Add GCS_BUCKET_NAME to Settings > API Keys.')
   }
 
-  const credentials = JSON.parse(credentialsJson)
+  if (!credentialsJson) {
+    throw new Error('GCS credentials not configured. Add GCS_CREDENTIALS_JSON to Settings > API Keys with your service account JSON.')
+  }
+
+  let credentials
+  try {
+    credentials = JSON.parse(credentialsJson)
+  } catch (e) {
+    throw new Error('GCS credentials JSON is invalid. Make sure you pasted the complete service account JSON.')
+  }
+
+  if (!credentials.client_email || !credentials.private_key) {
+    throw new Error('GCS credentials JSON is missing required fields (client_email or private_key).')
+  }
 
   // Get access token
   const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {

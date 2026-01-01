@@ -35,6 +35,8 @@ export const WRHQ_SETTINGS_KEYS = {
 // Keys that should be encrypted
 const ENCRYPTED_KEYS: Set<string> = new Set([
   WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_APP_PASSWORD,
+  'GCS_CREDENTIALS_JSON',
+  'GOOGLE_APPLICATION_CREDENTIALS_JSON',
 ])
 
 export interface WRHQConfig {
