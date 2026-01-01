@@ -5,7 +5,7 @@ import { publishToWordPress } from '@/lib/integrations/wordpress'
 import { schedulePost, postNow } from '@/lib/integrations/getlate'
 import { getSetting, WRHQ_SETTINGS_KEYS } from '@/lib/settings'
 import { validateScheduledDate } from '@/lib/scheduling'
-import { compressImageForPlatform } from '@/lib/utils/image-compression'
+import { compressImageForPlatform, compressImageForBlog } from '@/lib/utils/image-compression'
 import { Image, SocialPost, WRHQSocialPost } from '@prisma/client'
 
 interface RouteContext {
@@ -100,6 +100,21 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       try {
         const featuredImage = contentItem.images.find((img: Image) => img.imageType === 'BLOG_FEATURED')
 
+        // Compress featured image for blog (targets 2MB for fast loading)
+        let featuredImageUrl = featuredImage?.gcsUrl
+        if (featuredImageUrl) {
+          try {
+            const compressed = await compressImageForBlog(featuredImageUrl, id, 'client-blog')
+            featuredImageUrl = compressed.url
+            if (compressed.wasCompressed) {
+              console.log(`Compressed client blog image: ${(compressed.originalSize / 1024 / 1024).toFixed(2)}MB → ${(compressed.compressedSize / 1024 / 1024).toFixed(2)}MB`)
+            }
+          } catch (compressError) {
+            console.error('Failed to compress client blog image:', compressError)
+            // Continue with original image
+          }
+        }
+
         const wpResult = await publishToWordPress({
           client: contentItem.client,
           title: contentItem.blogPost.title,
@@ -107,7 +122,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           excerpt: contentItem.blogPost.excerpt || undefined,
           slug: contentItem.blogPost.slug,
           scheduledDate: contentItem.scheduledDate,
-          featuredImageUrl: featuredImage?.gcsUrl,
+          featuredImageUrl,
           metaTitle: contentItem.blogPost.metaTitle || undefined,
           metaDescription: contentItem.blogPost.metaDescription || undefined,
           schemaJson: contentItem.blogPost.schemaJson || undefined,
@@ -171,6 +186,21 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             // Use the 16:9 landscape image for WRHQ blog
             const featuredImage = contentItem.images.find((img: Image) => img.imageType === 'BLOG_FEATURED')
 
+            // Compress featured image for WRHQ blog
+            let wrhqFeaturedImageUrl = featuredImage?.gcsUrl
+            if (wrhqFeaturedImageUrl) {
+              try {
+                const compressed = await compressImageForBlog(wrhqFeaturedImageUrl, id, 'wrhq-blog')
+                wrhqFeaturedImageUrl = compressed.url
+                if (compressed.wasCompressed) {
+                  console.log(`Compressed WRHQ blog image: ${(compressed.originalSize / 1024 / 1024).toFixed(2)}MB → ${(compressed.compressedSize / 1024 / 1024).toFixed(2)}MB`)
+                }
+              } catch (compressError) {
+                console.error('Failed to compress WRHQ blog image:', compressError)
+                // Continue with original image
+              }
+            }
+
             const wpResult = await publishToWordPress({
               client: {
                 ...contentItem.client,
@@ -183,7 +213,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
               excerpt: contentItem.wrhqBlogPost.excerpt || undefined,
               slug: contentItem.wrhqBlogPost.slug,
               scheduledDate: contentItem.scheduledDate,
-              featuredImageUrl: featuredImage?.gcsUrl,
+              featuredImageUrl: wrhqFeaturedImageUrl,
               metaTitle: contentItem.wrhqBlogPost.metaTitle || undefined,
               metaDescription: contentItem.wrhqBlogPost.metaDescription || undefined,
               categorySlug: 'auto-glass-repair',

@@ -176,3 +176,105 @@ export async function needsCompression(
     return true
   }
 }
+
+// Blog image optimization settings
+const BLOG_IMAGE_CONFIG = {
+  maxWidth: 1600,           // Max width for blog featured images
+  maxHeight: 1200,          // Max height
+  maxSizeBytes: 2 * 1024 * 1024,  // 2MB target for fast loading
+  quality: 85,              // Good quality for web
+  minQuality: 60,           // Minimum acceptable quality
+}
+
+/**
+ * Compresses an image optimized for blog display
+ * - Targets 2MB or less for fast page loading
+ * - Resizes to max 1600px width for web display
+ * - Returns original URL if already optimized
+ */
+export async function compressImageForBlog(
+  imageUrl: string,
+  contentItemId: string,
+  suffix: string = 'blog'
+): Promise<CompressedImageResult> {
+  // Fetch the original image
+  const response = await fetch(imageUrl)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image: ${response.statusText}`)
+  }
+
+  const originalBuffer = Buffer.from(await response.arrayBuffer())
+  const originalSize = originalBuffer.length
+
+  // Get image metadata
+  const metadata = await sharp(originalBuffer).metadata()
+  const currentWidth = metadata.width || 1200
+  const currentHeight = metadata.height || 800
+
+  // Check if compression/resize is needed
+  const needsResize = currentWidth > BLOG_IMAGE_CONFIG.maxWidth || currentHeight > BLOG_IMAGE_CONFIG.maxHeight
+  const needsSizeReduction = originalSize > BLOG_IMAGE_CONFIG.maxSizeBytes
+
+  if (!needsResize && !needsSizeReduction) {
+    console.log(`Blog image already optimized: ${(originalSize / 1024 / 1024).toFixed(2)}MB, ${currentWidth}x${currentHeight}`)
+    return {
+      url: imageUrl,
+      originalSize,
+      compressedSize: originalSize,
+      wasCompressed: false,
+    }
+  }
+
+  console.log(`Compressing blog image: ${(originalSize / 1024 / 1024).toFixed(2)}MB, ${currentWidth}x${currentHeight}`)
+
+  const isJpeg = metadata.format === 'jpeg' || metadata.format === 'jpg'
+  const outputFormat = isJpeg ? 'jpeg' : 'jpeg' // Convert all to JPEG for better compression
+
+  let compressedBuffer: Buffer
+  let quality = BLOG_IMAGE_CONFIG.quality
+  let targetWidth = Math.min(currentWidth, BLOG_IMAGE_CONFIG.maxWidth)
+  let targetHeight = Math.min(currentHeight, BLOG_IMAGE_CONFIG.maxHeight)
+
+  do {
+    compressedBuffer = await sharp(originalBuffer)
+      .resize(targetWidth, targetHeight, {
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
+      .jpeg({
+        quality,
+        progressive: true,
+        mozjpeg: true,
+      })
+      .toBuffer()
+
+    console.log(`Blog compression: quality=${quality}, size=${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
+
+    if (compressedBuffer.length > BLOG_IMAGE_CONFIG.maxSizeBytes) {
+      quality -= 5
+
+      if (quality < BLOG_IMAGE_CONFIG.minQuality) {
+        // Reduce dimensions if quality alone isn't enough
+        quality = 75
+        targetWidth = Math.round(targetWidth * 0.85)
+        targetHeight = Math.round(targetHeight * 0.85)
+        console.log(`Reducing blog image dimensions to ${targetWidth}x${targetHeight}`)
+      }
+    }
+  } while (compressedBuffer.length > BLOG_IMAGE_CONFIG.maxSizeBytes && (quality >= BLOG_IMAGE_CONFIG.minQuality || targetWidth > 800))
+
+  // Upload compressed image to GCS
+  const timestamp = Date.now()
+  const filename = `content/${contentItemId}/compressed-${suffix}-${timestamp}.jpg`
+
+  const uploadResult = await uploadToGCS(compressedBuffer, filename, 'image/jpeg')
+
+  console.log(`Blog image compressed: ${(originalSize / 1024 / 1024).toFixed(2)}MB → ${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
+
+  return {
+    url: uploadResult.url,
+    originalSize,
+    compressedSize: compressedBuffer.length,
+    wasCompressed: true,
+  }
+}
