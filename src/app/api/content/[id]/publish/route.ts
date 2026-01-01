@@ -5,6 +5,7 @@ import { publishToWordPress } from '@/lib/integrations/wordpress'
 import { schedulePost, postNow } from '@/lib/integrations/getlate'
 import { getSetting, WRHQ_SETTINGS_KEYS } from '@/lib/settings'
 import { validateScheduledDate } from '@/lib/scheduling'
+import { compressImageForPlatform } from '@/lib/utils/image-compression'
 import { Image, SocialPost, WRHQSocialPost } from '@prisma/client'
 
 interface RouteContext {
@@ -258,7 +259,22 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             const image = contentItem.images.find((img: Image) => img.imageType === imageType)
               || contentItem.images.find((img: Image) => img.imageType === 'BLOG_FEATURED')
             if (image) {
-              mediaUrl = image.gcsUrl
+              // Compress image if needed for the platform (e.g., GBP has 5MB limit)
+              try {
+                const compressed = await compressImageForPlatform(
+                  image.gcsUrl,
+                  socialPost.platform,
+                  id
+                )
+                mediaUrl = compressed.url
+                if (compressed.wasCompressed) {
+                  console.log(`Compressed image for ${socialPost.platform}: ${(compressed.originalSize / 1024 / 1024).toFixed(2)}MB → ${(compressed.compressedSize / 1024 / 1024).toFixed(2)}MB`)
+                }
+              } catch (compressError) {
+                console.error(`Failed to compress image for ${socialPost.platform}:`, compressError)
+                // Fall back to original URL
+                mediaUrl = image.gcsUrl
+              }
               mediaType = 'image'
             }
           }
@@ -296,9 +312,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             where: { id: socialPost.id },
             data: {
               getlatePostId: lateResult.postId,
-              status: postImmediate ? 'PUBLISHED' : 'SCHEDULED',
+              // Only mark as PUBLISHED if we have a confirmed post URL
+              // Otherwise mark as PROCESSING (Late accepted it but platform hasn't confirmed)
+              status: lateResult.platformPostUrl ? 'PUBLISHED' : (postImmediate ? 'PROCESSING' : 'SCHEDULED'),
               publishedUrl: lateResult.platformPostUrl || null,
-              publishedAt: postImmediate ? new Date() : null,
+              publishedAt: lateResult.platformPostUrl ? new Date() : null,
             },
           })
         }
@@ -350,7 +368,21 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             const image = contentItem.images.find((img: Image) => img.imageType === imageType)
               || contentItem.images.find((img: Image) => img.imageType === 'BLOG_FEATURED')
             if (image) {
-              mediaUrl = image.gcsUrl
+              // Compress image if needed for the platform
+              try {
+                const compressed = await compressImageForPlatform(
+                  image.gcsUrl,
+                  wrhqPost.platform,
+                  id
+                )
+                mediaUrl = compressed.url
+                if (compressed.wasCompressed) {
+                  console.log(`Compressed WRHQ image for ${wrhqPost.platform}: ${(compressed.originalSize / 1024 / 1024).toFixed(2)}MB → ${(compressed.compressedSize / 1024 / 1024).toFixed(2)}MB`)
+                }
+              } catch (compressError) {
+                console.error(`Failed to compress WRHQ image for ${wrhqPost.platform}:`, compressError)
+                mediaUrl = image.gcsUrl
+              }
               mediaType = 'image'
             }
           }
@@ -388,9 +420,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             where: { id: wrhqPost.id },
             data: {
               getlatePostId: lateResult.postId,
-              status: postImmediate ? 'PUBLISHED' : 'SCHEDULED',
+              // Only mark as PUBLISHED if we have a confirmed post URL
+              status: lateResult.platformPostUrl ? 'PUBLISHED' : (postImmediate ? 'PROCESSING' : 'SCHEDULED'),
               publishedUrl: lateResult.platformPostUrl || null,
-              publishedAt: postImmediate ? new Date() : null,
+              publishedAt: lateResult.platformPostUrl ? new Date() : null,
             },
           })
         }

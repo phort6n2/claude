@@ -662,6 +662,7 @@ enum SocialPlatform {
 enum SocialPostStatus {
   DRAFT
   SCHEDULED
+  PROCESSING  // Sent to Late API, awaiting platform confirmation
   PUBLISHED
   FAILED
 }
