@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   FileText,
   Image as ImageIcon,
@@ -15,6 +16,7 @@ import {
   ExternalLink,
   ChevronLeft,
   AlertCircle,
+  XCircle,
 } from 'lucide-react'
 
 interface ContentItem {
@@ -131,10 +133,29 @@ const PLATFORM_ICONS: Record<string, string> = {
 
 export default function ContentReviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const router = useRouter()
   const [content, setContent] = useState<ContentItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('review')
   const [saving, setSaving] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+
+  const handleCancelDelete = async () => {
+    if (!confirm('Cancel generation and delete this content item? This cannot be undone.')) {
+      return
+    }
+    setCancelling(true)
+    try {
+      const response = await fetch(`/api/content/${id}`, { method: 'DELETE' })
+      if (response.ok) {
+        router.push('/admin/content')
+      }
+    } catch (error) {
+      console.error('Failed to delete:', error)
+    } finally {
+      setCancelling(false)
+    }
+  }
 
   const loadContent = useCallback(async () => {
     try {
@@ -225,10 +246,32 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
           </div>
           <div className="ml-auto flex items-center gap-4">
             {content.status === 'GENERATING' ? (
-              <div className="flex items-center gap-2 text-blue-600">
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                <span className="text-sm font-medium">Generating content...</span>
-              </div>
+              <>
+                <div className="flex items-center gap-2 text-blue-600">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span className="text-sm font-medium">Generating content...</span>
+                </div>
+                <button
+                  onClick={handleCancelDelete}
+                  disabled={cancelling}
+                  className="flex items-center gap-1 px-3 py-1 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+                >
+                  <XCircle className="h-4 w-4" />
+                  {cancelling ? 'Cancelling...' : 'Cancel'}
+                </button>
+              </>
+            ) : content.status === 'FAILED' ? (
+              <>
+                <div className="text-sm text-red-600">Generation failed</div>
+                <button
+                  onClick={handleCancelDelete}
+                  disabled={cancelling}
+                  className="flex items-center gap-1 px-3 py-1 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+                >
+                  <XCircle className="h-4 w-4" />
+                  Delete
+                </button>
+              </>
             ) : (
               <div className="text-sm text-gray-500">
                 {approvedCount} of {totalRequired} approved
@@ -238,6 +281,7 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
               content.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' :
               content.status === 'REVIEW' ? 'bg-yellow-100 text-yellow-700' :
               content.status === 'GENERATING' ? 'bg-blue-100 text-blue-700 animate-pulse' :
+              content.status === 'FAILED' ? 'bg-red-100 text-red-700' :
               'bg-gray-100 text-gray-700'
             }`}>
               {content.status}

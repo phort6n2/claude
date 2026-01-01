@@ -407,12 +407,13 @@ export default function ContentCalendarPage() {
                             {item.status === 'GENERATING' ? 'View' : 'View'}
                           </Button>
                         </Link>
-                        {(item.status === 'DRAFT' || item.status === 'SCHEDULED') && (
+                        {(item.status === 'DRAFT' || item.status === 'SCHEDULED' || item.status === 'GENERATING' || item.status === 'FAILED') && (
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteContent(item.id, item.paaQuestion)}
                             className="h-6 px-1 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            title={item.status === 'GENERATING' ? 'Cancel & Delete' : 'Delete'}
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
@@ -473,12 +474,13 @@ export default function ContentCalendarPage() {
                           View
                         </Button>
                       </Link>
-                      {(item.status === 'DRAFT' || item.status === 'SCHEDULED') && (
+                      {(item.status === 'DRAFT' || item.status === 'SCHEDULED' || item.status === 'GENERATING' || item.status === 'FAILED') && (
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDeleteContent(item.id, item.paaQuestion)}
                           className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          title={item.status === 'GENERATING' ? 'Cancel & Delete' : 'Delete'}
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
