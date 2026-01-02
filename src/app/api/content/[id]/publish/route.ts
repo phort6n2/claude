@@ -37,6 +37,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       publishWrhqBlog = true,
       scheduleSocial = true,
       scheduleWrhqSocial = true,
+      scheduleVideoSocial = false,  // Video social posts for client
+      scheduleWrhqVideoSocial = false,  // Video social posts for WRHQ
       postImmediate = false,  // Post immediately instead of scheduling
     } = body
 
@@ -539,6 +541,199 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       } catch (error) {
         console.error('WRHQ social posting error:', error)
         results.wrhqSocial = { success: false, error: String(error) }
+      }
+    }
+
+    // Post/Schedule client VIDEO social posts
+    if (scheduleVideoSocial && contentItem.shortVideoGenerated) {
+      try {
+        const socialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
+        const activePlatforms = (contentItem.client.socialPlatforms || []) as string[]
+        const disconnectedAccounts = contentItem.client.disconnectedAccounts as Record<string, unknown> | null
+
+        // Filter for video posts only
+        const videoSocialPosts = contentItem.socialPosts.filter((p: SocialPost) => p.mediaType === 'video')
+
+        for (const socialPost of videoSocialPosts) {
+          // Only post to platforms that are active AND have an account ID
+          const platformLower = socialPost.platform.toLowerCase()
+          const isActive = activePlatforms.map(p => p.toLowerCase()).includes(platformLower)
+          const accountId = socialAccountIds?.[platformLower]
+
+          if (!isActive || !accountId) {
+            console.log(`Skipping video ${socialPost.platform} - active: ${isActive}, hasAccountId: ${!!accountId}`)
+            continue
+          }
+
+          // Skip disconnected accounts
+          if (disconnectedAccounts && disconnectedAccounts[platformLower]) {
+            console.log(`Skipping video ${socialPost.platform} - account is disconnected`)
+            await prisma.socialPost.update({
+              where: { id: socialPost.id },
+              data: {
+                status: 'FAILED',
+                errorMessage: 'Account disconnected - please reconnect in Late',
+              },
+            })
+            continue
+          }
+
+          // Get the video URL from the social post's mediaUrls
+          const mediaUrl = socialPost.mediaUrls?.[0] || null
+
+          // Skip if no video available
+          if (!mediaUrl) {
+            console.log(`Skipping video ${socialPost.platform} - no video URL available`)
+            continue
+          }
+
+          // Wrap each post in try-catch so one failure doesn't stop others
+          try {
+            const lateResult = shouldPostImmediately
+              ? await postNowAndCheckStatus({
+                  accountId,
+                  platform: socialPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
+                  caption: socialPost.caption,
+                  mediaUrls: [mediaUrl],
+                  mediaType: 'video',
+                  hashtags: socialPost.hashtags,
+                  firstComment: socialPost.firstComment || undefined,
+                })
+              : await schedulePost({
+                  accountId,
+                  platform: socialPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
+                  caption: socialPost.caption,
+                  mediaUrls: [mediaUrl],
+                  mediaType: 'video',
+                  scheduledTime: contentItem.scheduledDate,
+                  hashtags: socialPost.hashtags,
+                  firstComment: socialPost.firstComment || undefined,
+                })
+
+            // Determine the status based on Late API response
+            let dbStatus: 'PUBLISHED' | 'SCHEDULED' | 'PROCESSING' | 'FAILED' = 'PROCESSING'
+            if (lateResult.status === 'failed') {
+              dbStatus = 'FAILED'
+              console.error(`Video ${socialPost.platform} post failed:`, lateResult.error)
+            } else if (lateResult.status === 'published' && lateResult.platformPostUrl) {
+              dbStatus = 'PUBLISHED'
+            } else if (!shouldPostImmediately) {
+              dbStatus = 'SCHEDULED'
+            }
+
+            await prisma.socialPost.update({
+              where: { id: socialPost.id },
+              data: {
+                getlatePostId: lateResult.postId,
+                status: dbStatus,
+                publishedUrl: lateResult.platformPostUrl || null,
+                publishedAt: dbStatus === 'PUBLISHED' ? new Date() : null,
+                errorMessage: lateResult.error || null,
+              },
+            })
+          } catch (postError) {
+            console.error(`Failed to post video ${socialPost.platform}:`, postError)
+            await prisma.socialPost.update({
+              where: { id: socialPost.id },
+              data: {
+                status: 'FAILED',
+                errorMessage: String(postError),
+              },
+            })
+          }
+        }
+
+        results.videoSocial = { success: true, count: videoSocialPosts.length }
+      } catch (error) {
+        console.error('Video social posting error:', error)
+        results.videoSocial = { success: false, error: String(error) }
+      }
+    }
+
+    // Post/Schedule WRHQ VIDEO social posts
+    if (scheduleWrhqVideoSocial && contentItem.shortVideoGenerated) {
+      try {
+        // Filter for video posts only
+        const wrhqVideoSocialPosts = contentItem.wrhqSocialPosts.filter((p: WRHQSocialPost) => p.mediaType === 'video')
+
+        for (const wrhqPost of wrhqVideoSocialPosts) {
+          const accountIdKey = `WRHQ_LATE_${wrhqPost.platform}_ID` as keyof typeof WRHQ_SETTINGS_KEYS
+          const accountId = await getSetting(WRHQ_SETTINGS_KEYS[accountIdKey])
+
+          if (!accountId) {
+            console.log(`Skipping WRHQ video ${wrhqPost.platform} - no account ID configured`)
+            continue
+          }
+
+          // Get the video URL from the social post's mediaUrls
+          const mediaUrl = wrhqPost.mediaUrls?.[0] || null
+
+          // Skip if no video available
+          if (!mediaUrl) {
+            console.log(`Skipping WRHQ video ${wrhqPost.platform} - no video URL available`)
+            continue
+          }
+
+          // Wrap each post in try-catch so one failure doesn't stop others
+          try {
+            const lateResult = shouldPostImmediately
+              ? await postNowAndCheckStatus({
+                  accountId,
+                  platform: wrhqPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
+                  caption: wrhqPost.caption,
+                  mediaUrls: [mediaUrl],
+                  mediaType: 'video',
+                  hashtags: wrhqPost.hashtags,
+                  firstComment: wrhqPost.firstComment || undefined,
+                })
+              : await schedulePost({
+                  accountId,
+                  platform: wrhqPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
+                  caption: wrhqPost.caption,
+                  mediaUrls: [mediaUrl],
+                  mediaType: 'video',
+                  scheduledTime: contentItem.scheduledDate,
+                  hashtags: wrhqPost.hashtags,
+                  firstComment: wrhqPost.firstComment || undefined,
+                })
+
+            // Determine the status based on Late API response
+            let wrhqDbStatus: 'PUBLISHED' | 'SCHEDULED' | 'PROCESSING' | 'FAILED' = 'PROCESSING'
+            if (lateResult.status === 'failed') {
+              wrhqDbStatus = 'FAILED'
+              console.error(`WRHQ video ${wrhqPost.platform} post failed:`, lateResult.error)
+            } else if (lateResult.status === 'published' && lateResult.platformPostUrl) {
+              wrhqDbStatus = 'PUBLISHED'
+            } else if (!shouldPostImmediately) {
+              wrhqDbStatus = 'SCHEDULED'
+            }
+
+            await prisma.wRHQSocialPost.update({
+              where: { id: wrhqPost.id },
+              data: {
+                getlatePostId: lateResult.postId,
+                status: wrhqDbStatus,
+                publishedUrl: lateResult.platformPostUrl || null,
+                publishedAt: wrhqDbStatus === 'PUBLISHED' ? new Date() : null,
+                errorMessage: lateResult.error || null,
+              },
+            })
+          } catch (postError) {
+            console.error(`Failed to post WRHQ video ${wrhqPost.platform}:`, postError)
+            await prisma.wRHQSocialPost.update({
+              where: { id: wrhqPost.id },
+              data: {
+                status: 'FAILED',
+                errorMessage: String(postError),
+              },
+            })
+          }
+        }
+
+        results.wrhqVideoSocial = { success: true, count: wrhqVideoSocialPosts.length }
+      } catch (error) {
+        console.error('WRHQ video social posting error:', error)
+        results.wrhqVideoSocial = { success: false, error: String(error) }
       }
     }
 
