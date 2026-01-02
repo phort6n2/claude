@@ -12,13 +12,18 @@ function toTitleCase(str: string): string {
   // US state abbreviations that should remain uppercase
   const stateAbbreviations = ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC']
 
-  return str.split(' ').map((word, index) => {
+  const words = str.split(' ')
+  return words.map((word, index) => {
     // Check for state abbreviations - strip punctuation for matching
     const wordNoPunct = word.replace(/[?,.:!]$/, '')
     const trailingPunct = word.slice(wordNoPunct.length)
 
-    // If word matches a state abbreviation (any casing), uppercase it
-    if (stateAbbreviations.includes(wordNoPunct.toUpperCase())) {
+    // Only uppercase state abbreviations when they appear after a comma
+    // (like "Portland, OR") - not when used as words (like "in" or "or")
+    const prevWord = index > 0 ? words[index - 1] : ''
+    const afterComma = prevWord.endsWith(',')
+
+    if (afterComma && stateAbbreviations.includes(wordNoPunct.toUpperCase())) {
       return wordNoPunct.toUpperCase() + trailingPunct
     }
 
