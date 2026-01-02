@@ -657,6 +657,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
 
     // Post/Schedule WRHQ VIDEO social posts
+    let wrhqYoutubeVideoUrl: string | null = null  // Track WRHQ YouTube URL as fallback for blog embed
     if (scheduleWrhqVideoSocial && contentItem.shortVideoGenerated) {
       try {
         // Filter for video posts only
@@ -724,6 +725,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 errorMessage: lateResult.error || null,
               },
             })
+
+            // Capture WRHQ YouTube URL as fallback for blog embed
+            if (wrhqPost.platform === 'YOUTUBE' && lateResult.platformPostUrl) {
+              wrhqYoutubeVideoUrl = lateResult.platformPostUrl
+            }
           } catch (postError) {
             console.error(`Failed to post WRHQ video ${wrhqPost.platform}:`, postError)
             await prisma.wRHQSocialPost.update({
@@ -744,14 +750,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
 
     // Embed YouTube video in client blog post (9:16 aspect ratio with text wrap)
-    if (clientYoutubeVideoUrl && contentItem.blogPost?.wordpressPostId) {
+    // Use client YouTube URL if available, otherwise fall back to WRHQ YouTube URL
+    const youtubeVideoUrl = clientYoutubeVideoUrl || wrhqYoutubeVideoUrl
+    if (youtubeVideoUrl && contentItem.blogPost?.wordpressPostId) {
       try {
         const { updatePost } = await import('@/lib/integrations/wordpress')
 
         // Extract YouTube video ID from URL
         // Handles: youtube.com/watch?v=ID, youtube.com/shorts/ID, youtu.be/ID
         let videoId: string | null = null
-        const url = new URL(clientYoutubeVideoUrl)
+        const url = new URL(youtubeVideoUrl)
         if (url.hostname.includes('youtube.com')) {
           if (url.pathname.includes('/shorts/')) {
             videoId = url.pathname.split('/shorts/')[1]?.split('?')[0]
