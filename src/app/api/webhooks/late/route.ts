@@ -70,15 +70,17 @@ export async function POST(request: NextRequest) {
 }
 
 interface PostEventData {
-  postId: string
+  postId?: string
   post?: {
-    _id: string
+    id?: string
+    _id?: string
     status: string
     platforms?: Array<{
       platform: string
-      accountId: string | { _id: string }
+      accountId?: string | { _id: string }
       status: string
-      platformPostUrl?: string
+      publishedUrl?: string      // From webhook payload
+      platformPostUrl?: string   // Alternative field name
       platformPostId?: string
       error?: string
       errorMessage?: string
@@ -88,24 +90,26 @@ interface PostEventData {
   platforms?: Array<{
     platform: string
     status: string
+    publishedUrl?: string
     platformPostUrl?: string
     error?: string
   }>
   error?: string
   errorMessage?: string
+  timestamp?: string
 }
 
 async function handlePostPublished(data: PostEventData) {
-  const postId = data.postId || data.post?._id
+  const postId = data.postId || data.post?.id || data.post?._id
 
   if (!postId) {
     console.error('No post ID in webhook data')
     return
   }
 
-  // Get post URL from the correct location
+  // Get post URL from the correct location (webhook uses publishedUrl, API uses platformPostUrl)
   const platformData = data.post?.platforms?.[0] || data.platforms?.[0]
-  const postUrl = platformData?.platformPostUrl
+  const postUrl = platformData?.publishedUrl || platformData?.platformPostUrl
 
   console.log(`Post published: ${postId}, URL: ${postUrl}`)
 
@@ -149,7 +153,7 @@ async function handlePostPublished(data: PostEventData) {
 }
 
 async function handlePostFailed(data: PostEventData) {
-  const postId = data.postId || data.post?._id
+  const postId = data.postId || data.post?.id || data.post?._id
 
   if (!postId) {
     console.error('No post ID in webhook data')
@@ -201,7 +205,7 @@ async function handlePostFailed(data: PostEventData) {
 
 async function handlePostPartial(data: PostEventData) {
   // For partial success, update each platform individually
-  const postId = data.postId || data.post?._id
+  const postId = data.postId || data.post?.id || data.post?._id
 
   if (!postId) {
     console.error('No post ID in webhook data')
@@ -232,7 +236,7 @@ async function handlePostPartial(data: PostEventData) {
           data: {
             status: 'PUBLISHED',
             publishedAt: new Date(),
-            publishedUrl: platform.platformPostUrl || null,
+            publishedUrl: platform.publishedUrl || platform.platformPostUrl || null,
           },
         })
       }
@@ -259,7 +263,7 @@ async function handlePostPartial(data: PostEventData) {
 }
 
 async function handlePostScheduled(data: PostEventData) {
-  const postId = data.postId || data.post?._id
+  const postId = data.postId || data.post?.id || data.post?._id
 
   if (!postId) {
     console.error('No post ID in webhook data')
