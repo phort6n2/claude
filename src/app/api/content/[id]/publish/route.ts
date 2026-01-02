@@ -67,15 +67,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       console.log(`Scheduled date ${contentItem.scheduledDate.toISOString()} is in the past, forcing immediate post`)
     }
 
-    // Validate scheduled date
-    const validationError = await validateScheduledDate(
-      contentItem.scheduledDate,
-      contentItem.clientId,
-      id
-    )
+    // Validate scheduled date - but skip day-of-week check for immediate/manual posts
+    // The Tuesday/Thursday restriction only applies to scheduled auto-posts
+    if (!shouldPostImmediately) {
+      const validationError = await validateScheduledDate(
+        contentItem.scheduledDate,
+        contentItem.clientId,
+        id
+      )
 
-    if (validationError) {
-      return NextResponse.json({ error: validationError }, { status: 400 })
+      if (validationError) {
+        return NextResponse.json({ error: validationError }, { status: 400 })
+      }
     }
 
     // Check that content exists for what's being published
