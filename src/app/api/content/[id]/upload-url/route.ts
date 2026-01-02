@@ -43,7 +43,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     console.error('Failed to get signed upload URL:', error)
 
     // Add debugging info
-    const debugInfo = {
+    const debugInfo: {
+      hasBucketEnv: boolean
+      hasCredentialsEnv: boolean
+      hasBucketDb?: boolean
+      hasCredentialsDb?: boolean
+      dbError?: string
+    } = {
       hasBucketEnv: !!process.env.GCS_BUCKET_NAME || !!process.env.GOOGLE_CLOUD_STORAGE_BUCKET,
       hasCredentialsEnv: !!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || !!process.env.GOOGLE_CLOUD_CREDENTIALS,
     }
