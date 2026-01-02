@@ -11,6 +11,14 @@
     {
       "path": "/api/cron/check-social-published",
       "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-generation",
+      "schedule": "0 6 * * 1"
+    },
+    {
+      "path": "/api/cron/daily-publish",
+      "schedule": "0 9 * * *"
     }
   ]
 }

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { Suspense } from 'react'
 import Header from '@/components/admin/Header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -156,7 +158,7 @@ async function DashboardContent() {
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">
-                        {log.action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        {log.action.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                       </p>
                       <p className="text-xs text-gray-500 truncate">
                         {log.client?.businessName} - {log.contentItem?.paaQuestion?.substring(0, 50)}...
@@ -188,7 +190,7 @@ async function DashboardContent() {
               <p className="text-gray-500 text-sm">No upcoming content scheduled</p>
             ) : (
               <div className="space-y-4">
-                {stats.upcomingContent.map((item) => (
+                {stats.upcomingContent.map((item: { id: string; paaQuestion: string; scheduledDate: Date; status: string; client: { businessName: string } }) => (
                   <div key={item.id} className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">

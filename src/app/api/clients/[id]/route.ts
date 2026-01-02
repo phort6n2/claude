@@ -52,11 +52,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     // Encrypt WordPress password if changed
     let encryptedPassword = existing.wordpressAppPassword
     if (data.wordpressAppPassword && data.wordpressAppPassword !== '') {
-      try {
-        encryptedPassword = encrypt(data.wordpressAppPassword)
-      } catch {
-        console.error('Failed to encrypt password')
-      }
+      encryptedPassword = encrypt(data.wordpressAppPassword)
     }
 
     const client = await prisma.client.update({
@@ -70,6 +66,9 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         city: data.city,
         state: data.state,
         postalCode: data.postalCode,
+        googlePlaceId: data.googlePlaceId || null,
+        googleMapsUrl: data.googleMapsUrl || null,
+        wrhqDirectoryUrl: data.wrhqDirectoryUrl || null,
         hasShopLocation: data.hasShopLocation ?? true,
         offersMobileService: data.offersMobileService ?? false,
         hasAdasCalibration: data.hasAdasCalibration ?? false,
@@ -86,8 +85,11 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         ctaUrl: data.ctaUrl || null,
         preferredPublishTime: data.preferredPublishTime,
         timezone: data.timezone,
-        postsPerWeek: data.postsPerWeek,
         socialPlatforms: data.socialPlatforms || [],
+        socialAccountIds: data.socialAccountIds || null,
+        podbeanPodcastId: data.podbeanPodcastId || null,
+        podbeanPodcastTitle: data.podbeanPodcastTitle || null,
+        podbeanPodcastUrl: data.podbeanPodcastUrl || null,
         status: data.status || existing.status,
       },
     })

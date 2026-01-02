@@ -3,7 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ============================================
@@ -69,36 +70,66 @@ model Client {
   ctaText               String    @default("Get a Free Quote")
   ctaUrl                String?
 
-  // Publishing Preferences
+  // Publishing Preferences (Tue/Thu schedule)
   preferredPublishTime  String    @default("09:00")
   timezone              String    @default("America/Los_Angeles")
-  postsPerWeek          Int       @default(2)
 
   // Social Media
   socialPlatforms       String[]  // facebook, instagram, linkedin, twitter, tiktok, gbp
-  getlateAccountId      String?
+  socialAccountIds      Json?     // { facebook: "lateId1", instagram: "lateId2", ... }
+  disconnectedAccounts  Json?     // { facebook: { disconnectedAt: "ISO date", reason: "..." }, ... }
 
   // Client Portal
   portalPassword        String?   // Encrypted
+
+  // Google Places / Maps
+  googlePlaceId         String?   // Google Places API place_id
+  googleMapsUrl         String?   // Direct link to Google Maps
+
+  // WRHQ Directory
+  wrhqDirectoryUrl      String?   // Link to WRHQ directory listing
 
   // GBP Data (for press releases)
   gbpPlaceId            String?
   gbpRating             Float?
   gbpReviewCount        Int?
 
+  // Podbean Podcast Association
+  podbeanPodcastId      String?   // Selected podcast ID from global Podbean account
+  podbeanPodcastTitle   String?   // Cached podcast title for display
+  podbeanPodcastUrl     String?   // Public URL to the podcast page
+
+  // Subscription Management
+  subscriptionStatus    SubscriptionStatus @default(TRIAL)
+  subscriptionPlan      SubscriptionPlan   @default(STARTER)
+  subscriptionStartDate DateTime?
+  subscriptionEndDate   DateTime?
+  billingEmail          String?
+  stripeCustomerId      String?
+  stripeSubscriptionId  String?
+
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+
+  // Calendar Generation
+  calendarGenerated     Boolean   @default(false)
+  calendarGeneratedAt   DateTime?
+  calendarEndDate       DateTime? // How far out the calendar is populated
 
   // Relations
   contentItems          ContentItem[]
   blogPosts             BlogPost[]
+  wrhqBlogPosts         WRHQBlogPost[]
   images                Image[]
   podcasts              Podcast[]
   videos                Video[]
+  shortFormVideos       ShortFormVideo[]
   socialPosts           SocialPost[]
   pressReleases         PressRelease[]
   servicePages          ServicePage[]
   locationPages         LocationPage[]
+  serviceLocations      ServiceLocation[]
+  clientPAAs            ClientPAA[]
   publishingLogs        PublishingLog[]
 }
 
@@ -106,6 +137,20 @@ enum ClientStatus {
   ACTIVE
   PAUSED
   ONBOARDING
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum SubscriptionPlan {
+  STARTER     // Basic plan
+  GROWTH      // Mid-tier
+  ENTERPRISE  // Full service
 }
 
 // ============================================
@@ -117,10 +162,15 @@ model ContentItem {
   clientId          String
   client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
-  // PAA Question
-  paaQuestion       String
-  paaSource         String?   // alsoasked, valueserp, manual, csv
+  // PAA Question (link to client's PAA)
+  clientPAAId       String?
+  clientPAA         ClientPAA? @relation(fields: [clientPAAId], references: [id])
+  paaQuestion       String    // Rendered/final question text (with location substituted)
   topic             String?   // AI-suggested topic category
+
+  // Service Location (link to client location)
+  serviceLocationId String?
+  serviceLocation   ServiceLocation? @relation(fields: [serviceLocationId], references: [id])
 
   // Scheduling
   scheduledDate     DateTime
@@ -140,27 +190,120 @@ model ContentItem {
   updatedAt         DateTime  @updatedAt
   publishedAt       DateTime?
 
+  // ============================================
+  // APPROVAL TRACKING
+  // ============================================
+  blogApproved          ApprovalStatus @default(PENDING)
+  imagesApproved        ApprovalStatus @default(PENDING)
+  socialApproved        ApprovalStatus @default(PENDING)
+  wrhqBlogApproved      ApprovalStatus @default(PENDING)
+  wrhqSocialApproved    ApprovalStatus @default(PENDING)
+  podcastDescApproved   ApprovalStatus @default(PENDING)
+  videoDescApproved     ApprovalStatus @default(PENDING)
+  longformVideoApproved ApprovalStatus @default(PENDING)
+
+  // ============================================
+  // GENERATION STATUS
+  // ============================================
+  blogGenerated         Boolean @default(false)
+  imagesGenerated       Boolean @default(false)
+  socialGenerated       Boolean @default(false)
+  wrhqBlogGenerated     Boolean @default(false)
+  wrhqSocialGenerated   Boolean @default(false)
+
+  // ============================================
+  // APPROVAL COUNTS (for multi-item approvals)
+  // ============================================
+  imagesApprovedCount     Int @default(0)
+  imagesTotalCount        Int @default(0)
+  socialApprovedCount     Int @default(0)
+  socialTotalCount        Int @default(0)
+  wrhqSocialApprovedCount Int @default(0)
+  wrhqSocialTotalCount    Int @default(0)
+
+  // ============================================
+  // PUBLISHING STATUS
+  // ============================================
+  clientBlogPublished     Boolean   @default(false)
+  clientBlogPublishedAt   DateTime?
+  clientBlogUrl           String?
+  wrhqBlogPublished       Boolean   @default(false)
+  wrhqBlogPublishedAt     DateTime?
+  wrhqBlogUrl             String?
+  socialPublished         Boolean   @default(false)
+  socialPublishedAt       DateTime?
+
+  // ============================================
+  // MEDIA STATUS
+  // ============================================
+  podcastGenerated        Boolean   @default(false)
+  podcastStatus           String?   // 'generating', 'ready', 'approved', 'failed'
+  podcastDescription      String?
+  podcastUrl              String?   // Direct URL to podcast audio file
+  podcastAddedToPost      Boolean   @default(false)
+  podcastAddedAt          DateTime?
+
+  shortVideoGenerated     Boolean   @default(false)
+  shortVideoStatus        String?   // 'generating', 'ready', 'approved', 'failed'
+  shortVideoDescription   String?
+  shortVideoAddedToPost   Boolean   @default(false)
+  shortVideoAddedAt       DateTime?
+
+  longVideoUploaded       Boolean   @default(false)
+  longformVideoUrl        String?
+  longformVideoDesc       String?
+  longVideoAddedToPost    Boolean   @default(false)
+  longVideoAddedAt        DateTime?
+
+  // ============================================
+  // SCHEMA STATUS
+  // ============================================
+  schemaGenerated         Boolean   @default(false)
+  schemaUpdateCount       Int       @default(0)
+  schemaLastUpdated       DateTime?
+
+  // ============================================
+  // DASHBOARD FLAGS
+  // ============================================
+  needsAttention          Boolean   @default(false)
+  completionPercent       Int       @default(0)
+
   // Relations
   blogPost          BlogPost?
+  wrhqBlogPost      WRHQBlogPost?
   images            Image[]
   podcast           Podcast?
   videos            Video[]
+  shortFormVideos   ShortFormVideo[]
   socialPosts       SocialPost[]
+  wrhqSocialPosts   WRHQSocialPost[]
   publishingLogs    PublishingLog[]
 
   @@index([clientId])
   @@index([status])
   @@index([scheduledDate])
+  @@index([needsAttention])
+  @@index([clientPAAId])
+  @@index([serviceLocationId])
 }
 
 enum ContentStatus {
   DRAFT
   SCHEDULED
   GENERATING
+  REVIEW        // New - waiting for approval
+  APPROVED      // New - all items approved
   PUBLISHING
   PUBLISHED
   FAILED
   PAUSED
+}
+
+// Approval status for individual content pieces
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  NEEDS_REVISION
 }
 
 // ============================================
@@ -208,6 +351,42 @@ model BlogPost {
 }
 
 // ============================================
+// WRHQ BLOG POSTS (for WindshieldRepairHQ.com directory)
+// ============================================
+
+model WRHQBlogPost {
+  id                String    @id @default(cuid())
+  contentItemId     String    @unique
+  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  clientId          String
+  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Content
+  title             String
+  slug              String
+  content           String    @db.Text  // HTML content
+  excerpt           String?
+
+  // SEO
+  metaTitle         String?
+  metaDescription   String?
+  focusKeyword      String?
+
+  // WordPress (WRHQ site)
+  wordpressPostId   Int?
+  wordpressUrl      String?
+  featuredImageUrl  String?   // URL to the image used in the post
+
+  // Stats
+  wordCount         Int?
+
+  // Dates
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  publishedAt       DateTime?
+}
+
+// ============================================
 // IMAGES
 // ============================================
 
@@ -230,6 +409,10 @@ model Image {
 
   // Alt Text
   altText           String?
+
+  // Approval
+  approved          Boolean   @default(false)
+  approvedAt        DateTime?
 
   createdAt         DateTime  @default(now())
 }
@@ -262,8 +445,16 @@ model Podcast {
   // Script
   script            String?
 
+  // Description (HTML for podcast platforms)
+  description       String?   @db.Text
+
   // API Reference
   autocontentJobId  String?
+
+  // Podbean Publishing
+  podbeanEpisodeId  String?
+  podbeanUrl        String?
+  podbeanPlayerUrl  String?
 
   // Status
   status            MediaStatus @default(PENDING)
@@ -276,6 +467,7 @@ enum MediaStatus {
   PENDING
   PROCESSING
   READY
+  PUBLISHED
   FAILED
 }
 
@@ -318,6 +510,57 @@ enum VideoType {
 enum VideoProvider {
   CREATIFY
   PICTORY
+  MANUAL      // For uploaded videos
+}
+
+// ============================================
+// SHORT FORM VIDEOS (Multiple per content item)
+// ============================================
+
+model ShortFormVideo {
+  id                String    @id @default(cuid())
+  contentItemId     String
+  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  clientId          String
+  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Video Info
+  title             String?
+  description       String?
+  videoUrl          String
+  thumbnailUrl      String?
+  duration          Int?      // seconds
+  aspectRatio       String    @default("9:16")
+
+  // Platform Assignment
+  platforms         SocialPlatform[]  // Can target multiple platforms
+
+  // Scheduling
+  scheduledDate     DateTime?
+  scheduledTime     String?   // "09:00", "13:00", "17:00"
+  dayNumber         Int?      // Which day in the schedule (1, 2, 3, etc.)
+  slotNumber        Int?      // Which slot in the day (1, 2, 3)
+
+  // Late.dev References
+  getlatePostIds    Json?     // { platform: postId } mapping
+
+  // Approval
+  approved          Boolean   @default(false)
+  approvedAt        DateTime?
+
+  // Status
+  status            SocialPostStatus @default(DRAFT)
+  publishedUrls     Json?     // { platform: url } mapping
+
+  // Order
+  sortOrder         Int       @default(0)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  publishedAt       DateTime?
+
+  @@index([contentItemId])
+  @@index([scheduledDate])
 }
 
 // ============================================
@@ -349,9 +592,55 @@ model SocialPost {
   // getlate.dev Reference
   getlatePostId     String?
 
+  // Approval
+  approved          Boolean   @default(false)
+  approvedAt        DateTime?
+
   // Status
   status            SocialPostStatus @default(SCHEDULED)
   publishedUrl      String?
+  errorMessage      String?   // Error message if post failed
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  publishedAt       DateTime?
+}
+
+// ============================================
+// WRHQ SOCIAL POSTS (separate from client posts)
+// ============================================
+
+model WRHQSocialPost {
+  id                String    @id @default(cuid())
+  contentItemId     String
+  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+
+  // Platform
+  platform          SocialPlatform
+
+  // Content
+  caption           String
+  hashtags          String[]
+  firstComment      String?
+
+  // Media
+  mediaUrls         String[]
+  mediaType         String?   // image, video
+
+  // Scheduling
+  scheduledTime     DateTime
+
+  // getlate.dev Reference
+  getlatePostId     String?
+
+  // Approval
+  approved          Boolean   @default(false)
+  approvedAt        DateTime?
+
+  // Status
+  status            SocialPostStatus @default(SCHEDULED)
+  publishedUrl      String?
+  errorMessage      String?   // Error message if post failed
 
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
@@ -365,11 +654,18 @@ enum SocialPlatform {
   TWITTER
   TIKTOK
   GBP
+  YOUTUBE
+  BLUESKY
+  THREADS
+  REDDIT
+  PINTEREST
+  TELEGRAM
 }
 
 enum SocialPostStatus {
   DRAFT
   SCHEDULED
+  PROCESSING  // Sent to Late API, awaiting platform confirmation
   PUBLISHED
   FAILED
 }
@@ -500,4 +796,66 @@ enum LogStatus {
   SUCCESS
   FAILED
   RETRYING
+}
+
+// ============================================
+// CLIENT PAA QUESTIONS (Client-specific)
+// ============================================
+
+model ClientPAA {
+  id           String        @id @default(cuid())
+  clientId     String
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  question     String        // Template with {location} placeholder
+  priority     Int           // Order pasted (1, 2, 3...)
+  isActive     Boolean       @default(true)
+
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relations
+  contentItems ContentItem[]
+
+  @@index([clientId])
+  @@index([priority])
+  @@index([isActive])
+}
+
+// ============================================
+// SERVICE LOCATIONS (Client-specific)
+// ============================================
+
+model ServiceLocation {
+  id           String   @id @default(cuid())
+  clientId     String
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  city         String
+  state        String
+  neighborhood String?  // Optional: specific neighborhood
+  isHeadquarters Boolean @default(false)
+  isActive     Boolean  @default(true)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  contentItems ContentItem[]
+
+  @@unique([clientId, city, state, neighborhood])
+  @@index([clientId])
+  @@index([isActive])
+}
+
+// ============================================
+// SETTINGS
+// ============================================
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   // Encrypted for sensitive values
+  encrypted Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

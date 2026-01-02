@@ -1,4 +1,6 @@
 // Google Cloud Storage Integration
+import sharp from 'sharp'
+import { getSetting } from '../settings'
 
 interface UploadResult {
   url: string
@@ -10,14 +12,41 @@ export async function uploadToGCS(
   filename: string,
   contentType: string
 ): Promise<UploadResult> {
-  const bucketName = process.env.GCS_BUCKET_NAME
-  const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+  // Check environment variables first, then database settings
+  // Support multiple key names for bucket and credentials
+  const bucketName =
+    process.env.GCS_BUCKET_NAME ||
+    await getSetting('GCS_BUCKET_NAME') ||
+    await getSetting('GCS_BUCKET') ||
+    await getSetting('GOOGLE_CLOUD_BUCKET') ||
+    await getSetting('GOOGLE_CLOUD_STORAGE_BUCKET')
 
-  if (!bucketName || !credentialsJson) {
-    throw new Error('GCS credentials not configured')
+  const credentialsJson =
+    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+    await getSetting('GCS_CREDENTIALS_JSON') ||
+    await getSetting('GOOGLE_APPLICATION_CREDENTIALS_JSON') ||
+    await getSetting('GCS_CREDENTIALS') ||
+    await getSetting('GCS_SERVICE_ACCOUNT_KEY') ||
+    await getSetting('GOOGLE_CLOUD_CREDENTIALS')
+
+  if (!bucketName) {
+    throw new Error('GCS bucket name not configured. Add GCS_BUCKET_NAME to Settings > API Keys.')
   }
 
-  const credentials = JSON.parse(credentialsJson)
+  if (!credentialsJson) {
+    throw new Error('GCS credentials not configured. Add GCS_CREDENTIALS_JSON to Settings > API Keys with your service account JSON.')
+  }
+
+  let credentials
+  try {
+    credentials = JSON.parse(credentialsJson)
+  } catch (e) {
+    throw new Error('GCS credentials JSON is invalid. Make sure you pasted the complete service account JSON.')
+  }
+
+  if (!credentials.client_email || !credentials.private_key) {
+    throw new Error('GCS credentials JSON is missing required fields (client_email or private_key).')
+  }
 
   // Get access token
   const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -29,11 +58,25 @@ export async function uploadToGCS(
     }),
   })
 
+  if (!tokenResponse.ok) {
+    const error = await tokenResponse.text()
+    throw new Error(`GCS OAuth token error (${tokenResponse.status}): ${error}`)
+  }
+
   const tokenData = await tokenResponse.json()
   const accessToken = tokenData.access_token
 
+  if (!accessToken) {
+    throw new Error('GCS OAuth response missing access_token')
+  }
+
   // Upload to GCS
   const uploadUrl = `https://storage.googleapis.com/upload/storage/v1/b/${bucketName}/o?uploadType=media&name=${encodeURIComponent(filename)}`
+
+  // Convert Buffer to Uint8Array for fetch compatibility
+  const uint8Array = buffer instanceof ArrayBuffer
+    ? new Uint8Array(buffer)
+    : new Uint8Array(buffer)
 
   const uploadResponse = await fetch(uploadUrl, {
     method: 'POST',
@@ -41,7 +84,7 @@ export async function uploadToGCS(
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': contentType,
     },
-    body: buffer as BodyInit,
+    body: uint8Array,
   })
 
   if (!uploadResponse.ok) {
@@ -61,9 +104,61 @@ export async function uploadFromUrl(
   sourceUrl: string,
   filename: string
 ): Promise<UploadResult> {
+  // Handle base64 data URLs (from Imagen API)
+  if (sourceUrl.startsWith('data:')) {
+    const matches = sourceUrl.match(/^data:([^;]+);base64,(.+)$/)
+    if (matches) {
+      const base64Data = matches[2]
+      // Always convert to JPG
+      return uploadFromBase64(base64Data, filename, 'image/jpeg')
+    }
+  }
+
+
   const response = await fetch(sourceUrl)
   const buffer = await response.arrayBuffer()
+
+  // Always convert images to JPG format for consistency
+  const isImage = (response.headers.get('content-type') || '').startsWith('image/')
+  if (isImage) {
+    const jpgBuffer = await sharp(Buffer.from(buffer))
+      .jpeg({
+        quality: 85,
+        progressive: true,
+      })
+      .toBuffer()
+
+    // Ensure filename has .jpg extension
+    const jpgFilename = filename.replace(/\.(png|jpeg|webp|gif)$/i, '.jpg')
+
+    return uploadToGCS(jpgBuffer, jpgFilename, 'image/jpeg')
+  }
+
   const contentType = response.headers.get('content-type') || 'application/octet-stream'
+  return uploadToGCS(buffer, filename, contentType)
+}
+
+export async function uploadFromBase64(
+  base64Data: string,
+  filename: string,
+  contentType: string = 'image/jpeg'
+): Promise<UploadResult> {
+  const buffer = Buffer.from(base64Data, 'base64')
+
+  // Always convert images to JPG format
+  if (contentType.startsWith('image/')) {
+    const jpgBuffer = await sharp(buffer)
+      .jpeg({
+        quality: 85,
+        progressive: true,
+      })
+      .toBuffer()
+
+    // Ensure filename has .jpg extension
+    const jpgFilename = filename.replace(/\.(png|jpeg|webp|gif)$/i, '.jpg')
+
+    return uploadToGCS(jpgBuffer, jpgFilename, 'image/jpeg')
+  }
 
   return uploadToGCS(buffer, filename, contentType)
 }

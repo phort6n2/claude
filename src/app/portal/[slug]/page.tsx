@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { notFound } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/db'
@@ -31,6 +33,10 @@ async function getClient(slug: string) {
     },
   })
 }
+
+type Client = NonNullable<Awaited<ReturnType<typeof getClient>>>
+type ContentItem = Client['contentItems'][number]
+type Video = ContentItem['videos'][number]
 
 export default async function ClientPortalPage({ params, searchParams }: PageProps) {
   const { slug } = await params
@@ -114,7 +120,7 @@ export default async function ClientPortalPage({ params, searchParams }: PagePro
             <p className="text-sm text-gray-500">This Month</p>
             <p className="text-3xl font-bold" style={{ color: client.primaryColor || '#1e40af' }}>
               {client.contentItems.filter(
-                (c) =>
+                (c: ContentItem) =>
                   c.publishedAt &&
                   new Date(c.publishedAt).getMonth() === new Date().getMonth()
               ).length}
@@ -124,7 +130,7 @@ export default async function ClientPortalPage({ params, searchParams }: PagePro
             <p className="text-sm text-gray-500">Total Content Pieces</p>
             <p className="text-3xl font-bold" style={{ color: client.primaryColor || '#1e40af' }}>
               {client.contentItems.reduce(
-                (acc, c) =>
+                (acc: number, c: ContentItem) =>
                   acc +
                   1 +
                   c.images.length +
@@ -145,7 +151,7 @@ export default async function ClientPortalPage({ params, searchParams }: PagePro
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {client.contentItems.map((item) => (
+            {client.contentItems.map((item: ContentItem) => (
               <div key={item.id} className="bg-white rounded-lg shadow overflow-hidden">
                 {/* Featured Image */}
                 {item.images[0] && (
@@ -187,7 +193,7 @@ export default async function ClientPortalPage({ params, searchParams }: PagePro
                         Podcast
                       </a>
                     )}
-                    {item.videos.map((video) => (
+                    {item.videos.map((video: Video) => (
                       <a
                         key={video.id}
                         href={video.videoUrl}
