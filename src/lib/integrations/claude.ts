@@ -770,10 +770,10 @@ Return ONLY the HTML description. No markdown, no code blocks, no explanation. J
 }
 
 /**
- * Generate video social caption for TikTok, YouTube Shorts, Instagram Reels
+ * Generate video social caption for TikTok, YouTube Shorts, Instagram Reels, Facebook Reels
  */
 export async function generateVideoSocialCaption(params: {
-  platform: 'tiktok' | 'youtube' | 'instagram'
+  platform: 'tiktok' | 'youtube' | 'instagram' | 'facebook'
   blogTitle: string
   blogExcerpt: string
   businessName: string
@@ -789,6 +789,7 @@ export async function generateVideoSocialCaption(params: {
     tiktok: { caption: 2200, hashtags: 5 },
     youtube: { caption: 5000, hashtags: 15 },
     instagram: { caption: 2200, hashtags: 30 },
+    facebook: { caption: 63206, hashtags: 10 },
   }
 
   const limits = platformLimits[params.platform]
@@ -796,6 +797,7 @@ export async function generateVideoSocialCaption(params: {
     tiktok: 'TikTok',
     youtube: 'YouTube Shorts',
     instagram: 'Instagram Reels',
+    facebook: 'Facebook Reels',
   }[params.platform]
 
   const prompt = `Write a ${platformName} caption for this auto glass video.

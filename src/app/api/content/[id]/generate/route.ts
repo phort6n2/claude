@@ -965,7 +965,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         const { generateVideoSocialCaption } = await import('@/lib/integrations/claude')
 
         // Video platforms that support short-form video
-        const VIDEO_PLATFORMS = ['TIKTOK', 'YOUTUBE', 'INSTAGRAM']
+        const VIDEO_PLATFORMS = ['TIKTOK', 'YOUTUBE', 'INSTAGRAM', 'FACEBOOK']
 
         // Get active video platforms for client
         const activePlatforms = (contentItem.client.socialPlatforms || []) as string[]
@@ -1002,7 +1002,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
           const videoSocialPostsData = await Promise.all(
             videoPlatforms.map(async (platform) => {
-              const platformLower = platform.toLowerCase() as 'tiktok' | 'youtube' | 'instagram'
+              const platformLower = platform.toLowerCase() as 'tiktok' | 'youtube' | 'instagram' | 'facebook'
               try {
                 const result = await generateVideoSocialCaption({
                   platform: platformLower,
@@ -1015,7 +1015,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 })
 
                 return {
-                  platform: platform as 'TIKTOK' | 'YOUTUBE' | 'INSTAGRAM',
+                  platform: platform as 'TIKTOK' | 'YOUTUBE' | 'INSTAGRAM' | 'FACEBOOK',
                   caption: result.caption,
                   hashtags: result.hashtags,
                   firstComment: result.firstComment,
@@ -1025,7 +1025,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
               } catch (error) {
                 console.error(`Failed to generate ${platform} video post:`, error)
                 return {
-                  platform: platform as 'TIKTOK' | 'YOUTUBE' | 'INSTAGRAM',
+                  platform: platform as 'TIKTOK' | 'YOUTUBE' | 'INSTAGRAM' | 'FACEBOOK',
                   caption: `${contentItem.blogPost!.title}\n\nLearn more from ${contentItem.client.businessName}!`,
                   hashtags: ['AutoGlass', 'WindshieldRepair', 'Shorts'],
                   firstComment: `Read more: ${blogUrl}`,
