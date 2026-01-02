@@ -907,6 +907,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 }
 </style>
 <div class="yt-shorts-embed">
+  <h3 style="margin: 0 0 10px 0; font-size: 16px;">🎬 Watch the Video</h3>
   <div class="video-wrapper">
     <iframe
       src="https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1"
@@ -928,14 +929,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             contentItem.blogPost.wordpressPostId
           )
 
-          // Insert video embed at the beginning of the content (after first paragraph)
+          // Insert video embed before the last paragraph
           let updatedContent = currentPost.content
-          const firstParagraphEnd = updatedContent.indexOf('</p>')
-          if (firstParagraphEnd !== -1) {
-            updatedContent = updatedContent.slice(0, firstParagraphEnd + 4) + '\n\n' + videoEmbed + '\n\n' + updatedContent.slice(firstParagraphEnd + 4)
+          const lastParagraphStart = updatedContent.lastIndexOf('<p>')
+          if (lastParagraphStart !== -1) {
+            updatedContent = updatedContent.slice(0, lastParagraphStart) + '\n\n' + videoEmbed + '\n\n' + updatedContent.slice(lastParagraphStart)
           } else {
-            // No paragraph found, prepend the video
-            updatedContent = videoEmbed + '\n\n' + updatedContent
+            // No paragraph found, append the video
+            updatedContent = updatedContent + '\n\n' + videoEmbed
           }
 
           await updatePost(
@@ -1023,6 +1024,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 }
 </style>
 <div class="yt-shorts-embed">
+  <h3 style="margin: 0 0 10px 0; font-size: 16px;">🎬 Watch the Video</h3>
   <div class="video-wrapper">
     <iframe
       src="https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1"
@@ -1053,13 +1055,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
               contentItem.wrhqBlogPost.wordpressPostId
             )
 
-            // Insert video embed at the beginning of the content (after first paragraph)
+            // Insert video embed before the last paragraph
             let updatedWrhqContent = currentWrhqPost.content
-            const firstParagraphEnd = updatedWrhqContent.indexOf('</p>')
-            if (firstParagraphEnd !== -1) {
-              updatedWrhqContent = updatedWrhqContent.slice(0, firstParagraphEnd + 4) + '\n\n' + videoEmbed + '\n\n' + updatedWrhqContent.slice(firstParagraphEnd + 4)
+            const lastParagraphStart = updatedWrhqContent.lastIndexOf('<p>')
+            if (lastParagraphStart !== -1) {
+              updatedWrhqContent = updatedWrhqContent.slice(0, lastParagraphStart) + '\n\n' + videoEmbed + '\n\n' + updatedWrhqContent.slice(lastParagraphStart)
             } else {
-              updatedWrhqContent = videoEmbed + '\n\n' + updatedWrhqContent
+              updatedWrhqContent = updatedWrhqContent + '\n\n' + videoEmbed
             }
 
             await updatePost(
