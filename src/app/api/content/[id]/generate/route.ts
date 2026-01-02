@@ -448,7 +448,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 blogTitle: blogPost?.title || contentItem.paaQuestion,
                 blogExcerpt: blogPost?.excerpt || contentItem.paaQuestion,
                 businessName: contentItem.client.businessName,
-                blogUrl: contentItem.client.wordpressUrl || '',
+                blogUrl: blogPost?.wordpressUrl || contentItem.client.wordpressUrl || '',
                 location: `${contentCity}, ${contentState}`,
                 googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
               })
@@ -673,11 +673,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 } catch (error) {
                   console.error(`Failed to generate WRHQ ${platform} post:`, error)
                   // Fallback to simple template
+                  const fallbackFirstComment = clientBlogPost?.wordpressUrl
+                    ? `Read the full article: ${clientBlogPost.wordpressUrl}`
+                    : 'Read the full article on WindshieldRepairHQ.com'
                   return {
                     platform: platform as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
                     caption: `WRHQ Partner Spotlight: ${contentItem.client.businessName} in ${contentCity}, ${contentState} shares their expertise on ${contentItem.paaQuestion}. Looking for trusted auto glass advice? Read more on WindshieldRepairHQ.com.`,
                     hashtags: ['WRHQ', 'AutoGlass', 'WindshieldRepair'],
-                    firstComment: 'Read the full article on WindshieldRepairHQ.com',
+                    firstComment: fallbackFirstComment,
                   }
                 }
               })

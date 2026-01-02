@@ -571,7 +571,9 @@ OUTPUT ONLY THE POST TEXT. NO QUOTES. NO LABELS. NO EXPLANATION.`
   return {
     caption,
     hashtags,
-    firstComment: `Read the full article on WindshieldRepairHQ.com`,
+    firstComment: params.clientBlogUrl
+      ? `Read the full article: ${params.clientBlogUrl}`
+      : `Read the full article on WindshieldRepairHQ.com`,
   }
 }
 
