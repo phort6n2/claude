@@ -172,18 +172,29 @@ export async function getSignedUploadUrl(
   contentType: string,
   expiresInMinutes: number = 15
 ): Promise<{ uploadUrl: string; publicUrl: string }> {
+  // Check all possible bucket name settings (same as uploadToGCS)
   const bucketName =
     process.env.GCS_BUCKET_NAME ||
     await getSetting('GCS_BUCKET_NAME') ||
-    await getSetting('GCS_BUCKET')
+    await getSetting('GCS_BUCKET') ||
+    await getSetting('GOOGLE_CLOUD_BUCKET') ||
+    await getSetting('GOOGLE_CLOUD_STORAGE_BUCKET')
 
+  // Check all possible credential settings (same as uploadToGCS)
   const credentialsJson =
     process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
     await getSetting('GCS_CREDENTIALS_JSON') ||
-    await getSetting('GOOGLE_APPLICATION_CREDENTIALS_JSON')
+    await getSetting('GOOGLE_APPLICATION_CREDENTIALS_JSON') ||
+    await getSetting('GCS_CREDENTIALS') ||
+    await getSetting('GCS_SERVICE_ACCOUNT_KEY') ||
+    await getSetting('GOOGLE_CLOUD_CREDENTIALS')
 
-  if (!bucketName || !credentialsJson) {
-    throw new Error('GCS not configured')
+  if (!bucketName) {
+    throw new Error('GCS bucket name not configured. Add GCS_BUCKET_NAME to Settings > API Keys.')
+  }
+
+  if (!credentialsJson) {
+    throw new Error('GCS credentials not configured. Add GCS_CREDENTIALS_JSON to Settings > API Keys.')
   }
 
   const credentials = JSON.parse(credentialsJson)
