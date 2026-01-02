@@ -868,9 +868,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           script: contentItem.blogPost.content.replace(/<[^>]*>/g, '').substring(0, 3000), // Fallback script
           title: contentItem.blogPost.title,
           imageUrls,
+          logoUrl: contentItem.client.logoUrl || undefined, // Client logo for video CTA
           aspectRatio: '9:16',
           duration: 30, // 30 second video
           targetPlatform: 'tiktok',
+          targetAudience: `car owners in ${contentCity}, ${contentState} looking for auto glass services`,
         })
 
         // Generate video description

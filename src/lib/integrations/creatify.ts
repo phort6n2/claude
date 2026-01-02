@@ -55,9 +55,11 @@ interface VideoGenerationParams {
   templateId?: string // Custom template UUID (takes priority if provided)
   templateVariables?: Record<string, TemplateVariable> // Variables for custom template
   imageUrls?: string[]
+  logoUrl?: string // Logo URL for branding in video CTA
   aspectRatio?: '16:9' | '9:16' | '1:1'
   duration?: number // seconds (15, 30, 45, or 60)
   targetPlatform?: 'tiktok' | 'youtube' | 'instagram' | 'facebook'
+  targetAudience?: string // Description of target audience
   scriptStyle?: ScriptStyle
   visualStyle?: VisualStyle
   webhookUrl?: string
@@ -76,6 +78,21 @@ interface VideoResult {
 interface LinkResult {
   linkId: string
   url: string
+  title?: string
+  description?: string
+  imageUrls?: string[]
+  videoUrls?: string[]
+  logoUrl?: string | null
+  aiSummary?: string
+}
+
+interface UpdateLinkParams {
+  linkId: string
+  title?: string
+  description?: string
+  imageUrls?: string[]
+  videoUrls?: string[]
+  logoUrl?: string
 }
 
 function getCredentials(): { apiId: string; apiKey: string } {
@@ -97,6 +114,7 @@ function getCredentials(): { apiId: string; apiKey: string } {
 /**
  * Create a link object in Creatify from a URL
  * This is required before creating a video from a URL
+ * The API automatically scrapes content (images, descriptions, etc.)
  */
 export async function createLink(url: string): Promise<LinkResult> {
   const { apiId, apiKey } = getCredentials()
@@ -117,10 +135,65 @@ export async function createLink(url: string): Promise<LinkResult> {
   }
 
   const data = await response.json()
+  const link = data.link || {}
 
   return {
     linkId: data.id,
     url: data.url,
+    title: link.title,
+    description: link.description,
+    imageUrls: link.image_urls,
+    videoUrls: link.video_urls,
+    logoUrl: link.logo_url,
+    aiSummary: link.ai_summary,
+  }
+}
+
+/**
+ * Update a link's metadata before video generation
+ * Useful for:
+ * - Adding a logo for better branding and CTA
+ * - Removing low-quality images/videos
+ * - Enhancing or rewriting the description
+ * - Highlighting specific features or offers
+ */
+export async function updateLink(params: UpdateLinkParams): Promise<LinkResult> {
+  const { apiId, apiKey } = getCredentials()
+
+  const requestBody: Record<string, unknown> = {}
+
+  if (params.title) requestBody.title = params.title
+  if (params.description) requestBody.description = params.description
+  if (params.imageUrls) requestBody.image_urls = params.imageUrls
+  if (params.videoUrls) requestBody.video_urls = params.videoUrls
+  if (params.logoUrl) requestBody.logo_url = params.logoUrl
+
+  const response = await fetch(`https://api.creatify.ai/api/links/${params.linkId}/`, {
+    method: 'PUT',
+    headers: {
+      'X-API-ID': apiId,
+      'X-API-KEY': apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requestBody),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Creatify API error updating link: ${error}`)
+  }
+
+  const data = await response.json()
+
+  return {
+    linkId: data.id,
+    url: data.url,
+    title: data.title,
+    description: data.description,
+    imageUrls: data.image_urls,
+    videoUrls: data.video_urls,
+    logoUrl: data.logo_url,
+    aiSummary: data.ai_summary,
   }
 }
 
@@ -248,8 +321,17 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
   // Priority 2: If we have a blog URL, use the Link to Videos API
   if (params.blogUrl) {
     try {
-      // First create a link from the URL
+      // First create a link from the URL (auto-scrapes content)
       const link = await createLink(params.blogUrl)
+
+      // If we have a logo or custom images, update the link metadata
+      if (params.logoUrl || (params.imageUrls && params.imageUrls.length > 0)) {
+        await updateLink({
+          linkId: link.linkId,
+          logoUrl: params.logoUrl,
+          imageUrls: params.imageUrls,
+        })
+      }
 
       // Map aspect ratio format
       const aspectRatio = params.aspectRatio === '9:16' ? '9x16' :
@@ -267,6 +349,7 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
         aspectRatio,
         videoLength,
         targetPlatform: params.targetPlatform || 'tiktok',
+        targetAudience: params.targetAudience || 'adults interested in auto services',
         scriptStyle: params.scriptStyle || 'HowToV2',
         visualStyle: params.visualStyle || 'AvatarBubbleTemplate',
         webhookUrl: params.webhookUrl,
