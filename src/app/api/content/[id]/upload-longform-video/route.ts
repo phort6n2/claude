@@ -11,6 +11,10 @@ import {
 import { getPost, updatePost } from '@/lib/integrations/wordpress'
 import { decrypt } from '@/lib/encryption'
 
+// Route segment config for App Router
+export const maxDuration = 300 // 5 minutes for long uploads
+export const dynamic = 'force-dynamic'
+
 /**
  * Convert string to title case (capitalize first letter of each word)
  */
