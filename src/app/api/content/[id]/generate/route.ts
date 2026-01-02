@@ -861,11 +861,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         const imageUrls = landscapeImage ? [landscapeImage.gcsUrl] : []
 
         // Create short video job (returns immediately with job ID)
+        // Uses Link to Videos API if blog URL is available (preferred)
+        // Falls back to lipsync with script if no URL
         const videoJob = await createShortVideo({
-          script: contentItem.blogPost.content.replace(/<[^>]*>/g, '').substring(0, 3000), // Strip HTML, limit length
+          blogUrl: blogUrl || undefined, // Use blog URL for Link to Videos API
+          script: contentItem.blogPost.content.replace(/<[^>]*>/g, '').substring(0, 3000), // Fallback script
           title: contentItem.blogPost.title,
           imageUrls,
           aspectRatio: '9:16',
+          duration: 30, // 30 second video
+          targetPlatform: 'tiktok',
         })
 
         // Generate video description

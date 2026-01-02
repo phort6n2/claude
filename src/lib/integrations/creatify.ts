@@ -2,12 +2,36 @@
 // Docs: https://docs.creatify.ai/api-reference/introduction
 // API uses X-API-ID and X-API-KEY headers
 
+// Types for Link to Videos API
+type AspectRatio = '16x9' | '9x16' | '1x1'
+type VideoLength = 15 | 30 | 45 | 60
+type ScriptStyle = 'DiscoveryWriter' | 'HowToV2' | 'ProblemSolutionV2' | 'BenefitsV2' | 'CallToActionV2' | 'ThreeReasonsWriter'
+type VisualStyle = 'AvatarBubbleTemplate' | 'DynamicProductTemplate' | 'FullScreenTemplate' | 'VanillaTemplate' | 'EnhancedVanillaTemplate'
+
+interface LinkToVideoParams {
+  linkId: string // UUID of the link object
+  targetPlatform?: string
+  targetAudience?: string
+  language?: string
+  videoLength?: VideoLength
+  aspectRatio?: AspectRatio
+  scriptStyle?: ScriptStyle
+  visualStyle?: VisualStyle
+  webhookUrl?: string
+  overrideScript?: string
+}
+
 interface VideoGenerationParams {
-  script: string
+  script?: string
   title: string
-  imageUrls: string[]
+  blogUrl?: string // URL to create video from
+  imageUrls?: string[]
   aspectRatio?: '16:9' | '9:16' | '1:1'
-  duration?: number // seconds
+  duration?: number // seconds (15, 30, 45, or 60)
+  targetPlatform?: 'tiktok' | 'youtube' | 'instagram' | 'facebook'
+  scriptStyle?: ScriptStyle
+  visualStyle?: VisualStyle
+  webhookUrl?: string
 }
 
 interface VideoResult {
@@ -16,6 +40,12 @@ interface VideoResult {
   videoUrl?: string
   thumbnailUrl?: string
   duration?: number
+  failedReason?: string
+}
+
+interface LinkResult {
+  linkId: string
+  url: string
 }
 
 function getCredentials(): { apiId: string; apiKey: string } {
@@ -34,10 +64,130 @@ function getCredentials(): { apiId: string; apiKey: string } {
   return { apiId, apiKey }
 }
 
+/**
+ * Create a link object in Creatify from a URL
+ * This is required before creating a video from a URL
+ */
+export async function createLink(url: string): Promise<LinkResult> {
+  const { apiId, apiKey } = getCredentials()
+
+  const response = await fetch('https://api.creatify.ai/api/links/', {
+    method: 'POST',
+    headers: {
+      'X-API-ID': apiId,
+      'X-API-KEY': apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ url }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Creatify API error creating link: ${error}`)
+  }
+
+  const data = await response.json()
+
+  return {
+    linkId: data.id,
+    url: data.url,
+  }
+}
+
+/**
+ * Create a video from a link using the Link to Videos API
+ */
+export async function createVideoFromLink(params: LinkToVideoParams): Promise<VideoResult> {
+  const { apiId, apiKey } = getCredentials()
+
+  const requestBody: Record<string, unknown> = {
+    link: params.linkId,
+    target_platform: params.targetPlatform || 'tiktok',
+    target_audience: params.targetAudience || 'adults interested in auto services',
+    language: params.language || 'en',
+    video_length: params.videoLength || 30,
+    aspect_ratio: params.aspectRatio || '9x16',
+    script_style: params.scriptStyle || 'HowToV2',
+    visual_style: params.visualStyle || 'AvatarBubbleTemplate',
+  }
+
+  if (params.webhookUrl) {
+    requestBody.webhook_url = params.webhookUrl
+  }
+
+  if (params.overrideScript) {
+    requestBody.override_script = params.overrideScript
+  }
+
+  const response = await fetch('https://api.creatify.ai/api/link_to_videos/', {
+    method: 'POST',
+    headers: {
+      'X-API-ID': apiId,
+      'X-API-KEY': apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requestBody),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Creatify API error: ${error}`)
+  }
+
+  const data = await response.json()
+
+  return {
+    jobId: data.id,
+    status: 'pending',
+  }
+}
+
+/**
+ * Create a short video - main entry point
+ * If blogUrl is provided, uses Link to Videos API
+ * Otherwise falls back to lipsync with script
+ */
 export async function createShortVideo(params: VideoGenerationParams): Promise<VideoResult> {
   const { apiId, apiKey } = getCredentials()
 
-  // Use AI Shorts or Lipsync v2 endpoint for video generation
+  // If we have a blog URL, use the Link to Videos API
+  if (params.blogUrl) {
+    try {
+      // First create a link from the URL
+      const link = await createLink(params.blogUrl)
+
+      // Map aspect ratio format
+      const aspectRatio = params.aspectRatio === '9:16' ? '9x16' :
+                          params.aspectRatio === '16:9' ? '16x9' :
+                          params.aspectRatio === '1:1' ? '1x1' : '9x16'
+
+      // Map duration to valid video length
+      const videoLength = (params.duration && [15, 30, 45, 60].includes(params.duration))
+        ? params.duration as VideoLength
+        : 30
+
+      // Create video from the link
+      return await createVideoFromLink({
+        linkId: link.linkId,
+        aspectRatio,
+        videoLength,
+        targetPlatform: params.targetPlatform || 'tiktok',
+        scriptStyle: params.scriptStyle || 'HowToV2',
+        visualStyle: params.visualStyle || 'AvatarBubbleTemplate',
+        webhookUrl: params.webhookUrl,
+        overrideScript: params.script, // Use provided script as override if any
+      })
+    } catch (error) {
+      console.error('Link to Videos API failed, falling back to lipsync:', error)
+      // Fall through to lipsync method
+    }
+  }
+
+  // Fallback: Use lipsync v2 endpoint with script
+  if (!params.script) {
+    throw new Error('Either blogUrl or script is required for video generation')
+  }
+
   const response = await fetch('https://api.creatify.ai/api/lipsyncs_v2/', {
     method: 'POST',
     headers: {
@@ -48,13 +198,11 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
     body: JSON.stringify({
       script: params.script,
       aspect_ratio: params.aspectRatio || '9:16',
-      // Creatify-specific parameters
-      creator: 'maya', // Default avatar
+      creator: 'maya',
       style: 'video_editing',
       caption: true,
       caption_style: 'default',
-      // Add images as b-roll if provided
-      ...(params.imageUrls.length > 0 && {
+      ...(params.imageUrls && params.imageUrls.length > 0 && {
         b_roll_media: params.imageUrls.map(url => ({ url, type: 'image' })),
       }),
     }),
@@ -73,15 +221,30 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
   }
 }
 
+/**
+ * Check status of a video job
+ * Works for both link_to_videos and lipsyncs endpoints
+ */
 export async function checkVideoStatus(jobId: string): Promise<VideoResult> {
   const { apiId, apiKey } = getCredentials()
 
-  const response = await fetch(`https://api.creatify.ai/api/lipsyncs_v2/${jobId}/`, {
+  // Try link_to_videos endpoint first
+  let response = await fetch(`https://api.creatify.ai/api/link_to_videos/${jobId}/`, {
     headers: {
       'X-API-ID': apiId,
       'X-API-KEY': apiKey,
     },
   })
+
+  // If not found, try lipsyncs endpoint
+  if (response.status === 404) {
+    response = await fetch(`https://api.creatify.ai/api/lipsyncs_v2/${jobId}/`, {
+      headers: {
+        'X-API-ID': apiId,
+        'X-API-KEY': apiKey,
+      },
+    })
+  }
 
   if (!response.ok) {
     const error = await response.text()
@@ -91,18 +254,25 @@ export async function checkVideoStatus(jobId: string): Promise<VideoResult> {
   const data = await response.json()
 
   // Map Creatify status to our status
+  // Creatify statuses: pending, in_queue, running, failed, done
   let status: 'pending' | 'processing' | 'completed' | 'failed' = 'pending'
-  if (data.status === 'pending' || data.status === 'queued') status = 'pending'
-  if (data.status === 'processing' || data.status === 'running') status = 'processing'
-  if (data.status === 'done' || data.status === 'completed') status = 'completed'
-  if (data.status === 'failed' || data.status === 'error') status = 'failed'
+  if (data.status === 'pending' || data.status === 'queued' || data.status === 'in_queue') {
+    status = 'pending'
+  } else if (data.status === 'processing' || data.status === 'running') {
+    status = 'processing'
+  } else if (data.status === 'done' || data.status === 'completed') {
+    status = 'completed'
+  } else if (data.status === 'failed' || data.status === 'error' || data.status === 'rejected') {
+    status = 'failed'
+  }
 
   return {
     jobId: data.id,
     status,
-    videoUrl: data.output || data.video_url,
-    thumbnailUrl: data.thumbnail_url,
+    videoUrl: data.video_output || data.output || data.video_url,
+    thumbnailUrl: data.video_thumbnail || data.thumbnail_url,
     duration: data.duration,
+    failedReason: data.failed_reason,
   }
 }
 
@@ -115,7 +285,7 @@ export async function waitForVideo(jobId: string, maxAttempts = 60): Promise<Vid
     }
 
     if (result.status === 'failed') {
-      throw new Error('Video generation failed')
+      throw new Error(`Video generation failed: ${result.failedReason || 'Unknown error'}`)
     }
 
     // Wait 15 seconds before checking again
