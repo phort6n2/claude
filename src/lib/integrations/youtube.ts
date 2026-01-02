@@ -98,7 +98,7 @@ async function refreshAccessToken(credentials: YouTubeCredentials): Promise<stri
   if (!response.ok) {
     const error = await response.text()
     console.error('Failed to refresh YouTube access token:', error)
-    throw new Error('Failed to refresh YouTube access token')
+    throw new Error(`Failed to refresh token: ${error}`)
   }
 
   const data = await response.json()
@@ -178,10 +178,16 @@ export async function exchangeCodeForTokens(
 export async function getChannelInfo(): Promise<{ id: string; title: string } | null> {
   const credentials = await getYouTubeCredentials()
   if (!credentials) {
-    throw new Error('YouTube API not configured')
+    throw new Error('YouTube API not configured - missing credentials')
   }
 
-  const accessToken = await refreshAccessToken(credentials)
+  let accessToken: string
+  try {
+    accessToken = await refreshAccessToken(credentials)
+  } catch (error) {
+    console.error('Failed to refresh access token:', error)
+    throw new Error(`Failed to refresh access token: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
 
   const response = await fetch(
     `${YOUTUBE_API_BASE}/channels?part=snippet&mine=true`,
@@ -195,7 +201,7 @@ export async function getChannelInfo(): Promise<{ id: string; title: string } | 
   if (!response.ok) {
     const error = await response.text()
     console.error('Failed to get channel info:', error)
-    throw new Error('Failed to get YouTube channel info')
+    throw new Error(`YouTube API error: ${error}`)
   }
 
   const data = await response.json()
