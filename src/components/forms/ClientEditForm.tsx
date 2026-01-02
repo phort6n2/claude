@@ -1,0 +1,835 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/Button'
+import {
+  ChevronDown,
+  ChevronRight,
+  Building2,
+  MapPin,
+  Palette,
+  Globe,
+  Share2,
+  Podcast,
+  Video,
+  FileQuestion,
+  Clock,
+  Save,
+  Loader2,
+  Check,
+  AlertCircle,
+} from 'lucide-react'
+
+interface PodbeanPodcast {
+  id: string
+  title: string
+  logo: string
+  description: string
+  website: string
+}
+
+interface YouTubePlaylist {
+  id: string
+  title: string
+  description: string
+  thumbnailUrl: string
+  itemCount: number
+}
+
+interface ClientData {
+  id: string
+  businessName: string
+  contactPerson: string | null
+  phone: string
+  email: string
+  streetAddress: string
+  city: string
+  state: string
+  postalCode: string
+  googlePlaceId: string | null
+  googleMapsUrl: string | null
+  wrhqDirectoryUrl: string | null
+  hasShopLocation: boolean
+  offersMobileService: boolean
+  hasAdasCalibration: boolean
+  serviceAreas: string[]
+  logoUrl: string | null
+  primaryColor: string | null
+  secondaryColor: string | null
+  accentColor: string | null
+  brandVoice: string | null
+  wordpressUrl: string | null
+  wordpressUsername: string | null
+  wordpressAppPassword: string | null
+  ctaText: string
+  ctaUrl: string | null
+  creatifyTemplateId: string | null
+  preferredPublishTime: string
+  timezone: string
+  socialPlatforms: string[]
+  socialAccountIds: Record<string, string> | null
+  podbeanPodcastId: string | null
+  podbeanPodcastTitle: string | null
+  podbeanPodcastUrl: string | null
+  wrhqYoutubePlaylistId?: string | null
+  wrhqYoutubePlaylistTitle?: string | null
+}
+
+interface ClientEditFormProps {
+  client: ClientData
+}
+
+const TIMEZONES = [
+  'America/Los_Angeles',
+  'America/Denver',
+  'America/Chicago',
+  'America/New_York',
+  'America/Phoenix',
+  'America/Anchorage',
+  'Pacific/Honolulu',
+]
+
+const socialPlatformOptions = [
+  { value: 'facebook', label: 'Facebook' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'linkedin', label: 'LinkedIn' },
+  { value: 'twitter', label: 'Twitter/X' },
+  { value: 'tiktok', label: 'TikTok' },
+  { value: 'gbp', label: 'Google Business' },
+  { value: 'youtube', label: 'YouTube' },
+  { value: 'bluesky', label: 'Bluesky' },
+  { value: 'threads', label: 'Threads' },
+  { value: 'reddit', label: 'Reddit' },
+  { value: 'pinterest', label: 'Pinterest' },
+  { value: 'telegram', label: 'Telegram' },
+]
+
+type SectionKey = 'business' | 'location' | 'branding' | 'wordpress' | 'social' | 'integrations' | 'publishing'
+
+export default function ClientEditForm({ client }: ClientEditFormProps) {
+  const router = useRouter()
+  const [formData, setFormData] = useState<ClientData>(client)
+  const [saving, setSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [expandedSections, setExpandedSections] = useState<Set<SectionKey>>(
+    new Set(['business', 'location', 'branding', 'wordpress', 'social', 'integrations', 'publishing'])
+  )
+
+  // Podbean state
+  const [podbeanPodcasts, setPodbeanPodcasts] = useState<PodbeanPodcast[]>([])
+  const [podbeanConnected, setPodbeanConnected] = useState(false)
+  const [loadingPodcasts, setLoadingPodcasts] = useState(false)
+
+  // YouTube playlist state
+  const [youtubePlaylists, setYoutubePlaylists] = useState<YouTubePlaylist[]>([])
+  const [youtubeConnected, setYoutubeConnected] = useState(false)
+  const [loadingYoutube, setLoadingYoutube] = useState(false)
+
+  // Load Podbean podcasts
+  useEffect(() => {
+    setLoadingPodcasts(true)
+    fetch('/api/integrations/podbean/podcasts')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.connected && data.podcasts) {
+          setPodbeanConnected(true)
+          setPodbeanPodcasts(data.podcasts)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingPodcasts(false))
+  }, [])
+
+  // Load YouTube playlists
+  useEffect(() => {
+    setLoadingYoutube(true)
+    fetch('/api/settings/wrhq/youtube/playlists')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.connected && data.playlists) {
+          setYoutubeConnected(true)
+          setYoutubePlaylists(data.playlists)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingYoutube(false))
+  }, [])
+
+  function toggleSection(section: SectionKey) {
+    setExpandedSections((prev) => {
+      const next = new Set(prev)
+      if (next.has(section)) {
+        next.delete(section)
+      } else {
+        next.add(section)
+      }
+      return next
+    })
+  }
+
+  function updateField<K extends keyof ClientData>(field: K, value: ClientData[K]) {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+    setSaveSuccess(false)
+  }
+
+  function toggleSocialPlatform(platform: string) {
+    const platforms = formData.socialPlatforms || []
+    if (platforms.includes(platform)) {
+      updateField('socialPlatforms', platforms.filter((p) => p !== platform))
+    } else {
+      updateField('socialPlatforms', [...platforms, platform])
+    }
+  }
+
+  function updateSocialAccountId(platform: string, value: string) {
+    const ids = formData.socialAccountIds || {}
+    updateField('socialAccountIds', { ...ids, [platform]: value })
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    setError(null)
+    setSaveSuccess(false)
+
+    try {
+      const response = await fetch(`/api/clients/${client.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          serviceAreas: formData.serviceAreas,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to save')
+      }
+
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function SectionHeader({
+    section,
+    icon: Icon,
+    title,
+    subtitle,
+  }: {
+    section: SectionKey
+    icon: React.ElementType
+    title: string
+    subtitle: string
+  }) {
+    const isExpanded = expandedSections.has(section)
+    return (
+      <button
+        onClick={() => toggleSection(section)}
+        className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded-t-lg border-b"
+      >
+        <div className="flex items-center gap-3">
+          <Icon className="h-5 w-5 text-gray-600" />
+          <div className="text-left">
+            <h3 className="font-semibold text-gray-900">{title}</h3>
+            <p className="text-sm text-gray-500">{subtitle}</p>
+          </div>
+        </div>
+        {isExpanded ? (
+          <ChevronDown className="h-5 w-5 text-gray-400" />
+        ) : (
+          <ChevronRight className="h-5 w-5 text-gray-400" />
+        )}
+      </button>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Sticky Save Bar */}
+      <div className="sticky top-0 z-10 bg-white border-b shadow-sm -mx-6 -mt-6 px-6 py-3 mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg font-semibold">{formData.businessName}</h1>
+          {saveSuccess && (
+            <span className="flex items-center gap-1 text-sm text-green-600">
+              <Check className="h-4 w-4" /> Saved
+            </span>
+          )}
+          {error && (
+            <span className="flex items-center gap-1 text-sm text-red-600">
+              <AlertCircle className="h-4 w-4" /> {error}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={() => router.back()}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Save Changes
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Business Information */}
+      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+        <SectionHeader
+          section="business"
+          icon={Building2}
+          title="Business Information"
+          subtitle="Name, contact, and service details"
+        />
+        {expandedSections.has('business') && (
+          <div className="p-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
+                <input
+                  type="text"
+                  value={formData.businessName}
+                  onChange={(e) => updateField('businessName', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person</label>
+                <input
+                  type="text"
+                  value={formData.contactPerson || ''}
+                  onChange={(e) => updateField('contactPerson', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => updateField('phone', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => updateField('email', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="border-t pt-4 mt-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-3">Services Offered</h4>
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.hasShopLocation}
+                    onChange={(e) => updateField('hasShopLocation', e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm">Shop Location</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersMobileService}
+                    onChange={(e) => updateField('offersMobileService', e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm">Mobile Service</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.hasAdasCalibration}
+                    onChange={(e) => updateField('hasAdasCalibration', e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm">ADAS Calibration</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Location */}
+      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+        <SectionHeader
+          section="location"
+          icon={MapPin}
+          title="Location & Address"
+          subtitle="Address and Google Maps integration"
+        />
+        {expandedSections.has('location') && (
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
+              <input
+                type="text"
+                value={formData.streetAddress}
+                onChange={(e) => updateField('streetAddress', e.target.value)}
+                className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                <input
+                  type="text"
+                  value={formData.city}
+                  onChange={(e) => updateField('city', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                <input
+                  type="text"
+                  value={formData.state}
+                  onChange={(e) => updateField('state', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code</label>
+                <input
+                  type="text"
+                  value={formData.postalCode}
+                  onChange={(e) => updateField('postalCode', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Google Place ID</label>
+                <input
+                  type="text"
+                  value={formData.googlePlaceId || ''}
+                  onChange={(e) => updateField('googlePlaceId', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                  placeholder="ChIJ..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Google Maps URL</label>
+                <input
+                  type="url"
+                  value={formData.googleMapsUrl || ''}
+                  onChange={(e) => updateField('googleMapsUrl', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                  placeholder="https://maps.google.com/..."
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Branding */}
+      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+        <SectionHeader
+          section="branding"
+          icon={Palette}
+          title="Branding"
+          subtitle="Logo, colors, and brand voice"
+        />
+        {expandedSections.has('branding') && (
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Logo URL</label>
+              <input
+                type="url"
+                value={formData.logoUrl || ''}
+                onChange={(e) => updateField('logoUrl', e.target.value)}
+                className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                placeholder="https://..."
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Primary Color</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={formData.primaryColor || '#1e40af'}
+                    onChange={(e) => updateField('primaryColor', e.target.value)}
+                    className="w-12 h-10 rounded border cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={formData.primaryColor || '#1e40af'}
+                    onChange={(e) => updateField('primaryColor', e.target.value)}
+                    className="flex-1 px-3 py-2 border rounded-md text-sm"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Color</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={formData.secondaryColor || '#3b82f6'}
+                    onChange={(e) => updateField('secondaryColor', e.target.value)}
+                    className="w-12 h-10 rounded border cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={formData.secondaryColor || '#3b82f6'}
+                    onChange={(e) => updateField('secondaryColor', e.target.value)}
+                    className="flex-1 px-3 py-2 border rounded-md text-sm"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Accent Color</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={formData.accentColor || '#f59e0b'}
+                    onChange={(e) => updateField('accentColor', e.target.value)}
+                    className="w-12 h-10 rounded border cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={formData.accentColor || '#f59e0b'}
+                    onChange={(e) => updateField('accentColor', e.target.value)}
+                    className="flex-1 px-3 py-2 border rounded-md text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Brand Voice</label>
+              <textarea
+                value={formData.brandVoice || ''}
+                onChange={(e) => updateField('brandVoice', e.target.value)}
+                rows={2}
+                className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                placeholder="Professional, helpful, and knowledgeable"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* WordPress */}
+      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+        <SectionHeader
+          section="wordpress"
+          icon={Globe}
+          title="WordPress Connection"
+          subtitle="Website and CMS integration"
+        />
+        {expandedSections.has('wordpress') && (
+          <div className="p-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">WordPress URL</label>
+                <input
+                  type="url"
+                  value={formData.wordpressUrl || ''}
+                  onChange={(e) => updateField('wordpressUrl', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                  placeholder="https://example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                <input
+                  type="text"
+                  value={formData.wordpressUsername || ''}
+                  onChange={(e) => updateField('wordpressUsername', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Application Password</label>
+              <input
+                type="password"
+                value={formData.wordpressAppPassword || ''}
+                onChange={(e) => updateField('wordpressAppPassword', e.target.value)}
+                className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                placeholder="Leave blank to keep existing"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Only enter if you want to update the password
+              </p>
+            </div>
+            <div className="border-t pt-4 mt-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-3">Call to Action</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">CTA Text</label>
+                  <input
+                    type="text"
+                    value={formData.ctaText}
+                    onChange={(e) => updateField('ctaText', e.target.value)}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">CTA URL</label>
+                  <input
+                    type="url"
+                    value={formData.ctaUrl || ''}
+                    onChange={(e) => updateField('ctaUrl', e.target.value)}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Social Media */}
+      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+        <SectionHeader
+          section="social"
+          icon={Share2}
+          title="Social Media"
+          subtitle="Connected platforms and Late account IDs"
+        />
+        {expandedSections.has('social') && (
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">Enabled Platforms</label>
+              <div className="flex flex-wrap gap-2">
+                {socialPlatformOptions.map((platform) => (
+                  <button
+                    key={platform.value}
+                    type="button"
+                    onClick={() => toggleSocialPlatform(platform.value)}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      formData.socialPlatforms?.includes(platform.value)
+                        ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
+                        : 'bg-gray-100 text-gray-600 border-2 border-transparent'
+                    }`}
+                  >
+                    {platform.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {formData.socialPlatforms && formData.socialPlatforms.length > 0 && (
+              <div className="border-t pt-4 mt-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Late Account IDs</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {formData.socialPlatforms.map((platform) => {
+                    const platformInfo = socialPlatformOptions.find((p) => p.value === platform)
+                    return (
+                      <div key={platform}>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {platformInfo?.label || platform}
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.socialAccountIds?.[platform] || ''}
+                          onChange={(e) => updateSocialAccountId(platform, e.target.value)}
+                          className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                          placeholder={`Late ${platformInfo?.label} ID`}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Integrations */}
+      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+        <SectionHeader
+          section="integrations"
+          icon={Podcast}
+          title="Integrations"
+          subtitle="Podbean, YouTube, WRHQ, and video templates"
+        />
+        {expandedSections.has('integrations') && (
+          <div className="p-6 space-y-6">
+            {/* Podbean */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Podcast className="h-4 w-4 text-orange-600" />
+                <h4 className="text-sm font-medium text-gray-700">Podbean Podcast</h4>
+              </div>
+              {loadingPodcasts ? (
+                <div className="text-sm text-gray-500">Loading podcasts...</div>
+              ) : !podbeanConnected ? (
+                <div className="text-sm text-amber-600">Podbean not connected</div>
+              ) : (
+                <select
+                  value={formData.podbeanPodcastId || ''}
+                  onChange={(e) => {
+                    const podcast = podbeanPodcasts.find((p) => p.id === e.target.value)
+                    updateField('podbeanPodcastId', e.target.value)
+                    updateField('podbeanPodcastTitle', podcast?.title || null)
+                    updateField('podbeanPodcastUrl', podcast?.website || null)
+                  }}
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">-- Select podcast --</option>
+                  {podbeanPodcasts.map((podcast) => (
+                    <option key={podcast.id} value={podcast.id}>
+                      {podcast.title}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* YouTube Playlist */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Video className="h-4 w-4 text-red-600" />
+                <h4 className="text-sm font-medium text-gray-700">WRHQ YouTube Playlist</h4>
+              </div>
+              {loadingYoutube ? (
+                <div className="text-sm text-gray-500">Loading playlists...</div>
+              ) : !youtubeConnected ? (
+                <div className="text-sm text-amber-600">
+                  YouTube not connected.{' '}
+                  <a href="/admin/settings/wrhq" className="underline">
+                    Configure in WRHQ Settings
+                  </a>
+                </div>
+              ) : (
+                <select
+                  value={formData.wrhqYoutubePlaylistId || ''}
+                  onChange={(e) => {
+                    const playlist = youtubePlaylists.find((p) => p.id === e.target.value)
+                    updateField('wrhqYoutubePlaylistId', e.target.value)
+                    updateField('wrhqYoutubePlaylistTitle', playlist?.title || null)
+                  }}
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">-- Select playlist --</option>
+                  {youtubePlaylists.map((playlist) => (
+                    <option key={playlist.id} value={playlist.id}>
+                      {playlist.title} ({playlist.itemCount} videos)
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* WRHQ Directory */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Building2 className="h-4 w-4 text-orange-600" />
+                <h4 className="text-sm font-medium text-gray-700">WRHQ Directory</h4>
+              </div>
+              <input
+                type="url"
+                value={formData.wrhqDirectoryUrl || ''}
+                onChange={(e) => updateField('wrhqDirectoryUrl', e.target.value)}
+                className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                placeholder="https://windshieldreplacementhq.com/directory/..."
+              />
+            </div>
+
+            {/* Creatify Template */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Video className="h-4 w-4 text-purple-600" />
+                <h4 className="text-sm font-medium text-gray-700">Creatify Template ID</h4>
+              </div>
+              <input
+                type="text"
+                value={formData.creatifyTemplateId || ''}
+                onChange={(e) => updateField('creatifyTemplateId', e.target.value)}
+                className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                placeholder="Template UUID for branded short videos"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Publishing Schedule */}
+      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+        <SectionHeader
+          section="publishing"
+          icon={Clock}
+          title="Publishing Schedule"
+          subtitle="Preferred time and timezone"
+        />
+        {expandedSections.has('publishing') && (
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Publish Time</label>
+                <input
+                  type="time"
+                  value={formData.preferredPublishTime}
+                  onChange={(e) => updateField('preferredPublishTime', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
+                <select
+                  value={formData.timezone}
+                  onChange={(e) => updateField('timezone', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  {TIMEZONES.map((tz) => (
+                    <option key={tz} value={tz}>
+                      {tz}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom Save Button */}
+      <div className="flex justify-end gap-3 pt-4">
+        <Button variant="outline" onClick={() => router.back()}>
+          Cancel
+        </Button>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4 mr-2" />
+              Save Changes
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  )
+}
