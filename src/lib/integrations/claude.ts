@@ -620,7 +620,7 @@ export async function generatePodcastDescription(params: {
   state: string
   paaQuestion: string
   blogPostUrl: string
-  servicePageUrl: string
+  servicePageUrl?: string
   googleMapsUrl?: string
 }): Promise<string> {
   const location = `${params.city}, ${params.state}`
@@ -632,13 +632,13 @@ export async function generatePodcastDescription(params: {
 - Location: ${location}
 - PAA Question: ${params.paaQuestion}
 - Blog Post URL: ${params.blogPostUrl}
-- Service Page URL: ${params.servicePageUrl}
+${params.servicePageUrl ? `- Service Page URL: ${params.servicePageUrl}` : ''}
 ${params.googleMapsUrl ? `- Google Maps: ${params.googleMapsUrl}` : ''}
 
 **FORMAT REQUIREMENTS:**
 - Output in HTML with <p> tags
 - 4-5 paragraphs total
-- Include hyperlinks (blog post, service page${params.googleMapsUrl ? ', Google Maps' : ''})
+- Include hyperlinks (blog post${params.servicePageUrl ? ', service page' : ''}${params.googleMapsUrl ? ', Google Maps' : ''})
 - End with call-to-action and hashtags
 - Use <strong> tags for emphasis (sparingly - max 4-5 uses)
 - Professional, engaging tone
@@ -669,8 +669,8 @@ Paragraph 3: Expand on benefits
 - Why this matters to the listener
 - Keep it conversational
 
-Paragraph 4: Business description with service page link
-- Link business name to SERVICE PAGE
+Paragraph 4: Business description${params.servicePageUrl ? ' with service page link' : ''}
+${params.servicePageUrl ? '- Link business name to SERVICE PAGE' : '- Mention the business name'}
 - List main services in bold: windshield replacement, windshield repair, ADAS calibration, mobile service
 - Mention service area
 ${params.googleMapsUrl ? '- Include Google Maps link with text "Find them on Google Maps"' : ''}

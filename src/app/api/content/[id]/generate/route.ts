@@ -287,6 +287,80 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
     }
 
+    // Generate podcast standalone (when blog already exists)
+    if (generatePodcast && !generateBlog && contentItem.blogPost) {
+      try {
+        await prisma.contentItem.update({
+          where: { id },
+          data: { pipelineStep: 'podcast', podcastStatus: 'generating' },
+        })
+
+        // Import the podcast function
+        const { createPodcast } = await import('@/lib/integrations/autocontent')
+
+        // Create podcast job using existing blog content
+        const podcastJob = await createPodcast({
+          title: contentItem.blogPost.title,
+          script: contentItem.blogPost.content,
+          duration: 'default',
+        })
+
+        // Generate podcast description
+        let podcastDescription = ''
+        try {
+          const blogUrl = contentItem.blogPost.wordpressUrl ||
+            (contentItem.client.wordpressUrl
+              ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${contentItem.blogPost.slug}`
+              : '')
+
+          podcastDescription = await generatePodcastDescription({
+            businessName: contentItem.client.businessName,
+            city: contentCity,
+            state: contentState,
+            paaQuestion: contentItem.paaQuestion,
+            blogPostUrl: blogUrl,
+            googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+          })
+        } catch (descError) {
+          console.error('Error generating podcast description:', descError)
+        }
+
+        // Save job ID and description
+        await prisma.podcast.upsert({
+          where: { contentItemId: id },
+          update: {
+            script: contentItem.blogPost.content,
+            description: podcastDescription || null,
+            autocontentJobId: podcastJob.jobId,
+            status: 'PROCESSING',
+          },
+          create: {
+            contentItemId: id,
+            clientId: contentItem.clientId,
+            audioUrl: '',
+            script: contentItem.blogPost.content,
+            description: podcastDescription || null,
+            autocontentJobId: podcastJob.jobId,
+            status: 'PROCESSING',
+          },
+        })
+
+        await prisma.contentItem.update({
+          where: { id },
+          data: {
+            podcastGenerated: false,
+            podcastStatus: 'processing',
+            podcastDescription: podcastDescription || null,
+          },
+        })
+
+        results.podcast = { success: true, status: 'processing', jobId: podcastJob.jobId }
+      } catch (error) {
+        console.error('Podcast generation error:', error)
+        results.podcast = { success: false, error: String(error) }
+      }
+    }
+
     // Generate images using Google AI Studio (Gemini)
     if (genImages) {
       try {
