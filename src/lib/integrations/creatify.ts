@@ -97,19 +97,33 @@ interface UpdateLinkParams {
 }
 
 function getCredentials(): { apiId: string; apiKey: string } {
+  // Support two formats:
+  // 1. Separate env vars: CREATIFY_API_ID and CREATIFY_API_KEY
+  // 2. Combined format: CREATIFY_API_KEY="api_id:api_key"
+
+  const separateApiId = process.env.CREATIFY_API_ID
   const apiKeyRaw = process.env.CREATIFY_API_KEY
+
   if (!apiKeyRaw) {
     throw new Error('CREATIFY_API_KEY is not configured')
   }
 
-  // API key format: "api_id:api_key"
-  const [apiId, apiKey] = apiKeyRaw.includes(':') ? apiKeyRaw.split(':') : [apiKeyRaw, '']
-
-  if (!apiKey) {
-    throw new Error('CREATIFY_API_KEY should be in format "api_id:api_key"')
+  // If we have a separate API ID, use it with the API key
+  if (separateApiId) {
+    return { apiId: separateApiId, apiKey: apiKeyRaw }
   }
 
-  return { apiId, apiKey }
+  // Otherwise, try to parse combined format "api_id:api_key"
+  if (apiKeyRaw.includes(':')) {
+    const [apiId, apiKey] = apiKeyRaw.split(':')
+    return { apiId, apiKey }
+  }
+
+  throw new Error(
+    'Creatify credentials not configured correctly. Either:\n' +
+    '1. Set both CREATIFY_API_ID and CREATIFY_API_KEY separately, or\n' +
+    '2. Set CREATIFY_API_KEY in format "api_id:api_key"'
+  )
 }
 
 /**
