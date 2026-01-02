@@ -63,6 +63,12 @@ export async function PUT(request: Request) {
           twitter: data.twitter,
           tiktok: data.tiktok,
           gbp: data.gbp,
+          youtube: data.youtube,
+          bluesky: data.bluesky,
+          threads: data.threads,
+          reddit: data.reddit,
+          pinterest: data.pinterest,
+          telegram: data.telegram,
           enabledPlatforms: data.enabledPlatforms,
         })
         break
