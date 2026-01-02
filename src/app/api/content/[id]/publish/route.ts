@@ -59,6 +59,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Content item not found' }, { status: 404 })
     }
 
+    // Check if scheduled date is in the past - if so, force immediate posting
+    const scheduledDateIsPast = contentItem.scheduledDate < new Date()
+    const shouldPostImmediately = postImmediate || scheduledDateIsPast
+
+    if (scheduledDateIsPast && !postImmediate) {
+      console.log(`Scheduled date ${contentItem.scheduledDate.toISOString()} is in the past, forcing immediate post`)
+    }
+
     // Validate scheduled date
     const validationError = await validateScheduledDate(
       contentItem.scheduledDate,
@@ -322,7 +330,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             : undefined
 
           // Use postNowAndCheckStatus for immediate posting (polls for result), schedulePost for scheduling
-          const lateResult = postImmediate
+          const lateResult = shouldPostImmediately
             ? await postNowAndCheckStatus({
                 accountId,
                 platform: socialPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
@@ -352,7 +360,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             console.error(`${socialPost.platform} post failed:`, lateResult.error)
           } else if (lateResult.status === 'published' && lateResult.platformPostUrl) {
             dbStatus = 'PUBLISHED'
-          } else if (!postImmediate) {
+          } else if (!shouldPostImmediately) {
             dbStatus = 'SCHEDULED'
           }
 
@@ -442,7 +450,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           }
 
           // Use postNowAndCheckStatus for immediate posting (polls for result), schedulePost for scheduling
-          const lateResult = postImmediate
+          const lateResult = shouldPostImmediately
             ? await postNowAndCheckStatus({
                 accountId,
                 platform: wrhqPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
