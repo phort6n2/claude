@@ -11,6 +11,17 @@ import {
 import { getPost, updatePost } from '@/lib/integrations/wordpress'
 import { decrypt } from '@/lib/encryption'
 
+/**
+ * Convert string to title case (capitalize first letter of each word)
+ */
+function toTitleCase(str: string): string {
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
 interface RouteContext {
   params: Promise<{ id: string }>
 }
@@ -79,7 +90,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       : `${client.city}, ${client.state}`
 
     // Generate video metadata
-    const title = contentItem.paaQuestion
+    const title = toTitleCase(contentItem.paaQuestion)
     const description = generateVideoDescription({
       paaQuestion: contentItem.paaQuestion,
       clientBlogUrl: blogPost?.wordpressUrl || '',
