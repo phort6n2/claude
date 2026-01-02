@@ -61,6 +61,11 @@ interface ContentItem {
     city: string
     state: string
   }
+  serviceLocation: {
+    id: string
+    city: string
+    state: string
+  } | null
   blogPost: {
     id: string
     title: string
@@ -601,7 +606,11 @@ function ReviewTab({
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-sm text-blue-600 font-medium">PAA Question</p>
         <p className="text-lg text-blue-900">
-          {content.paaQuestion.replace(/\{location\}/gi, `${content.client.city}, ${content.client.state.toUpperCase()}`)}
+          {(() => {
+            const city = content.serviceLocation?.city || content.client.city
+            const state = (content.serviceLocation?.state || content.client.state).toUpperCase()
+            return content.paaQuestion.replace(/\{location\}/gi, `${city}, ${state}`)
+          })()}
         </p>
       </div>
 

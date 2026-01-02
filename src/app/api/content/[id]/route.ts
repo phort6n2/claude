@@ -14,6 +14,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       where: { id },
       include: {
         client: true,
+        serviceLocation: true,
         blogPost: true,
         wrhqBlogPost: true,
         images: {
