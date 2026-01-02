@@ -92,7 +92,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
     // Use service location if set, otherwise fall back to client's default location
     const contentCity = contentItem.serviceLocation?.city || contentItem.client.city
-    const contentState = contentItem.serviceLocation?.state || contentItem.client.state
+    // Always uppercase state abbreviation for consistency (e.g., "OR" not "Or")
+    const contentState = (contentItem.serviceLocation?.state || contentItem.client.state).toUpperCase()
 
     // Only set GENERATING status for initial blog+images generation
     const isInitialGeneration = generateBlog && genImages
