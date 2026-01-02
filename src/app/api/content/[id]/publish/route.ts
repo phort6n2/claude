@@ -379,7 +379,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             if (lateResult.status === 'failed') {
               dbStatus = 'FAILED'
               console.error(`${socialPost.platform} post failed:`, lateResult.error)
-            } else if (lateResult.status === 'published') {
+            } else if (lateResult.status === 'published' && lateResult.platformPostUrl) {
               dbStatus = 'PUBLISHED'
             } else if (!shouldPostImmediately) {
               dbStatus = 'SCHEDULED'
@@ -509,7 +509,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             if (lateResult.status === 'failed') {
               wrhqDbStatus = 'FAILED'
               console.error(`WRHQ ${wrhqPost.platform} post failed:`, lateResult.error)
-            } else if (lateResult.status === 'published') {
+            } else if (lateResult.status === 'published' && lateResult.platformPostUrl) {
               wrhqDbStatus = 'PUBLISHED'
             } else if (!shouldPostImmediately) {
               wrhqDbStatus = 'SCHEDULED'
@@ -616,7 +616,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             if (lateResult.status === 'failed') {
               dbStatus = 'FAILED'
               console.error(`Video ${socialPost.platform} post failed:`, lateResult.error)
-            } else if (lateResult.status === 'published') {
+            } else if (lateResult.status === 'published' && lateResult.platformPostUrl) {
               dbStatus = 'PUBLISHED'
             } else if (!shouldPostImmediately) {
               dbStatus = 'SCHEDULED'
@@ -709,7 +709,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             if (lateResult.status === 'failed') {
               wrhqDbStatus = 'FAILED'
               console.error(`WRHQ video ${wrhqPost.platform} post failed:`, lateResult.error)
-            } else if (lateResult.status === 'published') {
+            } else if (lateResult.status === 'published' && lateResult.platformPostUrl) {
               wrhqDbStatus = 'PUBLISHED'
             } else if (!shouldPostImmediately) {
               wrhqDbStatus = 'SCHEDULED'
