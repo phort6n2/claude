@@ -67,7 +67,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const {
       generateBlog = true,
       generatePodcast = true, // Phase 1: Generate podcast WITH blog
-      generatePodcastDescription = false, // Regenerate description only
+      regenPodcastDescription = false, // Regenerate description only (renamed to avoid shadowing imported function)
       generateImages: genImages = true,
       generateSocial = true,
       generateWrhqBlog = true,
@@ -369,7 +369,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
 
     // Regenerate podcast description only (when user clicks "Regenerate Description")
-    if (generatePodcastDescription && contentItem.blogPost) {
+    if (regenPodcastDescription && contentItem.blogPost) {
       try {
         // Get blog URL - prefer actual WordPress URL, fall back to constructed URL
         const blogUrl = contentItem.blogPost.wordpressUrl ||

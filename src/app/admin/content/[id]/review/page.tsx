@@ -500,7 +500,7 @@ function ReviewTab({
         generateBlog: type === 'blog',
         generateImages: type === 'blog',
         generatePodcast: type === 'podcast',
-        generatePodcastDescription: type === 'podcastDescription',
+        regenPodcastDescription: type === 'podcastDescription',
         generateSocial: type === 'social',
         generateWrhqBlog: type === 'wrhqBlog',
         generateWrhqSocial: type === 'wrhqSocial',
