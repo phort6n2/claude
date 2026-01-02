@@ -31,6 +31,36 @@ function getLatePlatform(platform: Platform): string {
   return LATE_PLATFORM_MAP[platform] || platform
 }
 
+/**
+ * Map generic media type to platform-specific media type
+ * Late API requires specific types for video content:
+ * - Instagram: 'reels' for vertical video, 'video' for regular
+ * - YouTube: 'shorts' for vertical video
+ * - TikTok: 'video'
+ * - Facebook: 'reels' for vertical video
+ */
+function getPlatformMediaType(platform: Platform, mediaType: 'image' | 'video'): string {
+  if (mediaType === 'image') return 'image'
+
+  // Map video to platform-specific types for vertical video content
+  switch (platform) {
+    case 'instagram':
+      return 'reels'  // Instagram Reels for vertical video
+    case 'youtube':
+      return 'shorts'  // YouTube Shorts for vertical video
+    case 'facebook':
+      return 'reels'  // Facebook Reels for vertical video
+    case 'tiktok':
+    case 'twitter':
+    case 'linkedin':
+    case 'threads':
+    case 'pinterest':
+    case 'telegram':
+    default:
+      return 'video'  // Generic video for other platforms
+  }
+}
+
 interface SchedulePostParams {
   accountId: string
   platform: Platform
@@ -102,8 +132,11 @@ export async function schedulePost(params: SchedulePostParams): Promise<Schedule
 
   // Add media if provided
   if (params.mediaUrls && params.mediaUrls.length > 0) {
+    // Map generic media type to platform-specific type (e.g., 'video' → 'reels' for Instagram)
+    const platformMediaType = getPlatformMediaType(params.platform, params.mediaType || 'image')
+
     requestBody.mediaItems = params.mediaUrls.map(url => ({
-      type: params.mediaType || 'image',
+      type: platformMediaType,
       url,
     }))
   }
