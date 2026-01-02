@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { getSignedUploadUrl } from '@/lib/integrations/gcs'
+import { getSetting } from '@/lib/settings'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -40,8 +41,28 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     })
   } catch (error) {
     console.error('Failed to get signed upload URL:', error)
+
+    // Add debugging info
+    const debugInfo = {
+      hasBucketEnv: !!process.env.GCS_BUCKET_NAME || !!process.env.GOOGLE_CLOUD_STORAGE_BUCKET,
+      hasCredentialsEnv: !!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || !!process.env.GOOGLE_CLOUD_CREDENTIALS,
+    }
+
+    // Check database settings
+    try {
+      const bucketFromDb = await getSetting('GOOGLE_CLOUD_STORAGE_BUCKET')
+      const credsFromDb = await getSetting('GOOGLE_CLOUD_CREDENTIALS')
+      debugInfo.hasBucketDb = !!bucketFromDb
+      debugInfo.hasCredentialsDb = !!credsFromDb
+    } catch (e) {
+      debugInfo.dbError = e instanceof Error ? e.message : 'Unknown error'
+    }
+
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to get upload URL' },
+      {
+        error: error instanceof Error ? error.message : 'Failed to get upload URL',
+        debug: debugInfo
+      },
       { status: 500 }
     )
   }

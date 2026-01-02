@@ -1603,7 +1603,11 @@ function LongformVideoUpload({
 
       if (!urlResponse.ok) {
         const data = await urlResponse.json()
-        throw new Error(data.error || 'Failed to get upload URL')
+        let errorMsg = data.error || 'Failed to get upload URL'
+        if (data.debug) {
+          errorMsg += ` (Debug: bucket_env=${data.debug.hasBucketEnv}, creds_env=${data.debug.hasCredentialsEnv}, bucket_db=${data.debug.hasBucketDb}, creds_db=${data.debug.hasCredentialsDb})`
+        }
+        throw new Error(errorMsg)
       }
 
       const { uploadUrl, publicUrl } = await urlResponse.json()
