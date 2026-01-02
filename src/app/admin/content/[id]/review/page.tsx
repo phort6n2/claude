@@ -1221,7 +1221,7 @@ function ReviewTab({
                 {content.videoSocialPosts.length > 0 && (
                   <button
                     onClick={() => publishContent('videoSocial')}
-                    disabled={publishing === 'videoSocial' || content.videoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED')}
+                    disabled={publishing === 'videoSocial' || content.videoSocialPosts.every(p => p.status === 'PUBLISHED' || p.status === 'PROCESSING')}
                     className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     {publishing === 'videoSocial' ? (
@@ -1240,7 +1240,7 @@ function ReviewTab({
                 {content.wrhqVideoSocialPosts.length > 0 && (
                   <button
                     onClick={() => publishContent('wrhqVideoSocial')}
-                    disabled={publishing === 'wrhqVideoSocial' || content.wrhqVideoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED')}
+                    disabled={publishing === 'wrhqVideoSocial' || content.wrhqVideoSocialPosts.every(p => p.status === 'PUBLISHED' || p.status === 'PROCESSING')}
                     className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     {publishing === 'wrhqVideoSocial' ? (
