@@ -875,6 +875,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           duration: 30,
           targetPlatform: 'tiktok',
           targetAudience: `car owners in ${contentCity}, ${contentState} looking for auto glass services`,
+          modelVersion: 'aurora_v1_fast', // Use fast model to reduce credit usage (4-5 credits vs 20)
         })
 
         // Generate video description

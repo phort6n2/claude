@@ -46,6 +46,7 @@ interface LinkToVideoParams {
   visualStyle?: VisualStyle
   webhookUrl?: string
   overrideScript?: string
+  modelVersion?: ModelVersion // aurora_v1_fast is cheaper
 }
 
 interface VideoGenerationParams {
@@ -341,6 +342,10 @@ export async function createVideoFromLink(params: LinkToVideoParams): Promise<Vi
     requestBody.override_script = params.overrideScript
   }
 
+  if (params.modelVersion) {
+    requestBody.model_version = params.modelVersion
+  }
+
   const response = await fetch('https://api.creatify.ai/api/link_to_videos/', {
     method: 'POST',
     headers: {
@@ -505,6 +510,7 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
         visualStyle: params.visualStyle || 'AvatarBubbleTemplate',
         webhookUrl: params.webhookUrl,
         overrideScript: params.script, // Use provided script as override if any
+        modelVersion: params.modelVersion, // aurora_v1_fast uses fewer credits
       })
     } catch (error) {
       console.error('Link to Videos API failed, falling back to lipsync:', error)
