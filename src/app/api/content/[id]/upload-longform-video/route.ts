@@ -48,15 +48,46 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       )
     }
 
-    // Get the form data with the video file
-    const formData = await request.formData()
-    const videoFile = formData.get('video') as File | null
+    // Get video from either JSON body (GCS URL) or form data (direct upload)
+    let videoBuffer: Buffer
+    const contentType = request.headers.get('content-type') || ''
 
-    if (!videoFile) {
-      return NextResponse.json(
-        { error: 'No video file provided' },
-        { status: 400 }
-      )
+    if (contentType.includes('application/json')) {
+      // GCS URL approach (for Vercel - bypasses body size limits)
+      const body = await request.json()
+      const { videoUrl } = body
+
+      if (!videoUrl) {
+        return NextResponse.json(
+          { error: 'No video URL provided' },
+          { status: 400 }
+        )
+      }
+
+      console.log('Fetching video from GCS:', videoUrl)
+      const videoResponse = await fetch(videoUrl)
+      if (!videoResponse.ok) {
+        return NextResponse.json(
+          { error: 'Failed to fetch video from storage' },
+          { status: 400 }
+        )
+      }
+      const arrayBuffer = await videoResponse.arrayBuffer()
+      videoBuffer = Buffer.from(arrayBuffer)
+    } else {
+      // Direct upload approach (for non-Vercel environments)
+      const formData = await request.formData()
+      const videoFile = formData.get('video') as File | null
+
+      if (!videoFile) {
+        return NextResponse.json(
+          { error: 'No video file provided' },
+          { status: 400 }
+        )
+      }
+
+      const arrayBuffer = await videoFile.arrayBuffer()
+      videoBuffer = Buffer.from(arrayBuffer)
     }
 
     // Get content item with all needed relations
@@ -119,10 +150,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     // Get the playlist ID from the client
     // Using type assertion since the field may not exist in older schema
     const playlistId = (client as { wrhqYoutubePlaylistId?: string | null }).wrhqYoutubePlaylistId || undefined
-
-    // Convert file to buffer
-    const arrayBuffer = await videoFile.arrayBuffer()
-    const videoBuffer = Buffer.from(arrayBuffer)
 
     // Upload to YouTube
     console.log('Uploading video to YouTube...', {

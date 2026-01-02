@@ -1590,37 +1590,63 @@ function LongformVideoUpload({
     setUploadProgress(0)
 
     try {
-      // Create form data for upload
-      const formData = new FormData()
-      formData.append('video', videoFile)
-      formData.append('contentId', contentId)
+      // Step 1: Get signed upload URL from server
+      setUploadProgress(5)
+      const urlResponse = await fetch(`/api/content/${contentId}/upload-url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: videoFile.name,
+          contentType: videoFile.type || 'video/mp4',
+        }),
+      })
 
-      // Track progress using XMLHttpRequest
+      if (!urlResponse.ok) {
+        const data = await urlResponse.json()
+        throw new Error(data.error || 'Failed to get upload URL')
+      }
+
+      const { uploadUrl, publicUrl } = await urlResponse.json()
+
+      // Step 2: Upload directly to GCS (bypasses Vercel body limit)
+      setUploadProgress(10)
       const xhr = new XMLHttpRequest()
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable) {
-          const progress = Math.round((e.loaded / e.total) * 100)
+          // Scale progress from 10-80 for GCS upload
+          const progress = 10 + Math.round((e.loaded / e.total) * 70)
           setUploadProgress(progress)
         }
       })
 
-      const response = await new Promise<Response>((resolve, reject) => {
+      await new Promise<void>((resolve, reject) => {
         xhr.addEventListener('load', () => {
-          resolve(new Response(xhr.responseText, {
-            status: xhr.status,
-            statusText: xhr.statusText,
-          }))
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve()
+          } else {
+            reject(new Error(`GCS upload failed: ${xhr.statusText}`))
+          }
         })
-        xhr.addEventListener('error', () => reject(new Error('Upload failed')))
-        xhr.open('POST', `/api/content/${contentId}/upload-longform-video`)
-        xhr.send(formData)
+        xhr.addEventListener('error', () => reject(new Error('GCS upload failed')))
+        xhr.open('PUT', uploadUrl)
+        xhr.setRequestHeader('Content-Type', videoFile.type || 'video/mp4')
+        xhr.send(videoFile)
       })
 
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Upload failed')
+      // Step 3: Tell server to upload from GCS to YouTube
+      setUploadProgress(85)
+      const youtubeResponse = await fetch(`/api/content/${contentId}/upload-longform-video`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoUrl: publicUrl }),
+      })
+
+      if (!youtubeResponse.ok) {
+        const data = await youtubeResponse.json()
+        throw new Error(data.error || 'YouTube upload failed')
       }
 
+      setUploadProgress(100)
       onSuccess()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed')

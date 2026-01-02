@@ -163,6 +163,77 @@ export async function uploadFromBase64(
   return uploadToGCS(buffer, filename, contentType)
 }
 
+/**
+ * Generate a signed URL for direct browser upload to GCS
+ * This bypasses server-side body limits (like Vercel's 4.5MB limit)
+ */
+export async function getSignedUploadUrl(
+  filename: string,
+  contentType: string,
+  expiresInMinutes: number = 15
+): Promise<{ uploadUrl: string; publicUrl: string }> {
+  const bucketName =
+    process.env.GCS_BUCKET_NAME ||
+    await getSetting('GCS_BUCKET_NAME') ||
+    await getSetting('GCS_BUCKET')
+
+  const credentialsJson =
+    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+    await getSetting('GCS_CREDENTIALS_JSON') ||
+    await getSetting('GOOGLE_APPLICATION_CREDENTIALS_JSON')
+
+  if (!bucketName || !credentialsJson) {
+    throw new Error('GCS not configured')
+  }
+
+  const credentials = JSON.parse(credentialsJson)
+  const expiration = Math.floor(Date.now() / 1000) + (expiresInMinutes * 60)
+
+  // Create signed URL using V4 signing
+  const host = `${bucketName}.storage.googleapis.com`
+  const canonicalUri = `/${encodeURIComponent(filename)}`
+  const signedHeaders = 'content-type;host'
+  const credentialScope = `${new Date().toISOString().slice(0, 10).replace(/-/g, '')}/${credentials.project_id || 'auto'}/storage/goog4_request`
+  const datetime = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+
+  const canonicalQueryString = [
+    `X-Goog-Algorithm=GOOG4-RSA-SHA256`,
+    `X-Goog-Credential=${encodeURIComponent(credentials.client_email + '/' + credentialScope)}`,
+    `X-Goog-Date=${datetime}`,
+    `X-Goog-Expires=${expiresInMinutes * 60}`,
+    `X-Goog-SignedHeaders=${signedHeaders}`,
+  ].sort().join('&')
+
+  const canonicalHeaders = `content-type:${contentType}\nhost:${host}\n`
+  const canonicalRequest = [
+    'PUT',
+    canonicalUri,
+    canonicalQueryString,
+    canonicalHeaders,
+    signedHeaders,
+    'UNSIGNED-PAYLOAD',
+  ].join('\n')
+
+  const crypto = await import('crypto')
+  const hashedRequest = crypto.createHash('sha256').update(canonicalRequest).digest('hex')
+
+  const stringToSign = [
+    'GOOG4-RSA-SHA256',
+    datetime,
+    credentialScope,
+    hashedRequest,
+  ].join('\n')
+
+  const sign = crypto.createSign('RSA-SHA256')
+  sign.update(stringToSign)
+  const signature = sign.sign(credentials.private_key, 'hex')
+
+  const signedUrl = `https://${host}${canonicalUri}?${canonicalQueryString}&X-Goog-Signature=${signature}`
+  const publicUrl = `https://storage.googleapis.com/${bucketName}/${encodeURIComponent(filename)}`
+
+  return { uploadUrl: signedUrl, publicUrl }
+}
+
 async function createJWT(credentials: {
   client_email: string
   private_key: string
