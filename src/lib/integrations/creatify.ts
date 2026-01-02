@@ -96,24 +96,81 @@ interface UpdateLinkParams {
   logoUrl?: string
 }
 
-function getCredentials(): { apiId: string; apiKey: string } {
-  // Support two formats:
-  // 1. Separate env vars: CREATIFY_API_ID and CREATIFY_API_KEY
-  // 2. Combined format: CREATIFY_API_KEY="api_id:api_key"
+// Cache for credentials to avoid repeated DB lookups
+let credentialsCache: { apiId: string; apiKey: string } | null = null
+let credentialsCacheTime = 0
+const CACHE_TTL = 60000 // 1 minute
 
-  const separateApiId = process.env.CREATIFY_API_ID
-  const apiKeyRaw = process.env.CREATIFY_API_KEY
+async function getCredentialsAsync(): Promise<{ apiId: string; apiKey: string }> {
+  // Return cached credentials if still valid
+  if (credentialsCache && Date.now() - credentialsCacheTime < CACHE_TTL) {
+    return credentialsCache
+  }
+
+  // Import getSetting to properly handle encrypted database values
+  const { getSetting } = await import('@/lib/settings')
+
+  // Try to get from database first (handles decryption automatically)
+  let apiKeyRaw = await getSetting('CREATIFY_API_KEY')
+  let separateApiId = await getSetting('CREATIFY_API_ID')
+
+  // Fall back to environment variables if not in database
+  if (!apiKeyRaw) {
+    apiKeyRaw = process.env.CREATIFY_API_KEY || null
+  }
+  if (!separateApiId) {
+    separateApiId = process.env.CREATIFY_API_ID || null
+  }
 
   if (!apiKeyRaw) {
     throw new Error('CREATIFY_API_KEY is not configured')
   }
 
+  let result: { apiId: string; apiKey: string }
+
   // If we have a separate API ID, use it with the API key
+  if (separateApiId) {
+    result = { apiId: separateApiId, apiKey: apiKeyRaw }
+  }
+  // Otherwise, try to parse combined format "api_id:api_key"
+  else if (apiKeyRaw.includes(':')) {
+    const [apiId, apiKey] = apiKeyRaw.split(':')
+    result = { apiId, apiKey }
+  }
+  else {
+    throw new Error(
+      'Creatify credentials not configured correctly. Either:\n' +
+      '1. Set both CREATIFY_API_ID and CREATIFY_API_KEY separately, or\n' +
+      '2. Set CREATIFY_API_KEY in format "api_id:api_key"'
+    )
+  }
+
+  // Cache the result
+  credentialsCache = result
+  credentialsCacheTime = Date.now()
+
+  return result
+}
+
+// Synchronous version for backwards compatibility - uses cached value or env vars
+function getCredentials(): { apiId: string; apiKey: string } {
+  // Return cached credentials if available
+  if (credentialsCache && Date.now() - credentialsCacheTime < CACHE_TTL) {
+    return credentialsCache
+  }
+
+  // Fall back to environment variables for sync calls
+  const separateApiId = process.env.CREATIFY_API_ID
+  const apiKeyRaw = process.env.CREATIFY_API_KEY
+
+  if (!apiKeyRaw) {
+    throw new Error('CREATIFY_API_KEY is not configured. Call getCredentialsAsync() first or set env vars.')
+  }
+
   if (separateApiId) {
     return { apiId: separateApiId, apiKey: apiKeyRaw }
   }
 
-  // Otherwise, try to parse combined format "api_id:api_key"
   if (apiKeyRaw.includes(':')) {
     const [apiId, apiKey] = apiKeyRaw.split(':')
     return { apiId, apiKey }
@@ -132,7 +189,7 @@ function getCredentials(): { apiId: string; apiKey: string } {
  * The API automatically scrapes content (images, descriptions, etc.)
  */
 export async function createLink(url: string): Promise<LinkResult> {
-  const { apiId, apiKey } = getCredentials()
+  const { apiId, apiKey } = await getCredentialsAsync()
 
   const response = await fetch('https://api.creatify.ai/api/links/', {
     method: 'POST',
@@ -173,7 +230,7 @@ export async function createLink(url: string): Promise<LinkResult> {
  * - Highlighting specific features or offers
  */
 export async function updateLink(params: UpdateLinkParams): Promise<LinkResult> {
-  const { apiId, apiKey } = getCredentials()
+  const { apiId, apiKey } = await getCredentialsAsync()
 
   const requestBody: Record<string, unknown> = {}
 
@@ -217,7 +274,7 @@ export async function updateLink(params: UpdateLinkParams): Promise<LinkResult> 
  * Templates are created in the Creatify dashboard and have variable placeholders
  */
 export async function createVideoFromTemplate(params: CustomTemplateParams): Promise<VideoResult> {
-  const { apiId, apiKey } = getCredentials()
+  const { apiId, apiKey } = await getCredentialsAsync()
 
   const requestBody: Record<string, unknown> = {
     template: params.templateId,
@@ -263,7 +320,7 @@ export async function createVideoFromTemplate(params: CustomTemplateParams): Pro
  * Create a video from a link using the Link to Videos API
  */
 export async function createVideoFromLink(params: LinkToVideoParams): Promise<VideoResult> {
-  const { apiId, apiKey } = getCredentials()
+  const { apiId, apiKey } = await getCredentialsAsync()
 
   const requestBody: Record<string, unknown> = {
     link: params.linkId,
@@ -316,7 +373,7 @@ export async function createVideoFromLink(params: LinkToVideoParams): Promise<Vi
  * 4. Lipsync (if script provided) - fallback
  */
 export async function createShortVideo(params: VideoGenerationParams): Promise<VideoResult> {
-  const { apiId, apiKey } = getCredentials()
+  const { apiId, apiKey } = await getCredentialsAsync()
 
   // Priority 1: Hybrid approach - Custom Template with blog content
   // Use this when you want custom CTA (like "Call Now") but content from blog
@@ -498,7 +555,7 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
  * Works for custom_template_jobs, link_to_videos, and lipsyncs endpoints
  */
 export async function checkVideoStatus(jobId: string): Promise<VideoResult> {
-  const { apiId, apiKey } = getCredentials()
+  const { apiId, apiKey } = await getCredentialsAsync()
 
   // Try custom_template_jobs endpoint first
   let response = await fetch(`https://api.creatify.ai/api/custom_template_jobs/${jobId}/`, {
