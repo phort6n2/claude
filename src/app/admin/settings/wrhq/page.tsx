@@ -90,6 +90,7 @@ export default function WRHQSettingsPage() {
   })
   const [showYoutubeSecret, setShowYoutubeSecret] = useState(false)
   const [youtubeConnecting, setYoutubeConnecting] = useState(false)
+  const [youtubeRefreshing, setYoutubeRefreshing] = useState(false)
 
   useEffect(() => {
     loadConfig()
@@ -175,6 +176,27 @@ export default function WRHQSettingsPage() {
       }
     } catch (error) {
       console.error('Failed to disconnect YouTube:', error)
+    }
+  }
+
+  async function refreshYouTubeChannel() {
+    setYoutubeRefreshing(true)
+    try {
+      const response = await fetch('/api/settings/wrhq/youtube/refresh', {
+        method: 'POST',
+      })
+      const data = await response.json()
+      if (response.ok && data.success) {
+        await loadConfig()
+        alert(`Connected to: ${data.channelTitle}`)
+      } else {
+        alert(`Failed to refresh: ${data.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Failed to refresh YouTube channel:', error)
+      alert('Failed to refresh YouTube channel info')
+    } finally {
+      setYoutubeRefreshing(false)
     }
   }
 
@@ -542,12 +564,21 @@ export default function WRHQSettingsPage() {
                 {saving === 'youtubeApi' ? 'Saving...' : 'Save Credentials'}
               </button>
               {config?.youtubeApi?.isConfigured ? (
-                <button
-                  onClick={disconnectYouTube}
-                  className="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200"
-                >
-                  Disconnect YouTube
-                </button>
+                <>
+                  <button
+                    onClick={refreshYouTubeChannel}
+                    disabled={youtubeRefreshing}
+                    className="px-4 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 disabled:opacity-50"
+                  >
+                    {youtubeRefreshing ? 'Refreshing...' : 'Refresh Channel Info'}
+                  </button>
+                  <button
+                    onClick={disconnectYouTube}
+                    className="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200"
+                  >
+                    Disconnect YouTube
+                  </button>
+                </>
               ) : (
                 <button
                   onClick={initiateYouTubeOAuth}
@@ -561,7 +592,7 @@ export default function WRHQSettingsPage() {
 
             {config?.youtubeApi?.isConfigured && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
-                <strong>Connected Channel:</strong> {config.youtubeApi.channelTitle}
+                <strong>Connected Channel:</strong> {config.youtubeApi.channelTitle || '(Unknown - click Refresh Channel Info)'}
                 <p className="text-xs text-green-600 mt-1">
                   Long-form videos will be uploaded to this channel when you upload them in the content review page.
                 </p>
