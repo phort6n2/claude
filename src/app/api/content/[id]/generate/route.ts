@@ -868,9 +868,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           title: contentItem.blogPost.title,
           imageUrls,
           logoUrl: contentItem.client.logoUrl || undefined,
-          // Use custom template if configured (allows custom CTA like "Call Now")
-          templateId: contentItem.client.creatifyTemplateId || undefined,
-          autoPopulateFromBlog: !!contentItem.client.creatifyTemplateId, // Auto-populate template vars from blog
+          // Custom templates don't enforce video_length - the template controls duration
+          // Disabled for now to ensure 30-second videos via Link to Videos API
+          // Re-enable once you have a 30-second template: templateId: contentItem.client.creatifyTemplateId || undefined,
+          templateId: undefined,
+          autoPopulateFromBlog: false,
           aspectRatio: '9:16',
           duration: 30,
           targetPlatform: 'tiktok',
