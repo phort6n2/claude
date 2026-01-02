@@ -552,8 +552,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         const activePlatforms = (contentItem.client.socialPlatforms || []) as string[]
         const disconnectedAccounts = contentItem.client.disconnectedAccounts as Record<string, unknown> | null
 
-        // Filter for video posts only
-        const videoSocialPosts = contentItem.socialPosts.filter((p: SocialPost) => p.mediaType === 'video')
+        // Filter for video posts that haven't been published or aren't processing
+        const videoSocialPosts = contentItem.socialPosts.filter((p: SocialPost) =>
+          p.mediaType === 'video' &&
+          p.status !== 'PUBLISHED' &&
+          p.status !== 'PROCESSING'
+        )
+
+        console.log(`Found ${videoSocialPosts.length} unpublished video posts to process`)
 
         for (const socialPost of videoSocialPosts) {
           // Only post to platforms that are active AND have an account ID
@@ -660,8 +666,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     let wrhqYoutubeVideoUrl: string | null = null  // Track WRHQ YouTube URL as fallback for blog embed
     if (scheduleWrhqVideoSocial && contentItem.shortVideoGenerated) {
       try {
-        // Filter for video posts only
-        const wrhqVideoSocialPosts = contentItem.wrhqSocialPosts.filter((p: WRHQSocialPost) => p.mediaType === 'video')
+        // Filter for video posts that haven't been published or aren't processing
+        const wrhqVideoSocialPosts = contentItem.wrhqSocialPosts.filter((p: WRHQSocialPost) =>
+          p.mediaType === 'video' &&
+          p.status !== 'PUBLISHED' &&
+          p.status !== 'PROCESSING'
+        )
+
+        console.log(`Found ${wrhqVideoSocialPosts.length} unpublished WRHQ video posts to process`)
 
         for (const wrhqPost of wrhqVideoSocialPosts) {
           const accountIdKey = `WRHQ_LATE_${wrhqPost.platform}_ID` as keyof typeof WRHQ_SETTINGS_KEYS
