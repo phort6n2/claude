@@ -1,12 +1,39 @@
 // Creatify API Integration for Short Video Generation
 // Docs: https://docs.creatify.ai/api-reference/introduction
 // API uses X-API-ID and X-API-KEY headers
+//
+// Three methods available:
+// 1. Custom Template - Use pre-built templates with variable substitution (most control)
+// 2. Link to Videos - Generate from a blog URL (automatic, good quality)
+// 3. Lipsync - Generate from script text (fallback)
 
 // Types for Link to Videos API
 type AspectRatio = '16x9' | '9x16' | '1x1'
 type VideoLength = 15 | 30 | 45 | 60
 type ScriptStyle = 'DiscoveryWriter' | 'HowToV2' | 'ProblemSolutionV2' | 'BenefitsV2' | 'CallToActionV2' | 'ThreeReasonsWriter'
 type VisualStyle = 'AvatarBubbleTemplate' | 'DynamicProductTemplate' | 'FullScreenTemplate' | 'VanillaTemplate' | 'EnhancedVanillaTemplate'
+type ModelVersion = 'standard' | 'aurora_v1' | 'aurora_v1_fast'
+
+// Types for Custom Template API
+type VariableType = 'image' | 'video' | 'audio' | 'text' | 'avatar' | 'voiceover'
+
+interface TemplateVariable {
+  type: VariableType
+  properties: {
+    url?: string       // For image, video, audio
+    content?: string   // For text
+    avatar_id?: string // For avatar
+    voice_id?: string  // For voiceover
+  }
+}
+
+interface CustomTemplateParams {
+  templateId: string  // UUID of the custom template
+  variables: Record<string, TemplateVariable>
+  name?: string
+  webhookUrl?: string
+  modelVersion?: ModelVersion
+}
 
 interface LinkToVideoParams {
   linkId: string // UUID of the link object
@@ -25,6 +52,8 @@ interface VideoGenerationParams {
   script?: string
   title: string
   blogUrl?: string // URL to create video from
+  templateId?: string // Custom template UUID (takes priority if provided)
+  templateVariables?: Record<string, TemplateVariable> // Variables for custom template
   imageUrls?: string[]
   aspectRatio?: '16:9' | '9:16' | '1:1'
   duration?: number // seconds (15, 30, 45, or 60)
@@ -32,6 +61,7 @@ interface VideoGenerationParams {
   scriptStyle?: ScriptStyle
   visualStyle?: VisualStyle
   webhookUrl?: string
+  modelVersion?: ModelVersion
 }
 
 interface VideoResult {
@@ -95,6 +125,53 @@ export async function createLink(url: string): Promise<LinkResult> {
 }
 
 /**
+ * Create a video from a custom template
+ * Templates are created in the Creatify dashboard and have variable placeholders
+ */
+export async function createVideoFromTemplate(params: CustomTemplateParams): Promise<VideoResult> {
+  const { apiId, apiKey } = getCredentials()
+
+  const requestBody: Record<string, unknown> = {
+    template: params.templateId,
+    variables: params.variables,
+  }
+
+  if (params.name) {
+    requestBody.name = params.name
+  }
+
+  if (params.webhookUrl) {
+    requestBody.webhook_url = params.webhookUrl
+  }
+
+  if (params.modelVersion) {
+    requestBody.model_version = params.modelVersion
+  }
+
+  const response = await fetch('https://api.creatify.ai/api/custom_template_jobs/', {
+    method: 'POST',
+    headers: {
+      'X-API-ID': apiId,
+      'X-API-KEY': apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requestBody),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Creatify Custom Template API error: ${error}`)
+  }
+
+  const data = await response.json()
+
+  return {
+    jobId: data.id,
+    status: 'pending',
+  }
+}
+
+/**
  * Create a video from a link using the Link to Videos API
  */
 export async function createVideoFromLink(params: LinkToVideoParams): Promise<VideoResult> {
@@ -144,13 +221,31 @@ export async function createVideoFromLink(params: LinkToVideoParams): Promise<Vi
 
 /**
  * Create a short video - main entry point
- * If blogUrl is provided, uses Link to Videos API
- * Otherwise falls back to lipsync with script
+ * Priority order:
+ * 1. Custom Template (if templateId provided) - most control
+ * 2. Link to Videos (if blogUrl provided) - automatic, good quality
+ * 3. Lipsync (if script provided) - fallback
  */
 export async function createShortVideo(params: VideoGenerationParams): Promise<VideoResult> {
   const { apiId, apiKey } = getCredentials()
 
-  // If we have a blog URL, use the Link to Videos API
+  // Priority 1: If we have a template, use the Custom Template API
+  if (params.templateId && params.templateVariables) {
+    try {
+      return await createVideoFromTemplate({
+        templateId: params.templateId,
+        variables: params.templateVariables,
+        name: params.title,
+        webhookUrl: params.webhookUrl,
+        modelVersion: params.modelVersion,
+      })
+    } catch (error) {
+      console.error('Custom Template API failed, falling back to Link to Videos:', error)
+      // Fall through to blog URL method
+    }
+  }
+
+  // Priority 2: If we have a blog URL, use the Link to Videos API
   if (params.blogUrl) {
     try {
       // First create a link from the URL
@@ -223,18 +318,28 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
 
 /**
  * Check status of a video job
- * Works for both link_to_videos and lipsyncs endpoints
+ * Works for custom_template_jobs, link_to_videos, and lipsyncs endpoints
  */
 export async function checkVideoStatus(jobId: string): Promise<VideoResult> {
   const { apiId, apiKey } = getCredentials()
 
-  // Try link_to_videos endpoint first
-  let response = await fetch(`https://api.creatify.ai/api/link_to_videos/${jobId}/`, {
+  // Try custom_template_jobs endpoint first
+  let response = await fetch(`https://api.creatify.ai/api/custom_template_jobs/${jobId}/`, {
     headers: {
       'X-API-ID': apiId,
       'X-API-KEY': apiKey,
     },
   })
+
+  // If not found, try link_to_videos endpoint
+  if (response.status === 404) {
+    response = await fetch(`https://api.creatify.ai/api/link_to_videos/${jobId}/`, {
+      headers: {
+        'X-API-ID': apiId,
+        'X-API-KEY': apiKey,
+      },
+    })
+  }
 
   // If not found, try lipsyncs endpoint
   if (response.status === 404) {
