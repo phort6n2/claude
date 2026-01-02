@@ -1232,7 +1232,26 @@ function ReviewTab({
                     ) : (
                       <>
                         <Share2 className="h-4 w-4" />
-                        Publish to Video Platforms
+                        Publish Client Video
+                      </>
+                    )}
+                  </button>
+                )}
+                {content.wrhqVideoSocialPosts.length > 0 && (
+                  <button
+                    onClick={() => publishContent('wrhqVideoSocial')}
+                    disabled={publishing === 'wrhqVideoSocial' || content.wrhqVideoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED')}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {publishing === 'wrhqVideoSocial' ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Publishing WRHQ...
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="h-4 w-4" />
+                        Publish WRHQ Video
                       </>
                     )}
                   </button>
@@ -1395,25 +1414,6 @@ function ReviewTab({
                     </div>
                   ))}
                 </div>
-                {content.wrhqVideoSocialPosts.some(p => p.status === 'PENDING') && (
-                  <button
-                    onClick={() => publishContent('wrhqVideoSocial')}
-                    disabled={publishing === 'wrhqVideoSocial'}
-                    className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
-                  >
-                    {publishing === 'wrhqVideoSocial' ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                        Publishing WRHQ...
-                      </>
-                    ) : (
-                      <>
-                        <Share2 className="h-4 w-4" />
-                        Publish WRHQ Video Posts
-                      </>
-                    )}
-                  </button>
-                )}
               </div>
             )}
           </div>
