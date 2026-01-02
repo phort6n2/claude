@@ -11,9 +11,13 @@ function toTitleCase(str: string): string {
   const stateAbbreviations = ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC']
 
   return str.split(' ').map((word, index) => {
-    // Preserve state abbreviations (check original word before lowercasing)
-    if (stateAbbreviations.includes(word.toUpperCase()) && word.toUpperCase() === word) {
-      return word.toUpperCase()
+    // Check for state abbreviations - strip punctuation for matching
+    const wordNoPunct = word.replace(/[?,.:!]$/, '')
+    const trailingPunct = word.slice(wordNoPunct.length)
+
+    // If word matches a state abbreviation (any casing), uppercase it
+    if (stateAbbreviations.includes(wordNoPunct.toUpperCase())) {
+      return wordNoPunct.toUpperCase() + trailingPunct
     }
 
     const lowerWord = word.toLowerCase()
