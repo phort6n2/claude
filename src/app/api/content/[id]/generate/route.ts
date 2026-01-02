@@ -1004,6 +1004,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         const wrhqVideoPlatforms: string[] = []
         for (const { key, platform } of wrhqVideoPlatformKeys) {
           const value = await getSetting(key)
+          console.log(`WRHQ video platform check: ${platform} (${key}) = ${value ? 'configured' : 'not configured'}`)
           if (value) wrhqVideoPlatforms.push(platform)
         }
 
@@ -1132,6 +1133,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
             // Filter out platforms that already have published posts
             const wrhqPlatformsToGenerate = wrhqVideoPlatforms.filter(p => !wrhqPublishedPlatformSet.has(p as any))
+            console.log('WRHQ published platforms (skipping):', Array.from(wrhqPublishedPlatformSet))
+            console.log('WRHQ platforms to generate:', wrhqPlatformsToGenerate)
 
             const wrhqVideoPostsData = await Promise.all(
               wrhqPlatformsToGenerate.map(async (platform) => {
