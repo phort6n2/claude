@@ -1,11 +1,9 @@
 // Podbean API Integration for Podcast Publishing
 // API Docs: https://developers.podbean.com/
 
-import { decrypt } from '../encryption'
-
 interface PodbeanCredentials {
   clientId: string
-  clientSecret: string // Encrypted
+  clientSecret: string
 }
 
 interface PodbeanTokenResponse {
@@ -51,8 +49,8 @@ async function getAccessToken(credentials: PodbeanCredentials): Promise<string> 
     return cachedToken.token
   }
 
-  const clientSecret = decrypt(credentials.clientSecret)
-  const basicAuth = Buffer.from(`${credentials.clientId}:${clientSecret}`).toString('base64')
+  // Credentials are already decrypted by getGlobalPodbeanCredentials
+  const basicAuth = Buffer.from(`${credentials.clientId}:${credentials.clientSecret}`).toString('base64')
 
   const response = await fetch('https://api.podbean.com/v1/oauth/token', {
     method: 'POST',
