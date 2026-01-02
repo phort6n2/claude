@@ -861,16 +861,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         const imageUrls = landscapeImage ? [landscapeImage.gcsUrl] : []
 
         // Create short video job (returns immediately with job ID)
-        // Uses Link to Videos API if blog URL is available (preferred)
-        // Falls back to lipsync with script if no URL
+        // Priority: Custom template (if configured) > Link to Videos > Lipsync
         const videoJob = await createShortVideo({
-          blogUrl: blogUrl || undefined, // Use blog URL for Link to Videos API
+          blogUrl: blogUrl || undefined,
           script: contentItem.blogPost.content.replace(/<[^>]*>/g, '').substring(0, 3000), // Fallback script
           title: contentItem.blogPost.title,
           imageUrls,
-          logoUrl: contentItem.client.logoUrl || undefined, // Client logo for video CTA
+          logoUrl: contentItem.client.logoUrl || undefined,
+          // Use custom template if configured (allows custom CTA like "Call Now")
+          templateId: contentItem.client.creatifyTemplateId || undefined,
+          autoPopulateFromBlog: !!contentItem.client.creatifyTemplateId, // Auto-populate template vars from blog
           aspectRatio: '9:16',
-          duration: 30, // 30 second video
+          duration: 30,
           targetPlatform: 'tiktok',
           targetAudience: `car owners in ${contentCity}, ${contentState} looking for auto glass services`,
         })

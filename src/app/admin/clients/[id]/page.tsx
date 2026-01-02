@@ -39,6 +39,7 @@ function transformClientForForm(client: Client) {
     wordpressAppPassword: '',
     ctaText: client.ctaText,
     ctaUrl: client.ctaUrl ?? '',
+    creatifyTemplateId: client.creatifyTemplateId ?? '',
     preferredPublishTime: client.preferredPublishTime,
     timezone: client.timezone,
     socialPlatforms: client.socialPlatforms,

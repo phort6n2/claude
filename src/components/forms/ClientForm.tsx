@@ -56,6 +56,7 @@ interface ClientFormData {
   wordpressAppPassword: string
   ctaText: string
   ctaUrl: string
+  creatifyTemplateId: string
   preferredPublishTime: string
   timezone: string
   socialPlatforms: string[]
@@ -96,6 +97,7 @@ const defaultData: ClientFormData = {
   wordpressAppPassword: '',
   ctaText: 'Get a Free Quote',
   ctaUrl: '',
+  creatifyTemplateId: '',
   preferredPublishTime: '09:00',
   timezone: 'America/Los_Angeles',
   socialPlatforms: [],
@@ -1176,6 +1178,22 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                     placeholder="https://example.com/quote"
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Creatify Template ID
+                  <span className="text-gray-500 font-normal ml-2">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.creatifyTemplateId}
+                  onChange={(e) => updateField('creatifyTemplateId', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., fb6ef50f-3c84-42a0-8b4b-55fb0a162808"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Custom video template UUID from Creatify. Allows custom CTA like &ldquo;Call Now&rdquo; while using blog content.
+                </p>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>

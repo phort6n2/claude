@@ -70,6 +70,9 @@ model Client {
   ctaText               String    @default("Get a Free Quote")
   ctaUrl                String?
 
+  // Video Generation Settings
+  creatifyTemplateId    String?   // Custom Creatify template UUID for branded videos
+
   // Publishing Preferences (Tue/Thu schedule)
   preferredPublishTime  String    @default("09:00")
   timezone              String    @default("America/Los_Angeles")

@@ -83,6 +83,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         wordpressAppPassword: encryptedPassword,
         ctaText: data.ctaText,
         ctaUrl: data.ctaUrl || null,
+        creatifyTemplateId: data.creatifyTemplateId || null,
         preferredPublishTime: data.preferredPublishTime,
         timezone: data.timezone,
         socialPlatforms: data.socialPlatforms || [],
