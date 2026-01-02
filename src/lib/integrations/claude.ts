@@ -673,12 +673,19 @@ Paragraph 4: Business description${params.servicePageUrl ? ' with service page l
 ${params.servicePageUrl ? '- Link business name to SERVICE PAGE' : '- Mention the business name'}
 - List main services in bold: windshield replacement, windshield repair, ADAS calibration, mobile service
 - Mention service area
-${params.googleMapsUrl ? '- Include Google Maps link with text "Find them on Google Maps"' : ''}
 
 Paragraph 5: Call-to-action
 - Start with "Listen now to learn..." (NO emoji before this)
 - Make it compelling
 - End with encouragement to take action
+${params.googleMapsUrl ? `
+Paragraph 6: Google Maps Location
+- Create a visually distinct section for the map
+- Use this exact format:
+<div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #4285f4;">
+<p style="margin: 0 0 10px 0;"><strong>Find ${params.businessName} on Google Maps:</strong></p>
+<p style="margin: 0;"><a href="${params.googleMapsUrl}" target="_blank" rel="noopener" style="color: #1a73e8;">View Location & Get Directions</a></p>
+</div>` : ''}
 
 Final line: Hashtags
 - Include: #AutoGlass #WindshieldRepair #${params.city.replace(/\s+/g, '')}${params.state} #WindshieldReplacement #${params.businessName.replace(/\s+/g, '')} #CarCare
