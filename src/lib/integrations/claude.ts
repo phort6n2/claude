@@ -857,3 +857,95 @@ Return ONLY valid JSON. No explanation.`
     }
   }
 }
+
+/**
+ * Generate WRHQ video social post captions for TikTok, YouTube, Instagram, Facebook
+ */
+export async function generateWRHQVideoSocialCaption(params: {
+  platform: 'tiktok' | 'youtube' | 'instagram' | 'facebook'
+  clientBusinessName: string
+  clientCity: string
+  clientState: string
+  paaQuestion: string
+  wrhqBlogUrl: string
+  clientBlogUrl: string
+  wrhqDirectoryUrl: string
+  googleMapsUrl: string
+}): Promise<{
+  caption: string
+  hashtags: string[]
+  firstComment: string
+}> {
+  const platformLimits = {
+    tiktok: { caption: 2200, hashtags: 5 },
+    youtube: { caption: 5000, hashtags: 15 },
+    instagram: { caption: 2200, hashtags: 30 },
+    facebook: { caption: 63206, hashtags: 10 },
+  }
+
+  const limits = platformLimits[params.platform]
+  const platformName = {
+    tiktok: 'TikTok',
+    youtube: 'YouTube Shorts',
+    instagram: 'Instagram Reels',
+    facebook: 'Facebook Reels',
+  }[params.platform]
+
+  const prompt = `Write a ${platformName} caption for WRHQ (Windshield Repair HeadQuarters) featuring a local auto glass partner.
+
+**Context:**
+- WRHQ is a directory/network featuring trusted auto glass shops
+- Featured Partner: ${params.clientBusinessName}
+- Location: ${params.clientCity}, ${params.clientState}
+- Topic: ${params.paaQuestion}
+- WRHQ Blog: ${params.wrhqBlogUrl || 'Not available'}
+- Partner Blog: ${params.clientBlogUrl || 'Not available'}
+- WRHQ Directory: ${params.wrhqDirectoryUrl || 'Not available'}
+- Partner Google Maps: ${params.googleMapsUrl || 'Not available'}
+
+**Requirements:**
+- Platform: ${platformName}
+- Max caption length: ${limits.caption} characters
+- Max hashtags: ${limits.hashtags}
+- Promote the featured partner business
+- Educational and helpful tone
+- Highlight that WRHQ connects drivers with trusted local shops
+- Hook viewers in the first line
+
+**Format your response as JSON:**
+{
+  "caption": "The main caption text (NO hashtags here)",
+  "hashtags": ["WRHQ", "AutoGlass", ...up to ${limits.hashtags} hashtags without #],
+  "firstComment": "Follow-up comment with helpful links"
+}
+
+Return ONLY valid JSON. No explanation.`
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 800,
+    messages: [{ role: 'user', content: prompt }],
+  })
+
+  const resultText = response.content[0].type === 'text' ? response.content[0].text : '{}'
+
+  try {
+    const cleanJson = resultText
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim()
+
+    const parsed = JSON.parse(cleanJson)
+    return {
+      caption: parsed.caption || `Meet ${params.clientBusinessName} - a trusted WRHQ partner in ${params.clientCity}!`,
+      hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags : ['WRHQ', 'AutoGlass', 'WindshieldRepair'],
+      firstComment: parsed.firstComment || `Find them: ${params.googleMapsUrl || params.wrhqDirectoryUrl || params.clientBlogUrl}`,
+    }
+  } catch {
+    return {
+      caption: `Looking for auto glass help in ${params.clientCity}, ${params.clientState}? Check out ${params.clientBusinessName}! 🚗\n\n${params.paaQuestion}`,
+      hashtags: ['WRHQ', 'AutoGlass', 'WindshieldRepair', 'CarCare', 'Shorts'],
+      firstComment: params.wrhqBlogUrl || params.clientBlogUrl || params.googleMapsUrl || 'Visit WRHQ for trusted auto glass shops!',
+    }
+  }
+}

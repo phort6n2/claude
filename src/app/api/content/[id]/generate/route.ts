@@ -971,7 +971,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
     }
 
-    // Generate video social posts for TikTok, YouTube, Instagram
+    // Generate video social posts for TikTok, YouTube, Instagram, Facebook
     if (generateVideoSocial && contentItem.blogPost) {
       try {
         const { generateVideoSocialCaption } = await import('@/lib/integrations/claude')
@@ -983,7 +983,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         const activePlatforms = (contentItem.client.socialPlatforms || []) as string[]
         const socialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
 
-        const videoPlatforms = activePlatforms
+        const clientVideoPlatforms = activePlatforms
           .map(p => p.toUpperCase())
           .filter(platform => {
             const platformLower = platform.toLowerCase()
@@ -993,78 +993,173 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             return hasAccountId && VIDEO_PLATFORMS.includes(platform)
           })
 
-        console.log('Video platforms to generate:', videoPlatforms)
+        // Get WRHQ video platforms from settings
+        const wrhqVideoPlatformKeys = [
+          { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_TIKTOK_ID, platform: 'TIKTOK' },
+          { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_YOUTUBE_ID, platform: 'YOUTUBE' },
+          { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_INSTAGRAM_ID, platform: 'INSTAGRAM' },
+          { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_FACEBOOK_ID, platform: 'FACEBOOK' },
+        ]
+
+        const wrhqVideoPlatforms: string[] = []
+        for (const { key, platform } of wrhqVideoPlatformKeys) {
+          const value = await getSetting(key)
+          if (value) wrhqVideoPlatforms.push(platform)
+        }
+
+        console.log('Client video platforms:', clientVideoPlatforms)
+        console.log('WRHQ video platforms:', wrhqVideoPlatforms)
 
         // Get the short video URL
         const shortVideo = contentItem.videos.find(v => v.videoType === 'SHORT')
 
-        if (videoPlatforms.length > 0 && shortVideo?.videoUrl) {
-          // Delete existing video social posts (those with mediaType = 'video')
-          await prisma.socialPost.deleteMany({
-            where: {
-              contentItemId: id,
-              mediaType: 'video',
-            },
-          })
+        const hasAnyVideoPlatforms = clientVideoPlatforms.length > 0 || wrhqVideoPlatforms.length > 0
 
+        if (hasAnyVideoPlatforms && shortVideo?.videoUrl) {
           const blogUrl = contentItem.blogPost.wordpressUrl ||
             (contentItem.client.wordpressUrl
               ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${contentItem.blogPost.slug}`
               : '')
 
-          const videoSocialPostsData = await Promise.all(
-            videoPlatforms.map(async (platform) => {
-              const platformLower = platform.toLowerCase() as 'tiktok' | 'youtube' | 'instagram' | 'facebook'
-              try {
-                const result = await generateVideoSocialCaption({
-                  platform: platformLower,
-                  blogTitle: contentItem.blogPost!.title,
-                  blogExcerpt: contentItem.blogPost!.excerpt || contentItem.paaQuestion,
-                  businessName: contentItem.client.businessName,
-                  blogUrl,
-                  location: `${contentCity}, ${contentState}`,
-                  googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
-                })
+          let totalPostsCreated = 0
 
-                return {
-                  platform: platform as 'TIKTOK' | 'YOUTUBE' | 'INSTAGRAM' | 'FACEBOOK',
-                  caption: result.caption,
-                  hashtags: result.hashtags,
-                  firstComment: result.firstComment,
-                  mediaUrls: [shortVideo.videoUrl],
-                  mediaType: 'video',
-                }
-              } catch (error) {
-                console.error(`Failed to generate ${platform} video post:`, error)
-                return {
-                  platform: platform as 'TIKTOK' | 'YOUTUBE' | 'INSTAGRAM' | 'FACEBOOK',
-                  caption: `${contentItem.blogPost!.title}\n\nLearn more from ${contentItem.client.businessName}!`,
-                  hashtags: ['AutoGlass', 'WindshieldRepair', 'Shorts'],
-                  firstComment: `Read more: ${blogUrl}`,
-                  mediaUrls: [shortVideo.videoUrl],
-                  mediaType: 'video',
-                }
-              }
+          // Generate client video social posts
+          if (clientVideoPlatforms.length > 0) {
+            // Delete existing client video social posts
+            await prisma.socialPost.deleteMany({
+              where: {
+                contentItemId: id,
+                mediaType: 'video',
+              },
             })
-          )
 
-          await prisma.socialPost.createMany({
-            data: videoSocialPostsData.map(post => ({
-              contentItemId: id,
-              clientId: contentItem.clientId,
-              platform: post.platform,
-              caption: post.caption,
-              hashtags: post.hashtags,
-              firstComment: post.firstComment,
-              mediaUrls: post.mediaUrls,
-              mediaType: post.mediaType,
-              scheduledTime: contentItem.scheduledDate,
-            })),
-          })
+            const videoSocialPostsData = await Promise.all(
+              clientVideoPlatforms.map(async (platform) => {
+                const platformLower = platform.toLowerCase() as 'tiktok' | 'youtube' | 'instagram' | 'facebook'
+                try {
+                  const result = await generateVideoSocialCaption({
+                    platform: platformLower,
+                    blogTitle: contentItem.blogPost!.title,
+                    blogExcerpt: contentItem.blogPost!.excerpt || contentItem.paaQuestion,
+                    businessName: contentItem.client.businessName,
+                    blogUrl,
+                    location: `${contentCity}, ${contentState}`,
+                    googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+                  })
 
-          results.videoSocial = { success: true, count: videoSocialPostsData.length }
+                  return {
+                    platform: platform as 'TIKTOK' | 'YOUTUBE' | 'INSTAGRAM' | 'FACEBOOK',
+                    caption: result.caption,
+                    hashtags: result.hashtags,
+                    firstComment: result.firstComment,
+                    mediaUrls: [shortVideo.videoUrl],
+                    mediaType: 'video',
+                  }
+                } catch (error) {
+                  console.error(`Failed to generate ${platform} video post:`, error)
+                  return {
+                    platform: platform as 'TIKTOK' | 'YOUTUBE' | 'INSTAGRAM' | 'FACEBOOK',
+                    caption: `${contentItem.blogPost!.title}\n\nLearn more from ${contentItem.client.businessName}!`,
+                    hashtags: ['AutoGlass', 'WindshieldRepair', 'Shorts'],
+                    firstComment: `Read more: ${blogUrl}`,
+                    mediaUrls: [shortVideo.videoUrl],
+                    mediaType: 'video',
+                  }
+                }
+              })
+            )
+
+            await prisma.socialPost.createMany({
+              data: videoSocialPostsData.map(post => ({
+                contentItemId: id,
+                clientId: contentItem.clientId,
+                platform: post.platform,
+                caption: post.caption,
+                hashtags: post.hashtags,
+                firstComment: post.firstComment,
+                mediaUrls: post.mediaUrls,
+                mediaType: post.mediaType,
+                scheduledTime: contentItem.scheduledDate,
+              })),
+            })
+
+            totalPostsCreated += videoSocialPostsData.length
+          }
+
+          // Generate WRHQ video social posts
+          if (wrhqVideoPlatforms.length > 0) {
+            const { generateWRHQVideoSocialCaption } = await import('@/lib/integrations/claude')
+
+            // Get WRHQ blog post for URLs
+            const wrhqBlogPost = await prisma.wRHQBlogPost.findUnique({
+              where: { contentItemId: id },
+            })
+
+            // Delete existing WRHQ video social posts
+            await prisma.wRHQSocialPost.deleteMany({
+              where: {
+                contentItemId: id,
+                mediaType: 'video',
+              },
+            })
+
+            const wrhqVideoPostsData = await Promise.all(
+              wrhqVideoPlatforms.map(async (platform) => {
+                const platformLower = platform.toLowerCase() as 'tiktok' | 'youtube' | 'instagram' | 'facebook'
+                try {
+                  const result = await generateWRHQVideoSocialCaption({
+                    platform: platformLower,
+                    clientBusinessName: contentItem.client.businessName,
+                    clientCity: contentCity,
+                    clientState: contentState,
+                    paaQuestion: contentItem.paaQuestion,
+                    wrhqBlogUrl: wrhqBlogPost?.wordpressUrl || '',
+                    clientBlogUrl: blogUrl,
+                    wrhqDirectoryUrl: contentItem.client.wrhqDirectoryUrl || '',
+                    googleMapsUrl: contentItem.client.googleMapsUrl || '',
+                  })
+
+                  return {
+                    platform: platform as 'TIKTOK' | 'YOUTUBE' | 'INSTAGRAM' | 'FACEBOOK',
+                    caption: result.caption,
+                    hashtags: result.hashtags,
+                    firstComment: result.firstComment,
+                    mediaUrls: [shortVideo.videoUrl],
+                    mediaType: 'video' as const,
+                  }
+                } catch (error) {
+                  console.error(`Failed to generate WRHQ ${platform} video post:`, error)
+                  return {
+                    platform: platform as 'TIKTOK' | 'YOUTUBE' | 'INSTAGRAM' | 'FACEBOOK',
+                    caption: `Check out ${contentItem.client.businessName} in ${contentCity}, ${contentState}! 🚗\n\n${contentItem.paaQuestion}`,
+                    hashtags: ['AutoGlass', 'WindshieldRepair', 'WRHQ'],
+                    firstComment: wrhqBlogPost?.wordpressUrl || blogUrl,
+                    mediaUrls: [shortVideo.videoUrl],
+                    mediaType: 'video' as const,
+                  }
+                }
+              })
+            )
+
+            await prisma.wRHQSocialPost.createMany({
+              data: wrhqVideoPostsData.map(post => ({
+                contentItemId: id,
+                platform: post.platform,
+                caption: post.caption,
+                hashtags: post.hashtags,
+                firstComment: post.firstComment,
+                mediaUrls: post.mediaUrls,
+                mediaType: post.mediaType,
+                scheduledTime: contentItem.scheduledDate,
+              })),
+            })
+
+            totalPostsCreated += wrhqVideoPostsData.length
+          }
+
+          results.videoSocial = { success: true, count: totalPostsCreated }
         } else {
-          results.videoSocial = { success: false, error: shortVideo?.videoUrl ? 'No video platforms configured' : 'Video not ready yet' }
+          results.videoSocial = { success: false, error: shortVideo?.videoUrl ? 'No video platforms configured for client or WRHQ' : 'Video not ready yet' }
         }
       } catch (error) {
         console.error('Video social generation error:', error)
