@@ -52,8 +52,9 @@ interface VideoGenerationParams {
   script?: string
   title: string
   blogUrl?: string // URL to create video from
-  templateId?: string // Custom template UUID (takes priority if provided)
-  templateVariables?: Record<string, TemplateVariable> // Variables for custom template
+  templateId?: string // Custom template UUID
+  templateVariables?: Record<string, TemplateVariable> // Explicit variables for custom template
+  autoPopulateFromBlog?: boolean // If true and both templateId + blogUrl provided, scrape blog for template variables
   imageUrls?: string[]
   logoUrl?: string // Logo URL for branding in video CTA
   aspectRatio?: '16:9' | '9:16' | '1:1'
@@ -295,14 +296,93 @@ export async function createVideoFromLink(params: LinkToVideoParams): Promise<Vi
 /**
  * Create a short video - main entry point
  * Priority order:
- * 1. Custom Template (if templateId provided) - most control
- * 2. Link to Videos (if blogUrl provided) - automatic, good quality
- * 3. Lipsync (if script provided) - fallback
+ * 1. Custom Template + Blog URL (hybrid) - template CTA with blog content
+ * 2. Custom Template with explicit variables - most control
+ * 3. Link to Videos (if blogUrl provided) - automatic, good quality
+ * 4. Lipsync (if script provided) - fallback
  */
 export async function createShortVideo(params: VideoGenerationParams): Promise<VideoResult> {
   const { apiId, apiKey } = getCredentials()
 
-  // Priority 1: If we have a template, use the Custom Template API
+  // Priority 1: Hybrid approach - Custom Template with blog content
+  // Use this when you want custom CTA (like "Call Now") but content from blog
+  if (params.templateId && params.blogUrl && params.autoPopulateFromBlog) {
+    try {
+      // Scrape blog URL to get content
+      const blogContent = await createLink(params.blogUrl)
+
+      // Build template variables from blog content
+      // These are common variable names - adjust based on your template
+      const autoVariables: Record<string, TemplateVariable> = {}
+
+      // Add title as text variable
+      if (blogContent.title) {
+        autoVariables['title'] = {
+          type: 'text',
+          properties: { content: blogContent.title }
+        }
+        autoVariables['headline'] = {
+          type: 'text',
+          properties: { content: blogContent.title }
+        }
+      }
+
+      // Add description/summary as text variable
+      if (blogContent.aiSummary || blogContent.description) {
+        autoVariables['description'] = {
+          type: 'text',
+          properties: { content: blogContent.aiSummary || blogContent.description }
+        }
+        autoVariables['script'] = {
+          type: 'text',
+          properties: { content: blogContent.aiSummary || blogContent.description }
+        }
+      }
+
+      // Add first image as image variable
+      if (blogContent.imageUrls && blogContent.imageUrls.length > 0) {
+        autoVariables['image'] = {
+          type: 'image',
+          properties: { url: blogContent.imageUrls[0] }
+        }
+        autoVariables['product_image'] = {
+          type: 'image',
+          properties: { url: blogContent.imageUrls[0] }
+        }
+        autoVariables['background'] = {
+          type: 'image',
+          properties: { url: blogContent.imageUrls[0] }
+        }
+      }
+
+      // Add logo if provided
+      if (params.logoUrl) {
+        autoVariables['logo'] = {
+          type: 'image',
+          properties: { url: params.logoUrl }
+        }
+      }
+
+      // Merge auto-populated variables with any explicit overrides
+      const finalVariables = {
+        ...autoVariables,
+        ...(params.templateVariables || {}),
+      }
+
+      return await createVideoFromTemplate({
+        templateId: params.templateId,
+        variables: finalVariables,
+        name: params.title,
+        webhookUrl: params.webhookUrl,
+        modelVersion: params.modelVersion,
+      })
+    } catch (error) {
+      console.error('Hybrid Template+Blog approach failed, falling back to Link to Videos:', error)
+      // Fall through to blog URL method
+    }
+  }
+
+  // Priority 2: Custom Template with explicit variables
   if (params.templateId && params.templateVariables) {
     try {
       return await createVideoFromTemplate({
@@ -318,7 +398,7 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
     }
   }
 
-  // Priority 2: If we have a blog URL, use the Link to Videos API
+  // Priority 3: If we have a blog URL, use the Link to Videos API
   if (params.blogUrl) {
     try {
       // First create a link from the URL (auto-scrapes content)
@@ -361,7 +441,7 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
     }
   }
 
-  // Fallback: Use lipsync v2 endpoint with script
+  // Priority 4 (Fallback): Use lipsync v2 endpoint with script
   if (!params.script) {
     throw new Error('Either blogUrl or script is required for video generation')
   }
