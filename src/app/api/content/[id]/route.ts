@@ -39,7 +39,23 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Content not found' }, { status: 404 })
     }
 
-    return NextResponse.json(contentItem)
+    // Transform response to include shortVideo and video social posts
+    const shortVideo = contentItem.videos.find(v => v.videoType === 'SHORT') || null
+    const videoSocialPosts = contentItem.socialPosts.filter(p => p.mediaType === 'video')
+    const wrhqVideoSocialPosts = contentItem.wrhqSocialPosts.filter(p => p.mediaType === 'video')
+
+    // Transform shortVideo to include creatifyJobId
+    const transformedShortVideo = shortVideo ? {
+      ...shortVideo,
+      creatifyJobId: shortVideo.providerJobId,
+    } : null
+
+    return NextResponse.json({
+      ...contentItem,
+      shortVideo: transformedShortVideo,
+      videoSocialPosts,
+      wrhqVideoSocialPosts,
+    })
   } catch (error) {
     console.error('Failed to fetch content:', error)
     return NextResponse.json(

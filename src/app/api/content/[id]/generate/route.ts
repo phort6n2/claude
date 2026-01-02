@@ -72,6 +72,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       generateSocial = true,
       generateWrhqBlog = true,
       generateWrhqSocial = true,
+      generateShortVideo = false, // Generate 9:16 short video
+      regenVideoDescription = false, // Regenerate video description only
+      generateVideoSocial = false, // Generate video social posts
     } = body
 
     // Get content item with client data and service location
@@ -83,6 +86,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         blogPost: true,
         podcast: true,
         images: true,
+        videos: true,
         socialPosts: true,
         wrhqSocialPosts: true,
       },
@@ -832,6 +836,227 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         console.error('WRHQ content generation error:', error)
         if (generateWrhqBlog) results.wrhqBlog = { success: false, error: String(error) }
         if (generateWrhqSocial) results.wrhqSocial = { success: false, error: String(error) }
+      }
+    }
+
+    // Generate short video using Creatify
+    if (generateShortVideo && contentItem.blogPost) {
+      try {
+        await prisma.contentItem.update({
+          where: { id },
+          data: { pipelineStep: 'video', shortVideoStatus: 'generating' },
+        })
+
+        const { createShortVideo } = await import('@/lib/integrations/creatify')
+        const { generateVideoDescription } = await import('@/lib/integrations/claude')
+
+        // Get blog URL
+        const blogUrl = contentItem.blogPost.wordpressUrl ||
+          (contentItem.client.wordpressUrl
+            ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${contentItem.blogPost.slug}`
+            : '')
+
+        // Get landscape image for b-roll
+        const landscapeImage = contentItem.images.find(img => img.imageType === 'BLOG_FEATURED')
+        const imageUrls = landscapeImage ? [landscapeImage.gcsUrl] : []
+
+        // Create short video job (returns immediately with job ID)
+        const videoJob = await createShortVideo({
+          script: contentItem.blogPost.content.replace(/<[^>]*>/g, '').substring(0, 3000), // Strip HTML, limit length
+          title: contentItem.blogPost.title,
+          imageUrls,
+          aspectRatio: '9:16',
+        })
+
+        // Generate video description
+        let videoDescription = ''
+        try {
+          videoDescription = await generateVideoDescription({
+            businessName: contentItem.client.businessName,
+            city: contentCity,
+            state: contentState,
+            paaQuestion: contentItem.paaQuestion,
+            blogPostUrl: blogUrl,
+            googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+          })
+        } catch (descError) {
+          console.error('Error generating video description:', descError)
+        }
+
+        // Save or update video record
+        const existingVideo = contentItem.videos.find(v => v.videoType === 'SHORT')
+        if (existingVideo) {
+          await prisma.video.update({
+            where: { id: existingVideo.id },
+            data: {
+              providerJobId: videoJob.jobId,
+              status: 'PROCESSING',
+            },
+          })
+        } else {
+          await prisma.video.create({
+            data: {
+              contentItemId: id,
+              clientId: contentItem.clientId,
+              videoType: 'SHORT',
+              videoUrl: '', // Will be filled when job completes
+              provider: 'CREATIFY',
+              providerJobId: videoJob.jobId,
+              aspectRatio: '9:16',
+              status: 'PROCESSING',
+            },
+          })
+        }
+
+        await prisma.contentItem.update({
+          where: { id },
+          data: {
+            shortVideoGenerated: false,
+            shortVideoStatus: 'processing',
+            shortVideoDescription: videoDescription || null,
+          },
+        })
+
+        results.video = { success: true, status: 'processing', jobId: videoJob.jobId }
+      } catch (error) {
+        console.error('Video generation error:', error)
+        results.video = { success: false, error: String(error) }
+        await prisma.contentItem.update({
+          where: { id },
+          data: { shortVideoStatus: 'failed' },
+        })
+      }
+    }
+
+    // Regenerate video description only
+    if (regenVideoDescription && contentItem.blogPost) {
+      try {
+        const { generateVideoDescription } = await import('@/lib/integrations/claude')
+
+        const blogUrl = contentItem.blogPost.wordpressUrl ||
+          (contentItem.client.wordpressUrl
+            ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${contentItem.blogPost.slug}`
+            : '')
+
+        const videoDescription = await generateVideoDescription({
+          businessName: contentItem.client.businessName,
+          city: contentCity,
+          state: contentState,
+          paaQuestion: contentItem.paaQuestion,
+          blogPostUrl: blogUrl,
+          googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+        })
+
+        await prisma.contentItem.update({
+          where: { id },
+          data: { shortVideoDescription: videoDescription },
+        })
+
+        results.videoDescription = { success: true }
+      } catch (error) {
+        console.error('Video description generation error:', error)
+        results.videoDescription = { success: false, error: String(error) }
+      }
+    }
+
+    // Generate video social posts for TikTok, YouTube, Instagram
+    if (generateVideoSocial && contentItem.blogPost) {
+      try {
+        const { generateVideoSocialCaption } = await import('@/lib/integrations/claude')
+
+        // Video platforms that support short-form video
+        const VIDEO_PLATFORMS = ['TIKTOK', 'YOUTUBE', 'INSTAGRAM']
+
+        // Get active video platforms for client
+        const activePlatforms = (contentItem.client.socialPlatforms || []) as string[]
+        const socialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
+
+        const videoPlatforms = activePlatforms
+          .map(p => p.toUpperCase())
+          .filter(platform => {
+            const platformLower = platform.toLowerCase()
+            const hasAccountId = socialAccountIds &&
+              typeof socialAccountIds[platformLower] === 'string' &&
+              socialAccountIds[platformLower].trim().length > 0
+            return hasAccountId && VIDEO_PLATFORMS.includes(platform)
+          })
+
+        console.log('Video platforms to generate:', videoPlatforms)
+
+        // Get the short video URL
+        const shortVideo = contentItem.videos.find(v => v.videoType === 'SHORT')
+
+        if (videoPlatforms.length > 0 && shortVideo?.videoUrl) {
+          // Delete existing video social posts (those with mediaType = 'video')
+          await prisma.socialPost.deleteMany({
+            where: {
+              contentItemId: id,
+              mediaType: 'video',
+            },
+          })
+
+          const blogUrl = contentItem.blogPost.wordpressUrl ||
+            (contentItem.client.wordpressUrl
+              ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${contentItem.blogPost.slug}`
+              : '')
+
+          const videoSocialPostsData = await Promise.all(
+            videoPlatforms.map(async (platform) => {
+              const platformLower = platform.toLowerCase() as 'tiktok' | 'youtube' | 'instagram'
+              try {
+                const result = await generateVideoSocialCaption({
+                  platform: platformLower,
+                  blogTitle: contentItem.blogPost!.title,
+                  blogExcerpt: contentItem.blogPost!.excerpt || contentItem.paaQuestion,
+                  businessName: contentItem.client.businessName,
+                  blogUrl,
+                  location: `${contentCity}, ${contentState}`,
+                  googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+                })
+
+                return {
+                  platform: platform as 'TIKTOK' | 'YOUTUBE' | 'INSTAGRAM',
+                  caption: result.caption,
+                  hashtags: result.hashtags,
+                  firstComment: result.firstComment,
+                  mediaUrls: [shortVideo.videoUrl],
+                  mediaType: 'video',
+                }
+              } catch (error) {
+                console.error(`Failed to generate ${platform} video post:`, error)
+                return {
+                  platform: platform as 'TIKTOK' | 'YOUTUBE' | 'INSTAGRAM',
+                  caption: `${contentItem.blogPost!.title}\n\nLearn more from ${contentItem.client.businessName}!`,
+                  hashtags: ['AutoGlass', 'WindshieldRepair', 'Shorts'],
+                  firstComment: `Read more: ${blogUrl}`,
+                  mediaUrls: [shortVideo.videoUrl],
+                  mediaType: 'video',
+                }
+              }
+            })
+          )
+
+          await prisma.socialPost.createMany({
+            data: videoSocialPostsData.map(post => ({
+              contentItemId: id,
+              clientId: contentItem.clientId,
+              platform: post.platform,
+              caption: post.caption,
+              hashtags: post.hashtags,
+              firstComment: post.firstComment,
+              mediaUrls: post.mediaUrls,
+              mediaType: post.mediaType,
+              scheduledTime: contentItem.scheduledDate,
+            })),
+          })
+
+          results.videoSocial = { success: true, count: videoSocialPostsData.length }
+        } else {
+          results.videoSocial = { success: false, error: shortVideo?.videoUrl ? 'No video platforms configured' : 'Video not ready yet' }
+        }
+      } catch (error) {
+        console.error('Video social generation error:', error)
+        results.videoSocial = { success: false, error: String(error) }
       }
     }
 

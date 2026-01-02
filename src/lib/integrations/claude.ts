@@ -701,3 +701,157 @@ Return ONLY the HTML description. No markdown, no code blocks, no explanation. J
     .replace(/```\n?/g, '')
     .trim()
 }
+
+/**
+ * Generate a short video description in HTML format
+ */
+export async function generateVideoDescription(params: {
+  businessName: string
+  city: string
+  state: string
+  paaQuestion: string
+  blogPostUrl: string
+  servicePageUrl?: string
+  googleMapsUrl?: string
+}): Promise<string> {
+  const location = `${params.city}, ${params.state}`
+
+  const prompt = `Write a short video description for this auto glass topic. This will be used for TikTok, YouTube Shorts, and Instagram Reels.
+
+**Business Details:**
+- Business Name: ${params.businessName}
+- Location: ${location}
+- PAA Question: ${params.paaQuestion}
+- Blog Post URL: ${params.blogPostUrl}
+${params.servicePageUrl ? `- Service Page URL: ${params.servicePageUrl}` : ''}
+${params.googleMapsUrl ? `- Google Maps: ${params.googleMapsUrl}` : ''}
+
+**FORMAT REQUIREMENTS:**
+- Output in HTML with <p> tags
+- 2-3 short paragraphs
+- Include links to blog post${params.servicePageUrl ? ' and service page' : ''}
+- Catchy, engaging hook optimized for short-form video
+- End with call-to-action
+
+**STRUCTURE:**
+
+Paragraph 1: Hook (1-2 sentences)
+- Start with an attention-grabbing question or statement related to the PAA question
+- Make it punchy and TikTok-style engaging
+
+Paragraph 2: Value proposition
+- What viewers will learn in this quick video
+- Link to [Business Name](blog post URL) for full details
+${params.servicePageUrl ? `- Link to services: ${params.servicePageUrl}` : ''}
+
+Paragraph 3: Call-to-action
+- Follow for more auto glass tips
+- Link to business for service
+${params.googleMapsUrl ? `- Find us: ${params.googleMapsUrl}` : ''}
+
+Final line: Hashtags
+- Include: #AutoGlass #WindshieldRepair #${params.city.replace(/\s+/g, '')} #CarTips #Shorts
+
+**OUTPUT:**
+Return ONLY the HTML description. No markdown, no code blocks, no explanation. Just the raw HTML.`
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 800,
+    messages: [{ role: 'user', content: prompt }],
+  })
+
+  const result = response.content[0].type === 'text' ? response.content[0].text : ''
+
+  return result
+    .replace(/```html\n?/g, '')
+    .replace(/```\n?/g, '')
+    .trim()
+}
+
+/**
+ * Generate video social caption for TikTok, YouTube Shorts, Instagram Reels
+ */
+export async function generateVideoSocialCaption(params: {
+  platform: 'tiktok' | 'youtube' | 'instagram'
+  blogTitle: string
+  blogExcerpt: string
+  businessName: string
+  blogUrl: string
+  location: string
+  googleMapsUrl?: string
+}): Promise<{
+  caption: string
+  hashtags: string[]
+  firstComment: string
+}> {
+  const platformLimits = {
+    tiktok: { caption: 2200, hashtags: 5 },
+    youtube: { caption: 5000, hashtags: 15 },
+    instagram: { caption: 2200, hashtags: 30 },
+  }
+
+  const limits = platformLimits[params.platform]
+  const platformName = {
+    tiktok: 'TikTok',
+    youtube: 'YouTube Shorts',
+    instagram: 'Instagram Reels',
+  }[params.platform]
+
+  const prompt = `Write a ${platformName} caption for this auto glass video.
+
+**Context:**
+- Business: ${params.businessName}
+- Location: ${params.location}
+- Blog Title: ${params.blogTitle}
+- Blog Summary: ${params.blogExcerpt}
+- Blog URL: ${params.blogUrl}
+${params.googleMapsUrl ? `- Google Maps: ${params.googleMapsUrl}` : ''}
+
+**Requirements:**
+- Platform: ${platformName}
+- Max caption length: ${limits.caption} characters
+- Max hashtags: ${limits.hashtags}
+- Tone: Engaging, educational, conversational
+- Include a hook that grabs attention
+- End with a call-to-action
+
+**Format your response as JSON:**
+{
+  "caption": "The main caption text (NO hashtags here)",
+  "hashtags": ["AutoGlass", "WindshieldRepair", ...up to ${limits.hashtags} hashtags without #],
+  "firstComment": "A follow-up comment with the blog link and Google Maps link"
+}
+
+Return ONLY valid JSON. No explanation.`
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 800,
+    messages: [{ role: 'user', content: prompt }],
+  })
+
+  const resultText = response.content[0].type === 'text' ? response.content[0].text : '{}'
+
+  try {
+    // Clean up potential markdown code blocks
+    const cleanJson = resultText
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim()
+
+    const parsed = JSON.parse(cleanJson)
+    return {
+      caption: parsed.caption || `${params.blogTitle} - Learn more at ${params.businessName}!`,
+      hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags : ['AutoGlass', 'WindshieldRepair'],
+      firstComment: parsed.firstComment || `Read the full guide: ${params.blogUrl}`,
+    }
+  } catch {
+    // Fallback if JSON parsing fails
+    return {
+      caption: `${params.blogTitle}\n\nLearn more from ${params.businessName} in ${params.location}!`,
+      hashtags: ['AutoGlass', 'WindshieldRepair', 'CarCare', 'Shorts'],
+      firstComment: `Full article: ${params.blogUrl}${params.googleMapsUrl ? `\nFind us: ${params.googleMapsUrl}` : ''}`,
+    }
+  }
+}

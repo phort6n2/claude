@@ -9,6 +9,7 @@ import {
   Share2,
   Building2,
   Mic,
+  Video,
   Check,
   RefreshCw,
   ExternalLink,
@@ -137,6 +138,35 @@ interface ContentItem {
     thumbnailUrl: string | null
     duration: number | null
     status: string
+    creatifyJobId: string | null
+  }>
+  shortVideo: {
+    id: string
+    videoUrl: string
+    thumbnailUrl: string | null
+    duration: number | null
+    status: string
+    creatifyJobId: string | null
+  } | null
+  videoSocialPosts: Array<{
+    id: string
+    platform: string
+    caption: string
+    hashtags: string[]
+    approved: boolean
+    status: string
+    publishedUrl: string | null
+    errorMessage: string | null
+  }>
+  wrhqVideoSocialPosts: Array<{
+    id: string
+    platform: string
+    caption: string
+    hashtags: string[]
+    approved: boolean
+    status: string
+    publishedUrl: string | null
+    errorMessage: string | null
   }>
 }
 
@@ -486,13 +516,35 @@ function ReviewTab({
     return () => clearInterval(interval)
   }, [content.id, content.socialPosts, content.wrhqSocialPosts, onUpdate])
 
+  // Poll for short video status when processing
+  useEffect(() => {
+    if (content.shortVideo?.status !== 'PROCESSING') return
+
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/content/${content.id}/video-status`)
+        const data = await response.json()
+
+        if (data.status === 'ready' || data.status === 'failed') {
+          clearInterval(interval)
+          onUpdate()
+        }
+      } catch (err) {
+        console.error('Error polling video status:', err)
+      }
+    }, 10000) // Poll every 10 seconds
+
+    return () => clearInterval(interval)
+  }, [content.id, content.shortVideo?.status, onUpdate])
+
   // Step status helpers
   const isStep1Complete = content.clientBlogPublished
   const isStep2Complete = content.wrhqBlogPublished
   const isStep3Complete = content.socialPosts.length > 0 && content.socialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED')
   const isStep4Complete = content.podcastAddedToPost
+  const isStep5Complete = content.videoSocialPosts.length > 0 && content.videoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED')
 
-  async function regenerateContent(type: 'blog' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast' | 'podcastDescription') {
+  async function regenerateContent(type: 'blog' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast' | 'podcastDescription' | 'video' | 'videoDescription' | 'videoSocial') {
     setGenerating(type)
     setError(null)
     try {
@@ -504,6 +556,9 @@ function ReviewTab({
         generateSocial: type === 'social',
         generateWrhqBlog: type === 'wrhqBlog',
         generateWrhqSocial: type === 'wrhqSocial',
+        generateShortVideo: type === 'video',
+        regenVideoDescription: type === 'videoDescription',
+        generateVideoSocial: type === 'videoSocial',
       }
 
       const response = await fetch(`/api/content/${content.id}/generate`, {
@@ -537,7 +592,7 @@ function ReviewTab({
     }
   }
 
-  async function publishContent(type: 'clientBlog' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast', postImmediate = true) {
+  async function publishContent(type: 'clientBlog' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast' | 'videoSocial' | 'wrhqVideoSocial', postImmediate = true) {
     setPublishing(type)
     setError(null)
     try {
@@ -546,6 +601,8 @@ function ReviewTab({
         publishWrhqBlog: type === 'wrhqBlog',
         scheduleSocial: type === 'social',
         scheduleWrhqSocial: type === 'wrhqSocial',
+        scheduleVideoSocial: type === 'videoSocial',
+        scheduleWrhqVideoSocial: type === 'wrhqVideoSocial',
         postImmediate, // Post now instead of scheduling
       }
 
@@ -1102,6 +1159,261 @@ function ReviewTab({
                     __html: content.podcastDescription || content.podcast?.description || ''
                   }}
                 />
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* ============================================ */}
+      {/* STEP 5: Short Video - Generate & Publish to Video Platforms */}
+      {/* ============================================ */}
+      <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
+        <div className={`px-6 py-4 flex items-center justify-between ${isStep5Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}>
+          <div className="flex items-center gap-4">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${isStep5Complete ? 'bg-green-500 text-white' : 'bg-purple-100 text-purple-700'}`}>
+              {isStep5Complete ? <Check className="h-5 w-5" /> : '5'}
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Short Video</h2>
+              <p className="text-sm text-gray-500">Generate 9:16 video for TikTok, YouTube Shorts, Instagram Reels</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {content.shortVideo?.status === 'PROCESSING' ? (
+              <div className="flex items-center gap-2 text-purple-600">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Generating video (3-8 min)...</span>
+              </div>
+            ) : content.shortVideo?.status === 'FAILED' ? (
+              <div className="flex items-center gap-2 text-red-600">
+                <XCircle className="h-4 w-4" />
+                <span className="text-sm">Generation failed</span>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => regenerateContent('video')}
+                  disabled={generating === 'video' || !isStep1Complete}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {generating === 'video' ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Video className="h-4 w-4" />
+                  )}
+                  {content.shortVideoGenerated ? 'Regenerate' : 'Generate'}
+                </button>
+                {content.shortVideo?.status === 'READY' && content.videoSocialPosts.length === 0 && (
+                  <button
+                    onClick={() => regenerateContent('videoSocial')}
+                    disabled={generating === 'videoSocial'}
+                    className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {generating === 'videoSocial' ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Share2 className="h-4 w-4" />
+                    )}
+                    Generate Social Posts
+                  </button>
+                )}
+                {content.videoSocialPosts.length > 0 && (
+                  <button
+                    onClick={() => publishContent('videoSocial')}
+                    disabled={publishing === 'videoSocial' || content.videoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED')}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {publishing === 'videoSocial' ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Publishing...
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="h-4 w-4" />
+                        Publish to Video Platforms
+                      </>
+                    )}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Show content when processing, ready, failed, or has video */}
+        {(content.shortVideo?.status === 'PROCESSING' || content.shortVideo?.status === 'READY' || content.shortVideo?.status === 'FAILED' || content.shortVideoDescription) && (
+          <div className="p-6 space-y-4">
+            {/* Processing status indicator */}
+            {content.shortVideo?.status === 'PROCESSING' && (
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0">
+                    <RefreshCw className="h-5 w-5 animate-spin text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-purple-800">Generating short video...</p>
+                    <p className="text-xs text-purple-600 mt-1">This typically takes 3-8 minutes. The page will update automatically when ready.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Failed status */}
+            {content.shortVideo?.status === 'FAILED' && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0">
+                    <AlertTriangle className="h-5 w-5 text-red-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-red-800">Video generation failed</p>
+                    <p className="text-xs text-red-600 mt-1">Please try regenerating the video.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Video player when ready */}
+            {content.shortVideo?.videoUrl && content.shortVideo?.status === 'READY' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Video Preview</label>
+                <div className="relative max-w-xs mx-auto">
+                  <video
+                    controls
+                    className="w-full rounded-lg shadow-lg"
+                    src={content.shortVideo.videoUrl}
+                    poster={content.shortVideo.thumbnailUrl || undefined}
+                  />
+                </div>
+                {content.shortVideo.duration && (
+                  <p className="text-sm text-gray-500 mt-2 text-center">
+                    Duration: {Math.floor(content.shortVideo.duration / 60)}:{String(Math.round(content.shortVideo.duration) % 60).padStart(2, '0')}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Description - show even during processing since it's generated immediately */}
+            {content.shortVideoDescription && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">Video Description</label>
+                  <button
+                    onClick={() => regenerateContent('videoDescription')}
+                    disabled={generating === 'videoDescription'}
+                    className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {generating === 'videoDescription' ? (
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3" />
+                    )}
+                    Regenerate Description
+                  </button>
+                </div>
+                <div
+                  className="border rounded-lg p-4 bg-purple-50 prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{
+                    __html: content.shortVideoDescription
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Video Social Posts Preview */}
+            {content.videoSocialPosts.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Video Social Posts</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {content.videoSocialPosts.map((post) => (
+                    <div key={post.id} className="border rounded-lg p-4 bg-white">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="flex items-center gap-2 font-medium">
+                          {PLATFORM_ICONS[post.platform] || '📱'} {post.platform}
+                        </span>
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          post.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' :
+                          post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
+                          post.status === 'FAILED' ? 'bg-red-100 text-red-700' :
+                          post.status === 'PROCESSING' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {post.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 whitespace-pre-wrap line-clamp-3">{post.caption}</p>
+                      {post.publishedUrl && (
+                        <a
+                          href={post.publishedUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline mt-2 inline-flex items-center gap-1"
+                        >
+                          <ExternalLink className="h-3 w-3" /> View Post
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* WRHQ Video Social Posts Preview */}
+            {content.wrhqVideoSocialPosts.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">WRHQ Video Social Posts</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {content.wrhqVideoSocialPosts.map((post) => (
+                    <div key={post.id} className="border rounded-lg p-4 bg-white">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="flex items-center gap-2 font-medium">
+                          {PLATFORM_ICONS[post.platform] || '📱'} {post.platform}
+                        </span>
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          post.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' :
+                          post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
+                          post.status === 'FAILED' ? 'bg-red-100 text-red-700' :
+                          post.status === 'PROCESSING' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {post.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 whitespace-pre-wrap line-clamp-3">{post.caption}</p>
+                      {post.publishedUrl && (
+                        <a
+                          href={post.publishedUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline mt-2 inline-flex items-center gap-1"
+                        >
+                          <ExternalLink className="h-3 w-3" /> View Post
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {content.wrhqVideoSocialPosts.some(p => p.status === 'PENDING') && (
+                  <button
+                    onClick={() => publishContent('wrhqVideoSocial')}
+                    disabled={publishing === 'wrhqVideoSocial'}
+                    className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {publishing === 'wrhqVideoSocial' ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Publishing WRHQ...
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="h-4 w-4" />
+                        Publish WRHQ Video Posts
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             )}
           </div>
