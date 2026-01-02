@@ -519,8 +519,8 @@ export default function WRHQSettingsPage() {
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
               <strong>Setup Instructions:</strong>
               <ol className="list-decimal ml-5 mt-2 space-y-1">
-                <li>Go to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Console</a></li>
-                <li>Create a new OAuth 2.0 Client ID (Web application type)</li>
+                <li>Go to the <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Console</a> and enable the <strong>YouTube Data API v3</strong></li>
+                <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="underline">Credentials</a> and create a new OAuth 2.0 Client ID (Web application type)</li>
                 <li>Add <code className="bg-amber-100 px-1 rounded">{typeof window !== 'undefined' ? `${window.location.origin}/api/settings/wrhq/youtube/callback` : '/api/settings/wrhq/youtube/callback'}</code> as an authorized redirect URI</li>
                 <li>Copy the Client ID and Client Secret below, then click &quot;Connect to YouTube&quot;</li>
               </ol>
