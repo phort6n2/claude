@@ -263,6 +263,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       try {
         const socialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
         const activePlatforms = (contentItem.client.socialPlatforms || []) as string[]
+        const disconnectedAccounts = contentItem.client.disconnectedAccounts as Record<string, unknown> | null
 
         for (const socialPost of contentItem.socialPosts) {
           // Only post to platforms that are active AND have an account ID
@@ -272,6 +273,19 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
           if (!isActive || !accountId) {
             console.log(`Skipping ${socialPost.platform} - active: ${isActive}, hasAccountId: ${!!accountId}`)
+            continue
+          }
+
+          // Skip disconnected accounts - mark as skipped and continue
+          if (disconnectedAccounts && disconnectedAccounts[platformLower]) {
+            console.log(`Skipping ${socialPost.platform} - account is disconnected`)
+            await prisma.socialPost.update({
+              where: { id: socialPost.id },
+              data: {
+                status: 'FAILED',
+                errorMessage: 'Account disconnected - please reconnect in Late',
+              },
+            })
             continue
           }
 
