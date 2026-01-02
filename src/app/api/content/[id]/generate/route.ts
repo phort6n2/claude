@@ -67,6 +67,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const {
       generateBlog = true,
       generatePodcast = true, // Phase 1: Generate podcast WITH blog
+      generatePodcastDescription = false, // Regenerate description only
       generateImages: genImages = true,
       generateSocial = true,
       generateWrhqBlog = true,
@@ -80,6 +81,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         client: true,
         serviceLocation: true,
         blogPost: true,
+        podcast: true,
         images: true,
         socialPosts: true,
         wrhqSocialPosts: true,
@@ -363,6 +365,44 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       } catch (error) {
         console.error('Podcast generation error:', error)
         results.podcast = { success: false, error: String(error) }
+      }
+    }
+
+    // Regenerate podcast description only (when user clicks "Regenerate Description")
+    if (generatePodcastDescription && contentItem.blogPost) {
+      try {
+        // Get blog URL - prefer actual WordPress URL, fall back to constructed URL
+        const blogUrl = contentItem.blogPost.wordpressUrl ||
+          (contentItem.client.wordpressUrl
+            ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${contentItem.blogPost.slug}`
+            : '')
+
+        const podcastDescription = await generatePodcastDescription({
+          businessName: contentItem.client.businessName,
+          city: contentCity,
+          state: contentState,
+          paaQuestion: contentItem.paaQuestion,
+          blogPostUrl: blogUrl,
+          googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+        })
+
+        // Update both ContentItem and Podcast records
+        await prisma.contentItem.update({
+          where: { id },
+          data: { podcastDescription },
+        })
+
+        if (contentItem.podcast) {
+          await prisma.podcast.update({
+            where: { contentItemId: id },
+            data: { description: podcastDescription },
+          })
+        }
+
+        results.podcastDescription = { success: true }
+      } catch (error) {
+        console.error('Podcast description generation error:', error)
+        results.podcastDescription = { success: false, error: String(error) }
       }
     }
 

@@ -492,7 +492,7 @@ function ReviewTab({
   const isStep3Complete = content.socialPosts.length > 0 && content.socialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED')
   const isStep4Complete = content.podcastAddedToPost
 
-  async function regenerateContent(type: 'blog' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast') {
+  async function regenerateContent(type: 'blog' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast' | 'podcastDescription') {
     setGenerating(type)
     setError(null)
     try {
@@ -500,6 +500,7 @@ function ReviewTab({
         generateBlog: type === 'blog',
         generateImages: type === 'blog',
         generatePodcast: type === 'podcast',
+        generatePodcastDescription: type === 'podcastDescription',
         generateSocial: type === 'social',
         generateWrhqBlog: type === 'wrhqBlog',
         generateWrhqSocial: type === 'wrhqSocial',
@@ -1080,7 +1081,21 @@ function ReviewTab({
             {/* Description - show even during processing since it's generated immediately */}
             {(content.podcastDescription || content.podcast?.description) && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Podcast Description</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">Podcast Description</label>
+                  <button
+                    onClick={() => regenerateContent('podcastDescription')}
+                    disabled={generating === 'podcastDescription'}
+                    className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {generating === 'podcastDescription' ? (
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3" />
+                    )}
+                    Regenerate Description
+                  </button>
+                </div>
                 <div
                   className="border rounded-lg p-4 bg-orange-50 prose prose-sm max-w-none"
                   dangerouslySetInnerHTML={{
