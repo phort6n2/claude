@@ -190,7 +190,15 @@ export default function WRHQSettingsPage() {
         await loadConfig()
         alert(`Connected to: ${data.channelTitle}`)
       } else {
-        alert(`Failed to refresh: ${data.error || 'Unknown error'}`)
+        // Show detailed error with debug info if available
+        let errorMsg = `Failed to refresh: ${data.error || 'Unknown error'}`
+        if (data.debug) {
+          errorMsg += `\n\nDebug Info:\n- Has Client ID: ${data.debug.hasClientId}\n- Has Client Secret: ${data.debug.hasClientSecret}\n- Has Refresh Token: ${data.debug.hasRefreshToken}\n- Has Access Token: ${data.debug.hasAccessToken}`
+          if (data.debug.tokenExpiryDate) {
+            errorMsg += `\n- Token Expiry: ${data.debug.tokenExpiryDate}`
+          }
+        }
+        alert(errorMsg)
       }
     } catch (error) {
       console.error('Failed to refresh YouTube channel:', error)

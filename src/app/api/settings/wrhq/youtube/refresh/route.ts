@@ -12,32 +12,42 @@ export async function POST() {
   try {
     // Debug: Check if credentials exist
     const credentials = await getYouTubeCredentials()
-    console.log('YouTube credentials check:', {
+    const debugInfo = {
       hasClientId: !!credentials?.clientId,
       hasClientSecret: !!credentials?.clientSecret,
       hasRefreshToken: !!credentials?.refreshToken,
       hasAccessToken: !!credentials?.accessToken,
-    })
+      tokenExpiry: credentials?.tokenExpiry,
+      tokenExpiryDate: credentials?.tokenExpiry ? new Date(credentials.tokenExpiry).toISOString() : null,
+    }
+    console.log('YouTube credentials check:', debugInfo)
 
-    const configured = await isYouTubeConfigured()
-    if (!configured) {
+    if (!credentials) {
       return NextResponse.json({
         success: false,
         error: 'YouTube not configured - missing credentials',
-        debug: {
-          hasClientId: !!credentials?.clientId,
-          hasClientSecret: !!credentials?.clientSecret,
-          hasRefreshToken: !!credentials?.refreshToken,
-        }
+        debug: debugInfo
       }, { status: 400 })
     }
 
-    // Fetch channel info
-    const channel = await getChannelInfo()
+    // Try to get channel info with detailed error reporting
+    let channel: { id: string; title: string } | null = null
+    try {
+      channel = await getChannelInfo()
+    } catch (channelError) {
+      console.error('getChannelInfo error:', channelError)
+      return NextResponse.json({
+        success: false,
+        error: channelError instanceof Error ? channelError.message : 'Unknown channel info error',
+        debug: debugInfo
+      }, { status: 400 })
+    }
+
     if (!channel) {
       return NextResponse.json({
         success: false,
-        error: 'Could not retrieve channel info from YouTube API',
+        error: 'No channel found for authenticated YouTube account',
+        debug: debugInfo
       }, { status: 400 })
     }
 
