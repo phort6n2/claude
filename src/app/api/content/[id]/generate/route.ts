@@ -11,6 +11,36 @@ interface RouteContext {
   params: Promise<{ id: string }>
 }
 
+/**
+ * Generate a Google Maps embed HTML for a business location
+ */
+function generateGoogleMapsEmbed(params: {
+  businessName: string
+  streetAddress: string
+  city: string
+  state: string
+  postalCode: string
+}): string {
+  // Build the full address for the map query
+  const fullAddress = `${params.businessName}, ${params.streetAddress}, ${params.city}, ${params.state} ${params.postalCode}`
+  const encodedAddress = encodeURIComponent(fullAddress)
+
+  return `
+<div class="google-map-embed" style="margin: 30px 0;">
+  <h3 style="margin-bottom: 15px;">Find Us</h3>
+  <iframe
+    src="https://maps.google.com/maps?q=${encodedAddress}&output=embed"
+    width="100%"
+    height="400"
+    style="border:0; border-radius: 8px;"
+    allowfullscreen=""
+    loading="lazy"
+    referrerpolicy="no-referrer-when-downgrade"
+    title="Map showing location of ${params.businessName}">
+  </iframe>
+</div>`
+}
+
 interface ImageResult {
   imageType: ImageType
   fileName: string
@@ -128,17 +158,29 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           servicePageUrl, // Pass the matched service page
         })
 
+        // Generate Google Maps embed for the business location
+        const mapEmbed = generateGoogleMapsEmbed({
+          businessName: contentItem.client.businessName,
+          streetAddress: contentItem.client.streetAddress,
+          city: contentCity,
+          state: contentState,
+          postalCode: contentItem.client.postalCode,
+        })
+
+        // Append map embed to blog content (before the closing content)
+        const blogContentWithMap = blogResult.content + mapEmbed
+
         // Create or update blog post
         const blogData = {
           clientId: contentItem.clientId,
           title: blogResult.title,
           slug: blogResult.slug,
-          content: blogResult.content,
+          content: blogContentWithMap,
           excerpt: blogResult.excerpt,
           metaTitle: blogResult.metaTitle,
           metaDescription: blogResult.metaDescription,
           focusKeyword: blogResult.focusKeyword,
-          wordCount: blogResult.content.split(/\s+/).length,
+          wordCount: blogContentWithMap.split(/\s+/).length,
         }
 
         if (contentItem.blogPost) {
@@ -514,18 +556,30 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
           console.log('WRHQ blog result:', { title: wrhqBlogResult.title, slug: wrhqBlogResult.slug })
 
+          // Generate Google Maps embed for WRHQ blog (same business location)
+          const wrhqMapEmbed = generateGoogleMapsEmbed({
+            businessName: contentItem.client.businessName,
+            streetAddress: contentItem.client.streetAddress,
+            city: contentCity,
+            state: contentState,
+            postalCode: contentItem.client.postalCode,
+          })
+
+          // Append map embed to WRHQ blog content
+          const wrhqBlogContentWithMap = wrhqBlogResult.content + wrhqMapEmbed
+
           // Save WRHQ blog post
           await prisma.wRHQBlogPost.upsert({
             where: { contentItemId: id },
             update: {
               title: wrhqBlogResult.title,
               slug: wrhqBlogResult.slug,
-              content: wrhqBlogResult.content,
+              content: wrhqBlogContentWithMap,
               excerpt: wrhqBlogResult.excerpt,
               metaTitle: wrhqBlogResult.metaTitle,
               metaDescription: wrhqBlogResult.metaDescription,
               focusKeyword: wrhqBlogResult.focusKeyword,
-              wordCount: wrhqBlogResult.content.split(/\s+/).length,
+              wordCount: wrhqBlogContentWithMap.split(/\s+/).length,
               featuredImageUrl: landscapeImage?.gcsUrl || null,
             },
             create: {
@@ -533,12 +587,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
               clientId: contentItem.clientId,
               title: wrhqBlogResult.title,
               slug: wrhqBlogResult.slug,
-              content: wrhqBlogResult.content,
+              content: wrhqBlogContentWithMap,
               excerpt: wrhqBlogResult.excerpt,
               metaTitle: wrhqBlogResult.metaTitle,
               metaDescription: wrhqBlogResult.metaDescription,
               focusKeyword: wrhqBlogResult.focusKeyword,
-              wordCount: wrhqBlogResult.content.split(/\s+/).length,
+              wordCount: wrhqBlogContentWithMap.split(/\s+/).length,
               featuredImageUrl: landscapeImage?.gcsUrl || null,
             },
           })
