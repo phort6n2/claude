@@ -874,8 +874,19 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   </div>
 </div>`
 
+          // Fetch current content from WordPress (preserves podcast embed and other updates)
+          const { getPost } = await import('@/lib/integrations/wordpress')
+          const currentPost = await getPost(
+            {
+              url: contentItem.client.wordpressUrl!,
+              username: contentItem.client.wordpressUsername || '',
+              password: contentItem.client.wordpressAppPassword || '',
+            },
+            contentItem.blogPost.wordpressPostId
+          )
+
           // Insert video embed at the beginning of the content (after first paragraph)
-          let updatedContent = contentItem.blogPost.content
+          let updatedContent = currentPost.content
           const firstParagraphEnd = updatedContent.indexOf('</p>')
           if (firstParagraphEnd !== -1) {
             updatedContent = updatedContent.slice(0, firstParagraphEnd + 4) + '\n\n' + videoEmbed + '\n\n' + updatedContent.slice(firstParagraphEnd + 4)
@@ -931,37 +942,39 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
         if (videoId) {
           // Generate embed HTML with 9:16 aspect ratio (vertical video)
+          // Use !important to override WRHQ theme styles that might interfere with float
           const videoEmbed = `<!-- YouTube Short Video -->
 <style>
 .yt-shorts-embed {
-  float: right;
-  width: 280px;
-  margin: 0 0 20px 25px;
-  clear: right;
+  float: right !important;
+  width: 280px !important;
+  margin: 0 0 20px 25px !important;
+  clear: right !important;
+  display: block !important;
 }
 .yt-shorts-embed .video-wrapper {
-  position: relative;
-  padding-bottom: 177.78%; /* 16:9 inverted = 9:16 */
-  height: 0;
-  overflow: hidden;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  position: relative !important;
+  padding-bottom: 177.78% !important; /* 16:9 inverted = 9:16 */
+  height: 0 !important;
+  overflow: hidden !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
 }
 .yt-shorts-embed iframe {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border: none;
-  border-radius: 12px;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  border-radius: 12px !important;
 }
 @media (max-width: 600px) {
   .yt-shorts-embed {
-    float: none;
-    width: 100%;
-    max-width: 320px;
-    margin: 20px auto;
+    float: none !important;
+    width: 100% !important;
+    max-width: 320px !important;
+    margin: 20px auto !important;
   }
 }
 </style>
@@ -985,8 +998,19 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           const wrhqWpPass = wrhqWpPassSetting?.value || null
 
           if (wrhqWpUrl && wrhqWpUser && wrhqWpPass) {
+            // Fetch current content from WordPress (preserves any existing embeds)
+            const { getPost } = await import('@/lib/integrations/wordpress')
+            const currentWrhqPost = await getPost(
+              {
+                url: wrhqWpUrl,
+                username: wrhqWpUser,
+                password: wrhqWpPass,
+              },
+              contentItem.wrhqBlogPost.wordpressPostId
+            )
+
             // Insert video embed at the beginning of the content (after first paragraph)
-            let updatedWrhqContent = contentItem.wrhqBlogPost.content
+            let updatedWrhqContent = currentWrhqPost.content
             const firstParagraphEnd = updatedWrhqContent.indexOf('</p>')
             if (firstParagraphEnd !== -1) {
               updatedWrhqContent = updatedWrhqContent.slice(0, firstParagraphEnd + 4) + '\n\n' + videoEmbed + '\n\n' + updatedWrhqContent.slice(firstParagraphEnd + 4)
@@ -1032,7 +1056,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
         // Update WordPress blog post with podcast embed
         if (contentItem.blogPost?.wordpressPostId && contentItem.client.wordpressUrl) {
-          const updatedContent = contentItem.blogPost.content + `\n\n<!-- Podcast Episode -->\n<div class="podcast-embed" style="margin: 30px 0;">\n<h3>Listen to This Episode</h3>\n${podcastEmbed}\n</div>`
+          // Fetch current content from WordPress (preserves YouTube embed and other updates)
+          const { getPost } = await import('@/lib/integrations/wordpress')
+          const currentPost = await getPost(
+            {
+              url: contentItem.client.wordpressUrl,
+              username: contentItem.client.wordpressUsername || '',
+              password: contentItem.client.wordpressAppPassword || '',
+            },
+            contentItem.blogPost.wordpressPostId
+          )
+
+          const updatedContent = currentPost.content + `\n\n<!-- Podcast Episode -->\n<div class="podcast-embed" style="margin: 30px 0;">\n<h3>Listen to This Episode</h3>\n${podcastEmbed}\n</div>`
 
           await updatePost(
             {

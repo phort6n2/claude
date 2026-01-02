@@ -122,6 +122,33 @@ export async function updatePost(
   }
 }
 
+export async function getPost(
+  credentials: WordPressCredentials,
+  postId: number
+): Promise<{ id: number; content: string; title: string }> {
+  const authHeader = getAuthHeader(credentials.username, credentials.password)
+
+  const response = await fetch(`${credentials.url}/wp-json/wp/v2/posts/${postId}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': authHeader,
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`WordPress API error: ${error}`)
+  }
+
+  const data = await response.json()
+
+  return {
+    id: data.id,
+    content: data.content?.rendered || data.content?.raw || '',
+    title: data.title?.rendered || data.title?.raw || '',
+  }
+}
+
 export async function uploadMedia(
   credentials: WordPressCredentials,
   imageUrl: string,
