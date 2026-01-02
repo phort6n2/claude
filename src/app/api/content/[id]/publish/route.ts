@@ -108,6 +108,36 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
     const results: Record<string, unknown> = {}
 
+    // Helper function to generate Google Maps embed HTML
+    function generateGoogleMapsEmbed(googleMapsUrl: string | null, businessName: string): string {
+      if (!googleMapsUrl) return ''
+
+      // Extract place ID or coordinates from Google Maps URL for embed
+      // Google Maps embed format: https://www.google.com/maps/embed?pb=...
+      // We'll use an iframe with the place URL
+      return `
+<!-- Google Maps Location -->
+<div class="google-maps-embed" style="margin: 30px 0; clear: both;">
+  <h3 style="margin-bottom: 15px;">📍 Find ${businessName}</h3>
+  <div style="position: relative; width: 100%; height: 300px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+    <iframe
+      src="${googleMapsUrl.replace('/maps/place/', '/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=').replace(/\/@.*/, '')}"
+      width="100%"
+      height="100%"
+      style="border: none;"
+      allowfullscreen=""
+      loading="lazy"
+      referrerpolicy="no-referrer-when-downgrade">
+    </iframe>
+  </div>
+  <p style="margin-top: 10px; text-align: center;">
+    <a href="${googleMapsUrl}" target="_blank" rel="noopener noreferrer" style="color: #1a73e8; text-decoration: none;">
+      View on Google Maps →
+    </a>
+  </p>
+</div>`
+    }
+
     // Publish client blog to WordPress
     if (publishClientBlog && contentItem.blogPost) {
       try {
@@ -128,10 +158,17 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           }
         }
 
+        // Add Google Maps embed to content if client has a Google Maps URL
+        const googleMapsEmbed = generateGoogleMapsEmbed(
+          contentItem.client.googleMapsUrl,
+          contentItem.client.businessName
+        )
+        const contentWithEmbed = contentItem.blogPost.content + googleMapsEmbed
+
         const wpResult = await publishToWordPress({
           client: contentItem.client,
           title: contentItem.blogPost.title,
-          content: contentItem.blogPost.content,
+          content: contentWithEmbed,
           excerpt: contentItem.blogPost.excerpt || undefined,
           slug: contentItem.blogPost.slug,
           scheduledDate: contentItem.scheduledDate,
@@ -214,6 +251,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
               }
             }
 
+            // Add Google Maps embed to WRHQ content (links to the featured client)
+            const wrhqGoogleMapsEmbed = generateGoogleMapsEmbed(
+              contentItem.client.googleMapsUrl,
+              contentItem.client.businessName
+            )
+            const wrhqContentWithEmbed = contentItem.wrhqBlogPost.content + wrhqGoogleMapsEmbed
+
             const wpResult = await publishToWordPress({
               client: {
                 ...contentItem.client,
@@ -222,7 +266,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 wordpressAppPassword: wrhqWpPass,
               },
               title: contentItem.wrhqBlogPost.title,
-              content: contentItem.wrhqBlogPost.content,
+              content: wrhqContentWithEmbed,
               excerpt: contentItem.wrhqBlogPost.excerpt || undefined,
               slug: contentItem.wrhqBlogPost.slug,
               scheduledDate: contentItem.scheduledDate,
@@ -859,11 +903,114 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           })
 
           results.videoEmbed = { success: true, videoId }
-          console.log(`Embedded YouTube video ${videoId} in blog post`)
+          console.log(`Embedded YouTube video ${videoId} in client blog post`)
         }
       } catch (error) {
-        console.error('Video embed error:', error)
+        console.error('Client video embed error:', error)
         results.videoEmbed = { success: false, error: String(error) }
+      }
+    }
+
+    // Embed YouTube video in WRHQ blog post (similar to client blog)
+    if (youtubeVideoUrl && contentItem.wrhqBlogPost?.wordpressPostId) {
+      try {
+        const { updatePost } = await import('@/lib/integrations/wordpress')
+
+        // Extract YouTube video ID from URL
+        let videoId: string | null = null
+        const url = new URL(youtubeVideoUrl)
+        if (url.hostname.includes('youtube.com')) {
+          if (url.pathname.includes('/shorts/')) {
+            videoId = url.pathname.split('/shorts/')[1]?.split('?')[0]
+          } else {
+            videoId = url.searchParams.get('v')
+          }
+        } else if (url.hostname.includes('youtu.be')) {
+          videoId = url.pathname.slice(1).split('?')[0]
+        }
+
+        if (videoId) {
+          // Generate embed HTML with 9:16 aspect ratio (vertical video)
+          const videoEmbed = `<!-- YouTube Short Video -->
+<style>
+.yt-shorts-embed {
+  float: right;
+  width: 280px;
+  margin: 0 0 20px 25px;
+  clear: right;
+}
+.yt-shorts-embed .video-wrapper {
+  position: relative;
+  padding-bottom: 177.78%; /* 16:9 inverted = 9:16 */
+  height: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.yt-shorts-embed iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 12px;
+}
+@media (max-width: 600px) {
+  .yt-shorts-embed {
+    float: none;
+    width: 100%;
+    max-width: 320px;
+    margin: 20px auto;
+  }
+}
+</style>
+<div class="yt-shorts-embed">
+  <div class="video-wrapper">
+    <iframe
+      src="https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1"
+      title="Watch on YouTube"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen>
+    </iframe>
+  </div>
+</div>`
+
+          // Get WRHQ WordPress credentials
+          const wrhqWpUrl = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_URL)
+          const wrhqWpUser = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_USERNAME)
+          const wrhqWpPassSetting = await prisma.setting.findUnique({
+            where: { key: WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_APP_PASSWORD }
+          })
+          const wrhqWpPass = wrhqWpPassSetting?.value || null
+
+          if (wrhqWpUrl && wrhqWpUser && wrhqWpPass) {
+            // Insert video embed at the beginning of the content (after first paragraph)
+            let updatedWrhqContent = contentItem.wrhqBlogPost.content
+            const firstParagraphEnd = updatedWrhqContent.indexOf('</p>')
+            if (firstParagraphEnd !== -1) {
+              updatedWrhqContent = updatedWrhqContent.slice(0, firstParagraphEnd + 4) + '\n\n' + videoEmbed + '\n\n' + updatedWrhqContent.slice(firstParagraphEnd + 4)
+            } else {
+              updatedWrhqContent = videoEmbed + '\n\n' + updatedWrhqContent
+            }
+
+            await updatePost(
+              {
+                url: wrhqWpUrl,
+                username: wrhqWpUser,
+                password: wrhqWpPass,
+              },
+              contentItem.wrhqBlogPost.wordpressPostId,
+              { content: updatedWrhqContent }
+            )
+
+            results.wrhqVideoEmbed = { success: true, videoId }
+            console.log(`Embedded YouTube video ${videoId} in WRHQ blog post`)
+          }
+        }
+      } catch (error) {
+        console.error('WRHQ video embed error:', error)
+        results.wrhqVideoEmbed = { success: false, error: String(error) }
       }
     }
 
