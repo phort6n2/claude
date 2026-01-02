@@ -600,7 +600,7 @@ model SocialPost {
   approvedAt        DateTime?
 
   // Status
-  status            SocialPostStatus @default(SCHEDULED)
+  status            SocialPostStatus @default(DRAFT)
   publishedUrl      String?
   errorMessage      String?   // Error message if post failed
 
@@ -641,7 +641,7 @@ model WRHQSocialPost {
   approvedAt        DateTime?
 
   // Status
-  status            SocialPostStatus @default(SCHEDULED)
+  status            SocialPostStatus @default(DRAFT)
   publishedUrl      String?
   errorMessage      String?   // Error message if post failed
 
