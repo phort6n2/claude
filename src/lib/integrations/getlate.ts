@@ -33,32 +33,14 @@ function getLatePlatform(platform: Platform): string {
 
 /**
  * Map generic media type to platform-specific media type
- * Late API requires specific types for video content:
- * - Instagram: 'reels' for vertical video, 'video' for regular
- * - YouTube: 'shorts' for vertical video
- * - TikTok: 'video'
- * - Facebook: 'reels' for vertical video
+ * Late API mediaItems.type should be 'video' or 'image'
+ * Platform-specific formats (reels, shorts) are determined by Late based on aspect ratio
+ * or can be specified in platformSpecificData
  */
 function getPlatformMediaType(platform: Platform, mediaType: 'image' | 'video'): string {
-  if (mediaType === 'image') return 'image'
-
-  // Map video to platform-specific types for vertical video content
-  switch (platform) {
-    case 'instagram':
-      return 'reels'  // Instagram Reels for vertical video
-    case 'youtube':
-      return 'shorts'  // YouTube Shorts for vertical video
-    case 'facebook':
-      return 'reels'  // Facebook Reels for vertical video
-    case 'tiktok':
-    case 'twitter':
-    case 'linkedin':
-    case 'threads':
-    case 'pinterest':
-    case 'telegram':
-    default:
-      return 'video'  // Generic video for other platforms
-  }
+  // Always return 'video' or 'image' for mediaItems.type
+  // Late handles the format (reels/shorts) automatically based on aspect ratio
+  return mediaType
 }
 
 interface SchedulePostParams {
