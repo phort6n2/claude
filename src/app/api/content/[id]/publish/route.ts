@@ -138,6 +138,22 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 </div>`
     }
 
+    // Helper function to generate in-content featured image HTML
+    function generateFeaturedImageEmbed(imageUrl: string | null, altText: string): string {
+      if (!imageUrl) return ''
+
+      return `
+<!-- Featured Image -->
+<div class="featured-image-embed" style="margin: 30px 0 40px 0; clear: both;">
+  <img
+    src="${imageUrl}"
+    alt="${altText}"
+    style="width: 100%; max-width: 1200px; height: auto; display: block; margin: 0 auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"
+    loading="lazy"
+  />
+</div>`
+    }
+
     // Publish client blog to WordPress
     if (publishClientBlog && contentItem.blogPost) {
       try {
@@ -158,12 +174,25 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           }
         }
 
+        // Add featured image after first paragraph
+        const featuredImageEmbed = generateFeaturedImageEmbed(
+          featuredImageUrl || null,
+          `${contentItem.blogPost.title} | ${contentItem.client.businessName}`
+        )
+        let contentWithImage = contentItem.blogPost.content
+        if (featuredImageEmbed) {
+          const firstParagraphEnd = contentWithImage.indexOf('</p>')
+          if (firstParagraphEnd !== -1) {
+            contentWithImage = contentWithImage.slice(0, firstParagraphEnd + 4) + '\n\n' + featuredImageEmbed + '\n\n' + contentWithImage.slice(firstParagraphEnd + 4)
+          }
+        }
+
         // Add Google Maps embed to content if client has a Google Maps URL
         const googleMapsEmbed = generateGoogleMapsEmbed(
           contentItem.client.googleMapsUrl,
           contentItem.client.businessName
         )
-        const contentWithEmbed = contentItem.blogPost.content + googleMapsEmbed
+        const contentWithEmbed = contentWithImage + googleMapsEmbed
 
         const wpResult = await publishToWordPress({
           client: contentItem.client,
@@ -251,12 +280,25 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
               }
             }
 
+            // Add featured image after first paragraph
+            const wrhqFeaturedImageEmbed = generateFeaturedImageEmbed(
+              wrhqFeaturedImageUrl || null,
+              `${contentItem.wrhqBlogPost.title} | ${contentItem.client.businessName}`
+            )
+            let wrhqContentWithImage = contentItem.wrhqBlogPost.content
+            if (wrhqFeaturedImageEmbed) {
+              const firstParagraphEnd = wrhqContentWithImage.indexOf('</p>')
+              if (firstParagraphEnd !== -1) {
+                wrhqContentWithImage = wrhqContentWithImage.slice(0, firstParagraphEnd + 4) + '\n\n' + wrhqFeaturedImageEmbed + '\n\n' + wrhqContentWithImage.slice(firstParagraphEnd + 4)
+              }
+            }
+
             // Add Google Maps embed to WRHQ content (links to the featured client)
             const wrhqGoogleMapsEmbed = generateGoogleMapsEmbed(
               contentItem.client.googleMapsUrl,
               contentItem.client.businessName
             )
-            const wrhqContentWithEmbed = contentItem.wrhqBlogPost.content + wrhqGoogleMapsEmbed
+            const wrhqContentWithEmbed = wrhqContentWithImage + wrhqGoogleMapsEmbed
 
             const wpResult = await publishToWordPress({
               client: {
@@ -829,12 +871,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         if (videoId) {
           // Generate embed HTML with 9:16 aspect ratio (vertical video)
           // Uses float:right so text wraps around it, with responsive fallback
+          // Added margin-top to space it from the featured image
           const videoEmbed = `<!-- YouTube Short Video -->
 <style>
 .yt-shorts-embed {
   float: right;
   width: 280px;
-  margin: 0 0 20px 25px;
+  margin: 30px 0 20px 25px;
   clear: right;
 }
 .yt-shorts-embed .video-wrapper {
@@ -859,7 +902,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     float: none;
     width: 100%;
     max-width: 320px;
-    margin: 20px auto;
+    margin: 30px auto;
   }
 }
 </style>
@@ -943,12 +986,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         if (videoId) {
           // Generate embed HTML with 9:16 aspect ratio (vertical video)
           // Use !important to override WRHQ theme styles that might interfere with float
+          // Added margin-top to space it from the featured image
           const videoEmbed = `<!-- YouTube Short Video -->
 <style>
 .yt-shorts-embed {
   float: right !important;
   width: 280px !important;
-  margin: 0 0 20px 25px !important;
+  margin: 30px 0 20px 25px !important;
   clear: right !important;
   display: block !important;
 }
@@ -974,7 +1018,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     float: none !important;
     width: 100% !important;
     max-width: 320px !important;
-    margin: 20px auto !important;
+    margin: 30px auto !important;
   }
 }
 </style>

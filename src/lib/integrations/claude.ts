@@ -394,11 +394,7 @@ interface WRHQBlogPostResult {
 export async function generateWRHQBlogPost(params: WRHQBlogPostParams): Promise<WRHQBlogPostResult> {
   const location = `${params.clientCity}, ${params.clientState}`
 
-  // Use a placeholder for the image - we'll replace it after generation
-  // This avoids including massive base64 data URLs in the prompt
-  const hasImage = !!params.featuredImageUrl
-  const imagePlaceholder = '{{FEATURED_IMAGE}}'
-
+  // Note: Featured image is now added at publish time, not during generation
   const prompt = `Write a blog post for WindshieldRepairHQ.com (an auto glass industry directory) about this topic.
 
 **CONTENT DETAILS:**
@@ -409,11 +405,6 @@ export async function generateWRHQBlogPost(params: WRHQBlogPostParams): Promise<
 - WRHQ Directory Listing URL: ${params.wrhqDirectoryUrl}
 - Google Maps URL: ${params.googleMapsUrl}
 - Phone Number: ${params.phone}
-
-${hasImage ? `**IMAGE TO INSERT:**
-A featured image will be added to the blog post. Insert the placeholder ${imagePlaceholder} IMMEDIATELY after the opening paragraph. This placeholder will be replaced with the actual image.
-
-**CRITICAL:** You MUST include ${imagePlaceholder} exactly as written (on its own line) after the first paragraph.` : ''}
 
 **PURPOSE:**
 This post lives on WindshieldRepairHQ.com and should:
@@ -434,7 +425,6 @@ Opening Paragraph:
 - Directly answer the PAA question in 2-3 sentences
 - Mention this is a common question auto glass customers ask
 - Tease that a local expert has written a comprehensive guide
-${hasImage ? `\n${imagePlaceholder}` : ''}
 
 H2: What You Need to Know About [Topic from PAA]
 - 2 paragraphs covering the key points
@@ -501,12 +491,6 @@ Return ONLY valid JSON. No markdown code blocks.`
   const result = JSON.parse(jsonMatch[0]) as WRHQBlogPostResult
   // Apply Title Case to the title
   result.title = toTitleCase(result.title)
-
-  // Replace the image placeholder with actual image HTML if we have an image
-  if (hasImage && params.featuredImageUrl) {
-    const imageHtml = `<img src="${params.featuredImageUrl}" alt="${params.paaQuestion} | ${params.clientBusinessName} in ${location}" style="width:100%; max-width:1200px; height:auto; margin:30px auto; display:block; border-radius:8px;" loading="lazy"/>`
-    result.content = result.content.replace(imagePlaceholder, imageHtml)
-  }
 
   return result
 }
