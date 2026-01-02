@@ -1,16 +1,6 @@
 // YouTube Data API Integration for WRHQ Long-form Video Publishing
 
-import { getSetting, setSetting } from '@/lib/settings'
-
-// YouTube API Settings Keys
-export const YOUTUBE_SETTINGS_KEYS = {
-  WRHQ_YOUTUBE_CLIENT_ID: 'WRHQ_YOUTUBE_CLIENT_ID',
-  WRHQ_YOUTUBE_CLIENT_SECRET: 'WRHQ_YOUTUBE_CLIENT_SECRET',
-  WRHQ_YOUTUBE_REFRESH_TOKEN: 'WRHQ_YOUTUBE_REFRESH_TOKEN',
-  WRHQ_YOUTUBE_ACCESS_TOKEN: 'WRHQ_YOUTUBE_ACCESS_TOKEN',
-  WRHQ_YOUTUBE_TOKEN_EXPIRY: 'WRHQ_YOUTUBE_TOKEN_EXPIRY',
-  WRHQ_YOUTUBE_CHANNEL_ID: 'WRHQ_YOUTUBE_CHANNEL_ID',
-} as const
+import { getSetting, setSetting, YOUTUBE_SETTINGS_KEYS } from '@/lib/settings'
 
 const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3'
 const YOUTUBE_UPLOAD_BASE = 'https://www.googleapis.com/upload/youtube/v3'
