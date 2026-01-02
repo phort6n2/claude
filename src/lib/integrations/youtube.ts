@@ -334,7 +334,7 @@ export async function uploadVideo(
       'Content-Type': 'video/*',
       'Content-Length': videoBuffer.length.toString(),
     },
-    body: videoBuffer,
+    body: new Uint8Array(videoBuffer),
   })
 
   if (!uploadResponse.ok) {
@@ -442,7 +442,7 @@ async function setVideoThumbnail(
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': contentType,
         },
-        body: Buffer.from(imageBuffer),
+        body: new Uint8Array(imageBuffer),
       }
     )
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { ImageType } from '@prisma/client'
 import {
   uploadVideo,
   generateVideoDescription,
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         wrhqBlogPost: true,
         podcast: true,
         images: {
-          where: { imageType: 'featured' },
+          where: { imageType: ImageType.BLOG_FEATURED },
           take: 1,
         },
       },
@@ -66,7 +67,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       )
     }
 
-    const { client, serviceLocation, blogPost, wrhqBlogPost, podcast, images } = contentItem
+    // Extract included relations
+    const client = contentItem.client
+    const serviceLocation = contentItem.serviceLocation
+    const blogPost = contentItem.blogPost
+    const wrhqBlogPost = contentItem.wrhqBlogPost
+    const podcast = contentItem.podcast
+    const images = contentItem.images
     const location = serviceLocation
       ? `${serviceLocation.city}, ${serviceLocation.state}`
       : `${client.city}, ${client.state}`
@@ -148,10 +155,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     // Update client blog post if published
     if (blogPost?.wordpressPostId && client.wordpressUrl && client.wordpressUsername && client.wordpressAppPassword) {
       try {
+        const decryptedPassword = decrypt(client.wordpressAppPassword)
+        if (!decryptedPassword) {
+          throw new Error('Failed to decrypt WordPress password')
+        }
         const credentials = {
           url: client.wordpressUrl,
           username: client.wordpressUsername,
-          password: decrypt(client.wordpressAppPassword),
+          password: decryptedPassword,
         }
 
         // Get current content
