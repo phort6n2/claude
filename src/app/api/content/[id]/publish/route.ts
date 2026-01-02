@@ -545,6 +545,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
 
     // Post/Schedule client VIDEO social posts
+    let clientYoutubeVideoUrl: string | null = null  // Track YouTube URL for blog embed
     if (scheduleVideoSocial && contentItem.shortVideoGenerated) {
       try {
         const socialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
@@ -631,6 +632,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 errorMessage: lateResult.error || null,
               },
             })
+
+            // Capture YouTube URL for blog embed
+            if (socialPost.platform === 'YOUTUBE' && lateResult.platformPostUrl) {
+              clientYoutubeVideoUrl = lateResult.platformPostUrl
+            }
           } catch (postError) {
             console.error(`Failed to post video ${socialPost.platform}:`, postError)
             await prisma.socialPost.update({
@@ -734,6 +740,110 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       } catch (error) {
         console.error('WRHQ video social posting error:', error)
         results.wrhqVideoSocial = { success: false, error: String(error) }
+      }
+    }
+
+    // Embed YouTube video in client blog post (9:16 aspect ratio with text wrap)
+    if (clientYoutubeVideoUrl && contentItem.blogPost?.wordpressPostId) {
+      try {
+        const { updatePost } = await import('@/lib/integrations/wordpress')
+
+        // Extract YouTube video ID from URL
+        // Handles: youtube.com/watch?v=ID, youtube.com/shorts/ID, youtu.be/ID
+        let videoId: string | null = null
+        const url = new URL(clientYoutubeVideoUrl)
+        if (url.hostname.includes('youtube.com')) {
+          if (url.pathname.includes('/shorts/')) {
+            videoId = url.pathname.split('/shorts/')[1]?.split('?')[0]
+          } else {
+            videoId = url.searchParams.get('v')
+          }
+        } else if (url.hostname.includes('youtu.be')) {
+          videoId = url.pathname.slice(1).split('?')[0]
+        }
+
+        if (videoId) {
+          // Generate embed HTML with 9:16 aspect ratio (vertical video)
+          // Uses float:right so text wraps around it, with responsive fallback
+          const videoEmbed = `<!-- YouTube Short Video -->
+<style>
+.yt-shorts-embed {
+  float: right;
+  width: 280px;
+  margin: 0 0 20px 25px;
+  clear: right;
+}
+.yt-shorts-embed .video-wrapper {
+  position: relative;
+  padding-bottom: 177.78%; /* 16:9 inverted = 9:16 */
+  height: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.yt-shorts-embed iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 12px;
+}
+@media (max-width: 600px) {
+  .yt-shorts-embed {
+    float: none;
+    width: 100%;
+    max-width: 320px;
+    margin: 20px auto;
+  }
+}
+</style>
+<div class="yt-shorts-embed">
+  <div class="video-wrapper">
+    <iframe
+      src="https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1"
+      title="Watch on YouTube"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen>
+    </iframe>
+  </div>
+</div>`
+
+          // Insert video embed at the beginning of the content (after first paragraph)
+          let updatedContent = contentItem.blogPost.content
+          const firstParagraphEnd = updatedContent.indexOf('</p>')
+          if (firstParagraphEnd !== -1) {
+            updatedContent = updatedContent.slice(0, firstParagraphEnd + 4) + '\n\n' + videoEmbed + '\n\n' + updatedContent.slice(firstParagraphEnd + 4)
+          } else {
+            // No paragraph found, prepend the video
+            updatedContent = videoEmbed + '\n\n' + updatedContent
+          }
+
+          await updatePost(
+            {
+              url: contentItem.client.wordpressUrl!,
+              username: contentItem.client.wordpressUsername || '',
+              password: contentItem.client.wordpressAppPassword || '',
+            },
+            contentItem.blogPost.wordpressPostId,
+            { content: updatedContent }
+          )
+
+          await prisma.contentItem.update({
+            where: { id },
+            data: {
+              shortVideoAddedToPost: true,
+              shortVideoAddedAt: new Date(),
+            },
+          })
+
+          results.videoEmbed = { success: true, videoId }
+          console.log(`Embedded YouTube video ${videoId} in blog post`)
+        }
+      } catch (error) {
+        console.error('Video embed error:', error)
+        results.videoEmbed = { success: false, error: String(error) }
       }
     }
 
