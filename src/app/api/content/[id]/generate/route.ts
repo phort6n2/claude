@@ -1025,16 +1025,31 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
           // Generate client video social posts
           if (clientVideoPlatforms.length > 0) {
-            // Delete existing client video social posts
+            // Delete existing client video social posts, but preserve published ones
             await prisma.socialPost.deleteMany({
               where: {
                 contentItemId: id,
                 mediaType: 'video',
+                status: { notIn: ['PUBLISHED', 'PROCESSING'] },
               },
             })
 
+            // Get existing published platforms to avoid duplicates
+            const existingPublishedPlatforms = await prisma.socialPost.findMany({
+              where: {
+                contentItemId: id,
+                mediaType: 'video',
+                status: { in: ['PUBLISHED', 'PROCESSING'] },
+              },
+              select: { platform: true },
+            })
+            const publishedPlatformSet = new Set(existingPublishedPlatforms.map(p => p.platform))
+
+            // Filter out platforms that already have published posts
+            const platformsToGenerate = clientVideoPlatforms.filter(p => !publishedPlatformSet.has(p as any))
+
             const videoSocialPostsData = await Promise.all(
-              clientVideoPlatforms.map(async (platform) => {
+              platformsToGenerate.map(async (platform) => {
                 const platformLower = platform.toLowerCase() as 'tiktok' | 'youtube' | 'instagram' | 'facebook'
                 try {
                   const result = await generateVideoSocialCaption({
@@ -1095,16 +1110,31 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
               where: { contentItemId: id },
             })
 
-            // Delete existing WRHQ video social posts
+            // Delete existing WRHQ video social posts, but preserve published ones
             await prisma.wRHQSocialPost.deleteMany({
               where: {
                 contentItemId: id,
                 mediaType: 'video',
+                status: { notIn: ['PUBLISHED', 'PROCESSING'] },
               },
             })
 
+            // Get existing published platforms to avoid duplicates
+            const existingWrhqPublishedPlatforms = await prisma.wRHQSocialPost.findMany({
+              where: {
+                contentItemId: id,
+                mediaType: 'video',
+                status: { in: ['PUBLISHED', 'PROCESSING'] },
+              },
+              select: { platform: true },
+            })
+            const wrhqPublishedPlatformSet = new Set(existingWrhqPublishedPlatforms.map(p => p.platform))
+
+            // Filter out platforms that already have published posts
+            const wrhqPlatformsToGenerate = wrhqVideoPlatforms.filter(p => !wrhqPublishedPlatformSet.has(p as any))
+
             const wrhqVideoPostsData = await Promise.all(
-              wrhqVideoPlatforms.map(async (platform) => {
+              wrhqPlatformsToGenerate.map(async (platform) => {
                 const platformLower = platform.toLowerCase() as 'tiktok' | 'youtube' | 'instagram' | 'facebook'
                 try {
                   const result = await generateWRHQVideoSocialCaption({
