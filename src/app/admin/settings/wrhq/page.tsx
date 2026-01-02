@@ -321,23 +321,28 @@ export default function WRHQSettingsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            {SOCIAL_PLATFORMS.map((platform) => (
-              <div key={platform.key}>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {platform.icon} {platform.label} Account ID
-                </label>
-                <input
-                  type="text"
-                  value={socialForm[platform.key] || ''}
-                  onChange={(e) => setSocialForm({ ...socialForm, [platform.key]: e.target.value })}
-                  placeholder={`Late ${platform.label} ID`}
-                  className="w-full px-3 py-2 border rounded-md"
-                  disabled={!enabledPlatforms.includes(platform.key)}
-                />
-              </div>
-            ))}
-          </div>
+          {enabledPlatforms.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              {SOCIAL_PLATFORMS.filter((platform) => enabledPlatforms.includes(platform.key)).map((platform) => (
+                <div key={platform.key}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {platform.icon} {platform.label} Account ID
+                  </label>
+                  <input
+                    type="text"
+                    value={socialForm[platform.key] || ''}
+                    onChange={(e) => setSocialForm({ ...socialForm, [platform.key]: e.target.value })}
+                    placeholder={`Late ${platform.label} ID`}
+                    className="w-full px-3 py-2 border rounded-md"
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mb-4 p-4 bg-gray-50 rounded-md text-gray-500 text-sm">
+              Select platforms above to configure their account IDs
+            </div>
+          )}
 
           <button
             onClick={() => saveSection('socialMedia', { ...socialForm, enabledPlatforms })}
