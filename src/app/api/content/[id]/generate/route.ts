@@ -298,18 +298,21 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         // Get image generation API key from database settings
         const imageApiKey = await getSetting('NANO_BANANA_API_KEY')
 
-        // Build address string
-        const address = `${contentItem.client.streetAddress}, ${contentCity}, ${contentState} ${contentItem.client.postalCode}`
+        // Build address string using client's main GBP address (not service location)
+        const clientState = contentItem.client.state.toUpperCase()
+        const address = `${contentItem.client.streetAddress}, ${contentItem.client.city}, ${clientState} ${contentItem.client.postalCode}`
 
-        // Replace {location} placeholder in PAA question with actual location
+        // Replace {location} placeholder in PAA question with service location
         const location = `${contentCity}, ${contentState}`
         const paaQuestionWithLocation = contentItem.paaQuestion.replace(/\{location\}/gi, location)
 
         // Generate both 16:9 and 1:1 images
+        // Use client's main GBP address for the business location on image
+        // But use service location in the PAA headline
         const generatedImages = await generateBothImages({
           businessName: contentItem.client.businessName,
-          city: contentCity,
-          state: contentState,
+          city: contentItem.client.city,
+          state: clientState,
           paaQuestion: paaQuestionWithLocation,
           phone: contentItem.client.phone,
           website: contentItem.client.wordpressUrl || contentItem.client.ctaUrl || '',
