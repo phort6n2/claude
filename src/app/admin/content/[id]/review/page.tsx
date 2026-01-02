@@ -1554,6 +1554,89 @@ function PublishedTab({ content }: { content: ContentItem }) {
         </section>
       )}
 
+      {/* Client Video Social Posts Status */}
+      {content.videoSocialPosts.length > 0 && (
+        <section className="bg-white rounded-lg shadow-sm border p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Video className="h-5 w-5 text-purple-500" />
+            Client Video Posts
+          </h2>
+          <div className="space-y-2">
+            {content.videoSocialPosts.map((post) => (
+              <div key={post.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                <div className="flex items-center gap-2">
+                  <span>{PLATFORM_ICONS[post.platform] || '📱'}</span>
+                  <span>{post.platform}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  {post.publishedUrl && (
+                    <a
+                      href={post.publishedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline text-sm flex items-center gap-1"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      View Post
+                    </a>
+                  )}
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    post.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' :
+                    post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
+                    post.status === 'FAILED' ? 'bg-red-100 text-red-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {post.status === 'PUBLISHED' ? 'Posted' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* WRHQ Video Social Posts Status */}
+      {content.wrhqVideoSocialPosts.length > 0 && (
+        <section className="bg-white rounded-lg shadow-sm border p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Video className="h-5 w-5 text-purple-500" />
+            <span className="text-xs bg-purple-500 text-white px-2 py-0.5 rounded">WRHQ</span>
+            Video Posts
+          </h2>
+          <div className="space-y-2">
+            {content.wrhqVideoSocialPosts.map((post) => (
+              <div key={post.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                <div className="flex items-center gap-2">
+                  <span>{PLATFORM_ICONS[post.platform] || '📱'}</span>
+                  <span>{post.platform}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  {post.publishedUrl && (
+                    <a
+                      href={post.publishedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline text-sm flex items-center gap-1"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      View Post
+                    </a>
+                  )}
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    post.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' :
+                    post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
+                    post.status === 'FAILED' ? 'bg-red-100 text-red-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {post.status === 'PUBLISHED' ? 'Posted' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Podcast */}
       {content.podcast?.status === 'PUBLISHED' && content.podcast.podbeanUrl && (
         <section className="bg-white rounded-lg shadow-sm border p-6">
