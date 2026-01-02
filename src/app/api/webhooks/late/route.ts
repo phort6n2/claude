@@ -93,6 +93,7 @@ interface PostEventData {
     publishedUrl?: string
     platformPostUrl?: string
     error?: string
+    errorMessage?: string
   }>
   error?: string
   errorMessage?: string
@@ -223,10 +224,11 @@ async function handlePostPartial(data: PostEventData) {
 
     if (status === 'published') {
       // Find and update as published
+      const platformName = platform.platform.toUpperCase() as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM'
       const clientPost = await prisma.socialPost.findFirst({
         where: {
           getlatePostId: postId,
-          platform: platform.platform.toUpperCase(),
+          platform: platformName,
         },
       })
 
@@ -242,10 +244,11 @@ async function handlePostPartial(data: PostEventData) {
       }
     } else if (status === 'failed') {
       // Find and update as failed
+      const platformName = platform.platform.toUpperCase() as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM'
       const clientPost = await prisma.socialPost.findFirst({
         where: {
           getlatePostId: postId,
-          platform: platform.platform.toUpperCase(),
+          platform: platformName,
         },
       })
 
