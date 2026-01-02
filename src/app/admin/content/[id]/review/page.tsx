@@ -468,6 +468,7 @@ function ReviewTab({
 }) {
   const [generating, setGenerating] = useState<string | null>(null)
   const [publishing, setPublishing] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Poll for podcast status when processing
@@ -647,6 +648,29 @@ function ReviewTab({
       setError(String(err))
     } finally {
       setPublishing(null)
+    }
+  }
+
+  async function refreshStatus() {
+    setRefreshing(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/content/${content.id}/refresh-status`, {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to refresh status')
+      }
+
+      // Refresh the page data
+      onUpdate()
+    } catch (err) {
+      setError(String(err))
+    } finally {
+      setRefreshing(false)
     }
   }
 
@@ -1254,6 +1278,18 @@ function ReviewTab({
                         Publish WRHQ Video
                       </>
                     )}
+                  </button>
+                )}
+                {/* Refresh Status button - show when any video posts are PROCESSING */}
+                {(content.videoSocialPosts.some(p => p.status === 'PROCESSING') ||
+                  content.wrhqVideoSocialPosts.some(p => p.status === 'PROCESSING')) && (
+                  <button
+                    onClick={refreshStatus}
+                    disabled={refreshing}
+                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                    {refreshing ? 'Refreshing...' : 'Refresh Status'}
                   </button>
                 )}
               </>
