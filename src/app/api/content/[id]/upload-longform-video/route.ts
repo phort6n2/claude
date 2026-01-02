@@ -125,16 +125,24 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       title,
       playlistId,
       tagsCount: tags.length,
+      videoSize: videoBuffer.length,
+      hasThumbnail: !!thumbnailUrl,
     })
 
-    const result = await uploadVideo(videoBuffer, {
-      title,
-      description,
-      tags,
-      playlistId,
-      thumbnailUrl,
-      privacyStatus: 'public',
-    })
+    let result
+    try {
+      result = await uploadVideo(videoBuffer, {
+        title,
+        description,
+        tags,
+        playlistId,
+        thumbnailUrl,
+        privacyStatus: 'public',
+      })
+    } catch (uploadError) {
+      console.error('YouTube upload failed:', uploadError)
+      throw new Error(`YouTube upload failed: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`)
+    }
 
     console.log('Video uploaded:', result)
 
@@ -258,8 +266,21 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     })
   } catch (error) {
     console.error('Failed to upload long-form video:', error)
+
+    // Extract detailed error message
+    let errorMessage = 'Upload failed'
+    if (error instanceof Error) {
+      errorMessage = error.message
+      // Log the full stack trace for debugging
+      console.error('Stack trace:', error.stack)
+    } else if (typeof error === 'string') {
+      errorMessage = error
+    } else {
+      console.error('Unknown error type:', typeof error, JSON.stringify(error))
+    }
+
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Upload failed' },
+      { error: errorMessage },
       { status: 500 }
     )
   }
