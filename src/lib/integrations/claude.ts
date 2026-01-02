@@ -800,6 +800,10 @@ export async function generateVideoSocialCaption(params: {
     facebook: 'Facebook Reels',
   }[params.platform]
 
+  // For YouTube and Facebook, links are clickable in captions
+  // For Instagram and TikTok, links go in first comment
+  const includeUrlInCaption = params.platform === 'youtube' || params.platform === 'facebook'
+
   const prompt = `Write a ${platformName} caption for this auto glass video.
 
 **Context:**
@@ -817,12 +821,13 @@ ${params.googleMapsUrl ? `- Google Maps: ${params.googleMapsUrl}` : ''}
 - Tone: Engaging, educational, conversational
 - Include a hook that grabs attention
 - End with a call-to-action
+${includeUrlInCaption ? `- IMPORTANT: Include the blog URL (${params.blogUrl}) directly in the caption - it will be clickable!` : `- Put the blog link in the firstComment since links aren't clickable in ${platformName} captions`}
 
 **Format your response as JSON:**
 {
-  "caption": "The main caption text (NO hashtags here)",
+  "caption": "The main caption text (NO hashtags here)${includeUrlInCaption ? ` - MUST include the blog URL: ${params.blogUrl}` : ''}",
   "hashtags": ["AutoGlass", "WindshieldRepair", ...up to ${limits.hashtags} hashtags without #],
-  "firstComment": "A follow-up comment with the blog link and Google Maps link"
+  "firstComment": "A follow-up comment${!includeUrlInCaption ? ` - MUST include: ${params.blogUrl}` : ''}${params.googleMapsUrl ? ` and ${params.googleMapsUrl}` : ''}"
 }
 
 Return ONLY valid JSON. No explanation.`
@@ -891,6 +896,11 @@ export async function generateWRHQVideoSocialCaption(params: {
     facebook: 'Facebook Reels',
   }[params.platform]
 
+  // For YouTube and Facebook, links are clickable in captions
+  // For Instagram and TikTok, links go in first comment
+  const includeUrlInCaption = params.platform === 'youtube' || params.platform === 'facebook'
+  const primaryUrl = params.wrhqBlogUrl || params.clientBlogUrl || params.wrhqDirectoryUrl
+
   const prompt = `Write a ${platformName} caption for WRHQ (Windshield Repair HeadQuarters) featuring a local auto glass partner.
 
 **Context:**
@@ -911,12 +921,13 @@ export async function generateWRHQVideoSocialCaption(params: {
 - Educational and helpful tone
 - Highlight that WRHQ connects drivers with trusted local shops
 - Hook viewers in the first line
+${includeUrlInCaption && primaryUrl ? `- IMPORTANT: Include the blog URL (${primaryUrl}) directly in the caption - it will be clickable!` : primaryUrl ? `- Put the blog link in the firstComment since links aren't clickable in ${platformName} captions` : ''}
 
 **Format your response as JSON:**
 {
-  "caption": "The main caption text (NO hashtags here)",
+  "caption": "The main caption text (NO hashtags here)${includeUrlInCaption && primaryUrl ? ` - MUST include the blog URL: ${primaryUrl}` : ''}",
   "hashtags": ["WRHQ", "AutoGlass", ...up to ${limits.hashtags} hashtags without #],
-  "firstComment": "Follow-up comment with helpful links"
+  "firstComment": "Follow-up comment with helpful links${!includeUrlInCaption && primaryUrl ? ` - MUST include: ${primaryUrl}` : ''}${params.googleMapsUrl ? ` and Google Maps: ${params.googleMapsUrl}` : ''}"
 }
 
 Return ONLY valid JSON. No explanation.`
