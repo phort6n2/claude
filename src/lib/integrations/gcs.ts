@@ -58,8 +58,17 @@ export async function uploadToGCS(
     }),
   })
 
+  if (!tokenResponse.ok) {
+    const error = await tokenResponse.text()
+    throw new Error(`GCS OAuth token error (${tokenResponse.status}): ${error}`)
+  }
+
   const tokenData = await tokenResponse.json()
   const accessToken = tokenData.access_token
+
+  if (!accessToken) {
+    throw new Error('GCS OAuth response missing access_token')
+  }
 
   // Upload to GCS
   const uploadUrl = `https://storage.googleapis.com/upload/storage/v1/b/${bucketName}/o?uploadType=media&name=${encodeURIComponent(filename)}`

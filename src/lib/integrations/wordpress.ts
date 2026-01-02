@@ -154,7 +154,7 @@ export async function uploadMedia(
 
   // Update alt text if provided
   if (altText) {
-    await fetch(`${credentials.url}/wp-json/wp/v2/media/${data.id}`, {
+    const altResponse = await fetch(`${credentials.url}/wp-json/wp/v2/media/${data.id}`, {
       method: 'PUT',
       headers: {
         'Authorization': authHeader,
@@ -162,6 +162,11 @@ export async function uploadMedia(
       },
       body: JSON.stringify({ alt_text: altText }),
     })
+
+    if (!altResponse.ok) {
+      console.error(`Failed to set alt text for media ${data.id}: ${await altResponse.text()}`)
+      // Don't throw - alt text is non-critical, log and continue
+    }
   }
 
   return {
@@ -256,8 +261,8 @@ export async function injectSchemaMarkup(
 ): Promise<void> {
   const authHeader = getAuthHeader(credentials.username, credentials.password)
 
-  // Try to update via custom field first
-  await fetch(`${credentials.url}/wp-json/wp/v2/posts/${postId}`, {
+  // Try to update via custom field
+  const response = await fetch(`${credentials.url}/wp-json/wp/v2/posts/${postId}`, {
     method: 'PUT',
     headers: {
       'Authorization': authHeader,
@@ -269,6 +274,12 @@ export async function injectSchemaMarkup(
       },
     }),
   })
+
+  if (!response.ok) {
+    const error = await response.text()
+    console.error(`Failed to inject schema markup for post ${postId}: ${error}`)
+    // Don't throw - schema injection is non-critical, log and continue
+  }
 }
 
 /**
