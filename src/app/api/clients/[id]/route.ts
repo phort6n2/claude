@@ -91,6 +91,8 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         podbeanPodcastId: data.podbeanPodcastId || null,
         podbeanPodcastTitle: data.podbeanPodcastTitle || null,
         podbeanPodcastUrl: data.podbeanPodcastUrl || null,
+        wrhqYoutubePlaylistId: data.wrhqYoutubePlaylistId || null,
+        wrhqYoutubePlaylistTitle: data.wrhqYoutubePlaylistTitle || null,
         status: data.status || existing.status,
       },
     })

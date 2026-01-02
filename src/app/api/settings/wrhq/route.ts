@@ -5,6 +5,7 @@ import {
   updateWRHQWordPress,
   updateWRHQSocialMedia,
   updateWRHQPublishing,
+  updateWRHQYouTubeApi,
 } from '@/lib/settings'
 
 export async function GET() {
@@ -16,12 +17,17 @@ export async function GET() {
   try {
     const config = await getWRHQConfig()
 
-    // Mask the password for security
+    // Mask secrets for security
     const maskedConfig = {
       ...config,
       wordpress: {
         ...config.wordpress,
         appPassword: config.wordpress.appPassword ? '••••••••' : null,
+      },
+      youtubeApi: {
+        ...config.youtubeApi,
+        clientSecret: config.youtubeApi.clientSecret ? '••••••••' : null,
+        refreshToken: config.youtubeApi.refreshToken ? '••••••••' : null,
       },
     }
 
@@ -80,6 +86,14 @@ export async function PUT(request: Request) {
         })
         break
 
+      case 'youtubeApi':
+        await updateWRHQYouTubeApi({
+          clientId: data.clientId,
+          // Only update secret if it's not the masked value
+          clientSecret: data.clientSecret !== '••••••••' ? data.clientSecret : undefined,
+        })
+        break
+
       default:
         return NextResponse.json(
           { error: 'Invalid section' },
@@ -94,6 +108,11 @@ export async function PUT(request: Request) {
       wordpress: {
         ...config.wordpress,
         appPassword: config.wordpress.appPassword ? '••••••••' : null,
+      },
+      youtubeApi: {
+        ...config.youtubeApi,
+        clientSecret: config.youtubeApi.clientSecret ? '••••••••' : null,
+        refreshToken: config.youtubeApi.refreshToken ? '••••••••' : null,
       },
     }
 

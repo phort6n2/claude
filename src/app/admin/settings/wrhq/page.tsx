@@ -29,6 +29,14 @@ interface WRHQConfig {
     preferredTime: string
     timezone: string
   }
+  youtubeApi: {
+    clientId: string | null
+    clientSecret: string | null
+    refreshToken: string | null
+    channelId: string | null
+    channelTitle: string | null
+    isConfigured: boolean
+  }
 }
 
 const TIMEZONES = [
@@ -76,6 +84,12 @@ export default function WRHQSettingsPage() {
     preferredTime: '10:00',
     timezone: 'America/Los_Angeles',
   })
+  const [youtubeForm, setYoutubeForm] = useState({
+    clientId: '',
+    clientSecret: '',
+  })
+  const [showYoutubeSecret, setShowYoutubeSecret] = useState(false)
+  const [youtubeConnecting, setYoutubeConnecting] = useState(false)
 
   useEffect(() => {
     loadConfig()
@@ -106,11 +120,61 @@ export default function WRHQSettingsPage() {
           preferredTime: data.publishing.preferredTime || '10:00',
           timezone: data.publishing.timezone || 'America/Los_Angeles',
         })
+
+        // Load YouTube API settings
+        if (data.youtubeApi) {
+          setYoutubeForm({
+            clientId: data.youtubeApi.clientId || '',
+            clientSecret: data.youtubeApi.clientSecret || '',
+          })
+        }
       }
     } catch (error) {
       console.error('Failed to load config:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function initiateYouTubeOAuth() {
+    if (!youtubeForm.clientId || !youtubeForm.clientSecret) {
+      alert('Please enter Client ID and Client Secret first, then save them before connecting.')
+      return
+    }
+    setYoutubeConnecting(true)
+    try {
+      // First save the credentials
+      await saveSection('youtubeApi', youtubeForm)
+
+      // Then redirect to OAuth
+      const response = await fetch('/api/settings/wrhq/youtube/oauth-url')
+      if (response.ok) {
+        const data = await response.json()
+        window.location.href = data.url
+      } else {
+        throw new Error('Failed to get OAuth URL')
+      }
+    } catch (error) {
+      console.error('Failed to initiate OAuth:', error)
+      alert('Failed to connect to YouTube. Please check your credentials.')
+    } finally {
+      setYoutubeConnecting(false)
+    }
+  }
+
+  async function disconnectYouTube() {
+    if (!confirm('Are you sure you want to disconnect the YouTube channel?')) {
+      return
+    }
+    try {
+      const response = await fetch('/api/settings/wrhq/youtube/disconnect', {
+        method: 'POST',
+      })
+      if (response.ok) {
+        await loadConfig()
+      }
+    } catch (error) {
+      console.error('Failed to disconnect YouTube:', error)
     }
   }
 
@@ -403,6 +467,109 @@ export default function WRHQSettingsPage() {
           </button>
         </div>
 
+        {/* YouTube API Configuration */}
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">YouTube API (Long-form Video)</h2>
+              <p className="text-sm text-gray-500">Upload long-form 16:9 videos to the WRHQ YouTube channel</p>
+            </div>
+            <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+              config?.youtubeApi?.isConfigured
+                ? 'bg-green-100 text-green-700'
+                : 'bg-yellow-100 text-yellow-700'
+            }`}>
+              {config?.youtubeApi?.isConfigured
+                ? `Connected: ${config.youtubeApi.channelTitle}`
+                : 'Not connected'}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+              <strong>Setup Instructions:</strong>
+              <ol className="list-decimal ml-5 mt-2 space-y-1">
+                <li>Go to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Console</a></li>
+                <li>Create a new OAuth 2.0 Client ID (Web application type)</li>
+                <li>Add <code className="bg-amber-100 px-1 rounded">{typeof window !== 'undefined' ? `${window.location.origin}/api/settings/wrhq/youtube/callback` : '/api/settings/wrhq/youtube/callback'}</code> as an authorized redirect URI</li>
+                <li>Copy the Client ID and Client Secret below, then click &quot;Connect to YouTube&quot;</li>
+              </ol>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                OAuth Client ID
+              </label>
+              <input
+                type="text"
+                value={youtubeForm.clientId}
+                onChange={(e) => setYoutubeForm({ ...youtubeForm, clientId: e.target.value })}
+                placeholder="xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com"
+                className="w-full px-3 py-2 border rounded-md"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                OAuth Client Secret
+              </label>
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <input
+                    type={showYoutubeSecret ? 'text' : 'password'}
+                    value={youtubeForm.clientSecret}
+                    onChange={(e) => setYoutubeForm({ ...youtubeForm, clientSecret: e.target.value })}
+                    placeholder="GOCSPX-xxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    className="w-full px-3 py-2 border rounded-md pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowYoutubeSecret(!showYoutubeSecret)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showYoutubeSecret ? '🙈' : '👁️'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => saveSection('youtubeApi', youtubeForm)}
+                disabled={saving === 'youtubeApi'}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50"
+              >
+                {saving === 'youtubeApi' ? 'Saving...' : 'Save Credentials'}
+              </button>
+              {config?.youtubeApi?.isConfigured ? (
+                <button
+                  onClick={disconnectYouTube}
+                  className="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200"
+                >
+                  Disconnect YouTube
+                </button>
+              ) : (
+                <button
+                  onClick={initiateYouTubeOAuth}
+                  disabled={youtubeConnecting || !youtubeForm.clientId || !youtubeForm.clientSecret}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+                >
+                  {youtubeConnecting ? 'Connecting...' : 'Connect to YouTube'}
+                </button>
+              )}
+            </div>
+
+            {config?.youtubeApi?.isConfigured && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
+                <strong>Connected Channel:</strong> {config.youtubeApi.channelTitle}
+                <p className="text-xs text-green-600 mt-1">
+                  Long-form videos will be uploaded to this channel when you upload them in the content review page.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Info Card */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-blue-900 mb-2">How Dual Publishing Works</h3>
@@ -418,6 +585,9 @@ export default function WRHQSettingsPage() {
             </li>
             <li>
               <strong>4. WRHQ Social Posts</strong> - Always scheduled via Late to WRHQ accounts, featuring the client
+            </li>
+            <li>
+              <strong>5. Long-form Video</strong> - Uploaded to WRHQ YouTube channel with links to all resources
             </li>
           </ul>
         </div>

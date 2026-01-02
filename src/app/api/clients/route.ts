@@ -81,6 +81,8 @@ export async function POST(request: NextRequest) {
         podbeanPodcastId: data.podbeanPodcastId || null,
         podbeanPodcastTitle: data.podbeanPodcastTitle || null,
         podbeanPodcastUrl: data.podbeanPodcastUrl || null,
+        wrhqYoutubePlaylistId: data.wrhqYoutubePlaylistId || null,
+        wrhqYoutubePlaylistTitle: data.wrhqYoutubePlaylistTitle || null,
         status: 'ACTIVE',
       },
     })

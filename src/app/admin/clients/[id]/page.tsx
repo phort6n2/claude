@@ -11,7 +11,7 @@ interface PageProps {
 }
 
 // Transform null values to undefined for form compatibility
-function transformClientForForm(client: Client) {
+function transformClientForForm(client: Client & { wrhqYoutubePlaylistId?: string | null; wrhqYoutubePlaylistTitle?: string | null }) {
   return {
     id: client.id,
     businessName: client.businessName,
@@ -47,6 +47,8 @@ function transformClientForForm(client: Client) {
     podbeanPodcastId: client.podbeanPodcastId ?? '',
     podbeanPodcastTitle: client.podbeanPodcastTitle ?? '',
     podbeanPodcastUrl: client.podbeanPodcastUrl ?? '',
+    wrhqYoutubePlaylistId: client.wrhqYoutubePlaylistId ?? '',
+    wrhqYoutubePlaylistTitle: client.wrhqYoutubePlaylistTitle ?? '',
   }
 }
 

@@ -1455,6 +1455,309 @@ function ReviewTab({
           </div>
         )}
       </section>
+
+      {/* ============================================ */}
+      {/* STEP 6: Long-form Video - Upload to WRHQ YouTube */}
+      {/* ============================================ */}
+      <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
+        <div className={`px-6 py-4 flex items-center justify-between ${content.longVideoUploaded ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}>
+          <div className="flex items-center gap-4">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${content.longVideoUploaded ? 'bg-green-500 text-white' : 'bg-red-100 text-red-700'}`}>
+              {content.longVideoUploaded ? <Check className="h-5 w-5" /> : '6'}
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Long-form Video (Optional)</h2>
+              <p className="text-sm text-gray-500">Upload 16:9 video to WRHQ YouTube channel</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {content.longVideoUploaded ? (
+              <div className="flex items-center gap-2 text-green-600">
+                <Check className="h-4 w-4" />
+                <span className="text-sm">Uploaded to YouTube</span>
+              </div>
+            ) : (
+              <span className="text-sm text-gray-500">Optional - Upload video below</span>
+            )}
+          </div>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {content.longVideoUploaded && content.longformVideoUrl ? (
+            <div className="space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Check className="h-5 w-5 text-green-600" />
+                  <span className="font-medium text-green-800">Video uploaded to YouTube</span>
+                </div>
+                <a
+                  href={content.longformVideoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline flex items-center gap-1"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  {content.longformVideoUrl}
+                </a>
+              </div>
+              {content.longVideoAddedToPost && (
+                <div className="text-sm text-green-600 flex items-center gap-1">
+                  <Check className="h-4 w-4" />
+                  Embedded in blog posts
+                </div>
+              )}
+            </div>
+          ) : (
+            <LongformVideoUpload
+              contentId={content.id}
+              paaQuestion={content.paaQuestion}
+              clientBlogUrl={content.clientBlogUrl}
+              wrhqBlogUrl={content.wrhqBlogUrl}
+              client={content.client}
+              serviceLocation={content.serviceLocation}
+              podcastUrl={content.podcast?.podbeanUrl}
+              onSuccess={onUpdate}
+            />
+          )}
+        </div>
+      </section>
+    </div>
+  )
+}
+
+// ============================================
+// LONG-FORM VIDEO UPLOAD COMPONENT
+// ============================================
+
+interface LongformVideoUploadProps {
+  contentId: string
+  paaQuestion: string
+  clientBlogUrl: string | null
+  wrhqBlogUrl: string | null
+  client: {
+    id: string
+    businessName: string
+    slug: string
+    city: string
+    state: string
+  }
+  serviceLocation: {
+    id: string
+    city: string
+    state: string
+  } | null
+  podcastUrl?: string | null
+  onSuccess: () => void
+}
+
+function LongformVideoUpload({
+  contentId,
+  paaQuestion,
+  clientBlogUrl,
+  wrhqBlogUrl,
+  client,
+  serviceLocation,
+  podcastUrl,
+  onSuccess,
+}: LongformVideoUploadProps) {
+  const [videoFile, setVideoFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+  const [youtubeConfigured, setYoutubeConfigured] = useState<boolean | null>(null)
+
+  const location = serviceLocation
+    ? `${serviceLocation.city}, ${serviceLocation.state}`
+    : `${client.city}, ${client.state}`
+
+  // Check if YouTube is configured
+  useEffect(() => {
+    fetch('/api/settings/wrhq/youtube/playlists')
+      .then((res) => res.json())
+      .then((data) => {
+        setYoutubeConfigured(data.connected)
+      })
+      .catch(() => {
+        setYoutubeConfigured(false)
+      })
+  }, [])
+
+  async function handleUpload() {
+    if (!videoFile) return
+
+    setUploading(true)
+    setError(null)
+    setUploadProgress(0)
+
+    try {
+      // Create form data for upload
+      const formData = new FormData()
+      formData.append('video', videoFile)
+      formData.append('contentId', contentId)
+
+      // Track progress using XMLHttpRequest
+      const xhr = new XMLHttpRequest()
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const progress = Math.round((e.loaded / e.total) * 100)
+          setUploadProgress(progress)
+        }
+      })
+
+      const response = await new Promise<Response>((resolve, reject) => {
+        xhr.addEventListener('load', () => {
+          resolve(new Response(xhr.responseText, {
+            status: xhr.status,
+            statusText: xhr.statusText,
+          }))
+        })
+        xhr.addEventListener('error', () => reject(new Error('Upload failed')))
+        xhr.open('POST', `/api/content/${contentId}/upload-longform-video`)
+        xhr.send(formData)
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Upload failed')
+      }
+
+      onSuccess()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  if (youtubeConfigured === null) {
+    return <div className="text-sm text-gray-500">Checking YouTube configuration...</div>
+  }
+
+  if (!youtubeConfigured) {
+    return (
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+        <strong>YouTube API not configured.</strong> Configure YouTube API credentials in{' '}
+        <a href="/admin/settings/wrhq" className="underline font-medium">
+          Settings → WRHQ
+        </a>{' '}
+        to enable long-form video uploads.
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Video title preview */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Video Title</label>
+        <div className="border rounded-lg p-3 bg-gray-50 text-sm">
+          {paaQuestion}
+        </div>
+      </div>
+
+      {/* Description preview */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Video Description</label>
+        <div className="border rounded-lg p-3 bg-gray-50 text-sm whitespace-pre-wrap">
+          {paaQuestion}
+{'\n'}
+In this video, {client.businessName} answers your questions about windshield repair and replacement services in {location}.
+{'\n'}
+📚 RESOURCES:
+{'\n'}
+📝 Read the full article: {clientBlogUrl || '[Client blog URL]'}
+🌐 WRHQ Directory: {wrhqBlogUrl || '[WRHQ blog URL]'}
+{podcastUrl ? `🎧 Listen to the Podcast: ${podcastUrl}` : ''}
+{'\n'}
+---
+{'\n'}
+{client.businessName} provides professional windshield repair and auto glass replacement services in the {location} area.
+        </div>
+      </div>
+
+      {/* File upload */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Upload Video</label>
+        <div className="border-2 border-dashed rounded-lg p-6 text-center">
+          {videoFile ? (
+            <div className="space-y-2">
+              <Video className="h-8 w-8 text-gray-400 mx-auto" />
+              <p className="text-sm font-medium">{videoFile.name}</p>
+              <p className="text-xs text-gray-500">
+                {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
+              </p>
+              <button
+                onClick={() => setVideoFile(null)}
+                className="text-sm text-red-600 hover:text-red-700"
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Video className="h-8 w-8 text-gray-400 mx-auto" />
+              <p className="text-sm text-gray-500">
+                Drag and drop a video file, or click to select
+              </p>
+              <input
+                type="file"
+                accept="video/*"
+                onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
+                className="hidden"
+                id="longform-video-input"
+              />
+              <label
+                htmlFor="longform-video-input"
+                className="inline-block px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 cursor-pointer"
+              >
+                Select Video
+              </label>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Upload progress */}
+      {uploading && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span>Uploading to YouTube...</span>
+            <span>{uploadProgress}%</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div
+              className="bg-red-600 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
+          {error}
+        </div>
+      )}
+
+      {/* Upload button */}
+      <button
+        onClick={handleUpload}
+        disabled={!videoFile || uploading}
+        className="w-full px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      >
+        {uploading ? (
+          <>
+            <RefreshCw className="h-4 w-4 animate-spin" />
+            Uploading...
+          </>
+        ) : (
+          <>
+            <Video className="h-4 w-4" />
+            Upload to YouTube
+          </>
+        )}
+      </button>
     </div>
   )
 }

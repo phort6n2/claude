@@ -102,6 +102,10 @@ model Client {
   podbeanPodcastTitle   String?   // Cached podcast title for display
   podbeanPodcastUrl     String?   // Public URL to the podcast page
 
+  // WRHQ YouTube Playlist (for long-form video uploads)
+  wrhqYoutubePlaylistId    String?   // YouTube playlist ID for this client
+  wrhqYoutubePlaylistTitle String?   // Cached playlist title for display
+
   // Subscription Management
   subscriptionStatus    SubscriptionStatus @default(TRIAL)
   subscriptionPlan      SubscriptionPlan   @default(STARTER)
