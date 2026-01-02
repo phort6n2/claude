@@ -127,6 +127,8 @@ interface ContentItem {
     script: string | null
     description: string | null
     status: string
+    podbeanUrl: string | null
+    podbeanPlayerUrl: string | null
   } | null
   videos: Array<{
     id: string
@@ -1221,6 +1223,38 @@ function PublishedTab({ content }: { content: ContentItem }) {
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* Podcast */}
+      {content.podcast?.status === 'PUBLISHED' && content.podcast.podbeanUrl && (
+        <section className="bg-white rounded-lg shadow-sm border p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Mic className="h-5 w-5 text-orange-500" />
+            Podcast Episode
+          </h2>
+          <div className="space-y-3">
+            <a
+              href={content.podcast.podbeanUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-blue-600 hover:underline"
+            >
+              <ExternalLink className="h-4 w-4" />
+              {content.podcast.podbeanUrl}
+            </a>
+            {content.podcast.duration && (
+              <p className="text-sm text-gray-500">
+                Duration: {Math.floor(content.podcast.duration / 60)}:{String(Math.round(content.podcast.duration) % 60).padStart(2, '0')}
+              </p>
+            )}
+            {content.podcastAddedToPost && (
+              <p className="text-sm text-green-600 flex items-center gap-1">
+                <Check className="h-4 w-4" />
+                Embedded in blog post
+              </p>
+            )}
           </div>
         </section>
       )}
