@@ -8,6 +8,7 @@ interface PodcastGenerationParams {
   title: string
   blogUrl?: string
   duration?: 'short' | 'default' | 'long'
+  style?: 'deep dive' | 'brief' | 'critique' | 'debate'
 }
 
 interface PodcastResult {
@@ -47,8 +48,9 @@ export async function createPodcast(params: PodcastGenerationParams): Promise<Po
     body: JSON.stringify({
       resources,
       outputType: 'audio',
-      text: `Create an engaging podcast episode titled "${params.title}". Make it conversational and informative.`,
-      duration: params.duration || 'long',
+      text: `Create an engaging podcast episode titled "${params.title}". Make it educational and conversational, explaining the topic in a way that's accessible to car owners. Focus on practical advice and actionable insights.`,
+      duration: params.duration || 'default',
+      style: params.style || 'deep dive',
     }),
   })
 
@@ -96,7 +98,7 @@ export async function checkPodcastStatus(jobId: string): Promise<PodcastResult> 
     jobId,
     status,
     audioUrl: data.audio_url,
-    duration: data.duration,
+    duration: data.audio_duration,
   }
 }
 

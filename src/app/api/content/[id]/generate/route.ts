@@ -216,21 +216,23 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             // Import the podcast function
             const { createPodcast } = await import('@/lib/integrations/autocontent')
 
+            // Construct the blog post URL (used for both podcast generation and description)
+            const blogUrl = contentItem.client.wordpressUrl
+              ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${blogResult.slug}`
+              : ''
+
             // Create podcast job (returns immediately with job ID)
+            // Use blog URL if available (API fetches content from page), otherwise use script
             const podcastJob = await createPodcast({
               title: blogResult.title,
               script: blogResult.content,
+              blogUrl: blogUrl || undefined,
               duration: 'default', // 8-12 minutes
             })
 
             // Generate podcast description
             let podcastDescription = ''
             try {
-              // Construct the blog post URL (will be updated after actual publishing)
-              const blogUrl = contentItem.client.wordpressUrl
-                ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${blogResult.slug}`
-                : ''
-
               podcastDescription = await generatePodcastDescription({
                 businessName: contentItem.client.businessName,
                 city: contentCity,
@@ -298,20 +300,23 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         // Import the podcast function
         const { createPodcast } = await import('@/lib/integrations/autocontent')
 
-        // Create podcast job using existing blog content
+        // Get blog URL - prefer actual WordPress URL, fall back to constructed URL
+        const blogUrl = contentItem.blogPost.wordpressUrl ||
+          (contentItem.client.wordpressUrl
+            ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${contentItem.blogPost.slug}`
+            : '')
+
+        // Create podcast job using blog URL (preferred) or content as fallback
         const podcastJob = await createPodcast({
           title: contentItem.blogPost.title,
           script: contentItem.blogPost.content,
+          blogUrl: blogUrl || undefined,
           duration: 'default',
         })
 
         // Generate podcast description
         let podcastDescription = ''
         try {
-          const blogUrl = contentItem.blogPost.wordpressUrl ||
-            (contentItem.client.wordpressUrl
-              ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${contentItem.blogPost.slug}`
-              : '')
 
           podcastDescription = await generatePodcastDescription({
             businessName: contentItem.client.businessName,

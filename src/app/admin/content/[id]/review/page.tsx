@@ -14,6 +14,7 @@ import {
   ExternalLink,
   ChevronLeft,
   AlertCircle,
+  AlertTriangle,
   XCircle,
 } from 'lucide-react'
 
@@ -1028,9 +1029,41 @@ function ReviewTab({
           </div>
         </div>
 
-        {(content.podcast?.status === 'READY' || content.podcastDescription) && (
+        {/* Show content when processing, ready, failed, or has description */}
+        {(content.podcast?.status === 'PROCESSING' || content.podcast?.status === 'READY' || content.podcast?.status === 'FAILED' || content.podcastDescription) && (
           <div className="p-6 space-y-4">
-            {content.podcast?.audioUrl && (
+            {/* Processing status indicator */}
+            {content.podcast?.status === 'PROCESSING' && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0">
+                    <RefreshCw className="h-5 w-5 animate-spin text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-orange-800">Generating podcast audio...</p>
+                    <p className="text-xs text-orange-600 mt-1">This typically takes 2-5 minutes. The page will update automatically when ready.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Failed status */}
+            {content.podcast?.status === 'FAILED' && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0">
+                    <AlertTriangle className="h-5 w-5 text-red-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-red-800">Podcast generation failed</p>
+                    <p className="text-xs text-red-600 mt-1">Please try regenerating the podcast.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Audio player when ready */}
+            {content.podcast?.audioUrl && content.podcast?.status === 'READY' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Audio Preview</label>
                 <audio controls className="w-full" src={content.podcast.audioUrl} />
@@ -1042,6 +1075,7 @@ function ReviewTab({
               </div>
             )}
 
+            {/* Description - show even during processing since it's generated immediately */}
             {(content.podcastDescription || content.podcast?.description) && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Podcast Description</label>
