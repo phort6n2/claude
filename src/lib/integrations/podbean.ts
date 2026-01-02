@@ -57,6 +57,7 @@ async function getAccessToken(credentials: PodbeanCredentials): Promise<string> 
     headers: {
       'Authorization': `Basic ${basicAuth}`,
       'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'AutoGlassContentPlatform/1.0',
     },
     body: 'grant_type=client_credentials',
   })
@@ -151,6 +152,7 @@ async function uploadAudioFile(
 
 /**
  * Create a new podcast episode
+ * Uses remote_media_url to let Podbean fetch the audio directly (simpler than uploading)
  */
 export async function createEpisode(
   credentials: PodbeanCredentials,
@@ -158,34 +160,29 @@ export async function createEpisode(
 ): Promise<PodbeanEpisode> {
   const token = await getAccessToken(credentials)
 
-  // Generate filename from title
-  const filename = `${params.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.mp3`
-
-  // Upload audio file first
-  const fileKey = await uploadAudioFile(credentials, params.audioFileUrl, filename)
-
-  // Create the episode
+  // Create the episode using remote_media_url (Podbean will fetch the audio)
   const formData = new URLSearchParams({
     access_token: token,
     title: params.title,
     content: params.content,
     status: params.status || 'publish',
     type: params.type || 'public',
-    media_key: fileKey,
+    remote_media_url: params.audioFileUrl,
   })
 
   if (params.logo) {
-    formData.append('logo', params.logo)
+    formData.append('remote_logo_url', params.logo)
   }
 
   if (params.transcriptUrl) {
-    formData.append('transcript_url', params.transcriptUrl)
+    formData.append('remote_transcripts_url', params.transcriptUrl)
   }
 
   const response = await fetch('https://api.podbean.com/v1/episodes', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'AutoGlassContentPlatform/1.0',
     },
     body: formData.toString(),
   })
