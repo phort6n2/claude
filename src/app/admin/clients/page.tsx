@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { StatusBadge } from '@/components/ui/Badge'
 import { prisma } from '@/lib/db'
 import { formatDate } from '@/lib/utils'
-import { Plus, MoreVertical, Globe, RefreshCw, MapPin, Podcast, Building2, CheckCircle } from 'lucide-react'
+import { Plus, MoreVertical, Globe, RefreshCw, MapPin, Podcast, Building2, CheckCircle, AlertTriangle } from 'lucide-react'
 import ClientLogo from '@/components/ui/ClientLogo'
 import ScheduleActions from '@/components/admin/ScheduleActions'
 
@@ -138,22 +138,45 @@ async function ClientList() {
                   {client._count.contentItems}
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap">
-                  <div className="flex justify-center gap-0.5">
-                    {client.socialPlatforms.slice(0, 3).map((platform: string) => (
-                      <span
-                        key={platform}
-                        className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-gray-100 text-[10px] font-medium text-gray-600"
-                        title={platform}
-                      >
-                        {platform[0].toUpperCase()}
-                      </span>
-                    ))}
-                    {client.socialPlatforms.length > 3 && (
-                      <span className="text-[10px] text-gray-500 ml-0.5">
-                        +{client.socialPlatforms.length - 3}
-                      </span>
-                    )}
-                  </div>
+                  {(() => {
+                    const disconnected = client.disconnectedAccounts as Record<string, unknown> | null
+                    const disconnectedPlatforms = disconnected ? Object.keys(disconnected) : []
+                    const hasDisconnected = disconnectedPlatforms.length > 0
+
+                    return (
+                      <div className="flex justify-center gap-0.5 items-center">
+                        {hasDisconnected && (
+                          <span
+                            className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-red-100 text-red-600 mr-1"
+                            title={`Disconnected: ${disconnectedPlatforms.join(', ')}`}
+                          >
+                            <AlertTriangle className="h-3 w-3" />
+                          </span>
+                        )}
+                        {client.socialPlatforms.slice(0, 3).map((platform: string) => {
+                          const isDisconnected = disconnectedPlatforms.includes(platform.toLowerCase())
+                          return (
+                            <span
+                              key={platform}
+                              className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-medium ${
+                                isDisconnected
+                                  ? 'bg-red-100 text-red-600 ring-1 ring-red-300'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}
+                              title={isDisconnected ? `${platform} (DISCONNECTED)` : platform}
+                            >
+                              {platform[0].toUpperCase()}
+                            </span>
+                          )
+                        })}
+                        {client.socialPlatforms.length > 3 && (
+                          <span className="text-[10px] text-gray-500 ml-0.5">
+                            +{client.socialPlatforms.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap text-center">
                   {client.wordpressConnected ? (

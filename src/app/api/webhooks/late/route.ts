@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import crypto from 'crypto'
+import { Prisma } from '@prisma/client'
 
 /**
  * POST /api/webhooks/late - Receive webhook notifications from Late
@@ -10,6 +11,7 @@ import crypto from 'crypto'
  * - post.failed: Post failed to publish
  * - post.partial: Post published to some platforms but failed on others
  * - post.scheduled: Post successfully scheduled
+ * - account.disconnected: Social account was disconnected/revoked
  */
 export async function POST(request: NextRequest) {
   try {
@@ -52,6 +54,10 @@ export async function POST(request: NextRequest) {
 
       case 'post.scheduled':
         await handlePostScheduled(data)
+        break
+
+      case 'account.disconnected':
+        await handleAccountDisconnected(payload)
         break
 
       case 'webhook.test':
@@ -303,5 +309,84 @@ async function handlePostScheduled(data: PostEventData) {
       },
     })
     console.log(`Updated WRHQ social post ${wrhqPost.id} to SCHEDULED`)
+  }
+}
+
+interface AccountDisconnectedPayload {
+  event: string
+  account?: {
+    id?: string
+    _id?: string
+    platform?: string
+    name?: string
+  }
+  accountId?: string
+  platform?: string
+  reason?: string
+  timestamp?: string
+}
+
+async function handleAccountDisconnected(payload: AccountDisconnectedPayload) {
+  const accountId = payload.account?.id || payload.account?._id || payload.accountId
+  const platform = payload.account?.platform || payload.platform
+  const reason = payload.reason || 'Account disconnected or access revoked'
+  const timestamp = payload.timestamp || new Date().toISOString()
+
+  console.log(`Account disconnected: ${platform} (${accountId}) - ${reason}`)
+
+  if (!accountId) {
+    console.error('No account ID in disconnection webhook')
+    return
+  }
+
+  // Find all clients that have social account IDs configured
+  const clients = await prisma.client.findMany({
+    where: {
+      socialAccountIds: {
+        not: Prisma.JsonNull,
+      },
+    },
+    select: {
+      id: true,
+      businessName: true,
+      socialAccountIds: true,
+      disconnectedAccounts: true,
+    },
+  })
+
+  // Check each client to see if they use this account
+  for (const client of clients) {
+    const accountIds = client.socialAccountIds as Record<string, string> | null
+    if (!accountIds) continue
+
+    // Find which platform(s) use this account ID
+    const affectedPlatforms: string[] = []
+    for (const [platformKey, id] of Object.entries(accountIds)) {
+      if (id === accountId) {
+        affectedPlatforms.push(platformKey)
+      }
+    }
+
+    if (affectedPlatforms.length === 0) continue
+
+    // Update the client's disconnectedAccounts field
+    const currentDisconnected = (client.disconnectedAccounts as Record<string, unknown>) || {}
+
+    for (const platformKey of affectedPlatforms) {
+      currentDisconnected[platformKey] = {
+        disconnectedAt: timestamp,
+        reason: reason,
+        accountId: accountId,
+      }
+    }
+
+    await prisma.client.update({
+      where: { id: client.id },
+      data: {
+        disconnectedAccounts: currentDisconnected as Prisma.InputJsonValue,
+      },
+    })
+
+    console.log(`Marked ${affectedPlatforms.join(', ')} as disconnected for client: ${client.businessName}`)
   }
 }
