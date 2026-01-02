@@ -346,51 +346,63 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             ? contentItem.blogPost.wordpressUrl
             : undefined
 
-          // Use postNowAndCheckStatus for immediate posting (polls for result), schedulePost for scheduling
-          const lateResult = shouldPostImmediately
-            ? await postNowAndCheckStatus({
-                accountId,
-                platform: socialPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
-                caption: socialPost.caption,
-                mediaUrls: mediaUrl ? [mediaUrl] : [],
-                mediaType,
-                hashtags: socialPost.hashtags,
-                firstComment: socialPost.firstComment || undefined,
-                ctaUrl: gbpCtaUrl,
-              })
-            : await schedulePost({
-                accountId,
-                platform: socialPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
-                caption: socialPost.caption,
-                mediaUrls: mediaUrl ? [mediaUrl] : [],
-                mediaType,
-                scheduledTime: contentItem.scheduledDate,
-                hashtags: socialPost.hashtags,
-                firstComment: socialPost.firstComment || undefined,
-                ctaUrl: gbpCtaUrl,
-              })
+          // Wrap each post in try-catch so one failure doesn't stop others
+          try {
+            // Use postNowAndCheckStatus for immediate posting (polls for result), schedulePost for scheduling
+            const lateResult = shouldPostImmediately
+              ? await postNowAndCheckStatus({
+                  accountId,
+                  platform: socialPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
+                  caption: socialPost.caption,
+                  mediaUrls: mediaUrl ? [mediaUrl] : [],
+                  mediaType,
+                  hashtags: socialPost.hashtags,
+                  firstComment: socialPost.firstComment || undefined,
+                  ctaUrl: gbpCtaUrl,
+                })
+              : await schedulePost({
+                  accountId,
+                  platform: socialPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
+                  caption: socialPost.caption,
+                  mediaUrls: mediaUrl ? [mediaUrl] : [],
+                  mediaType,
+                  scheduledTime: contentItem.scheduledDate,
+                  hashtags: socialPost.hashtags,
+                  firstComment: socialPost.firstComment || undefined,
+                  ctaUrl: gbpCtaUrl,
+                })
 
-          // Determine the status based on Late API response
-          let dbStatus: 'PUBLISHED' | 'SCHEDULED' | 'PROCESSING' | 'FAILED' = 'PROCESSING'
-          if (lateResult.status === 'failed') {
-            dbStatus = 'FAILED'
-            console.error(`${socialPost.platform} post failed:`, lateResult.error)
-          } else if (lateResult.status === 'published' && lateResult.platformPostUrl) {
-            dbStatus = 'PUBLISHED'
-          } else if (!shouldPostImmediately) {
-            dbStatus = 'SCHEDULED'
+            // Determine the status based on Late API response
+            let dbStatus: 'PUBLISHED' | 'SCHEDULED' | 'PROCESSING' | 'FAILED' = 'PROCESSING'
+            if (lateResult.status === 'failed') {
+              dbStatus = 'FAILED'
+              console.error(`${socialPost.platform} post failed:`, lateResult.error)
+            } else if (lateResult.status === 'published' && lateResult.platformPostUrl) {
+              dbStatus = 'PUBLISHED'
+            } else if (!shouldPostImmediately) {
+              dbStatus = 'SCHEDULED'
+            }
+
+            await prisma.socialPost.update({
+              where: { id: socialPost.id },
+              data: {
+                getlatePostId: lateResult.postId,
+                status: dbStatus,
+                publishedUrl: lateResult.platformPostUrl || null,
+                publishedAt: dbStatus === 'PUBLISHED' ? new Date() : null,
+                errorMessage: lateResult.error || null,
+              },
+            })
+          } catch (postError) {
+            console.error(`Failed to post ${socialPost.platform}:`, postError)
+            await prisma.socialPost.update({
+              where: { id: socialPost.id },
+              data: {
+                status: 'FAILED',
+                errorMessage: String(postError),
+              },
+            })
           }
-
-          await prisma.socialPost.update({
-            where: { id: socialPost.id },
-            data: {
-              getlatePostId: lateResult.postId,
-              status: dbStatus,
-              publishedUrl: lateResult.platformPostUrl || null,
-              publishedAt: dbStatus === 'PUBLISHED' ? new Date() : null,
-              errorMessage: lateResult.error || null,
-            },
-          })
         }
 
         await prisma.contentItem.update({
@@ -466,49 +478,61 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             continue
           }
 
-          // Use postNowAndCheckStatus for immediate posting (polls for result), schedulePost for scheduling
-          const lateResult = shouldPostImmediately
-            ? await postNowAndCheckStatus({
-                accountId,
-                platform: wrhqPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
-                caption: wrhqPost.caption,
-                mediaUrls: mediaUrl ? [mediaUrl] : [],
-                mediaType,
-                hashtags: wrhqPost.hashtags,
-                firstComment: wrhqPost.firstComment || undefined,
-              })
-            : await schedulePost({
-                accountId,
-                platform: wrhqPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
-                caption: wrhqPost.caption,
-                mediaUrls: mediaUrl ? [mediaUrl] : [],
-                mediaType,
-                scheduledTime: contentItem.scheduledDate,
-                hashtags: wrhqPost.hashtags,
-                firstComment: wrhqPost.firstComment || undefined,
-              })
+          // Wrap each post in try-catch so one failure doesn't stop others
+          try {
+            // Use postNowAndCheckStatus for immediate posting (polls for result), schedulePost for scheduling
+            const lateResult = shouldPostImmediately
+              ? await postNowAndCheckStatus({
+                  accountId,
+                  platform: wrhqPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
+                  caption: wrhqPost.caption,
+                  mediaUrls: mediaUrl ? [mediaUrl] : [],
+                  mediaType,
+                  hashtags: wrhqPost.hashtags,
+                  firstComment: wrhqPost.firstComment || undefined,
+                })
+              : await schedulePost({
+                  accountId,
+                  platform: wrhqPost.platform.toLowerCase() as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
+                  caption: wrhqPost.caption,
+                  mediaUrls: mediaUrl ? [mediaUrl] : [],
+                  mediaType,
+                  scheduledTime: contentItem.scheduledDate,
+                  hashtags: wrhqPost.hashtags,
+                  firstComment: wrhqPost.firstComment || undefined,
+                })
 
-          // Determine the status based on Late API response
-          let wrhqDbStatus: 'PUBLISHED' | 'SCHEDULED' | 'PROCESSING' | 'FAILED' = 'PROCESSING'
-          if (lateResult.status === 'failed') {
-            wrhqDbStatus = 'FAILED'
-            console.error(`WRHQ ${wrhqPost.platform} post failed:`, lateResult.error)
-          } else if (lateResult.status === 'published' && lateResult.platformPostUrl) {
-            wrhqDbStatus = 'PUBLISHED'
-          } else if (!postImmediate) {
-            wrhqDbStatus = 'SCHEDULED'
+            // Determine the status based on Late API response
+            let wrhqDbStatus: 'PUBLISHED' | 'SCHEDULED' | 'PROCESSING' | 'FAILED' = 'PROCESSING'
+            if (lateResult.status === 'failed') {
+              wrhqDbStatus = 'FAILED'
+              console.error(`WRHQ ${wrhqPost.platform} post failed:`, lateResult.error)
+            } else if (lateResult.status === 'published' && lateResult.platformPostUrl) {
+              wrhqDbStatus = 'PUBLISHED'
+            } else if (!shouldPostImmediately) {
+              wrhqDbStatus = 'SCHEDULED'
+            }
+
+            await prisma.wRHQSocialPost.update({
+              where: { id: wrhqPost.id },
+              data: {
+                getlatePostId: lateResult.postId,
+                status: wrhqDbStatus,
+                publishedUrl: lateResult.platformPostUrl || null,
+                publishedAt: wrhqDbStatus === 'PUBLISHED' ? new Date() : null,
+                errorMessage: lateResult.error || null,
+              },
+            })
+          } catch (postError) {
+            console.error(`Failed to post WRHQ ${wrhqPost.platform}:`, postError)
+            await prisma.wRHQSocialPost.update({
+              where: { id: wrhqPost.id },
+              data: {
+                status: 'FAILED',
+                errorMessage: String(postError),
+              },
+            })
           }
-
-          await prisma.wRHQSocialPost.update({
-            where: { id: wrhqPost.id },
-            data: {
-              getlatePostId: lateResult.postId,
-              status: wrhqDbStatus,
-              publishedUrl: lateResult.platformPostUrl || null,
-              publishedAt: wrhqDbStatus === 'PUBLISHED' ? new Date() : null,
-              errorMessage: lateResult.error || null,
-            },
-          })
         }
 
         results.wrhqSocial = { success: true, count: contentItem.wrhqSocialPosts.length }

@@ -137,19 +137,22 @@ export async function schedulePost(params: SchedulePostParams): Promise<Schedule
   const data = await response.json()
   console.log('Late API response:', JSON.stringify(data, null, 2))
 
-  // Validate that we got a post ID back
-  const postId = data._id || data.id || data.post_id
+  // Late may return post ID at different locations depending on the endpoint
+  const postId = data._id || data.id || data.post_id || data.post?.id || data.post?._id
   if (!postId) {
     console.error('Late API response missing post ID:', data)
     throw new Error('Late API response did not include a post ID')
   }
 
+  // Get status and URL - may be nested under data.post
+  const postData = data.post || data
+
   return {
     postId,
     platform: params.platform,
-    scheduledTime: new Date(data.scheduledFor || data.scheduled_at || params.scheduledTime),
-    status: data.status || (isImmediate ? 'published' : 'scheduled'),
-    platformPostUrl: data.platformPostUrl || data.platform_post_url,
+    scheduledTime: new Date(postData.scheduledFor || postData.scheduled_at || params.scheduledTime),
+    status: postData.status || (isImmediate ? 'published' : 'scheduled'),
+    platformPostUrl: postData.platformPostUrl || postData.platform_post_url || postData.platforms?.[0]?.publishedUrl,
   }
 }
 
