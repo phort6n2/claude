@@ -16,6 +16,7 @@ export async function uploadToGCS(
   // Support multiple key names for bucket and credentials
   const bucketName =
     process.env.GCS_BUCKET_NAME ||
+    process.env.GOOGLE_CLOUD_STORAGE_BUCKET ||
     await getSetting('GCS_BUCKET_NAME') ||
     await getSetting('GCS_BUCKET') ||
     await getSetting('GOOGLE_CLOUD_BUCKET') ||
@@ -23,6 +24,8 @@ export async function uploadToGCS(
 
   const credentialsJson =
     process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+    process.env.GOOGLE_CLOUD_CREDENTIALS ||
+    process.env.GCS_CREDENTIALS_JSON ||
     await getSetting('GCS_CREDENTIALS_JSON') ||
     await getSetting('GOOGLE_APPLICATION_CREDENTIALS_JSON') ||
     await getSetting('GCS_CREDENTIALS') ||
@@ -175,6 +178,7 @@ export async function getSignedUploadUrl(
   // Check all possible bucket name settings (same as uploadToGCS)
   const bucketName =
     process.env.GCS_BUCKET_NAME ||
+    process.env.GOOGLE_CLOUD_STORAGE_BUCKET ||
     await getSetting('GCS_BUCKET_NAME') ||
     await getSetting('GCS_BUCKET') ||
     await getSetting('GOOGLE_CLOUD_BUCKET') ||
@@ -183,6 +187,8 @@ export async function getSignedUploadUrl(
   // Check all possible credential settings (same as uploadToGCS)
   const credentialsJson =
     process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+    process.env.GOOGLE_CLOUD_CREDENTIALS ||
+    process.env.GCS_CREDENTIALS_JSON ||
     await getSetting('GCS_CREDENTIALS_JSON') ||
     await getSetting('GOOGLE_APPLICATION_CREDENTIALS_JSON') ||
     await getSetting('GCS_CREDENTIALS') ||
