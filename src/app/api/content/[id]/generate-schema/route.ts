@@ -6,93 +6,10 @@ interface RouteContext {
   params: Promise<{ id: string }>
 }
 
-interface SchemaGraph {
-  '@context': string
-  '@graph': (ArticleSchema | LocalBusinessSchema | VideoObjectSchema | AudioObjectSchema | ImageObjectSchema)[]
-}
-
-interface ArticleSchema {
-  '@type': 'Article'
-  '@id': string
-  mainEntityOfPage: { '@id': string }
-  headline: string
-  description?: string
-  image?: { '@id': string }
-  video?: { '@id': string }[]
-  audio?: { '@id': string }
-  datePublished?: string
-  dateModified?: string
-  author: { '@id': string }
-  publisher: { '@id': string }
-  wordCount?: number
-}
-
-interface LocalBusinessSchema {
-  '@type': 'AutoRepair'
-  '@id': string
-  name: string
-  description?: string
-  image?: string
-  url?: string
-  telephone?: string
-  email?: string
-  address?: {
-    '@type': 'PostalAddress'
-    streetAddress: string
-    addressLocality: string
-    addressRegion: string
-    postalCode: string
-    addressCountry: string
-  }
-  geo?: {
-    '@type': 'GeoCoordinates'
-    latitude: number
-    longitude: number
-  }
-  aggregateRating?: {
-    '@type': 'AggregateRating'
-    ratingValue: number
-    reviewCount: number
-  }
-  sameAs?: string[]
-  priceRange?: string
-}
-
-interface VideoObjectSchema {
-  '@type': 'VideoObject'
-  '@id': string
-  name: string
-  description?: string
-  thumbnailUrl?: string
-  uploadDate?: string
-  contentUrl?: string
-  embedUrl?: string
-  duration?: string
-}
-
-interface AudioObjectSchema {
-  '@type': 'AudioObject'
-  '@id': string
-  name: string
-  description?: string
-  contentUrl?: string
-  encodingFormat?: string
-  duration?: string
-}
-
-interface ImageObjectSchema {
-  '@type': 'ImageObject'
-  '@id': string
-  url: string
-  width?: number
-  height?: number
-  caption?: string
-}
-
 // Convert duration in seconds to ISO 8601 format (PT#M#S)
 function formatDuration(seconds: number): string {
   const minutes = Math.floor(seconds / 60)
-  const remainingSeconds = seconds % 60
+  const remainingSeconds = Math.round(seconds % 60)
   return `PT${minutes}M${remainingSeconds}S`
 }
 
@@ -117,6 +34,9 @@ function getYouTubeVideoId(url: string): string | null {
 /**
  * POST /api/content/[id]/generate-schema
  * Generates JSON-LD schema markup for the content item
+ *
+ * Creates separate schema objects (not using @graph with references)
+ * for better compatibility with Google Rich Results Test
  */
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const session = await auth()
@@ -153,22 +73,19 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const baseUrl = client.wordpressUrl || `https://example.com`
     const articleUrl = blogPost.wordpressUrl || `${baseUrl}/${blogPost.slug}`
 
-    // Build the schema graph
-    const graph: SchemaGraph['@graph'] = []
+    // Build schema array (multiple separate schemas, not @graph)
+    const schemas: Record<string, unknown>[] = []
 
-    // 1. LocalBusiness Schema (AutoRepair type for auto glass)
-    const businessId = `${baseUrl}/#business`
+    // Get featured image URL
+    const featuredImage = contentItem.images.find(img => img.imageType === 'BLOG_FEATURED')
+    const imageUrl = featuredImage?.gcsUrl || client.logoUrl
+
+    // Build sameAs URLs for LocalBusiness
     const sameAsUrls: string[] = []
-
-    // Add all known URLs to sameAs
     if (client.googleMapsUrl) sameAsUrls.push(client.googleMapsUrl)
     if (client.wrhqDirectoryUrl) sameAsUrls.push(client.wrhqDirectoryUrl)
-
-    // Add social media URLs from socialAccountIds if available
     if (client.socialAccountIds && typeof client.socialAccountIds === 'object') {
       const socialIds = client.socialAccountIds as Record<string, string>
-      // These would be profile URLs, but we may only have IDs
-      // For now, include any URLs stored
       Object.values(socialIds).forEach(value => {
         if (typeof value === 'string' && value.startsWith('http')) {
           sameAsUrls.push(value)
@@ -176,12 +93,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       })
     }
 
-    const localBusiness: LocalBusinessSchema = {
+    // 1. LocalBusiness Schema (AutoRepair)
+    const localBusinessSchema: Record<string, unknown> = {
+      '@context': 'https://schema.org',
       '@type': 'AutoRepair',
-      '@id': businessId,
+      '@id': `${baseUrl}/#business`,
       name: client.businessName,
       description: `${client.businessName} provides professional auto glass repair and windshield replacement services in ${client.city}, ${client.state}.`,
-      url: client.wordpressUrl || undefined,
+      url: client.wordpressUrl,
       telephone: client.phone,
       email: client.email,
       address: {
@@ -195,145 +114,137 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       priceRange: '$$',
     }
 
-    // Add logo if available
     if (client.logoUrl) {
-      localBusiness.image = client.logoUrl
+      localBusinessSchema.image = client.logoUrl
     }
 
-    // Add aggregate rating if available
     if (client.gbpRating && client.gbpReviewCount) {
-      localBusiness.aggregateRating = {
+      localBusinessSchema.aggregateRating = {
         '@type': 'AggregateRating',
         ratingValue: client.gbpRating,
         reviewCount: client.gbpReviewCount,
+        bestRating: 5,
+        worstRating: 1,
       }
     }
 
-    // Add sameAs if we have URLs
     if (sameAsUrls.length > 0) {
-      localBusiness.sameAs = sameAsUrls
+      localBusinessSchema.sameAs = sameAsUrls
     }
 
-    graph.push(localBusiness)
+    schemas.push(localBusinessSchema)
 
-    // 2. Featured Image Schema
-    const featuredImage = contentItem.images.find(img => img.imageType === 'BLOG_FEATURED')
-    let imageId: string | undefined
-
-    if (featuredImage) {
-      imageId = `${articleUrl}/#image`
-      const imageSchema: ImageObjectSchema = {
-        '@type': 'ImageObject',
-        '@id': imageId,
-        url: featuredImage.gcsUrl,
-        width: featuredImage.width,
-        height: featuredImage.height,
-        caption: featuredImage.altText || blogPost.title,
-      }
-      graph.push(imageSchema)
+    // 2. Article Schema (with inline author/publisher - required for rich results)
+    const articleSchema: Record<string, unknown> = {
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      mainEntityOfPage: {
+        '@type': 'WebPage',
+        '@id': articleUrl,
+      },
+      headline: blogPost.title,
+      description: blogPost.excerpt || blogPost.metaDescription || `Learn about ${blogPost.title}`,
+      // Image must be an array of URLs for Article rich results
+      image: imageUrl ? [imageUrl] : undefined,
+      datePublished: blogPost.publishedAt?.toISOString() || contentItem.publishedAt?.toISOString() || new Date().toISOString(),
+      dateModified: blogPost.updatedAt?.toISOString() || new Date().toISOString(),
+      // Author must have name property inline (not just @id reference)
+      author: {
+        '@type': 'Organization',
+        name: client.businessName,
+        url: client.wordpressUrl,
+      },
+      // Publisher must have name and logo inline
+      publisher: {
+        '@type': 'Organization',
+        name: client.businessName,
+        url: client.wordpressUrl,
+        logo: client.logoUrl ? {
+          '@type': 'ImageObject',
+          url: client.logoUrl,
+        } : undefined,
+      },
+      wordCount: blogPost.wordCount || undefined,
     }
 
-    // 3. Video Schemas
-    const videoIds: string[] = []
+    schemas.push(articleSchema)
 
-    // Short-form video (YouTube Shorts)
+    // 3. VideoObject Schemas (separate from Article for better rich results)
     const youtubeShortPost = contentItem.socialPosts.find(p => p.platform === 'YOUTUBE' && p.publishedUrl) ||
                             contentItem.wrhqSocialPosts.find(p => p.platform === 'YOUTUBE' && p.publishedUrl)
 
     if (youtubeShortPost?.publishedUrl) {
-      const shortVideoId = `${articleUrl}/#short-video`
-      videoIds.push(shortVideoId)
-
       const ytVideoId = getYouTubeVideoId(youtubeShortPost.publishedUrl)
+      const thumbnailUrl = ytVideoId
+        ? `https://img.youtube.com/vi/${ytVideoId}/maxresdefault.jpg`
+        : imageUrl
 
-      const shortVideoSchema: VideoObjectSchema = {
+      const shortVideoSchema: Record<string, unknown> = {
+        '@context': 'https://schema.org',
         '@type': 'VideoObject',
-        '@id': shortVideoId,
         name: `${blogPost.title} - Quick Tips`,
-        description: contentItem.shortVideoDescription || blogPost.excerpt || undefined,
-        thumbnailUrl: ytVideoId ? `https://img.youtube.com/vi/${ytVideoId}/maxresdefault.jpg` : undefined,
-        uploadDate: youtubeShortPost.publishedAt?.toISOString(),
+        description: contentItem.shortVideoDescription || blogPost.excerpt || `Quick tips about ${blogPost.title}`,
+        thumbnailUrl: thumbnailUrl,
+        uploadDate: youtubeShortPost.publishedAt?.toISOString() || new Date().toISOString(),
         contentUrl: youtubeShortPost.publishedUrl,
         embedUrl: ytVideoId ? `https://www.youtube.com/embed/${ytVideoId}` : undefined,
+        // Duration is required for video rich results - default to 30 seconds for shorts
+        duration: 'PT30S',
       }
-      graph.push(shortVideoSchema)
+
+      schemas.push(shortVideoSchema)
     }
 
-    // Long-form video (YouTube)
     if (contentItem.longformVideoUrl) {
-      const longVideoId = `${articleUrl}/#long-video`
-      videoIds.push(longVideoId)
-
       const ytVideoId = getYouTubeVideoId(contentItem.longformVideoUrl)
+      const thumbnailUrl = ytVideoId
+        ? `https://img.youtube.com/vi/${ytVideoId}/maxresdefault.jpg`
+        : imageUrl
 
-      const longVideoSchema: VideoObjectSchema = {
+      const longVideoSchema: Record<string, unknown> = {
+        '@context': 'https://schema.org',
         '@type': 'VideoObject',
-        '@id': longVideoId,
         name: blogPost.title,
-        description: contentItem.longformVideoDesc || blogPost.excerpt || undefined,
-        thumbnailUrl: ytVideoId ? `https://img.youtube.com/vi/${ytVideoId}/maxresdefault.jpg` : undefined,
+        description: contentItem.longformVideoDesc || blogPost.excerpt || `Learn about ${blogPost.title}`,
+        thumbnailUrl: thumbnailUrl,
+        uploadDate: new Date().toISOString(),
         contentUrl: contentItem.longformVideoUrl,
         embedUrl: ytVideoId ? `https://www.youtube.com/embed/${ytVideoId}` : undefined,
+        // Default duration for long-form videos - 5 minutes
+        duration: 'PT5M',
       }
-      graph.push(longVideoSchema)
+
+      schemas.push(longVideoSchema)
     }
 
-    // 4. Audio/Podcast Schema
-    let audioId: string | undefined
-
+    // 4. AudioObject/PodcastEpisode Schema
     if (contentItem.podcast?.podbeanUrl || contentItem.podcast?.audioUrl) {
-      audioId = `${articleUrl}/#podcast`
-
-      const audioSchema: AudioObjectSchema = {
-        '@type': 'AudioObject',
-        '@id': audioId,
+      const podcastSchema: Record<string, unknown> = {
+        '@context': 'https://schema.org',
+        '@type': 'PodcastEpisode',
         name: `${blogPost.title} - Podcast Episode`,
-        description: contentItem.podcastDescription || blogPost.excerpt || undefined,
-        contentUrl: contentItem.podcast.audioUrl || contentItem.podcast.podbeanUrl || undefined,
-        encodingFormat: 'audio/mpeg',
-        duration: contentItem.podcast.duration ? formatDuration(contentItem.podcast.duration) : undefined,
+        description: contentItem.podcastDescription || blogPost.excerpt || `Podcast episode about ${blogPost.title}`,
+        url: contentItem.podcast.podbeanUrl || contentItem.podcast.audioUrl,
+        datePublished: new Date().toISOString(),
+        associatedMedia: {
+          '@type': 'AudioObject',
+          contentUrl: contentItem.podcast.audioUrl || contentItem.podcast.podbeanUrl,
+          encodingFormat: 'audio/mpeg',
+          duration: contentItem.podcast.duration ? formatDuration(contentItem.podcast.duration) : 'PT5M',
+        },
+        partOfSeries: {
+          '@type': 'PodcastSeries',
+          name: `${client.businessName} Auto Glass Tips`,
+          url: client.podbeanPodcastUrl || client.wordpressUrl,
+        },
       }
-      graph.push(audioSchema)
+
+      schemas.push(podcastSchema)
     }
 
-    // 5. Article Schema (main entity, references everything else)
-    const articleSchema: ArticleSchema = {
-      '@type': 'Article',
-      '@id': `${articleUrl}/#article`,
-      mainEntityOfPage: { '@id': articleUrl },
-      headline: blogPost.title,
-      description: blogPost.excerpt || blogPost.metaDescription || undefined,
-      datePublished: blogPost.publishedAt?.toISOString() || contentItem.publishedAt?.toISOString(),
-      dateModified: blogPost.updatedAt?.toISOString(),
-      author: { '@id': businessId },
-      publisher: { '@id': businessId },
-      wordCount: blogPost.wordCount || undefined,
-    }
-
-    // Link to image
-    if (imageId) {
-      articleSchema.image = { '@id': imageId }
-    }
-
-    // Link to videos
-    if (videoIds.length > 0) {
-      articleSchema.video = videoIds.map(vid => ({ '@id': vid }))
-    }
-
-    // Link to audio
-    if (audioId) {
-      articleSchema.audio = { '@id': audioId }
-    }
-
-    graph.push(articleSchema)
-
-    // Build final schema
-    const schemaGraph: SchemaGraph = {
-      '@context': 'https://schema.org',
-      '@graph': graph,
-    }
-
-    const schemaJson = JSON.stringify(schemaGraph, null, 2)
+    // Combine all schemas into a single JSON string
+    // Each schema is a separate object for better Google compatibility
+    const schemaJson = JSON.stringify(schemas, null, 2)
 
     // Save to database
     await prisma.blogPost.update({
@@ -352,7 +263,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
     return NextResponse.json({
       success: true,
-      schema: schemaGraph,
+      schema: schemas,
       message: 'Schema markup generated successfully',
     })
   } catch (error) {

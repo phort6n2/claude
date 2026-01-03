@@ -136,12 +136,30 @@ function generatePodcastEmbed(title: string, playerUrl: string): string {
 </div>`
 }
 
-// Generate JSON-LD schema script tag
+// Generate JSON-LD schema script tags (one per schema object)
 function generateSchemaEmbed(schemaJson: string): string {
-  return `<!-- JSON-LD Schema Markup -->
+  try {
+    const schemas = JSON.parse(schemaJson)
+    if (Array.isArray(schemas)) {
+      // Multiple schemas - create separate script tags for each
+      return schemas.map((schema, index) => `<!-- JSON-LD Schema ${index + 1} -->
+<script type="application/ld+json">
+${JSON.stringify(schema, null, 2)}
+</script>`).join('\n')
+    } else {
+      // Single schema object
+      return `<!-- JSON-LD Schema Markup -->
 <script type="application/ld+json">
 ${schemaJson}
 </script>`
+    }
+  } catch {
+    // Fallback if parsing fails
+    return `<!-- JSON-LD Schema Markup -->
+<script type="application/ld+json">
+${schemaJson}
+</script>`
+  }
 }
 
 /**
@@ -207,6 +225,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
     // Remove any existing embeds before adding fresh ones
     // This prevents duplicates on re-embed
+    fullContent = fullContent.replace(/<!-- JSON-LD Schema \d+ -->[\s\S]*?<\/script>/g, '')
     fullContent = fullContent.replace(/<!-- JSON-LD Schema Markup -->[\s\S]*?<\/script>/g, '')
     fullContent = fullContent.replace(/<!-- YouTube Short Video -->[\s\S]*?<\/div>\s*<\/div>/g, '')
     fullContent = fullContent.replace(/<div class="yt-shorts-embed">[\s\S]*?<\/div>\s*<\/div>/g, '')

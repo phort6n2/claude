@@ -2026,6 +2026,35 @@ function ReviewTab({
                   </div>
                 </details>
 
+                {/* Test Schema Buttons */}
+                <div className="flex flex-wrap gap-3">
+                  <a
+                    href={`https://search.google.com/test/rich-results?url=${encodeURIComponent(content.clientBlogUrl || '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`inline-flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-colors ${
+                      content.clientBlogUrl
+                        ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed pointer-events-none'
+                    }`}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Test Live URL (Rich Results)
+                  </a>
+                  <a
+                    href="https://validator.schema.org/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Schema.org Validator
+                  </a>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Note: Test after embedding to see the live schema. Copy the schema JSON above to paste into validators.
+                </p>
+
                 {/* Schema Summary */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h4 className="font-medium text-blue-900 mb-2">Schema includes:</h4>
