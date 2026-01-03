@@ -203,6 +203,20 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       },
     })
 
+    // Helper function to remove existing YouTube embeds from content
+    function removeExistingYouTubeEmbeds(content: string): string {
+      // Remove our specific embed format (div with "Watch the Full Video" header containing YouTube iframe)
+      // This regex matches the entire embed block we create
+      const embedPattern = /<div[^>]*style="margin:\s*30px\s*0[^"]*"[^>]*>[\s\S]*?<h3[^>]*>Watch the Full Video<\/h3>[\s\S]*?youtube\.com\/embed\/[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/gi
+      let cleaned = content.replace(embedPattern, '')
+
+      // Also try a simpler pattern for any YouTube embed iframe wrapper we might have added
+      const simplePattern = /<div[^>]*>[\s\S]*?<h3[^>]*>Watch the Full Video<\/h3>[\s\S]*?<iframe[^>]*youtube\.com\/embed\/[^>]*>[\s\S]*?<\/iframe>[\s\S]*?<\/div>[\s\S]*?<\/div>[\s\S]*?<\/div>/gi
+      cleaned = cleaned.replace(simplePattern, '')
+
+      return cleaned
+    }
+
     // Embed the video in both blog posts
     const youtubeEmbedHtml = `
 <div style="margin: 30px 0; clear: both;">
@@ -248,24 +262,24 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           const currentPost = await getPost(credentials, blogPost.wordpressPostId)
           console.log('Current post content length:', currentPost.content?.length)
 
-          if (!currentPost.content.includes(videoId)) {
-            let updatedContent = currentPost.content
-            const lastPIndex = updatedContent.lastIndexOf('<p>')
-            if (lastPIndex > 0) {
-              updatedContent = updatedContent.slice(0, lastPIndex) + youtubeEmbedHtml + updatedContent.slice(lastPIndex)
-            } else {
-              updatedContent += youtubeEmbedHtml
-            }
+          // Remove any existing YouTube embeds first (for re-uploads)
+          let updatedContent = removeExistingYouTubeEmbeds(currentPost.content)
+          console.log('Content after removing old embeds:', updatedContent.length)
 
-            console.log('Updating client blog post with video embed...')
-            await updatePost(credentials, blogPost.wordpressPostId, {
-              content: updatedContent,
-            })
-
-            console.log('Long-form video embedded in client blog post')
+          // Add the new embed before the last paragraph
+          const lastPIndex = updatedContent.lastIndexOf('<p>')
+          if (lastPIndex > 0) {
+            updatedContent = updatedContent.slice(0, lastPIndex) + youtubeEmbedHtml + updatedContent.slice(lastPIndex)
           } else {
-            console.log('Video already embedded in client blog post')
+            updatedContent += youtubeEmbedHtml
           }
+
+          console.log('Updating client blog post with video embed...')
+          await updatePost(credentials, blogPost.wordpressPostId, {
+            content: updatedContent,
+          })
+
+          console.log('Long-form video embedded in client blog post')
         } else {
           console.log('Failed to decrypt client WordPress password')
         }
@@ -305,24 +319,24 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           const currentPost = await getPost(credentials, wrhqBlogPost.wordpressPostId)
           console.log('Current WRHQ post content length:', currentPost.content?.length)
 
-          if (!currentPost.content.includes(videoId)) {
-            let updatedContent = currentPost.content
-            const lastPIndex = updatedContent.lastIndexOf('<p>')
-            if (lastPIndex > 0) {
-              updatedContent = updatedContent.slice(0, lastPIndex) + youtubeEmbedHtml + updatedContent.slice(lastPIndex)
-            } else {
-              updatedContent += youtubeEmbedHtml
-            }
+          // Remove any existing YouTube embeds first (for re-uploads)
+          let updatedContent = removeExistingYouTubeEmbeds(currentPost.content)
+          console.log('WRHQ content after removing old embeds:', updatedContent.length)
 
-            console.log('Updating WRHQ blog post with video embed...')
-            await updatePost(credentials, wrhqBlogPost.wordpressPostId, {
-              content: updatedContent,
-            })
-
-            console.log('Long-form video embedded in WRHQ blog post')
+          // Add the new embed before the last paragraph
+          const lastPIndex = updatedContent.lastIndexOf('<p>')
+          if (lastPIndex > 0) {
+            updatedContent = updatedContent.slice(0, lastPIndex) + youtubeEmbedHtml + updatedContent.slice(lastPIndex)
           } else {
-            console.log('Video already embedded in WRHQ blog post')
+            updatedContent += youtubeEmbedHtml
           }
+
+          console.log('Updating WRHQ blog post with video embed...')
+          await updatePost(credentials, wrhqBlogPost.wordpressPostId, {
+            content: updatedContent,
+          })
+
+          console.log('Long-form video embedded in WRHQ blog post')
         } else {
           console.log('WRHQ WordPress not configured')
         }
