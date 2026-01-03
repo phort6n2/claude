@@ -848,248 +848,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
     }
 
-    // Embed YouTube video in client blog post (9:16 aspect ratio with text wrap)
-    // Use client YouTube URL if available, otherwise fall back to WRHQ YouTube URL
-    const youtubeVideoUrl = clientYoutubeVideoUrl || wrhqYoutubeVideoUrl
-    if (youtubeVideoUrl && contentItem.blogPost?.wordpressPostId) {
-      try {
-        const { updatePost } = await import('@/lib/integrations/wordpress')
+    // Note: Video and podcast embedding is now handled by the "Embed All Media" endpoint
+    // (/api/content/[id]/embed-all-media) which embeds everything in one atomic operation
 
-        // Extract YouTube video ID from URL
-        // Handles: youtube.com/watch?v=ID, youtube.com/shorts/ID, youtu.be/ID
-        let videoId: string | null = null
-        const url = new URL(youtubeVideoUrl)
-        if (url.hostname.includes('youtube.com')) {
-          if (url.pathname.includes('/shorts/')) {
-            videoId = url.pathname.split('/shorts/')[1]?.split('?')[0]
-          } else {
-            videoId = url.searchParams.get('v')
-          }
-        } else if (url.hostname.includes('youtu.be')) {
-          videoId = url.pathname.slice(1).split('?')[0]
-        }
-
-        if (videoId) {
-          // Generate embed HTML with 9:16 aspect ratio (vertical video)
-          // Uses float:right so text wraps around it, with responsive fallback
-          // Added margin-top to space it from the featured image
-          const videoEmbed = `<!-- YouTube Short Video -->
-<style>
-.yt-shorts-embed {
-  float: right;
-  width: 280px;
-  margin: 30px 0 20px 25px;
-  clear: right;
-}
-.yt-shorts-embed .video-wrapper {
-  position: relative;
-  padding-bottom: 177.78%; /* 16:9 inverted = 9:16 */
-  height: 0;
-  overflow: hidden;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-.yt-shorts-embed iframe {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border: none;
-  border-radius: 12px;
-}
-@media (max-width: 600px) {
-  .yt-shorts-embed {
-    float: none;
-    width: 100%;
-    max-width: 320px;
-    margin: 30px auto;
-  }
-}
-</style>
-<div class="yt-shorts-embed">
-  <h3 style="margin: 0 0 10px 0; font-size: 16px;">🎬 Watch the Video</h3>
-  <div class="video-wrapper">
-    <iframe
-      src="https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1"
-      title="Watch on YouTube"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-      allowfullscreen>
-    </iframe>
-  </div>
-</div>`
-
-          // Fetch current content from WordPress (preserves podcast embed and other updates)
-          const { getPost } = await import('@/lib/integrations/wordpress')
-          const currentPost = await getPost(
-            {
-              url: contentItem.client.wordpressUrl!,
-              username: contentItem.client.wordpressUsername || '',
-              password: contentItem.client.wordpressAppPassword || '',
-            },
-            contentItem.blogPost.wordpressPostId
-          )
-
-          // Insert video embed before the last paragraph
-          let updatedContent = currentPost.content
-          const lastParagraphStart = updatedContent.lastIndexOf('<p>')
-          if (lastParagraphStart !== -1) {
-            updatedContent = updatedContent.slice(0, lastParagraphStart) + '\n\n' + videoEmbed + '\n\n' + updatedContent.slice(lastParagraphStart)
-          } else {
-            // No paragraph found, append the video
-            updatedContent = updatedContent + '\n\n' + videoEmbed
-          }
-
-          await updatePost(
-            {
-              url: contentItem.client.wordpressUrl!,
-              username: contentItem.client.wordpressUsername || '',
-              password: contentItem.client.wordpressAppPassword || '',
-            },
-            contentItem.blogPost.wordpressPostId,
-            { content: updatedContent }
-          )
-
-          await prisma.contentItem.update({
-            where: { id },
-            data: {
-              shortVideoAddedToPost: true,
-              shortVideoAddedAt: new Date(),
-            },
-          })
-
-          results.videoEmbed = { success: true, videoId }
-          console.log(`Embedded YouTube video ${videoId} in client blog post`)
-        }
-      } catch (error) {
-        console.error('Client video embed error:', error)
-        results.videoEmbed = { success: false, error: String(error) }
-      }
-    }
-
-    // Embed YouTube video in WRHQ blog post (similar to client blog)
-    if (youtubeVideoUrl && contentItem.wrhqBlogPost?.wordpressPostId) {
-      try {
-        const { updatePost } = await import('@/lib/integrations/wordpress')
-
-        // Extract YouTube video ID from URL
-        let videoId: string | null = null
-        const url = new URL(youtubeVideoUrl)
-        if (url.hostname.includes('youtube.com')) {
-          if (url.pathname.includes('/shorts/')) {
-            videoId = url.pathname.split('/shorts/')[1]?.split('?')[0]
-          } else {
-            videoId = url.searchParams.get('v')
-          }
-        } else if (url.hostname.includes('youtu.be')) {
-          videoId = url.pathname.slice(1).split('?')[0]
-        }
-
-        if (videoId) {
-          // Generate embed HTML with 9:16 aspect ratio (vertical video)
-          // Use !important to override WRHQ theme styles that might interfere with float
-          // Added margin-top to space it from the featured image
-          const videoEmbed = `<!-- YouTube Short Video -->
-<style>
-.yt-shorts-embed {
-  float: right !important;
-  width: 280px !important;
-  margin: 30px 0 20px 25px !important;
-  clear: right !important;
-  display: block !important;
-}
-.yt-shorts-embed .video-wrapper {
-  position: relative !important;
-  padding-bottom: 177.78% !important; /* 16:9 inverted = 9:16 */
-  height: 0 !important;
-  overflow: hidden !important;
-  border-radius: 12px !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-}
-.yt-shorts-embed iframe {
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  border: none !important;
-  border-radius: 12px !important;
-}
-@media (max-width: 600px) {
-  .yt-shorts-embed {
-    float: none !important;
-    width: 100% !important;
-    max-width: 320px !important;
-    margin: 30px auto !important;
-  }
-}
-</style>
-<div class="yt-shorts-embed">
-  <h3 style="margin: 0 0 10px 0; font-size: 16px;">🎬 Watch the Video</h3>
-  <div class="video-wrapper">
-    <iframe
-      src="https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1"
-      title="Watch on YouTube"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-      allowfullscreen>
-    </iframe>
-  </div>
-</div>`
-
-          // Get WRHQ WordPress credentials
-          const wrhqWpUrl = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_URL)
-          const wrhqWpUser = await getSetting(WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_USERNAME)
-          const wrhqWpPassSetting = await prisma.setting.findUnique({
-            where: { key: WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_APP_PASSWORD }
-          })
-          const wrhqWpPass = wrhqWpPassSetting?.value || null
-
-          if (wrhqWpUrl && wrhqWpUser && wrhqWpPass) {
-            // Fetch current content from WordPress (preserves any existing embeds)
-            const { getPost } = await import('@/lib/integrations/wordpress')
-            const currentWrhqPost = await getPost(
-              {
-                url: wrhqWpUrl,
-                username: wrhqWpUser,
-                password: wrhqWpPass,
-              },
-              contentItem.wrhqBlogPost.wordpressPostId
-            )
-
-            // Insert video embed before the last paragraph
-            let updatedWrhqContent = currentWrhqPost.content
-            const lastParagraphStart = updatedWrhqContent.lastIndexOf('<p>')
-            if (lastParagraphStart !== -1) {
-              updatedWrhqContent = updatedWrhqContent.slice(0, lastParagraphStart) + '\n\n' + videoEmbed + '\n\n' + updatedWrhqContent.slice(lastParagraphStart)
-            } else {
-              updatedWrhqContent = updatedWrhqContent + '\n\n' + videoEmbed
-            }
-
-            await updatePost(
-              {
-                url: wrhqWpUrl,
-                username: wrhqWpUser,
-                password: wrhqWpPass,
-              },
-              contentItem.wrhqBlogPost.wordpressPostId,
-              { content: updatedWrhqContent }
-            )
-
-            results.wrhqVideoEmbed = { success: true, videoId }
-            console.log(`Embedded YouTube video ${videoId} in WRHQ blog post`)
-          }
-        }
-      } catch (error) {
-        console.error('WRHQ video embed error:', error)
-        results.wrhqVideoEmbed = { success: false, error: String(error) }
-      }
-    }
-
-    // Publish podcast to Podbean and embed in blog post
+    // Publish podcast to Podbean only (embedding is handled by embed-all-media)
     if (contentItem.podcast?.audioUrl && contentItem.podcast.status === 'READY') {
       try {
         const { publishToPodbean } = await import('@/lib/integrations/podbean')
-        const { updatePost } = await import('@/lib/integrations/wordpress')
 
         // Publish to Podbean
         const podbeanResult = await publishToPodbean({
@@ -1098,50 +863,22 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           audioUrl: contentItem.podcast.audioUrl,
         })
 
-        // Generate iframe embed code
-        const podcastEmbed = `<iframe title="${contentItem.blogPost?.title || contentItem.paaQuestion}" allowtransparency="true" height="150" width="100%" style="border: none; min-width: min(100%, 430px);height:150px;" scrolling="no" data-name="pb-iframe-player" src="${podbeanResult.playerUrl}&from=pb6admin&share=1&download=1&rtl=0&fonts=Arial&skin=1&font-color=&logo_link=episode_page&btn-skin=7" loading="lazy"></iframe>`
-
-        // Update WordPress blog post with podcast embed
-        if (contentItem.blogPost?.wordpressPostId && contentItem.client.wordpressUrl) {
-          // Fetch current content from WordPress (preserves YouTube embed and other updates)
-          const { getPost } = await import('@/lib/integrations/wordpress')
-          const currentPost = await getPost(
-            {
-              url: contentItem.client.wordpressUrl,
-              username: contentItem.client.wordpressUsername || '',
-              password: contentItem.client.wordpressAppPassword || '',
-            },
-            contentItem.blogPost.wordpressPostId
-          )
-
-          const updatedContent = currentPost.content + `\n\n<!-- Podcast Episode -->\n<div class="podcast-embed" style="margin: 30px 0;">\n<h3>Listen to This Episode</h3>\n${podcastEmbed}\n</div>`
-
-          await updatePost(
-            {
-              url: contentItem.client.wordpressUrl,
-              username: contentItem.client.wordpressUsername || '',
-              password: contentItem.client.wordpressAppPassword || '',
-            },
-            contentItem.blogPost.wordpressPostId,
-            { content: updatedContent }
-          )
-        }
-
-        // Update podcast record
+        // Update podcast record with Podbean URLs
         await prisma.podcast.update({
           where: { id: contentItem.podcast.id },
           data: {
-            status: 'READY',
+            podbeanEpisodeId: podbeanResult.episodeId,
+            podbeanUrl: podbeanResult.url,
+            podbeanPlayerUrl: podbeanResult.playerUrl,
+            status: 'PUBLISHED',
           },
         })
 
-        // Update content item
+        // Update content item (note: podcastAddedToPost is set by embed-all-media)
         await prisma.contentItem.update({
           where: { id },
           data: {
             podcastGenerated: true,
-            podcastAddedToPost: true,
-            podcastAddedAt: new Date(),
             podcastUrl: podbeanResult.url,
           },
         })

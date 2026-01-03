@@ -19,6 +19,8 @@ import {
   AlertCircle,
   AlertTriangle,
   XCircle,
+  Layers,
+  Play,
 } from 'lucide-react'
 
 interface ContentItem {
@@ -54,6 +56,7 @@ interface ContentItem {
   longformVideoUrl: string | null
   longformVideoDesc: string | null
   longVideoAddedToPost: boolean
+  mediaEmbeddedAt: string | null
   schemaGenerated: boolean
   schemaUpdateCount: number
   schemaLastUpdated: string | null
@@ -471,6 +474,7 @@ function ReviewTab({
   const [generating, setGenerating] = useState<string | null>(null)
   const [publishing, setPublishing] = useState<string | null>(null)
   const [republishing, setRepublishing] = useState(false)
+  const [embedding, setEmbedding] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -485,6 +489,8 @@ function ReviewTab({
       step3: content.socialPosts.length > 0 && content.socialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED'),
       step4: content.podcastAddedToPost,
       step5: content.videoSocialPosts.length > 0 && content.videoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED'),
+      step6: content.longVideoUploaded,
+      step7: !!content.mediaEmbeddedAt,
     })
   }, []) // Only run once on mount
 
@@ -565,6 +571,8 @@ function ReviewTab({
   const isStep3Complete = content.socialPosts.length > 0 && content.socialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED')
   const isStep4Complete = content.podcastAddedToPost
   const isStep5Complete = content.videoSocialPosts.length > 0 && content.videoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED')
+  const isStep6Complete = content.longVideoUploaded
+  const isStep7Complete = !!content.mediaEmbeddedAt
 
   async function regenerateContent(type: 'blog' | 'images' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast' | 'podcastDescription' | 'video' | 'videoDescription' | 'videoSocial') {
     setGenerating(type)
@@ -718,6 +726,29 @@ function ReviewTab({
     }
   }
 
+  async function embedAllMedia() {
+    setEmbedding(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/content/${content.id}/embed-all-media`, {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to embed media')
+      }
+
+      // Refresh the page data
+      onUpdate()
+    } catch (err) {
+      setError(String(err))
+    } finally {
+      setEmbedding(false)
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-5xl">
       {/* Error Alert */}
@@ -736,10 +767,10 @@ function ReviewTab({
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-gray-800">Progress Overview</h3>
           <span className="text-sm text-gray-500">
-            {[isStep1Complete, isStep2Complete, isStep3Complete, isStep4Complete, isStep5Complete].filter(Boolean).length} of 5 complete
+            {[isStep1Complete, isStep2Complete, isStep3Complete, isStep4Complete, isStep5Complete, isStep6Complete, isStep7Complete].filter(Boolean).length} of 7 complete
           </span>
         </div>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-7 gap-2">
           {/* Step 1: Client Blog */}
           <button
             onClick={() => toggleSection('step1')}
@@ -812,7 +843,7 @@ function ReviewTab({
             )}
           </button>
 
-          {/* Step 5: Video */}
+          {/* Step 5: Short Video */}
           <button
             onClick={() => toggleSection('step5')}
             className={`p-3 rounded-lg text-center transition-colors ${
@@ -822,8 +853,44 @@ function ReviewTab({
             }`}
           >
             <Video className={`h-5 w-5 mx-auto mb-1 ${isStep5Complete ? 'text-green-600' : 'text-gray-400'}`} />
-            <p className="text-xs font-medium truncate">Video</p>
+            <p className="text-xs font-medium truncate">Short Video</p>
             {isStep5Complete ? (
+              <Check className="h-3 w-3 mx-auto mt-1 text-green-600" />
+            ) : (
+              <span className="text-xs text-gray-400">Pending</span>
+            )}
+          </button>
+
+          {/* Step 6: Long Video */}
+          <button
+            onClick={() => toggleSection('step6')}
+            className={`p-3 rounded-lg text-center transition-colors ${
+              isStep6Complete
+                ? 'bg-green-50 border border-green-200 hover:bg-green-100'
+                : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            <Play className={`h-5 w-5 mx-auto mb-1 ${isStep6Complete ? 'text-green-600' : 'text-gray-400'}`} />
+            <p className="text-xs font-medium truncate">Long Video</p>
+            {isStep6Complete ? (
+              <Check className="h-3 w-3 mx-auto mt-1 text-green-600" />
+            ) : (
+              <span className="text-xs text-gray-400">Optional</span>
+            )}
+          </button>
+
+          {/* Step 7: Embed Media */}
+          <button
+            onClick={() => toggleSection('step7')}
+            className={`p-3 rounded-lg text-center transition-colors ${
+              isStep7Complete
+                ? 'bg-green-50 border border-green-200 hover:bg-green-100'
+                : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            <Layers className={`h-5 w-5 mx-auto mb-1 ${isStep7Complete ? 'text-green-600' : 'text-gray-400'}`} />
+            <p className="text-xs font-medium truncate">Embed Media</p>
+            {isStep7Complete ? (
               <Check className="h-3 w-3 mx-auto mt-1 text-green-600" />
             ) : (
               <span className="text-xs text-gray-400">Pending</span>
@@ -1779,6 +1846,124 @@ function ReviewTab({
             />
           )}
         </div>
+      </section>
+
+      {/* ============================================ */}
+      {/* STEP 7: Embed All Media - Add embeds to blog */}
+      {/* ============================================ */}
+      <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
+        <div
+          className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep7Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
+          onClick={() => toggleSection('step7')}
+        >
+          <div className="flex items-center gap-4">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${isStep7Complete ? 'bg-green-500 text-white' : 'bg-blue-100 text-blue-700'}`}>
+              {isStep7Complete ? <Check className="h-5 w-5" /> : '7'}
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Embed All Media</h2>
+              <p className="text-sm text-gray-500">Add featured image, videos, podcast, and map to blog</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {isStep7Complete ? (
+              <div className="flex items-center gap-2 text-green-600">
+                <Check className="h-4 w-4" />
+                <span className="text-sm">
+                  Embedded {content.mediaEmbeddedAt ? new Date(content.mediaEmbeddedAt).toLocaleDateString() : ''}
+                </span>
+              </div>
+            ) : (
+              <span className="text-sm text-gray-500">Ready to embed</span>
+            )}
+            {collapsedSections.step7 ? (
+              <ChevronDown className="h-5 w-5 text-gray-400" />
+            ) : (
+              <ChevronUp className="h-5 w-5 text-gray-400" />
+            )}
+          </div>
+        </div>
+
+        {!collapsedSections.step7 && (
+          <div className="p-6 space-y-4">
+            {!isStep1Complete ? (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-yellow-800">Publish the client blog first before embedding media.</p>
+              </div>
+            ) : isStep7Complete ? (
+              <div className="space-y-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Check className="h-5 w-5 text-green-600" />
+                    <span className="font-medium text-green-800">All media embedded in blog</span>
+                  </div>
+                  <p className="text-sm text-green-700">
+                    Featured image, podcast, videos, and Google Maps have been added to the WordPress post.
+                  </p>
+                </div>
+
+                {/* Option to re-embed */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    embedAllMedia()
+                  }}
+                  disabled={embedding}
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-4 w-4 ${embedding ? 'animate-spin' : ''}`} />
+                  {embedding ? 'Re-embedding...' : 'Re-embed All Media'}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-900 mb-2">This will embed the following into the blog:</h4>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li className="flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4" />
+                      Featured image (after first paragraph)
+                    </li>
+                    {content.videoSocialPosts.some(p => p.platform === 'YOUTUBE' && p.publishedUrl) && (
+                      <li className="flex items-center gap-2">
+                        <Video className="h-4 w-4" />
+                        YouTube Short video (floated right)
+                      </li>
+                    )}
+                    {content.longformVideoUrl && (
+                      <li className="flex items-center gap-2">
+                        <Play className="h-4 w-4" />
+                        Long-form video (before last paragraph)
+                      </li>
+                    )}
+                    {content.podcast?.podbeanPlayerUrl && (
+                      <li className="flex items-center gap-2">
+                        <Mic className="h-4 w-4" />
+                        Podcast player embed
+                      </li>
+                    )}
+                    <li className="flex items-center gap-2">
+                      <ExternalLink className="h-4 w-4" />
+                      Google Maps location embed
+                    </li>
+                  </ul>
+                </div>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    embedAllMedia()
+                  }}
+                  disabled={embedding}
+                  className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  <Layers className={`h-5 w-5 ${embedding ? 'animate-pulse' : ''}`} />
+                  {embedding ? 'Embedding Media...' : 'Embed All Media'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </section>
     </div>
   )
