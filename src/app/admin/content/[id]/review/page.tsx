@@ -961,7 +961,7 @@ function ReviewTab({
                   {publishing === 'social' ? (
                     <>
                       <RefreshCw className="h-4 w-4 animate-spin" />
-                      Posting...
+                      Publishing...
                     </>
                   ) : content.socialPosts.some(p => p.status === 'PROCESSING') ? (
                     <>
@@ -971,10 +971,10 @@ function ReviewTab({
                   ) : content.socialPosts.length > 0 && content.socialPosts.every(p => p.status === 'PUBLISHED') ? (
                     <>
                       <Check className="h-4 w-4" />
-                      Posted
+                      Published
                     </>
                   ) : (
-                    'Post'
+                    'Publish'
                   )}
                 </button>
               </div>
@@ -1020,7 +1020,7 @@ function ReviewTab({
                   {publishing === 'wrhqSocial' ? (
                     <>
                       <RefreshCw className="h-4 w-4 animate-spin" />
-                      Posting...
+                      Publishing...
                     </>
                   ) : content.wrhqSocialPosts.some(p => p.status === 'PROCESSING') ? (
                     <>
@@ -1030,10 +1030,10 @@ function ReviewTab({
                   ) : content.wrhqSocialPosts.length > 0 && content.wrhqSocialPosts.every(p => p.status === 'PUBLISHED') ? (
                     <>
                       <Check className="h-4 w-4" />
-                      Posted
+                      Published
                     </>
                   ) : (
-                    'Post'
+                    'Publish'
                   )}
                 </button>
               </div>
@@ -1924,7 +1924,7 @@ function PublishedTab({ content, onUpdate }: { content: ContentItem; onUpdate: (
                     post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
                     'bg-gray-100 text-gray-700'
                   }`}>
-                    {post.status === 'PUBLISHED' ? 'Posted' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
+                    {post.status === 'PUBLISHED' ? 'Published' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
                   </span>
                 </div>
               </div>
@@ -1964,7 +1964,7 @@ function PublishedTab({ content, onUpdate }: { content: ContentItem; onUpdate: (
                     post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
                     'bg-gray-100 text-gray-700'
                   }`}>
-                    {post.status === 'PUBLISHED' ? 'Posted' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
+                    {post.status === 'PUBLISHED' ? 'Published' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
                   </span>
                 </div>
               </div>
@@ -2005,7 +2005,7 @@ function PublishedTab({ content, onUpdate }: { content: ContentItem; onUpdate: (
                     post.status === 'FAILED' ? 'bg-red-100 text-red-700' :
                     'bg-gray-100 text-gray-700'
                   }`}>
-                    {post.status === 'PUBLISHED' ? 'Posted' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
+                    {post.status === 'PUBLISHED' ? 'Published' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
                   </span>
                 </div>
               </div>
@@ -2047,7 +2047,7 @@ function PublishedTab({ content, onUpdate }: { content: ContentItem; onUpdate: (
                     post.status === 'FAILED' ? 'bg-red-100 text-red-700' :
                     'bg-gray-100 text-gray-700'
                   }`}>
-                    {post.status === 'PUBLISHED' ? 'Posted' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
+                    {post.status === 'PUBLISHED' ? 'Published' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
                   </span>
                 </div>
               </div>
@@ -2402,7 +2402,7 @@ function SocialPostPreview({
 // Helper component for status badge
 function StatusBadge({ status, errorMessage }: { status: string; errorMessage?: string | null }) {
   const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
-    PUBLISHED: { bg: 'bg-green-100', text: 'text-green-700', label: 'Posted' },
+    PUBLISHED: { bg: 'bg-green-100', text: 'text-green-700', label: 'Published' },
     SCHEDULED: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Scheduled' },
     PROCESSING: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Processing' },
     FAILED: { bg: 'bg-red-100', text: 'text-red-700', label: 'Failed' },
