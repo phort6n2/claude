@@ -815,17 +815,29 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
         // Create short video job (returns immediately with job ID)
         // Priority: Custom template (if configured) > Link to Videos > Lipsync
+        //
+        // IMPORTANT: For 30-second videos:
+        // - Custom templates: Duration is controlled by template config in Creatify dashboard
+        // - Link to Videos: video_length parameter controls duration (15, 30, 45, 60)
+        // - Lipsync fallback: Script length determines duration (~500 chars = 30 seconds)
+        //
+        // Extract clean text from blog and limit for lipsync fallback
+        // ~500 characters = ~75 words = ~30 seconds at 150 words per minute
+        const cleanScript = contentItem.blogPost.content
+          .replace(/<[^>]*>/g, '') // Remove HTML tags
+          .replace(/\s+/g, ' ')    // Normalize whitespace
+          .trim()
+          .substring(0, 500)       // Limit to ~30 seconds of speech
+
         const videoJob = await createShortVideo({
           blogUrl: blogUrl || undefined,
-          script: contentItem.blogPost.content.replace(/<[^>]*>/g, '').substring(0, 3000), // Fallback script
+          script: cleanScript,
           title: contentItem.blogPost.title,
           imageUrls,
           logoUrl: contentItem.client.logoUrl || undefined,
-          // Custom templates don't enforce video_length - the template controls duration
-          // Disabled for now to ensure 30-second videos via Link to Videos API
-          // Re-enable once you have a 30-second template: templateId: contentItem.client.creatifyTemplateId || undefined,
-          templateId: undefined,
-          autoPopulateFromBlog: false,
+          // Use custom template if client has one configured (template controls 30-second duration)
+          templateId: contentItem.client.creatifyTemplateId || undefined,
+          autoPopulateFromBlog: !!contentItem.client.creatifyTemplateId && !!blogUrl,
           aspectRatio: '9:16',
           duration: 30,
           targetPlatform: 'tiktok',

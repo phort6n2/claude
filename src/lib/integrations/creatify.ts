@@ -535,9 +535,23 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
   }
 
   // Priority 4 (Fallback): Use lipsync v2 endpoint with script
+  // WARNING: Lipsync does NOT have a video_length parameter!
+  // The script length determines the video duration.
+  // ~500 characters = ~75 words = ~30 seconds at 150 words per minute
   if (!params.script) {
     throw new Error('Either blogUrl or script is required for video generation')
   }
+
+  // SAFEGUARD: Limit script to ~500 chars to ensure ~30 second videos
+  // This prevents accidentally creating 3+ minute videos that waste credits
+  const maxScriptLength = params.duration ? params.duration * 17 : 500 // ~17 chars per second
+  const limitedScript = params.script.substring(0, maxScriptLength)
+
+  if (params.script.length > maxScriptLength) {
+    console.warn(`⚠️ LIPSYNC SCRIPT TRUNCATED: Original ${params.script.length} chars, limited to ${maxScriptLength} chars for ~${params.duration || 30}s video`)
+  }
+
+  console.log(`Creating lipsync video with script length: ${limitedScript.length} chars (target: ~${params.duration || 30}s)`)
 
   const response = await fetch('https://api.creatify.ai/api/lipsyncs_v2/', {
     method: 'POST',
@@ -547,7 +561,7 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      script: params.script,
+      script: limitedScript,
       aspect_ratio: params.aspectRatio || '9:16',
       creator: 'maya',
       style: 'video_editing',
