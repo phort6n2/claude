@@ -160,6 +160,21 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   } | null>(null)
   const [loadingAutoSchedule, setLoadingAutoSchedule] = useState(false)
 
+  // Test run state
+  const [testRunning, setTestRunning] = useState(false)
+  const [testResult, setTestResult] = useState<{
+    success: boolean
+    message?: string
+    error?: string
+    contentItemId?: string
+    reviewUrl?: string
+    details?: {
+      client: string
+      paa: string
+      location: string
+    }
+  } | null>(null)
+
   // Load Podbean podcasts
   useEffect(() => {
     setLoadingPodcasts(true)
@@ -358,6 +373,52 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function runAutomationTest() {
+    setTestRunning(true)
+    setTestResult(null)
+
+    try {
+      const response = await fetch(`/api/clients/${client.id}/auto-schedule/test`, {
+        method: 'POST',
+      })
+      const data = await response.json()
+
+      if (response.ok) {
+        setTestResult({
+          success: true,
+          message: data.message,
+          contentItemId: data.contentItemId,
+          reviewUrl: data.reviewUrl,
+          details: data.details,
+        })
+        // Refresh the auto-schedule status after test
+        fetch(`/api/clients/${client.id}/auto-schedule`)
+          .then((res) => res.json())
+          .then((statusData) => {
+            if (statusData.paaQueue && statusData.locations) {
+              setAutoScheduleStatus({
+                paaQueue: statusData.paaQueue,
+                locations: statusData.locations,
+                upcoming: statusData.upcoming,
+              })
+            }
+          })
+      } else {
+        setTestResult({
+          success: false,
+          error: data.error || 'Test failed',
+        })
+      }
+    } catch (err) {
+      setTestResult({
+        success: false,
+        error: err instanceof Error ? err.message : 'Test failed',
+      })
+    } finally {
+      setTestRunning(false)
     }
   }
 
@@ -1208,6 +1269,70 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                 </div>
               </div>
             )}
+
+            {/* Test Button */}
+            <div className="border-t pt-6">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900">Test Automation</h4>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Create a single test content item to verify everything works
+                  </p>
+                </div>
+                <Button
+                  onClick={runAutomationTest}
+                  disabled={testRunning || (autoScheduleStatus?.paaQueue.total === 0)}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  {testRunning ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Running Test...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4" />
+                      Test Now
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Test Result */}
+              {testResult && (
+                <div className={`rounded-lg p-4 ${testResult.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                  {testResult.success ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-green-800">
+                        <Check className="h-4 w-4" />
+                        <span className="font-medium">{testResult.message}</span>
+                      </div>
+                      {testResult.details && (
+                        <div className="text-sm text-green-700 space-y-1">
+                          <div><strong>PAA:</strong> {testResult.details.paa}</div>
+                          <div><strong>Location:</strong> {testResult.details.location}</div>
+                        </div>
+                      )}
+                      {testResult.reviewUrl && (
+                        <a
+                          href={testResult.reviewUrl}
+                          className="inline-flex items-center gap-2 mt-2 px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700"
+                        >
+                          View Content & Track Progress
+                          <ChevronRight className="h-4 w-4" />
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-red-800">
+                      <AlertCircle className="h-4 w-4" />
+                      <span>{testResult.error}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Info Box */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
