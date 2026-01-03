@@ -109,29 +109,36 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const results: Record<string, unknown> = {}
 
     // Helper function to generate Google Maps embed HTML
-    function generateGoogleMapsEmbed(googleMapsUrl: string | null, businessName: string): string {
-      if (!googleMapsUrl) return ''
+    function generateGoogleMapsEmbed(client: {
+      googleMapsUrl: string | null
+      businessName: string
+      streetAddress: string
+      city: string
+      state: string
+      postalCode: string
+    }): string {
+      // Build the address for the embed
+      const fullAddress = `${client.streetAddress}, ${client.city}, ${client.state} ${client.postalCode}`
+      const encodedAddress = encodeURIComponent(fullAddress)
 
-      // Extract place ID or coordinates from Google Maps URL for embed
-      // Google Maps embed format: https://www.google.com/maps/embed?pb=...
-      // We'll use an iframe with the place URL
       return `
 <!-- Google Maps Location -->
 <div class="google-maps-embed" style="margin: 30px 0; clear: both;">
-  <h3 style="margin-bottom: 15px;">📍 Find ${businessName}</h3>
+  <h3 style="margin-bottom: 15px;">📍 Find ${client.businessName}</h3>
   <div style="position: relative; width: 100%; height: 300px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
     <iframe
-      src="${googleMapsUrl.replace('/maps/place/', '/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=').replace(/\/@.*/, '')}"
+      src="https://maps.google.com/maps?q=${encodedAddress}&output=embed"
       width="100%"
       height="100%"
       style="border: none;"
       allowfullscreen=""
       loading="lazy"
-      referrerpolicy="no-referrer-when-downgrade">
+      referrerpolicy="no-referrer-when-downgrade"
+      title="Map showing location of ${client.businessName}">
     </iframe>
   </div>
   <p style="margin-top: 10px; text-align: center;">
-    <a href="${googleMapsUrl}" target="_blank" rel="noopener noreferrer" style="color: #1a73e8; text-decoration: none;">
+    <a href="${client.googleMapsUrl || `https://maps.google.com/?q=${encodedAddress}`}" target="_blank" rel="noopener noreferrer" style="color: #1a73e8; text-decoration: none;">
       View on Google Maps →
     </a>
   </p>
@@ -187,11 +194,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           }
         }
 
-        // Add Google Maps embed to content if client has a Google Maps URL
-        const googleMapsEmbed = generateGoogleMapsEmbed(
-          contentItem.client.googleMapsUrl,
-          contentItem.client.businessName
-        )
+        // Add Google Maps embed to content
+        const googleMapsEmbed = generateGoogleMapsEmbed(contentItem.client)
         const contentWithEmbed = contentWithImage + googleMapsEmbed
 
         const wpResult = await publishToWordPress({
@@ -294,10 +298,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             }
 
             // Add Google Maps embed to WRHQ content (links to the featured client)
-            const wrhqGoogleMapsEmbed = generateGoogleMapsEmbed(
-              contentItem.client.googleMapsUrl,
-              contentItem.client.businessName
-            )
+            const wrhqGoogleMapsEmbed = generateGoogleMapsEmbed(contentItem.client)
             const wrhqContentWithEmbed = wrhqContentWithImage + wrhqGoogleMapsEmbed
 
             const wpResult = await publishToWordPress({
