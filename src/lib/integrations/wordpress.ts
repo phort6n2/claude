@@ -128,7 +128,8 @@ export async function getPost(
 ): Promise<{ id: number; content: string; title: string }> {
   const authHeader = getAuthHeader(credentials.username, credentials.password)
 
-  const response = await fetch(`${credentials.url}/wp-json/wp/v2/posts/${postId}`, {
+  // Use context=edit to get raw content that can be edited and re-saved
+  const response = await fetch(`${credentials.url}/wp-json/wp/v2/posts/${postId}?context=edit`, {
     method: 'GET',
     headers: {
       'Authorization': authHeader,
@@ -142,10 +143,11 @@ export async function getPost(
 
   const data = await response.json()
 
+  // With context=edit, content.raw is available
   return {
     id: data.id,
-    content: data.content?.rendered || data.content?.raw || '',
-    title: data.title?.rendered || data.title?.raw || '',
+    content: data.content?.raw || data.content?.rendered || '',
+    title: data.title?.raw || data.title?.rendered || '',
   }
 }
 
