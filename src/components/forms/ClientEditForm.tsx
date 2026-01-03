@@ -117,6 +117,11 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
     new Set(['business', 'location', 'branding', 'wordpress', 'social', 'integrations', 'publishing'])
   )
 
+  // WordPress connection test state
+  const [testingConnection, setTestingConnection] = useState(false)
+  const [connectionStatus, setConnectionStatus] = useState<'success' | 'error' | null>(null)
+  const [connectionError, setConnectionError] = useState<string | null>(null)
+
   // Podbean state
   const [podbeanPodcasts, setPodbeanPodcasts] = useState<PodbeanPodcast[]>([])
   const [podbeanConnected, setPodbeanConnected] = useState(false)
@@ -186,6 +191,36 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
   function updateSocialAccountId(platform: string, value: string) {
     const ids = formData.socialAccountIds || {}
     updateField('socialAccountIds', { ...ids, [platform]: value })
+  }
+
+  async function testWordPressConnection() {
+    setTestingConnection(true)
+    setConnectionStatus(null)
+    setConnectionError(null)
+    try {
+      const response = await fetch('/api/wordpress/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: formData.wordpressUrl,
+          username: formData.wordpressUsername,
+          password: formData.wordpressAppPassword,
+          clientId: client.id,
+        }),
+      })
+      const data = await response.json()
+      if (response.ok) {
+        setConnectionStatus('success')
+      } else {
+        setConnectionStatus('error')
+        setConnectionError(data.details || data.error || 'Connection failed')
+      }
+    } catch (err) {
+      setConnectionStatus('error')
+      setConnectionError(err instanceof Error ? err.message : 'Network error')
+    } finally {
+      setTestingConnection(false)
+    }
   }
 
   async function handleSave() {
@@ -574,8 +609,31 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
                 placeholder="Leave blank to keep existing"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Only enter if you want to update the password
+                Only enter if you want to update the password. Generate in WordPress: Users → Profile → Application Passwords
               </p>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={testWordPressConnection}
+                  disabled={testingConnection || !formData.wordpressUrl || !formData.wordpressUsername}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {testingConnection ? 'Testing...' : 'Test Connection'}
+                </button>
+                {connectionStatus === 'success' && (
+                  <span className="text-green-600 text-sm">✓ Connection successful!</span>
+                )}
+                {connectionStatus === 'error' && (
+                  <span className="text-red-600 text-sm">✗ Connection failed</span>
+                )}
+              </div>
+              {connectionStatus === 'error' && connectionError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+                  <strong>Error:</strong> {connectionError}
+                </div>
+              )}
             </div>
             <div className="border-t pt-4 mt-4">
               <h4 className="text-sm font-medium text-gray-700 mb-3">Call to Action</h4>
