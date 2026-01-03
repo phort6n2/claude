@@ -26,7 +26,7 @@ const TIMEOUTS = {
   GCS_UPLOAD: 60_000,           // 60 seconds for GCS upload
 }
 
-type PipelineStep = 'blog' | 'images' | 'wordpress' | 'wrhq' | 'podcast' | 'videos' | 'social'
+type PipelineStep = 'blog' | 'images' | 'wordpress' | 'wrhq' | 'podcast' | 'videos' | 'social' | 'schema'
 
 interface PipelineContext {
   contentItemId: string
@@ -121,6 +121,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
     podcast: { success: false },
     videos: { success: false },
     social: { success: false, skipped: true },
+    schema: { success: false },
   }
 
   let blogResult: { title: string; slug: string; content: string; excerpt: string; metaTitle: string; metaDescription: string; focusKeyword: string } | null = null
@@ -336,14 +337,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           log(ctx, '⚠️ No BLOG_FEATURED image found in database')
         }
 
-        // Generate schema markup
-        const schemaJson = generateSchemaGraph({
-          client: contentItem.client,
-          blogPost: blogPost!,
-          contentItem,
-        })
-
-        // Create WordPress post
+        // Create WordPress post (schema will be added later after all content is created)
         log(ctx, 'Creating WordPress post...')
         const wpPost = await withTimeout(
           createPost(wpCredentials, {
@@ -358,13 +352,6 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           'WordPress post creation'
         )
 
-        // Inject schema markup
-        await withTimeout(
-          injectSchemaMarkup(wpCredentials, wpPost.id, schemaJson),
-          TIMEOUTS.WORDPRESS_POST,
-          'WordPress schema injection'
-        )
-
         // Update blog post with WordPress info
         await prisma.blogPost.update({
           where: { id: blogPost!.id },
@@ -372,7 +359,6 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             wordpressPostId: wpPost.id,
             wordpressUrl: wpPost.link,
             featuredImageId: featuredImageId,
-            schemaJson,
             publishedAt: new Date(),
           },
         })
@@ -381,13 +367,12 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         log(ctx, '✅ WordPress publishing successful', { postId: wpPost.id, url: wpPost.link })
         await logAction(ctx, 'wordpress_publish', 'SUCCESS')
 
-        // Mark client blog as published and schema as generated
+        // Mark client blog as published
         await prisma.contentItem.update({
           where: { id: contentItemId },
           data: {
             clientBlogPublished: true,
             clientBlogUrl: wpPost.link,
-            schemaGenerated: true,
           },
         })
       } catch (error) {
@@ -864,6 +849,114 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
 
     await logAction(ctx, 'social_schedule', 'SUCCESS')
 
+    // ============ STEP 7: Generate Schema Markup ============
+    // Schema is generated LAST because it needs to link to all created content (podcast, video, etc.)
+    log(ctx, '📋 Starting schema markup generation...')
+    await logAction(ctx, 'schema_generate', 'STARTED')
+
+    try {
+      // Get the created podcast and video to include in schema
+      const podcast = await prisma.podcast.findFirst({
+        where: { contentItemId },
+        select: { audioUrl: true, duration: true },
+      })
+
+      const video = await prisma.video.findFirst({
+        where: { contentItemId, videoType: 'SHORT' },
+        select: { videoUrl: true, thumbnailUrl: true, duration: true },
+      })
+
+      const blogPostForSchema = await prisma.blogPost.findUnique({
+        where: { contentItemId },
+      })
+
+      if (blogPostForSchema && contentItem.client.wordpressUrl) {
+        // Generate schema with all content references
+        const schemaJson = generateSchemaGraph({
+          client: {
+            businessName: contentItem.client.businessName,
+            streetAddress: contentItem.client.streetAddress,
+            city: contentItem.client.city,
+            state: contentItem.client.state,
+            postalCode: contentItem.client.postalCode,
+            country: contentItem.client.country || 'US',
+            phone: contentItem.client.phone,
+            email: contentItem.client.email || '',
+            logoUrl: contentItem.client.logoUrl,
+            wordpressUrl: contentItem.client.wordpressUrl,
+            serviceAreas: contentItem.client.serviceAreas,
+            gbpRating: contentItem.client.gbpRating,
+            gbpReviewCount: contentItem.client.gbpReviewCount,
+            hasAdasCalibration: contentItem.client.hasAdasCalibration,
+            offersMobileService: contentItem.client.offersMobileService,
+          },
+          blogPost: {
+            title: blogPostForSchema.title,
+            slug: blogPostForSchema.slug,
+            content: blogPostForSchema.content,
+            excerpt: blogPostForSchema.excerpt,
+            metaDescription: blogPostForSchema.metaDescription,
+            wordpressUrl: blogPostForSchema.wordpressUrl,
+            publishedAt: blogPostForSchema.publishedAt,
+          },
+          contentItem: {
+            paaQuestion: contentItem.paaQuestion,
+          },
+          podcast: podcast ? {
+            audioUrl: podcast.audioUrl,
+            duration: podcast.duration,
+          } : undefined,
+          video: video ? {
+            videoUrl: video.videoUrl,
+            thumbnailUrl: video.thumbnailUrl,
+            duration: video.duration,
+          } : undefined,
+        })
+
+        // Inject schema into WordPress post if we have a post ID
+        if (blogPostForSchema.wordpressPostId && contentItem.client.wordpressUsername && contentItem.client.wordpressAppPassword) {
+          const wpCredentials = {
+            url: contentItem.client.wordpressUrl,
+            username: contentItem.client.wordpressUsername,
+            password: contentItem.client.wordpressAppPassword,
+          }
+
+          await withTimeout(
+            injectSchemaMarkup(wpCredentials, blogPostForSchema.wordpressPostId, schemaJson),
+            TIMEOUTS.WORDPRESS_POST,
+            'Schema injection'
+          )
+          log(ctx, '✅ Schema markup injected into WordPress')
+        }
+
+        // Save schema to blog post
+        await prisma.blogPost.update({
+          where: { id: blogPostForSchema.id },
+          data: { schemaJson },
+        })
+
+        // Mark schema as generated
+        await prisma.contentItem.update({
+          where: { id: contentItemId },
+          data: { schemaGenerated: true },
+        })
+
+        results.schema = { success: true }
+        log(ctx, '✅ Schema markup generated successfully')
+        await logAction(ctx, 'schema_generate', 'SUCCESS')
+      } else {
+        results.schema = { success: false, skipped: true }
+        log(ctx, '⏭️ Schema skipped - no blog post or WordPress not configured')
+      }
+    } catch (error) {
+      logError(ctx, 'Schema generation failed', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      await logAction(ctx, 'schema_generate', 'FAILED', { errorMessage })
+      results.schema = { success: false, error: errorMessage }
+      // Schema is non-critical, continue to finalize
+      log(ctx, '⚠️ Continuing without schema...')
+    }
+
     // ============ FINALIZE ============
     const criticalSuccess = results.blog.success && results.images.success
     const hasWordPress = results.wordpress.success || results.wordpress.skipped
@@ -894,6 +987,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         podcast: results.podcast.success ? '✅' : '❌',
         videos: results.videos.success ? '✅' : '❌',
         social: results.social.skipped ? '⏭️' : (results.social.success ? '✅' : '❌'),
+        schema: results.schema.skipped ? '⏭️' : (results.schema.success ? '✅' : '❌'),
       },
     })
 
