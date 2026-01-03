@@ -388,12 +388,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         const paaQuestionWithLocation = contentItem.paaQuestion.replace(/\{location\}/gi, location)
 
         // Generate both 16:9 and 1:1 images
-        // Use client's main GBP address for the business location on image
-        // But use service location in the PAA headline
+        // Use service location for city/state on image
         const generatedImages = await generateBothImages({
           businessName: contentItem.client.businessName,
-          city: contentItem.client.city,
-          state: clientState,
+          city: contentCity,
+          state: contentState,
           paaQuestion: paaQuestionWithLocation,
           phone: contentItem.client.phone,
           website: contentItem.client.wordpressUrl || contentItem.client.ctaUrl || '',
