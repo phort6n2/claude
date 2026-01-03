@@ -31,14 +31,14 @@ function generateShortVideoEmbed(youtubeUrl: string): string | null {
   return `<!-- YouTube Short Video -->
 <style>
 .yt-shorts-embed {
-  float: right;
+  float: right !important;
   width: 280px;
-  margin: 30px 0 20px 25px;
-  clear: right;
+  margin: 0 0 20px 25px !important;
+  shape-outside: margin-box;
 }
 .yt-shorts-embed .video-wrapper {
   position: relative;
-  padding-bottom: 177.78%; /* 16:9 inverted = 9:16 */
+  padding-bottom: 177.78%; /* 9:16 aspect ratio */
   height: 0;
   overflow: hidden;
   border-radius: 12px;
@@ -55,15 +55,14 @@ function generateShortVideoEmbed(youtubeUrl: string): string | null {
 }
 @media (max-width: 600px) {
   .yt-shorts-embed {
-    float: none;
+    float: none !important;
     width: 100%;
     max-width: 320px;
-    margin: 30px auto;
+    margin: 20px auto !important;
   }
 }
 </style>
 <div class="yt-shorts-embed">
-  <h3 style="margin: 0 0 10px 0; font-size: 16px;">🎬 Watch the Video</h3>
   <div class="video-wrapper">
     <iframe
       src="https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1"
@@ -239,17 +238,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     if (shortVideoUrl) {
       const shortVideoEmbed = generateShortVideoEmbed(shortVideoUrl)
       if (shortVideoEmbed) {
-        // Insert after second paragraph (after featured image which is after first paragraph)
-        let insertPoint = fullContent.indexOf('</p>')
-        if (insertPoint !== -1) {
-          insertPoint = fullContent.indexOf('</p>', insertPoint + 1)
-        }
-        if (insertPoint !== -1) {
-          fullContent = fullContent.slice(0, insertPoint + 4) + '\n\n' + shortVideoEmbed + fullContent.slice(insertPoint + 4)
-        } else {
-          // Fallback: insert at beginning
-          fullContent = shortVideoEmbed + '\n\n' + fullContent
-        }
+        // Insert at the very beginning so text flows around the floated video
+        fullContent = shortVideoEmbed + '\n' + fullContent
         embedded.push('short-video')
       }
     }
