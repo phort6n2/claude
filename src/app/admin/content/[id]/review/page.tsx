@@ -483,12 +483,14 @@ function ReviewTab({
 
   // Initialize collapsed state based on completion
   useEffect(() => {
+    const clientVidDone = content.videoSocialPosts.length === 0 || content.videoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PROCESSING' || p.status === 'PUBLISHED')
+    const wrhqVidDone = content.wrhqVideoSocialPosts.length === 0 || content.wrhqVideoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PROCESSING' || p.status === 'PUBLISHED')
     setCollapsedSections({
       step1: content.clientBlogPublished,
       step2: content.wrhqBlogPublished,
       step3: content.socialPosts.length > 0 && content.socialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED'),
       step4: content.podcastAddedToPost,
-      step5: content.videoSocialPosts.length > 0 && content.videoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED'),
+      step5: (content.videoSocialPosts.length > 0 || content.wrhqVideoSocialPosts.length > 0) && clientVidDone && wrhqVidDone,
       step6: content.longVideoUploaded,
       step7: !!content.mediaEmbeddedAt,
     })
@@ -570,7 +572,10 @@ function ReviewTab({
   const isStep2Complete = content.wrhqBlogPublished
   const isStep3Complete = content.socialPosts.length > 0 && content.socialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED')
   const isStep4Complete = content.podcastAddedToPost
-  const isStep5Complete = content.videoSocialPosts.length > 0 && content.videoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED')
+  // Step 5: Video posts complete when all client AND WRHQ posts are scheduled/processing/published
+  const clientVideoComplete = content.videoSocialPosts.length === 0 || content.videoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PROCESSING' || p.status === 'PUBLISHED')
+  const wrhqVideoComplete = content.wrhqVideoSocialPosts.length === 0 || content.wrhqVideoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PROCESSING' || p.status === 'PUBLISHED')
+  const isStep5Complete = (content.videoSocialPosts.length > 0 || content.wrhqVideoSocialPosts.length > 0) && clientVideoComplete && wrhqVideoComplete
   const isStep6Complete = content.longVideoUploaded
   const isStep7Complete = !!content.mediaEmbeddedAt
 
