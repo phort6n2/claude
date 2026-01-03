@@ -402,6 +402,9 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       log(ctx, '⏭️ WordPress not configured - skipping')
     }
 
+    // Critical checkpoint - if this doesn't appear in logs, pipeline exited early
+    console.log(`🔴🔴🔴 CHECKPOINT: WordPress step complete, proceeding to WRHQ for ${contentItemId}`)
+
     // ============ STEP 3.5: Publish to WRHQ ============
     ctx.step = 'wrhq'
     await updatePipelineStep(contentItemId, 'wrhq')
