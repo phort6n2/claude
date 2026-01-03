@@ -1526,12 +1526,35 @@ function ReviewTab({
                 <XCircle className="h-4 w-4" />
                 <span className="text-sm">Generation failed</span>
               </div>
+            ) : isStep5Complete ? (
+              /* When complete: show Published status, only show Regenerate button when expanded */
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 text-green-600">
+                  <Check className="h-5 w-5" />
+                  <span className="text-sm font-medium">Published</span>
+                </div>
+                {!collapsedSections.step5 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); regenerateContent('video'); }}
+                    disabled={generating === 'video' || !isStep1Complete}
+                    className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {generating === 'video' ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    Regenerate
+                  </button>
+                )}
+              </div>
             ) : (
+              /* When not complete: show all action buttons */
               <>
                 <button
                   onClick={(e) => { e.stopPropagation(); regenerateContent('video'); }}
                   disabled={generating === 'video' || !isStep1Complete}
-                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+                  className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
                 >
                   {generating === 'video' ? (
                     <RefreshCw className="h-4 w-4 animate-spin" />
@@ -1544,7 +1567,7 @@ function ReviewTab({
                   <button
                     onClick={(e) => { e.stopPropagation(); regenerateContent('videoSocial'); }}
                     disabled={generating === 'videoSocial'}
-                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+                    className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
                   >
                     {generating === 'videoSocial' ? (
                       <RefreshCw className="h-4 w-4 animate-spin" />
@@ -1598,7 +1621,7 @@ function ReviewTab({
                   <button
                     onClick={(e) => { e.stopPropagation(); refreshStatus(); }}
                     disabled={refreshing}
-                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+                    className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
                   >
                     <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                     {refreshing ? 'Refreshing...' : 'Refresh Status'}
