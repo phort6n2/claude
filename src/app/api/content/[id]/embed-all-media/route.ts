@@ -76,7 +76,7 @@ function generateShortVideoEmbed(youtubeUrl: string): string | null {
 }
 
 // Generate long-form video embed (16:9 horizontal)
-function generateLongVideoEmbed(url: string, description: string): string {
+function generateLongVideoEmbed(url: string): string {
   // Check if YouTube
   const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/)
   if (youtubeMatch) {
@@ -89,8 +89,7 @@ function generateLongVideoEmbed(url: string, description: string): string {
     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
     allowfullscreen>
   </iframe>
-</div>
-${description ? `<p class="video-description" style="font-size: 0.9rem; color: #666; margin-top: 0.5rem;">${description}</p>` : ''}`
+</div>`
   }
 
   // Check if Vimeo
@@ -105,8 +104,7 @@ ${description ? `<p class="video-description" style="font-size: 0.9rem; color: #
     allow="autoplay; fullscreen; picture-in-picture"
     allowfullscreen>
   </iframe>
-</div>
-${description ? `<p class="video-description" style="font-size: 0.9rem; color: #666; margin-top: 0.5rem;">${description}</p>` : ''}`
+</div>`
   }
 
   // Default to HTML5 video
@@ -116,8 +114,7 @@ ${description ? `<p class="video-description" style="font-size: 0.9rem; color: #
     <source src="${url}" type="video/mp4">
     Your browser does not support the video tag.
   </video>
-</div>
-${description ? `<p class="video-description" style="font-size: 0.9rem; color: #666; margin-top: 0.5rem;">${description}</p>` : ''}`
+</div>`
 }
 
 // Generate podcast embed HTML
@@ -228,10 +225,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
     // 2. Add long-form video embed (if present)
     if (contentItem.longformVideoUrl) {
-      const longVideoEmbed = generateLongVideoEmbed(
-        contentItem.longformVideoUrl,
-        contentItem.longformVideoDesc || ''
-      )
+      const longVideoEmbed = generateLongVideoEmbed(contentItem.longformVideoUrl)
       // Insert before Google Maps embed (which is at the end)
       const mapsIndex = fullContent.indexOf('<div class="google-maps-embed"')
       if (mapsIndex !== -1) {
