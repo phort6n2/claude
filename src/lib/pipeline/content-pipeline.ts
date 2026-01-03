@@ -158,6 +158,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             ctaUrl: contentItem.client.ctaUrl || contentItem.client.wordpressUrl || '',
             phone: contentItem.client.phone,
             website: contentItem.client.ctaUrl || contentItem.client.wordpressUrl || '',
+            googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
           })
         }),
         TIMEOUTS.BLOG_GENERATION,
@@ -310,18 +311,29 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
 
         let featuredImageId: number | undefined
         if (featuredImage) {
-          log(ctx, 'Uploading featured image to WordPress...')
-          const wpMedia = await withTimeout(
-            uploadMedia(
-              wpCredentials,
-              featuredImage.gcsUrl,
-              `${blogResult.slug}-featured.jpg`,
-              featuredImage.altText || undefined
-            ),
-            TIMEOUTS.WORDPRESS_UPLOAD,
-            'WordPress media upload'
-          )
-          featuredImageId = wpMedia.id
+          log(ctx, 'Uploading featured image to WordPress...', {
+            gcsUrl: featuredImage.gcsUrl,
+            fileName: `${blogResult.slug}-featured.jpg`
+          })
+          try {
+            const wpMedia = await withTimeout(
+              uploadMedia(
+                wpCredentials,
+                featuredImage.gcsUrl,
+                `${blogResult.slug}-featured.jpg`,
+                featuredImage.altText || undefined
+              ),
+              TIMEOUTS.WORDPRESS_UPLOAD,
+              'WordPress media upload'
+            )
+            featuredImageId = wpMedia.id
+            log(ctx, '✅ Featured image uploaded', { wpMediaId: featuredImageId })
+          } catch (imageError) {
+            logError(ctx, 'Featured image upload failed', imageError)
+            // Continue without featured image
+          }
+        } else {
+          log(ctx, '⚠️ No BLOG_FEATURED image found in database')
         }
 
         // Generate schema markup

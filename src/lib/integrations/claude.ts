@@ -50,6 +50,7 @@ interface BlogPostParams {
   ctaUrl: string
   phone: string
   website: string
+  googleMapsUrl?: string  // Google Maps profile URL
 }
 
 interface BlogPostResult {
@@ -127,6 +128,25 @@ Create a compelling final paragraph that:
 - Mentions location: ${location}
 - References the business name: ${params.businessName}
 - Can optionally include another link to ${servicePageUrl}
+${params.googleMapsUrl ? `
+**Google Maps Embed (REQUIRED - After CTA):**
+After the final CTA paragraph, include this EXACT HTML block to embed the Google Maps location:
+
+<div class="google-maps-embed" style="margin: 30px 0;">
+<h3>📍 Visit ${params.businessName}</h3>
+<p>Get directions to our location:</p>
+<iframe
+  src="${params.googleMapsUrl.replace('/maps/place/', '/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=').replace('?entry=ttu', '')}"
+  width="100%"
+  height="300"
+  style="border:0; border-radius: 8px;"
+  allowfullscreen=""
+  loading="lazy"
+  referrerpolicy="no-referrer-when-downgrade">
+</iframe>
+<p style="margin-top: 10px;"><a href="${params.googleMapsUrl}" target="_blank" rel="noopener">Open in Google Maps →</a></p>
+</div>
+` : ''}
 
 **WRITING STYLE REQUIREMENTS:**
 - Conversational yet professional tone
@@ -159,6 +179,7 @@ Before finishing, ensure:
 - ✓ Strong CTA at the end
 - ✓ 1000-1100 word count achieved
 - ✓ No marketing fluff or filler content
+${params.googleMapsUrl ? '- ✓ Google Maps embed included at the end (use EXACT HTML provided)' : ''}
 
 **CRITICAL OUTPUT FORMAT:**
 Return a JSON object with these keys:
