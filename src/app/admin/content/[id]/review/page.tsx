@@ -14,6 +14,8 @@ import {
   RefreshCw,
   ExternalLink,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   AlertCircle,
   AlertTriangle,
   XCircle,
@@ -471,6 +473,24 @@ function ReviewTab({
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Collapsed state for sections - auto-collapse completed sections
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
+
+  // Initialize collapsed state based on completion
+  useEffect(() => {
+    setCollapsedSections({
+      step1: content.clientBlogPublished,
+      step2: content.wrhqBlogPublished,
+      step3: content.socialPosts.length > 0 && content.socialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED'),
+      step4: content.podcastAddedToPost,
+      step5: content.videoSocialPosts.length > 0 && content.videoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED'),
+    })
+  }, []) // Only run once on mount
+
+  const toggleSection = (section: string) => {
+    setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }))
+  }
+
   // Poll for podcast status when processing
   useEffect(() => {
     if (content.podcast?.status !== 'PROCESSING') return
@@ -687,6 +707,107 @@ function ReviewTab({
         </div>
       )}
 
+      {/* Summary Header - Progress Overview */}
+      <div className="bg-white rounded-lg shadow-sm border p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-gray-800">Progress Overview</h3>
+          <span className="text-sm text-gray-500">
+            {[isStep1Complete, isStep2Complete, isStep3Complete, isStep4Complete, isStep5Complete].filter(Boolean).length} of 5 complete
+          </span>
+        </div>
+        <div className="grid grid-cols-5 gap-2">
+          {/* Step 1: Client Blog */}
+          <button
+            onClick={() => toggleSection('step1')}
+            className={`p-3 rounded-lg text-center transition-colors ${
+              isStep1Complete
+                ? 'bg-green-50 border border-green-200 hover:bg-green-100'
+                : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            <FileText className={`h-5 w-5 mx-auto mb-1 ${isStep1Complete ? 'text-green-600' : 'text-gray-400'}`} />
+            <p className="text-xs font-medium truncate">Client Blog</p>
+            {isStep1Complete ? (
+              <Check className="h-3 w-3 mx-auto mt-1 text-green-600" />
+            ) : (
+              <span className="text-xs text-gray-400">Pending</span>
+            )}
+          </button>
+
+          {/* Step 2: WRHQ Blog */}
+          <button
+            onClick={() => toggleSection('step2')}
+            className={`p-3 rounded-lg text-center transition-colors ${
+              isStep2Complete
+                ? 'bg-green-50 border border-green-200 hover:bg-green-100'
+                : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            <Building2 className={`h-5 w-5 mx-auto mb-1 ${isStep2Complete ? 'text-green-600' : 'text-gray-400'}`} />
+            <p className="text-xs font-medium truncate">WRHQ Blog</p>
+            {isStep2Complete ? (
+              <Check className="h-3 w-3 mx-auto mt-1 text-green-600" />
+            ) : (
+              <span className="text-xs text-gray-400">Pending</span>
+            )}
+          </button>
+
+          {/* Step 3: Social Posts */}
+          <button
+            onClick={() => toggleSection('step3')}
+            className={`p-3 rounded-lg text-center transition-colors ${
+              isStep3Complete
+                ? 'bg-green-50 border border-green-200 hover:bg-green-100'
+                : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            <Share2 className={`h-5 w-5 mx-auto mb-1 ${isStep3Complete ? 'text-green-600' : 'text-gray-400'}`} />
+            <p className="text-xs font-medium truncate">Social Posts</p>
+            {isStep3Complete ? (
+              <Check className="h-3 w-3 mx-auto mt-1 text-green-600" />
+            ) : (
+              <span className="text-xs text-gray-400">Pending</span>
+            )}
+          </button>
+
+          {/* Step 4: Podcast */}
+          <button
+            onClick={() => toggleSection('step4')}
+            className={`p-3 rounded-lg text-center transition-colors ${
+              isStep4Complete
+                ? 'bg-green-50 border border-green-200 hover:bg-green-100'
+                : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            <Mic className={`h-5 w-5 mx-auto mb-1 ${isStep4Complete ? 'text-green-600' : 'text-gray-400'}`} />
+            <p className="text-xs font-medium truncate">Podcast</p>
+            {isStep4Complete ? (
+              <Check className="h-3 w-3 mx-auto mt-1 text-green-600" />
+            ) : (
+              <span className="text-xs text-gray-400">Pending</span>
+            )}
+          </button>
+
+          {/* Step 5: Video */}
+          <button
+            onClick={() => toggleSection('step5')}
+            className={`p-3 rounded-lg text-center transition-colors ${
+              isStep5Complete
+                ? 'bg-green-50 border border-green-200 hover:bg-green-100'
+                : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            <Video className={`h-5 w-5 mx-auto mb-1 ${isStep5Complete ? 'text-green-600' : 'text-gray-400'}`} />
+            <p className="text-xs font-medium truncate">Video</p>
+            {isStep5Complete ? (
+              <Check className="h-3 w-3 mx-auto mt-1 text-green-600" />
+            ) : (
+              <span className="text-xs text-gray-400">Pending</span>
+            )}
+          </button>
+        </div>
+      </div>
+
       {/* PAA Question */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-sm text-blue-600 font-medium">PAA Question</p>
@@ -703,7 +824,10 @@ function ReviewTab({
       {/* STEP 1: Client Blog - Review & Publish */}
       {/* ============================================ */}
       <section className="bg-white rounded-lg shadow-sm border overflow-hidden">
-        <div className={`px-6 py-4 flex items-center justify-between ${isStep1Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}>
+        <div
+          className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep1Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
+          onClick={() => toggleSection('step1')}
+        >
           <div className="flex items-center gap-3">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${isStep1Complete ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'}`}>
               {isStep1Complete ? <Check className="h-5 w-5" /> : '1'}
@@ -719,7 +843,7 @@ function ReviewTab({
                 <Check className="h-5 w-5" />
                 <span className="text-sm font-medium">Published</span>
                 {content.clientBlogUrl && (
-                  <a href={content.clientBlogUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  <a href={content.clientBlogUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
                     <ExternalLink className="h-4 w-4" />
                   </a>
                 )}
@@ -727,7 +851,7 @@ function ReviewTab({
             ) : (
               <>
                 <button
-                  onClick={() => regenerateContent('blog')}
+                  onClick={(e) => { e.stopPropagation(); regenerateContent('blog'); }}
                   disabled={generating === 'blog'}
                   className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
                 >
@@ -739,7 +863,7 @@ function ReviewTab({
                   {content.blogGenerated ? 'Regenerate Blog' : 'Generate Blog'}
                 </button>
                 <button
-                  onClick={() => regenerateContent('images')}
+                  onClick={(e) => { e.stopPropagation(); regenerateContent('images'); }}
                   disabled={generating === 'images'}
                   className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
                 >
@@ -752,7 +876,7 @@ function ReviewTab({
                 </button>
                 {content.blogGenerated && content.imagesGenerated && (
                   <button
-                    onClick={() => publishContent('clientBlog')}
+                    onClick={(e) => { e.stopPropagation(); publishContent('clientBlog'); }}
                     disabled={publishing === 'clientBlog'}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
@@ -771,9 +895,15 @@ function ReviewTab({
                 )}
               </>
             )}
+            {collapsedSections.step1 ? (
+              <ChevronDown className="h-5 w-5 text-gray-400 ml-2" />
+            ) : (
+              <ChevronUp className="h-5 w-5 text-gray-400 ml-2" />
+            )}
           </div>
         </div>
 
+        {!collapsedSections.step1 && (
         <div className="p-6 space-y-6">
           {/* Blog Post */}
           <div>
@@ -849,13 +979,17 @@ function ReviewTab({
             )}
           </div>
         </div>
+        )}
       </section>
 
       {/* ============================================ */}
       {/* STEP 2: WRHQ Blog - Generate & Publish */}
       {/* ============================================ */}
       <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
-        <div className={`px-6 py-4 flex items-center justify-between ${isStep2Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}>
+        <div
+          className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep2Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
+          onClick={() => toggleSection('step2')}
+        >
           <div className="flex items-center gap-3">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${isStep2Complete ? 'bg-green-500 text-white' : isStep1Complete ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
               {isStep2Complete ? <Check className="h-5 w-5" /> : '2'}
@@ -871,7 +1005,7 @@ function ReviewTab({
                 <Check className="h-5 w-5" />
                 <span className="text-sm font-medium">Published</span>
                 {content.wrhqBlogUrl && (
-                  <a href={content.wrhqBlogUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  <a href={content.wrhqBlogUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
                     <ExternalLink className="h-4 w-4" />
                   </a>
                 )}
@@ -879,7 +1013,7 @@ function ReviewTab({
             ) : (
               <>
                 <button
-                  onClick={() => regenerateContent('wrhqBlog')}
+                  onClick={(e) => { e.stopPropagation(); regenerateContent('wrhqBlog'); }}
                   disabled={generating === 'wrhqBlog' || !isStep1Complete}
                   className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
                 >
@@ -892,7 +1026,7 @@ function ReviewTab({
                 </button>
                 {content.wrhqBlogGenerated && (
                   <button
-                    onClick={() => publishContent('wrhqBlog')}
+                    onClick={(e) => { e.stopPropagation(); publishContent('wrhqBlog'); }}
                     disabled={publishing === 'wrhqBlog'}
                     className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
@@ -911,10 +1045,15 @@ function ReviewTab({
                 )}
               </>
             )}
+            {collapsedSections.step2 ? (
+              <ChevronDown className="h-5 w-5 text-gray-400 ml-2" />
+            ) : (
+              <ChevronUp className="h-5 w-5 text-gray-400 ml-2" />
+            )}
           </div>
         </div>
 
-        {content.wrhqBlogPost && (
+        {!collapsedSections.step2 && content.wrhqBlogPost && (
           <div className="p-6">
             <h4 className="text-lg font-semibold mb-2">{content.wrhqBlogPost.title}</h4>
             <p className="text-sm text-gray-500 mb-4">{content.wrhqBlogPost.wordCount} words | Slug: {content.wrhqBlogPost.slug}</p>
@@ -935,7 +1074,10 @@ function ReviewTab({
       {/* STEP 3: Social Media - Generate & Publish */}
       {/* ============================================ */}
       <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
-        <div className={`px-6 py-4 flex items-center justify-between ${isStep3Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}>
+        <div
+          className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep3Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
+          onClick={() => toggleSection('step3')}
+        >
           <div className="flex items-center gap-3">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${isStep3Complete ? 'bg-green-500 text-white' : isStep1Complete ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
               {isStep3Complete ? <Check className="h-5 w-5" /> : '3'}
@@ -945,8 +1087,22 @@ function ReviewTab({
               <p className="text-sm text-gray-500">Generate and schedule social media content</p>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            {isStep3Complete && (
+              <div className="flex items-center gap-2 text-green-600">
+                <Check className="h-5 w-5" />
+                <span className="text-sm font-medium">Published</span>
+              </div>
+            )}
+            {collapsedSections.step3 ? (
+              <ChevronDown className="h-5 w-5 text-gray-400 ml-2" />
+            ) : (
+              <ChevronUp className="h-5 w-5 text-gray-400 ml-2" />
+            )}
+          </div>
         </div>
 
+        {!collapsedSections.step3 && (
         <div className="p-6 space-y-6">
           {/* Client Social Posts */}
           <div>
@@ -1070,13 +1226,17 @@ function ReviewTab({
             )}
           </div>
         </div>
+        )}
       </section>
 
       {/* ============================================ */}
       {/* STEP 4: Podcast - Generate, Publish & Embed */}
       {/* ============================================ */}
       <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
-        <div className={`px-6 py-4 flex items-center justify-between ${isStep4Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}>
+        <div
+          className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep4Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
+          onClick={() => toggleSection('step4')}
+        >
           <div className="flex items-center gap-3">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${isStep4Complete ? 'bg-green-500 text-white' : isStep1Complete ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
               {isStep4Complete ? <Check className="h-5 w-5" /> : '4'}
@@ -1100,7 +1260,7 @@ function ReviewTab({
             ) : (
               <>
                 <button
-                  onClick={() => regenerateContent('podcast')}
+                  onClick={(e) => { e.stopPropagation(); regenerateContent('podcast'); }}
                   disabled={generating === 'podcast' || !isStep1Complete}
                   className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
                 >
@@ -1113,7 +1273,7 @@ function ReviewTab({
                 </button>
                 {content.podcast?.status === 'READY' && (
                   <button
-                    onClick={() => publishContent('podcast')}
+                    onClick={(e) => { e.stopPropagation(); publishContent('podcast'); }}
                     disabled={publishing === 'podcast'}
                     className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
@@ -1132,11 +1292,16 @@ function ReviewTab({
                 )}
               </>
             )}
+            {collapsedSections.step4 ? (
+              <ChevronDown className="h-5 w-5 text-gray-400 ml-2" />
+            ) : (
+              <ChevronUp className="h-5 w-5 text-gray-400 ml-2" />
+            )}
           </div>
         </div>
 
         {/* Show content when processing, ready, failed, or has description */}
-        {(content.podcast?.status === 'PROCESSING' || content.podcast?.status === 'READY' || content.podcast?.status === 'FAILED' || content.podcastDescription) && (
+        {!collapsedSections.step4 && (content.podcast?.status === 'PROCESSING' || content.podcast?.status === 'READY' || content.podcast?.status === 'FAILED' || content.podcastDescription) && (
           <div className="p-6 space-y-4">
             {/* Processing status indicator */}
             {content.podcast?.status === 'PROCESSING' && (
@@ -1215,7 +1380,10 @@ function ReviewTab({
       {/* STEP 5: Short Video - Generate & Publish to Video Platforms */}
       {/* ============================================ */}
       <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
-        <div className={`px-6 py-4 flex items-center justify-between ${isStep5Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}>
+        <div
+          className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep5Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
+          onClick={() => toggleSection('step5')}
+        >
           <div className="flex items-center gap-4">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${isStep5Complete ? 'bg-green-500 text-white' : 'bg-purple-100 text-purple-700'}`}>
               {isStep5Complete ? <Check className="h-5 w-5" /> : '5'}
@@ -1239,7 +1407,7 @@ function ReviewTab({
             ) : (
               <>
                 <button
-                  onClick={() => regenerateContent('video')}
+                  onClick={(e) => { e.stopPropagation(); regenerateContent('video'); }}
                   disabled={generating === 'video' || !isStep1Complete}
                   className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
                 >
@@ -1252,7 +1420,7 @@ function ReviewTab({
                 </button>
                 {content.shortVideo?.status === 'READY' && content.videoSocialPosts.length === 0 && (
                   <button
-                    onClick={() => regenerateContent('videoSocial')}
+                    onClick={(e) => { e.stopPropagation(); regenerateContent('videoSocial'); }}
                     disabled={generating === 'videoSocial'}
                     className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 disabled:opacity-50 flex items-center gap-2"
                   >
@@ -1266,7 +1434,7 @@ function ReviewTab({
                 )}
                 {content.videoSocialPosts.length > 0 && (
                   <button
-                    onClick={() => publishContent('videoSocial')}
+                    onClick={(e) => { e.stopPropagation(); publishContent('videoSocial'); }}
                     disabled={publishing === 'videoSocial' || content.videoSocialPosts.every(p => p.status === 'PUBLISHED' || p.status === 'PROCESSING')}
                     className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
@@ -1285,7 +1453,7 @@ function ReviewTab({
                 )}
                 {content.wrhqVideoSocialPosts.length > 0 && (
                   <button
-                    onClick={() => publishContent('wrhqVideoSocial')}
+                    onClick={(e) => { e.stopPropagation(); publishContent('wrhqVideoSocial'); }}
                     disabled={publishing === 'wrhqVideoSocial' || content.wrhqVideoSocialPosts.every(p => p.status === 'PUBLISHED' || p.status === 'PROCESSING')}
                     className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
@@ -1306,7 +1474,7 @@ function ReviewTab({
                 {(content.videoSocialPosts.some(p => p.status === 'PROCESSING') ||
                   content.wrhqVideoSocialPosts.some(p => p.status === 'PROCESSING')) && (
                   <button
-                    onClick={refreshStatus}
+                    onClick={(e) => { e.stopPropagation(); refreshStatus(); }}
                     disabled={refreshing}
                     className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
                   >
@@ -1316,11 +1484,16 @@ function ReviewTab({
                 )}
               </>
             )}
+            {collapsedSections.step5 ? (
+              <ChevronDown className="h-5 w-5 text-gray-400 ml-2" />
+            ) : (
+              <ChevronUp className="h-5 w-5 text-gray-400 ml-2" />
+            )}
           </div>
         </div>
 
         {/* Show content when processing, ready, failed, or has video */}
-        {(content.shortVideo?.status === 'PROCESSING' || content.shortVideo?.status === 'READY' || content.shortVideo?.status === 'FAILED' || content.shortVideoDescription) && (
+        {!collapsedSections.step5 && (content.shortVideo?.status === 'PROCESSING' || content.shortVideo?.status === 'READY' || content.shortVideo?.status === 'FAILED' || content.shortVideoDescription) && (
           <div className="p-6 space-y-4">
             {/* Processing status indicator */}
             {content.shortVideo?.status === 'PROCESSING' && (
