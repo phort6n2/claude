@@ -182,6 +182,12 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       results.blog = { success: true }
       log(ctx, '✅ Blog generated successfully', { title: blogResult.title, wordCount: countWords(blogResult.content) })
       await logAction(ctx, 'blog_generate', 'SUCCESS')
+
+      // Mark blog as generated
+      await prisma.contentItem.update({
+        where: { id: contentItemId },
+        data: { blogGenerated: true },
+      })
     } catch (error) {
       logError(ctx, 'Blog generation failed', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -266,6 +272,12 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       results.images = { success: true }
       log(ctx, '✅ Images generated and uploaded successfully')
       await logAction(ctx, 'images_generate', 'SUCCESS')
+
+      // Mark images as generated
+      await prisma.contentItem.update({
+        where: { id: contentItemId },
+        data: { imagesGenerated: true },
+      })
     } catch (error) {
       logError(ctx, 'Image generation failed', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -356,6 +368,16 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         results.wordpress = { success: true }
         log(ctx, '✅ WordPress publishing successful', { postId: wpPost.id, url: wpPost.link })
         await logAction(ctx, 'wordpress_publish', 'SUCCESS')
+
+        // Mark client blog as published and schema as generated
+        await prisma.contentItem.update({
+          where: { id: contentItemId },
+          data: {
+            clientBlogPublished: true,
+            clientBlogUrl: wpPost.link,
+            schemaGenerated: true,
+          },
+        })
       } catch (error) {
         logError(ctx, 'WordPress publishing failed', error)
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -455,6 +477,16 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         await logAction(ctx, 'wrhq_publish', 'SUCCESS', {
           responseData: JSON.stringify({ wrhqPostId: wrhqPost.id, wrhqUrl: wrhqPost.link }),
         })
+
+        // Mark WRHQ blog as generated and published
+        await prisma.contentItem.update({
+          where: { id: contentItemId },
+          data: {
+            wrhqBlogGenerated: true,
+            wrhqBlogPublished: true,
+            wrhqBlogUrl: wrhqPost.link,
+          },
+        })
       } catch (error) {
         logError(ctx, 'WRHQ publishing failed', error)
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -552,6 +584,12 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
 
         results.podcast = { success: true }
         log(ctx, '✅ Podcast generated successfully', { duration: podcastResult.duration })
+
+        // Mark podcast as generated
+        await prisma.contentItem.update({
+          where: { id: contentItemId },
+          data: { podcastGenerated: true },
+        })
       }
       await logAction(ctx, 'podcast_generate', 'SUCCESS')
     } catch (error) {
@@ -621,6 +659,12 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
 
         results.videos = { success: true }
         log(ctx, '✅ Video generated successfully', { duration: videoResult.duration })
+
+        // Mark short video as generated
+        await prisma.contentItem.update({
+          where: { id: contentItemId },
+          data: { shortVideoGenerated: true },
+        })
       }
       await logAction(ctx, 'video_generate', 'SUCCESS')
     } catch (error) {
@@ -706,6 +750,12 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
 
         results.social = { success: true }
         log(ctx, '✅ Client social posts scheduled', { count: clientScheduledPosts.length })
+
+        // Mark social as generated
+        await prisma.contentItem.update({
+          where: { id: contentItemId },
+          data: { socialGenerated: true },
+        })
       } catch (error) {
         logError(ctx, 'Client social scheduling failed', error)
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -772,6 +822,12 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             scheduledPosts: wrhqScheduledPosts.length,
             platforms: wrhqPlatforms,
           }),
+        })
+
+        // Mark WRHQ social as generated
+        await prisma.contentItem.update({
+          where: { id: contentItemId },
+          data: { wrhqSocialGenerated: true },
         })
       } catch (error) {
         logError(ctx, 'WRHQ social scheduling failed', error)
