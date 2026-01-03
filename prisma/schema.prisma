@@ -262,9 +262,6 @@ model ContentItem {
   longVideoAddedToPost    Boolean   @default(false)
   longVideoAddedAt        DateTime?
 
-  // Media embed tracking (for Embed All Media step)
-  mediaEmbeddedAt         DateTime?
-
   // ============================================
   // SCHEMA STATUS
   // ============================================

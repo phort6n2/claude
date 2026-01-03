@@ -56,7 +56,8 @@ interface ContentItem {
   longformVideoUrl: string | null
   longformVideoDesc: string | null
   longVideoAddedToPost: boolean
-  mediaEmbeddedAt: string | null
+  longVideoAddedAt: string | null
+  shortVideoAddedAt: string | null
   schemaGenerated: boolean
   schemaUpdateCount: number
   schemaLastUpdated: string | null
@@ -492,7 +493,7 @@ function ReviewTab({
       step4: content.podcastAddedToPost,
       step5: (content.videoSocialPosts.length > 0 || content.wrhqVideoSocialPosts.length > 0) && clientVidDone && wrhqVidDone,
       step6: content.longVideoUploaded,
-      step7: !!content.mediaEmbeddedAt,
+      step7: content.shortVideoAddedToPost || content.longVideoAddedToPost,
     })
   }, []) // Only run once on mount
 
@@ -577,7 +578,7 @@ function ReviewTab({
   const wrhqVideoComplete = content.wrhqVideoSocialPosts.length === 0 || content.wrhqVideoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PROCESSING' || p.status === 'PUBLISHED')
   const isStep5Complete = (content.videoSocialPosts.length > 0 || content.wrhqVideoSocialPosts.length > 0) && clientVideoComplete && wrhqVideoComplete
   const isStep6Complete = content.longVideoUploaded
-  const isStep7Complete = !!content.mediaEmbeddedAt
+  const isStep7Complete = content.shortVideoAddedToPost || content.longVideoAddedToPost
 
   async function regenerateContent(type: 'blog' | 'images' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast' | 'podcastDescription' | 'video' | 'videoDescription' | 'videoSocial') {
     setGenerating(type)
@@ -1816,7 +1817,7 @@ function ReviewTab({
                   {content.longformVideoUrl}
                 </a>
               </div>
-              {content.mediaEmbeddedAt && content.longVideoAddedToPost && (
+              {content.longVideoAddedToPost && (
                 <div className="text-sm text-green-600 flex items-center gap-1">
                   <Check className="h-4 w-4" />
                   Embedded in blog post
@@ -1880,7 +1881,7 @@ function ReviewTab({
               <div className="flex items-center gap-2 text-green-600">
                 <Check className="h-4 w-4" />
                 <span className="text-sm">
-                  Embedded {content.mediaEmbeddedAt ? new Date(content.mediaEmbeddedAt).toLocaleDateString() : ''}
+                  Embedded {(content.longVideoAddedAt || content.shortVideoAddedAt) ? new Date(content.longVideoAddedAt || content.shortVideoAddedAt || '').toLocaleDateString() : ''}
                 </span>
               </div>
             ) : (

@@ -255,10 +255,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     // Update WordPress with the content including new embeds
     await updatePost(wpCredentials, contentItem.blogPost.wordpressPostId, { content: fullContent })
 
-    // Update tracking flags
-    const updateData: Record<string, unknown> = {
-      mediaEmbeddedAt: new Date(),
-    }
+    // Update tracking flags for what was embedded
+    const updateData: Record<string, unknown> = {}
 
     if (embedded.includes('podcast')) {
       updateData.podcastAddedToPost = true
@@ -273,10 +271,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       updateData.longVideoAddedAt = new Date()
     }
 
-    await prisma.contentItem.update({
-      where: { id },
-      data: updateData,
-    })
+    if (Object.keys(updateData).length > 0) {
+      await prisma.contentItem.update({
+        where: { id },
+        data: updateData,
+      })
+    }
 
     return NextResponse.json({
       success: true,
