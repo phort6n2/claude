@@ -12,13 +12,18 @@ function toTitleCase(str: string): string {
   // US state abbreviations that should remain uppercase
   const stateAbbreviations = ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC']
 
-  return str.split(' ').map((word, index) => {
+  const words = str.split(' ')
+  return words.map((word, index) => {
     // Check for state abbreviations - strip punctuation for matching
     const wordNoPunct = word.replace(/[?,.:!]$/, '')
     const trailingPunct = word.slice(wordNoPunct.length)
 
-    // If word matches a state abbreviation (any casing), uppercase it
-    if (stateAbbreviations.includes(wordNoPunct.toUpperCase())) {
+    // Only uppercase state abbreviations when they appear after a comma
+    // (like "Portland, OR") - not when used as words (like "in" or "or")
+    const prevWord = index > 0 ? words[index - 1] : ''
+    const afterComma = prevWord.endsWith(',')
+
+    if (afterComma && stateAbbreviations.includes(wordNoPunct.toUpperCase())) {
       return wordNoPunct.toUpperCase() + trailingPunct
     }
 
@@ -389,11 +394,7 @@ interface WRHQBlogPostResult {
 export async function generateWRHQBlogPost(params: WRHQBlogPostParams): Promise<WRHQBlogPostResult> {
   const location = `${params.clientCity}, ${params.clientState}`
 
-  // Use a placeholder for the image - we'll replace it after generation
-  // This avoids including massive base64 data URLs in the prompt
-  const hasImage = !!params.featuredImageUrl
-  const imagePlaceholder = '{{FEATURED_IMAGE}}'
-
+  // Note: Featured image is now added at publish time, not during generation
   const prompt = `Write a blog post for WindshieldRepairHQ.com (an auto glass industry directory) about this topic.
 
 **CONTENT DETAILS:**
@@ -404,11 +405,6 @@ export async function generateWRHQBlogPost(params: WRHQBlogPostParams): Promise<
 - WRHQ Directory Listing URL: ${params.wrhqDirectoryUrl}
 - Google Maps URL: ${params.googleMapsUrl}
 - Phone Number: ${params.phone}
-
-${hasImage ? `**IMAGE TO INSERT:**
-A featured image will be added to the blog post. Insert the placeholder ${imagePlaceholder} IMMEDIATELY after the opening paragraph. This placeholder will be replaced with the actual image.
-
-**CRITICAL:** You MUST include ${imagePlaceholder} exactly as written (on its own line) after the first paragraph.` : ''}
 
 **PURPOSE:**
 This post lives on WindshieldRepairHQ.com and should:
@@ -429,7 +425,6 @@ Opening Paragraph:
 - Directly answer the PAA question in 2-3 sentences
 - Mention this is a common question auto glass customers ask
 - Tease that a local expert has written a comprehensive guide
-${hasImage ? `\n${imagePlaceholder}` : ''}
 
 H2: What You Need to Know About [Topic from PAA]
 - 2 paragraphs covering the key points
@@ -497,12 +492,6 @@ Return ONLY valid JSON. No markdown code blocks.`
   // Apply Title Case to the title
   result.title = toTitleCase(result.title)
 
-  // Replace the image placeholder with actual image HTML if we have an image
-  if (hasImage && params.featuredImageUrl) {
-    const imageHtml = `<img src="${params.featuredImageUrl}" alt="${params.paaQuestion} | ${params.clientBusinessName} in ${location}" style="width:100%; max-width:1200px; height:auto; margin:30px auto; display:block; border-radius:8px;" loading="lazy"/>`
-    result.content = result.content.replace(imagePlaceholder, imageHtml)
-  }
-
   return result
 }
 
@@ -566,7 +555,9 @@ OUTPUT ONLY THE POST TEXT. NO QUOTES. NO LABELS. NO EXPLANATION.`
   return {
     caption,
     hashtags,
-    firstComment: `Read the full article on WindshieldRepairHQ.com`,
+    firstComment: params.clientBlogUrl
+      ? `Read the full article: ${params.clientBlogUrl}`
+      : `Read the full article on WindshieldRepairHQ.com`,
   }
 }
 
@@ -613,7 +604,7 @@ export async function generatePodcastDescription(params: {
   state: string
   paaQuestion: string
   blogPostUrl: string
-  servicePageUrl: string
+  servicePageUrl?: string
   googleMapsUrl?: string
 }): Promise<string> {
   const location = `${params.city}, ${params.state}`
@@ -625,13 +616,13 @@ export async function generatePodcastDescription(params: {
 - Location: ${location}
 - PAA Question: ${params.paaQuestion}
 - Blog Post URL: ${params.blogPostUrl}
-- Service Page URL: ${params.servicePageUrl}
+${params.servicePageUrl ? `- Service Page URL: ${params.servicePageUrl}` : ''}
 ${params.googleMapsUrl ? `- Google Maps: ${params.googleMapsUrl}` : ''}
 
 **FORMAT REQUIREMENTS:**
 - Output in HTML with <p> tags
 - 4-5 paragraphs total
-- Include hyperlinks (blog post, service page${params.googleMapsUrl ? ', Google Maps' : ''})
+- Include hyperlinks (blog post${params.servicePageUrl ? ', service page' : ''}${params.googleMapsUrl ? ', Google Maps' : ''})
 - End with call-to-action and hashtags
 - Use <strong> tags for emphasis (sparingly - max 4-5 uses)
 - Professional, engaging tone
@@ -662,11 +653,11 @@ Paragraph 3: Expand on benefits
 - Why this matters to the listener
 - Keep it conversational
 
-Paragraph 4: Business description with service page link
-- Link business name to SERVICE PAGE
+Paragraph 4: Business description${params.servicePageUrl ? ' with service page link' : ''}
+${params.servicePageUrl ? '- Link business name to SERVICE PAGE' : '- Mention the business name'}
 - List main services in bold: windshield replacement, windshield repair, ADAS calibration, mobile service
 - Mention service area
-${params.googleMapsUrl ? '- Include Google Maps link with text "Find them on Google Maps"' : ''}
+${params.googleMapsUrl ? `- Include a simple link: "Find us on Google Maps" linking to ${params.googleMapsUrl}` : ''}
 
 Paragraph 5: Call-to-action
 - Start with "Listen now to learn..." (NO emoji before this)
@@ -693,4 +684,263 @@ Return ONLY the HTML description. No markdown, no code blocks, no explanation. J
     .replace(/```html\n?/g, '')
     .replace(/```\n?/g, '')
     .trim()
+}
+
+/**
+ * Generate a short video description in HTML format
+ */
+export async function generateVideoDescription(params: {
+  businessName: string
+  city: string
+  state: string
+  paaQuestion: string
+  blogPostUrl: string
+  servicePageUrl?: string
+  googleMapsUrl?: string
+}): Promise<string> {
+  const location = `${params.city}, ${params.state}`
+
+  const prompt = `Write a short video description for this auto glass topic. This will be used for TikTok, YouTube Shorts, and Instagram Reels.
+
+**Business Details:**
+- Business Name: ${params.businessName}
+- Location: ${location}
+- PAA Question: ${params.paaQuestion}
+- Blog Post URL: ${params.blogPostUrl}
+${params.servicePageUrl ? `- Service Page URL: ${params.servicePageUrl}` : ''}
+${params.googleMapsUrl ? `- Google Maps: ${params.googleMapsUrl}` : ''}
+
+**FORMAT REQUIREMENTS:**
+- Output in HTML with <p> tags
+- 2-3 short paragraphs
+- Include links to blog post${params.servicePageUrl ? ' and service page' : ''}
+- Catchy, engaging hook optimized for short-form video
+- End with call-to-action
+
+**STRUCTURE:**
+
+Paragraph 1: Hook (1-2 sentences)
+- Start with an attention-grabbing question or statement related to the PAA question
+- Make it punchy and TikTok-style engaging
+
+Paragraph 2: Value proposition
+- What viewers will learn in this quick video
+- Link to [Business Name](blog post URL) for full details
+${params.servicePageUrl ? `- Link to services: ${params.servicePageUrl}` : ''}
+
+Paragraph 3: Call-to-action
+- Follow for more auto glass tips
+- Link to business for service
+${params.googleMapsUrl ? `- Find us: ${params.googleMapsUrl}` : ''}
+
+Final line: Hashtags
+- Include: #AutoGlass #WindshieldRepair #${params.city.replace(/\s+/g, '')} #CarTips #Shorts
+
+**OUTPUT:**
+Return ONLY the HTML description. No markdown, no code blocks, no explanation. Just the raw HTML.`
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 800,
+    messages: [{ role: 'user', content: prompt }],
+  })
+
+  const result = response.content[0].type === 'text' ? response.content[0].text : ''
+
+  return result
+    .replace(/```html\n?/g, '')
+    .replace(/```\n?/g, '')
+    .trim()
+}
+
+/**
+ * Generate video social caption for TikTok, YouTube Shorts, Instagram Reels, Facebook Reels
+ */
+export async function generateVideoSocialCaption(params: {
+  platform: 'tiktok' | 'youtube' | 'instagram' | 'facebook'
+  blogTitle: string
+  blogExcerpt: string
+  businessName: string
+  blogUrl: string
+  location: string
+  googleMapsUrl?: string
+}): Promise<{
+  caption: string
+  hashtags: string[]
+  firstComment: string
+}> {
+  const platformLimits = {
+    tiktok: { caption: 2200, hashtags: 5 },
+    youtube: { caption: 5000, hashtags: 15 },
+    instagram: { caption: 2200, hashtags: 30 },
+    facebook: { caption: 63206, hashtags: 10 },
+  }
+
+  const limits = platformLimits[params.platform]
+  const platformName = {
+    tiktok: 'TikTok',
+    youtube: 'YouTube Shorts',
+    instagram: 'Instagram Reels',
+    facebook: 'Facebook Reels',
+  }[params.platform]
+
+  // For YouTube and Facebook, links are clickable in captions
+  // For Instagram and TikTok, links go in first comment
+  const includeUrlInCaption = params.platform === 'youtube' || params.platform === 'facebook'
+
+  const prompt = `Write a ${platformName} caption for this auto glass video.
+
+**Context:**
+- Business: ${params.businessName}
+- Location: ${params.location}
+- Blog Title: ${params.blogTitle}
+- Blog Summary: ${params.blogExcerpt}
+- Blog URL: ${params.blogUrl}
+${params.googleMapsUrl ? `- Google Maps: ${params.googleMapsUrl}` : ''}
+
+**Requirements:**
+- Platform: ${platformName}
+- Max caption length: ${limits.caption} characters
+- Max hashtags: ${limits.hashtags}
+- Tone: Engaging, educational, conversational
+- Include a hook that grabs attention
+- End with a call-to-action
+${includeUrlInCaption ? `- IMPORTANT: Include the blog URL (${params.blogUrl}) directly in the caption - it will be clickable!` : `- Put the blog link in the firstComment since links aren't clickable in ${platformName} captions`}
+
+**Format your response as JSON:**
+{
+  "caption": "The main caption text (NO hashtags here)${includeUrlInCaption ? ` - MUST include the blog URL: ${params.blogUrl}` : ''}",
+  "hashtags": ["AutoGlass", "WindshieldRepair", ...up to ${limits.hashtags} hashtags without #],
+  "firstComment": "A follow-up comment${!includeUrlInCaption ? ` - MUST include: ${params.blogUrl}` : ''}${params.googleMapsUrl ? ` and ${params.googleMapsUrl}` : ''}"
+}
+
+Return ONLY valid JSON. No explanation.`
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 800,
+    messages: [{ role: 'user', content: prompt }],
+  })
+
+  const resultText = response.content[0].type === 'text' ? response.content[0].text : '{}'
+
+  try {
+    // Clean up potential markdown code blocks
+    const cleanJson = resultText
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim()
+
+    const parsed = JSON.parse(cleanJson)
+    return {
+      caption: parsed.caption || `${params.blogTitle} - Learn more at ${params.businessName}!`,
+      hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags : ['AutoGlass', 'WindshieldRepair'],
+      firstComment: parsed.firstComment || `Read the full guide: ${params.blogUrl}`,
+    }
+  } catch {
+    // Fallback if JSON parsing fails
+    return {
+      caption: `${params.blogTitle}\n\nLearn more from ${params.businessName} in ${params.location}!`,
+      hashtags: ['AutoGlass', 'WindshieldRepair', 'CarCare', 'Shorts'],
+      firstComment: `Full article: ${params.blogUrl}${params.googleMapsUrl ? `\nFind us: ${params.googleMapsUrl}` : ''}`,
+    }
+  }
+}
+
+/**
+ * Generate WRHQ video social post captions for TikTok, YouTube, Instagram, Facebook
+ */
+export async function generateWRHQVideoSocialCaption(params: {
+  platform: 'tiktok' | 'youtube' | 'instagram' | 'facebook'
+  clientBusinessName: string
+  clientCity: string
+  clientState: string
+  paaQuestion: string
+  wrhqBlogUrl: string
+  clientBlogUrl: string
+  wrhqDirectoryUrl: string
+  googleMapsUrl: string
+}): Promise<{
+  caption: string
+  hashtags: string[]
+  firstComment: string
+}> {
+  const platformLimits = {
+    tiktok: { caption: 2200, hashtags: 5 },
+    youtube: { caption: 5000, hashtags: 15 },
+    instagram: { caption: 2200, hashtags: 30 },
+    facebook: { caption: 63206, hashtags: 10 },
+  }
+
+  const limits = platformLimits[params.platform]
+  const platformName = {
+    tiktok: 'TikTok',
+    youtube: 'YouTube Shorts',
+    instagram: 'Instagram Reels',
+    facebook: 'Facebook Reels',
+  }[params.platform]
+
+  // For YouTube and Facebook, links are clickable in captions
+  // For Instagram and TikTok, links go in first comment
+  const includeUrlInCaption = params.platform === 'youtube' || params.platform === 'facebook'
+  const primaryUrl = params.wrhqBlogUrl || params.clientBlogUrl || params.wrhqDirectoryUrl
+
+  const prompt = `Write a ${platformName} caption for WRHQ (Windshield Repair HeadQuarters) featuring a local auto glass partner.
+
+**Context:**
+- WRHQ is a directory/network featuring trusted auto glass shops
+- Featured Partner: ${params.clientBusinessName}
+- Location: ${params.clientCity}, ${params.clientState}
+- Topic: ${params.paaQuestion}
+- WRHQ Blog: ${params.wrhqBlogUrl || 'Not available'}
+- Partner Blog: ${params.clientBlogUrl || 'Not available'}
+- WRHQ Directory: ${params.wrhqDirectoryUrl || 'Not available'}
+- Partner Google Maps: ${params.googleMapsUrl || 'Not available'}
+
+**Requirements:**
+- Platform: ${platformName}
+- Max caption length: ${limits.caption} characters
+- Max hashtags: ${limits.hashtags}
+- Promote the featured partner business
+- Educational and helpful tone
+- Highlight that WRHQ connects drivers with trusted local shops
+- Hook viewers in the first line
+${includeUrlInCaption && primaryUrl ? `- IMPORTANT: Include the blog URL (${primaryUrl}) directly in the caption - it will be clickable!` : primaryUrl ? `- Put the blog link in the firstComment since links aren't clickable in ${platformName} captions` : ''}
+
+**Format your response as JSON:**
+{
+  "caption": "The main caption text (NO hashtags here)${includeUrlInCaption && primaryUrl ? ` - MUST include the blog URL: ${primaryUrl}` : ''}",
+  "hashtags": ["WRHQ", "AutoGlass", ...up to ${limits.hashtags} hashtags without #],
+  "firstComment": "Follow-up comment with helpful links${!includeUrlInCaption && primaryUrl ? ` - MUST include: ${primaryUrl}` : ''}${params.googleMapsUrl ? ` and Google Maps: ${params.googleMapsUrl}` : ''}"
+}
+
+Return ONLY valid JSON. No explanation.`
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 800,
+    messages: [{ role: 'user', content: prompt }],
+  })
+
+  const resultText = response.content[0].type === 'text' ? response.content[0].text : '{}'
+
+  try {
+    const cleanJson = resultText
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim()
+
+    const parsed = JSON.parse(cleanJson)
+    return {
+      caption: parsed.caption || `Meet ${params.clientBusinessName} - a trusted WRHQ partner in ${params.clientCity}!`,
+      hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags : ['WRHQ', 'AutoGlass', 'WindshieldRepair'],
+      firstComment: parsed.firstComment || `Find them: ${params.googleMapsUrl || params.wrhqDirectoryUrl || params.clientBlogUrl}`,
+    }
+  } catch {
+    return {
+      caption: `Looking for auto glass help in ${params.clientCity}, ${params.clientState}? Check out ${params.clientBusinessName}! 🚗\n\n${params.paaQuestion}`,
+      hashtags: ['WRHQ', 'AutoGlass', 'WindshieldRepair', 'CarCare', 'Shorts'],
+      firstComment: params.wrhqBlogUrl || params.clientBlogUrl || params.googleMapsUrl || 'Visit WRHQ for trusted auto glass shops!',
+    }
+  }
 }

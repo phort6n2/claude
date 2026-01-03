@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
         wordpressConnected: false,
         ctaText: data.ctaText || 'Get a Free Quote',
         ctaUrl: data.ctaUrl || null,
+        creatifyTemplateId: data.creatifyTemplateId || null,
         preferredPublishTime: data.preferredPublishTime || '09:00',
         timezone: data.timezone || 'America/Los_Angeles',
         socialPlatforms: data.socialPlatforms || [],
@@ -80,6 +81,8 @@ export async function POST(request: NextRequest) {
         podbeanPodcastId: data.podbeanPodcastId || null,
         podbeanPodcastTitle: data.podbeanPodcastTitle || null,
         podbeanPodcastUrl: data.podbeanPodcastUrl || null,
+        wrhqYoutubePlaylistId: data.wrhqYoutubePlaylistId || null,
+        wrhqYoutubePlaylistTitle: data.wrhqYoutubePlaylistTitle || null,
         status: 'ACTIVE',
       },
     })

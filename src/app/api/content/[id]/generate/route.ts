@@ -11,36 +11,6 @@ interface RouteContext {
   params: Promise<{ id: string }>
 }
 
-/**
- * Generate a Google Maps embed HTML for a business location
- */
-function generateGoogleMapsEmbed(params: {
-  businessName: string
-  streetAddress: string
-  city: string
-  state: string
-  postalCode: string
-}): string {
-  // Build the full address for the map query
-  const fullAddress = `${params.businessName}, ${params.streetAddress}, ${params.city}, ${params.state} ${params.postalCode}`
-  const encodedAddress = encodeURIComponent(fullAddress)
-
-  return `
-<div class="google-map-embed" style="margin: 30px 0;">
-  <h3 style="margin-bottom: 15px;">Find Us</h3>
-  <iframe
-    src="https://maps.google.com/maps?q=${encodedAddress}&output=embed"
-    width="100%"
-    height="400"
-    style="border:0; border-radius: 8px;"
-    allowfullscreen=""
-    loading="lazy"
-    referrerpolicy="no-referrer-when-downgrade"
-    title="Map showing location of ${params.businessName}">
-  </iframe>
-</div>`
-}
-
 interface ImageResult {
   imageType: ImageType
   fileName: string
@@ -67,10 +37,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const {
       generateBlog = true,
       generatePodcast = true, // Phase 1: Generate podcast WITH blog
+      regenPodcastDescription = false, // Regenerate description only (renamed to avoid shadowing imported function)
       generateImages: genImages = true,
       generateSocial = true,
       generateWrhqBlog = true,
       generateWrhqSocial = true,
+      generateShortVideo = false, // Generate 9:16 short video
+      regenVideoDescription = false, // Regenerate video description only
+      generateVideoSocial = false, // Generate video social posts
     } = body
 
     // Get content item with client data and service location
@@ -80,7 +54,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         client: true,
         serviceLocation: true,
         blogPost: true,
+        podcast: true,
         images: true,
+        videos: true,
         socialPosts: true,
         wrhqSocialPosts: true,
       },
@@ -90,10 +66,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Content item not found' }, { status: 404 })
     }
 
+    // Debug: Log service location info
+    console.log('=== LOCATION DEBUG ===')
+    console.log('serviceLocationId:', contentItem.serviceLocationId)
+    console.log('serviceLocation:', contentItem.serviceLocation)
+    console.log('client.city:', contentItem.client.city)
+
     // Use service location if set, otherwise fall back to client's default location
     const contentCity = contentItem.serviceLocation?.city || contentItem.client.city
     // Always uppercase state abbreviation for consistency (e.g., "OR" not "Or")
     const contentState = (contentItem.serviceLocation?.state || contentItem.client.state).toUpperCase()
+
+    console.log('Using city:', contentCity, 'state:', contentState)
 
     // Only set GENERATING status for initial blog+images generation
     const isInitialGeneration = generateBlog && genImages
@@ -159,29 +143,17 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           servicePageUrl, // Pass the matched service page
         })
 
-        // Generate Google Maps embed for the business location
-        const mapEmbed = generateGoogleMapsEmbed({
-          businessName: contentItem.client.businessName,
-          streetAddress: contentItem.client.streetAddress,
-          city: contentCity,
-          state: contentState,
-          postalCode: contentItem.client.postalCode,
-        })
-
-        // Append map embed to blog content (before the closing content)
-        const blogContentWithMap = blogResult.content + mapEmbed
-
-        // Create or update blog post
+        // Create or update blog post (map embed is added during publishing, not here)
         const blogData = {
           clientId: contentItem.clientId,
           title: blogResult.title,
           slug: blogResult.slug,
-          content: blogContentWithMap,
+          content: blogResult.content,
           excerpt: blogResult.excerpt,
           metaTitle: blogResult.metaTitle,
           metaDescription: blogResult.metaDescription,
           focusKeyword: blogResult.focusKeyword,
-          wordCount: blogContentWithMap.split(/\s+/).length,
+          wordCount: blogResult.content.split(/\s+/).length,
         }
 
         if (contentItem.blogPost) {
@@ -216,21 +188,23 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             // Import the podcast function
             const { createPodcast } = await import('@/lib/integrations/autocontent')
 
+            // Construct the blog post URL (used for both podcast generation and description)
+            const blogUrl = contentItem.client.wordpressUrl
+              ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${blogResult.slug}`
+              : ''
+
             // Create podcast job (returns immediately with job ID)
+            // Use blog URL if available (API fetches content from page), otherwise use script
             const podcastJob = await createPodcast({
               title: blogResult.title,
               script: blogResult.content,
+              blogUrl: blogUrl || undefined,
               duration: 'default', // 8-12 minutes
             })
 
             // Generate podcast description
             let podcastDescription = ''
             try {
-              // Construct the blog post URL (will be updated after actual publishing)
-              const blogUrl = contentItem.client.wordpressUrl
-                ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${blogResult.slug}`
-                : ''
-
               podcastDescription = await generatePodcastDescription({
                 businessName: contentItem.client.businessName,
                 city: contentCity,
@@ -287,6 +261,121 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
     }
 
+    // Generate podcast standalone (when blog already exists)
+    if (generatePodcast && !generateBlog && contentItem.blogPost) {
+      try {
+        await prisma.contentItem.update({
+          where: { id },
+          data: { pipelineStep: 'podcast', podcastStatus: 'generating' },
+        })
+
+        // Import the podcast function
+        const { createPodcast } = await import('@/lib/integrations/autocontent')
+
+        // Get blog URL - prefer actual WordPress URL, fall back to constructed URL
+        const blogUrl = contentItem.blogPost.wordpressUrl ||
+          (contentItem.client.wordpressUrl
+            ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${contentItem.blogPost.slug}`
+            : '')
+
+        // Create podcast job using blog URL (preferred) or content as fallback
+        const podcastJob = await createPodcast({
+          title: contentItem.blogPost.title,
+          script: contentItem.blogPost.content,
+          blogUrl: blogUrl || undefined,
+          duration: 'default',
+        })
+
+        // Generate podcast description
+        let podcastDescription = ''
+        try {
+
+          podcastDescription = await generatePodcastDescription({
+            businessName: contentItem.client.businessName,
+            city: contentCity,
+            state: contentState,
+            paaQuestion: contentItem.paaQuestion,
+            blogPostUrl: blogUrl,
+            googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+          })
+        } catch (descError) {
+          console.error('Error generating podcast description:', descError)
+        }
+
+        // Save job ID and description
+        await prisma.podcast.upsert({
+          where: { contentItemId: id },
+          update: {
+            script: contentItem.blogPost.content,
+            description: podcastDescription || null,
+            autocontentJobId: podcastJob.jobId,
+            status: 'PROCESSING',
+          },
+          create: {
+            contentItemId: id,
+            clientId: contentItem.clientId,
+            audioUrl: '',
+            script: contentItem.blogPost.content,
+            description: podcastDescription || null,
+            autocontentJobId: podcastJob.jobId,
+            status: 'PROCESSING',
+          },
+        })
+
+        await prisma.contentItem.update({
+          where: { id },
+          data: {
+            podcastGenerated: false,
+            podcastStatus: 'processing',
+            podcastDescription: podcastDescription || null,
+          },
+        })
+
+        results.podcast = { success: true, status: 'processing', jobId: podcastJob.jobId }
+      } catch (error) {
+        console.error('Podcast generation error:', error)
+        results.podcast = { success: false, error: String(error) }
+      }
+    }
+
+    // Regenerate podcast description only (when user clicks "Regenerate Description")
+    if (regenPodcastDescription && contentItem.blogPost) {
+      try {
+        // Get blog URL - prefer actual WordPress URL, fall back to constructed URL
+        const blogUrl = contentItem.blogPost.wordpressUrl ||
+          (contentItem.client.wordpressUrl
+            ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${contentItem.blogPost.slug}`
+            : '')
+
+        const podcastDescription = await generatePodcastDescription({
+          businessName: contentItem.client.businessName,
+          city: contentCity,
+          state: contentState,
+          paaQuestion: contentItem.paaQuestion,
+          blogPostUrl: blogUrl,
+          googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+        })
+
+        // Update both ContentItem and Podcast records
+        await prisma.contentItem.update({
+          where: { id },
+          data: { podcastDescription },
+        })
+
+        if (contentItem.podcast) {
+          await prisma.podcast.update({
+            where: { contentItemId: id },
+            data: { description: podcastDescription },
+          })
+        }
+
+        results.podcastDescription = { success: true }
+      } catch (error) {
+        console.error('Podcast description generation error:', error)
+        results.podcastDescription = { success: false, error: String(error) }
+      }
+    }
+
     // Generate images using Google AI Studio (Gemini)
     if (genImages) {
       try {
@@ -298,14 +387,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         // Get image generation API key from database settings
         const imageApiKey = await getSetting('NANO_BANANA_API_KEY')
 
-        // Build address string
-        const address = `${contentItem.client.streetAddress}, ${contentCity}, ${contentState} ${contentItem.client.postalCode}`
+        // Build address string using client's main GBP address (not service location)
+        const clientState = contentItem.client.state.toUpperCase()
+        const address = `${contentItem.client.streetAddress}, ${contentItem.client.city}, ${clientState} ${contentItem.client.postalCode}`
 
-        // Replace {location} placeholder in PAA question with actual location
+        // Replace {location} placeholder in PAA question with service location
         const location = `${contentCity}, ${contentState}`
         const paaQuestionWithLocation = contentItem.paaQuestion.replace(/\{location\}/gi, location)
 
         // Generate both 16:9 and 1:1 images
+        // Use service location for city/state on image
         const generatedImages = await generateBothImages({
           businessName: contentItem.client.businessName,
           city: contentCity,
@@ -445,7 +536,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 blogTitle: blogPost?.title || contentItem.paaQuestion,
                 blogExcerpt: blogPost?.excerpt || contentItem.paaQuestion,
                 businessName: contentItem.client.businessName,
-                blogUrl: contentItem.client.wordpressUrl || '',
+                blogUrl: blogPost?.wordpressUrl || contentItem.client.wordpressUrl || '',
                 location: `${contentCity}, ${contentState}`,
                 googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
               })
@@ -557,30 +648,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
           console.log('WRHQ blog result:', { title: wrhqBlogResult.title, slug: wrhqBlogResult.slug })
 
-          // Generate Google Maps embed for WRHQ blog (same business location)
-          const wrhqMapEmbed = generateGoogleMapsEmbed({
-            businessName: contentItem.client.businessName,
-            streetAddress: contentItem.client.streetAddress,
-            city: contentCity,
-            state: contentState,
-            postalCode: contentItem.client.postalCode,
-          })
-
-          // Append map embed to WRHQ blog content
-          const wrhqBlogContentWithMap = wrhqBlogResult.content + wrhqMapEmbed
-
-          // Save WRHQ blog post
+          // Save WRHQ blog post (map embed is added during publishing, not here)
           await prisma.wRHQBlogPost.upsert({
             where: { contentItemId: id },
             update: {
               title: wrhqBlogResult.title,
               slug: wrhqBlogResult.slug,
-              content: wrhqBlogContentWithMap,
+              content: wrhqBlogResult.content,
               excerpt: wrhqBlogResult.excerpt,
               metaTitle: wrhqBlogResult.metaTitle,
               metaDescription: wrhqBlogResult.metaDescription,
               focusKeyword: wrhqBlogResult.focusKeyword,
-              wordCount: wrhqBlogContentWithMap.split(/\s+/).length,
+              wordCount: wrhqBlogResult.content.split(/\s+/).length,
               featuredImageUrl: landscapeImage?.gcsUrl || null,
             },
             create: {
@@ -588,12 +667,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
               clientId: contentItem.clientId,
               title: wrhqBlogResult.title,
               slug: wrhqBlogResult.slug,
-              content: wrhqBlogContentWithMap,
+              content: wrhqBlogResult.content,
               excerpt: wrhqBlogResult.excerpt,
               metaTitle: wrhqBlogResult.metaTitle,
               metaDescription: wrhqBlogResult.metaDescription,
               focusKeyword: wrhqBlogResult.focusKeyword,
-              wordCount: wrhqBlogContentWithMap.split(/\s+/).length,
+              wordCount: wrhqBlogResult.content.split(/\s+/).length,
               featuredImageUrl: landscapeImage?.gcsUrl || null,
             },
           })
@@ -670,11 +749,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
                 } catch (error) {
                   console.error(`Failed to generate WRHQ ${platform} post:`, error)
                   // Fallback to simple template
+                  const fallbackFirstComment = clientBlogPost?.wordpressUrl
+                    ? `Read the full article: ${clientBlogPost.wordpressUrl}`
+                    : 'Read the full article on WindshieldRepairHQ.com'
                   return {
                     platform: platform as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
                     caption: `WRHQ Partner Spotlight: ${contentItem.client.businessName} in ${contentCity}, ${contentState} shares their expertise on ${contentItem.paaQuestion}. Looking for trusted auto glass advice? Read more on WindshieldRepairHQ.com.`,
                     hashtags: ['WRHQ', 'AutoGlass', 'WindshieldRepair'],
-                    firstComment: 'Read the full article on WindshieldRepairHQ.com',
+                    firstComment: fallbackFirstComment,
                   }
                 }
               })
@@ -707,6 +789,382 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         console.error('WRHQ content generation error:', error)
         if (generateWrhqBlog) results.wrhqBlog = { success: false, error: String(error) }
         if (generateWrhqSocial) results.wrhqSocial = { success: false, error: String(error) }
+      }
+    }
+
+    // Generate short video using Creatify
+    if (generateShortVideo && contentItem.blogPost) {
+      try {
+        await prisma.contentItem.update({
+          where: { id },
+          data: { pipelineStep: 'video', shortVideoStatus: 'generating' },
+        })
+
+        const { createShortVideo } = await import('@/lib/integrations/creatify')
+        const { generateVideoDescription } = await import('@/lib/integrations/claude')
+
+        // Get blog URL
+        const blogUrl = contentItem.blogPost.wordpressUrl ||
+          (contentItem.client.wordpressUrl
+            ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${contentItem.blogPost.slug}`
+            : '')
+
+        // Get landscape image for b-roll
+        const landscapeImage = contentItem.images.find(img => img.imageType === 'BLOG_FEATURED')
+        const imageUrls = landscapeImage ? [landscapeImage.gcsUrl] : []
+
+        // Create short video using Creatify's URL-to-Video API
+        // This API properly supports video_length parameter (15, 30, 45, 60 seconds)
+        // Costs 4 credits per 30s video
+        //
+        // Flow:
+        // 1. Create link from blog URL (scrapes content)
+        // 2. Optionally update link with logo/images
+        // 3. Create video with video_length: 30
+        //
+        // Fallback to lipsync if no blog URL available (script limited to ~500 chars)
+        const cleanScript = contentItem.blogPost.content
+          .replace(/<[^>]*>/g, '') // Remove HTML tags
+          .replace(/\s+/g, ' ')    // Normalize whitespace
+          .trim()
+          .substring(0, 500)       // Limit to ~30 seconds of speech (fallback only)
+
+        const videoJob = await createShortVideo({
+          blogUrl: blogUrl || undefined,
+          script: cleanScript, // Fallback if blogUrl fails
+          title: contentItem.blogPost.title,
+          imageUrls,
+          logoUrl: contentItem.client.logoUrl || undefined,
+          // DISABLED: Custom templates don't support video_length parameter
+          // Using URL-to-Video API instead which properly supports video_length: 30
+          templateId: undefined,
+          autoPopulateFromBlog: false,
+          aspectRatio: '9:16',
+          duration: 30, // This maps to video_length: 30 in the URL-to-Video API
+          targetPlatform: 'tiktok',
+          targetAudience: `car owners in ${contentCity}, ${contentState} looking for auto glass services`,
+          scriptStyle: 'DiscoveryWriter', // API default
+          visualStyle: 'AvatarBubbleTemplate', // API default - avatar bubble style
+          modelVersion: 'standard', // Cheapest option (aurora models cost more)
+        })
+
+        // Generate video description
+        let videoDescription = ''
+        try {
+          videoDescription = await generateVideoDescription({
+            businessName: contentItem.client.businessName,
+            city: contentCity,
+            state: contentState,
+            paaQuestion: contentItem.paaQuestion,
+            blogPostUrl: blogUrl,
+            googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+          })
+        } catch (descError) {
+          console.error('Error generating video description:', descError)
+        }
+
+        // Save or update video record
+        const existingVideo = contentItem.videos.find(v => v.videoType === 'SHORT')
+        if (existingVideo) {
+          await prisma.video.update({
+            where: { id: existingVideo.id },
+            data: {
+              providerJobId: videoJob.jobId,
+              status: 'PROCESSING',
+            },
+          })
+        } else {
+          await prisma.video.create({
+            data: {
+              contentItemId: id,
+              clientId: contentItem.clientId,
+              videoType: 'SHORT',
+              videoUrl: '', // Will be filled when job completes
+              provider: 'CREATIFY',
+              providerJobId: videoJob.jobId,
+              aspectRatio: '9:16',
+              status: 'PROCESSING',
+            },
+          })
+        }
+
+        await prisma.contentItem.update({
+          where: { id },
+          data: {
+            shortVideoGenerated: false,
+            shortVideoStatus: 'processing',
+            shortVideoDescription: videoDescription || null,
+          },
+        })
+
+        results.video = { success: true, status: 'processing', jobId: videoJob.jobId }
+      } catch (error) {
+        console.error('Video generation error:', error)
+        results.video = { success: false, error: String(error) }
+        await prisma.contentItem.update({
+          where: { id },
+          data: { shortVideoStatus: 'failed' },
+        })
+      }
+    }
+
+    // Regenerate video description only
+    if (regenVideoDescription && contentItem.blogPost) {
+      try {
+        const { generateVideoDescription } = await import('@/lib/integrations/claude')
+
+        const blogUrl = contentItem.blogPost.wordpressUrl ||
+          (contentItem.client.wordpressUrl
+            ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${contentItem.blogPost.slug}`
+            : '')
+
+        const videoDescription = await generateVideoDescription({
+          businessName: contentItem.client.businessName,
+          city: contentCity,
+          state: contentState,
+          paaQuestion: contentItem.paaQuestion,
+          blogPostUrl: blogUrl,
+          googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+        })
+
+        await prisma.contentItem.update({
+          where: { id },
+          data: { shortVideoDescription: videoDescription },
+        })
+
+        results.videoDescription = { success: true }
+      } catch (error) {
+        console.error('Video description generation error:', error)
+        results.videoDescription = { success: false, error: String(error) }
+      }
+    }
+
+    // Generate video social posts for TikTok, YouTube, Instagram, Facebook
+    if (generateVideoSocial && contentItem.blogPost) {
+      try {
+        const { generateVideoSocialCaption } = await import('@/lib/integrations/claude')
+
+        // Video platforms that support short-form video
+        const VIDEO_PLATFORMS = ['TIKTOK', 'YOUTUBE', 'INSTAGRAM', 'FACEBOOK']
+
+        // Get active video platforms for client
+        const activePlatforms = (contentItem.client.socialPlatforms || []) as string[]
+        const socialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
+
+        const clientVideoPlatforms = activePlatforms
+          .map(p => p.toUpperCase())
+          .filter(platform => {
+            const platformLower = platform.toLowerCase()
+            const hasAccountId = socialAccountIds &&
+              typeof socialAccountIds[platformLower] === 'string' &&
+              socialAccountIds[platformLower].trim().length > 0
+            return hasAccountId && VIDEO_PLATFORMS.includes(platform)
+          })
+
+        // Get WRHQ video platforms from settings
+        const wrhqVideoPlatformKeys = [
+          { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_TIKTOK_ID, platform: 'TIKTOK' },
+          { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_YOUTUBE_ID, platform: 'YOUTUBE' },
+          { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_INSTAGRAM_ID, platform: 'INSTAGRAM' },
+          { key: WRHQ_SETTINGS_KEYS.WRHQ_LATE_FACEBOOK_ID, platform: 'FACEBOOK' },
+        ]
+
+        const wrhqVideoPlatforms: string[] = []
+        for (const { key, platform } of wrhqVideoPlatformKeys) {
+          const value = await getSetting(key)
+          console.log(`WRHQ video platform check: ${platform} (${key}) = ${value ? 'configured' : 'not configured'}`)
+          if (value) wrhqVideoPlatforms.push(platform)
+        }
+
+        console.log('Client video platforms:', clientVideoPlatforms)
+        console.log('WRHQ video platforms:', wrhqVideoPlatforms)
+
+        // Get the short video URL
+        const shortVideo = contentItem.videos.find(v => v.videoType === 'SHORT')
+
+        const hasAnyVideoPlatforms = clientVideoPlatforms.length > 0 || wrhqVideoPlatforms.length > 0
+
+        if (hasAnyVideoPlatforms && shortVideo?.videoUrl) {
+          const blogUrl = contentItem.blogPost.wordpressUrl ||
+            (contentItem.client.wordpressUrl
+              ? `${contentItem.client.wordpressUrl.replace(/\/$/, '')}/${contentItem.blogPost.slug}`
+              : '')
+
+          let totalPostsCreated = 0
+
+          // Generate client video social posts
+          if (clientVideoPlatforms.length > 0) {
+            // Delete existing client video social posts, but preserve published ones
+            await prisma.socialPost.deleteMany({
+              where: {
+                contentItemId: id,
+                mediaType: 'video',
+                status: { notIn: ['PUBLISHED', 'PROCESSING'] },
+              },
+            })
+
+            // Get existing published platforms to avoid duplicates
+            const existingPublishedPlatforms = await prisma.socialPost.findMany({
+              where: {
+                contentItemId: id,
+                mediaType: 'video',
+                status: { in: ['PUBLISHED', 'PROCESSING'] },
+              },
+              select: { platform: true },
+            })
+            const publishedPlatformSet = new Set(existingPublishedPlatforms.map(p => p.platform))
+
+            // Filter out platforms that already have published posts
+            const platformsToGenerate = clientVideoPlatforms.filter(p => !publishedPlatformSet.has(p as any))
+
+            const videoSocialPostsData = await Promise.all(
+              platformsToGenerate.map(async (platform) => {
+                const platformLower = platform.toLowerCase() as 'tiktok' | 'youtube' | 'instagram' | 'facebook'
+                try {
+                  const result = await generateVideoSocialCaption({
+                    platform: platformLower,
+                    blogTitle: contentItem.blogPost!.title,
+                    blogExcerpt: contentItem.blogPost!.excerpt || contentItem.paaQuestion,
+                    businessName: contentItem.client.businessName,
+                    blogUrl,
+                    location: `${contentCity}, ${contentState}`,
+                    googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+                  })
+
+                  return {
+                    platform: platform as 'TIKTOK' | 'YOUTUBE' | 'INSTAGRAM' | 'FACEBOOK',
+                    caption: result.caption,
+                    hashtags: result.hashtags,
+                    firstComment: result.firstComment,
+                    mediaUrls: [shortVideo.videoUrl],
+                    mediaType: 'video',
+                  }
+                } catch (error) {
+                  console.error(`Failed to generate ${platform} video post:`, error)
+                  return {
+                    platform: platform as 'TIKTOK' | 'YOUTUBE' | 'INSTAGRAM' | 'FACEBOOK',
+                    caption: `${contentItem.blogPost!.title}\n\nLearn more from ${contentItem.client.businessName}!`,
+                    hashtags: ['AutoGlass', 'WindshieldRepair', 'Shorts'],
+                    firstComment: `Read more: ${blogUrl}`,
+                    mediaUrls: [shortVideo.videoUrl],
+                    mediaType: 'video',
+                  }
+                }
+              })
+            )
+
+            await prisma.socialPost.createMany({
+              data: videoSocialPostsData.map(post => ({
+                contentItemId: id,
+                clientId: contentItem.clientId,
+                platform: post.platform,
+                caption: post.caption,
+                hashtags: post.hashtags,
+                firstComment: post.firstComment,
+                mediaUrls: post.mediaUrls,
+                mediaType: post.mediaType,
+                scheduledTime: contentItem.scheduledDate,
+              })),
+            })
+
+            totalPostsCreated += videoSocialPostsData.length
+          }
+
+          // Generate WRHQ video social posts
+          if (wrhqVideoPlatforms.length > 0) {
+            const { generateWRHQVideoSocialCaption } = await import('@/lib/integrations/claude')
+
+            // Get WRHQ blog post for URLs
+            const wrhqBlogPost = await prisma.wRHQBlogPost.findUnique({
+              where: { contentItemId: id },
+            })
+
+            // Delete existing WRHQ video social posts, but preserve published ones
+            await prisma.wRHQSocialPost.deleteMany({
+              where: {
+                contentItemId: id,
+                mediaType: 'video',
+                status: { notIn: ['PUBLISHED', 'PROCESSING'] },
+              },
+            })
+
+            // Get existing published platforms to avoid duplicates
+            const existingWrhqPublishedPlatforms = await prisma.wRHQSocialPost.findMany({
+              where: {
+                contentItemId: id,
+                mediaType: 'video',
+                status: { in: ['PUBLISHED', 'PROCESSING'] },
+              },
+              select: { platform: true },
+            })
+            const wrhqPublishedPlatformSet = new Set(existingWrhqPublishedPlatforms.map(p => p.platform))
+
+            // Filter out platforms that already have published posts
+            const wrhqPlatformsToGenerate = wrhqVideoPlatforms.filter(p => !wrhqPublishedPlatformSet.has(p as any))
+            console.log('WRHQ published platforms (skipping):', Array.from(wrhqPublishedPlatformSet))
+            console.log('WRHQ platforms to generate:', wrhqPlatformsToGenerate)
+
+            const wrhqVideoPostsData = await Promise.all(
+              wrhqPlatformsToGenerate.map(async (platform) => {
+                const platformLower = platform.toLowerCase() as 'tiktok' | 'youtube' | 'instagram' | 'facebook'
+                try {
+                  const result = await generateWRHQVideoSocialCaption({
+                    platform: platformLower,
+                    clientBusinessName: contentItem.client.businessName,
+                    clientCity: contentCity,
+                    clientState: contentState,
+                    paaQuestion: contentItem.paaQuestion,
+                    wrhqBlogUrl: wrhqBlogPost?.wordpressUrl || '',
+                    clientBlogUrl: blogUrl,
+                    wrhqDirectoryUrl: contentItem.client.wrhqDirectoryUrl || '',
+                    googleMapsUrl: contentItem.client.googleMapsUrl || '',
+                  })
+
+                  return {
+                    platform: platform as 'TIKTOK' | 'YOUTUBE' | 'INSTAGRAM' | 'FACEBOOK',
+                    caption: result.caption,
+                    hashtags: result.hashtags,
+                    firstComment: result.firstComment,
+                    mediaUrls: [shortVideo.videoUrl],
+                    mediaType: 'video' as const,
+                  }
+                } catch (error) {
+                  console.error(`Failed to generate WRHQ ${platform} video post:`, error)
+                  return {
+                    platform: platform as 'TIKTOK' | 'YOUTUBE' | 'INSTAGRAM' | 'FACEBOOK',
+                    caption: `Check out ${contentItem.client.businessName} in ${contentCity}, ${contentState}! 🚗\n\n${contentItem.paaQuestion}`,
+                    hashtags: ['AutoGlass', 'WindshieldRepair', 'WRHQ'],
+                    firstComment: wrhqBlogPost?.wordpressUrl || blogUrl,
+                    mediaUrls: [shortVideo.videoUrl],
+                    mediaType: 'video' as const,
+                  }
+                }
+              })
+            )
+
+            await prisma.wRHQSocialPost.createMany({
+              data: wrhqVideoPostsData.map(post => ({
+                contentItemId: id,
+                platform: post.platform,
+                caption: post.caption,
+                hashtags: post.hashtags,
+                firstComment: post.firstComment,
+                mediaUrls: post.mediaUrls,
+                mediaType: post.mediaType,
+                scheduledTime: contentItem.scheduledDate,
+              })),
+            })
+
+            totalPostsCreated += wrhqVideoPostsData.length
+          }
+
+          results.videoSocial = { success: true, count: totalPostsCreated }
+        } else {
+          results.videoSocial = { success: false, error: shortVideo?.videoUrl ? 'No video platforms configured for client or WRHQ' : 'Video not ready yet' }
+        }
+      } catch (error) {
+        console.error('Video social generation error:', error)
+        results.videoSocial = { success: false, error: String(error) }
       }
     }
 

@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { publishToPodbean } from '@/lib/integrations/podbean'
-import { updatePost } from '@/lib/integrations/wordpress'
 
 interface RouteContext {
   params: Promise<{ id: string }>
 }
 
 /**
- * POST /api/content/[id]/publish-podcast - Publish podcast to Podbean and embed in blog
+ * POST /api/content/[id]/publish-podcast - Publish podcast to Podbean only
+ * Note: Embedding in blog is now handled by the "Embed All Media" endpoint
  */
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const session = await auth()
@@ -49,24 +49,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       audioUrl: contentItem.podcast.audioUrl,
     })
 
-    // Generate iframe embed code
-    const podcastEmbed = `<iframe title="${contentItem.blogPost?.title || contentItem.paaQuestion}" allowtransparency="true" height="150" width="100%" style="border: none; min-width: min(100%, 430px);height:150px;" scrolling="no" data-name="pb-iframe-player" src="${podbeanResult.playerUrl}&from=pb6admin&share=1&download=1&rtl=0&fonts=Arial&skin=1&font-color=&logo_link=episode_page&btn-skin=7" loading="lazy"></iframe>`
-
-    // Update WordPress blog post with podcast embed
-    if (contentItem.blogPost?.wordpressPostId && contentItem.client.wordpressUrl) {
-      const updatedContent = contentItem.blogPost.content + `\n\n<!-- Podcast Episode -->\n<div class="podcast-embed" style="margin: 30px 0;">\n<h3>Listen to This Episode</h3>\n${podcastEmbed}\n</div>`
-
-      await updatePost(
-        {
-          url: contentItem.client.wordpressUrl,
-          username: contentItem.client.wordpressUsername || '',
-          password: contentItem.client.wordpressAppPassword || '',
-        },
-        contentItem.blogPost.wordpressPostId,
-        { content: updatedContent }
-      )
-    }
-
     // Update podcast record
     await prisma.podcast.update({
       where: { id: contentItem.podcast.id },
@@ -78,13 +60,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       },
     })
 
-    // Update content item
+    // Update content item - note: podcastAddedToPost is now set by embed-all-media
     await prisma.contentItem.update({
       where: { id },
       data: {
         podcastGenerated: true,
-        podcastAddedToPost: true,
-        podcastAddedAt: new Date(),
         podcastUrl: podbeanResult.url,
       },
     })
@@ -93,6 +73,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       success: true,
       url: podbeanResult.url,
       playerUrl: podbeanResult.playerUrl,
+      message: 'Podcast published to Podbean. Use "Embed All Media" to add it to the blog.',
     })
   } catch (error) {
     console.error('Podcast publishing error:', error)

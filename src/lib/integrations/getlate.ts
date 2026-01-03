@@ -31,6 +31,18 @@ function getLatePlatform(platform: Platform): string {
   return LATE_PLATFORM_MAP[platform] || platform
 }
 
+/**
+ * Map generic media type to platform-specific media type
+ * Late API mediaItems.type should be 'video' or 'image'
+ * Platform-specific formats (reels, shorts) are determined by Late based on aspect ratio
+ * or can be specified in platformSpecificData
+ */
+function getPlatformMediaType(platform: Platform, mediaType: 'image' | 'video'): string {
+  // Always return 'video' or 'image' for mediaItems.type
+  // Late handles the format (reels/shorts) automatically based on aspect ratio
+  return mediaType
+}
+
 interface SchedulePostParams {
   accountId: string
   platform: Platform
@@ -102,8 +114,11 @@ export async function schedulePost(params: SchedulePostParams): Promise<Schedule
 
   // Add media if provided
   if (params.mediaUrls && params.mediaUrls.length > 0) {
+    // Map generic media type to platform-specific type (e.g., 'video' → 'reels' for Instagram)
+    const platformMediaType = getPlatformMediaType(params.platform, params.mediaType || 'image')
+
     requestBody.mediaItems = params.mediaUrls.map(url => ({
-      type: params.mediaType || 'image',
+      type: platformMediaType,
       url,
     }))
   }
@@ -137,19 +152,22 @@ export async function schedulePost(params: SchedulePostParams): Promise<Schedule
   const data = await response.json()
   console.log('Late API response:', JSON.stringify(data, null, 2))
 
-  // Validate that we got a post ID back
-  const postId = data._id || data.id || data.post_id
-  if (!postId) {
-    console.error('Late API response missing post ID:', data)
+  // Late API returns: { message: "...", post: { _id: "...", platforms: [...], ... } }
+  const post = data.post
+  if (!post || !post._id) {
+    console.error('Late API response missing post or post._id:', data)
     throw new Error('Late API response did not include a post ID')
   }
 
+  // Get platform-specific URL from platforms array
+  const platformData = post.platforms?.[0]
+
   return {
-    postId,
+    postId: post._id,
     platform: params.platform,
-    scheduledTime: new Date(data.scheduledFor || data.scheduled_at || params.scheduledTime),
-    status: data.status || (isImmediate ? 'published' : 'scheduled'),
-    platformPostUrl: data.platformPostUrl || data.platform_post_url,
+    scheduledTime: new Date(post.scheduledFor || params.scheduledTime),
+    status: post.status || (isImmediate ? 'published' : 'scheduled'),
+    platformPostUrl: platformData?.platformPostUrl || null,
   }
 }
 

@@ -70,6 +70,9 @@ model Client {
   ctaText               String    @default("Get a Free Quote")
   ctaUrl                String?
 
+  // Video Generation Settings
+  creatifyTemplateId    String?   // Custom Creatify template UUID for branded videos
+
   // Publishing Preferences (Tue/Thu schedule)
   preferredPublishTime  String    @default("09:00")
   timezone              String    @default("America/Los_Angeles")
@@ -99,6 +102,10 @@ model Client {
   podbeanPodcastTitle   String?   // Cached podcast title for display
   podbeanPodcastUrl     String?   // Public URL to the podcast page
 
+  // WRHQ YouTube Playlist (for long-form video uploads)
+  wrhqYoutubePlaylistId    String?   // YouTube playlist ID for this client
+  wrhqYoutubePlaylistTitle String?   // Cached playlist title for display
+
   // Subscription Management
   subscriptionStatus    SubscriptionStatus @default(TRIAL)
   subscriptionPlan      SubscriptionPlan   @default(STARTER)
@@ -115,6 +122,11 @@ model Client {
   calendarGenerated     Boolean   @default(false)
   calendarGeneratedAt   DateTime?
   calendarEndDate       DateTime? // How far out the calendar is populated
+
+  // Automation Settings
+  autoScheduleEnabled   Boolean   @default(false)   // Opt-in for Tue/Thu automation
+  autoScheduleFrequency Int       @default(2)       // Posts per week (1 or 2)
+  lastAutoScheduledAt   DateTime?                   // Track last automation run
 
   // Relations
   contentItems          ContentItem[]
@@ -597,7 +609,7 @@ model SocialPost {
   approvedAt        DateTime?
 
   // Status
-  status            SocialPostStatus @default(SCHEDULED)
+  status            SocialPostStatus @default(DRAFT)
   publishedUrl      String?
   errorMessage      String?   // Error message if post failed
 
@@ -638,7 +650,7 @@ model WRHQSocialPost {
   approvedAt        DateTime?
 
   // Status
-  status            SocialPostStatus @default(SCHEDULED)
+  status            SocialPostStatus @default(DRAFT)
   publishedUrl      String?
   errorMessage      String?   // Error message if post failed
 
@@ -810,6 +822,10 @@ model ClientPAA {
   priority     Int           // Order pasted (1, 2, 3...)
   isActive     Boolean       @default(true)
 
+  // Automation tracking
+  usedAt       DateTime?     // When this PAA was last used (null = never)
+  usedCount    Int           @default(0)  // Total times used
+
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -819,6 +835,7 @@ model ClientPAA {
   @@index([clientId])
   @@index([priority])
   @@index([isActive])
+  @@index([usedAt])
 }
 
 // ============================================
@@ -836,6 +853,9 @@ model ServiceLocation {
   isHeadquarters Boolean @default(false)
   isActive     Boolean  @default(true)
 
+  // Automation tracking
+  lastUsedAt   DateTime?  // When this location was last used for content
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -845,6 +865,7 @@ model ServiceLocation {
   @@unique([clientId, city, state, neighborhood])
   @@index([clientId])
   @@index([isActive])
+  @@index([lastUsedAt])
 }
 
 // ============================================

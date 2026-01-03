@@ -32,9 +32,23 @@ export const WRHQ_SETTINGS_KEYS = {
   WRHQ_ENABLED_PLATFORMS: 'WRHQ_ENABLED_PLATFORMS',
 } as const
 
+// YouTube API Settings Keys
+export const YOUTUBE_SETTINGS_KEYS = {
+  WRHQ_YOUTUBE_CLIENT_ID: 'WRHQ_YOUTUBE_CLIENT_ID',
+  WRHQ_YOUTUBE_CLIENT_SECRET: 'WRHQ_YOUTUBE_CLIENT_SECRET',
+  WRHQ_YOUTUBE_REFRESH_TOKEN: 'WRHQ_YOUTUBE_REFRESH_TOKEN',
+  WRHQ_YOUTUBE_ACCESS_TOKEN: 'WRHQ_YOUTUBE_ACCESS_TOKEN',
+  WRHQ_YOUTUBE_TOKEN_EXPIRY: 'WRHQ_YOUTUBE_TOKEN_EXPIRY',
+  WRHQ_YOUTUBE_CHANNEL_ID: 'WRHQ_YOUTUBE_CHANNEL_ID',
+  WRHQ_YOUTUBE_CHANNEL_TITLE: 'WRHQ_YOUTUBE_CHANNEL_TITLE',
+} as const
+
 // Keys that should be encrypted
 const ENCRYPTED_KEYS: Set<string> = new Set([
   WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_APP_PASSWORD,
+  YOUTUBE_SETTINGS_KEYS.WRHQ_YOUTUBE_CLIENT_SECRET,
+  YOUTUBE_SETTINGS_KEYS.WRHQ_YOUTUBE_REFRESH_TOKEN,
+  YOUTUBE_SETTINGS_KEYS.WRHQ_YOUTUBE_ACCESS_TOKEN,
   'GCS_CREDENTIALS_JSON',
   'GOOGLE_APPLICATION_CREDENTIALS_JSON',
   'GOOGLE_CLOUD_CREDENTIALS',
@@ -65,6 +79,14 @@ export interface WRHQConfig {
   publishing: {
     preferredTime: string
     timezone: string
+  }
+  youtubeApi: {
+    clientId: string | null
+    clientSecret: string | null
+    refreshToken: string | null
+    channelId: string | null
+    channelTitle: string | null
+    isConfigured: boolean
   }
 }
 
@@ -164,7 +186,7 @@ export async function getSettings(keys: string[]): Promise<Record<string, string
  * Get WRHQ configuration
  */
 export async function getWRHQConfig(): Promise<WRHQConfig> {
-  const allKeys = Object.values(WRHQ_SETTINGS_KEYS)
+  const allKeys = [...Object.values(WRHQ_SETTINGS_KEYS), ...Object.values(YOUTUBE_SETTINGS_KEYS)]
   const settings = await getSettings(allKeys)
 
   const wordpressUrl = settings[WRHQ_SETTINGS_KEYS.WRHQ_WORDPRESS_URL]
@@ -176,6 +198,13 @@ export async function getWRHQConfig(): Promise<WRHQConfig> {
   const enabledPlatforms = enabledPlatformsStr
     ? enabledPlatformsStr.split(',').map(p => p.trim()).filter(Boolean)
     : ['facebook', 'instagram', 'linkedin', 'twitter'] // Default platforms
+
+  // YouTube API settings
+  const youtubeClientId = settings[YOUTUBE_SETTINGS_KEYS.WRHQ_YOUTUBE_CLIENT_ID]
+  const youtubeClientSecret = settings[YOUTUBE_SETTINGS_KEYS.WRHQ_YOUTUBE_CLIENT_SECRET]
+  const youtubeRefreshToken = settings[YOUTUBE_SETTINGS_KEYS.WRHQ_YOUTUBE_REFRESH_TOKEN]
+  const youtubeChannelId = settings[YOUTUBE_SETTINGS_KEYS.WRHQ_YOUTUBE_CHANNEL_ID]
+  const youtubeChannelTitle = settings[YOUTUBE_SETTINGS_KEYS.WRHQ_YOUTUBE_CHANNEL_TITLE]
 
   return {
     wordpress: {
@@ -202,6 +231,14 @@ export async function getWRHQConfig(): Promise<WRHQConfig> {
     publishing: {
       preferredTime: settings[WRHQ_SETTINGS_KEYS.WRHQ_PUBLISH_TIME] || '10:00',
       timezone: settings[WRHQ_SETTINGS_KEYS.WRHQ_TIMEZONE] || 'America/Los_Angeles',
+    },
+    youtubeApi: {
+      clientId: youtubeClientId,
+      clientSecret: youtubeClientSecret,
+      refreshToken: youtubeRefreshToken,
+      channelId: youtubeChannelId,
+      channelTitle: youtubeChannelTitle,
+      isConfigured: !!(youtubeClientId && youtubeClientSecret && youtubeRefreshToken),
     },
   }
 }
@@ -352,4 +389,51 @@ export async function isWRHQWordPressConfigured(): Promise<boolean> {
 export async function hasWRHQSocialMediaConfigured(): Promise<boolean> {
   const accounts = await getWRHQLateAccountIds()
   return Object.keys(accounts).length > 0
+}
+
+/**
+ * Update WRHQ YouTube API configuration
+ */
+export async function updateWRHQYouTubeApi(config: {
+  clientId?: string
+  clientSecret?: string
+  refreshToken?: string
+  channelId?: string
+  channelTitle?: string
+}): Promise<void> {
+  const updates: Promise<void>[] = []
+
+  if (config.clientId !== undefined) {
+    updates.push(setSetting(YOUTUBE_SETTINGS_KEYS.WRHQ_YOUTUBE_CLIENT_ID, config.clientId))
+  }
+  if (config.clientSecret !== undefined) {
+    // Delete the old setting first to clear any encrypted value
+    await prisma.setting.deleteMany({
+      where: { key: YOUTUBE_SETTINGS_KEYS.WRHQ_YOUTUBE_CLIENT_SECRET }
+    })
+    updates.push(setSetting(YOUTUBE_SETTINGS_KEYS.WRHQ_YOUTUBE_CLIENT_SECRET, config.clientSecret))
+  }
+  if (config.refreshToken !== undefined) {
+    // Delete the old setting first to clear any encrypted value
+    await prisma.setting.deleteMany({
+      where: { key: YOUTUBE_SETTINGS_KEYS.WRHQ_YOUTUBE_REFRESH_TOKEN }
+    })
+    updates.push(setSetting(YOUTUBE_SETTINGS_KEYS.WRHQ_YOUTUBE_REFRESH_TOKEN, config.refreshToken))
+  }
+  if (config.channelId !== undefined) {
+    updates.push(setSetting(YOUTUBE_SETTINGS_KEYS.WRHQ_YOUTUBE_CHANNEL_ID, config.channelId))
+  }
+  if (config.channelTitle !== undefined) {
+    updates.push(setSetting(YOUTUBE_SETTINGS_KEYS.WRHQ_YOUTUBE_CHANNEL_TITLE, config.channelTitle))
+  }
+
+  await Promise.all(updates)
+}
+
+/**
+ * Check if WRHQ YouTube API is properly configured
+ */
+export async function isWRHQYouTubeConfigured(): Promise<boolean> {
+  const config = await getWRHQConfig()
+  return config.youtubeApi.isConfigured
 }

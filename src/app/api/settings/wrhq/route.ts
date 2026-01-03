@@ -5,6 +5,7 @@ import {
   updateWRHQWordPress,
   updateWRHQSocialMedia,
   updateWRHQPublishing,
+  updateWRHQYouTubeApi,
 } from '@/lib/settings'
 
 export async function GET() {
@@ -16,12 +17,17 @@ export async function GET() {
   try {
     const config = await getWRHQConfig()
 
-    // Mask the password for security
+    // Mask secrets for security
     const maskedConfig = {
       ...config,
       wordpress: {
         ...config.wordpress,
         appPassword: config.wordpress.appPassword ? '••••••••' : null,
+      },
+      youtubeApi: {
+        ...config.youtubeApi,
+        clientSecret: config.youtubeApi.clientSecret ? '••••••••' : null,
+        refreshToken: config.youtubeApi.refreshToken ? '••••••••' : null,
       },
     }
 
@@ -63,6 +69,12 @@ export async function PUT(request: Request) {
           twitter: data.twitter,
           tiktok: data.tiktok,
           gbp: data.gbp,
+          youtube: data.youtube,
+          bluesky: data.bluesky,
+          threads: data.threads,
+          reddit: data.reddit,
+          pinterest: data.pinterest,
+          telegram: data.telegram,
           enabledPlatforms: data.enabledPlatforms,
         })
         break
@@ -71,6 +83,14 @@ export async function PUT(request: Request) {
         await updateWRHQPublishing({
           preferredTime: data.preferredTime,
           timezone: data.timezone,
+        })
+        break
+
+      case 'youtubeApi':
+        await updateWRHQYouTubeApi({
+          clientId: data.clientId,
+          // Only update secret if it's not the masked value
+          clientSecret: data.clientSecret !== '••••••••' ? data.clientSecret : undefined,
         })
         break
 
@@ -88,6 +108,11 @@ export async function PUT(request: Request) {
       wordpress: {
         ...config.wordpress,
         appPassword: config.wordpress.appPassword ? '••••••••' : null,
+      },
+      youtubeApi: {
+        ...config.youtubeApi,
+        clientSecret: config.youtubeApi.clientSecret ? '••••••••' : null,
+        refreshToken: config.youtubeApi.refreshToken ? '••••••••' : null,
       },
     }
 

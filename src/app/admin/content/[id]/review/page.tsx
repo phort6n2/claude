@@ -9,12 +9,19 @@ import {
   Share2,
   Building2,
   Mic,
+  Video,
   Check,
   RefreshCw,
   ExternalLink,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   AlertCircle,
+  AlertTriangle,
   XCircle,
+  Layers,
+  Play,
+  Code,
 } from 'lucide-react'
 
 interface ContentItem {
@@ -50,6 +57,8 @@ interface ContentItem {
   longformVideoUrl: string | null
   longformVideoDesc: string | null
   longVideoAddedToPost: boolean
+  longVideoAddedAt: string | null
+  shortVideoAddedAt: string | null
   schemaGenerated: boolean
   schemaUpdateCount: number
   schemaLastUpdated: string | null
@@ -126,6 +135,8 @@ interface ContentItem {
     script: string | null
     description: string | null
     status: string
+    podbeanUrl: string | null
+    podbeanPlayerUrl: string | null
   } | null
   videos: Array<{
     id: string
@@ -134,6 +145,35 @@ interface ContentItem {
     thumbnailUrl: string | null
     duration: number | null
     status: string
+    creatifyJobId: string | null
+  }>
+  shortVideo: {
+    id: string
+    videoUrl: string
+    thumbnailUrl: string | null
+    duration: number | null
+    status: string
+    creatifyJobId: string | null
+  } | null
+  videoSocialPosts: Array<{
+    id: string
+    platform: string
+    caption: string
+    hashtags: string[]
+    approved: boolean
+    status: string
+    publishedUrl: string | null
+    errorMessage: string | null
+  }>
+  wrhqVideoSocialPosts: Array<{
+    id: string
+    platform: string
+    caption: string
+    hashtags: string[]
+    approved: boolean
+    status: string
+    publishedUrl: string | null
+    errorMessage: string | null
   }>
 }
 
@@ -384,7 +424,7 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
           <ReviewTab content={content} onImageClick={setLightboxImage} onUpdate={loadContent} />
         )}
         {activeTab === 'published' && (
-          <PublishedTab content={content} />
+          <PublishedTab content={content} onUpdate={loadContent} />
         )}
       </div>
 
@@ -435,7 +475,39 @@ function ReviewTab({
 }) {
   const [generating, setGenerating] = useState<string | null>(null)
   const [publishing, setPublishing] = useState<string | null>(null)
+  const [republishing, setRepublishing] = useState(false)
+  const [embedding, setEmbedding] = useState(false)
+  const [generatingSchema, setGeneratingSchema] = useState(false)
+  const [schemaValidation, setSchemaValidation] = useState<{
+    valid: boolean
+    errors: Array<{ schemaType: string; field: string; message: string }>
+    warnings: Array<{ schemaType: string; field: string; message: string }>
+  } | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Collapsed state for sections - auto-collapse completed sections
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
+
+  // Initialize collapsed state based on completion
+  useEffect(() => {
+    const clientVidDone = content.videoSocialPosts.length === 0 || content.videoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PROCESSING' || p.status === 'PUBLISHED')
+    const wrhqVidDone = content.wrhqVideoSocialPosts.length === 0 || content.wrhqVideoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PROCESSING' || p.status === 'PUBLISHED')
+    setCollapsedSections({
+      step1: content.clientBlogPublished,
+      step2: content.wrhqBlogPublished,
+      step3: content.socialPosts.length > 0 && content.socialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED'),
+      step4: content.podcastAddedToPost,
+      step5: (content.videoSocialPosts.length > 0 || content.wrhqVideoSocialPosts.length > 0) && clientVidDone && wrhqVidDone,
+      step6: content.longVideoUploaded,
+      step7: content.schemaGenerated,
+      step8: content.shortVideoAddedToPost || content.longVideoAddedToPost,
+    })
+  }, []) // Only run once on mount
+
+  const toggleSection = (section: string) => {
+    setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }))
+  }
 
   // Poll for podcast status when processing
   useEffect(() => {
@@ -483,23 +555,55 @@ function ReviewTab({
     return () => clearInterval(interval)
   }, [content.id, content.socialPosts, content.wrhqSocialPosts, onUpdate])
 
+  // Poll for short video status when processing
+  useEffect(() => {
+    if (content.shortVideo?.status !== 'PROCESSING') return
+
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/content/${content.id}/video-status`)
+        const data = await response.json()
+
+        if (data.status === 'ready' || data.status === 'failed') {
+          clearInterval(interval)
+          onUpdate()
+        }
+      } catch (err) {
+        console.error('Error polling video status:', err)
+      }
+    }, 10000) // Poll every 10 seconds
+
+    return () => clearInterval(interval)
+  }, [content.id, content.shortVideo?.status, onUpdate])
+
   // Step status helpers
   const isStep1Complete = content.clientBlogPublished
   const isStep2Complete = content.wrhqBlogPublished
   const isStep3Complete = content.socialPosts.length > 0 && content.socialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED')
   const isStep4Complete = content.podcastAddedToPost
+  // Step 5: Video posts complete when all client AND WRHQ posts are scheduled/processing/published
+  const clientVideoComplete = content.videoSocialPosts.length === 0 || content.videoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PROCESSING' || p.status === 'PUBLISHED')
+  const wrhqVideoComplete = content.wrhqVideoSocialPosts.length === 0 || content.wrhqVideoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PROCESSING' || p.status === 'PUBLISHED')
+  const isStep5Complete = (content.videoSocialPosts.length > 0 || content.wrhqVideoSocialPosts.length > 0) && clientVideoComplete && wrhqVideoComplete
+  const isStep6Complete = content.longVideoUploaded
+  const isStep7Complete = content.schemaGenerated
+  const isStep8Complete = content.shortVideoAddedToPost || content.longVideoAddedToPost
 
-  async function regenerateContent(type: 'blog' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast') {
+  async function regenerateContent(type: 'blog' | 'images' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast' | 'podcastDescription' | 'video' | 'videoDescription' | 'videoSocial') {
     setGenerating(type)
     setError(null)
     try {
       const flags: Record<string, boolean> = {
         generateBlog: type === 'blog',
-        generateImages: type === 'blog',
+        generateImages: type === 'images',
         generatePodcast: type === 'podcast',
+        regenPodcastDescription: type === 'podcastDescription',
         generateSocial: type === 'social',
         generateWrhqBlog: type === 'wrhqBlog',
         generateWrhqSocial: type === 'wrhqSocial',
+        generateShortVideo: type === 'video',
+        regenVideoDescription: type === 'videoDescription',
+        generateVideoSocial: type === 'videoSocial',
       }
 
       const response = await fetch(`/api/content/${content.id}/generate`, {
@@ -533,7 +637,7 @@ function ReviewTab({
     }
   }
 
-  async function publishContent(type: 'clientBlog' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast', postImmediate = true) {
+  async function publishContent(type: 'clientBlog' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast' | 'videoSocial' | 'wrhqVideoSocial', postImmediate = true) {
     setPublishing(type)
     setError(null)
     try {
@@ -542,6 +646,8 @@ function ReviewTab({
         publishWrhqBlog: type === 'wrhqBlog',
         scheduleSocial: type === 'social',
         scheduleWrhqSocial: type === 'wrhqSocial',
+        scheduleVideoSocial: type === 'videoSocial',
+        scheduleWrhqVideoSocial: type === 'wrhqVideoSocial',
         postImmediate, // Post now instead of scheduling
       }
 
@@ -589,6 +695,104 @@ function ReviewTab({
     }
   }
 
+  async function refreshStatus() {
+    setRefreshing(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/content/${content.id}/refresh-status`, {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to refresh status')
+      }
+
+      // Refresh the page data
+      onUpdate()
+    } catch (err) {
+      setError(String(err))
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  async function republishBlog() {
+    setRepublishing(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/content/${content.id}/republish-blog`, {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to re-publish blog')
+      }
+
+      // Refresh the page data
+      onUpdate()
+    } catch (err) {
+      setError(String(err))
+    } finally {
+      setRepublishing(false)
+    }
+  }
+
+  async function embedAllMedia() {
+    setEmbedding(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/content/${content.id}/embed-all-media`, {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to embed media')
+      }
+
+      // Refresh the page data
+      onUpdate()
+    } catch (err) {
+      setError(String(err))
+    } finally {
+      setEmbedding(false)
+    }
+  }
+
+  async function generateSchema() {
+    setGeneratingSchema(true)
+    setError(null)
+    setSchemaValidation(null)
+    try {
+      const response = await fetch(`/api/content/${content.id}/generate-schema`, {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate schema')
+      }
+
+      // Store validation results
+      if (data.validation) {
+        setSchemaValidation(data.validation)
+      }
+
+      // Refresh the page data
+      onUpdate()
+    } catch (err) {
+      setError(String(err))
+    } finally {
+      setGeneratingSchema(false)
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-5xl">
       {/* Error Alert */}
@@ -601,6 +805,161 @@ function ReviewTab({
           </div>
         </div>
       )}
+
+      {/* Summary Header - Progress Overview */}
+      <div className="bg-white rounded-lg shadow-sm border p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-gray-800">Progress Overview</h3>
+          <span className="text-sm text-gray-500">
+            {[isStep1Complete, isStep2Complete, isStep3Complete, isStep4Complete, isStep5Complete, isStep6Complete, isStep7Complete, isStep8Complete].filter(Boolean).length} of 8 complete
+          </span>
+        </div>
+        <div className="grid grid-cols-8 gap-2">
+          {/* Step 1: Client Blog */}
+          <button
+            onClick={() => toggleSection('step1')}
+            className={`p-3 rounded-lg text-center transition-colors ${
+              isStep1Complete
+                ? 'bg-green-50 border border-green-200 hover:bg-green-100'
+                : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            <FileText className={`h-5 w-5 mx-auto mb-1 ${isStep1Complete ? 'text-green-600' : 'text-gray-400'}`} />
+            <p className="text-xs font-medium truncate">Client Blog</p>
+            {isStep1Complete ? (
+              <Check className="h-3 w-3 mx-auto mt-1 text-green-600" />
+            ) : (
+              <span className="text-xs text-gray-400">Pending</span>
+            )}
+          </button>
+
+          {/* Step 2: WRHQ Blog */}
+          <button
+            onClick={() => toggleSection('step2')}
+            className={`p-3 rounded-lg text-center transition-colors ${
+              isStep2Complete
+                ? 'bg-green-50 border border-green-200 hover:bg-green-100'
+                : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            <Building2 className={`h-5 w-5 mx-auto mb-1 ${isStep2Complete ? 'text-green-600' : 'text-gray-400'}`} />
+            <p className="text-xs font-medium truncate">WRHQ Blog</p>
+            {isStep2Complete ? (
+              <Check className="h-3 w-3 mx-auto mt-1 text-green-600" />
+            ) : (
+              <span className="text-xs text-gray-400">Pending</span>
+            )}
+          </button>
+
+          {/* Step 3: Social Posts */}
+          <button
+            onClick={() => toggleSection('step3')}
+            className={`p-3 rounded-lg text-center transition-colors ${
+              isStep3Complete
+                ? 'bg-green-50 border border-green-200 hover:bg-green-100'
+                : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            <Share2 className={`h-5 w-5 mx-auto mb-1 ${isStep3Complete ? 'text-green-600' : 'text-gray-400'}`} />
+            <p className="text-xs font-medium truncate">Social Posts</p>
+            {isStep3Complete ? (
+              <Check className="h-3 w-3 mx-auto mt-1 text-green-600" />
+            ) : (
+              <span className="text-xs text-gray-400">Pending</span>
+            )}
+          </button>
+
+          {/* Step 4: Podcast */}
+          <button
+            onClick={() => toggleSection('step4')}
+            className={`p-3 rounded-lg text-center transition-colors ${
+              isStep4Complete
+                ? 'bg-green-50 border border-green-200 hover:bg-green-100'
+                : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            <Mic className={`h-5 w-5 mx-auto mb-1 ${isStep4Complete ? 'text-green-600' : 'text-gray-400'}`} />
+            <p className="text-xs font-medium truncate">Podcast</p>
+            {isStep4Complete ? (
+              <Check className="h-3 w-3 mx-auto mt-1 text-green-600" />
+            ) : (
+              <span className="text-xs text-gray-400">Pending</span>
+            )}
+          </button>
+
+          {/* Step 5: Short Video */}
+          <button
+            onClick={() => toggleSection('step5')}
+            className={`p-3 rounded-lg text-center transition-colors ${
+              isStep5Complete
+                ? 'bg-green-50 border border-green-200 hover:bg-green-100'
+                : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            <Video className={`h-5 w-5 mx-auto mb-1 ${isStep5Complete ? 'text-green-600' : 'text-gray-400'}`} />
+            <p className="text-xs font-medium truncate">Short Video</p>
+            {isStep5Complete ? (
+              <Check className="h-3 w-3 mx-auto mt-1 text-green-600" />
+            ) : (
+              <span className="text-xs text-gray-400">Pending</span>
+            )}
+          </button>
+
+          {/* Step 6: Long Video */}
+          <button
+            onClick={() => toggleSection('step6')}
+            className={`p-3 rounded-lg text-center transition-colors ${
+              isStep6Complete
+                ? 'bg-green-50 border border-green-200 hover:bg-green-100'
+                : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            <Play className={`h-5 w-5 mx-auto mb-1 ${isStep6Complete ? 'text-green-600' : 'text-gray-400'}`} />
+            <p className="text-xs font-medium truncate">Long Video</p>
+            {isStep6Complete ? (
+              <Check className="h-3 w-3 mx-auto mt-1 text-green-600" />
+            ) : (
+              <span className="text-xs text-gray-400">Optional</span>
+            )}
+          </button>
+
+          {/* Step 7: Schema Markup */}
+          <button
+            onClick={() => toggleSection('step7')}
+            className={`p-3 rounded-lg text-center transition-colors ${
+              isStep7Complete
+                ? 'bg-green-50 border border-green-200 hover:bg-green-100'
+                : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            <Code className={`h-5 w-5 mx-auto mb-1 ${isStep7Complete ? 'text-green-600' : 'text-gray-400'}`} />
+            <p className="text-xs font-medium truncate">Schema</p>
+            {isStep7Complete ? (
+              <Check className="h-3 w-3 mx-auto mt-1 text-green-600" />
+            ) : (
+              <span className="text-xs text-gray-400">Pending</span>
+            )}
+          </button>
+
+          {/* Step 8: Embed Media */}
+          <button
+            onClick={() => toggleSection('step8')}
+            className={`p-3 rounded-lg text-center transition-colors ${
+              isStep8Complete
+                ? 'bg-green-50 border border-green-200 hover:bg-green-100'
+                : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            <Layers className={`h-5 w-5 mx-auto mb-1 ${isStep8Complete ? 'text-green-600' : 'text-gray-400'}`} />
+            <p className="text-xs font-medium truncate">Embed</p>
+            {isStep8Complete ? (
+              <Check className="h-3 w-3 mx-auto mt-1 text-green-600" />
+            ) : (
+              <span className="text-xs text-gray-400">Pending</span>
+            )}
+          </button>
+        </div>
+      </div>
 
       {/* PAA Question */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -618,7 +977,10 @@ function ReviewTab({
       {/* STEP 1: Client Blog - Review & Publish */}
       {/* ============================================ */}
       <section className="bg-white rounded-lg shadow-sm border overflow-hidden">
-        <div className={`px-6 py-4 flex items-center justify-between ${isStep1Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}>
+        <div
+          className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep1Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
+          onClick={() => toggleSection('step1')}
+        >
           <div className="flex items-center gap-3">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${isStep1Complete ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'}`}>
               {isStep1Complete ? <Check className="h-5 w-5" /> : '1'}
@@ -630,19 +992,39 @@ function ReviewTab({
           </div>
           <div className="flex items-center gap-2">
             {isStep1Complete ? (
-              <div className="flex items-center gap-2 text-green-600">
-                <Check className="h-5 w-5" />
-                <span className="text-sm font-medium">Published</span>
-                {content.clientBlogUrl && (
-                  <a href={content.clientBlogUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                )}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 text-green-600">
+                  <Check className="h-5 w-5" />
+                  <span className="text-sm font-medium">Published</span>
+                  {content.clientBlogUrl && (
+                    <a href={content.clientBlogUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  )}
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); republishBlog(); }}
+                  disabled={republishing}
+                  className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+                  title="Re-publish blog with all embeds (image, map, podcast, video)"
+                >
+                  {republishing ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Re-publishing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4" />
+                      Re-publish
+                    </>
+                  )}
+                </button>
               </div>
             ) : (
               <>
                 <button
-                  onClick={() => regenerateContent('blog')}
+                  onClick={(e) => { e.stopPropagation(); regenerateContent('blog'); }}
                   disabled={generating === 'blog'}
                   className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
                 >
@@ -651,30 +1033,50 @@ function ReviewTab({
                   ) : (
                     <RefreshCw className="h-4 w-4" />
                   )}
-                  Regenerate
+                  {content.blogGenerated ? 'Regenerate Blog' : 'Generate Blog'}
                 </button>
                 <button
-                  onClick={() => publishContent('clientBlog')}
-                  disabled={publishing === 'clientBlog' || !content.blogGenerated || !content.imagesGenerated}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  onClick={(e) => { e.stopPropagation(); regenerateContent('images'); }}
+                  disabled={generating === 'images'}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
                 >
-                  {publishing === 'clientBlog' ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Publishing...
-                    </>
+                  {generating === 'images' ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
                   ) : (
-                    <>
-                      <ExternalLink className="h-4 w-4" />
-                      Publish
-                    </>
+                    <ImageIcon className="h-4 w-4" />
                   )}
+                  {content.imagesGenerated ? 'Regenerate Images' : 'Generate Images'}
                 </button>
+                {content.blogGenerated && content.imagesGenerated && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); publishContent('clientBlog'); }}
+                    disabled={publishing === 'clientBlog'}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {publishing === 'clientBlog' ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Publishing...
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink className="h-4 w-4" />
+                        Publish
+                      </>
+                    )}
+                  </button>
+                )}
               </>
+            )}
+            {collapsedSections.step1 ? (
+              <ChevronDown className="h-5 w-5 text-gray-400 ml-2" />
+            ) : (
+              <ChevronUp className="h-5 w-5 text-gray-400 ml-2" />
             )}
           </div>
         </div>
 
+        {!collapsedSections.step1 && (
         <div className="p-6 space-y-6">
           {/* Blog Post */}
           <div>
@@ -750,13 +1152,17 @@ function ReviewTab({
             )}
           </div>
         </div>
+        )}
       </section>
 
       {/* ============================================ */}
       {/* STEP 2: WRHQ Blog - Generate & Publish */}
       {/* ============================================ */}
       <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
-        <div className={`px-6 py-4 flex items-center justify-between ${isStep2Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}>
+        <div
+          className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep2Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
+          onClick={() => toggleSection('step2')}
+        >
           <div className="flex items-center gap-3">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${isStep2Complete ? 'bg-green-500 text-white' : isStep1Complete ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
               {isStep2Complete ? <Check className="h-5 w-5" /> : '2'}
@@ -772,7 +1178,7 @@ function ReviewTab({
                 <Check className="h-5 w-5" />
                 <span className="text-sm font-medium">Published</span>
                 {content.wrhqBlogUrl && (
-                  <a href={content.wrhqBlogUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  <a href={content.wrhqBlogUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
                     <ExternalLink className="h-4 w-4" />
                   </a>
                 )}
@@ -780,7 +1186,7 @@ function ReviewTab({
             ) : (
               <>
                 <button
-                  onClick={() => regenerateContent('wrhqBlog')}
+                  onClick={(e) => { e.stopPropagation(); regenerateContent('wrhqBlog'); }}
                   disabled={generating === 'wrhqBlog' || !isStep1Complete}
                   className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
                 >
@@ -791,29 +1197,36 @@ function ReviewTab({
                   )}
                   {content.wrhqBlogGenerated ? 'Regenerate' : 'Generate'}
                 </button>
-                <button
-                  onClick={() => publishContent('wrhqBlog')}
-                  disabled={publishing === 'wrhqBlog' || !content.wrhqBlogGenerated}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {publishing === 'wrhqBlog' ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Publishing...
-                    </>
-                  ) : (
-                    <>
-                      <ExternalLink className="h-4 w-4" />
-                      Publish
-                    </>
-                  )}
-                </button>
+                {content.wrhqBlogGenerated && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); publishContent('wrhqBlog'); }}
+                    disabled={publishing === 'wrhqBlog'}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {publishing === 'wrhqBlog' ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Publishing...
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink className="h-4 w-4" />
+                        Publish
+                      </>
+                    )}
+                  </button>
+                )}
               </>
+            )}
+            {collapsedSections.step2 ? (
+              <ChevronDown className="h-5 w-5 text-gray-400 ml-2" />
+            ) : (
+              <ChevronUp className="h-5 w-5 text-gray-400 ml-2" />
             )}
           </div>
         </div>
 
-        {content.wrhqBlogPost && (
+        {!collapsedSections.step2 && content.wrhqBlogPost && (
           <div className="p-6">
             <h4 className="text-lg font-semibold mb-2">{content.wrhqBlogPost.title}</h4>
             <p className="text-sm text-gray-500 mb-4">{content.wrhqBlogPost.wordCount} words | Slug: {content.wrhqBlogPost.slug}</p>
@@ -834,7 +1247,10 @@ function ReviewTab({
       {/* STEP 3: Social Media - Generate & Publish */}
       {/* ============================================ */}
       <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
-        <div className={`px-6 py-4 flex items-center justify-between ${isStep3Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}>
+        <div
+          className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep3Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
+          onClick={() => toggleSection('step3')}
+        >
           <div className="flex items-center gap-3">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${isStep3Complete ? 'bg-green-500 text-white' : isStep1Complete ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
               {isStep3Complete ? <Check className="h-5 w-5" /> : '3'}
@@ -844,8 +1260,22 @@ function ReviewTab({
               <p className="text-sm text-gray-500">Generate and schedule social media content</p>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            {isStep3Complete && (
+              <div className="flex items-center gap-2 text-green-600">
+                <Check className="h-5 w-5" />
+                <span className="text-sm font-medium">Published</span>
+              </div>
+            )}
+            {collapsedSections.step3 ? (
+              <ChevronDown className="h-5 w-5 text-gray-400 ml-2" />
+            ) : (
+              <ChevronUp className="h-5 w-5 text-gray-400 ml-2" />
+            )}
+          </div>
         </div>
 
+        {!collapsedSections.step3 && (
         <div className="p-6 space-y-6">
           {/* Client Social Posts */}
           <div>
@@ -868,30 +1298,32 @@ function ReviewTab({
                   )}
                   {content.socialGenerated ? 'Regenerate' : 'Generate'}
                 </button>
-                <button
-                  onClick={() => publishContent('social')}
-                  disabled={publishing === 'social' || !content.socialGenerated || content.socialPosts.every(p => p.status === 'PUBLISHED') || content.socialPosts.some(p => p.status === 'PROCESSING')}
-                  className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {publishing === 'social' ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Posting...
-                    </>
-                  ) : content.socialPosts.some(p => p.status === 'PROCESSING') ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : content.socialPosts.every(p => p.status === 'PUBLISHED') ? (
-                    <>
-                      <Check className="h-4 w-4" />
-                      Posted
-                    </>
-                  ) : (
-                    'Post'
-                  )}
-                </button>
+                {content.socialGenerated && (
+                  <button
+                    onClick={() => publishContent('social')}
+                    disabled={publishing === 'social' || content.socialPosts.length === 0 || content.socialPosts.every(p => p.status === 'PUBLISHED') || content.socialPosts.some(p => p.status === 'PROCESSING')}
+                    className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {publishing === 'social' ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Publishing...
+                      </>
+                    ) : content.socialPosts.some(p => p.status === 'PROCESSING') ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : content.socialPosts.length > 0 && content.socialPosts.every(p => p.status === 'PUBLISHED') ? (
+                      <>
+                        <Check className="h-4 w-4" />
+                        Published
+                      </>
+                    ) : (
+                      'Publish'
+                    )}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -927,30 +1359,32 @@ function ReviewTab({
                   )}
                   {content.wrhqSocialGenerated ? 'Regenerate' : 'Generate'}
                 </button>
-                <button
-                  onClick={() => publishContent('wrhqSocial')}
-                  disabled={publishing === 'wrhqSocial' || !content.wrhqSocialGenerated || content.wrhqSocialPosts.every(p => p.status === 'PUBLISHED') || content.wrhqSocialPosts.some(p => p.status === 'PROCESSING')}
-                  className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {publishing === 'wrhqSocial' ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Posting...
-                    </>
-                  ) : content.wrhqSocialPosts.some(p => p.status === 'PROCESSING') ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : content.wrhqSocialPosts.every(p => p.status === 'PUBLISHED') ? (
-                    <>
-                      <Check className="h-4 w-4" />
-                      Posted
-                    </>
-                  ) : (
-                    'Post'
-                  )}
-                </button>
+                {content.wrhqSocialGenerated && (
+                  <button
+                    onClick={() => publishContent('wrhqSocial')}
+                    disabled={publishing === 'wrhqSocial' || content.wrhqSocialPosts.length === 0 || content.wrhqSocialPosts.every(p => p.status === 'PUBLISHED') || content.wrhqSocialPosts.some(p => p.status === 'PROCESSING')}
+                    className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {publishing === 'wrhqSocial' ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Publishing...
+                      </>
+                    ) : content.wrhqSocialPosts.some(p => p.status === 'PROCESSING') ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : content.wrhqSocialPosts.length > 0 && content.wrhqSocialPosts.every(p => p.status === 'PUBLISHED') ? (
+                      <>
+                        <Check className="h-4 w-4" />
+                        Published
+                      </>
+                    ) : (
+                      'Publish'
+                    )}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -965,13 +1399,17 @@ function ReviewTab({
             )}
           </div>
         </div>
+        )}
       </section>
 
       {/* ============================================ */}
       {/* STEP 4: Podcast - Generate, Publish & Embed */}
       {/* ============================================ */}
       <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
-        <div className={`px-6 py-4 flex items-center justify-between ${isStep4Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}>
+        <div
+          className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep4Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
+          onClick={() => toggleSection('step4')}
+        >
           <div className="flex items-center gap-3">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${isStep4Complete ? 'bg-green-500 text-white' : isStep1Complete ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
               {isStep4Complete ? <Check className="h-5 w-5" /> : '4'}
@@ -992,10 +1430,15 @@ function ReviewTab({
                 <Check className="h-5 w-5" />
                 <span className="text-sm font-medium">Published & Embedded</span>
               </div>
+            ) : content.podcast?.status === 'PUBLISHED' ? (
+              <div className="flex items-center gap-2 text-blue-600">
+                <Check className="h-4 w-4" />
+                <span className="text-sm">Published to Podbean</span>
+              </div>
             ) : (
               <>
                 <button
-                  onClick={() => regenerateContent('podcast')}
+                  onClick={(e) => { e.stopPropagation(); regenerateContent('podcast'); }}
                   disabled={generating === 'podcast' || !isStep1Complete}
                   className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
                 >
@@ -1006,31 +1449,70 @@ function ReviewTab({
                   )}
                   {content.podcastGenerated ? 'Regenerate' : 'Generate'}
                 </button>
-                <button
-                  onClick={() => publishContent('podcast')}
-                  disabled={publishing === 'podcast' || !content.podcast || content.podcast.status !== 'READY'}
-                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {publishing === 'podcast' ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Publishing...
-                    </>
-                  ) : (
-                    <>
-                      <ExternalLink className="h-4 w-4" />
-                      Publish
-                    </>
-                  )}
-                </button>
+                {content.podcast?.status === 'READY' && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); publishContent('podcast'); }}
+                    disabled={publishing === 'podcast'}
+                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {publishing === 'podcast' ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Publishing...
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink className="h-4 w-4" />
+                        Publish
+                      </>
+                    )}
+                  </button>
+                )}
               </>
+            )}
+            {collapsedSections.step4 ? (
+              <ChevronDown className="h-5 w-5 text-gray-400 ml-2" />
+            ) : (
+              <ChevronUp className="h-5 w-5 text-gray-400 ml-2" />
             )}
           </div>
         </div>
 
-        {(content.podcast?.status === 'READY' || content.podcastDescription) && (
+        {/* Show content when processing, ready, failed, or has description */}
+        {!collapsedSections.step4 && (content.podcast?.status === 'PROCESSING' || content.podcast?.status === 'READY' || content.podcast?.status === 'FAILED' || content.podcastDescription) && (
           <div className="p-6 space-y-4">
-            {content.podcast?.audioUrl && (
+            {/* Processing status indicator */}
+            {content.podcast?.status === 'PROCESSING' && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0">
+                    <RefreshCw className="h-5 w-5 animate-spin text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-orange-800">Generating podcast audio...</p>
+                    <p className="text-xs text-orange-600 mt-1">This typically takes 2-5 minutes. The page will update automatically when ready.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Failed status */}
+            {content.podcast?.status === 'FAILED' && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0">
+                    <AlertTriangle className="h-5 w-5 text-red-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-red-800">Podcast generation failed</p>
+                    <p className="text-xs text-red-600 mt-1">Please try regenerating the podcast.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Audio player when ready */}
+            {content.podcast?.audioUrl && content.podcast?.status === 'READY' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Audio Preview</label>
                 <audio controls className="w-full" src={content.podcast.audioUrl} />
@@ -1042,9 +1524,24 @@ function ReviewTab({
               </div>
             )}
 
+            {/* Description - show even during processing since it's generated immediately */}
             {(content.podcastDescription || content.podcast?.description) && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Podcast Description</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">Podcast Description</label>
+                  <button
+                    onClick={() => regenerateContent('podcastDescription')}
+                    disabled={generating === 'podcastDescription'}
+                    className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {generating === 'podcastDescription' ? (
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3" />
+                    )}
+                    Regenerate Description
+                  </button>
+                </div>
                 <div
                   className="border rounded-lg p-4 bg-orange-50 prose prose-sm max-w-none"
                   dangerouslySetInnerHTML={{
@@ -1056,6 +1553,1063 @@ function ReviewTab({
           </div>
         )}
       </section>
+
+      {/* ============================================ */}
+      {/* STEP 5: Short Video - Generate & Publish to Video Platforms */}
+      {/* ============================================ */}
+      <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
+        <div
+          className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep5Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
+          onClick={() => toggleSection('step5')}
+        >
+          <div className="flex items-center gap-4">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${isStep5Complete ? 'bg-green-500 text-white' : 'bg-purple-100 text-purple-700'}`}>
+              {isStep5Complete ? <Check className="h-5 w-5" /> : '5'}
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Short Video</h2>
+              <p className="text-sm text-gray-500">Generate 9:16 video for TikTok, YouTube Shorts, Instagram Reels</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {content.shortVideo?.status === 'PROCESSING' ? (
+              <div className="flex items-center gap-2 text-purple-600">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Generating video (3-8 min)...</span>
+              </div>
+            ) : content.shortVideo?.status === 'FAILED' ? (
+              <div className="flex items-center gap-2 text-red-600">
+                <XCircle className="h-4 w-4" />
+                <span className="text-sm">Generation failed</span>
+              </div>
+            ) : isStep5Complete ? (
+              /* When complete: show Published status, only show Regenerate button when expanded */
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 text-green-600">
+                  <Check className="h-5 w-5" />
+                  <span className="text-sm font-medium">Published</span>
+                </div>
+                {!collapsedSections.step5 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); regenerateContent('video'); }}
+                    disabled={generating === 'video' || !isStep1Complete}
+                    className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {generating === 'video' ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    Regenerate
+                  </button>
+                )}
+              </div>
+            ) : (
+              /* When not complete: show all action buttons */
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); regenerateContent('video'); }}
+                  disabled={generating === 'video' || !isStep1Complete}
+                  className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {generating === 'video' ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Video className="h-4 w-4" />
+                  )}
+                  {content.shortVideoGenerated ? 'Regenerate' : 'Generate'}
+                </button>
+                {content.shortVideo?.status === 'READY' && content.videoSocialPosts.length === 0 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); regenerateContent('videoSocial'); }}
+                    disabled={generating === 'videoSocial'}
+                    className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {generating === 'videoSocial' ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Share2 className="h-4 w-4" />
+                    )}
+                    Generate Posts
+                  </button>
+                )}
+                {content.videoSocialPosts.length > 0 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); publishContent('videoSocial'); }}
+                    disabled={publishing === 'videoSocial' || content.videoSocialPosts.every(p => p.status === 'PUBLISHED' || p.status === 'PROCESSING')}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {publishing === 'videoSocial' ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Publishing...
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="h-4 w-4" />
+                        Publish
+                      </>
+                    )}
+                  </button>
+                )}
+                {content.wrhqVideoSocialPosts.length > 0 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); publishContent('wrhqVideoSocial'); }}
+                    disabled={publishing === 'wrhqVideoSocial' || content.wrhqVideoSocialPosts.every(p => p.status === 'PUBLISHED' || p.status === 'PROCESSING')}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {publishing === 'wrhqVideoSocial' ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Publishing...
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="h-4 w-4" />
+                        Publish WRHQ
+                      </>
+                    )}
+                  </button>
+                )}
+                {/* Refresh Status button - show when any video posts are PROCESSING */}
+                {(content.videoSocialPosts.some(p => p.status === 'PROCESSING') ||
+                  content.wrhqVideoSocialPosts.some(p => p.status === 'PROCESSING')) && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); refreshStatus(); }}
+                    disabled={refreshing}
+                    className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                    {refreshing ? 'Refreshing...' : 'Refresh Status'}
+                  </button>
+                )}
+              </>
+            )}
+            {collapsedSections.step5 ? (
+              <ChevronDown className="h-5 w-5 text-gray-400 ml-2" />
+            ) : (
+              <ChevronUp className="h-5 w-5 text-gray-400 ml-2" />
+            )}
+          </div>
+        </div>
+
+        {/* Show content when processing, ready, failed, or has video */}
+        {!collapsedSections.step5 && (content.shortVideo?.status === 'PROCESSING' || content.shortVideo?.status === 'READY' || content.shortVideo?.status === 'FAILED' || content.shortVideoDescription) && (
+          <div className="p-6 space-y-4">
+            {/* Processing status indicator */}
+            {content.shortVideo?.status === 'PROCESSING' && (
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0">
+                    <RefreshCw className="h-5 w-5 animate-spin text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-purple-800">Generating short video...</p>
+                    <p className="text-xs text-purple-600 mt-1">This typically takes 3-8 minutes. The page will update automatically when ready.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Failed status */}
+            {content.shortVideo?.status === 'FAILED' && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0">
+                    <AlertTriangle className="h-5 w-5 text-red-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-red-800">Video generation failed</p>
+                    <p className="text-xs text-red-600 mt-1">Please try regenerating the video.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Video player when ready */}
+            {content.shortVideo?.videoUrl && content.shortVideo?.status === 'READY' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Video Preview</label>
+                <div className="relative max-w-xs mx-auto">
+                  <video
+                    controls
+                    className="w-full rounded-lg shadow-lg"
+                    src={content.shortVideo.videoUrl}
+                    poster={content.shortVideo.thumbnailUrl || undefined}
+                  />
+                </div>
+                {content.shortVideo.duration && (
+                  <p className="text-sm text-gray-500 mt-2 text-center">
+                    Duration: {Math.floor(content.shortVideo.duration / 60)}:{String(Math.round(content.shortVideo.duration) % 60).padStart(2, '0')}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Description - show even during processing since it's generated immediately */}
+            {content.shortVideoDescription && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">Video Description</label>
+                  <button
+                    onClick={() => regenerateContent('videoDescription')}
+                    disabled={generating === 'videoDescription'}
+                    className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {generating === 'videoDescription' ? (
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3" />
+                    )}
+                    Regenerate Description
+                  </button>
+                </div>
+                <div
+                  className="border rounded-lg p-4 bg-purple-50 prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{
+                    __html: content.shortVideoDescription
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Video Social Posts Preview */}
+            {content.videoSocialPosts.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Video Social Posts</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {content.videoSocialPosts.map((post) => (
+                    <div key={post.id} className="border rounded-lg p-4 bg-white">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="flex items-center gap-2 font-medium">
+                          {PLATFORM_ICONS[post.platform] || '📱'} {post.platform}
+                        </span>
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          post.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' :
+                          post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
+                          post.status === 'FAILED' ? 'bg-red-100 text-red-700' :
+                          post.status === 'PROCESSING' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {post.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 whitespace-pre-wrap line-clamp-3">{post.caption}</p>
+                      {post.publishedUrl && (
+                        <a
+                          href={post.publishedUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline mt-2 inline-flex items-center gap-1"
+                        >
+                          <ExternalLink className="h-3 w-3" /> View Post
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* WRHQ Video Social Posts Preview */}
+            {content.wrhqVideoSocialPosts.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">WRHQ Video Social Posts</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {content.wrhqVideoSocialPosts.map((post) => (
+                    <div key={post.id} className="border rounded-lg p-4 bg-white">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="flex items-center gap-2 font-medium">
+                          {PLATFORM_ICONS[post.platform] || '📱'} {post.platform}
+                        </span>
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          post.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' :
+                          post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
+                          post.status === 'FAILED' ? 'bg-red-100 text-red-700' :
+                          post.status === 'PROCESSING' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {post.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 whitespace-pre-wrap line-clamp-3">{post.caption}</p>
+                      {post.publishedUrl && (
+                        <a
+                          href={post.publishedUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline mt-2 inline-flex items-center gap-1"
+                        >
+                          <ExternalLink className="h-3 w-3" /> View Post
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* ============================================ */}
+      {/* STEP 6: Long-form Video - Upload to WRHQ YouTube */}
+      {/* ============================================ */}
+      <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
+        <div className={`px-6 py-4 flex items-center justify-between ${content.longVideoUploaded ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}>
+          <div className="flex items-center gap-4">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${content.longVideoUploaded ? 'bg-green-500 text-white' : 'bg-red-100 text-red-700'}`}>
+              {content.longVideoUploaded ? <Check className="h-5 w-5" /> : '6'}
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Long-form Video (Optional)</h2>
+              <p className="text-sm text-gray-500">Upload 16:9 video to WRHQ YouTube channel</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {content.longVideoUploaded ? (
+              <div className="flex items-center gap-2 text-green-600">
+                <Check className="h-4 w-4" />
+                <span className="text-sm">Uploaded to YouTube</span>
+              </div>
+            ) : (
+              <span className="text-sm text-gray-500">Optional - Upload video below</span>
+            )}
+          </div>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {content.longVideoUploaded && content.longformVideoUrl ? (
+            <div className="space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Check className="h-5 w-5 text-green-600" />
+                  <span className="font-medium text-green-800">Video uploaded to YouTube</span>
+                </div>
+                <a
+                  href={content.longformVideoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline flex items-center gap-1"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  {content.longformVideoUrl}
+                </a>
+              </div>
+              {content.longVideoAddedToPost && (
+                <div className="text-sm text-green-600 flex items-center gap-1">
+                  <Check className="h-4 w-4" />
+                  Embedded in blog post
+                </div>
+              )}
+
+              {/* Option to upload a different video */}
+              <details className="group">
+                <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1">
+                  <RefreshCw className="h-4 w-4" />
+                  Upload a different video
+                </summary>
+                <div className="mt-4 pt-4 border-t">
+                  <LongformVideoUpload
+                    contentId={content.id}
+                    paaQuestion={content.paaQuestion}
+                    clientBlogUrl={content.clientBlogUrl}
+                    wrhqBlogUrl={content.wrhqBlogUrl}
+                    client={content.client}
+                    serviceLocation={content.serviceLocation}
+                    podcastUrl={content.podcast?.podbeanUrl}
+                    onSuccess={onUpdate}
+                  />
+                </div>
+              </details>
+            </div>
+          ) : (
+            <LongformVideoUpload
+              contentId={content.id}
+              paaQuestion={content.paaQuestion}
+              clientBlogUrl={content.clientBlogUrl}
+              wrhqBlogUrl={content.wrhqBlogUrl}
+              client={content.client}
+              serviceLocation={content.serviceLocation}
+              podcastUrl={content.podcast?.podbeanUrl}
+              onSuccess={onUpdate}
+            />
+          )}
+        </div>
+      </section>
+
+      {/* ============================================ */}
+      {/* STEP 7: Schema Markup - Generate JSON-LD structured data */}
+      {/* ============================================ */}
+      <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
+        <div
+          className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep7Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
+          onClick={() => toggleSection('step7')}
+        >
+          <div className="flex items-center gap-4">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${isStep7Complete ? 'bg-green-500 text-white' : 'bg-blue-100 text-blue-700'}`}>
+              {isStep7Complete ? <Check className="h-5 w-5" /> : '7'}
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Schema Markup</h2>
+              <p className="text-sm text-gray-500">Generate JSON-LD structured data for SEO</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {isStep7Complete ? (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 text-green-600">
+                  <Check className="h-5 w-5" />
+                  <span className="text-sm font-medium">Generated</span>
+                </div>
+                {!collapsedSections.step7 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); generateSchema(); }}
+                    disabled={generatingSchema}
+                    className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {generatingSchema ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    Regenerate
+                  </button>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={(e) => { e.stopPropagation(); generateSchema(); }}
+                disabled={generatingSchema || !isStep1Complete}
+                className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+              >
+                {generatingSchema ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Code className="h-4 w-4" />
+                )}
+                Generate
+              </button>
+            )}
+            {collapsedSections.step7 ? (
+              <ChevronDown className="h-5 w-5 text-gray-400" />
+            ) : (
+              <ChevronUp className="h-5 w-5 text-gray-400" />
+            )}
+          </div>
+        </div>
+
+        {!collapsedSections.step7 && (
+          <div className="p-6 space-y-4">
+            {!isStep1Complete ? (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-yellow-800">Publish the client blog first before generating schema.</p>
+              </div>
+            ) : isStep7Complete && content.blogPost?.schemaJson ? (
+              <div className="space-y-4">
+                {/* Validation Status */}
+                {schemaValidation ? (
+                  schemaValidation.valid ? (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Check className="h-5 w-5 text-green-600" />
+                        <span className="font-medium text-green-800">Schema validated successfully!</span>
+                      </div>
+                      <p className="text-sm text-green-700">
+                        All required fields are present. Schema is ready for embedding.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {schemaValidation.errors.length > 0 && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <XCircle className="h-5 w-5 text-red-600" />
+                            <span className="font-medium text-red-800">
+                              {schemaValidation.errors.length} Validation Error{schemaValidation.errors.length > 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <ul className="text-sm text-red-700 space-y-1">
+                            {schemaValidation.errors.map((err, i) => (
+                              <li key={i} className="flex items-start gap-2">
+                                <span className="text-red-400">•</span>
+                                <span><strong>{err.schemaType}</strong>: {err.message}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {schemaValidation.warnings.length > 0 && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                            <span className="font-medium text-yellow-800">
+                              {schemaValidation.warnings.length} Warning{schemaValidation.warnings.length > 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <ul className="text-sm text-yellow-700 space-y-1">
+                            {schemaValidation.warnings.map((warn, i) => (
+                              <li key={i} className="flex items-start gap-2">
+                                <span className="text-yellow-400">•</span>
+                                <span><strong>{warn.schemaType}</strong>: {warn.message}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )
+                ) : (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Check className="h-5 w-5 text-green-600" />
+                      <span className="font-medium text-green-800">Schema markup generated</span>
+                    </div>
+                    <p className="text-sm text-green-700">
+                      JSON-LD structured data is ready. It will be embedded when you click &quot;Embed All Media&quot; in Step 8.
+                    </p>
+                  </div>
+                )}
+
+                {/* Schema Preview */}
+                <details className="group">
+                  <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2">
+                    <Code className="h-4 w-4" />
+                    View Schema Preview
+                    <ChevronDown className="h-4 w-4 group-open:rotate-180 transition-transform" />
+                  </summary>
+                  <div className="mt-3 bg-gray-900 rounded-lg p-4 overflow-x-auto">
+                    <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">
+                      {(() => {
+                        try {
+                          return JSON.stringify(JSON.parse(content.blogPost.schemaJson), null, 2)
+                        } catch {
+                          return content.blogPost.schemaJson
+                        }
+                      })()}
+                    </pre>
+                  </div>
+                </details>
+
+                {/* Test Schema Buttons */}
+                <div className="flex flex-wrap gap-3">
+                  <a
+                    href={`https://search.google.com/test/rich-results?url=${encodeURIComponent(content.clientBlogUrl || '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`inline-flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-colors ${
+                      content.clientBlogUrl
+                        ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed pointer-events-none'
+                    }`}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Test Live URL (Rich Results)
+                  </a>
+                  <a
+                    href="https://validator.schema.org/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Schema.org Validator
+                  </a>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Note: Test after embedding to see the live schema. Copy the schema JSON above to paste into validators.
+                </p>
+
+                {/* Schema Summary */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-900 mb-2">Schema includes:</h4>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-blue-600" />
+                      Article schema (blog post metadata)
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-blue-600" />
+                      LocalBusiness schema (AutoRepair type)
+                    </li>
+                    {content.images.some(i => i.imageType === 'BLOG_FEATURED') && (
+                      <li className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-blue-600" />
+                        ImageObject (featured image)
+                      </li>
+                    )}
+                    {(content.videoSocialPosts.some(p => p.platform === 'YOUTUBE' && p.publishedUrl) || content.longformVideoUrl) && (
+                      <li className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-blue-600" />
+                        VideoObject (YouTube videos)
+                      </li>
+                    )}
+                    {content.podcast?.audioUrl && (
+                      <li className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-blue-600" />
+                        AudioObject (podcast episode)
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-900 mb-2">Schema markup will include:</h4>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li className="flex items-center gap-2">
+                      <Code className="h-4 w-4" />
+                      Article schema with blog metadata
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      LocalBusiness (links directory listing, Google Maps, etc.)
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4" />
+                      ImageObject for featured image
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Video className="h-4 w-4" />
+                      VideoObject for YouTube videos
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Mic className="h-4 w-4" />
+                      AudioObject for podcast
+                    </li>
+                  </ul>
+                </div>
+
+                <button
+                  onClick={(e) => { e.stopPropagation(); generateSchema(); }}
+                  disabled={generatingSchema || !isStep1Complete}
+                  className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  <Code className={`h-5 w-5 ${generatingSchema ? 'animate-pulse' : ''}`} />
+                  {generatingSchema ? 'Generating Schema...' : 'Generate Schema Markup'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* ============================================ */}
+      {/* STEP 8: Embed All Media - Add embeds to blog */}
+      {/* ============================================ */}
+      <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
+        <div
+          className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep8Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
+          onClick={() => toggleSection('step8')}
+        >
+          <div className="flex items-center gap-4">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${isStep8Complete ? 'bg-green-500 text-white' : 'bg-blue-100 text-blue-700'}`}>
+              {isStep8Complete ? <Check className="h-5 w-5" /> : '8'}
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Embed All Media</h2>
+              <p className="text-sm text-gray-500">Add videos, podcast, and schema to blog</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {isStep8Complete ? (
+              <div className="flex items-center gap-2 text-green-600">
+                <Check className="h-4 w-4" />
+                <span className="text-sm">
+                  Embedded {(content.longVideoAddedAt || content.shortVideoAddedAt) ? new Date(content.longVideoAddedAt || content.shortVideoAddedAt || '').toLocaleDateString() : ''}
+                </span>
+              </div>
+            ) : (
+              <span className="text-sm text-gray-500">Ready to embed</span>
+            )}
+            {collapsedSections.step8 ? (
+              <ChevronDown className="h-5 w-5 text-gray-400" />
+            ) : (
+              <ChevronUp className="h-5 w-5 text-gray-400" />
+            )}
+          </div>
+        </div>
+
+        {!collapsedSections.step8 && (
+          <div className="p-6 space-y-4">
+            {!isStep1Complete ? (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-yellow-800">Publish the client blog first before embedding media.</p>
+              </div>
+            ) : isStep8Complete ? (
+              <div className="space-y-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Check className="h-5 w-5 text-green-600" />
+                    <span className="font-medium text-green-800">All media embedded in blog</span>
+                  </div>
+                  <p className="text-sm text-green-700">
+                    Videos and podcast have been added to the WordPress post.
+                  </p>
+                </div>
+
+                {/* Option to re-embed */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    embedAllMedia()
+                  }}
+                  disabled={embedding}
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-4 w-4 ${embedding ? 'animate-spin' : ''}`} />
+                  {embedding ? 'Re-embedding...' : 'Re-embed All Media'}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-900 mb-2">This will embed the following into the blog:</h4>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    {content.schemaGenerated && content.blogPost?.schemaJson && (
+                      <li className="flex items-center gap-2">
+                        <Code className="h-4 w-4" />
+                        JSON-LD schema markup (in page head)
+                      </li>
+                    )}
+                    {content.videoSocialPosts.some(p => p.platform === 'YOUTUBE' && p.publishedUrl) && (
+                      <li className="flex items-center gap-2">
+                        <Video className="h-4 w-4" />
+                        YouTube Short video (floated right)
+                      </li>
+                    )}
+                    {content.longformVideoUrl && (
+                      <li className="flex items-center gap-2">
+                        <Play className="h-4 w-4" />
+                        Long-form video (before Google Maps)
+                      </li>
+                    )}
+                    {content.podcast?.podbeanPlayerUrl && (
+                      <li className="flex items-center gap-2">
+                        <Mic className="h-4 w-4" />
+                        Podcast player embed (at end)
+                      </li>
+                    )}
+                  </ul>
+                  <p className="text-xs text-blue-600 mt-2">
+                    Note: Featured image and Google Maps are already in the published blog.
+                  </p>
+                </div>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    embedAllMedia()
+                  }}
+                  disabled={embedding}
+                  className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  <Layers className={`h-5 w-5 ${embedding ? 'animate-pulse' : ''}`} />
+                  {embedding ? 'Embedding Media...' : 'Embed All Media'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+    </div>
+  )
+}
+
+// ============================================
+// LONG-FORM VIDEO UPLOAD COMPONENT
+// ============================================
+
+interface LongformVideoUploadProps {
+  contentId: string
+  paaQuestion: string
+  clientBlogUrl: string | null
+  wrhqBlogUrl: string | null
+  client: {
+    id: string
+    businessName: string
+    slug: string
+    city: string
+    state: string
+  }
+  serviceLocation: {
+    id: string
+    city: string
+    state: string
+  } | null
+  podcastUrl?: string | null
+  onSuccess: () => void
+}
+
+function LongformVideoUpload({
+  contentId,
+  paaQuestion,
+  clientBlogUrl,
+  wrhqBlogUrl,
+  client,
+  serviceLocation,
+  podcastUrl,
+  onSuccess,
+}: LongformVideoUploadProps) {
+  const [videoFile, setVideoFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+  const [youtubeConfigured, setYoutubeConfigured] = useState<boolean | null>(null)
+
+  const location = serviceLocation
+    ? `${serviceLocation.city}, ${serviceLocation.state}`
+    : `${client.city}, ${client.state}`
+
+  // Replace {location} placeholder in PAA question for display
+  const displayQuestion = paaQuestion.replace(/{location}/gi, location)
+
+  // Check if YouTube is configured
+  useEffect(() => {
+    fetch('/api/settings/wrhq/youtube/playlists')
+      .then((res) => res.json())
+      .then((data) => {
+        setYoutubeConfigured(data.connected)
+      })
+      .catch(() => {
+        setYoutubeConfigured(false)
+      })
+  }, [])
+
+  async function handleUpload() {
+    if (!videoFile) return
+
+    setUploading(true)
+    setError(null)
+    setUploadProgress(0)
+
+    const CHUNK_SIZE = 2 * 1024 * 1024 // 2MB chunks (under Vercel's 4.5MB limit)
+
+    try {
+      // Step 1: Initialize YouTube upload session
+      setUploadProgress(2)
+      const initResponse = await fetch(`/api/content/${contentId}/init-youtube-upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileSize: videoFile.size,
+        }),
+      })
+
+      if (!initResponse.ok) {
+        const data = await initResponse.json()
+        throw new Error(data.error || 'Failed to initialize upload')
+      }
+
+      const { sessionId } = await initResponse.json()
+      console.log('Upload session initialized:', sessionId)
+
+      // Step 2: Upload in chunks
+      const totalChunks = Math.ceil(videoFile.size / CHUNK_SIZE)
+      let uploadedBytes = 0
+      let uploadComplete = false
+      let finalResult: { videoId: string; videoUrl: string; playlistId?: string; thumbnailUrl?: string; description?: string } | null = null
+
+      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        const start = chunkIndex * CHUNK_SIZE
+        const end = Math.min(start + CHUNK_SIZE, videoFile.size) - 1
+        const chunk = videoFile.slice(start, end + 1)
+
+        // Update progress (5-85% for chunks)
+        const chunkProgress = 5 + Math.round((chunkIndex / totalChunks) * 80)
+        setUploadProgress(chunkProgress)
+
+        console.log(`Uploading chunk ${chunkIndex + 1}/${totalChunks}: bytes ${start}-${end}/${videoFile.size}`)
+
+        const chunkResponse = await fetch(`/api/content/${contentId}/upload-chunk`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'video/*',
+            'Content-Range': `bytes ${start}-${end}/${videoFile.size}`,
+            'Content-Length': chunk.size.toString(),
+          },
+          body: chunk,
+        })
+
+        if (!chunkResponse.ok) {
+          const data = await chunkResponse.json()
+          throw new Error(data.error || `Chunk ${chunkIndex + 1} upload failed`)
+        }
+
+        const chunkResult = await chunkResponse.json()
+        uploadedBytes = chunkResult.bytesUploaded || end + 1
+
+        if (chunkResult.complete) {
+          uploadComplete = true
+          finalResult = chunkResult
+          console.log('Upload complete:', chunkResult.videoId)
+          break
+        }
+      }
+
+      if (!uploadComplete || !finalResult) {
+        throw new Error('Upload did not complete properly')
+      }
+
+      // Step 3: Finalize upload (add to playlist, set thumbnail, embed in blogs)
+      setUploadProgress(90)
+      const finalizeResponse = await fetch(`/api/content/${contentId}/finalize-youtube-upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoId: finalResult.videoId,
+          videoUrl: finalResult.videoUrl,
+          playlistId: finalResult.playlistId,
+          thumbnailUrl: finalResult.thumbnailUrl,
+          description: finalResult.description,
+        }),
+      })
+
+      if (!finalizeResponse.ok) {
+        const data = await finalizeResponse.json()
+        throw new Error(data.error || 'Failed to finalize upload')
+      }
+
+      setUploadProgress(100)
+      onSuccess()
+    } catch (err) {
+      console.error('Upload error:', err)
+      setError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  if (youtubeConfigured === null) {
+    return <div className="text-sm text-gray-500">Checking YouTube configuration...</div>
+  }
+
+  if (!youtubeConfigured) {
+    return (
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+        <strong>YouTube API not configured.</strong> Configure YouTube API credentials in{' '}
+        <a href="/admin/settings/wrhq" className="underline font-medium">
+          Settings → WRHQ
+        </a>{' '}
+        to enable long-form video uploads.
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Video title preview */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Video Title</label>
+        <div className="border rounded-lg p-3 bg-gray-50 text-sm">
+          {displayQuestion}
+        </div>
+      </div>
+
+      {/* Description preview */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Video Description</label>
+        <div className="border rounded-lg p-3 bg-gray-50 text-sm whitespace-pre-wrap">
+          {displayQuestion}
+{'\n'}
+In this video, {client.businessName} answers your questions about windshield repair and replacement services in {location}.
+{'\n'}
+📚 RESOURCES:
+{'\n'}
+📝 Read the full article: {clientBlogUrl || '[Client blog URL]'}
+🌐 WRHQ Directory: {wrhqBlogUrl || '[WRHQ blog URL]'}
+{podcastUrl ? `🎧 Listen to the Podcast: ${podcastUrl}` : ''}
+{'\n'}
+---
+{'\n'}
+{client.businessName} provides professional windshield repair and auto glass replacement services in the {location} area.
+        </div>
+      </div>
+
+      {/* File upload */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Upload Video</label>
+        <div className="border-2 border-dashed rounded-lg p-6 text-center">
+          {videoFile ? (
+            <div className="space-y-2">
+              <Video className="h-8 w-8 text-gray-400 mx-auto" />
+              <p className="text-sm font-medium">{videoFile.name}</p>
+              <p className="text-xs text-gray-500">
+                {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
+              </p>
+              <button
+                onClick={() => setVideoFile(null)}
+                className="text-sm text-red-600 hover:text-red-700"
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Video className="h-8 w-8 text-gray-400 mx-auto" />
+              <p className="text-sm text-gray-500">
+                Drag and drop a video file, or click to select
+              </p>
+              <input
+                type="file"
+                accept="video/*"
+                onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
+                className="hidden"
+                id="longform-video-input"
+              />
+              <label
+                htmlFor="longform-video-input"
+                className="inline-block px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 cursor-pointer"
+              >
+                Select Video
+              </label>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Upload progress */}
+      {uploading && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span>Uploading to YouTube...</span>
+            <span>{uploadProgress}%</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div
+              className="bg-red-600 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
+          {error}
+        </div>
+      )}
+
+      {/* Upload button */}
+      <button
+        onClick={handleUpload}
+        disabled={!videoFile || uploading}
+        className="w-full px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      >
+        {uploading ? (
+          <>
+            <RefreshCw className="h-4 w-4 animate-spin" />
+            Uploading...
+          </>
+        ) : (
+          <>
+            <Video className="h-4 w-4" />
+            Upload to YouTube
+          </>
+        )}
+      </button>
     </div>
   )
 }
@@ -1064,7 +2618,7 @@ function ReviewTab({
 // TAB 2: PUBLISHED
 // ============================================
 
-function PublishedTab({ content }: { content: ContentItem }) {
+function PublishedTab({ content, onUpdate }: { content: ContentItem; onUpdate: () => void }) {
   if (!content.clientBlogPublished) {
     return (
       <div className="text-center py-12">
@@ -1142,7 +2696,7 @@ function PublishedTab({ content }: { content: ContentItem }) {
                     post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
                     'bg-gray-100 text-gray-700'
                   }`}>
-                    {post.status === 'PUBLISHED' ? 'Posted' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
+                    {post.status === 'PUBLISHED' ? 'Published' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
                   </span>
                 </div>
               </div>
@@ -1182,11 +2736,164 @@ function PublishedTab({ content }: { content: ContentItem }) {
                     post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
                     'bg-gray-100 text-gray-700'
                   }`}>
-                    {post.status === 'PUBLISHED' ? 'Posted' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
+                    {post.status === 'PUBLISHED' ? 'Published' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
                   </span>
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* Client Video Social Posts Status */}
+      {content.videoSocialPosts.length > 0 && (
+        <section className="bg-white rounded-lg shadow-sm border p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Video className="h-5 w-5 text-purple-500" />
+            Client Video Posts
+          </h2>
+          <div className="space-y-2">
+            {content.videoSocialPosts.map((post) => (
+              <div key={post.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                <div className="flex items-center gap-2">
+                  <span>{PLATFORM_ICONS[post.platform] || '📱'}</span>
+                  <span>{post.platform}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  {post.publishedUrl && (
+                    <a
+                      href={post.publishedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline text-sm flex items-center gap-1"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      View Post
+                    </a>
+                  )}
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    post.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' :
+                    post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
+                    post.status === 'FAILED' ? 'bg-red-100 text-red-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {post.status === 'PUBLISHED' ? 'Published' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* WRHQ Video Social Posts Status */}
+      {content.wrhqVideoSocialPosts.length > 0 && (
+        <section className="bg-white rounded-lg shadow-sm border p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Video className="h-5 w-5 text-purple-500" />
+            <span className="text-xs bg-purple-500 text-white px-2 py-0.5 rounded">WRHQ</span>
+            Video Posts
+          </h2>
+          <div className="space-y-2">
+            {content.wrhqVideoSocialPosts.map((post) => (
+              <div key={post.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                <div className="flex items-center gap-2">
+                  <span>{PLATFORM_ICONS[post.platform] || '📱'}</span>
+                  <span>{post.platform}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  {post.publishedUrl && (
+                    <a
+                      href={post.publishedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline text-sm flex items-center gap-1"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      View Post
+                    </a>
+                  )}
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    post.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' :
+                    post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
+                    post.status === 'FAILED' ? 'bg-red-100 text-red-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {post.status === 'PUBLISHED' ? 'Published' : post.status === 'SCHEDULED' ? 'Scheduled' : post.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Long-form Video */}
+      {content.longformVideoUrl && (
+        <section className="bg-white rounded-lg shadow-sm border p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Play className="h-5 w-5 text-red-500" />
+            Long-form Video (YouTube)
+          </h2>
+          <div className="space-y-3">
+            <a
+              href={content.longformVideoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-blue-600 hover:underline"
+            >
+              <ExternalLink className="h-4 w-4" />
+              {content.longformVideoUrl}
+            </a>
+            {content.longformVideoDesc && (
+              <p className="text-sm text-gray-500">{content.longformVideoDesc}</p>
+            )}
+            {content.longVideoAddedToPost ? (
+              <p className="text-sm text-green-600 flex items-center gap-1">
+                <Check className="h-4 w-4" />
+                Embedded in blog post
+              </p>
+            ) : (
+              <p className="text-sm text-gray-500">
+                Use &quot;Embed All Media&quot; on the Review tab to add to blog
+              </p>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Podcast */}
+      {content.podcast?.status === 'PUBLISHED' && content.podcast.podbeanUrl && (
+        <section className="bg-white rounded-lg shadow-sm border p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Mic className="h-5 w-5 text-orange-500" />
+            Podcast Episode
+          </h2>
+          <div className="space-y-3">
+            <a
+              href={content.podcast.podbeanUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-blue-600 hover:underline"
+            >
+              <ExternalLink className="h-4 w-4" />
+              {content.podcast.podbeanUrl}
+            </a>
+            {content.podcast.duration && (
+              <p className="text-sm text-gray-500">
+                Duration: {Math.floor(content.podcast.duration / 60)}:{String(Math.round(content.podcast.duration) % 60).padStart(2, '0')}
+              </p>
+            )}
+            {content.podcastAddedToPost ? (
+              <p className="text-sm text-green-600 flex items-center gap-1">
+                <Check className="h-4 w-4" />
+                Embedded in blog post
+              </p>
+            ) : (
+              <p className="text-sm text-gray-500">
+                Use &quot;Embed All Media&quot; on the Review tab to add to blog
+              </p>
+            )}
           </div>
         </section>
       )}
@@ -1505,7 +3212,7 @@ function SocialPostPreview({
 // Helper component for status badge
 function StatusBadge({ status, errorMessage }: { status: string; errorMessage?: string | null }) {
   const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
-    PUBLISHED: { bg: 'bg-green-100', text: 'text-green-700', label: 'Posted' },
+    PUBLISHED: { bg: 'bg-green-100', text: 'text-green-700', label: 'Published' },
     SCHEDULED: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Scheduled' },
     PROCESSING: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Processing' },
     FAILED: { bg: 'bg-red-100', text: 'text-red-700', label: 'Failed' },

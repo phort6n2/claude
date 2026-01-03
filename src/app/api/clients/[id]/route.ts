@@ -83,6 +83,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         wordpressAppPassword: encryptedPassword,
         ctaText: data.ctaText,
         ctaUrl: data.ctaUrl || null,
+        creatifyTemplateId: data.creatifyTemplateId || null,
         preferredPublishTime: data.preferredPublishTime,
         timezone: data.timezone,
         socialPlatforms: data.socialPlatforms || [],
@@ -90,7 +91,12 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         podbeanPodcastId: data.podbeanPodcastId || null,
         podbeanPodcastTitle: data.podbeanPodcastTitle || null,
         podbeanPodcastUrl: data.podbeanPodcastUrl || null,
+        wrhqYoutubePlaylistId: data.wrhqYoutubePlaylistId || null,
+        wrhqYoutubePlaylistTitle: data.wrhqYoutubePlaylistTitle || null,
         status: data.status || existing.status,
+        // Automation settings
+        autoScheduleEnabled: data.autoScheduleEnabled ?? existing.autoScheduleEnabled,
+        autoScheduleFrequency: data.autoScheduleFrequency ?? existing.autoScheduleFrequency,
       },
     })
 

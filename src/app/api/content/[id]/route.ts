@@ -39,7 +39,29 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Content not found' }, { status: 404 })
     }
 
-    return NextResponse.json(contentItem)
+    // Transform response to include shortVideo and separate video social posts from image social posts
+    const shortVideo = contentItem.videos.find(v => v.videoType === 'SHORT') || null
+
+    // Separate image posts from video posts
+    const imageSocialPosts = contentItem.socialPosts.filter(p => p.mediaType !== 'video')
+    const videoSocialPosts = contentItem.socialPosts.filter(p => p.mediaType === 'video')
+    const wrhqImageSocialPosts = contentItem.wrhqSocialPosts.filter(p => p.mediaType !== 'video')
+    const wrhqVideoSocialPosts = contentItem.wrhqSocialPosts.filter(p => p.mediaType === 'video')
+
+    // Transform shortVideo to include creatifyJobId
+    const transformedShortVideo = shortVideo ? {
+      ...shortVideo,
+      creatifyJobId: shortVideo.providerJobId,
+    } : null
+
+    return NextResponse.json({
+      ...contentItem,
+      socialPosts: imageSocialPosts, // Only image posts in main socialPosts
+      wrhqSocialPosts: wrhqImageSocialPosts, // Only image posts in WRHQ socialPosts
+      shortVideo: transformedShortVideo,
+      videoSocialPosts, // Video posts separate
+      wrhqVideoSocialPosts, // WRHQ video posts separate
+    })
   } catch (error) {
     console.error('Failed to fetch content:', error)
     return NextResponse.json(

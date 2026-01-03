@@ -16,6 +16,7 @@ export async function uploadToGCS(
   // Support multiple key names for bucket and credentials
   const bucketName =
     process.env.GCS_BUCKET_NAME ||
+    process.env.GOOGLE_CLOUD_STORAGE_BUCKET ||
     await getSetting('GCS_BUCKET_NAME') ||
     await getSetting('GCS_BUCKET') ||
     await getSetting('GOOGLE_CLOUD_BUCKET') ||
@@ -23,6 +24,8 @@ export async function uploadToGCS(
 
   const credentialsJson =
     process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+    process.env.GOOGLE_CLOUD_CREDENTIALS ||
+    process.env.GCS_CREDENTIALS_JSON ||
     await getSetting('GCS_CREDENTIALS_JSON') ||
     await getSetting('GOOGLE_APPLICATION_CREDENTIALS_JSON') ||
     await getSetting('GCS_CREDENTIALS') ||
@@ -161,6 +164,98 @@ export async function uploadFromBase64(
   }
 
   return uploadToGCS(buffer, filename, contentType)
+}
+
+/**
+ * Create a resumable upload session for direct browser upload to GCS
+ * This bypasses server-side body limits (like Vercel's 4.5MB limit)
+ * Uses GCS resumable uploads which work better with CORS than signed URLs
+ */
+export async function getSignedUploadUrl(
+  filename: string,
+  contentType: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  expiresInMinutes: number = 15
+): Promise<{ uploadUrl: string; publicUrl: string }> {
+  // Check all possible bucket name settings (same as uploadToGCS)
+  const bucketName =
+    process.env.GCS_BUCKET_NAME ||
+    process.env.GOOGLE_CLOUD_STORAGE_BUCKET ||
+    await getSetting('GCS_BUCKET_NAME') ||
+    await getSetting('GCS_BUCKET') ||
+    await getSetting('GOOGLE_CLOUD_BUCKET') ||
+    await getSetting('GOOGLE_CLOUD_STORAGE_BUCKET')
+
+  // Check all possible credential settings (same as uploadToGCS)
+  const credentialsJson =
+    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+    process.env.GOOGLE_CLOUD_CREDENTIALS ||
+    process.env.GCS_CREDENTIALS_JSON ||
+    await getSetting('GCS_CREDENTIALS_JSON') ||
+    await getSetting('GOOGLE_APPLICATION_CREDENTIALS_JSON') ||
+    await getSetting('GCS_CREDENTIALS') ||
+    await getSetting('GCS_SERVICE_ACCOUNT_KEY') ||
+    await getSetting('GOOGLE_CLOUD_CREDENTIALS')
+
+  if (!bucketName) {
+    throw new Error('GCS bucket name not configured. Add GCS_BUCKET_NAME to Settings > API Keys.')
+  }
+
+  if (!credentialsJson) {
+    throw new Error('GCS credentials not configured. Add GCS_CREDENTIALS_JSON to Settings > API Keys.')
+  }
+
+  const credentials = JSON.parse(credentialsJson)
+
+  // Get access token using JWT (same as uploadToGCS)
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: await createJWT(credentials),
+    }),
+  })
+
+  if (!tokenResponse.ok) {
+    const error = await tokenResponse.text()
+    throw new Error(`GCS OAuth token error: ${error}`)
+  }
+
+  const tokenData = await tokenResponse.json()
+  const accessToken = tokenData.access_token
+
+  // Initiate a resumable upload session
+  // This returns a session URI that the browser can use to upload directly
+  const initUrl = `https://storage.googleapis.com/upload/storage/v1/b/${bucketName}/o?uploadType=resumable&name=${encodeURIComponent(filename)}`
+
+  const initResponse = await fetch(initUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      'X-Upload-Content-Type': contentType,
+    },
+    body: JSON.stringify({
+      name: filename,
+      contentType: contentType,
+    }),
+  })
+
+  if (!initResponse.ok) {
+    const error = await initResponse.text()
+    throw new Error(`GCS resumable upload init error: ${error}`)
+  }
+
+  // The upload URL is in the Location header
+  const uploadUrl = initResponse.headers.get('location')
+  if (!uploadUrl) {
+    throw new Error('GCS did not return upload URL')
+  }
+
+  const publicUrl = `https://storage.googleapis.com/${bucketName}/${encodeURIComponent(filename)}`
+
+  return { uploadUrl, publicUrl }
 }
 
 async function createJWT(credentials: {

@@ -91,6 +91,80 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   }
 }
 
+// Helper functions for reconstructing blog content with images and maps
+
+function generateFeaturedImageEmbed(imageUrl: string | null, altText: string): string {
+  if (!imageUrl) return ''
+
+  return `
+<figure class="featured-image" style="margin: 20px 0; text-align: center;">
+  <img src="${imageUrl}" alt="${altText}" style="max-width: 100%; height: auto; border-radius: 8px;" />
+</figure>`
+}
+
+function generateGoogleMapsEmbed(client: {
+  googleMapsUrl: string | null
+  businessName: string
+  streetAddress: string
+  city: string
+  state: string
+  postalCode: string
+}): string {
+  const fullAddress = `${client.streetAddress}, ${client.city}, ${client.state} ${client.postalCode}`
+  const encodedAddress = encodeURIComponent(fullAddress)
+
+  return `
+<div class="google-maps-embed" style="margin: 30px 0; clear: both;">
+  <h3 style="margin-bottom: 15px;">📍 Find ${client.businessName}</h3>
+  <iframe
+    src="https://maps.google.com/maps?q=${encodedAddress}&output=embed"
+    width="100%"
+    height="300"
+    style="border: 0; border-radius: 8px;"
+    allowfullscreen=""
+    loading="lazy"
+    referrerpolicy="no-referrer-when-downgrade"
+  ></iframe>
+</div>`
+}
+
+function reconstructFullBlogContent(
+  originalContent: string,
+  featuredImageUrl: string | null,
+  blogTitle: string,
+  businessName: string,
+  client: {
+    googleMapsUrl: string | null
+    businessName: string
+    streetAddress: string
+    city: string
+    state: string
+    postalCode: string
+  }
+): string {
+  let fullContent = originalContent
+
+  // Add featured image after first paragraph
+  const featuredImageEmbed = generateFeaturedImageEmbed(
+    featuredImageUrl,
+    `${blogTitle} | ${businessName}`
+  )
+  if (featuredImageEmbed) {
+    const firstParagraphEnd = fullContent.indexOf('</p>')
+    if (firstParagraphEnd !== -1) {
+      fullContent = fullContent.slice(0, firstParagraphEnd + 4) + '\n\n' + featuredImageEmbed + '\n\n' + fullContent.slice(firstParagraphEnd + 4)
+    } else {
+      fullContent = featuredImageEmbed + '\n\n' + fullContent
+    }
+  }
+
+  // Add Google Maps embed at the end
+  const googleMapsEmbed = generateGoogleMapsEmbed(client)
+  fullContent = fullContent + googleMapsEmbed
+
+  return fullContent
+}
+
 // Handler functions
 
 async function handleGeneratePodcast(
@@ -254,8 +328,19 @@ async function handleUploadLongform(
 async function handleEmbedLongform(
   id: string,
   contentItem: {
-    blogPost: { id: string; content: string; wordpressPostId: number | null } | null
-    client: { wordpressUrl: string | null; wordpressUsername: string | null; wordpressAppPassword: string | null }
+    blogPost: { id: string; content: string; title: string; wordpressPostId: number | null } | null
+    client: {
+      wordpressUrl: string | null
+      wordpressUsername: string | null
+      wordpressAppPassword: string | null
+      businessName: string
+      googleMapsUrl: string | null
+      streetAddress: string
+      city: string
+      state: string
+      postalCode: string
+    }
+    images: { imageType: string; gcsUrl: string }[]
     longformVideoUrl: string | null
     longformVideoDesc: string | null
   }
@@ -268,11 +353,21 @@ async function handleEmbedLongform(
     return NextResponse.json({ error: 'No video uploaded' }, { status: 400 })
   }
 
+  // Reconstruct the full blog content with featured image and maps
+  const featuredImage = contentItem.images.find(img => img.imageType === 'BLOG_FEATURED')
+  const fullContent = reconstructFullBlogContent(
+    contentItem.blogPost.content,
+    featuredImage?.gcsUrl || null,
+    contentItem.blogPost.title,
+    contentItem.client.businessName,
+    contentItem.client
+  )
+
   // Create video embed HTML
   const videoEmbed = createVideoEmbed(contentItem.longformVideoUrl, contentItem.longformVideoDesc || '')
 
-  // Insert after first paragraph
-  const updatedContent = insertAfterFirstParagraph(contentItem.blogPost.content, videoEmbed)
+  // Insert video after first paragraph of the reconstructed content
+  const updatedContent = insertAfterFirstParagraph(fullContent, videoEmbed)
 
   // Update client WordPress
   await updateWordPressPost({
@@ -298,12 +393,8 @@ async function handleEmbedLongform(
     }
   }
 
-  // Update local records
-  await prisma.blogPost.update({
-    where: { id: contentItem.blogPost.id },
-    data: { content: updatedContent },
-  })
-
+  // Update local records - note: we don't save the full reconstructed content to DB
+  // as it would include duplicates on subsequent embeds
   await prisma.contentItem.update({
     where: { id },
     data: {

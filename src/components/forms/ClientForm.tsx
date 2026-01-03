@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Plus, Trash2, MapPin, Building2, Podcast, FileQuestion, Search, Loader2 } from 'lucide-react'
+import { Plus, Trash2, MapPin, Building2, Podcast, FileQuestion, Search, Loader2, Video } from 'lucide-react'
 import { SAMPLE_PAAS } from '@/lib/sample-paas'
 
 interface PodbeanPodcast {
@@ -28,6 +28,14 @@ interface PlacePrediction {
   description: string
   mainText: string
   secondaryText: string
+}
+
+interface YouTubePlaylist {
+  id: string
+  title: string
+  description: string
+  thumbnailUrl: string
+  itemCount: number
 }
 
 interface ClientFormData {
@@ -56,6 +64,7 @@ interface ClientFormData {
   wordpressAppPassword: string
   ctaText: string
   ctaUrl: string
+  creatifyTemplateId: string
   preferredPublishTime: string
   timezone: string
   socialPlatforms: string[]
@@ -63,6 +72,8 @@ interface ClientFormData {
   podbeanPodcastId: string
   podbeanPodcastTitle: string
   podbeanPodcastUrl: string
+  wrhqYoutubePlaylistId: string
+  wrhqYoutubePlaylistTitle: string
 }
 
 interface ClientFormProps {
@@ -96,6 +107,7 @@ const defaultData: ClientFormData = {
   wordpressAppPassword: '',
   ctaText: 'Get a Free Quote',
   ctaUrl: '',
+  creatifyTemplateId: '',
   preferredPublishTime: '09:00',
   timezone: 'America/Los_Angeles',
   socialPlatforms: [],
@@ -103,6 +115,8 @@ const defaultData: ClientFormData = {
   podbeanPodcastId: '',
   podbeanPodcastTitle: '',
   podbeanPodcastUrl: '',
+  wrhqYoutubePlaylistId: '',
+  wrhqYoutubePlaylistTitle: '',
 }
 
 const socialPlatformOptions = [
@@ -134,6 +148,7 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
   const [error, setError] = useState('')
   const [testingConnection, setTestingConnection] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'success' | 'error' | null>(null)
+  const [connectionError, setConnectionError] = useState<string | null>(null)
 
   // Service Locations state
   const [serviceLocations, setServiceLocations] = useState<ServiceLocation[]>([])
@@ -144,6 +159,12 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
   const [podbeanConnected, setPodbeanConnected] = useState(false)
   const [loadingPodcasts, setLoadingPodcasts] = useState(false)
   const [podbeanError, setPodbeanError] = useState<string | null>(null)
+
+  // YouTube playlist state
+  const [youtubePlaylists, setYoutubePlaylists] = useState<YouTubePlaylist[]>([])
+  const [youtubeConnected, setYoutubeConnected] = useState(false)
+  const [loadingYoutubePlaylists, setLoadingYoutubePlaylists] = useState(false)
+  const [youtubeError, setYoutubeError] = useState<string | null>(null)
 
   // PAA Questions state
   const [paaText, setPaaText] = useState('')
@@ -228,6 +249,29 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
         setPodbeanError(err.message || 'Failed to connect')
       })
       .finally(() => setLoadingPodcasts(false))
+  }, [])
+
+  // Load YouTube playlists
+  useEffect(() => {
+    setLoadingYoutubePlaylists(true)
+    setYoutubeError(null)
+    fetch('/api/settings/wrhq/youtube/playlists')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.connected && data.playlists) {
+          setYoutubeConnected(true)
+          setYoutubePlaylists(data.playlists)
+          setYoutubeError(null)
+        } else {
+          setYoutubeConnected(false)
+          setYoutubeError(data.error || null)
+        }
+      })
+      .catch((err) => {
+        setYoutubeConnected(false)
+        setYoutubeError(err.message || 'Failed to connect')
+      })
+      .finally(() => setLoadingYoutubePlaylists(false))
   }, [])
 
   // Load existing PAAs when editing
@@ -336,6 +380,15 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
     }))
   }
 
+  const selectYoutubePlaylist = (playlistId: string) => {
+    const playlist = youtubePlaylists.find((p) => p.id === playlistId)
+    setFormData((prev) => ({
+      ...prev,
+      wrhqYoutubePlaylistId: playlistId,
+      wrhqYoutubePlaylistTitle: playlist?.title || '',
+    }))
+  }
+
   // Place search with debounce
   useEffect(() => {
     if (!placeSearch || placeSearch.length < 3 || placeSelected) {
@@ -415,6 +468,7 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
   const testWordPressConnection = async () => {
     setTestingConnection(true)
     setConnectionStatus(null)
+    setConnectionError(null)
     try {
       const response = await fetch('/api/wordpress/test', {
         method: 'POST',
@@ -426,13 +480,16 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
           clientId: initialData?.id, // Pass clientId to update wordpressConnected status
         }),
       })
+      const data = await response.json()
       if (response.ok) {
         setConnectionStatus('success')
       } else {
         setConnectionStatus('error')
+        setConnectionError(data.details || data.error || 'Connection failed')
       }
-    } catch {
+    } catch (err) {
       setConnectionStatus('error')
+      setConnectionError(err instanceof Error ? err.message : 'Network error')
     } finally {
       setTestingConnection(false)
     }
@@ -1043,20 +1100,27 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                   Generate in WordPress: Users → Profile → Application Passwords
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={testWordPressConnection}
-                  disabled={testingConnection || !formData.wordpressUrl}
-                >
-                  {testingConnection ? 'Testing...' : 'Test Connection'}
-                </Button>
-                {connectionStatus === 'success' && (
-                  <span className="text-green-600 text-sm">Connection successful!</span>
-                )}
-                {connectionStatus === 'error' && (
-                  <span className="text-red-600 text-sm">Connection failed</span>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={testWordPressConnection}
+                    disabled={testingConnection || !formData.wordpressUrl || !formData.wordpressUsername || !formData.wordpressAppPassword}
+                  >
+                    {testingConnection ? 'Testing...' : 'Test Connection'}
+                  </Button>
+                  {connectionStatus === 'success' && (
+                    <span className="text-green-600 text-sm">✓ Connection successful!</span>
+                  )}
+                  {connectionStatus === 'error' && (
+                    <span className="text-red-600 text-sm">✗ Connection failed</span>
+                  )}
+                </div>
+                {connectionStatus === 'error' && connectionError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+                    <strong>Error:</strong> {connectionError}
+                  </div>
                 )}
               </div>
 
@@ -1141,6 +1205,68 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                   </p>
                 </div>
               </div>
+
+              {/* WRHQ YouTube Playlist Section */}
+              <div className="mt-6 pt-6 border-t">
+                <div className="flex items-center gap-2 mb-4">
+                  <Video size={20} className="text-red-600" />
+                  <h3 className="text-sm font-medium text-gray-700">WRHQ YouTube Playlist</h3>
+                </div>
+
+                {loadingYoutubePlaylists ? (
+                  <div className="text-sm text-gray-500">Loading playlists...</div>
+                ) : !youtubeConnected ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                    {youtubeError ? (
+                      <>
+                        <strong>YouTube Error:</strong> {youtubeError}
+                        <br />
+                        <span className="text-xs mt-1 block">
+                          Check YouTube API credentials in{' '}
+                          <a href="/admin/settings/wrhq" className="underline font-medium">
+                            Settings → WRHQ
+                          </a>
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        YouTube is not connected. Configure YouTube API credentials in{' '}
+                        <a href="/admin/settings/wrhq" className="underline font-medium">
+                          Settings → WRHQ
+                        </a>{' '}
+                        to enable long-form video uploads.
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Select Playlist for Long-form Videos
+                    </label>
+                    <select
+                      value={formData.wrhqYoutubePlaylistId}
+                      onChange={(e) => selectYoutubePlaylist(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                      <option value="">-- Select a playlist --</option>
+                      {youtubePlaylists.map((playlist) => (
+                        <option key={playlist.id} value={playlist.id}>
+                          {playlist.title} ({playlist.itemCount} videos)
+                        </option>
+                      ))}
+                    </select>
+                    {formData.wrhqYoutubePlaylistId && (
+                      <div className="flex items-center gap-2 text-sm text-green-600">
+                        <span>✓</span>
+                        <span>Long-form videos will be uploaded to: {formData.wrhqYoutubePlaylistTitle}</span>
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-500">
+                      Long-form 16:9 videos will be uploaded to this playlist on the WRHQ YouTube channel.
+                    </p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         )
@@ -1176,6 +1302,22 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                     placeholder="https://example.com/quote"
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Creatify Template ID
+                  <span className="text-gray-500 font-normal ml-2">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.creatifyTemplateId}
+                  onChange={(e) => updateField('creatifyTemplateId', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., fb6ef50f-3c84-42a0-8b4b-55fb0a162808"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Custom video template UUID from Creatify. Allows custom CTA like &ldquo;Call Now&rdquo; while using blog content.
+                </p>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
