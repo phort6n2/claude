@@ -46,7 +46,7 @@ interface LinkToVideoParams {
   visualStyle?: VisualStyle
   webhookUrl?: string
   overrideScript?: string
-  modelVersion?: ModelVersion // aurora_v1_fast is cheaper
+  modelVersion?: ModelVersion // 'standard' is cheapest, aurora models cost more
 }
 
 interface VideoGenerationParams {
@@ -550,7 +550,7 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
         visualStyle: params.visualStyle || 'DynamicProductTemplate', // Good for service businesses
         webhookUrl: params.webhookUrl,
         overrideScript: params.script, // Use provided script as override if any
-        modelVersion: params.modelVersion || 'aurora_v1_fast', // Faster processing
+        modelVersion: params.modelVersion || 'standard', // Cheapest option
       })
     } catch (error) {
       console.error('Link to Videos API failed, falling back to lipsync:', error)

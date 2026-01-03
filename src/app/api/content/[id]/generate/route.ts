@@ -845,7 +845,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           targetAudience: `car owners in ${contentCity}, ${contentState} looking for auto glass services`,
           scriptStyle: 'HowToV2', // Best for informational content
           visualStyle: 'DynamicProductTemplate', // Good for service businesses
-          modelVersion: 'aurora_v1_fast', // Faster processing, still good quality
+          modelVersion: 'standard', // Cheapest option (aurora models cost more)
         })
 
         // Generate video description
