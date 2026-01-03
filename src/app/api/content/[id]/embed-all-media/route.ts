@@ -1,20 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { updatePost } from '@/lib/integrations/wordpress'
+import { updatePost, getPost } from '@/lib/integrations/wordpress'
 
 interface RouteContext {
   params: Promise<{ id: string }>
-}
-
-// Generate featured image embed HTML (after first paragraph)
-function generateFeaturedImageEmbed(imageUrl: string | null, altText: string): string {
-  if (!imageUrl) return ''
-
-  return `
-<figure class="featured-image" style="margin: 20px 0; text-align: center;">
-  <img src="${imageUrl}" alt="${altText}" style="max-width: 100%; height: auto; border-radius: 8px;" />
-</figure>`
 }
 
 // Generate short-form video embed (9:16 vertical, floated right)
@@ -130,32 +120,6 @@ ${description ? `<p class="video-description" style="font-size: 0.9rem; color: #
 ${description ? `<p class="video-description" style="font-size: 0.9rem; color: #666; margin-top: 0.5rem;">${description}</p>` : ''}`
 }
 
-// Generate Google Maps embed HTML
-function generateGoogleMapsEmbed(client: {
-  businessName: string
-  streetAddress: string
-  city: string
-  state: string
-  postalCode: string
-}): string {
-  const fullAddress = `${client.streetAddress}, ${client.city}, ${client.state} ${client.postalCode}`
-  const encodedAddress = encodeURIComponent(fullAddress)
-
-  return `
-<div class="google-maps-embed" style="margin: 30px 0; clear: both;">
-  <h3 style="margin-bottom: 15px;">📍 Find ${client.businessName}</h3>
-  <iframe
-    src="https://maps.google.com/maps?q=${encodedAddress}&output=embed"
-    width="100%"
-    height="300"
-    style="border: 0; border-radius: 8px;"
-    allowfullscreen=""
-    loading="lazy"
-    referrerpolicy="no-referrer-when-downgrade"
-  ></iframe>
-</div>`
-}
-
 // Generate podcast embed HTML
 function generatePodcastEmbed(title: string, playerUrl: string): string {
   return `
@@ -177,8 +141,11 @@ function generatePodcastEmbed(title: string, playerUrl: string): string {
 }
 
 /**
- * POST /api/content/[id]/embed-all-media - Embed all media (image, videos, map, podcast) into blog
- * This is a single atomic operation that builds the complete blog content with all embeds
+ * POST /api/content/[id]/embed-all-media - Embed videos and podcast into blog
+ * Fetches current WordPress content (which already has image + map) and adds:
+ * - Short-form video (YouTube Short)
+ * - Long-form video (YouTube)
+ * - Podcast player embed
  */
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const session = await auth()
@@ -195,7 +162,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       include: {
         client: true,
         blogPost: true,
-        images: true,
         podcast: true,
         socialPosts: true,
       },
@@ -217,68 +183,72 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'WordPress not configured for client' }, { status: 400 })
     }
 
+    // Fetch current content from WordPress (already has featured image + Google Maps)
+    const wpCredentials = {
+      url: contentItem.client.wordpressUrl,
+      username: contentItem.client.wordpressUsername || '',
+      password: contentItem.client.wordpressAppPassword || '',
+    }
+
+    const currentPost = await getPost(wpCredentials, contentItem.blogPost.wordpressPostId)
+    let fullContent = currentPost.content
+
     // Track what we're embedding
     const embedded: string[] = []
 
-    // Start with the original blog content
-    let fullContent = contentItem.blogPost.content
+    // Remove any existing video/podcast embeds before adding fresh ones
+    // This prevents duplicates on re-embed
+    fullContent = fullContent.replace(/<!-- YouTube Short Video -->[\s\S]*?<\/div>\s*<\/div>/g, '')
+    fullContent = fullContent.replace(/<div class="yt-shorts-embed">[\s\S]*?<\/div>\s*<\/div>/g, '')
+    fullContent = fullContent.replace(/<div class="video-container"[\s\S]*?<\/div>/g, '')
+    fullContent = fullContent.replace(/<!-- Podcast Episode -->[\s\S]*?<\/div>/g, '')
+    fullContent = fullContent.replace(/<div class="podcast-embed"[\s\S]*?<\/div>/g, '')
 
-    // 1. Add featured image after first paragraph
-    const featuredImage = contentItem.images.find(img => img.imageType === 'BLOG_FEATURED')
-    if (featuredImage?.gcsUrl) {
-      const featuredImageEmbed = generateFeaturedImageEmbed(
-        featuredImage.gcsUrl,
-        `${contentItem.blogPost.title} | ${contentItem.client.businessName}`
-      )
-      const firstParagraphEnd = fullContent.indexOf('</p>')
-      if (firstParagraphEnd !== -1) {
-        fullContent = fullContent.slice(0, firstParagraphEnd + 4) + '\n\n' + featuredImageEmbed + '\n\n' + fullContent.slice(firstParagraphEnd + 4)
-      } else {
-        fullContent = featuredImageEmbed + '\n\n' + fullContent
-      }
-      embedded.push('featured-image')
-    }
-
-    // 2. Add short-form video (floated right) - find YouTube URL from video social posts
+    // 1. Add short-form video (floated right) - find YouTube URL from video social posts
     const youtubeVideoPost = contentItem.socialPosts.find(
       p => p.platform === 'YOUTUBE' && p.mediaType === 'video' && p.publishedUrl
     )
     if (youtubeVideoPost?.publishedUrl) {
       const shortVideoEmbed = generateShortVideoEmbed(youtubeVideoPost.publishedUrl)
       if (shortVideoEmbed) {
-        // Insert after the featured image (after second </p> or after first if no featured image)
-        const insertPoint = featuredImage ? fullContent.indexOf('</p>', fullContent.indexOf('</p>') + 1) : fullContent.indexOf('</p>')
+        // Insert after second paragraph (after featured image which is after first paragraph)
+        let insertPoint = fullContent.indexOf('</p>')
+        if (insertPoint !== -1) {
+          insertPoint = fullContent.indexOf('</p>', insertPoint + 1)
+        }
         if (insertPoint !== -1) {
           fullContent = fullContent.slice(0, insertPoint + 4) + '\n\n' + shortVideoEmbed + fullContent.slice(insertPoint + 4)
         } else {
-          fullContent = shortVideoEmbed + fullContent
+          // Fallback: insert at beginning
+          fullContent = shortVideoEmbed + '\n\n' + fullContent
         }
         embedded.push('short-video')
       }
     }
 
-    // 3. Add long-form video embed (if present)
+    // 2. Add long-form video embed (if present)
     if (contentItem.longformVideoUrl) {
       const longVideoEmbed = generateLongVideoEmbed(
         contentItem.longformVideoUrl,
         contentItem.longformVideoDesc || ''
       )
-      // Insert before the last paragraph
-      const lastParagraphStart = fullContent.lastIndexOf('<p>')
-      if (lastParagraphStart !== -1) {
-        fullContent = fullContent.slice(0, lastParagraphStart) + '\n\n' + longVideoEmbed + '\n\n' + fullContent.slice(lastParagraphStart)
+      // Insert before Google Maps embed (which is at the end)
+      const mapsIndex = fullContent.indexOf('<div class="google-maps-embed"')
+      if (mapsIndex !== -1) {
+        fullContent = fullContent.slice(0, mapsIndex) + longVideoEmbed + '\n\n' + fullContent.slice(mapsIndex)
       } else {
-        fullContent = fullContent + '\n\n' + longVideoEmbed
+        // No maps embed found, insert before last paragraph
+        const lastParagraphStart = fullContent.lastIndexOf('<p>')
+        if (lastParagraphStart !== -1) {
+          fullContent = fullContent.slice(0, lastParagraphStart) + '\n\n' + longVideoEmbed + '\n\n' + fullContent.slice(lastParagraphStart)
+        } else {
+          fullContent = fullContent + '\n\n' + longVideoEmbed
+        }
       }
       embedded.push('long-video')
     }
 
-    // 4. Add Google Maps embed at the end
-    const googleMapsEmbed = generateGoogleMapsEmbed(contentItem.client)
-    fullContent = fullContent + googleMapsEmbed
-    embedded.push('google-maps')
-
-    // 5. Add podcast embed at the very end (if published to Podbean)
+    // 3. Add podcast embed at the very end (after Google Maps)
     if (contentItem.podcast?.podbeanPlayerUrl) {
       const podcastEmbed = generatePodcastEmbed(
         contentItem.blogPost.title,
@@ -288,16 +258,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       embedded.push('podcast')
     }
 
-    // Update WordPress with the complete content
-    await updatePost(
-      {
-        url: contentItem.client.wordpressUrl,
-        username: contentItem.client.wordpressUsername || '',
-        password: contentItem.client.wordpressAppPassword || '',
-      },
-      contentItem.blogPost.wordpressPostId,
-      { content: fullContent }
-    )
+    // Update WordPress with the content including new embeds
+    await updatePost(wpCredentials, contentItem.blogPost.wordpressPostId, { content: fullContent })
 
     // Update tracking flags
     const updateData: Record<string, unknown> = {
@@ -325,7 +287,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     return NextResponse.json({
       success: true,
       embedded,
-      message: `Embedded: ${embedded.join(', ')}`,
+      message: embedded.length > 0
+        ? `Embedded: ${embedded.join(', ')}`
+        : 'No new media to embed',
     })
   } catch (error) {
     console.error('Embed all media error:', error)

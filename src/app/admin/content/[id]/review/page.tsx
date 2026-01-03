@@ -1862,7 +1862,7 @@ function ReviewTab({
             </div>
             <div>
               <h2 className="text-lg font-semibold">Embed All Media</h2>
-              <p className="text-sm text-gray-500">Add featured image, videos, podcast, and map to blog</p>
+              <p className="text-sm text-gray-500">Add videos and podcast to blog</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1898,7 +1898,7 @@ function ReviewTab({
                     <span className="font-medium text-green-800">All media embedded in blog</span>
                   </div>
                   <p className="text-sm text-green-700">
-                    Featured image, podcast, videos, and Google Maps have been added to the WordPress post.
+                    Videos and podcast have been added to the WordPress post.
                   </p>
                 </div>
 
@@ -1920,10 +1920,6 @@ function ReviewTab({
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h4 className="font-medium text-blue-900 mb-2">This will embed the following into the blog:</h4>
                   <ul className="text-sm text-blue-800 space-y-1">
-                    <li className="flex items-center gap-2">
-                      <ImageIcon className="h-4 w-4" />
-                      Featured image (after first paragraph)
-                    </li>
                     {content.videoSocialPosts.some(p => p.platform === 'YOUTUBE' && p.publishedUrl) && (
                       <li className="flex items-center gap-2">
                         <Video className="h-4 w-4" />
@@ -1933,20 +1929,19 @@ function ReviewTab({
                     {content.longformVideoUrl && (
                       <li className="flex items-center gap-2">
                         <Play className="h-4 w-4" />
-                        Long-form video (before last paragraph)
+                        Long-form video (before Google Maps)
                       </li>
                     )}
                     {content.podcast?.podbeanPlayerUrl && (
                       <li className="flex items-center gap-2">
                         <Mic className="h-4 w-4" />
-                        Podcast player embed
+                        Podcast player embed (at end)
                       </li>
                     )}
-                    <li className="flex items-center gap-2">
-                      <ExternalLink className="h-4 w-4" />
-                      Google Maps location embed
-                    </li>
                   </ul>
+                  <p className="text-xs text-blue-600 mt-2">
+                    Note: Featured image and Google Maps are already in the published blog.
+                  </p>
                 </div>
 
                 <button
