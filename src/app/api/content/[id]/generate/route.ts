@@ -844,7 +844,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           targetPlatform: 'tiktok',
           targetAudience: `car owners in ${contentCity}, ${contentState} looking for auto glass services`,
           scriptStyle: 'HowToV2', // Best for informational content
-          visualStyle: 'DynamicProductTemplate', // Good for service businesses
+          visualStyle: 'AvatarBubbleTemplate', // API default - avatar bubble style
           modelVersion: 'standard', // Cheapest option (aurora models cost more)
         })
 

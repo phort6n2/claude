@@ -349,7 +349,7 @@ export async function createVideoFromLink(params: LinkToVideoParams): Promise<Vi
     video_length: params.videoLength || 30,
     aspect_ratio: params.aspectRatio || '9x16',
     script_style: params.scriptStyle || 'HowToV2',
-    visual_style: params.visualStyle || 'DynamicProductTemplate',
+    visual_style: params.visualStyle || 'AvatarBubbleTemplate',
   }
 
   if (params.webhookUrl) {
@@ -547,7 +547,7 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
         targetPlatform: params.targetPlatform || 'tiktok',
         targetAudience: params.targetAudience || 'adults interested in auto services',
         scriptStyle: params.scriptStyle || 'HowToV2',
-        visualStyle: params.visualStyle || 'DynamicProductTemplate', // Good for service businesses
+        visualStyle: params.visualStyle || 'AvatarBubbleTemplate', // API default
         webhookUrl: params.webhookUrl,
         overrideScript: params.script, // Use provided script as override if any
         modelVersion: params.modelVersion || 'standard', // Cheapest option
