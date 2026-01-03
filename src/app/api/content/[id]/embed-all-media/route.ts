@@ -161,6 +161,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         blogPost: true,
         podcast: true,
         socialPosts: true,
+        shortFormVideos: true,
+        videos: true,
       },
     })
 
@@ -201,12 +203,34 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     fullContent = fullContent.replace(/<!-- Podcast Episode -->[\s\S]*?<\/div>/g, '')
     fullContent = fullContent.replace(/<div class="podcast-embed"[\s\S]*?<\/div>/g, '')
 
-    // 1. Add short-form video (floated right) - find YouTube URL from video social posts
-    const youtubeVideoPost = contentItem.socialPosts.find(
-      p => p.platform === 'YOUTUBE' && p.mediaType === 'video' && p.publishedUrl
-    )
-    if (youtubeVideoPost?.publishedUrl) {
-      const shortVideoEmbed = generateShortVideoEmbed(youtubeVideoPost.publishedUrl)
+    // 1. Add short-form video (floated right) - find YouTube URL from multiple sources
+    let youtubeShortUrl: string | null = null
+
+    // First, check shortFormVideos publishedUrls (JSON field with { platform: url } mapping)
+    const shortFormVideo = contentItem.shortFormVideos[0]
+    if (shortFormVideo?.publishedUrls) {
+      const publishedUrls = shortFormVideo.publishedUrls as Record<string, string>
+      youtubeShortUrl = publishedUrls['YOUTUBE'] || publishedUrls['youtube'] || null
+    }
+
+    // Fallback: check socialPosts for YouTube video post with publishedUrl
+    if (!youtubeShortUrl) {
+      const youtubeVideoPost = contentItem.socialPosts.find(
+        p => p.platform === 'YOUTUBE' && p.mediaType === 'video' && p.publishedUrl
+      )
+      youtubeShortUrl = youtubeVideoPost?.publishedUrl || null
+    }
+
+    // Fallback: check videos table for any video with YouTube URL
+    if (!youtubeShortUrl) {
+      const youtubeVideo = contentItem.videos.find(
+        v => v.videoUrl?.includes('youtube.com') || v.videoUrl?.includes('youtu.be')
+      )
+      youtubeShortUrl = youtubeVideo?.videoUrl || null
+    }
+
+    if (youtubeShortUrl) {
+      const shortVideoEmbed = generateShortVideoEmbed(youtubeShortUrl)
       if (shortVideoEmbed) {
         // Insert after second paragraph (after featured image which is after first paragraph)
         let insertPoint = fullContent.indexOf('</p>')
