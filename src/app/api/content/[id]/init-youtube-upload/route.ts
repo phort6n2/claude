@@ -132,10 +132,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const wrhqBlogPost = contentItem.wrhqBlogPost
     const podcast = contentItem.podcast
 
+    // Build location string
+    const location = serviceLocation
+      ? `${serviceLocation.city}, ${serviceLocation.state}`
+      : `${client.city}, ${client.state}`
+
+    // Replace {location} placeholder in PAA question
+    const paaQuestionWithLocation = contentItem.paaQuestion.replace(/{location}/gi, location)
+
     // Generate video metadata
-    const title = toTitleCase(contentItem.paaQuestion)
+    const title = toTitleCase(paaQuestionWithLocation)
     const description = generateVideoDescription({
-      paaQuestion: contentItem.paaQuestion,
+      paaQuestion: paaQuestionWithLocation,
       clientBlogUrl: blogPost?.wordpressUrl || '',
       wrhqBlogUrl: wrhqBlogPost?.wordpressUrl || '',
       googleMapsUrl: client.googleMapsUrl || undefined,

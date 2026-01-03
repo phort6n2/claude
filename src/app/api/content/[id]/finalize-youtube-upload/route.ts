@@ -222,8 +222,19 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const blogPost = contentItem.blogPost
     const wrhqBlogPost = contentItem.wrhqBlogPost
 
+    console.log('Blog embedding debug:', {
+      hasClientBlogPost: !!blogPost,
+      clientBlogPostId: blogPost?.wordpressPostId,
+      hasClientWpUrl: !!client.wordpressUrl,
+      hasClientWpUsername: !!client.wordpressUsername,
+      hasClientWpPassword: !!client.wordpressAppPassword,
+      hasWrhqBlogPost: !!wrhqBlogPost,
+      wrhqBlogPostId: wrhqBlogPost?.wordpressPostId,
+    })
+
     // Update client blog post if published
     if (blogPost?.wordpressPostId && client.wordpressUrl && client.wordpressUsername && client.wordpressAppPassword) {
+      console.log('Attempting to embed video in client blog post...')
       try {
         const decryptedPassword = decrypt(client.wordpressAppPassword)
         if (decryptedPassword) {
@@ -233,7 +244,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             password: decryptedPassword,
           }
 
+          console.log('Fetching client blog post:', blogPost.wordpressPostId)
           const currentPost = await getPost(credentials, blogPost.wordpressPostId)
+          console.log('Current post content length:', currentPost.content?.length)
 
           if (!currentPost.content.includes(videoId)) {
             let updatedContent = currentPost.content
@@ -244,23 +257,42 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
               updatedContent += youtubeEmbedHtml
             }
 
+            console.log('Updating client blog post with video embed...')
             await updatePost(credentials, blogPost.wordpressPostId, {
               content: updatedContent,
             })
 
             console.log('Long-form video embedded in client blog post')
+          } else {
+            console.log('Video already embedded in client blog post')
           }
+        } else {
+          console.log('Failed to decrypt client WordPress password')
         }
       } catch (error) {
         console.error('Failed to embed video in client blog:', error)
       }
+    } else {
+      console.log('Skipping client blog embed - missing requirements:', {
+        hasWordpressPostId: !!blogPost?.wordpressPostId,
+        hasWpUrl: !!client.wordpressUrl,
+        hasWpUsername: !!client.wordpressUsername,
+        hasWpPassword: !!client.wordpressAppPassword,
+      })
     }
 
     // Update WRHQ blog post if published
     if (wrhqBlogPost?.wordpressPostId) {
+      console.log('Attempting to embed video in WRHQ blog post...')
       try {
         const { getWRHQConfig } = await import('@/lib/settings')
         const wrhqConfig = await getWRHQConfig()
+
+        console.log('WRHQ config:', {
+          hasUrl: !!wrhqConfig.wordpress.url,
+          hasUsername: !!wrhqConfig.wordpress.username,
+          hasPassword: !!wrhqConfig.wordpress.appPassword,
+        })
 
         if (wrhqConfig.wordpress.url && wrhqConfig.wordpress.username && wrhqConfig.wordpress.appPassword) {
           const credentials = {
@@ -269,7 +301,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             password: wrhqConfig.wordpress.appPassword,
           }
 
+          console.log('Fetching WRHQ blog post:', wrhqBlogPost.wordpressPostId)
           const currentPost = await getPost(credentials, wrhqBlogPost.wordpressPostId)
+          console.log('Current WRHQ post content length:', currentPost.content?.length)
 
           if (!currentPost.content.includes(videoId)) {
             let updatedContent = currentPost.content
@@ -280,16 +314,23 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
               updatedContent += youtubeEmbedHtml
             }
 
+            console.log('Updating WRHQ blog post with video embed...')
             await updatePost(credentials, wrhqBlogPost.wordpressPostId, {
               content: updatedContent,
             })
 
             console.log('Long-form video embedded in WRHQ blog post')
+          } else {
+            console.log('Video already embedded in WRHQ blog post')
           }
+        } else {
+          console.log('WRHQ WordPress not configured')
         }
       } catch (error) {
         console.error('Failed to embed video in WRHQ blog:', error)
       }
+    } else {
+      console.log('Skipping WRHQ blog embed - no wordpressPostId')
     }
 
     // Mark long video as added to posts

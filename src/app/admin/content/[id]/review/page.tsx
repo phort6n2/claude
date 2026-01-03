@@ -1570,6 +1570,9 @@ function LongformVideoUpload({
     ? `${serviceLocation.city}, ${serviceLocation.state}`
     : `${client.city}, ${client.state}`
 
+  // Replace {location} placeholder in PAA question for display
+  const displayQuestion = paaQuestion.replace(/{location}/gi, location)
+
   // Check if YouTube is configured
   useEffect(() => {
     fetch('/api/settings/wrhq/youtube/playlists')
@@ -1708,7 +1711,7 @@ function LongformVideoUpload({
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Video Title</label>
         <div className="border rounded-lg p-3 bg-gray-50 text-sm">
-          {paaQuestion}
+          {displayQuestion}
         </div>
       </div>
 
@@ -1716,7 +1719,7 @@ function LongformVideoUpload({
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Video Description</label>
         <div className="border rounded-lg p-3 bg-gray-50 text-sm whitespace-pre-wrap">
-          {paaQuestion}
+          {displayQuestion}
 {'\n'}
 In this video, {client.businessName} answers your questions about windshield repair and replacement services in {location}.
 {'\n'}
