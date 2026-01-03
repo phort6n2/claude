@@ -843,7 +843,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           duration: 30, // This maps to video_length: 30 in the URL-to-Video API
           targetPlatform: 'tiktok',
           targetAudience: `car owners in ${contentCity}, ${contentState} looking for auto glass services`,
-          scriptStyle: 'HowToV2', // Best for informational content
+          scriptStyle: 'DiscoveryWriter', // API default
           visualStyle: 'AvatarBubbleTemplate', // API default - avatar bubble style
           modelVersion: 'standard', // Cheapest option (aurora models cost more)
         })
