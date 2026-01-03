@@ -133,16 +133,10 @@ async function triggerFullGeneration(contentItemId: string): Promise<void> {
     // Import the content pipeline
     const { runContentPipeline } = await import('@/lib/pipeline/content-pipeline')
 
-    await runContentPipeline(contentItemId, {
-      generateBlog: true,
-      generateImages: true,
-      generateSocial: true,
-      generatePodcast: true,
-      generateShortVideo: true,
-      generateLongVideo: false, // Skip long video
-      generateWrhqBlog: true,
-      generateWrhqSocial: true,
-    })
+    // Note: runContentPipeline runs the full pipeline including blog, images,
+    // podcast, short video, social posts, and WRHQ publishing.
+    // Long video is already skipped by default in the pipeline.
+    await runContentPipeline(contentItemId)
 
     // Update status to REVIEW after successful generation
     await prisma.contentItem.update({

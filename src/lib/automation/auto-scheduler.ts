@@ -16,7 +16,6 @@ interface AutoScheduleResult {
 }
 
 interface AutoScheduleOptions {
-  skipLongVideo?: boolean  // Default true - skip long-form video generation
   triggerGeneration?: boolean  // Default true - trigger generation after creating
 }
 
@@ -99,7 +98,7 @@ export async function autoScheduleForClient(
   scheduledDate: Date,
   options: AutoScheduleOptions = {}
 ): Promise<AutoScheduleResult> {
-  const { skipLongVideo = true, triggerGeneration = true } = options
+  const { triggerGeneration = true } = options
 
   try {
     // Get client info
@@ -216,22 +215,8 @@ export async function autoScheduleForClient(
 
     // Trigger generation if requested
     if (triggerGeneration) {
-      // We'll call the generate endpoint asynchronously
-      // This is done via fetch to the API rather than direct pipeline call
-      // to ensure proper error handling and logging
-      const generateOptions = {
-        blog: true,
-        images: true,
-        social: true,
-        podcast: true,
-        shortVideo: true,
-        longVideo: !skipLongVideo,  // Skip by default
-        wrhqBlog: true,
-        wrhqSocial: true,
-      }
-
       // Fire and forget - generation happens asynchronously
-      triggerContentGeneration(contentItem.id, generateOptions).catch(err => {
+      triggerContentGeneration(contentItem.id).catch(err => {
         console.error(`Failed to trigger generation for content ${contentItem.id}:`, err)
       })
     }
@@ -265,21 +250,10 @@ export async function autoScheduleForClient(
 
 /**
  * Trigger content generation for a content item.
- * This calls the generate API endpoint.
+ * Runs the full content pipeline including blog, images, podcast, short video,
+ * social posts, and WRHQ publishing. Long video is skipped by default.
  */
-async function triggerContentGeneration(
-  contentItemId: string,
-  options: {
-    blog?: boolean
-    images?: boolean
-    social?: boolean
-    podcast?: boolean
-    shortVideo?: boolean
-    longVideo?: boolean
-    wrhqBlog?: boolean
-    wrhqSocial?: boolean
-  }
-): Promise<void> {
+async function triggerContentGeneration(contentItemId: string): Promise<void> {
   // Update status to GENERATING
   await prisma.contentItem.update({
     where: { id: contentItemId },
@@ -291,16 +265,10 @@ async function triggerContentGeneration(
   const { runContentPipeline } = await import('@/lib/pipeline/content-pipeline')
 
   try {
-    await runContentPipeline(contentItemId, {
-      generateBlog: options.blog ?? true,
-      generateImages: options.images ?? true,
-      generateSocial: options.social ?? true,
-      generatePodcast: options.podcast ?? true,
-      generateShortVideo: options.shortVideo ?? true,
-      generateLongVideo: options.longVideo ?? false,  // Skip by default
-      generateWrhqBlog: options.wrhqBlog ?? true,
-      generateWrhqSocial: options.wrhqSocial ?? true,
-    })
+    // Note: runContentPipeline runs the full pipeline including blog, images,
+    // podcast, short video, social posts, and WRHQ publishing.
+    // Long video is already skipped by default in the pipeline.
+    await runContentPipeline(contentItemId)
 
     // Update status to REVIEW after successful generation
     await prisma.contentItem.update({
