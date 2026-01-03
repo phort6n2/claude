@@ -129,6 +129,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
   let blogPost: any = null
   let podcastScript: string = ''
   let wrhqBlogUrl: string | null = null
+  let wrhqWordpressPostId: number | null = null
 
   try {
     // Update status to generating
@@ -482,6 +483,23 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         )
 
         wrhqBlogUrl = wrhqPost.link
+        wrhqWordpressPostId = wrhqPost.id
+
+        // Save WRHQ blog post to database
+        await prisma.wRHQBlogPost.create({
+          data: {
+            contentItemId,
+            clientId: contentItem.clientId,
+            title: wrhqBlogResult.title,
+            slug: `${contentItem.client.slug}-${wrhqBlogResult.slug}`,
+            content: wrhqBlogResult.content,
+            excerpt: wrhqBlogResult.excerpt || null,
+            wordpressPostId: wrhqPost.id,
+            wordpressUrl: wrhqPost.link,
+            featuredImageUrl: featuredImage?.gcsUrl || null,
+            publishedAt: new Date(),
+          },
+        })
 
         results.wrhq = { success: true }
         log(ctx, '✅ WRHQ publishing successful', { url: wrhqPost.link })
@@ -935,19 +953,87 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           data: { schemaJson },
         })
 
-        // Mark schema as generated
-        await prisma.contentItem.update({
-          where: { id: contentItemId },
-          data: { schemaGenerated: true },
+        log(ctx, '✅ Client schema markup generated successfully')
+      } else {
+        log(ctx, '⏭️ Client schema skipped - no blog post or WordPress not configured')
+      }
+
+      // Generate schema for WRHQ blog if published
+      const wrhqBlogPost = await prisma.wRHQBlogPost.findUnique({
+        where: { contentItemId },
+      })
+
+      if (wrhqBlogPost && wrhqBlogPost.wordpressPostId && wrhqConfig.wordpress.isConfigured) {
+        log(ctx, '📋 Generating WRHQ schema markup...')
+
+        // Generate schema for WRHQ blog (references client business but uses WRHQ as publisher)
+        const wrhqSchemaJson = generateSchemaGraph({
+          client: {
+            businessName: contentItem.client.businessName,
+            streetAddress: contentItem.client.streetAddress,
+            city: contentItem.client.city,
+            state: contentItem.client.state,
+            postalCode: contentItem.client.postalCode,
+            country: contentItem.client.country || 'US',
+            phone: contentItem.client.phone,
+            email: contentItem.client.email || '',
+            logoUrl: contentItem.client.logoUrl,
+            wordpressUrl: wrhqConfig.wordpress.url!, // Use WRHQ site URL
+            serviceAreas: contentItem.client.serviceAreas,
+            gbpRating: contentItem.client.gbpRating,
+            gbpReviewCount: contentItem.client.gbpReviewCount,
+            hasAdasCalibration: contentItem.client.hasAdasCalibration,
+            offersMobileService: contentItem.client.offersMobileService,
+          },
+          blogPost: {
+            title: wrhqBlogPost.title,
+            slug: wrhqBlogPost.slug,
+            content: wrhqBlogPost.content,
+            excerpt: wrhqBlogPost.excerpt,
+            metaDescription: wrhqBlogPost.metaDescription,
+            wordpressUrl: wrhqBlogPost.wordpressUrl,
+            publishedAt: wrhqBlogPost.publishedAt,
+          },
+          contentItem: {
+            paaQuestion: contentItem.paaQuestion,
+          },
+          podcast: podcast ? {
+            audioUrl: podcast.audioUrl,
+            duration: podcast.duration,
+          } : undefined,
+          video: video ? {
+            videoUrl: video.videoUrl,
+            thumbnailUrl: video.thumbnailUrl,
+            duration: video.duration,
+          } : undefined,
         })
 
-        results.schema = { success: true }
-        log(ctx, '✅ Schema markup generated successfully')
-        await logAction(ctx, 'schema_generate', 'SUCCESS')
-      } else {
-        results.schema = { success: false, skipped: true }
-        log(ctx, '⏭️ Schema skipped - no blog post or WordPress not configured')
+        // Inject schema into WRHQ WordPress post
+        const wrhqCredentials = {
+          url: wrhqConfig.wordpress.url!,
+          username: wrhqConfig.wordpress.username!,
+          password: wrhqConfig.wordpress.appPassword!,
+          isDecrypted: true,
+        }
+
+        await withTimeout(
+          injectSchemaMarkup(wrhqCredentials, wrhqBlogPost.wordpressPostId, wrhqSchemaJson),
+          TIMEOUTS.WORDPRESS_POST,
+          'WRHQ schema injection'
+        )
+
+        log(ctx, '✅ WRHQ schema markup injected successfully')
       }
+
+      // Mark schema as generated
+      await prisma.contentItem.update({
+        where: { id: contentItemId },
+        data: { schemaGenerated: true },
+      })
+
+      results.schema = { success: true }
+      log(ctx, '✅ All schema markup generated successfully')
+      await logAction(ctx, 'schema_generate', 'SUCCESS')
     } catch (error) {
       logError(ctx, 'Schema generation failed', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
