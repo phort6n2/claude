@@ -161,6 +161,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         blogPost: true,
         podcast: true,
         socialPosts: true,
+        wrhqSocialPosts: true,
         shortFormVideos: true,
         videos: true,
       },
@@ -184,11 +185,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
     // Debug: log all video sources
     console.log('=== EMBED ALL MEDIA DEBUG ===')
-    console.log('Videos count:', contentItem.videos.length)
-    console.log('Videos:', contentItem.videos.map(v => ({ id: v.id, videoUrl: v.videoUrl, videoType: v.videoType })))
-    console.log('ShortFormVideos count:', contentItem.shortFormVideos.length)
-    console.log('ShortFormVideos:', contentItem.shortFormVideos.map(v => ({ id: v.id, videoUrl: v.videoUrl, publishedUrls: v.publishedUrls })))
-    console.log('SocialPosts (video type):', contentItem.socialPosts.filter(p => p.mediaType === 'video').map(p => ({ platform: p.platform, publishedUrl: p.publishedUrl })))
+    console.log('Videos:', contentItem.videos.map(v => ({ videoUrl: v.videoUrl, videoType: v.videoType })))
+    console.log('ShortFormVideos:', contentItem.shortFormVideos.map(v => ({ videoUrl: v.videoUrl, publishedUrls: v.publishedUrls })))
+    console.log('SocialPosts with YouTube:', contentItem.socialPosts.filter(p => p.platform === 'YOUTUBE' || p.publishedUrl?.includes('youtube')).map(p => ({ platform: p.platform, mediaType: p.mediaType, publishedUrl: p.publishedUrl })))
+    console.log('WRHQSocialPosts with YouTube:', contentItem.wrhqSocialPosts.filter(p => p.platform === 'YOUTUBE' || p.publishedUrl?.includes('youtube')).map(p => ({ platform: p.platform, mediaType: p.mediaType, publishedUrl: p.publishedUrl })))
 
     // Fetch current content from WordPress (already has featured image + Google Maps)
     const wpCredentials = {
@@ -231,12 +231,36 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
     }
 
-    // Fallback: check socialPosts for YouTube video post with publishedUrl
+    // Fallback: check socialPosts for ANY YouTube post with publishedUrl (drop mediaType requirement)
     if (!youtubeShortUrl) {
-      const youtubeVideoPost = contentItem.socialPosts.find(
-        p => p.platform === 'YOUTUBE' && p.mediaType === 'video' && p.publishedUrl
+      const youtubePost = contentItem.socialPosts.find(
+        p => p.platform === 'YOUTUBE' && p.publishedUrl
       )
-      youtubeShortUrl = youtubeVideoPost?.publishedUrl || null
+      youtubeShortUrl = youtubePost?.publishedUrl || null
+    }
+
+    // Fallback: check for any post with YouTube in publishedUrl
+    if (!youtubeShortUrl) {
+      const videoPost = contentItem.socialPosts.find(
+        p => p.publishedUrl?.includes('youtube')
+      )
+      youtubeShortUrl = videoPost?.publishedUrl || null
+    }
+
+    // Fallback: check wrhqSocialPosts for YouTube URL
+    if (!youtubeShortUrl) {
+      const wrhqYoutubePost = contentItem.wrhqSocialPosts.find(
+        p => p.platform === 'YOUTUBE' && p.publishedUrl
+      )
+      youtubeShortUrl = wrhqYoutubePost?.publishedUrl || null
+    }
+
+    // Fallback: check wrhqSocialPosts for any post with YouTube in publishedUrl
+    if (!youtubeShortUrl) {
+      const wrhqVideoPost = contentItem.wrhqSocialPosts.find(
+        p => p.publishedUrl?.includes('youtube')
+      )
+      youtubeShortUrl = wrhqVideoPost?.publishedUrl || null
     }
 
     console.log('Short video embed - YouTube URL found:', youtubeShortUrl)
