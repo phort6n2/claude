@@ -478,6 +478,11 @@ function ReviewTab({
   const [republishing, setRepublishing] = useState(false)
   const [embedding, setEmbedding] = useState(false)
   const [generatingSchema, setGeneratingSchema] = useState(false)
+  const [schemaValidation, setSchemaValidation] = useState<{
+    valid: boolean
+    errors: Array<{ schemaType: string; field: string; message: string }>
+    warnings: Array<{ schemaType: string; field: string; message: string }>
+  } | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -762,6 +767,7 @@ function ReviewTab({
   async function generateSchema() {
     setGeneratingSchema(true)
     setError(null)
+    setSchemaValidation(null)
     try {
       const response = await fetch(`/api/content/${content.id}/generate-schema`, {
         method: 'POST',
@@ -771,6 +777,11 @@ function ReviewTab({
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to generate schema')
+      }
+
+      // Store validation results
+      if (data.validation) {
+        setSchemaValidation(data.validation)
       }
 
       // Refresh the page data
@@ -1996,15 +2007,69 @@ function ReviewTab({
               </div>
             ) : isStep7Complete && content.blogPost?.schemaJson ? (
               <div className="space-y-4">
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Check className="h-5 w-5 text-green-600" />
-                    <span className="font-medium text-green-800">Schema markup generated</span>
+                {/* Validation Status */}
+                {schemaValidation ? (
+                  schemaValidation.valid ? (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Check className="h-5 w-5 text-green-600" />
+                        <span className="font-medium text-green-800">Schema validated successfully!</span>
+                      </div>
+                      <p className="text-sm text-green-700">
+                        All required fields are present. Schema is ready for embedding.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {schemaValidation.errors.length > 0 && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <XCircle className="h-5 w-5 text-red-600" />
+                            <span className="font-medium text-red-800">
+                              {schemaValidation.errors.length} Validation Error{schemaValidation.errors.length > 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <ul className="text-sm text-red-700 space-y-1">
+                            {schemaValidation.errors.map((err, i) => (
+                              <li key={i} className="flex items-start gap-2">
+                                <span className="text-red-400">•</span>
+                                <span><strong>{err.schemaType}</strong>: {err.message}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {schemaValidation.warnings.length > 0 && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                            <span className="font-medium text-yellow-800">
+                              {schemaValidation.warnings.length} Warning{schemaValidation.warnings.length > 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <ul className="text-sm text-yellow-700 space-y-1">
+                            {schemaValidation.warnings.map((warn, i) => (
+                              <li key={i} className="flex items-start gap-2">
+                                <span className="text-yellow-400">•</span>
+                                <span><strong>{warn.schemaType}</strong>: {warn.message}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )
+                ) : (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Check className="h-5 w-5 text-green-600" />
+                      <span className="font-medium text-green-800">Schema markup generated</span>
+                    </div>
+                    <p className="text-sm text-green-700">
+                      JSON-LD structured data is ready. It will be embedded when you click &quot;Embed All Media&quot; in Step 8.
+                    </p>
                   </div>
-                  <p className="text-sm text-green-700">
-                    JSON-LD structured data is ready. It will be embedded when you click &quot;Embed All Media&quot; in Step 8.
-                  </p>
-                </div>
+                )}
 
                 {/* Schema Preview */}
                 <details className="group">

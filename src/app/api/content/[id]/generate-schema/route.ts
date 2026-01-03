@@ -6,6 +6,19 @@ interface RouteContext {
   params: Promise<{ id: string }>
 }
 
+interface ValidationIssue {
+  type: 'error' | 'warning'
+  schemaType: string
+  field: string
+  message: string
+}
+
+interface ValidationResult {
+  valid: boolean
+  errors: ValidationIssue[]
+  warnings: ValidationIssue[]
+}
+
 // Convert duration in seconds to ISO 8601 format (PT#M#S)
 function formatDuration(seconds: number): string {
   const minutes = Math.floor(seconds / 60)
@@ -29,6 +42,145 @@ function getYouTubeVideoId(url: string): string | null {
     return null
   }
   return null
+}
+
+/**
+ * Validates schema objects against Google Rich Results requirements
+ * https://developers.google.com/search/docs/appearance/structured-data
+ */
+function validateSchemas(schemas: Record<string, unknown>[]): ValidationResult {
+  const errors: ValidationIssue[] = []
+  const warnings: ValidationIssue[] = []
+
+  for (const schema of schemas) {
+    const schemaType = schema['@type'] as string
+
+    switch (schemaType) {
+      case 'Article':
+        // Required for Article rich results
+        if (!schema.headline) {
+          errors.push({ type: 'error', schemaType: 'Article', field: 'headline', message: 'headline is required' })
+        } else if (typeof schema.headline === 'string' && schema.headline.length > 110) {
+          warnings.push({ type: 'warning', schemaType: 'Article', field: 'headline', message: 'headline should be under 110 characters' })
+        }
+
+        if (!schema.image) {
+          errors.push({ type: 'error', schemaType: 'Article', field: 'image', message: 'image is required for Article rich results' })
+        } else if (Array.isArray(schema.image) && schema.image.length === 0) {
+          errors.push({ type: 'error', schemaType: 'Article', field: 'image', message: 'image array is empty' })
+        }
+
+        if (!schema.datePublished) {
+          errors.push({ type: 'error', schemaType: 'Article', field: 'datePublished', message: 'datePublished is required' })
+        }
+
+        // Check author
+        const author = schema.author as Record<string, unknown> | undefined
+        if (!author) {
+          errors.push({ type: 'error', schemaType: 'Article', field: 'author', message: 'author is required' })
+        } else if (!author.name) {
+          errors.push({ type: 'error', schemaType: 'Article', field: 'author.name', message: 'author must have a name property' })
+        }
+
+        // Check publisher
+        const publisher = schema.publisher as Record<string, unknown> | undefined
+        if (!publisher) {
+          warnings.push({ type: 'warning', schemaType: 'Article', field: 'publisher', message: 'publisher is recommended' })
+        } else {
+          if (!publisher.name) {
+            errors.push({ type: 'error', schemaType: 'Article', field: 'publisher.name', message: 'publisher must have a name property' })
+          }
+          if (!publisher.logo) {
+            warnings.push({ type: 'warning', schemaType: 'Article', field: 'publisher.logo', message: 'publisher logo is recommended' })
+          }
+        }
+        break
+
+      case 'AutoRepair':
+      case 'LocalBusiness':
+        // Required for LocalBusiness rich results
+        if (!schema.name) {
+          errors.push({ type: 'error', schemaType, field: 'name', message: 'name is required' })
+        }
+
+        const address = schema.address as Record<string, unknown> | undefined
+        if (!address) {
+          warnings.push({ type: 'warning', schemaType, field: 'address', message: 'address is recommended for local SEO' })
+        } else {
+          if (!address.streetAddress) warnings.push({ type: 'warning', schemaType, field: 'address.streetAddress', message: 'streetAddress is recommended' })
+          if (!address.addressLocality) warnings.push({ type: 'warning', schemaType, field: 'address.addressLocality', message: 'addressLocality (city) is recommended' })
+          if (!address.addressRegion) warnings.push({ type: 'warning', schemaType, field: 'address.addressRegion', message: 'addressRegion (state) is recommended' })
+        }
+
+        if (!schema.telephone) {
+          warnings.push({ type: 'warning', schemaType, field: 'telephone', message: 'telephone is recommended' })
+        }
+
+        // AggregateRating validation
+        const rating = schema.aggregateRating as Record<string, unknown> | undefined
+        if (rating) {
+          if (!rating.ratingValue) {
+            errors.push({ type: 'error', schemaType, field: 'aggregateRating.ratingValue', message: 'ratingValue is required when using aggregateRating' })
+          }
+          if (!rating.reviewCount && !rating.ratingCount) {
+            errors.push({ type: 'error', schemaType, field: 'aggregateRating.reviewCount', message: 'reviewCount or ratingCount is required' })
+          }
+        }
+        break
+
+      case 'VideoObject':
+        // Required for Video rich results
+        if (!schema.name) {
+          errors.push({ type: 'error', schemaType: 'VideoObject', field: 'name', message: 'name is required' })
+        }
+
+        if (!schema.description) {
+          errors.push({ type: 'error', schemaType: 'VideoObject', field: 'description', message: 'description is required for Video rich results' })
+        }
+
+        if (!schema.thumbnailUrl) {
+          errors.push({ type: 'error', schemaType: 'VideoObject', field: 'thumbnailUrl', message: 'thumbnailUrl is required' })
+        }
+
+        if (!schema.uploadDate) {
+          errors.push({ type: 'error', schemaType: 'VideoObject', field: 'uploadDate', message: 'uploadDate is required' })
+        }
+
+        if (!schema.contentUrl && !schema.embedUrl) {
+          errors.push({ type: 'error', schemaType: 'VideoObject', field: 'contentUrl/embedUrl', message: 'contentUrl or embedUrl is required' })
+        }
+
+        if (!schema.duration) {
+          warnings.push({ type: 'warning', schemaType: 'VideoObject', field: 'duration', message: 'duration is recommended for Video rich results' })
+        }
+        break
+
+      case 'PodcastEpisode':
+        if (!schema.name) {
+          errors.push({ type: 'error', schemaType: 'PodcastEpisode', field: 'name', message: 'name is required' })
+        }
+
+        if (!schema.description) {
+          warnings.push({ type: 'warning', schemaType: 'PodcastEpisode', field: 'description', message: 'description is recommended' })
+        }
+
+        if (!schema.url) {
+          warnings.push({ type: 'warning', schemaType: 'PodcastEpisode', field: 'url', message: 'url is recommended' })
+        }
+
+        const media = schema.associatedMedia as Record<string, unknown> | undefined
+        if (!media?.contentUrl) {
+          errors.push({ type: 'error', schemaType: 'PodcastEpisode', field: 'associatedMedia.contentUrl', message: 'audio contentUrl is required' })
+        }
+        break
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+  }
 }
 
 /**
@@ -242,6 +394,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       schemas.push(podcastSchema)
     }
 
+    // Validate the generated schemas
+    const validation = validateSchemas(schemas)
+
     // Combine all schemas into a single JSON string
     // Each schema is a separate object for better Google compatibility
     const schemaJson = JSON.stringify(schemas, null, 2)
@@ -264,7 +419,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     return NextResponse.json({
       success: true,
       schema: schemas,
-      message: 'Schema markup generated successfully',
+      validation,
+      message: validation.valid
+        ? 'Schema markup generated successfully - all validations passed!'
+        : `Schema generated with ${validation.errors.length} error(s) and ${validation.warnings.length} warning(s)`,
     })
   } catch (error) {
     console.error('Generate schema error:', error)
@@ -298,9 +456,13 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'No schema generated yet' }, { status: 404 })
     }
 
+    const schemas = JSON.parse(contentItem.blogPost.schemaJson)
+    const validation = validateSchemas(Array.isArray(schemas) ? schemas : [schemas])
+
     return NextResponse.json({
       success: true,
-      schema: JSON.parse(contentItem.blogPost.schemaJson),
+      schema: schemas,
+      validation,
       schemaGenerated: contentItem.schemaGenerated,
       schemaUpdateCount: contentItem.schemaUpdateCount,
       schemaLastUpdated: contentItem.schemaLastUpdated,
