@@ -182,6 +182,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'WordPress not configured for client' }, { status: 400 })
     }
 
+    // Debug: log all video sources
+    console.log('=== EMBED ALL MEDIA DEBUG ===')
+    console.log('Videos count:', contentItem.videos.length)
+    console.log('Videos:', contentItem.videos.map(v => ({ id: v.id, videoUrl: v.videoUrl, videoType: v.videoType })))
+    console.log('ShortFormVideos count:', contentItem.shortFormVideos.length)
+    console.log('ShortFormVideos:', contentItem.shortFormVideos.map(v => ({ id: v.id, videoUrl: v.videoUrl, publishedUrls: v.publishedUrls })))
+    console.log('SocialPosts (video type):', contentItem.socialPosts.filter(p => p.mediaType === 'video').map(p => ({ platform: p.platform, publishedUrl: p.publishedUrl })))
+
     // Fetch current content from WordPress (already has featured image + Google Maps)
     const wpCredentials = {
       url: contentItem.client.wordpressUrl,
