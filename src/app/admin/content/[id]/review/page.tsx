@@ -545,13 +545,13 @@ function ReviewTab({
   const isStep4Complete = content.podcastAddedToPost
   const isStep5Complete = content.videoSocialPosts.length > 0 && content.videoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED')
 
-  async function regenerateContent(type: 'blog' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast' | 'podcastDescription' | 'video' | 'videoDescription' | 'videoSocial') {
+  async function regenerateContent(type: 'blog' | 'images' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast' | 'podcastDescription' | 'video' | 'videoDescription' | 'videoSocial') {
     setGenerating(type)
     setError(null)
     try {
       const flags: Record<string, boolean> = {
         generateBlog: type === 'blog',
-        generateImages: type === 'blog',
+        generateImages: type === 'images',
         generatePodcast: type === 'podcast',
         regenPodcastDescription: type === 'podcastDescription',
         generateSocial: type === 'social',
@@ -736,25 +736,39 @@ function ReviewTab({
                   ) : (
                     <RefreshCw className="h-4 w-4" />
                   )}
-                  Regenerate
+                  {content.blogGenerated ? 'Regenerate Blog' : 'Generate Blog'}
                 </button>
                 <button
-                  onClick={() => publishContent('clientBlog')}
-                  disabled={publishing === 'clientBlog' || !content.blogGenerated || !content.imagesGenerated}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  onClick={() => regenerateContent('images')}
+                  disabled={generating === 'images'}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
                 >
-                  {publishing === 'clientBlog' ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Publishing...
-                    </>
+                  {generating === 'images' ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
                   ) : (
-                    <>
-                      <ExternalLink className="h-4 w-4" />
-                      Publish
-                    </>
+                    <ImageIcon className="h-4 w-4" />
                   )}
+                  {content.imagesGenerated ? 'Regenerate Images' : 'Generate Images'}
                 </button>
+                {content.blogGenerated && content.imagesGenerated && (
+                  <button
+                    onClick={() => publishContent('clientBlog')}
+                    disabled={publishing === 'clientBlog'}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {publishing === 'clientBlog' ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Publishing...
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink className="h-4 w-4" />
+                        Publish
+                      </>
+                    )}
+                  </button>
+                )}
               </>
             )}
           </div>
