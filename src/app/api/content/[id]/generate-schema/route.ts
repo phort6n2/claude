@@ -44,6 +44,24 @@ function getYouTubeVideoId(url: string): string | null {
   return null
 }
 
+// Safely convert a date value to ISO string
+function toISODateString(date: unknown): string {
+  if (!date) return new Date().toISOString()
+  try {
+    if (date instanceof Date) {
+      return date.toISOString()
+    }
+    // Handle string dates from database
+    const parsed = new Date(date as string)
+    if (isNaN(parsed.getTime())) {
+      return new Date().toISOString()
+    }
+    return parsed.toISOString()
+  } catch {
+    return new Date().toISOString()
+  }
+}
+
 /**
  * Validates schema objects against Google Rich Results requirements
  * https://developers.google.com/search/docs/appearance/structured-data
@@ -298,8 +316,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       description: blogPost.excerpt || blogPost.metaDescription || `Learn about ${blogPost.title}`,
       // Image must be an array of URLs for Article rich results
       image: imageUrl ? [imageUrl] : undefined,
-      datePublished: blogPost.publishedAt?.toISOString() || contentItem.publishedAt?.toISOString() || new Date().toISOString(),
-      dateModified: blogPost.updatedAt?.toISOString() || new Date().toISOString(),
+      datePublished: toISODateString(blogPost.publishedAt || contentItem.publishedAt),
+      dateModified: toISODateString(blogPost.updatedAt),
       // Author must have name property inline (not just @id reference)
       author: {
         '@type': 'Organization',
@@ -337,7 +355,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         name: `${blogPost.title} - Quick Tips`,
         description: contentItem.shortVideoDescription || blogPost.excerpt || `Quick tips about ${blogPost.title}`,
         thumbnailUrl: thumbnailUrl,
-        uploadDate: youtubeShortPost.publishedAt?.toISOString() || new Date().toISOString(),
+        uploadDate: toISODateString(youtubeShortPost.publishedAt),
         contentUrl: youtubeShortPost.publishedUrl,
         embedUrl: ytVideoId ? `https://www.youtube.com/embed/${ytVideoId}` : undefined,
         // Duration is required for video rich results - default to 30 seconds for shorts
@@ -359,7 +377,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         name: blogPost.title,
         description: contentItem.longformVideoDesc || blogPost.excerpt || `Learn about ${blogPost.title}`,
         thumbnailUrl: thumbnailUrl,
-        uploadDate: new Date().toISOString(),
+        uploadDate: toISODateString(null),
         contentUrl: contentItem.longformVideoUrl,
         embedUrl: ytVideoId ? `https://www.youtube.com/embed/${ytVideoId}` : undefined,
         // Default duration for long-form videos - 5 minutes
@@ -377,7 +395,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         name: `${blogPost.title} - Podcast Episode`,
         description: contentItem.podcastDescription || blogPost.excerpt || `Podcast episode about ${blogPost.title}`,
         url: contentItem.podcast.podbeanUrl || contentItem.podcast.audioUrl,
-        datePublished: new Date().toISOString(),
+        datePublished: toISODateString(null),
         associatedMedia: {
           '@type': 'AudioObject',
           contentUrl: contentItem.podcast.audioUrl || contentItem.podcast.podbeanUrl,
