@@ -1538,21 +1538,21 @@ function ReviewTab({
                   <button
                     onClick={(e) => { e.stopPropagation(); regenerateContent('videoSocial'); }}
                     disabled={generating === 'videoSocial'}
-                    className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 disabled:opacity-50 flex items-center gap-2"
+                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
                   >
                     {generating === 'videoSocial' ? (
                       <RefreshCw className="h-4 w-4 animate-spin" />
                     ) : (
                       <Share2 className="h-4 w-4" />
                     )}
-                    Generate Social Posts
+                    Generate Posts
                   </button>
                 )}
                 {content.videoSocialPosts.length > 0 && (
                   <button
                     onClick={(e) => { e.stopPropagation(); publishContent('videoSocial'); }}
                     disabled={publishing === 'videoSocial' || content.videoSocialPosts.every(p => p.status === 'PUBLISHED' || p.status === 'PROCESSING')}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     {publishing === 'videoSocial' ? (
                       <>
@@ -1562,7 +1562,7 @@ function ReviewTab({
                     ) : (
                       <>
                         <Share2 className="h-4 w-4" />
-                        Publish Client Video
+                        Publish
                       </>
                     )}
                   </button>
@@ -1571,17 +1571,17 @@ function ReviewTab({
                   <button
                     onClick={(e) => { e.stopPropagation(); publishContent('wrhqVideoSocial'); }}
                     disabled={publishing === 'wrhqVideoSocial' || content.wrhqVideoSocialPosts.every(p => p.status === 'PUBLISHED' || p.status === 'PROCESSING')}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     {publishing === 'wrhqVideoSocial' ? (
                       <>
                         <RefreshCw className="h-4 w-4 animate-spin" />
-                        Publishing WRHQ...
+                        Publishing...
                       </>
                     ) : (
                       <>
                         <Share2 className="h-4 w-4" />
-                        Publish WRHQ Video
+                        Publish WRHQ
                       </>
                     )}
                   </button>
@@ -1811,10 +1811,10 @@ function ReviewTab({
                   {content.longformVideoUrl}
                 </a>
               </div>
-              {content.longVideoAddedToPost && (
+              {content.mediaEmbeddedAt && content.longVideoAddedToPost && (
                 <div className="text-sm text-green-600 flex items-center gap-1">
                   <Check className="h-4 w-4" />
-                  Embedded in blog posts
+                  Embedded in blog post
                 </div>
               )}
 
