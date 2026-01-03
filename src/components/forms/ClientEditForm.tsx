@@ -21,6 +21,8 @@ import {
   AlertCircle,
   Plus,
   Trash2,
+  Zap,
+  Calendar,
 } from 'lucide-react'
 
 interface PodbeanPodcast {
@@ -84,6 +86,9 @@ interface ClientData {
   podbeanPodcastUrl: string | null
   wrhqYoutubePlaylistId?: string | null
   wrhqYoutubePlaylistTitle?: string | null
+  // Automation fields
+  autoScheduleEnabled?: boolean
+  autoScheduleFrequency?: number
 }
 
 interface ClientEditFormProps {
@@ -116,7 +121,7 @@ const socialPlatformOptions = [
   { value: 'telegram', label: 'Telegram' },
 ]
 
-type SectionKey = 'business' | 'location' | 'serviceLocations' | 'branding' | 'wordpress' | 'social' | 'integrations' | 'publishing'
+type SectionKey = 'business' | 'location' | 'serviceLocations' | 'branding' | 'wordpress' | 'social' | 'integrations' | 'publishing' | 'automation'
 
 export default function ClientEditForm({ client, hasWordPressPassword = false }: ClientEditFormProps) {
   const router = useRouter()
@@ -125,7 +130,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [expandedSections, setExpandedSections] = useState<Set<SectionKey>>(
-    new Set(['business', 'location', 'serviceLocations', 'branding', 'wordpress', 'social', 'integrations', 'publishing'])
+    new Set(['business', 'location', 'serviceLocations', 'branding', 'wordpress', 'social', 'integrations', 'publishing', 'automation'])
   )
 
   // WordPress connection test state
@@ -146,6 +151,14 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   // Service locations state
   const [serviceLocations, setServiceLocations] = useState<ServiceLocation[]>([])
   const [loadingLocations, setLoadingLocations] = useState(false)
+
+  // Auto-schedule status state
+  const [autoScheduleStatus, setAutoScheduleStatus] = useState<{
+    paaQueue: { unused: number; total: number; isRecycling: boolean }
+    locations: { active: number; neverUsed: number }
+    upcoming: { count: number }
+  } | null>(null)
+  const [loadingAutoSchedule, setLoadingAutoSchedule] = useState(false)
 
   // Load Podbean podcasts
   useEffect(() => {
@@ -195,6 +208,24 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       })
       .catch(() => {})
       .finally(() => setLoadingLocations(false))
+  }, [client.id])
+
+  // Load auto-schedule status
+  useEffect(() => {
+    setLoadingAutoSchedule(true)
+    fetch(`/api/clients/${client.id}/auto-schedule`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.paaQueue && data.locations) {
+          setAutoScheduleStatus({
+            paaQueue: data.paaQueue,
+            locations: data.locations,
+            upcoming: data.upcoming,
+          })
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingAutoSchedule(false))
   }, [client.id])
 
   function toggleSection(section: SectionKey) {
@@ -1065,6 +1096,129 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                   ))}
                 </select>
               </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Automation */}
+      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+        <SectionHeader
+          section="automation"
+          icon={Zap}
+          title="Automated Content Scheduling"
+          subtitle="Automatic Tue/Thu content generation"
+        />
+        {expandedSections.has('automation') && (
+          <div className="p-6 space-y-6">
+            {/* Enable Toggle */}
+            <div className="flex items-start justify-between">
+              <div>
+                <h4 className="text-sm font-medium text-gray-900">Enable Automatic Scheduling</h4>
+                <p className="text-sm text-gray-500 mt-1">
+                  Automatically create and generate content on Tuesdays and Thursdays
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.autoScheduleEnabled ?? false}
+                  onChange={(e) => updateField('autoScheduleEnabled', e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+
+            {/* Frequency */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Posts per Week</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="frequency"
+                    value="1"
+                    checked={(formData.autoScheduleFrequency ?? 2) === 1}
+                    onChange={() => updateField('autoScheduleFrequency', 1)}
+                    className="h-4 w-4 text-blue-600"
+                  />
+                  <span className="text-sm text-gray-700">1 post (Tuesday only)</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="frequency"
+                    value="2"
+                    checked={(formData.autoScheduleFrequency ?? 2) === 2}
+                    onChange={() => updateField('autoScheduleFrequency', 2)}
+                    className="h-4 w-4 text-blue-600"
+                  />
+                  <span className="text-sm text-gray-700">2 posts (Tue & Thu)</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Status Info */}
+            {loadingAutoSchedule ? (
+              <div className="text-sm text-gray-500">Loading status...</div>
+            ) : autoScheduleStatus && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileQuestion className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-medium text-gray-700">PAA Queue</span>
+                  </div>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {autoScheduleStatus.paaQueue.unused}/{autoScheduleStatus.paaQueue.total}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {autoScheduleStatus.paaQueue.isRecycling ? (
+                      <span className="text-amber-600">Recycling - all PAAs used</span>
+                    ) : (
+                      'unused PAAs available'
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MapPin className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium text-gray-700">Locations</span>
+                  </div>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {autoScheduleStatus.locations.active}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    active service locations
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className="h-4 w-4 text-purple-600" />
+                    <span className="text-sm font-medium text-gray-700">Upcoming</span>
+                  </div>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {autoScheduleStatus.upcoming.count}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    content items scheduled
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Info Box */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+              <strong>How it works:</strong>
+              <ul className="mt-2 space-y-1 list-disc list-inside">
+                <li>Each PAA question is used only once, then recycled from oldest</li>
+                <li>Locations are rotated equally through all service areas</li>
+                <li>Content is generated automatically (blog, podcast, images, social, short video)</li>
+                <li>Long-form video is skipped (manual for now)</li>
+                <li>Runs every Sunday evening for the upcoming week</li>
+              </ul>
             </div>
           </div>
         )}

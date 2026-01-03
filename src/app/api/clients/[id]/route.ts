@@ -94,6 +94,9 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         wrhqYoutubePlaylistId: data.wrhqYoutubePlaylistId || null,
         wrhqYoutubePlaylistTitle: data.wrhqYoutubePlaylistTitle || null,
         status: data.status || existing.status,
+        // Automation settings
+        autoScheduleEnabled: data.autoScheduleEnabled ?? existing.autoScheduleEnabled,
+        autoScheduleFrequency: data.autoScheduleFrequency ?? existing.autoScheduleFrequency,
       },
     })
 

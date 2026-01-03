@@ -123,6 +123,11 @@ model Client {
   calendarGeneratedAt   DateTime?
   calendarEndDate       DateTime? // How far out the calendar is populated
 
+  // Automation Settings
+  autoScheduleEnabled   Boolean   @default(false)   // Opt-in for Tue/Thu automation
+  autoScheduleFrequency Int       @default(2)       // Posts per week (1 or 2)
+  lastAutoScheduledAt   DateTime?                   // Track last automation run
+
   // Relations
   contentItems          ContentItem[]
   blogPosts             BlogPost[]
@@ -817,6 +822,10 @@ model ClientPAA {
   priority     Int           // Order pasted (1, 2, 3...)
   isActive     Boolean       @default(true)
 
+  // Automation tracking
+  usedAt       DateTime?     // When this PAA was last used (null = never)
+  usedCount    Int           @default(0)  // Total times used
+
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -826,6 +835,7 @@ model ClientPAA {
   @@index([clientId])
   @@index([priority])
   @@index([isActive])
+  @@index([usedAt])
 }
 
 // ============================================
@@ -843,6 +853,9 @@ model ServiceLocation {
   isHeadquarters Boolean @default(false)
   isActive     Boolean  @default(true)
 
+  // Automation tracking
+  lastUsedAt   DateTime?  // When this location was last used for content
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -852,6 +865,7 @@ model ServiceLocation {
   @@unique([clientId, city, state, neighborhood])
   @@index([clientId])
   @@index([isActive])
+  @@index([lastUsedAt])
 }
 
 // ============================================
