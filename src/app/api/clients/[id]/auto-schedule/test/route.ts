@@ -95,46 +95,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       await markLocationAsUsed(locationId)
     }
 
-    // Run the full content generation pipeline
-    // Note: We await this because Vercel terminates serverless functions after response
-    console.log(`[Test] Starting full generation for content item ${contentItem.id}`)
-
-    let generationError: Error | null = null
-    try {
-      await triggerFullGeneration(contentItem.id)
-      console.log(`[Test] Generation completed successfully for ${contentItem.id}`)
-    } catch (err) {
-      console.error(`[Test] Generation failed for ${contentItem.id}:`, err)
-      generationError = err instanceof Error ? err : new Error(String(err))
-    }
-
-    // Fetch the updated content item to get current status
-    const updatedItem = await prisma.contentItem.findUnique({
-      where: { id: contentItem.id },
-      select: {
-        status: true,
-        pipelineStep: true,
-        blogGenerated: true,
-        imagesGenerated: true,
-        clientBlogPublished: true,
-        clientBlogUrl: true,
-        schemaGenerated: true,
-        wrhqBlogGenerated: true,
-        wrhqBlogPublished: true,
-        wrhqBlogUrl: true,
-        podcastGenerated: true,
-        shortVideoGenerated: true,
-        socialGenerated: true,
-        wrhqSocialGenerated: true,
-        lastError: true,
-      },
-    })
-
+    // Return response immediately so user can navigate to review page
+    // The generation will continue in the background
     const response = {
-      success: !generationError,
-      message: generationError
-        ? `Generation failed: ${generationError.message}`
-        : 'Test content generated successfully',
+      success: true,
+      message: 'Content created - generation starting. Watch progress on the review page.',
       contentItemId: contentItem.id,
       details: {
         client: client.businessName,
@@ -142,12 +107,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         location: locationString,
         scheduledDate: today.toISOString().split('T')[0],
       },
-      generationStatus: updatedItem,
       reviewUrl: `/admin/content/${contentItem.id}/review`,
       durationMs: Date.now() - startTime,
     }
 
-    return NextResponse.json(response, { status: generationError ? 500 : 200 })
+    // Start generation in background - Vercel will keep the function alive
+    // for a while after response, allowing some/all of the pipeline to complete
+    console.log(`[Test] Starting full generation for content item ${contentItem.id}`)
+    triggerFullGeneration(contentItem.id)
+      .then(() => console.log(`[Test] Generation completed for ${contentItem.id}`))
+      .catch((err) => console.error(`[Test] Generation failed for ${contentItem.id}:`, err))
+
+    return NextResponse.json(response)
   } catch (error) {
     console.error('Test automation error:', error)
     return NextResponse.json(
