@@ -1589,74 +1589,97 @@ function LongformVideoUpload({
     setError(null)
     setUploadProgress(0)
 
+    const CHUNK_SIZE = 2 * 1024 * 1024 // 2MB chunks (under Vercel's 4.5MB limit)
+
     try {
-      // Step 1: Get signed upload URL from server
-      setUploadProgress(5)
-      const urlResponse = await fetch(`/api/content/${contentId}/upload-url`, {
+      // Step 1: Initialize YouTube upload session
+      setUploadProgress(2)
+      const initResponse = await fetch(`/api/content/${contentId}/init-youtube-upload`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          filename: videoFile.name,
-          contentType: videoFile.type || 'video/mp4',
+          fileSize: videoFile.size,
         }),
       })
 
-      if (!urlResponse.ok) {
-        const data = await urlResponse.json()
-        let errorMsg = data.error || 'Failed to get upload URL'
-        if (data.debug) {
-          errorMsg += ` (Debug: bucket_env=${data.debug.hasBucketEnv}, creds_env=${data.debug.hasCredentialsEnv}, bucket_db=${data.debug.hasBucketDb}, creds_db=${data.debug.hasCredentialsDb})`
-        }
-        throw new Error(errorMsg)
+      if (!initResponse.ok) {
+        const data = await initResponse.json()
+        throw new Error(data.error || 'Failed to initialize upload')
       }
 
-      const { uploadUrl, publicUrl } = await urlResponse.json()
+      const { sessionId } = await initResponse.json()
+      console.log('Upload session initialized:', sessionId)
 
-      // Step 2: Upload directly to GCS (bypasses Vercel body limit)
-      setUploadProgress(10)
-      const xhr = new XMLHttpRequest()
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) {
-          // Scale progress from 10-80 for GCS upload
-          const progress = 10 + Math.round((e.loaded / e.total) * 70)
-          setUploadProgress(progress)
+      // Step 2: Upload in chunks
+      const totalChunks = Math.ceil(videoFile.size / CHUNK_SIZE)
+      let uploadedBytes = 0
+      let uploadComplete = false
+      let finalResult: { videoId: string; videoUrl: string; playlistId?: string; thumbnailUrl?: string; description?: string } | null = null
+
+      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        const start = chunkIndex * CHUNK_SIZE
+        const end = Math.min(start + CHUNK_SIZE, videoFile.size) - 1
+        const chunk = videoFile.slice(start, end + 1)
+
+        // Update progress (5-85% for chunks)
+        const chunkProgress = 5 + Math.round((chunkIndex / totalChunks) * 80)
+        setUploadProgress(chunkProgress)
+
+        console.log(`Uploading chunk ${chunkIndex + 1}/${totalChunks}: bytes ${start}-${end}/${videoFile.size}`)
+
+        const chunkResponse = await fetch(`/api/content/${contentId}/upload-chunk`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'video/*',
+            'Content-Range': `bytes ${start}-${end}/${videoFile.size}`,
+            'Content-Length': chunk.size.toString(),
+          },
+          body: chunk,
+        })
+
+        if (!chunkResponse.ok) {
+          const data = await chunkResponse.json()
+          throw new Error(data.error || `Chunk ${chunkIndex + 1} upload failed`)
         }
-      })
 
-      await new Promise<void>((resolve, reject) => {
-        xhr.addEventListener('load', () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve()
-          } else {
-            // Include response text for debugging
-            const responseText = xhr.responseText || xhr.statusText || 'Unknown error'
-            reject(new Error(`GCS upload failed (${xhr.status}): ${responseText.substring(0, 200)}`))
-          }
-        })
-        xhr.addEventListener('error', () => {
-          reject(new Error(`GCS upload network error - check browser console for details`))
-        })
-        xhr.open('PUT', uploadUrl)
-        xhr.setRequestHeader('Content-Type', videoFile.type || 'video/mp4')
-        xhr.send(videoFile)
-      })
+        const chunkResult = await chunkResponse.json()
+        uploadedBytes = chunkResult.bytesUploaded || end + 1
 
-      // Step 3: Tell server to upload from GCS to YouTube
-      setUploadProgress(85)
-      const youtubeResponse = await fetch(`/api/content/${contentId}/upload-longform-video`, {
+        if (chunkResult.complete) {
+          uploadComplete = true
+          finalResult = chunkResult
+          console.log('Upload complete:', chunkResult.videoId)
+          break
+        }
+      }
+
+      if (!uploadComplete || !finalResult) {
+        throw new Error('Upload did not complete properly')
+      }
+
+      // Step 3: Finalize upload (add to playlist, set thumbnail, embed in blogs)
+      setUploadProgress(90)
+      const finalizeResponse = await fetch(`/api/content/${contentId}/finalize-youtube-upload`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videoUrl: publicUrl }),
+        body: JSON.stringify({
+          videoId: finalResult.videoId,
+          videoUrl: finalResult.videoUrl,
+          playlistId: finalResult.playlistId,
+          thumbnailUrl: finalResult.thumbnailUrl,
+          description: finalResult.description,
+        }),
       })
 
-      if (!youtubeResponse.ok) {
-        const data = await youtubeResponse.json()
-        throw new Error(data.error || 'YouTube upload failed')
+      if (!finalizeResponse.ok) {
+        const data = await finalizeResponse.json()
+        throw new Error(data.error || 'Failed to finalize upload')
       }
 
       setUploadProgress(100)
       onSuccess()
     } catch (err) {
+      console.error('Upload error:', err)
       setError(err instanceof Error ? err.message : 'Upload failed')
     } finally {
       setUploading(false)
