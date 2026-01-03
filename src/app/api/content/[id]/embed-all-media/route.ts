@@ -206,11 +206,21 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     // 1. Add short-form video (floated right) - find YouTube URL from multiple sources
     let youtubeShortUrl: string | null = null
 
-    // First, check shortFormVideos publishedUrls (JSON field with { platform: url } mapping)
-    const shortFormVideo = contentItem.shortFormVideos[0]
-    if (shortFormVideo?.publishedUrls) {
-      const publishedUrls = shortFormVideo.publishedUrls as Record<string, string>
-      youtubeShortUrl = publishedUrls['YOUTUBE'] || publishedUrls['youtube'] || null
+    // Primary: check videos table for any video with YouTube URL (this is where it's stored)
+    const youtubeVideo = contentItem.videos.find(
+      v => v.videoUrl?.includes('youtube.com') || v.videoUrl?.includes('youtu.be')
+    )
+    if (youtubeVideo?.videoUrl) {
+      youtubeShortUrl = youtubeVideo.videoUrl
+    }
+
+    // Fallback: check shortFormVideos publishedUrls (JSON field with { platform: url } mapping)
+    if (!youtubeShortUrl) {
+      const shortFormVideo = contentItem.shortFormVideos[0]
+      if (shortFormVideo?.publishedUrls) {
+        const publishedUrls = shortFormVideo.publishedUrls as Record<string, string>
+        youtubeShortUrl = publishedUrls['YOUTUBE'] || publishedUrls['youtube'] || null
+      }
     }
 
     // Fallback: check socialPosts for YouTube video post with publishedUrl
@@ -221,13 +231,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       youtubeShortUrl = youtubeVideoPost?.publishedUrl || null
     }
 
-    // Fallback: check videos table for any video with YouTube URL
-    if (!youtubeShortUrl) {
-      const youtubeVideo = contentItem.videos.find(
-        v => v.videoUrl?.includes('youtube.com') || v.videoUrl?.includes('youtu.be')
-      )
-      youtubeShortUrl = youtubeVideo?.videoUrl || null
-    }
+    console.log('Short video embed - YouTube URL found:', youtubeShortUrl)
 
     if (youtubeShortUrl) {
       const shortVideoEmbed = generateShortVideoEmbed(youtubeShortUrl)
