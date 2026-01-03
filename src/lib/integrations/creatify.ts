@@ -273,14 +273,19 @@ export async function updateLink(params: UpdateLinkParams): Promise<LinkResult> 
 /**
  * Create a video from a custom template
  * Templates are created in the Creatify dashboard and have variable placeholders
+ *
+ * IMPORTANT: The custom_template_jobs API does NOT accept a video_length parameter.
+ * The video duration is determined by the template configuration in Creatify.
+ * Make sure your template is configured for 30 seconds in the Creatify dashboard.
  */
 export async function createVideoFromTemplate(params: CustomTemplateParams): Promise<VideoResult> {
   const { apiId, apiKey } = await getCredentialsAsync()
 
+  // Note: template_id is the correct field name per API docs
+  // video_length is NOT supported for custom templates - duration is set in the template
   const requestBody: Record<string, unknown> = {
-    template: params.templateId,
+    template_id: params.templateId,
     variables: params.variables,
-    video_length: 30, // Short-form videos are always 30 seconds
   }
 
   if (params.name) {
@@ -294,6 +299,11 @@ export async function createVideoFromTemplate(params: CustomTemplateParams): Pro
   if (params.modelVersion) {
     requestBody.model_version = params.modelVersion
   }
+
+  console.log('Creating custom template video with:', {
+    template_id: params.templateId,
+    variableKeys: Object.keys(params.variables || {}),
+  })
 
   const response = await fetch('https://api.creatify.ai/api/custom_template_jobs/', {
     method: 'POST',
@@ -311,6 +321,11 @@ export async function createVideoFromTemplate(params: CustomTemplateParams): Pro
   }
 
   const data = await response.json()
+
+  // Log duration warning if video is longer than expected
+  if (data.duration && data.duration > 45) {
+    console.warn(`WARNING: Custom template video duration is ${data.duration} seconds. Expected ~30 seconds. Check template configuration in Creatify dashboard.`)
+  }
 
   return {
     jobId: data.id,
@@ -610,6 +625,12 @@ export async function checkVideoStatus(jobId: string): Promise<VideoResult> {
     status = 'completed'
   } else if (data.status === 'failed' || data.status === 'error' || data.status === 'rejected') {
     status = 'failed'
+  }
+
+  // SAFEGUARD: Warn if video duration exceeds 30 seconds (short-form should be ~30s)
+  if (status === 'completed' && data.duration && data.duration > 45) {
+    console.error(`🚨 VIDEO TOO LONG: Duration is ${data.duration} seconds (expected ~30s). JobId: ${jobId}`)
+    console.error(`This wastes credits! Check the template configuration in Creatify dashboard.`)
   }
 
   return {
