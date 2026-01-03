@@ -88,6 +88,7 @@ interface ClientData {
 
 interface ClientEditFormProps {
   client: ClientData
+  hasWordPressPassword?: boolean
 }
 
 const TIMEZONES = [
@@ -117,7 +118,7 @@ const socialPlatformOptions = [
 
 type SectionKey = 'business' | 'location' | 'serviceLocations' | 'branding' | 'wordpress' | 'social' | 'integrations' | 'publishing'
 
-export default function ClientEditForm({ client }: ClientEditFormProps) {
+export default function ClientEditForm({ client, hasWordPressPassword = false }: ClientEditFormProps) {
   const router = useRouter()
   const [formData, setFormData] = useState<ClientData>(client)
   const [saving, setSaving] = useState(false)
@@ -792,16 +793,24 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Application Password</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Application Password
+                {hasWordPressPassword && (
+                  <span className="ml-2 text-xs text-green-600 font-normal">✓ Saved</span>
+                )}
+              </label>
               <input
                 type="password"
                 value={formData.wordpressAppPassword || ''}
                 onChange={(e) => updateField('wordpressAppPassword', e.target.value)}
                 className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                placeholder="Leave blank to keep existing"
+                placeholder={hasWordPressPassword ? "Leave blank to keep existing password" : "Enter application password"}
               />
               <p className="text-xs text-gray-500 mt-1">
-                Only enter if you want to update the password. Generate in WordPress: Users → Profile → Application Passwords
+                {hasWordPressPassword
+                  ? "Only enter a new password if you want to change it."
+                  : "Generate in WordPress: Users → Profile → Application Passwords"
+                }
               </p>
             </div>
             <div className="space-y-2">
