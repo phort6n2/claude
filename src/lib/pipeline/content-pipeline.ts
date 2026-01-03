@@ -4,12 +4,14 @@ import { generateBothImages } from '../integrations/nano-banana'
 import { createPodcast, waitForPodcast } from '../integrations/autocontent'
 import { createShortVideo, waitForVideo } from '../integrations/creatify'
 import { scheduleSocialPosts } from '../integrations/getlate'
-import { createPost, uploadMedia, updatePost, injectSchemaMarkup } from '../integrations/wordpress'
+import { createPost, uploadMedia, updatePost, getPost } from '../integrations/wordpress'
 import { uploadFromUrl } from '../integrations/gcs'
 import { generateSchemaGraph } from './schema-markup'
 import { countWords, retryWithBackoff, withTimeout, TimeoutError } from '../utils'
 import { decrypt } from '../encryption'
 import { getSetting, getWRHQConfig, getWRHQLateAccountIds } from '../settings'
+import { publishToPodbean } from '../integrations/podbean'
+import { uploadVideoFromUrl, generateVideoDescription, generateVideoTags, isYouTubeConfigured } from '../integrations/youtube'
 
 // Timeout constants (in milliseconds)
 const TIMEOUTS = {
@@ -19,11 +21,114 @@ const TIMEOUTS = {
   WORDPRESS_POST: 60_000,       // 60 seconds for WP post creation
   PODCAST_CREATE: 30_000,       // 30 seconds to start podcast job
   PODCAST_WAIT: 180_000,        // 3 minutes max to wait for podcast
+  PODBEAN_PUBLISH: 120_000,     // 2 minutes for Podbean publishing
   VIDEO_CREATE: 30_000,         // 30 seconds to start video job
   VIDEO_WAIT: 180_000,          // 3 minutes max to wait for video
+  YOUTUBE_UPLOAD: 300_000,      // 5 minutes for YouTube upload
   SOCIAL_CAPTION: 30_000,       // 30 seconds for caption generation
   SOCIAL_SCHEDULE: 60_000,      // 60 seconds for scheduling
   GCS_UPLOAD: 60_000,           // 60 seconds for GCS upload
+}
+
+// ============ Embed Helper Functions (matching embed-all-media route) ============
+
+function generateSchemaEmbed(schemaJson: string): string {
+  try {
+    const schema = JSON.parse(schemaJson)
+    return `<!-- JSON-LD Schema Markup -->
+<script type="application/ld+json">
+${JSON.stringify(schema, null, 2)}
+</script>`
+  } catch {
+    return `<!-- JSON-LD Schema Markup -->
+<script type="application/ld+json">
+${schemaJson}
+</script>`
+  }
+}
+
+function generateShortVideoEmbed(youtubeUrl: string): string | null {
+  let videoId: string | null = null
+  try {
+    const url = new URL(youtubeUrl)
+    if (url.hostname.includes('youtube.com')) {
+      if (url.pathname.includes('/shorts/')) {
+        videoId = url.pathname.split('/shorts/')[1]?.split('?')[0]
+      } else {
+        videoId = url.searchParams.get('v')
+      }
+    } else if (url.hostname.includes('youtu.be')) {
+      videoId = url.pathname.slice(1).split('?')[0]
+    }
+  } catch {
+    return null
+  }
+
+  if (!videoId) return null
+
+  return `<!-- YouTube Short Video -->
+<style>
+.yt-shorts-embed {
+  float: right !important;
+  width: 280px;
+  margin: 0 0 20px 25px !important;
+  shape-outside: margin-box;
+}
+.yt-shorts-embed .video-wrapper {
+  position: relative;
+  padding-bottom: 177.78%;
+  height: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.yt-shorts-embed iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 12px;
+}
+@media (max-width: 600px) {
+  .yt-shorts-embed {
+    float: none !important;
+    width: 100%;
+    max-width: 320px;
+    margin: 20px auto !important;
+  }
+}
+</style>
+<div class="yt-shorts-embed">
+  <div class="video-wrapper">
+    <iframe
+      src="https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1"
+      title="Watch on YouTube"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen>
+    </iframe>
+  </div>
+</div>`
+}
+
+function generatePodcastEmbed(title: string, playerUrl: string): string {
+  return `
+<!-- Podcast Episode -->
+<div class="podcast-embed" style="margin: 30px 0;">
+  <h3>🎧 Listen to This Episode</h3>
+  <iframe
+    title="${title}"
+    allowtransparency="true"
+    height="150"
+    width="100%"
+    style="border: none; min-width: min(100%, 430px);height:150px;"
+    scrolling="no"
+    data-name="pb-iframe-player"
+    src="${playerUrl}&from=pb6admin&share=1&download=1&rtl=0&fonts=Arial&skin=1&font-color=&logo_link=episode_page&btn-skin=7"
+    loading="lazy"
+  ></iframe>
+</div>`
 }
 
 type PipelineStep = 'blog' | 'images' | 'wordpress' | 'wrhq' | 'podcast' | 'videos' | 'social' | 'schema'
@@ -573,42 +678,48 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           'Podcast GCS upload'
         )
 
-        await prisma.podcast.create({
+        // Create initial podcast record
+        const podcastRecord = await prisma.podcast.create({
           data: {
             contentItemId,
             clientId: contentItem.clientId,
             audioUrl: gcsResult.url,
             duration: podcastResult.duration,
             script: podcastScript,
+            description: blogResult!.excerpt || blogResult!.title,
             autocontentJobId: podcastJob.jobId,
             status: 'READY',
           },
         })
 
-        // Embed podcast in WordPress post if published
-        if (contentItem.client.wordpressUrl && contentItem.client.wordpressUsername && contentItem.client.wordpressAppPassword && results.wordpress.success) {
-          try {
-            const wpCredentials = {
-              url: contentItem.client.wordpressUrl,
-              username: contentItem.client.wordpressUsername,
-              password: contentItem.client.wordpressAppPassword,
-            }
-            const wpPost = await prisma.blogPost.findUnique({ where: { contentItemId } })
-            if (wpPost?.wordpressPostId) {
-              const audioEmbed = `\n\n<h2>Listen to This Article</h2>\n<audio controls src="${gcsResult.url}"></audio>\n`
-              await withTimeout(
-                updatePost(wpCredentials, wpPost.wordpressPostId, {
-                  content: blogResult!.content + audioEmbed,
-                }),
-                TIMEOUTS.WORDPRESS_POST,
-                'WordPress podcast embed'
-              )
-              log(ctx, 'Podcast embedded in WordPress post')
-            }
-          } catch (embedError) {
-            logError(ctx, 'Failed to embed podcast in WordPress', embedError)
-            // Non-critical, continue
-          }
+        // Publish to Podbean (like manual flow)
+        log(ctx, 'Publishing podcast to Podbean...')
+        try {
+          const podbeanResult = await withTimeout(
+            publishToPodbean({
+              title: blogResult!.title,
+              description: blogResult!.excerpt || contentItem.paaQuestion,
+              audioUrl: gcsResult.url,
+            }),
+            TIMEOUTS.PODBEAN_PUBLISH,
+            'Podbean publishing'
+          )
+
+          // Update podcast record with Podbean info
+          await prisma.podcast.update({
+            where: { id: podcastRecord.id },
+            data: {
+              podbeanEpisodeId: podbeanResult.episodeId,
+              podbeanUrl: podbeanResult.url,
+              podbeanPlayerUrl: podbeanResult.playerUrl,
+              status: 'PUBLISHED',
+            },
+          })
+
+          log(ctx, '✅ Podcast published to Podbean', { playerUrl: podbeanResult.playerUrl })
+        } catch (podbeanError) {
+          logError(ctx, 'Failed to publish podcast to Podbean', podbeanError)
+          // Non-critical, podcast is still in GCS
         }
 
         results.podcast = { success: true }
@@ -671,7 +782,8 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           'Video GCS upload'
         )
 
-        await prisma.video.create({
+        // Create video record
+        const videoRecord = await prisma.video.create({
           data: {
             contentItemId,
             clientId: contentItem.clientId,
@@ -685,6 +797,75 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             status: 'READY',
           },
         })
+
+        // Upload to YouTube (like manual flow)
+        const youtubeConfigured = await isYouTubeConfigured()
+        if (youtubeConfigured) {
+          log(ctx, 'Uploading video to YouTube...')
+          try {
+            // Get required URLs for description
+            const clientBlogPost = await prisma.blogPost.findUnique({ where: { contentItemId } })
+            const podcast = await prisma.podcast.findFirst({ where: { contentItemId } })
+
+            const youtubeResult = await withTimeout(
+              uploadVideoFromUrl(gcsResult.url, {
+                title: blogResult!.title,
+                description: generateVideoDescription({
+                  paaQuestion: contentItem.paaQuestion,
+                  clientBlogUrl: clientBlogPost?.wordpressUrl || '',
+                  wrhqBlogUrl: wrhqBlogUrl || '',
+                  googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+                  wrhqDirectoryUrl: contentItem.client.wrhqDirectoryUrl || undefined,
+                  podbeanUrl: podcast?.podbeanUrl || undefined,
+                  businessName: contentItem.client.businessName,
+                  city: contentItem.client.city,
+                  state: contentItem.client.state,
+                }),
+                tags: generateVideoTags({
+                  businessName: contentItem.client.businessName,
+                  city: contentItem.client.city,
+                  state: contentItem.client.state,
+                  paaQuestion: contentItem.paaQuestion,
+                }),
+                privacyStatus: 'public',
+              }),
+              TIMEOUTS.YOUTUBE_UPLOAD,
+              'YouTube upload'
+            )
+
+            // Update video record status
+            await prisma.video.update({
+              where: { id: videoRecord.id },
+              data: {
+                status: 'PUBLISHED',
+              },
+            })
+
+            // Create a social post record for the YouTube upload (for embed-all-media to find)
+            await prisma.socialPost.create({
+              data: {
+                contentItemId,
+                clientId: contentItem.clientId,
+                platform: 'YOUTUBE',
+                caption: blogResult!.title,
+                hashtags: [],
+                mediaType: 'VIDEO',
+                mediaUrls: [gcsResult.url],
+                scheduledTime: new Date(),
+                publishedUrl: youtubeResult.videoUrl,
+                status: 'PUBLISHED',
+                publishedAt: new Date(),
+              },
+            })
+
+            log(ctx, '✅ Video uploaded to YouTube', { url: youtubeResult.videoUrl })
+          } catch (youtubeError) {
+            logError(ctx, 'Failed to upload video to YouTube', youtubeError)
+            // Non-critical, video is still in GCS
+          }
+        } else {
+          log(ctx, '⏭️ YouTube not configured - skipping upload')
+        }
 
         results.videos = { success: true }
         log(ctx, '✅ Video generated successfully', { duration: videoResult.duration })
@@ -867,29 +1048,21 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
 
     await logAction(ctx, 'social_schedule', 'SUCCESS')
 
-    // ============ STEP 7: Generate Schema Markup ============
-    // Schema is generated LAST because it needs to link to all created content (podcast, video, etc.)
-    log(ctx, '📋 Starting schema markup generation...')
-    await logAction(ctx, 'schema_generate', 'STARTED')
+    // ============ STEP 7: Generate Schema & Embed All Media ============
+    // This matches the manual flow's "Embed All Media" step
+    ctx.step = 'schema'
+    log(ctx, '📋 Starting schema generation and media embedding...')
+    await logAction(ctx, 'schema_embed', 'STARTED')
 
     try {
-      // Get the created podcast and video to include in schema
-      const podcast = await prisma.podcast.findFirst({
-        where: { contentItemId },
-        select: { audioUrl: true, duration: true },
-      })
+      // Get all the content we need
+      const blogPostForEmbed = await prisma.blogPost.findUnique({ where: { contentItemId } })
+      const podcast = await prisma.podcast.findFirst({ where: { contentItemId } })
+      const video = await prisma.video.findFirst({ where: { contentItemId, videoType: 'SHORT' } })
+      const socialPosts = await prisma.socialPost.findMany({ where: { contentItemId } })
 
-      const video = await prisma.video.findFirst({
-        where: { contentItemId, videoType: 'SHORT' },
-        select: { videoUrl: true, thumbnailUrl: true, duration: true },
-      })
-
-      const blogPostForSchema = await prisma.blogPost.findUnique({
-        where: { contentItemId },
-      })
-
-      if (blogPostForSchema && contentItem.client.wordpressUrl) {
-        // Generate schema with all content references
+      if (blogPostForEmbed && blogPostForEmbed.wordpressPostId && contentItem.client.wordpressUrl) {
+        // 1. Generate schema with all content references
         const schemaJson = generateSchemaGraph({
           client: {
             businessName: contentItem.client.businessName,
@@ -909,120 +1082,88 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             offersMobileService: contentItem.client.offersMobileService,
           },
           blogPost: {
-            title: blogPostForSchema.title,
-            slug: blogPostForSchema.slug,
-            content: blogPostForSchema.content,
-            excerpt: blogPostForSchema.excerpt,
-            metaDescription: blogPostForSchema.metaDescription,
-            wordpressUrl: blogPostForSchema.wordpressUrl,
-            publishedAt: blogPostForSchema.publishedAt,
+            title: blogPostForEmbed.title,
+            slug: blogPostForEmbed.slug,
+            content: blogPostForEmbed.content,
+            excerpt: blogPostForEmbed.excerpt,
+            metaDescription: blogPostForEmbed.metaDescription,
+            wordpressUrl: blogPostForEmbed.wordpressUrl,
+            publishedAt: blogPostForEmbed.publishedAt,
           },
           contentItem: {
             paaQuestion: contentItem.paaQuestion,
           },
-          podcast: podcast ? {
-            audioUrl: podcast.audioUrl,
-            duration: podcast.duration,
-          } : undefined,
-          video: video ? {
-            videoUrl: video.videoUrl,
-            thumbnailUrl: video.thumbnailUrl,
-            duration: video.duration,
-          } : undefined,
+          podcast: podcast ? { audioUrl: podcast.audioUrl, duration: podcast.duration } : undefined,
+          video: video ? { videoUrl: video.videoUrl, thumbnailUrl: video.thumbnailUrl, duration: video.duration } : undefined,
         })
-
-        // Inject schema into WordPress post if we have a post ID
-        if (blogPostForSchema.wordpressPostId && contentItem.client.wordpressUsername && contentItem.client.wordpressAppPassword) {
-          const wpCredentials = {
-            url: contentItem.client.wordpressUrl,
-            username: contentItem.client.wordpressUsername,
-            password: contentItem.client.wordpressAppPassword,
-          }
-
-          await withTimeout(
-            injectSchemaMarkup(wpCredentials, blogPostForSchema.wordpressPostId, schemaJson),
-            TIMEOUTS.WORDPRESS_POST,
-            'Schema injection'
-          )
-          log(ctx, '✅ Schema markup injected into WordPress')
-        }
 
         // Save schema to blog post
         await prisma.blogPost.update({
-          where: { id: blogPostForSchema.id },
+          where: { id: blogPostForEmbed.id },
           data: { schemaJson },
         })
+        log(ctx, '✅ Schema generated and saved')
 
-        log(ctx, '✅ Client schema markup generated successfully')
-      } else {
-        log(ctx, '⏭️ Client schema skipped - no blog post or WordPress not configured')
-      }
-
-      // Generate schema for WRHQ blog if published
-      const wrhqBlogPost = await prisma.wRHQBlogPost.findUnique({
-        where: { contentItemId },
-      })
-
-      if (wrhqBlogPost && wrhqBlogPost.wordpressPostId && wrhqConfig.wordpress.isConfigured) {
-        log(ctx, '📋 Generating WRHQ schema markup...')
-
-        // Generate schema for WRHQ blog (references client business but uses WRHQ as publisher)
-        const wrhqSchemaJson = generateSchemaGraph({
-          client: {
-            businessName: contentItem.client.businessName,
-            streetAddress: contentItem.client.streetAddress,
-            city: contentItem.client.city,
-            state: contentItem.client.state,
-            postalCode: contentItem.client.postalCode,
-            country: contentItem.client.country || 'US',
-            phone: contentItem.client.phone,
-            email: contentItem.client.email || '',
-            logoUrl: contentItem.client.logoUrl,
-            wordpressUrl: wrhqConfig.wordpress.url!, // Use WRHQ site URL
-            serviceAreas: contentItem.client.serviceAreas,
-            gbpRating: contentItem.client.gbpRating,
-            gbpReviewCount: contentItem.client.gbpReviewCount,
-            hasAdasCalibration: contentItem.client.hasAdasCalibration,
-            offersMobileService: contentItem.client.offersMobileService,
-          },
-          blogPost: {
-            title: wrhqBlogPost.title,
-            slug: wrhqBlogPost.slug,
-            content: wrhqBlogPost.content,
-            excerpt: wrhqBlogPost.excerpt,
-            metaDescription: wrhqBlogPost.metaDescription,
-            wordpressUrl: wrhqBlogPost.wordpressUrl,
-            publishedAt: wrhqBlogPost.publishedAt,
-          },
-          contentItem: {
-            paaQuestion: contentItem.paaQuestion,
-          },
-          podcast: podcast ? {
-            audioUrl: podcast.audioUrl,
-            duration: podcast.duration,
-          } : undefined,
-          video: video ? {
-            videoUrl: video.videoUrl,
-            thumbnailUrl: video.thumbnailUrl,
-            duration: video.duration,
-          } : undefined,
-        })
-
-        // Inject schema into WRHQ WordPress post
-        const wrhqCredentials = {
-          url: wrhqConfig.wordpress.url!,
-          username: wrhqConfig.wordpress.username!,
-          password: wrhqConfig.wordpress.appPassword!,
-          isDecrypted: true,
+        // 2. Fetch current WordPress content and embed all media (like manual embed-all-media)
+        const wpCredentials = {
+          url: contentItem.client.wordpressUrl,
+          username: contentItem.client.wordpressUsername || '',
+          password: contentItem.client.wordpressAppPassword || '',
         }
 
-        await withTimeout(
-          injectSchemaMarkup(wrhqCredentials, wrhqBlogPost.wordpressPostId, wrhqSchemaJson),
-          TIMEOUTS.WORDPRESS_POST,
-          'WRHQ schema injection'
-        )
+        const currentPost = await getPost(wpCredentials, blogPostForEmbed.wordpressPostId)
+        let fullContent = currentPost.content
 
-        log(ctx, '✅ WRHQ schema markup injected successfully')
+        // Remove any existing embeds to prevent duplicates
+        fullContent = fullContent.replace(/<!-- JSON-LD Schema \d+ -->[\s\S]*?<\/script>/g, '')
+        fullContent = fullContent.replace(/<!-- JSON-LD Schema Markup -->[\s\S]*?<\/script>/g, '')
+        fullContent = fullContent.replace(/<!-- YouTube Short Video -->[\s\S]*?<\/div>\s*<\/div>/g, '')
+        fullContent = fullContent.replace(/<div class="yt-shorts-embed">[\s\S]*?<\/div>\s*<\/div>/g, '')
+        fullContent = fullContent.replace(/<div class="video-container"[\s\S]*?<\/div>/g, '')
+        fullContent = fullContent.replace(/<!-- Podcast Episode -->[\s\S]*?<\/div>/g, '')
+        fullContent = fullContent.replace(/<div class="podcast-embed"[\s\S]*?<\/div>/g, '')
+
+        const embedded: string[] = []
+
+        // Add JSON-LD schema at the beginning
+        const schemaEmbed = generateSchemaEmbed(schemaJson)
+        fullContent = schemaEmbed + '\n\n' + fullContent
+        embedded.push('schema')
+
+        // Add short video embed if YouTube URL exists
+        const youtubePost = socialPosts.find(p => p.platform === 'YOUTUBE' && p.publishedUrl)
+        if (youtubePost?.publishedUrl) {
+          const shortVideoEmbed = generateShortVideoEmbed(youtubePost.publishedUrl)
+          if (shortVideoEmbed) {
+            fullContent = shortVideoEmbed + '\n' + fullContent
+            embedded.push('short-video')
+          }
+        }
+
+        // Add podcast embed at the end if published to Podbean
+        if (podcast?.podbeanPlayerUrl) {
+          const podcastEmbed = generatePodcastEmbed(blogPostForEmbed.title, podcast.podbeanPlayerUrl)
+          fullContent = fullContent + podcastEmbed
+          embedded.push('podcast')
+        }
+
+        // Update WordPress with all embeds
+        await updatePost(wpCredentials, blogPostForEmbed.wordpressPostId, { content: fullContent })
+        log(ctx, '✅ All media embedded in WordPress', { embedded })
+
+        // Update tracking flags
+        if (embedded.includes('podcast')) {
+          await prisma.contentItem.update({
+            where: { id: contentItemId },
+            data: { podcastAddedToPost: true, podcastAddedAt: new Date() },
+          })
+        }
+        if (embedded.includes('short-video')) {
+          await prisma.contentItem.update({
+            where: { id: contentItemId },
+            data: { shortVideoAddedToPost: true, shortVideoAddedAt: new Date() },
+          })
+        }
       }
 
       // Mark schema as generated
@@ -1032,15 +1173,14 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       })
 
       results.schema = { success: true }
-      log(ctx, '✅ All schema markup generated successfully')
-      await logAction(ctx, 'schema_generate', 'SUCCESS')
+      log(ctx, '✅ Schema and embedding complete')
+      await logAction(ctx, 'schema_embed', 'SUCCESS')
     } catch (error) {
-      logError(ctx, 'Schema generation failed', error)
+      logError(ctx, 'Schema/embedding failed', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      await logAction(ctx, 'schema_generate', 'FAILED', { errorMessage })
+      await logAction(ctx, 'schema_embed', 'FAILED', { errorMessage })
       results.schema = { success: false, error: errorMessage }
-      // Schema is non-critical, continue to finalize
-      log(ctx, '⚠️ Continuing without schema...')
+      log(ctx, '⚠️ Continuing without schema/embeds...')
     }
 
     // ============ FINALIZE ============
