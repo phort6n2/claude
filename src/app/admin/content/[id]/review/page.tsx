@@ -1628,10 +1628,14 @@ function LongformVideoUpload({
           if (xhr.status >= 200 && xhr.status < 300) {
             resolve()
           } else {
-            reject(new Error(`GCS upload failed: ${xhr.statusText}`))
+            // Include response text for debugging
+            const responseText = xhr.responseText || xhr.statusText || 'Unknown error'
+            reject(new Error(`GCS upload failed (${xhr.status}): ${responseText.substring(0, 200)}`))
           }
         })
-        xhr.addEventListener('error', () => reject(new Error('GCS upload failed')))
+        xhr.addEventListener('error', () => {
+          reject(new Error(`GCS upload network error - check browser console for details`))
+        })
         xhr.open('PUT', uploadUrl)
         xhr.setRequestHeader('Content-Type', videoFile.type || 'video/mp4')
         xhr.send(videoFile)
