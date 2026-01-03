@@ -459,6 +459,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           url: wrhqConfig.wordpress.url!,
           username: wrhqConfig.wordpress.username!,
           password: wrhqConfig.wordpress.appPassword!,
+          isDecrypted: true, // Password from settings is already decrypted
         }
 
         // Upload featured image to WRHQ

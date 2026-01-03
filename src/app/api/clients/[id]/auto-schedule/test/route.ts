@@ -113,12 +113,20 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       where: { id: contentItem.id },
       select: {
         status: true,
+        pipelineStep: true,
         blogGenerated: true,
         imagesGenerated: true,
         clientBlogPublished: true,
+        clientBlogUrl: true,
+        schemaGenerated: true,
+        wrhqBlogGenerated: true,
+        wrhqBlogPublished: true,
+        wrhqBlogUrl: true,
         podcastGenerated: true,
         shortVideoGenerated: true,
         socialGenerated: true,
+        wrhqSocialGenerated: true,
+        lastError: true,
       },
     })
 
