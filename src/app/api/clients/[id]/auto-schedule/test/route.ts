@@ -95,11 +95,25 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       await markLocationAsUsed(locationId)
     }
 
-    // Return response immediately so user can navigate to review page
-    // The generation will continue in the background
+    // Build review URL for the response
+    const reviewUrl = `/admin/content/${contentItem.id}/review`
+
+    // IMPORTANT: We must await the pipeline - fire-and-forget doesn't work on Vercel
+    // Vercel kills the function after response is sent, so the pipeline would never run
+    console.log(`[Test] Starting full generation for content item ${contentItem.id}`)
+    console.log(`[Test] Review URL: ${reviewUrl}`)
+
+    try {
+      await triggerFullGeneration(contentItem.id)
+      console.log(`[Test] Generation completed for ${contentItem.id}`)
+    } catch (err) {
+      console.error(`[Test] Generation failed for ${contentItem.id}:`, err)
+      // Don't throw - the content item status is already set to FAILED in triggerFullGeneration
+    }
+
     const response = {
       success: true,
-      message: 'Content created - generation starting. Watch progress on the review page.',
+      message: 'Content generation complete. View on the review page.',
       contentItemId: contentItem.id,
       details: {
         client: client.businessName,
@@ -107,16 +121,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         location: locationString,
         scheduledDate: today.toISOString().split('T')[0],
       },
-      reviewUrl: `/admin/content/${contentItem.id}/review`,
+      reviewUrl,
       durationMs: Date.now() - startTime,
     }
-
-    // Start generation in background - Vercel will keep the function alive
-    // for a while after response, allowing some/all of the pipeline to complete
-    console.log(`[Test] Starting full generation for content item ${contentItem.id}`)
-    triggerFullGeneration(contentItem.id)
-      .then(() => console.log(`[Test] Generation completed for ${contentItem.id}`))
-      .catch((err) => console.error(`[Test] Generation failed for ${contentItem.id}:`, err))
 
     return NextResponse.json(response)
   } catch (error) {
