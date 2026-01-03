@@ -752,16 +752,21 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         select: { gcsUrl: true },
       })
 
+      // Get the published blog URL for better video generation (URL-to-Video API)
+      const blogPostForVideo = await prisma.blogPost.findUnique({ where: { contentItemId } })
+      const blogUrlForVideo = blogPostForVideo?.wordpressUrl || null
+
       const scriptForVideo = podcastScript || blogResult!.excerpt || blogResult!.title
 
-      log(ctx, 'Creating short video job...')
+      log(ctx, 'Creating short video job...', { blogUrl: blogUrlForVideo })
       const videoJob = await withTimeout(
         createShortVideo({
           script: scriptForVideo.substring(0, 500),
           title: blogResult!.title,
+          blogUrl: blogUrlForVideo || undefined, // Use URL-to-Video API if blog is published
           imageUrls: imageUrls.map((i: { gcsUrl: string }) => i.gcsUrl),
           aspectRatio: '9:16',
-          duration: 60,
+          duration: 30, // 30 seconds for short-form video (URL-to-Video supports 15, 30, 45, 60)
         }),
         TIMEOUTS.VIDEO_CREATE,
         'Video job creation'
