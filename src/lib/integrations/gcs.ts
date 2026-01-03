@@ -167,12 +167,14 @@ export async function uploadFromBase64(
 }
 
 /**
- * Generate a signed URL for direct browser upload to GCS
+ * Create a resumable upload session for direct browser upload to GCS
  * This bypasses server-side body limits (like Vercel's 4.5MB limit)
+ * Uses GCS resumable uploads which work better with CORS than signed URLs
  */
 export async function getSignedUploadUrl(
   filename: string,
   contentType: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   expiresInMinutes: number = 15
 ): Promise<{ uploadUrl: string; publicUrl: string }> {
   // Check all possible bucket name settings (same as uploadToGCS)
@@ -204,51 +206,56 @@ export async function getSignedUploadUrl(
   }
 
   const credentials = JSON.parse(credentialsJson)
-  const expiration = Math.floor(Date.now() / 1000) + (expiresInMinutes * 60)
 
-  // Create signed URL using V4 signing
-  const host = `${bucketName}.storage.googleapis.com`
-  const canonicalUri = `/${encodeURIComponent(filename)}`
-  const signedHeaders = 'content-type;host'
-  const credentialScope = `${new Date().toISOString().slice(0, 10).replace(/-/g, '')}/${credentials.project_id || 'auto'}/storage/goog4_request`
-  const datetime = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+  // Get access token using JWT (same as uploadToGCS)
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: await createJWT(credentials),
+    }),
+  })
 
-  const canonicalQueryString = [
-    `X-Goog-Algorithm=GOOG4-RSA-SHA256`,
-    `X-Goog-Credential=${encodeURIComponent(credentials.client_email + '/' + credentialScope)}`,
-    `X-Goog-Date=${datetime}`,
-    `X-Goog-Expires=${expiresInMinutes * 60}`,
-    `X-Goog-SignedHeaders=${signedHeaders}`,
-  ].sort().join('&')
+  if (!tokenResponse.ok) {
+    const error = await tokenResponse.text()
+    throw new Error(`GCS OAuth token error: ${error}`)
+  }
 
-  const canonicalHeaders = `content-type:${contentType}\nhost:${host}\n`
-  const canonicalRequest = [
-    'PUT',
-    canonicalUri,
-    canonicalQueryString,
-    canonicalHeaders,
-    signedHeaders,
-    'UNSIGNED-PAYLOAD',
-  ].join('\n')
+  const tokenData = await tokenResponse.json()
+  const accessToken = tokenData.access_token
 
-  const crypto = await import('crypto')
-  const hashedRequest = crypto.createHash('sha256').update(canonicalRequest).digest('hex')
+  // Initiate a resumable upload session
+  // This returns a session URI that the browser can use to upload directly
+  const initUrl = `https://storage.googleapis.com/upload/storage/v1/b/${bucketName}/o?uploadType=resumable&name=${encodeURIComponent(filename)}`
 
-  const stringToSign = [
-    'GOOG4-RSA-SHA256',
-    datetime,
-    credentialScope,
-    hashedRequest,
-  ].join('\n')
+  const initResponse = await fetch(initUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      'X-Upload-Content-Type': contentType,
+    },
+    body: JSON.stringify({
+      name: filename,
+      contentType: contentType,
+    }),
+  })
 
-  const sign = crypto.createSign('RSA-SHA256')
-  sign.update(stringToSign)
-  const signature = sign.sign(credentials.private_key, 'hex')
+  if (!initResponse.ok) {
+    const error = await initResponse.text()
+    throw new Error(`GCS resumable upload init error: ${error}`)
+  }
 
-  const signedUrl = `https://${host}${canonicalUri}?${canonicalQueryString}&X-Goog-Signature=${signature}`
+  // The upload URL is in the Location header
+  const uploadUrl = initResponse.headers.get('location')
+  if (!uploadUrl) {
+    throw new Error('GCS did not return upload URL')
+  }
+
   const publicUrl = `https://storage.googleapis.com/${bucketName}/${encodeURIComponent(filename)}`
 
-  return { uploadUrl: signedUrl, publicUrl }
+  return { uploadUrl, publicUrl }
 }
 
 async function createJWT(credentials: {
