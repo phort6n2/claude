@@ -99,8 +99,7 @@ export default function CreateContentModal({ isOpen, onClose, onSuccess }: Creat
           paaQuestion: question,
           scheduledDate: today,
           scheduledTime: client?.preferredPublishTime || '09:00',
-          status: 'GENERATING',
-          triggerGeneration: true,
+          status: 'DRAFT',
         }),
       })
 
