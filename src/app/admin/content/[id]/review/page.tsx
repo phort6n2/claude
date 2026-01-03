@@ -955,7 +955,7 @@ function ReviewTab({
                 </button>
                 <button
                   onClick={() => publishContent('social')}
-                  disabled={publishing === 'social' || !content.socialGenerated || content.socialPosts.every(p => p.status === 'PUBLISHED') || content.socialPosts.some(p => p.status === 'PROCESSING')}
+                  disabled={publishing === 'social' || !content.socialGenerated || content.socialPosts.length === 0 || content.socialPosts.every(p => p.status === 'PUBLISHED') || content.socialPosts.some(p => p.status === 'PROCESSING')}
                   className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {publishing === 'social' ? (
@@ -968,7 +968,7 @@ function ReviewTab({
                       <RefreshCw className="h-4 w-4 animate-spin" />
                       Processing...
                     </>
-                  ) : content.socialPosts.every(p => p.status === 'PUBLISHED') ? (
+                  ) : content.socialPosts.length > 0 && content.socialPosts.every(p => p.status === 'PUBLISHED') ? (
                     <>
                       <Check className="h-4 w-4" />
                       Posted
@@ -1014,7 +1014,7 @@ function ReviewTab({
                 </button>
                 <button
                   onClick={() => publishContent('wrhqSocial')}
-                  disabled={publishing === 'wrhqSocial' || !content.wrhqSocialGenerated || content.wrhqSocialPosts.every(p => p.status === 'PUBLISHED') || content.wrhqSocialPosts.some(p => p.status === 'PROCESSING')}
+                  disabled={publishing === 'wrhqSocial' || !content.wrhqSocialGenerated || content.wrhqSocialPosts.length === 0 || content.wrhqSocialPosts.every(p => p.status === 'PUBLISHED') || content.wrhqSocialPosts.some(p => p.status === 'PROCESSING')}
                   className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {publishing === 'wrhqSocial' ? (
@@ -1027,7 +1027,7 @@ function ReviewTab({
                       <RefreshCw className="h-4 w-4 animate-spin" />
                       Processing...
                     </>
-                  ) : content.wrhqSocialPosts.every(p => p.status === 'PUBLISHED') ? (
+                  ) : content.wrhqSocialPosts.length > 0 && content.wrhqSocialPosts.every(p => p.status === 'PUBLISHED') ? (
                     <>
                       <Check className="h-4 w-4" />
                       Posted
