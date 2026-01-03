@@ -1368,6 +1368,11 @@ function ReviewTab({
                 <Check className="h-5 w-5" />
                 <span className="text-sm font-medium">Published & Embedded</span>
               </div>
+            ) : content.podcast?.status === 'PUBLISHED' ? (
+              <div className="flex items-center gap-2 text-blue-600">
+                <Check className="h-4 w-4" />
+                <span className="text-sm">Published to Podbean</span>
+              </div>
             ) : (
               <>
                 <button
@@ -2497,10 +2502,14 @@ function PublishedTab({ content, onUpdate }: { content: ContentItem; onUpdate: (
                 Duration: {Math.floor(content.podcast.duration / 60)}:{String(Math.round(content.podcast.duration) % 60).padStart(2, '0')}
               </p>
             )}
-            {content.podcastAddedToPost && (
+            {content.podcastAddedToPost ? (
               <p className="text-sm text-green-600 flex items-center gap-1">
                 <Check className="h-4 w-4" />
                 Embedded in blog post
+              </p>
+            ) : (
+              <p className="text-sm text-gray-500">
+                Use &quot;Embed All Media&quot; on the Review tab to add to blog
               </p>
             )}
           </div>
