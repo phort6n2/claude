@@ -206,21 +206,34 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     fullContent = fullContent.replace(/<div class="podcast-embed"[\s\S]*?<\/div>/g, '')
 
     // 1. Add short-form video (floated right)
-    // Try to find YouTube URL - first from videos table, then from socialPosts
-    const shortVideo = contentItem.videos.find(v => v.videoType === 'SHORT')
-    let shortVideoUrl = shortVideo?.videoUrl || null
+    let shortVideoUrl: string | null = null
 
-    // If the video URL isn't a YouTube URL, check socialPosts for the published YouTube URL
-    if (!shortVideoUrl?.includes('youtube.com') && !shortVideoUrl?.includes('youtu.be')) {
+    // Debug: log all available data
+    console.log('=== SHORT VIDEO DEBUG ===')
+    console.log('All videos:', contentItem.videos.map(v => ({ url: v.videoUrl, type: v.videoType })))
+    console.log('YouTube socialPosts:', contentItem.socialPosts.filter(p => p.platform === 'YOUTUBE').map(p => ({ publishedUrl: p.publishedUrl, status: p.status })))
+
+    // Check all videos for a YouTube URL (any video, not just SHORT type)
+    for (const video of contentItem.videos) {
+      if (video.videoUrl?.includes('youtube.com') || video.videoUrl?.includes('youtu.be')) {
+        shortVideoUrl = video.videoUrl
+        console.log('Found YouTube URL in videos table:', shortVideoUrl)
+        break
+      }
+    }
+
+    // Fallback: check socialPosts for published YouTube URL
+    if (!shortVideoUrl) {
       const youtubePost = contentItem.socialPosts.find(
         p => p.platform === 'YOUTUBE' && p.publishedUrl
       )
       if (youtubePost?.publishedUrl) {
         shortVideoUrl = youtubePost.publishedUrl
+        console.log('Found YouTube URL in socialPosts:', shortVideoUrl)
       }
     }
 
-    console.log('Short video URL for embed:', shortVideoUrl)
+    console.log('Final short video URL for embed:', shortVideoUrl)
 
     if (shortVideoUrl) {
       const shortVideoEmbed = generateShortVideoEmbed(shortVideoUrl)
