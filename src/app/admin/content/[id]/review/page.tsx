@@ -1334,7 +1334,7 @@ function ReviewTab({
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-sm">Click "Generate" to create social content</p>
+              <p className="text-gray-500 text-sm">Click &quot;Generate&quot; to create social content</p>
             )}
           </div>
 
@@ -1395,7 +1395,7 @@ function ReviewTab({
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-sm">Click "Generate" to create WRHQ social content</p>
+              <p className="text-gray-500 text-sm">Click &quot;Generate&quot; to create WRHQ social content</p>
             )}
           </div>
         </div>

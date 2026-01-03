@@ -297,7 +297,7 @@ function getAvailableDates(
   endDate.setFullYear(endDate.getFullYear() + yearsAhead)
 
   // Start from next Tuesday if start date is not Tue/Thu
-  let current = new Date(startDate)
+  const current = new Date(startDate)
   current.setHours(9, 0, 0, 0)
 
   const dayOfWeek = current.getDay()

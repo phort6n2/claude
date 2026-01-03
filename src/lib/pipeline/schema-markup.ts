@@ -47,6 +47,33 @@ interface SchemaParams {
   }
 }
 
+interface PodcastEpisodeSchema extends Record<string, unknown> {
+  '@type': 'PodcastEpisode'
+  '@id': string
+  name: string
+  description: string | null
+  audio: {
+    '@type': 'AudioObject'
+    contentUrl: string
+    duration?: string
+  }
+  partOfSeries: {
+    '@type': 'PodcastSeries'
+    name: string
+  }
+}
+
+interface VideoObjectSchema extends Record<string, unknown> {
+  '@type': 'VideoObject'
+  '@id': string
+  name: string
+  description: string | null
+  contentUrl: string
+  thumbnailUrl: string | null
+  duration?: string
+  uploadDate?: string
+}
+
 export function generateSchemaGraph(params: SchemaParams): string {
   const { client, blogPost, contentItem, podcast, video } = params
 
@@ -186,7 +213,7 @@ export function generateSchemaGraph(params: SchemaParams): string {
   ]
 
   // Add podcast if available
-  let podcastEpisode: any
+  let podcastEpisode: PodcastEpisodeSchema | undefined
   if (podcast) {
     podcastEpisode = {
       '@type': 'PodcastEpisode',
@@ -215,7 +242,7 @@ export function generateSchemaGraph(params: SchemaParams): string {
   }
 
   // Add video if available
-  let videoObject: any
+  let videoObject: VideoObjectSchema | undefined
   if (video) {
     videoObject = {
       '@type': 'VideoObject',
