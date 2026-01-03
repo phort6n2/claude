@@ -19,7 +19,11 @@ async function getClient(slug: string) {
       contentItems: {
         where: { status: 'PUBLISHED' },
         orderBy: { publishedAt: 'desc' },
-        include: {
+        select: {
+          id: true,
+          paaQuestion: true,
+          publishedAt: true,
+          longformVideoUrl: true,
           blogPost: true,
           images: {
             where: { imageType: 'BLOG_FEATURED' },
@@ -201,9 +205,19 @@ export default async function ClientPortalPage({ params, searchParams }: PagePro
                         rel="noopener noreferrer"
                         className="text-xs px-2 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200"
                       >
-                        Video
+                        Short Video
                       </a>
                     ))}
+                    {item.longformVideoUrl && (
+                      <a
+                        href={item.longformVideoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs px-2 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200"
+                      >
+                        Long Video
+                      </a>
+                    )}
                     {item.socialPosts.length > 0 && (
                       <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
                         {item.socialPosts.length} Social Posts
