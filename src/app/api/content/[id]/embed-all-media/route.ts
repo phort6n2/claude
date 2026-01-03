@@ -183,12 +183,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'WordPress not configured for client' }, { status: 400 })
     }
 
-    // Debug: log all video sources
-    console.log('=== EMBED ALL MEDIA DEBUG ===')
-    console.log('Videos:', contentItem.videos.map(v => ({ videoUrl: v.videoUrl, videoType: v.videoType })))
-    console.log('ShortFormVideos:', contentItem.shortFormVideos.map(v => ({ videoUrl: v.videoUrl, publishedUrls: v.publishedUrls })))
-    console.log('SocialPosts with YouTube:', contentItem.socialPosts.filter(p => p.platform === 'YOUTUBE' || p.publishedUrl?.includes('youtube')).map(p => ({ platform: p.platform, mediaType: p.mediaType, publishedUrl: p.publishedUrl })))
-    console.log('WRHQSocialPosts with YouTube:', contentItem.wrhqSocialPosts.filter(p => p.platform === 'YOUTUBE' || p.publishedUrl?.includes('youtube')).map(p => ({ platform: p.platform, mediaType: p.mediaType, publishedUrl: p.publishedUrl })))
 
     // Fetch current content from WordPress (already has featured image + Google Maps)
     const wpCredentials = {
@@ -211,62 +205,25 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     fullContent = fullContent.replace(/<!-- Podcast Episode -->[\s\S]*?<\/div>/g, '')
     fullContent = fullContent.replace(/<div class="podcast-embed"[\s\S]*?<\/div>/g, '')
 
-    // 1. Add short-form video (floated right) - find YouTube URL from multiple sources
-    let youtubeShortUrl: string | null = null
+    // 1. Add short-form video (floated right)
+    // Try to find YouTube URL - first from videos table, then from socialPosts
+    const shortVideo = contentItem.videos.find(v => v.videoType === 'SHORT')
+    let shortVideoUrl = shortVideo?.videoUrl || null
 
-    // Primary: check videos table for any video with YouTube URL (this is where it's stored)
-    const youtubeVideo = contentItem.videos.find(
-      v => v.videoUrl?.includes('youtube.com') || v.videoUrl?.includes('youtu.be')
-    )
-    if (youtubeVideo?.videoUrl) {
-      youtubeShortUrl = youtubeVideo.videoUrl
-    }
-
-    // Fallback: check shortFormVideos publishedUrls (JSON field with { platform: url } mapping)
-    if (!youtubeShortUrl) {
-      const shortFormVideo = contentItem.shortFormVideos[0]
-      if (shortFormVideo?.publishedUrls) {
-        const publishedUrls = shortFormVideo.publishedUrls as Record<string, string>
-        youtubeShortUrl = publishedUrls['YOUTUBE'] || publishedUrls['youtube'] || null
-      }
-    }
-
-    // Fallback: check socialPosts for ANY YouTube post with publishedUrl (drop mediaType requirement)
-    if (!youtubeShortUrl) {
+    // If the video URL isn't a YouTube URL, check socialPosts for the published YouTube URL
+    if (!shortVideoUrl?.includes('youtube.com') && !shortVideoUrl?.includes('youtu.be')) {
       const youtubePost = contentItem.socialPosts.find(
         p => p.platform === 'YOUTUBE' && p.publishedUrl
       )
-      youtubeShortUrl = youtubePost?.publishedUrl || null
+      if (youtubePost?.publishedUrl) {
+        shortVideoUrl = youtubePost.publishedUrl
+      }
     }
 
-    // Fallback: check for any post with YouTube in publishedUrl
-    if (!youtubeShortUrl) {
-      const videoPost = contentItem.socialPosts.find(
-        p => p.publishedUrl?.includes('youtube')
-      )
-      youtubeShortUrl = videoPost?.publishedUrl || null
-    }
+    console.log('Short video URL for embed:', shortVideoUrl)
 
-    // Fallback: check wrhqSocialPosts for YouTube URL
-    if (!youtubeShortUrl) {
-      const wrhqYoutubePost = contentItem.wrhqSocialPosts.find(
-        p => p.platform === 'YOUTUBE' && p.publishedUrl
-      )
-      youtubeShortUrl = wrhqYoutubePost?.publishedUrl || null
-    }
-
-    // Fallback: check wrhqSocialPosts for any post with YouTube in publishedUrl
-    if (!youtubeShortUrl) {
-      const wrhqVideoPost = contentItem.wrhqSocialPosts.find(
-        p => p.publishedUrl?.includes('youtube')
-      )
-      youtubeShortUrl = wrhqVideoPost?.publishedUrl || null
-    }
-
-    console.log('Short video embed - YouTube URL found:', youtubeShortUrl)
-
-    if (youtubeShortUrl) {
-      const shortVideoEmbed = generateShortVideoEmbed(youtubeShortUrl)
+    if (shortVideoUrl) {
+      const shortVideoEmbed = generateShortVideoEmbed(shortVideoUrl)
       if (shortVideoEmbed) {
         // Insert after second paragraph (after featured image which is after first paragraph)
         let insertPoint = fullContent.indexOf('</p>')
