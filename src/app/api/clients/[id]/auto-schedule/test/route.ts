@@ -129,13 +129,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
  * Trigger full content generation for a test item
  */
 async function triggerFullGeneration(contentItemId: string): Promise<void> {
+  console.log(`[Test] Starting generation for content item ${contentItemId}`)
+
   try {
     // Import the content pipeline
+    console.log(`[Test] Importing content pipeline...`)
     const { runContentPipeline } = await import('@/lib/pipeline/content-pipeline')
+    console.log(`[Test] Content pipeline imported successfully`)
 
     // Note: runContentPipeline runs the full pipeline including blog, images,
     // podcast, short video, social posts, and WRHQ publishing.
     // Long video is already skipped by default in the pipeline.
+    console.log(`[Test] Running content pipeline...`)
     await runContentPipeline(contentItemId)
 
     // Update status to REVIEW after successful generation
@@ -144,9 +149,10 @@ async function triggerFullGeneration(contentItemId: string): Promise<void> {
       data: { status: 'REVIEW' },
     })
 
-    console.log(`Test generation complete for ${contentItemId}`)
+    console.log(`[Test] Generation complete for ${contentItemId}`)
   } catch (error) {
-    console.error(`Test generation failed for ${contentItemId}:`, error)
+    console.error(`[Test] Generation failed for ${contentItemId}:`, error)
+    console.error(`[Test] Error details:`, error instanceof Error ? error.stack : String(error))
 
     // Update status to FAILED
     await prisma.contentItem.update({
