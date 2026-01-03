@@ -3,6 +3,9 @@ import { prisma } from '@/lib/db'
 import { selectNextPAA, markPAAAsUsed, renderPAAQuestion } from '@/lib/automation/paa-selector'
 import { selectNextLocation, markLocationAsUsed, getDefaultLocation } from '@/lib/automation/location-rotator'
 
+// Allow up to 5 minutes for the full pipeline
+export const maxDuration = 300
+
 interface RouteContext {
   params: Promise<{ id: string }>
 }
@@ -92,10 +95,38 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       await markLocationAsUsed(locationId)
     }
 
-    // Log initial response with content item ID so user can track
-    const initialResponse = {
-      success: true,
-      message: 'Test content created - generation starting',
+    // Run the full content generation pipeline
+    // Note: We await this because Vercel terminates serverless functions after response
+    console.log(`[Test] Starting full generation for content item ${contentItem.id}`)
+
+    let generationError: Error | null = null
+    try {
+      await triggerFullGeneration(contentItem.id)
+      console.log(`[Test] Generation completed successfully for ${contentItem.id}`)
+    } catch (err) {
+      console.error(`[Test] Generation failed for ${contentItem.id}:`, err)
+      generationError = err instanceof Error ? err : new Error(String(err))
+    }
+
+    // Fetch the updated content item to get current status
+    const updatedItem = await prisma.contentItem.findUnique({
+      where: { id: contentItem.id },
+      select: {
+        status: true,
+        blogGenerated: true,
+        imagesGenerated: true,
+        clientBlogPublished: true,
+        podcastGenerated: true,
+        shortVideoGenerated: true,
+        socialGenerated: true,
+      },
+    })
+
+    const response = {
+      success: !generationError,
+      message: generationError
+        ? `Generation failed: ${generationError.message}`
+        : 'Test content generated successfully',
       contentItemId: contentItem.id,
       details: {
         client: client.businessName,
@@ -103,15 +134,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         location: locationString,
         scheduledDate: today.toISOString().split('T')[0],
       },
+      generationStatus: updatedItem,
       reviewUrl: `/admin/content/${contentItem.id}/review`,
+      durationMs: Date.now() - startTime,
     }
 
-    // Trigger generation asynchronously (don't await - let it run in background)
-    triggerFullGeneration(contentItem.id).catch((err) => {
-      console.error(`Test generation failed for ${contentItem.id}:`, err)
-    })
-
-    return NextResponse.json(initialResponse)
+    return NextResponse.json(response, { status: generationError ? 500 : 200 })
   } catch (error) {
     console.error('Test automation error:', error)
     return NextResponse.json(
