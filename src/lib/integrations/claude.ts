@@ -129,22 +129,13 @@ Create a compelling final paragraph that:
 - References the business name: ${params.businessName}
 - Can optionally include another link to ${servicePageUrl}
 ${params.googleMapsUrl ? `
-**Google Maps Embed (REQUIRED - After CTA):**
-After the final CTA paragraph, include this EXACT HTML block to embed the Google Maps location:
+**Google Maps Link (REQUIRED - After CTA):**
+After the final CTA paragraph, include this EXACT HTML block with a link to the Google Maps location:
 
-<div class="google-maps-embed" style="margin: 30px 0;">
-<h3>📍 Visit ${params.businessName}</h3>
-<p>Get directions to our location:</p>
-<iframe
-  src="${params.googleMapsUrl.replace('/maps/place/', '/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=').replace('?entry=ttu', '')}"
-  width="100%"
-  height="300"
-  style="border:0; border-radius: 8px;"
-  allowfullscreen=""
-  loading="lazy"
-  referrerpolicy="no-referrer-when-downgrade">
-</iframe>
-<p style="margin-top: 10px;"><a href="${params.googleMapsUrl}" target="_blank" rel="noopener">Open in Google Maps →</a></p>
+<div class="google-maps-link" style="margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 8px; text-align: center;">
+<h3 style="margin: 0 0 10px 0;">📍 Visit ${params.businessName}</h3>
+<p style="margin: 0 0 15px 0;">Get directions to our location</p>
+<a href="${params.googleMapsUrl}" target="_blank" rel="noopener" style="display: inline-block; padding: 12px 24px; background: #4285f4; color: white; text-decoration: none; border-radius: 6px; font-weight: 600;">Open in Google Maps →</a>
 </div>
 ` : ''}
 
@@ -179,7 +170,7 @@ Before finishing, ensure:
 - ✓ Strong CTA at the end
 - ✓ 1000-1100 word count achieved
 - ✓ No marketing fluff or filler content
-${params.googleMapsUrl ? '- ✓ Google Maps embed included at the end (use EXACT HTML provided)' : ''}
+${params.googleMapsUrl ? '- ✓ Google Maps link button included at the end (use EXACT HTML provided)' : ''}
 
 **CRITICAL OUTPUT FORMAT:**
 Return a JSON object with these keys:
