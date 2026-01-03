@@ -3,8 +3,8 @@ import { prisma } from '@/lib/db'
 import { selectNextPAA, markPAAAsUsed, renderPAAQuestion } from '@/lib/automation/paa-selector'
 import { selectNextLocation, markLocationAsUsed, getDefaultLocation } from '@/lib/automation/location-rotator'
 
-// Allow up to 5 minutes for the full pipeline
-export const maxDuration = 300
+// Allow up to 10 minutes for the full pipeline (blog + images + WP + WRHQ + podcast + video + social)
+export const maxDuration = 600
 
 interface RouteContext {
   params: Promise<{ id: string }>

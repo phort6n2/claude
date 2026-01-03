@@ -408,6 +408,13 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
 
     const wrhqConfig = await getWRHQConfig()
 
+    log(ctx, '🔍 Checking WRHQ config...', {
+      isConfigured: wrhqConfig.wordpress.isConfigured,
+      hasUrl: !!wrhqConfig.wordpress.url,
+      hasUsername: !!wrhqConfig.wordpress.username,
+      hasPassword: !!wrhqConfig.wordpress.appPassword,
+    })
+
     if (wrhqConfig.wordpress.isConfigured) {
       results.wrhq.skipped = false
       log(ctx, '📤 Starting WRHQ publishing...')
@@ -416,12 +423,14 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       try {
         const clientBlogPost = await prisma.blogPost.findUnique({ where: { contentItemId } })
         const clientBlogUrl = clientBlogPost?.wordpressUrl || ''
+        log(ctx, 'Client blog URL for WRHQ:', { clientBlogUrl })
 
         const featuredImageForWrhq = await prisma.image.findFirst({
           where: { contentItemId, imageType: 'BLOG_FEATURED' },
         })
 
         // Generate WRHQ blog post
+        log(ctx, '🤖 Generating WRHQ blog content with Claude...')
         const wrhqBlogResult = await withTimeout(
           retryWithBackoff(async () => {
             return generateWRHQBlogPost({
@@ -441,6 +450,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           TIMEOUTS.BLOG_GENERATION,
           'WRHQ blog generation'
         )
+        log(ctx, '✅ WRHQ blog content generated', { title: wrhqBlogResult.title })
 
         const wrhqCredentials = {
           url: wrhqConfig.wordpress.url!,
