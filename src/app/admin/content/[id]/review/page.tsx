@@ -2486,6 +2486,40 @@ function PublishedTab({ content, onUpdate }: { content: ContentItem; onUpdate: (
         </section>
       )}
 
+      {/* Long-form Video */}
+      {content.longformVideoUrl && (
+        <section className="bg-white rounded-lg shadow-sm border p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Play className="h-5 w-5 text-red-500" />
+            Long-form Video (YouTube)
+          </h2>
+          <div className="space-y-3">
+            <a
+              href={content.longformVideoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-blue-600 hover:underline"
+            >
+              <ExternalLink className="h-4 w-4" />
+              {content.longformVideoUrl}
+            </a>
+            {content.longformVideoDesc && (
+              <p className="text-sm text-gray-500">{content.longformVideoDesc}</p>
+            )}
+            {content.longVideoAddedToPost ? (
+              <p className="text-sm text-green-600 flex items-center gap-1">
+                <Check className="h-4 w-4" />
+                Embedded in blog post
+              </p>
+            ) : (
+              <p className="text-sm text-gray-500">
+                Use &quot;Embed All Media&quot; on the Review tab to add to blog
+              </p>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Podcast */}
       {content.podcast?.status === 'PUBLISHED' && content.podcast.podbeanUrl && (
         <section className="bg-white rounded-lg shadow-sm border p-6">

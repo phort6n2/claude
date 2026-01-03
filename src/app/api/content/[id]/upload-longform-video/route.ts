@@ -282,13 +282,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
     }
 
-    // Mark long video as added to posts
-    await prisma.contentItem.update({
-      where: { id },
-      data: {
-        longVideoAddedToPost: true,
-      },
-    })
+    // Note: longVideoAddedToPost is NOT set here - it will be set when user clicks
+    // the "Embed All Media" button in step 7. This keeps the embed step separate from upload.
 
     return NextResponse.json({
       success: true,

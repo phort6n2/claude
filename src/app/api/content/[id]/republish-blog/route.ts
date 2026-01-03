@@ -17,6 +17,50 @@ function generateFeaturedImageEmbed(imageUrl: string | null, altText: string): s
 </figure>`
 }
 
+// Helper function to insert content after the 3rd H2 header (or best available position)
+function insertAfterThirdH2(content: string, insert: string): string {
+  if (!insert) return content
+
+  // Find all H2 closing tags
+  const h2Pattern = /<\/h2>/gi
+  let match
+  let h2Count = 0
+  let insertPosition = -1
+
+  while ((match = h2Pattern.exec(content)) !== null) {
+    h2Count++
+    if (h2Count === 3) {
+      insertPosition = match.index + match[0].length
+      break
+    }
+  }
+
+  // If we found 3rd H2, insert after it
+  if (insertPosition !== -1) {
+    return content.slice(0, insertPosition) + '\n\n' + insert + '\n\n' + content.slice(insertPosition)
+  }
+
+  // Fallback: if less than 3 H2s, try after the last H2
+  if (h2Count > 0) {
+    h2Pattern.lastIndex = 0 // Reset
+    while ((match = h2Pattern.exec(content)) !== null) {
+      insertPosition = match.index + match[0].length
+    }
+    if (insertPosition !== -1) {
+      return content.slice(0, insertPosition) + '\n\n' + insert + '\n\n' + content.slice(insertPosition)
+    }
+  }
+
+  // Final fallback: insert after first paragraph
+  const firstParagraphEnd = content.indexOf('</p>')
+  if (firstParagraphEnd !== -1) {
+    return content.slice(0, firstParagraphEnd + 4) + '\n\n' + insert + '\n\n' + content.slice(firstParagraphEnd + 4)
+  }
+
+  // Last resort: prepend
+  return insert + '\n\n' + content
+}
+
 // Generate Google Maps embed HTML
 function generateGoogleMapsEmbed(client: {
   businessName: string
@@ -151,19 +195,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     // Start with the original blog content
     let fullContent = contentItem.blogPost.content
 
-    // Add featured image after first paragraph
+    // Add featured image after 3rd H2 header (in the middle of the blog post)
     const featuredImage = contentItem.images.find(img => img.imageType === 'BLOG_FEATURED')
     if (featuredImage?.gcsUrl) {
       const featuredImageEmbed = generateFeaturedImageEmbed(
         featuredImage.gcsUrl,
         `${contentItem.blogPost.title} | ${contentItem.client.businessName}`
       )
-      const firstParagraphEnd = fullContent.indexOf('</p>')
-      if (firstParagraphEnd !== -1) {
-        fullContent = fullContent.slice(0, firstParagraphEnd + 4) + '\n\n' + featuredImageEmbed + '\n\n' + fullContent.slice(firstParagraphEnd + 4)
-      } else {
-        fullContent = featuredImageEmbed + '\n\n' + fullContent
-      }
+      fullContent = insertAfterThirdH2(fullContent, featuredImageEmbed)
     }
 
     // Add longform video embed after featured image (if present)
