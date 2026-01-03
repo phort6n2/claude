@@ -206,34 +206,35 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     fullContent = fullContent.replace(/<div class="podcast-embed"[\s\S]*?<\/div>/g, '')
 
     // 1. Add short-form video (floated right)
+    // YouTube URL is in socialPosts.publishedUrl after publishing via Late
     let shortVideoUrl: string | null = null
 
-    // Debug: log all available data
+    // Debug: log all sources
     console.log('=== SHORT VIDEO DEBUG ===')
-    console.log('All videos:', contentItem.videos.map(v => ({ url: v.videoUrl, type: v.videoType })))
-    console.log('YouTube socialPosts:', contentItem.socialPosts.filter(p => p.platform === 'YOUTUBE').map(p => ({ publishedUrl: p.publishedUrl, status: p.status })))
+    console.log('socialPosts:', contentItem.socialPosts.map(p => ({ platform: p.platform, mediaType: p.mediaType, publishedUrl: p.publishedUrl })))
+    console.log('wrhqSocialPosts:', contentItem.wrhqSocialPosts.map(p => ({ platform: p.platform, mediaType: p.mediaType, publishedUrl: p.publishedUrl })))
 
-    // Check all videos for a YouTube URL (any video, not just SHORT type)
-    for (const video of contentItem.videos) {
-      if (video.videoUrl?.includes('youtube.com') || video.videoUrl?.includes('youtu.be')) {
-        shortVideoUrl = video.videoUrl
-        console.log('Found YouTube URL in videos table:', shortVideoUrl)
-        break
-      }
+    // Check client socialPosts for YouTube published URL
+    const youtubePost = contentItem.socialPosts.find(
+      p => p.platform === 'YOUTUBE' && p.publishedUrl
+    )
+    if (youtubePost?.publishedUrl) {
+      shortVideoUrl = youtubePost.publishedUrl
+      console.log('Found in client socialPosts:', shortVideoUrl)
     }
 
-    // Fallback: check socialPosts for published YouTube URL
+    // Check WRHQ socialPosts for YouTube published URL
     if (!shortVideoUrl) {
-      const youtubePost = contentItem.socialPosts.find(
+      const wrhqYoutubePost = contentItem.wrhqSocialPosts.find(
         p => p.platform === 'YOUTUBE' && p.publishedUrl
       )
-      if (youtubePost?.publishedUrl) {
-        shortVideoUrl = youtubePost.publishedUrl
-        console.log('Found YouTube URL in socialPosts:', shortVideoUrl)
+      if (wrhqYoutubePost?.publishedUrl) {
+        shortVideoUrl = wrhqYoutubePost.publishedUrl
+        console.log('Found in wrhqSocialPosts:', shortVideoUrl)
       }
     }
 
-    console.log('Final short video URL for embed:', shortVideoUrl)
+    console.log('Short video URL to embed:', shortVideoUrl)
 
     if (shortVideoUrl) {
       const shortVideoEmbed = generateShortVideoEmbed(shortVideoUrl)
