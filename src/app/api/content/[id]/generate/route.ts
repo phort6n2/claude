@@ -66,10 +66,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Content item not found' }, { status: 404 })
     }
 
+    // Debug: Log service location info
+    console.log('=== LOCATION DEBUG ===')
+    console.log('serviceLocationId:', contentItem.serviceLocationId)
+    console.log('serviceLocation:', contentItem.serviceLocation)
+    console.log('client.city:', contentItem.client.city)
+
     // Use service location if set, otherwise fall back to client's default location
     const contentCity = contentItem.serviceLocation?.city || contentItem.client.city
     // Always uppercase state abbreviation for consistency (e.g., "OR" not "Or")
     const contentState = (contentItem.serviceLocation?.state || contentItem.client.state).toUpperCase()
+
+    console.log('Using city:', contentCity, 'state:', contentState)
 
     // Only set GENERATING status for initial blog+images generation
     const isInitialGeneration = generateBlog && genImages
