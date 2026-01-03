@@ -148,6 +148,7 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
   const [error, setError] = useState('')
   const [testingConnection, setTestingConnection] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'success' | 'error' | null>(null)
+  const [connectionError, setConnectionError] = useState<string | null>(null)
 
   // Service Locations state
   const [serviceLocations, setServiceLocations] = useState<ServiceLocation[]>([])
@@ -467,6 +468,7 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
   const testWordPressConnection = async () => {
     setTestingConnection(true)
     setConnectionStatus(null)
+    setConnectionError(null)
     try {
       const response = await fetch('/api/wordpress/test', {
         method: 'POST',
@@ -478,13 +480,16 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
           clientId: initialData?.id, // Pass clientId to update wordpressConnected status
         }),
       })
+      const data = await response.json()
       if (response.ok) {
         setConnectionStatus('success')
       } else {
         setConnectionStatus('error')
+        setConnectionError(data.details || data.error || 'Connection failed')
       }
-    } catch {
+    } catch (err) {
       setConnectionStatus('error')
+      setConnectionError(err instanceof Error ? err.message : 'Network error')
     } finally {
       setTestingConnection(false)
     }
@@ -1095,20 +1100,27 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                   Generate in WordPress: Users → Profile → Application Passwords
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={testWordPressConnection}
-                  disabled={testingConnection || !formData.wordpressUrl}
-                >
-                  {testingConnection ? 'Testing...' : 'Test Connection'}
-                </Button>
-                {connectionStatus === 'success' && (
-                  <span className="text-green-600 text-sm">Connection successful!</span>
-                )}
-                {connectionStatus === 'error' && (
-                  <span className="text-red-600 text-sm">Connection failed</span>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={testWordPressConnection}
+                    disabled={testingConnection || !formData.wordpressUrl || !formData.wordpressUsername || !formData.wordpressAppPassword}
+                  >
+                    {testingConnection ? 'Testing...' : 'Test Connection'}
+                  </Button>
+                  {connectionStatus === 'success' && (
+                    <span className="text-green-600 text-sm">✓ Connection successful!</span>
+                  )}
+                  {connectionStatus === 'error' && (
+                    <span className="text-red-600 text-sm">✗ Connection failed</span>
+                  )}
+                </div>
+                {connectionStatus === 'error' && connectionError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+                    <strong>Error:</strong> {connectionError}
+                  </div>
                 )}
               </div>
 
