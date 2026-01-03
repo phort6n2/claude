@@ -280,6 +280,7 @@ export async function createVideoFromTemplate(params: CustomTemplateParams): Pro
   const requestBody: Record<string, unknown> = {
     template: params.templateId,
     variables: params.variables,
+    video_length: 30, // Short-form videos are always 30 seconds
   }
 
   if (params.name) {
