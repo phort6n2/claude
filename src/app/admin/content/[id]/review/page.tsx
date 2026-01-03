@@ -470,6 +470,7 @@ function ReviewTab({
 }) {
   const [generating, setGenerating] = useState<string | null>(null)
   const [publishing, setPublishing] = useState<string | null>(null)
+  const [republishing, setRepublishing] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -694,6 +695,29 @@ function ReviewTab({
     }
   }
 
+  async function republishBlog() {
+    setRepublishing(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/content/${content.id}/republish-blog`, {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to re-publish blog')
+      }
+
+      // Refresh the page data
+      onUpdate()
+    } catch (err) {
+      setError(String(err))
+    } finally {
+      setRepublishing(false)
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-5xl">
       {/* Error Alert */}
@@ -839,14 +863,34 @@ function ReviewTab({
           </div>
           <div className="flex items-center gap-2">
             {isStep1Complete ? (
-              <div className="flex items-center gap-2 text-green-600">
-                <Check className="h-5 w-5" />
-                <span className="text-sm font-medium">Published</span>
-                {content.clientBlogUrl && (
-                  <a href={content.clientBlogUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                )}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 text-green-600">
+                  <Check className="h-5 w-5" />
+                  <span className="text-sm font-medium">Published</span>
+                  {content.clientBlogUrl && (
+                    <a href={content.clientBlogUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  )}
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); republishBlog(); }}
+                  disabled={republishing}
+                  className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+                  title="Re-publish blog with all embeds (image, map, podcast, video)"
+                >
+                  {republishing ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Re-publishing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4" />
+                      Re-publish
+                    </>
+                  )}
+                </button>
               </div>
             ) : (
               <>
