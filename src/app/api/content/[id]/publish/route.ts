@@ -6,7 +6,7 @@ import { schedulePost, postNowAndCheckStatus } from '@/lib/integrations/getlate'
 import { getSetting, WRHQ_SETTINGS_KEYS } from '@/lib/settings'
 import { validateScheduledDate } from '@/lib/scheduling'
 import { compressImageForPlatform, compressImageForBlog } from '@/lib/utils/image-compression'
-import { Image, SocialPost, WRHQSocialPost } from '@prisma/client'
+import { Image, SocialPlatform, SocialPost, WRHQSocialPost } from '@prisma/client'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -421,7 +421,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           if (isVideoPlatform) {
             // For video platforms, look for short-form videos
             const video = contentItem.shortFormVideos?.find(v =>
-              v.platforms.includes(socialPost.platform as any)
+              v.platforms.includes(socialPost.platform as SocialPlatform)
             ) || contentItem.shortFormVideos?.[0]
             if (video) {
               mediaUrl = video.videoUrl
@@ -561,7 +561,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           if (isVideoPlatform) {
             // For video platforms, look for short-form videos
             const video = contentItem.shortFormVideos?.find(v =>
-              v.platforms.includes(wrhqPost.platform as any)
+              v.platforms.includes(wrhqPost.platform as SocialPlatform)
             ) || contentItem.shortFormVideos?.[0]
             if (video) {
               mediaUrl = video.videoUrl

@@ -108,7 +108,7 @@ async function ClientList() {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {clients.map((client: any) => (
+            {clients.map((client) => (
               <tr key={client.id} className="hover:bg-gray-50">
                 <td className="px-3 py-2 whitespace-nowrap">
                   <div className="flex items-center gap-2">

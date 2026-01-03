@@ -145,7 +145,7 @@ async function DashboardContent() {
               <p className="text-gray-500 text-sm">No recent activity</p>
             ) : (
               <div className="space-y-4">
-                {stats.recentActivity.map((log: any) => (
+                {stats.recentActivity.map((log) => (
                   <div key={log.id} className="flex items-start gap-3">
                     <div
                       className={`mt-1 h-2 w-2 rounded-full ${

@@ -5,7 +5,8 @@ import { decrypt } from '../encryption'
 interface WordPressCredentials {
   url: string
   username: string
-  password: string // Encrypted
+  password: string // Encrypted by default, unless isDecrypted is true
+  isDecrypted?: boolean // Set to true if password is already decrypted (e.g., from settings)
 }
 
 interface WordPressPost {
@@ -26,15 +27,15 @@ interface CreatePostParams {
   meta?: Record<string, string>
 }
 
-function getAuthHeader(username: string, encryptedPassword: string): string {
-  const password = decrypt(encryptedPassword)
-  const credentials = Buffer.from(`${username}:${password}`).toString('base64')
-  return `Basic ${credentials}`
+function getAuthHeader(credentials: WordPressCredentials): string {
+  const password = credentials.isDecrypted ? credentials.password : decrypt(credentials.password)
+  const credentialsStr = Buffer.from(`${credentials.username}:${password}`).toString('base64')
+  return `Basic ${credentialsStr}`
 }
 
 export async function testConnection(credentials: WordPressCredentials): Promise<boolean> {
   try {
-    const authHeader = getAuthHeader(credentials.username, credentials.password)
+    const authHeader = getAuthHeader(credentials)
     const response = await fetch(`${credentials.url}/wp-json/wp/v2/users/me`, {
       headers: {
         'Authorization': authHeader,
@@ -50,7 +51,7 @@ export async function createPost(
   credentials: WordPressCredentials,
   params: CreatePostParams
 ): Promise<WordPressPost> {
-  const authHeader = getAuthHeader(credentials.username, credentials.password)
+  const authHeader = getAuthHeader(credentials)
 
   const response = await fetch(`${credentials.url}/wp-json/wp/v2/posts`, {
     method: 'POST',
@@ -90,7 +91,7 @@ export async function updatePost(
   postId: number,
   params: Partial<CreatePostParams>
 ): Promise<WordPressPost> {
-  const authHeader = getAuthHeader(credentials.username, credentials.password)
+  const authHeader = getAuthHeader(credentials)
 
   const response = await fetch(`${credentials.url}/wp-json/wp/v2/posts/${postId}`, {
     method: 'PUT',
@@ -126,7 +127,7 @@ export async function getPost(
   credentials: WordPressCredentials,
   postId: number
 ): Promise<{ id: number; content: string; title: string }> {
-  const authHeader = getAuthHeader(credentials.username, credentials.password)
+  const authHeader = getAuthHeader(credentials)
 
   // Use context=edit to get raw content that can be edited and re-saved
   const response = await fetch(`${credentials.url}/wp-json/wp/v2/posts/${postId}?context=edit`, {
@@ -157,7 +158,7 @@ export async function uploadMedia(
   filename: string,
   altText?: string
 ): Promise<{ id: number; url: string }> {
-  const authHeader = getAuthHeader(credentials.username, credentials.password)
+  const authHeader = getAuthHeader(credentials)
 
   // Fetch the image
   const imageResponse = await fetch(imageUrl)
@@ -210,7 +211,7 @@ export async function getPages(credentials: WordPressCredentials): Promise<Array
   slug: string
   link: string
 }>> {
-  const authHeader = getAuthHeader(credentials.username, credentials.password)
+  const authHeader = getAuthHeader(credentials)
 
   const response = await fetch(`${credentials.url}/wp-json/wp/v2/pages?per_page=100`, {
     headers: {
@@ -241,7 +242,7 @@ export async function getCategoryBySlug(
   slug: string,
   name?: string
 ): Promise<number | null> {
-  const authHeader = getAuthHeader(credentials.username, credentials.password)
+  const authHeader = getAuthHeader(credentials)
 
   // Try to find existing category
   const response = await fetch(
@@ -288,7 +289,7 @@ export async function injectSchemaMarkup(
   postId: number,
   schemaJson: string
 ): Promise<void> {
-  const authHeader = getAuthHeader(credentials.username, credentials.password)
+  const authHeader = getAuthHeader(credentials)
 
   // Try to update via custom field
   const response = await fetch(`${credentials.url}/wp-json/wp/v2/posts/${postId}`, {
