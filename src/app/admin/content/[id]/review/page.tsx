@@ -1506,6 +1506,26 @@ function ReviewTab({
                   Embedded in blog posts
                 </div>
               )}
+
+              {/* Option to upload a different video */}
+              <details className="group">
+                <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1">
+                  <RefreshCw className="h-4 w-4" />
+                  Upload a different video
+                </summary>
+                <div className="mt-4 pt-4 border-t">
+                  <LongformVideoUpload
+                    contentId={content.id}
+                    paaQuestion={content.paaQuestion}
+                    clientBlogUrl={content.clientBlogUrl}
+                    wrhqBlogUrl={content.wrhqBlogUrl}
+                    client={content.client}
+                    serviceLocation={content.serviceLocation}
+                    podcastUrl={content.podcast?.podbeanUrl}
+                    onSuccess={onUpdate}
+                  />
+                </div>
+              </details>
             </div>
           ) : (
             <LongformVideoUpload
