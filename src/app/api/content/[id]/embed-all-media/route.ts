@@ -136,9 +136,18 @@ function generatePodcastEmbed(title: string, playerUrl: string): string {
 </div>`
 }
 
+// Generate JSON-LD schema script tag
+function generateSchemaEmbed(schemaJson: string): string {
+  return `<!-- JSON-LD Schema Markup -->
+<script type="application/ld+json">
+${schemaJson}
+</script>`
+}
+
 /**
  * POST /api/content/[id]/embed-all-media - Embed videos and podcast into blog
  * Fetches current WordPress content (which already has image + map) and adds:
+ * - JSON-LD schema markup
  * - Short-form video (YouTube Short)
  * - Long-form video (YouTube)
  * - Podcast player embed
@@ -196,13 +205,21 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     // Track what we're embedding
     const embedded: string[] = []
 
-    // Remove any existing video/podcast embeds before adding fresh ones
+    // Remove any existing embeds before adding fresh ones
     // This prevents duplicates on re-embed
+    fullContent = fullContent.replace(/<!-- JSON-LD Schema Markup -->[\s\S]*?<\/script>/g, '')
     fullContent = fullContent.replace(/<!-- YouTube Short Video -->[\s\S]*?<\/div>\s*<\/div>/g, '')
     fullContent = fullContent.replace(/<div class="yt-shorts-embed">[\s\S]*?<\/div>\s*<\/div>/g, '')
     fullContent = fullContent.replace(/<div class="video-container"[\s\S]*?<\/div>/g, '')
     fullContent = fullContent.replace(/<!-- Podcast Episode -->[\s\S]*?<\/div>/g, '')
     fullContent = fullContent.replace(/<div class="podcast-embed"[\s\S]*?<\/div>/g, '')
+
+    // 0. Add JSON-LD schema markup (at the very beginning)
+    if (contentItem.blogPost.schemaJson) {
+      const schemaEmbed = generateSchemaEmbed(contentItem.blogPost.schemaJson)
+      fullContent = schemaEmbed + '\n\n' + fullContent
+      embedded.push('schema')
+    }
 
     // 1. Add short-form video (floated right)
     // YouTube URL is in socialPosts.publishedUrl after publishing via Late

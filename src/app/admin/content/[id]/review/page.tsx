@@ -21,6 +21,7 @@ import {
   XCircle,
   Layers,
   Play,
+  Code,
 } from 'lucide-react'
 
 interface ContentItem {
@@ -476,6 +477,7 @@ function ReviewTab({
   const [publishing, setPublishing] = useState<string | null>(null)
   const [republishing, setRepublishing] = useState(false)
   const [embedding, setEmbedding] = useState(false)
+  const [generatingSchema, setGeneratingSchema] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -493,7 +495,8 @@ function ReviewTab({
       step4: content.podcastAddedToPost,
       step5: (content.videoSocialPosts.length > 0 || content.wrhqVideoSocialPosts.length > 0) && clientVidDone && wrhqVidDone,
       step6: content.longVideoUploaded,
-      step7: content.shortVideoAddedToPost || content.longVideoAddedToPost,
+      step7: content.schemaGenerated,
+      step8: content.shortVideoAddedToPost || content.longVideoAddedToPost,
     })
   }, []) // Only run once on mount
 
@@ -578,7 +581,8 @@ function ReviewTab({
   const wrhqVideoComplete = content.wrhqVideoSocialPosts.length === 0 || content.wrhqVideoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PROCESSING' || p.status === 'PUBLISHED')
   const isStep5Complete = (content.videoSocialPosts.length > 0 || content.wrhqVideoSocialPosts.length > 0) && clientVideoComplete && wrhqVideoComplete
   const isStep6Complete = content.longVideoUploaded
-  const isStep7Complete = content.shortVideoAddedToPost || content.longVideoAddedToPost
+  const isStep7Complete = content.schemaGenerated
+  const isStep8Complete = content.shortVideoAddedToPost || content.longVideoAddedToPost
 
   async function regenerateContent(type: 'blog' | 'images' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast' | 'podcastDescription' | 'video' | 'videoDescription' | 'videoSocial') {
     setGenerating(type)
@@ -755,6 +759,29 @@ function ReviewTab({
     }
   }
 
+  async function generateSchema() {
+    setGeneratingSchema(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/content/${content.id}/generate-schema`, {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate schema')
+      }
+
+      // Refresh the page data
+      onUpdate()
+    } catch (err) {
+      setError(String(err))
+    } finally {
+      setGeneratingSchema(false)
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-5xl">
       {/* Error Alert */}
@@ -773,10 +800,10 @@ function ReviewTab({
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-gray-800">Progress Overview</h3>
           <span className="text-sm text-gray-500">
-            {[isStep1Complete, isStep2Complete, isStep3Complete, isStep4Complete, isStep5Complete, isStep6Complete, isStep7Complete].filter(Boolean).length} of 7 complete
+            {[isStep1Complete, isStep2Complete, isStep3Complete, isStep4Complete, isStep5Complete, isStep6Complete, isStep7Complete, isStep8Complete].filter(Boolean).length} of 8 complete
           </span>
         </div>
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-8 gap-2">
           {/* Step 1: Client Blog */}
           <button
             onClick={() => toggleSection('step1')}
@@ -885,7 +912,7 @@ function ReviewTab({
             )}
           </button>
 
-          {/* Step 7: Embed Media */}
+          {/* Step 7: Schema Markup */}
           <button
             onClick={() => toggleSection('step7')}
             className={`p-3 rounded-lg text-center transition-colors ${
@@ -894,9 +921,27 @@ function ReviewTab({
                 : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
             }`}
           >
-            <Layers className={`h-5 w-5 mx-auto mb-1 ${isStep7Complete ? 'text-green-600' : 'text-gray-400'}`} />
-            <p className="text-xs font-medium truncate">Embed Media</p>
+            <Code className={`h-5 w-5 mx-auto mb-1 ${isStep7Complete ? 'text-green-600' : 'text-gray-400'}`} />
+            <p className="text-xs font-medium truncate">Schema</p>
             {isStep7Complete ? (
+              <Check className="h-3 w-3 mx-auto mt-1 text-green-600" />
+            ) : (
+              <span className="text-xs text-gray-400">Pending</span>
+            )}
+          </button>
+
+          {/* Step 8: Embed Media */}
+          <button
+            onClick={() => toggleSection('step8')}
+            className={`p-3 rounded-lg text-center transition-colors ${
+              isStep8Complete
+                ? 'bg-green-50 border border-green-200 hover:bg-green-100'
+                : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            <Layers className={`h-5 w-5 mx-auto mb-1 ${isStep8Complete ? 'text-green-600' : 'text-gray-400'}`} />
+            <p className="text-xs font-medium truncate">Embed</p>
+            {isStep8Complete ? (
               <Check className="h-3 w-3 mx-auto mt-1 text-green-600" />
             ) : (
               <span className="text-xs text-gray-400">Pending</span>
@@ -1883,7 +1928,7 @@ function ReviewTab({
       </section>
 
       {/* ============================================ */}
-      {/* STEP 7: Embed All Media - Add embeds to blog */}
+      {/* STEP 7: Schema Markup - Generate JSON-LD structured data */}
       {/* ============================================ */}
       <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
         <div
@@ -1895,20 +1940,45 @@ function ReviewTab({
               {isStep7Complete ? <Check className="h-5 w-5" /> : '7'}
             </div>
             <div>
-              <h2 className="text-lg font-semibold">Embed All Media</h2>
-              <p className="text-sm text-gray-500">Add videos and podcast to blog</p>
+              <h2 className="text-lg font-semibold">Schema Markup</h2>
+              <p className="text-sm text-gray-500">Generate JSON-LD structured data for SEO</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {isStep7Complete ? (
-              <div className="flex items-center gap-2 text-green-600">
-                <Check className="h-4 w-4" />
-                <span className="text-sm">
-                  Embedded {(content.longVideoAddedAt || content.shortVideoAddedAt) ? new Date(content.longVideoAddedAt || content.shortVideoAddedAt || '').toLocaleDateString() : ''}
-                </span>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 text-green-600">
+                  <Check className="h-5 w-5" />
+                  <span className="text-sm font-medium">Generated</span>
+                </div>
+                {!collapsedSections.step7 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); generateSchema(); }}
+                    disabled={generatingSchema}
+                    className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {generatingSchema ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    Regenerate
+                  </button>
+                )}
               </div>
             ) : (
-              <span className="text-sm text-gray-500">Ready to embed</span>
+              <button
+                onClick={(e) => { e.stopPropagation(); generateSchema(); }}
+                disabled={generatingSchema || !isStep1Complete}
+                className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+              >
+                {generatingSchema ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Code className="h-4 w-4" />
+                )}
+                Generate
+              </button>
             )}
             {collapsedSections.step7 ? (
               <ChevronDown className="h-5 w-5 text-gray-400" />
@@ -1922,9 +1992,158 @@ function ReviewTab({
           <div className="p-6 space-y-4">
             {!isStep1Complete ? (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-yellow-800">Publish the client blog first before generating schema.</p>
+              </div>
+            ) : isStep7Complete && content.blogPost?.schemaJson ? (
+              <div className="space-y-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Check className="h-5 w-5 text-green-600" />
+                    <span className="font-medium text-green-800">Schema markup generated</span>
+                  </div>
+                  <p className="text-sm text-green-700">
+                    JSON-LD structured data is ready. It will be embedded when you click &quot;Embed All Media&quot; in Step 8.
+                  </p>
+                </div>
+
+                {/* Schema Preview */}
+                <details className="group">
+                  <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2">
+                    <Code className="h-4 w-4" />
+                    View Schema Preview
+                    <ChevronDown className="h-4 w-4 group-open:rotate-180 transition-transform" />
+                  </summary>
+                  <div className="mt-3 bg-gray-900 rounded-lg p-4 overflow-x-auto">
+                    <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">
+                      {(() => {
+                        try {
+                          return JSON.stringify(JSON.parse(content.blogPost.schemaJson), null, 2)
+                        } catch {
+                          return content.blogPost.schemaJson
+                        }
+                      })()}
+                    </pre>
+                  </div>
+                </details>
+
+                {/* Schema Summary */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-900 mb-2">Schema includes:</h4>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-blue-600" />
+                      Article schema (blog post metadata)
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-blue-600" />
+                      LocalBusiness schema (AutoRepair type)
+                    </li>
+                    {content.images.some(i => i.imageType === 'BLOG_FEATURED') && (
+                      <li className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-blue-600" />
+                        ImageObject (featured image)
+                      </li>
+                    )}
+                    {(content.videoSocialPosts.some(p => p.platform === 'YOUTUBE' && p.publishedUrl) || content.longformVideoUrl) && (
+                      <li className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-blue-600" />
+                        VideoObject (YouTube videos)
+                      </li>
+                    )}
+                    {content.podcast?.audioUrl && (
+                      <li className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-blue-600" />
+                        AudioObject (podcast episode)
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-900 mb-2">Schema markup will include:</h4>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li className="flex items-center gap-2">
+                      <Code className="h-4 w-4" />
+                      Article schema with blog metadata
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      LocalBusiness (links directory listing, Google Maps, etc.)
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4" />
+                      ImageObject for featured image
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Video className="h-4 w-4" />
+                      VideoObject for YouTube videos
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Mic className="h-4 w-4" />
+                      AudioObject for podcast
+                    </li>
+                  </ul>
+                </div>
+
+                <button
+                  onClick={(e) => { e.stopPropagation(); generateSchema(); }}
+                  disabled={generatingSchema || !isStep1Complete}
+                  className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  <Code className={`h-5 w-5 ${generatingSchema ? 'animate-pulse' : ''}`} />
+                  {generatingSchema ? 'Generating Schema...' : 'Generate Schema Markup'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* ============================================ */}
+      {/* STEP 8: Embed All Media - Add embeds to blog */}
+      {/* ============================================ */}
+      <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
+        <div
+          className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep8Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
+          onClick={() => toggleSection('step8')}
+        >
+          <div className="flex items-center gap-4">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${isStep8Complete ? 'bg-green-500 text-white' : 'bg-blue-100 text-blue-700'}`}>
+              {isStep8Complete ? <Check className="h-5 w-5" /> : '8'}
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Embed All Media</h2>
+              <p className="text-sm text-gray-500">Add videos, podcast, and schema to blog</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {isStep8Complete ? (
+              <div className="flex items-center gap-2 text-green-600">
+                <Check className="h-4 w-4" />
+                <span className="text-sm">
+                  Embedded {(content.longVideoAddedAt || content.shortVideoAddedAt) ? new Date(content.longVideoAddedAt || content.shortVideoAddedAt || '').toLocaleDateString() : ''}
+                </span>
+              </div>
+            ) : (
+              <span className="text-sm text-gray-500">Ready to embed</span>
+            )}
+            {collapsedSections.step8 ? (
+              <ChevronDown className="h-5 w-5 text-gray-400" />
+            ) : (
+              <ChevronUp className="h-5 w-5 text-gray-400" />
+            )}
+          </div>
+        </div>
+
+        {!collapsedSections.step8 && (
+          <div className="p-6 space-y-4">
+            {!isStep1Complete ? (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <p className="text-yellow-800">Publish the client blog first before embedding media.</p>
               </div>
-            ) : isStep7Complete ? (
+            ) : isStep8Complete ? (
               <div className="space-y-4">
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
@@ -1954,6 +2173,12 @@ function ReviewTab({
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h4 className="font-medium text-blue-900 mb-2">This will embed the following into the blog:</h4>
                   <ul className="text-sm text-blue-800 space-y-1">
+                    {content.schemaGenerated && content.blogPost?.schemaJson && (
+                      <li className="flex items-center gap-2">
+                        <Code className="h-4 w-4" />
+                        JSON-LD schema markup (in page head)
+                      </li>
+                    )}
                     {content.videoSocialPosts.some(p => p.platform === 'YOUTUBE' && p.publishedUrl) && (
                       <li className="flex items-center gap-2">
                         <Video className="h-4 w-4" />
