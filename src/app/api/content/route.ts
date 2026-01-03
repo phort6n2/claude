@@ -59,8 +59,8 @@ export async function POST(request: NextRequest) {
         scheduledTime: data.scheduledTime || '09:00',
         priority: data.priority || 0,
         notes: data.notes || null,
-        status: data.triggerGeneration ? 'GENERATING' : (data.status || 'SCHEDULED'),
-        pipelineStep: data.triggerGeneration ? 'starting' : null,
+        status: data.status || 'DRAFT',
+        pipelineStep: null,
       },
       include: {
         client: {
@@ -72,31 +72,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // If triggerGeneration is true, call the generate endpoint
-    if (data.triggerGeneration) {
-      // Get the base URL from the request
-      const baseUrl = request.nextUrl.origin
-
-      // Trigger generation in the background (don't await)
-      fetch(`${baseUrl}/api/content/${contentItem.id}/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // Forward cookies for auth
-          'Cookie': request.headers.get('cookie') || '',
-        },
-        body: JSON.stringify({
-          generateBlog: true,
-          generatePodcast: false, // Will be triggered in Step 4
-          generateImages: true,
-          generateSocial: false, // Will be triggered in Step 3
-          generateWrhqBlog: false, // Will be triggered in Step 2
-          generateWrhqSocial: false, // Will be triggered in Step 3
-        }),
-      }).catch(err => {
-        console.error('Failed to trigger generation:', err)
-      })
-    }
+    // Content generation is now manual - user clicks "Generate" button on review page
 
     return NextResponse.json(contentItem, { status: 201 })
   } catch (error) {
