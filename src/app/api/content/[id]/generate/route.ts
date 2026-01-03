@@ -813,36 +813,39 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         const landscapeImage = contentItem.images.find(img => img.imageType === 'BLOG_FEATURED')
         const imageUrls = landscapeImage ? [landscapeImage.gcsUrl] : []
 
-        // Create short video job (returns immediately with job ID)
-        // Priority: Custom template (if configured) > Link to Videos > Lipsync
+        // Create short video using Creatify's URL-to-Video API
+        // This API properly supports video_length parameter (15, 30, 45, 60 seconds)
+        // Costs 4 credits per 30s video
         //
-        // IMPORTANT: For 30-second videos:
-        // - Custom templates: Duration is controlled by template config in Creatify dashboard
-        // - Link to Videos: video_length parameter controls duration (15, 30, 45, 60)
-        // - Lipsync fallback: Script length determines duration (~500 chars = 30 seconds)
+        // Flow:
+        // 1. Create link from blog URL (scrapes content)
+        // 2. Optionally update link with logo/images
+        // 3. Create video with video_length: 30
         //
-        // Extract clean text from blog and limit for lipsync fallback
-        // ~500 characters = ~75 words = ~30 seconds at 150 words per minute
+        // Fallback to lipsync if no blog URL available (script limited to ~500 chars)
         const cleanScript = contentItem.blogPost.content
           .replace(/<[^>]*>/g, '') // Remove HTML tags
           .replace(/\s+/g, ' ')    // Normalize whitespace
           .trim()
-          .substring(0, 500)       // Limit to ~30 seconds of speech
+          .substring(0, 500)       // Limit to ~30 seconds of speech (fallback only)
 
         const videoJob = await createShortVideo({
           blogUrl: blogUrl || undefined,
-          script: cleanScript,
+          script: cleanScript, // Fallback if blogUrl fails
           title: contentItem.blogPost.title,
           imageUrls,
           logoUrl: contentItem.client.logoUrl || undefined,
-          // Use custom template if client has one configured (template controls 30-second duration)
-          templateId: contentItem.client.creatifyTemplateId || undefined,
-          autoPopulateFromBlog: !!contentItem.client.creatifyTemplateId && !!blogUrl,
+          // DISABLED: Custom templates don't support video_length parameter
+          // Using URL-to-Video API instead which properly supports video_length: 30
+          templateId: undefined,
+          autoPopulateFromBlog: false,
           aspectRatio: '9:16',
-          duration: 30,
+          duration: 30, // This maps to video_length: 30 in the URL-to-Video API
           targetPlatform: 'tiktok',
           targetAudience: `car owners in ${contentCity}, ${contentState} looking for auto glass services`,
-          modelVersion: 'standard', // Use standard model for lowest credit usage
+          scriptStyle: 'HowToV2', // Best for informational content
+          visualStyle: 'DynamicProductTemplate', // Good for service businesses
+          modelVersion: 'aurora_v1_fast', // Faster processing, still good quality
         })
 
         // Generate video description

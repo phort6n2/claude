@@ -335,6 +335,8 @@ export async function createVideoFromTemplate(params: CustomTemplateParams): Pro
 
 /**
  * Create a video from a link using the Link to Videos API
+ * This is the PREFERRED method for short videos because it supports video_length parameter
+ * Costs 4 credits per 30s video
  */
 export async function createVideoFromLink(params: LinkToVideoParams): Promise<VideoResult> {
   const { apiId, apiKey } = await getCredentialsAsync()
@@ -347,7 +349,7 @@ export async function createVideoFromLink(params: LinkToVideoParams): Promise<Vi
     video_length: params.videoLength || 30,
     aspect_ratio: params.aspectRatio || '9x16',
     script_style: params.scriptStyle || 'HowToV2',
-    visual_style: params.visualStyle || 'AvatarBubbleTemplate',
+    visual_style: params.visualStyle || 'DynamicProductTemplate',
   }
 
   if (params.webhookUrl) {
@@ -362,6 +364,14 @@ export async function createVideoFromLink(params: LinkToVideoParams): Promise<Vi
     requestBody.model_version = params.modelVersion
   }
 
+  console.log('📹 Creating video via URL-to-Video API:', {
+    linkId: params.linkId,
+    video_length: requestBody.video_length,
+    visual_style: requestBody.visual_style,
+    script_style: requestBody.script_style,
+    model_version: requestBody.model_version,
+  })
+
   const response = await fetch('https://api.creatify.ai/api/link_to_videos/', {
     method: 'POST',
     headers: {
@@ -374,10 +384,12 @@ export async function createVideoFromLink(params: LinkToVideoParams): Promise<Vi
 
   if (!response.ok) {
     const error = await response.text()
-    throw new Error(`Creatify API error: ${error}`)
+    throw new Error(`Creatify URL-to-Video API error: ${error}`)
   }
 
   const data = await response.json()
+
+  console.log(`✅ Video job created: ${data.id} (expected duration: ${requestBody.video_length}s)`)
 
   return {
     jobId: data.id,
@@ -387,11 +399,14 @@ export async function createVideoFromLink(params: LinkToVideoParams): Promise<Vi
 
 /**
  * Create a short video - main entry point
+ *
+ * RECOMMENDED: Use URL-to-Video API (Link to Videos) for reliable video_length control
+ *
  * Priority order:
- * 1. Custom Template + Blog URL (hybrid) - template CTA with blog content
- * 2. Custom Template with explicit variables - most control
- * 3. Link to Videos (if blogUrl provided) - automatic, good quality
- * 4. Lipsync (if script provided) - fallback
+ * 1. Custom Template + Blog URL (hybrid) - DISABLED: doesn't support video_length
+ * 2. Custom Template with explicit variables - DISABLED: doesn't support video_length
+ * 3. Link to Videos (if blogUrl provided) - PREFERRED: supports video_length (15, 30, 45, 60)
+ * 4. Lipsync (if script provided) - fallback with script length limit
  */
 export async function createShortVideo(params: VideoGenerationParams): Promise<VideoResult> {
   const { apiId, apiKey } = await getCredentialsAsync()
@@ -490,14 +505,23 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
     }
   }
 
-  // Priority 3: If we have a blog URL, use the Link to Videos API
+  // Priority 3 (PREFERRED): Use the URL-to-Video API with video_length parameter
   if (params.blogUrl) {
     try {
+      console.log(`🔗 Creating link from blog URL: ${params.blogUrl}`)
+
       // First create a link from the URL (auto-scrapes content)
       const link = await createLink(params.blogUrl)
 
+      console.log(`✅ Link created: ${link.linkId}`, {
+        title: link.title,
+        imageCount: link.imageUrls?.length || 0,
+        hasLogo: !!link.logoUrl,
+      })
+
       // If we have a logo or custom images, update the link metadata
       if (params.logoUrl || (params.imageUrls && params.imageUrls.length > 0)) {
+        console.log('📝 Updating link with custom logo/images...')
         await updateLink({
           linkId: link.linkId,
           logoUrl: params.logoUrl,
@@ -515,18 +539,18 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
         ? params.duration as VideoLength
         : 30
 
-      // Create video from the link
+      // Create video from the link with explicit video_length
       return await createVideoFromLink({
         linkId: link.linkId,
         aspectRatio,
-        videoLength,
+        videoLength, // This is the key parameter - 15, 30, 45, or 60 seconds
         targetPlatform: params.targetPlatform || 'tiktok',
         targetAudience: params.targetAudience || 'adults interested in auto services',
         scriptStyle: params.scriptStyle || 'HowToV2',
-        visualStyle: params.visualStyle || 'AvatarBubbleTemplate',
+        visualStyle: params.visualStyle || 'DynamicProductTemplate', // Good for service businesses
         webhookUrl: params.webhookUrl,
         overrideScript: params.script, // Use provided script as override if any
-        modelVersion: params.modelVersion, // aurora_v1_fast uses fewer credits
+        modelVersion: params.modelVersion || 'aurora_v1_fast', // Faster processing
       })
     } catch (error) {
       console.error('Link to Videos API failed, falling back to lipsync:', error)
