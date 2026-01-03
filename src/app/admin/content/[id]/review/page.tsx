@@ -417,7 +417,7 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
           <ReviewTab content={content} onImageClick={setLightboxImage} onUpdate={loadContent} />
         )}
         {activeTab === 'published' && (
-          <PublishedTab content={content} />
+          <PublishedTab content={content} onUpdate={loadContent} />
         )}
       </div>
 
@@ -1826,7 +1826,7 @@ In this video, {client.businessName} answers your questions about windshield rep
 // TAB 2: PUBLISHED
 // ============================================
 
-function PublishedTab({ content }: { content: ContentItem }) {
+function PublishedTab({ content, onUpdate }: { content: ContentItem; onUpdate: () => void }) {
   if (!content.clientBlogPublished) {
     return (
       <div className="text-center py-12">
@@ -1838,6 +1838,68 @@ function PublishedTab({ content }: { content: ContentItem }) {
 
   return (
     <div className="space-y-6 max-w-3xl">
+      {/* Long-form Video Upload */}
+      <section className="bg-white rounded-lg shadow-sm border p-6">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Video className="h-5 w-5 text-red-500" />
+          Long-form YouTube Video
+        </h2>
+
+        {content.longformVideoUrl ? (
+          <div className="space-y-4">
+            {/* Existing video */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <a
+                href={content.longformVideoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-blue-600 hover:underline"
+              >
+                <ExternalLink className="h-4 w-4" />
+                {content.longformVideoUrl}
+              </a>
+              {content.longVideoAddedToPost && (
+                <p className="text-sm text-green-600 flex items-center gap-1 mt-2">
+                  <Check className="h-4 w-4" />
+                  Embedded in blog posts
+                </p>
+              )}
+            </div>
+
+            {/* Option to upload a new video */}
+            <details className="group">
+              <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1">
+                <RefreshCw className="h-4 w-4" />
+                Upload a different video
+              </summary>
+              <div className="mt-4 pt-4 border-t">
+                <LongformVideoUpload
+                  contentId={content.id}
+                  paaQuestion={content.paaQuestion}
+                  clientBlogUrl={content.clientBlogUrl}
+                  wrhqBlogUrl={content.wrhqBlogUrl}
+                  client={content.client}
+                  serviceLocation={content.serviceLocation}
+                  podcastUrl={content.podcast?.podbeanUrl}
+                  onSuccess={onUpdate}
+                />
+              </div>
+            </details>
+          </div>
+        ) : (
+          <LongformVideoUpload
+            contentId={content.id}
+            paaQuestion={content.paaQuestion}
+            clientBlogUrl={content.clientBlogUrl}
+            wrhqBlogUrl={content.wrhqBlogUrl}
+            client={content.client}
+            serviceLocation={content.serviceLocation}
+            podcastUrl={content.podcast?.podbeanUrl}
+            onSuccess={onUpdate}
+          />
+        )}
+      </section>
+
       {/* Client Blog */}
       <section className="bg-white rounded-lg shadow-sm border p-6">
         <h2 className="text-lg font-semibold mb-4">Client Blog Post</h2>
