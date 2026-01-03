@@ -18,7 +18,6 @@ import {
   AlertCircle,
   CheckCircle,
   Eye,
-  FileText,
   Trash2,
   Zap,
 } from 'lucide-react'
@@ -43,6 +42,13 @@ interface ContentItem {
   socialGenerated: boolean
   podcastGenerated: boolean
   podcastStatus: string | null
+  shortVideoGenerated: boolean
+  shortVideoStatus: string | null
+  longformVideoUrl: string | null
+  schemaGenerated: boolean
+  podcastAddedToPost: boolean
+  shortVideoAddedToPost: boolean
+  longVideoAddedToPost: boolean
   serviceLocation: {
     city: string
     state: string
@@ -53,6 +59,22 @@ interface ContentItem {
     businessName: string
     primaryColor: string | null
   }
+  blogPost?: {
+    wordpressPostId: number | null
+    schemaJson: string | null
+  } | null
+  podcast?: {
+    podbeanUrl: string | null
+  } | null
+  socialPosts?: Array<{
+    id: string
+    platform: string
+    publishedUrl: string | null
+  }>
+  shortFormVideos?: Array<{
+    id: string
+    publishedUrls: Record<string, string> | null
+  }>
 }
 
 interface Client {
@@ -330,29 +352,23 @@ export default function ContentCalendarPage() {
                   Client
                 </th>
                 <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">
-                  Loc
+                  Location
                 </th>
                 <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                  Question
-                </th>
-                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">
-                  Status
+                  PAA Question
                 </th>
                 <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">
-                  BPIS
-                </th>
-                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">
-                  Prog
+                  Progress
                 </th>
                 <th className="px-2 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                  Act
+                  Actions
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {contentItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-gray-500">
+                  <td colSpan={6} className="px-4 py-12 text-center text-gray-500">
                     No content items found
                   </td>
                 </tr>
@@ -381,19 +397,13 @@ export default function ContentCalendarPage() {
                         {item.needsAttention && (
                           <AlertCircle className="h-3 w-3 text-yellow-500 flex-shrink-0" />
                         )}
-                        <div className="text-xs text-gray-900 truncate max-w-[200px]">
+                        <div className="text-xs text-gray-900 truncate max-w-[250px]">
                           {item.paaQuestion}
                         </div>
                       </div>
                     </td>
-                    <td className="px-2 py-2 whitespace-nowrap text-center">
-                      <StatusBadge status={item.status} />
-                    </td>
                     <td className="px-2 py-2 whitespace-nowrap hidden lg:table-cell">
-                      <ApprovalIndicators item={item} />
-                    </td>
-                    <td className="px-2 py-2 whitespace-nowrap hidden lg:table-cell">
-                      <PipelineProgress step={item.pipelineStep} status={item.status} />
+                      <StepProgress item={item} />
                     </td>
                     <td className="px-2 py-2 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end gap-1">
@@ -404,7 +414,7 @@ export default function ContentCalendarPage() {
                             className={`h-6 px-2 text-xs ${item.status === 'GENERATING' ? 'animate-pulse' : ''}`}
                           >
                             <Eye className="h-3 w-3 mr-1" />
-                            {item.status === 'GENERATING' ? 'View' : 'View'}
+                            {item.status === 'GENERATING' ? 'View' : 'Review'}
                           </Button>
                         </Link>
                         {(item.status === 'DRAFT' || item.status === 'SCHEDULED' || item.status === 'GENERATING' || item.status === 'FAILED') && (
@@ -653,61 +663,79 @@ export default function ContentCalendarPage() {
   )
 }
 
-function PipelineProgress({
-  step,
-  status,
-}: {
-  step: string | null
-  status: string
-}) {
-  const steps = ['blog', 'images', 'wordpress', 'podcast', 'videos', 'social']
-  const currentIndex = step ? steps.indexOf(step.toLowerCase()) : -1
+// Calculate step completion for an item
+function getStepCompletion(item: ContentItem): { completed: number; total: number; nextStep: string | null; isComplete: boolean } {
+  const steps = [
+    { name: 'Blog', done: item.blogGenerated && item.blogPost?.wordpressPostId },
+    { name: 'Images', done: item.imagesGenerated && item.imagesApproved === 'APPROVED' },
+    { name: 'Social', done: item.socialGenerated && item.socialPosts?.some(p => p.publishedUrl) },
+    { name: 'Podcast', done: item.podcastGenerated && item.podcast?.podbeanUrl },
+    { name: 'Short Video', done: item.shortVideoGenerated && item.shortFormVideos?.some(v => v.publishedUrls && Object.keys(v.publishedUrls).length > 0) },
+    { name: 'Long Video', done: !!item.longformVideoUrl },
+    { name: 'Schema', done: item.schemaGenerated && item.blogPost?.schemaJson },
+    { name: 'Embed', done: item.podcastAddedToPost || item.shortVideoAddedToPost || item.longVideoAddedToPost },
+  ]
 
-  if (status === 'PUBLISHED') {
-    return (
-      <div className="flex gap-1">
-        {steps.map((s) => (
-          <div key={s} className="h-2 w-4 rounded-full bg-green-500" title={s} />
-        ))}
-      </div>
-    )
+  const completed = steps.filter(s => s.done).length
+  const nextStep = steps.find(s => !s.done)?.name || null
+
+  return {
+    completed,
+    total: 8,
+    nextStep,
+    isComplete: completed === 8,
   }
+}
 
-  if (status === 'FAILED') {
+function StepProgress({ item }: { item: ContentItem }) {
+  const { completed, total, nextStep, isComplete } = getStepCompletion(item)
+
+  // Show "Generating..." for items still generating
+  if (item.status === 'GENERATING') {
     return (
-      <div className="flex gap-1">
-        {steps.map((s, i) => (
+      <div className="flex items-center gap-2">
+        <div className="w-16 bg-gray-200 rounded-full h-2">
           <div
-            key={s}
-            className={`h-2 w-4 rounded-full ${
-              i < currentIndex
-                ? 'bg-green-500'
-                : i === currentIndex
-                ? 'bg-red-500'
-                : 'bg-gray-200'
-            }`}
-            title={s}
+            className="bg-purple-500 h-2 rounded-full animate-pulse"
+            style={{ width: '20%' }}
           />
-        ))}
+        </div>
+        <span className="text-xs text-purple-600 font-medium">Generating...</span>
       </div>
     )
   }
+
+  // Show "Not started" for drafts with no content
+  if (!item.blogGenerated && item.status === 'DRAFT') {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="w-16 bg-gray-200 rounded-full h-2" />
+        <span className="text-xs text-gray-400">Not started</span>
+      </div>
+    )
+  }
+
+  // Show progress bar and next step
+  const progressPercent = (completed / total) * 100
 
   return (
-    <div className="flex gap-1">
-      {steps.map((s, i) => (
+    <div className="flex items-center gap-2">
+      <div className="w-16 bg-gray-200 rounded-full h-2" title={`${completed}/${total} steps complete`}>
         <div
-          key={s}
-          className={`h-2 w-4 rounded-full ${
-            i < currentIndex
-              ? 'bg-green-500'
-              : i === currentIndex
-              ? 'bg-yellow-500 animate-pulse'
-              : 'bg-gray-200'
-          }`}
-          title={s}
+          className={`h-2 rounded-full ${isComplete ? 'bg-green-500' : 'bg-blue-500'}`}
+          style={{ width: `${progressPercent}%` }}
         />
-      ))}
+      </div>
+      {isComplete ? (
+        <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+          <CheckCircle className="h-3 w-3" />
+          Complete
+        </span>
+      ) : (
+        <span className="text-xs text-gray-600">
+          {completed}/{total} · <span className="text-blue-600">{nextStep}</span>
+        </span>
+      )}
     </div>
   )
 }
@@ -751,46 +779,6 @@ function StatusFilterBadge({
   )
 }
 
-function ApprovalIndicators({ item }: { item: ContentItem }) {
-  const getIndicatorClass = (status: string) => {
-    switch (status) {
-      case 'APPROVED':
-      case 'ready':
-        return 'bg-green-500'
-      case 'NEEDS_REVISION':
-        return 'bg-red-500'
-      default:
-        return 'bg-gray-300'
-    }
-  }
-
-  const indicators = [
-    { label: 'B', status: item.blogApproved, generated: item.blogGenerated, title: 'Blog' },
-    { label: 'P', status: item.podcastStatus || 'PENDING', generated: item.podcastGenerated, title: 'Podcast' },
-    { label: 'I', status: item.imagesApproved, generated: item.imagesGenerated, title: 'Images' },
-    { label: 'S', status: item.socialApproved, generated: item.socialGenerated, title: 'Social' },
-  ]
-
-  return (
-    <div className="flex gap-1">
-      {indicators.map((ind) => (
-        <div
-          key={ind.label}
-          className={`h-5 w-5 rounded text-xs font-medium flex items-center justify-center ${
-            !ind.generated ? 'bg-gray-100 text-gray-400' : getIndicatorClass(ind.status)
-          } ${ind.status === 'APPROVED' || ind.status === 'ready' ? 'text-white' : ind.status === 'NEEDS_REVISION' ? 'text-white' : 'text-gray-600'}`}
-          title={`${ind.title}: ${ind.generated ? ind.status : 'Not Generated'}`}
-        >
-          {ind.generated && (ind.status === 'APPROVED' || ind.status === 'ready') ? (
-            <CheckCircle className="h-3 w-3" />
-          ) : (
-            ind.label
-          )}
-        </div>
-      ))}
-    </div>
-  )
-}
 
 function LocationBadge({ location }: { location: ContentItem['serviceLocation'] }) {
   if (!location) return <span className="text-xs text-gray-400">-</span>

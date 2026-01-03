@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     const contentItems = await prisma.contentItem.findMany({
       where,
-      orderBy: { scheduledDate: 'asc' },
+      orderBy: { scheduledDate: 'desc' },
       include: {
         client: {
           select: {
@@ -29,6 +29,30 @@ export async function GET(request: NextRequest) {
             city: true,
             state: true,
             neighborhood: true,
+          },
+        },
+        blogPost: {
+          select: {
+            wordpressPostId: true,
+            schemaJson: true,
+          },
+        },
+        podcast: {
+          select: {
+            podbeanUrl: true,
+          },
+        },
+        socialPosts: {
+          select: {
+            id: true,
+            platform: true,
+            publishedUrl: true,
+          },
+        },
+        shortFormVideos: {
+          select: {
+            id: true,
+            publishedUrls: true,
           },
         },
       },
