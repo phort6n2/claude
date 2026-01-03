@@ -19,6 +19,8 @@ import {
   Loader2,
   Check,
   AlertCircle,
+  Plus,
+  Trash2,
 } from 'lucide-react'
 
 interface PodbeanPodcast {
@@ -35,6 +37,14 @@ interface YouTubePlaylist {
   description: string
   thumbnailUrl: string
   itemCount: number
+}
+
+interface ServiceLocation {
+  id?: string
+  city: string
+  state: string
+  neighborhood: string
+  isHeadquarters: boolean
 }
 
 interface ClientData {
@@ -105,7 +115,7 @@ const socialPlatformOptions = [
   { value: 'telegram', label: 'Telegram' },
 ]
 
-type SectionKey = 'business' | 'location' | 'branding' | 'wordpress' | 'social' | 'integrations' | 'publishing'
+type SectionKey = 'business' | 'location' | 'serviceLocations' | 'branding' | 'wordpress' | 'social' | 'integrations' | 'publishing'
 
 export default function ClientEditForm({ client }: ClientEditFormProps) {
   const router = useRouter()
@@ -114,7 +124,7 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [expandedSections, setExpandedSections] = useState<Set<SectionKey>>(
-    new Set(['business', 'location', 'branding', 'wordpress', 'social', 'integrations', 'publishing'])
+    new Set(['business', 'location', 'serviceLocations', 'branding', 'wordpress', 'social', 'integrations', 'publishing'])
   )
 
   // WordPress connection test state
@@ -131,6 +141,10 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
   const [youtubePlaylists, setYoutubePlaylists] = useState<YouTubePlaylist[]>([])
   const [youtubeConnected, setYoutubeConnected] = useState(false)
   const [loadingYoutube, setLoadingYoutube] = useState(false)
+
+  // Service locations state
+  const [serviceLocations, setServiceLocations] = useState<ServiceLocation[]>([])
+  const [loadingLocations, setLoadingLocations] = useState(false)
 
   // Load Podbean podcasts
   useEffect(() => {
@@ -162,6 +176,26 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
       .finally(() => setLoadingYoutube(false))
   }, [])
 
+  // Load service locations
+  useEffect(() => {
+    setLoadingLocations(true)
+    fetch(`/api/clients/${client.id}/locations`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setServiceLocations(data.map((loc: ServiceLocation) => ({
+            id: loc.id,
+            city: loc.city,
+            state: loc.state,
+            neighborhood: loc.neighborhood || '',
+            isHeadquarters: loc.isHeadquarters || false,
+          })))
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingLocations(false))
+  }, [client.id])
+
   function toggleSection(section: SectionKey) {
     setExpandedSections((prev) => {
       const next = new Set(prev)
@@ -191,6 +225,34 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
   function updateSocialAccountId(platform: string, value: string) {
     const ids = formData.socialAccountIds || {}
     updateField('socialAccountIds', { ...ids, [platform]: value })
+  }
+
+  function addServiceLocation() {
+    setServiceLocations((prev) => [
+      ...prev,
+      { city: '', state: formData.state, neighborhood: '', isHeadquarters: false },
+    ])
+  }
+
+  function updateServiceLocation(index: number, field: keyof ServiceLocation, value: string | boolean) {
+    setServiceLocations((prev) => {
+      const updated = [...prev]
+      updated[index] = { ...updated[index], [field]: value }
+
+      // If setting this as headquarters, unset others
+      if (field === 'isHeadquarters' && value === true) {
+        return updated.map((loc, i) => ({
+          ...loc,
+          isHeadquarters: i === index,
+        }))
+      }
+
+      return updated
+    })
+  }
+
+  function removeServiceLocation(index: number) {
+    setServiceLocations((prev) => prev.filter((_, i) => i !== index))
   }
 
   async function testWordPressConnection() {
@@ -241,6 +303,21 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
       if (!response.ok) {
         const data = await response.json()
         throw new Error(data.error || 'Failed to save')
+      }
+
+      // Save service locations
+      const validLocations = serviceLocations.filter((loc) => loc.city && loc.state)
+      if (validLocations.length > 0) {
+        const locResponse = await fetch(`/api/clients/${client.id}/locations`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ locations: validLocations }),
+        })
+
+        if (!locResponse.ok) {
+          const locData = await locResponse.json()
+          throw new Error(locData.error || 'Failed to save locations')
+        }
       }
 
       setSaveSuccess(true)
@@ -477,6 +554,121 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
                 />
               </div>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Service Locations */}
+      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+        <SectionHeader
+          section="serviceLocations"
+          icon={MapPin}
+          title="Service Locations"
+          subtitle="Cities and areas you serve"
+        />
+        {expandedSections.has('serviceLocations') && (
+          <div className="p-6 space-y-4">
+            <p className="text-sm text-gray-600">
+              Add the cities/areas this client serves. Content will be generated for each location.
+            </p>
+
+            {loadingLocations ? (
+              <div className="py-8 text-center text-gray-500">Loading locations...</div>
+            ) : (
+              <div className="space-y-3">
+                {serviceLocations.map((location, index) => (
+                  <div
+                    key={location.id || index}
+                    className={`p-4 border rounded-lg ${
+                      location.isHeadquarters ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        {location.isHeadquarters ? (
+                          <Building2 size={18} className="text-blue-600" />
+                        ) : (
+                          <MapPin size={18} className="text-gray-400" />
+                        )}
+                        <span className="text-sm font-medium">
+                          {location.isHeadquarters ? 'Headquarters' : `Location ${index + 1}`}
+                        </span>
+                      </div>
+                      {!location.isHeadquarters && (
+                        <button
+                          type="button"
+                          onClick={() => removeServiceLocation(index)}
+                          className="p-1 text-gray-400 hover:text-red-600"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">City *</label>
+                        <input
+                          type="text"
+                          value={location.city}
+                          onChange={(e) => updateServiceLocation(index, 'city', e.target.value)}
+                          className="w-full px-3 py-2 border rounded-md text-sm"
+                          placeholder="City name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">State *</label>
+                        <input
+                          type="text"
+                          value={location.state}
+                          onChange={(e) => updateServiceLocation(index, 'state', e.target.value)}
+                          className="w-full px-3 py-2 border rounded-md text-sm"
+                          placeholder="State"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Neighborhood</label>
+                        <input
+                          type="text"
+                          value={location.neighborhood}
+                          onChange={(e) => updateServiceLocation(index, 'neighborhood', e.target.value)}
+                          className="w-full px-3 py-2 border rounded-md text-sm"
+                          placeholder="Optional"
+                        />
+                      </div>
+                    </div>
+
+                    {!location.isHeadquarters && (
+                      <label className="flex items-center gap-2 mt-3">
+                        <input
+                          type="checkbox"
+                          checked={location.isHeadquarters}
+                          onChange={(e) => updateServiceLocation(index, 'isHeadquarters', e.target.checked)}
+                          className="rounded border-gray-300"
+                        />
+                        <span className="text-xs text-gray-600">Set as headquarters</span>
+                      </label>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={addServiceLocation}
+              className="flex items-center gap-2 px-4 py-2 text-sm text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50"
+            >
+              <Plus size={16} />
+              Add Another Location
+            </button>
+
+            {serviceLocations.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                <strong>Note:</strong> Content is generated for each service location. You have{' '}
+                {serviceLocations.length} location{serviceLocations.length !== 1 ? 's' : ''} configured.
+              </div>
+            )}
           </div>
         )}
       </div>
