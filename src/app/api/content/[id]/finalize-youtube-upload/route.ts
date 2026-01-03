@@ -205,16 +205,49 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
     // Helper function to remove existing YouTube embeds from content
     function removeExistingYouTubeEmbeds(content: string): string {
-      // Remove our specific embed format (div with "Watch the Full Video" header containing YouTube iframe)
-      // This regex matches the entire embed block we create
-      const embedPattern = /<div[^>]*style="margin:\s*30px\s*0[^"]*"[^>]*>[\s\S]*?<h3[^>]*>Watch the Full Video<\/h3>[\s\S]*?youtube\.com\/embed\/[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/gi
-      let cleaned = content.replace(embedPattern, '')
+      // Look for our specific embed signature and remove it
+      // We use a simple approach: find the start marker and end marker
+      const startMarker = '<div style="margin: 30px 0; clear: both;">'
+      const h3Marker = '<h3 style="margin-bottom: 15px;">Watch the Full Video</h3>'
 
-      // Also try a simpler pattern for any YouTube embed iframe wrapper we might have added
-      const simplePattern = /<div[^>]*>[\s\S]*?<h3[^>]*>Watch the Full Video<\/h3>[\s\S]*?<iframe[^>]*youtube\.com\/embed\/[^>]*>[\s\S]*?<\/iframe>[\s\S]*?<\/div>[\s\S]*?<\/div>[\s\S]*?<\/div>/gi
-      cleaned = cleaned.replace(simplePattern, '')
+      let result = content
+      let startIdx = result.indexOf(startMarker)
 
-      return cleaned
+      while (startIdx !== -1) {
+        // Check if this div contains our "Watch the Full Video" header
+        const searchEnd = Math.min(startIdx + 500, result.length) // Look within next 500 chars
+        const snippet = result.substring(startIdx, searchEnd)
+
+        if (snippet.includes(h3Marker) && snippet.includes('youtube.com/embed/')) {
+          // This is our embed - find the closing </div></div></div>
+          // Count div depth to find the right closing tags
+          let depth = 0
+          let endIdx = startIdx
+
+          for (let i = startIdx; i < result.length; i++) {
+            if (result.substring(i, i + 4) === '<div') {
+              depth++
+            } else if (result.substring(i, i + 6) === '</div>') {
+              depth--
+              if (depth === 0) {
+                endIdx = i + 6
+                break
+              }
+            }
+          }
+
+          if (endIdx > startIdx) {
+            // Remove this embed block
+            result = result.substring(0, startIdx) + result.substring(endIdx)
+            console.log('Removed existing YouTube embed from position', startIdx)
+          }
+        }
+
+        // Look for next occurrence
+        startIdx = result.indexOf(startMarker, startIdx + 1)
+      }
+
+      return result
     }
 
     // Embed the video in both blog posts
