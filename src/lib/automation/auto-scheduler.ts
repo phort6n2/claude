@@ -259,36 +259,20 @@ export async function autoScheduleForClient(
  * social posts, and WRHQ publishing. Long video is skipped by default.
  */
 async function triggerContentGeneration(contentItemId: string): Promise<void> {
-  // Update status to GENERATING
-  await prisma.contentItem.update({
-    where: { id: contentItemId },
-    data: { status: 'GENERATING' },
-  })
-
   // Import and call the generation logic directly
   // This avoids HTTP overhead and works in the same process
   const { runContentPipeline } = await import('@/lib/pipeline/content-pipeline')
 
   try {
-    // Note: runContentPipeline runs the full pipeline including blog, images,
-    // podcast, short video, social posts, and WRHQ publishing.
-    // Long video is already skipped by default in the pipeline.
+    // runContentPipeline handles all status updates internally:
+    // - Sets GENERATING at start
+    // - Sets PUBLISHED on success (if WordPress worked)
+    // - Sets REVIEW if WordPress not configured
+    // - Sets FAILED on error
     await runContentPipeline(contentItemId)
-
-    // Update status to REVIEW after successful generation
-    await prisma.contentItem.update({
-      where: { id: contentItemId },
-      data: { status: 'REVIEW' },
-    })
   } catch (error) {
-    // Update status to FAILED on error
-    await prisma.contentItem.update({
-      where: { id: contentItemId },
-      data: {
-        status: 'FAILED',
-        lastError: error instanceof Error ? error.message : 'Generation failed',
-      },
-    })
+    // Pipeline already sets FAILED status, but log the error
+    console.error(`Pipeline failed for ${contentItemId}:`, error)
     throw error
   }
 }
