@@ -89,17 +89,19 @@ export async function fetchPAAsForLocation(
       'windshield repair',
     ]
 
-    console.log('[DataForSEO] Searching for keywords:', broadKeywords)
+    // Use just one keyword to minimize cost (PAAs are similar across keywords)
+    const keyword = broadKeywords[0]
+    console.log('[DataForSEO] Searching for keyword:', keyword)
 
-    // Send all keywords as separate tasks in one API call
-    const requestTasks = broadKeywords.map(keyword => ({
+    // Single task with reduced depth to minimize cost
+    const requestTasks = [{
       keyword,
       location_name: 'United States',
       language_name: 'English',
       device: 'desktop',
       os: 'windows',
-      depth: 100, // Search deeper to find PAAs
-    }))
+      depth: 20, // PAAs usually appear in top 20 results
+    }]
 
     const response = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/advanced', {
       method: 'POST',
@@ -189,33 +191,68 @@ export async function fetchPAAsForLocation(
 
 /**
  * Convert a Google PAA question to a template with {location} placeholder
- * Uses simple heuristics to replace location mentions
+ * Strips out ANY location mentions (states, cities, etc.) and replaces with {location}
  */
 export function formatPAAAsTemplate(question: string, city: string, state: string): string {
   let template = question
 
-  // Common patterns to replace with {location}
+  // All US state names and abbreviations
+  const states = [
+    'Alabama', 'AL', 'Alaska', 'AK', 'Arizona', 'AZ', 'Arkansas', 'AR', 'California', 'CA',
+    'Colorado', 'CO', 'Connecticut', 'CT', 'Delaware', 'DE', 'Florida', 'FL', 'Georgia', 'GA',
+    'Hawaii', 'HI', 'Idaho', 'ID', 'Illinois', 'IL', 'Indiana', 'IN', 'Iowa', 'IA',
+    'Kansas', 'KS', 'Kentucky', 'KY', 'Louisiana', 'LA', 'Maine', 'ME', 'Maryland', 'MD',
+    'Massachusetts', 'MA', 'Michigan', 'MI', 'Minnesota', 'MN', 'Mississippi', 'MS', 'Missouri', 'MO',
+    'Montana', 'MT', 'Nebraska', 'NE', 'Nevada', 'NV', 'New Hampshire', 'NH', 'New Jersey', 'NJ',
+    'New Mexico', 'NM', 'New York', 'NY', 'North Carolina', 'NC', 'North Dakota', 'ND', 'Ohio', 'OH',
+    'Oklahoma', 'OK', 'Oregon', 'OR', 'Pennsylvania', 'PA', 'Rhode Island', 'RI', 'South Carolina', 'SC',
+    'South Dakota', 'SD', 'Tennessee', 'TN', 'Texas', 'TX', 'Utah', 'UT', 'Vermont', 'VT',
+    'Virginia', 'VA', 'Washington', 'WA', 'West Virginia', 'WV', 'Wisconsin', 'WI', 'Wyoming', 'WY'
+  ]
+
+  // Replace the specific client city/state first
   const locationPatterns = [
-    new RegExp(`\\b${city}\\b`, 'gi'),
-    new RegExp(`\\b${state}\\b`, 'gi'),
     new RegExp(`\\b${city},?\\s*${state}\\b`, 'gi'),
     new RegExp(`\\b${city}\\s+${state}\\b`, 'gi'),
-    /\bnear me\b/gi,
-    /\bin my area\b/gi,
-    /\blocal\b/gi,
-    /\bnearby\b/gi,
+    new RegExp(`\\b${city}\\b`, 'gi'),
+    new RegExp(`\\b${state}\\b`, 'gi'),
   ]
 
   for (const pattern of locationPatterns) {
     template = template.replace(pattern, '{location}')
   }
 
-  // Clean up multiple {location} placeholders
+  // Replace any US state mentions (full names first, then abbreviations)
+  for (const stateName of states) {
+    // Only replace 2-letter abbreviations if they're standalone words
+    if (stateName.length === 2) {
+      template = template.replace(new RegExp(`\\b${stateName}\\b`, 'g'), '{location}')
+    } else {
+      template = template.replace(new RegExp(`\\b${stateName}\\b`, 'gi'), '{location}')
+    }
+  }
+
+  // Replace common location phrases
+  const genericPatterns = [
+    /\bnear me\b/gi,
+    /\bin my area\b/gi,
+    /\blocal\b/gi,
+    /\bnearby\b/gi,
+    /\bin your area\b/gi,
+    /\bin the area\b/gi,
+  ]
+
+  for (const pattern of genericPatterns) {
+    template = template.replace(pattern, '{location}')
+  }
+
+  // Clean up multiple {location} placeholders and extra commas
   template = template.replace(/\{location\}(,?\s*\{location\})+/g, '{location}')
+  template = template.replace(/,\s*\{location\}\s*,/g, ' {location}')
+  template = template.replace(/\s+/g, ' ').trim()
 
   // If no location placeholder was added, append it intelligently
   if (!template.includes('{location}')) {
-    // Add before question mark if present
     if (template.endsWith('?')) {
       template = template.slice(0, -1) + ' in {location}?'
     } else {
