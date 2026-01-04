@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { decrypt } from '@/lib/encryption'
 import { fetchPAAsForLocation, formatPAAAsTemplate } from '@/lib/dataforseo'
 
 export const dynamic = 'force-dynamic'
@@ -8,17 +9,38 @@ interface RouteContext {
   params: Promise<{ id: string }>
 }
 
+async function getDataForSEOCredentials(): Promise<{ login: string | null; password: string | null }> {
+  // Check database first
+  const settings = await prisma.setting.findMany({
+    where: { key: { in: ['DATAFORSEO_LOGIN', 'DATAFORSEO_PASSWORD'] } },
+  })
+
+  let login: string | null = null
+  let password: string | null = null
+
+  for (const setting of settings) {
+    const value = setting.encrypted ? decrypt(setting.value) : setting.value
+    if (setting.key === 'DATAFORSEO_LOGIN') login = value
+    if (setting.key === 'DATAFORSEO_PASSWORD') password = value
+  }
+
+  // Fall back to environment variables
+  if (!login) login = process.env.DATAFORSEO_LOGIN || null
+  if (!password) password = process.env.DATAFORSEO_PASSWORD || null
+
+  return { login, password }
+}
+
 export async function POST(request: NextRequest, { params }: RouteContext) {
   try {
     const { id } = await params
 
     // Check for DataForSEO credentials
-    const login = process.env.DATAFORSEO_LOGIN
-    const password = process.env.DATAFORSEO_PASSWORD
+    const { login, password } = await getDataForSEOCredentials()
 
     if (!login || !password) {
       return NextResponse.json(
-        { error: 'DataForSEO API credentials not configured' },
+        { error: 'DataForSEO API credentials not configured. Go to Settings → API to add them.' },
         { status: 500 }
       )
     }

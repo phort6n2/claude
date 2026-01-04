@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/db'
+import { decrypt } from '@/lib/encryption'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,10 +20,31 @@ interface UserDataResponse {
   }>
 }
 
+async function getDataForSEOCredentials(): Promise<{ login: string | null; password: string | null }> {
+  // Check database first
+  const settings = await prisma.setting.findMany({
+    where: { key: { in: ['DATAFORSEO_LOGIN', 'DATAFORSEO_PASSWORD'] } },
+  })
+
+  let login: string | null = null
+  let password: string | null = null
+
+  for (const setting of settings) {
+    const value = setting.encrypted ? decrypt(setting.value) : setting.value
+    if (setting.key === 'DATAFORSEO_LOGIN') login = value
+    if (setting.key === 'DATAFORSEO_PASSWORD') password = value
+  }
+
+  // Fall back to environment variables
+  if (!login) login = process.env.DATAFORSEO_LOGIN || null
+  if (!password) password = process.env.DATAFORSEO_PASSWORD || null
+
+  return { login, password }
+}
+
 export async function GET() {
   try {
-    const login = process.env.DATAFORSEO_LOGIN
-    const password = process.env.DATAFORSEO_PASSWORD
+    const { login, password } = await getDataForSEOCredentials()
 
     if (!login || !password) {
       return NextResponse.json({
