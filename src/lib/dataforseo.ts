@@ -134,6 +134,7 @@ export async function fetchPAAsForLocation(
     }
 
     console.log('[DataForSEO] Total tasks:', requestTasks.length, '(2 keywords ×', locations.length, 'locations)')
+    console.log('[DataForSEO] Request tasks being sent:', JSON.stringify(requestTasks.map(t => ({ keyword: t.keyword, location: t.location_name }))))
 
     const response = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/advanced', {
       method: 'POST',
