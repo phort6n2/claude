@@ -579,11 +579,13 @@ function ReviewTab({
   // Step status helpers
   const isStep1Complete = content.clientBlogPublished
   const isStep2Complete = content.wrhqBlogPublished
-  const isStep3Complete = content.socialPosts.length > 0 && content.socialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED')
-  const isStep4Complete = content.podcastAddedToPost
-  // Step 5: Video posts complete when all client AND WRHQ posts are scheduled/processing/published
-  const clientVideoComplete = content.videoSocialPosts.length === 0 || content.videoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PROCESSING' || p.status === 'PUBLISHED')
-  const wrhqVideoComplete = content.wrhqVideoSocialPosts.length === 0 || content.wrhqVideoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PROCESSING' || p.status === 'PUBLISHED')
+  // Step 3: Social posts complete when all posts are scheduled/published/failed (rate limits count as complete)
+  const isStep3Complete = content.socialPosts.length > 0 && content.socialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PUBLISHED' || p.status === 'FAILED')
+  // Step 4: Podcast complete when published to Podbean OR embedded in blog
+  const isStep4Complete = !!content.podcast?.podbeanUrl || content.podcastAddedToPost
+  // Step 5: Video posts complete when all client AND WRHQ posts are scheduled/processing/published/failed
+  const clientVideoComplete = content.videoSocialPosts.length === 0 || content.videoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PROCESSING' || p.status === 'PUBLISHED' || p.status === 'FAILED')
+  const wrhqVideoComplete = content.wrhqVideoSocialPosts.length === 0 || content.wrhqVideoSocialPosts.every(p => p.status === 'SCHEDULED' || p.status === 'PROCESSING' || p.status === 'PUBLISHED' || p.status === 'FAILED')
   const isStep5Complete = (content.videoSocialPosts.length > 0 || content.wrhqVideoSocialPosts.length > 0) && clientVideoComplete && wrhqVideoComplete
   const isStep6Complete = content.longVideoUploaded
   const isStep7Complete = content.schemaGenerated
@@ -1693,8 +1695,8 @@ function ReviewTab({
           </div>
         </div>
 
-        {/* Show content when processing, ready, failed, or has video */}
-        {!collapsedSections.step5 && (content.shortVideo?.status === 'PROCESSING' || content.shortVideo?.status === 'READY' || content.shortVideo?.status === 'FAILED' || content.shortVideoDescription) && (
+        {/* Show content when processing, ready, published, failed, or has video */}
+        {!collapsedSections.step5 && (content.shortVideo?.status === 'PROCESSING' || content.shortVideo?.status === 'READY' || content.shortVideo?.status === 'PUBLISHED' || content.shortVideo?.status === 'FAILED' || content.shortVideoDescription) && (
           <div className="p-6 space-y-4">
             {/* Processing status indicator */}
             {content.shortVideo?.status === 'PROCESSING' && (
@@ -1726,8 +1728,8 @@ function ReviewTab({
               </div>
             )}
 
-            {/* Video player when ready */}
-            {content.shortVideo?.videoUrl && content.shortVideo?.status === 'READY' && (
+            {/* Video player when ready or published */}
+            {content.shortVideo?.videoUrl && (content.shortVideo?.status === 'READY' || content.shortVideo?.status === 'PUBLISHED') && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Video Preview</label>
                 <div className="relative max-w-xs mx-auto">
