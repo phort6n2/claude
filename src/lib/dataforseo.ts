@@ -98,121 +98,90 @@ export async function fetchPAAsForLocation(
     const fullStateName = stateAbbreviations[state.toUpperCase()] || state
 
     // Build list of locations to search: main city + up to 2 service areas
-    const locations: string[] = [`${city},${fullStateName},United States`]
+    const mainLocation = `${city},${fullStateName},United States`
+    const locationsSet = new Set<string>([mainLocation])
 
-    // Add service areas (limit to 2 to control costs)
+    // Add service areas (limit to 2 to control costs), excluding duplicates
     if (serviceAreas && serviceAreas.length > 0) {
-      const additionalLocations = serviceAreas
-        .slice(0, 2) // Max 2 additional locations
-        .map(area => `${area},${fullStateName},United States`)
-      locations.push(...additionalLocations)
+      for (const area of serviceAreas) {
+        if (locationsSet.size >= 3) break // Max 3 locations total (main + 2 service areas)
+        const areaLocation = `${area},${fullStateName},United States`
+        if (areaLocation !== mainLocation) {
+          locationsSet.add(areaLocation)
+        }
+      }
     }
 
+    const locations = Array.from(locationsSet)
     console.log('[DataForSEO] Searching for:', searchKeywords.join(', '), 'in locations:', locations)
 
-    // Create a task for each keyword + location combination
-    const requestTasks: Array<{
-      keyword: string
-      location_name: string
-      language_name: string
-      device: string
-      os: string
-      depth: number
-    }> = []
-
+    // DataForSEO live endpoint only accepts ONE task at a time
+    // Make sequential API calls for each keyword/location combination
+    const tasks: Array<{ keyword: string; location: string }> = []
     for (const locationName of locations) {
       for (const keyword of searchKeywords) {
-        requestTasks.push({
-          keyword,
-          location_name: locationName,
+        tasks.push({ keyword, location: locationName })
+      }
+    }
+
+    console.log('[DataForSEO] Total tasks to run:', tasks.length, '(2 keywords ×', locations.length, 'locations)')
+
+    // Execute tasks sequentially (live endpoint only allows 1 task at a time)
+    for (const task of tasks) {
+      console.log('[DataForSEO] Fetching:', task.keyword, 'in', task.location)
+
+      const response = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/advanced', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Basic ' + Buffer.from(`${login}:${password}`).toString('base64'),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify([{
+          keyword: task.keyword,
+          location_name: task.location,
           language_name: 'English',
           device: 'desktop',
           os: 'windows',
-          depth: 10, // PAAs usually appear in top 10 results
-        })
+          depth: 10,
+        }]),
+      })
+
+      if (!response.ok) {
+        console.log('[DataForSEO] Request failed for', task.keyword, ':', response.status)
+        continue // Skip this task but continue with others
       }
-    }
 
-    console.log('[DataForSEO] Total tasks:', requestTasks.length, '(2 keywords ×', locations.length, 'locations)')
-    console.log('[DataForSEO] Request tasks being sent:', JSON.stringify(requestTasks.map(t => ({ keyword: t.keyword, location: t.location_name }))))
+      const data: DataForSEOResponse = await response.json()
 
-    const response = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/advanced', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Basic ' + Buffer.from(`${login}:${password}`).toString('base64'),
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestTasks),
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      return {
-        success: false,
-        paas: [],
-        error: `API request failed: ${response.status} - ${errorText}`,
+      if (data.status_code !== 20000) {
+        console.log('[DataForSEO] API error for', task.keyword, ':', data.status_message)
+        continue
       }
-    }
 
-    const data: DataForSEOResponse = await response.json()
-    console.log('[DataForSEO] Response status_code:', data.status_code, 'message:', data.status_message)
-    console.log('[DataForSEO] Raw response structure:', JSON.stringify({
-      tasks_count: data.tasks?.length,
-      first_task_results: data.tasks?.[0]?.result?.length,
-      first_result_items: data.tasks?.[0]?.result?.[0]?.items?.length,
-      item_types: data.tasks?.[0]?.result?.[0]?.items?.map(i => i.type),
-    }))
+      // Extract PAAs from this task's results
+      const responseTasks = data.tasks || []
+      for (const responseTask of responseTasks) {
+        if (responseTask.status_code !== 20000) continue
 
-    if (data.status_code !== 20000) {
-      console.log('[DataForSEO] Full error response:', JSON.stringify(data, null, 2))
-      return {
-        success: false,
-        paas: [],
-        error: data.status_message || 'Unknown API error',
-      }
-    }
+        const results = responseTask.result || []
+        for (const result of results) {
+          totalCost += result.cost || 0
+          const items = result.items || []
 
-    // Extract PAAs from results
-    const responseTasks = data.tasks || []
-    console.log('[DataForSEO] Tasks returned:', responseTasks.length)
+          for (const item of items) {
+            if (item.type === 'people_also_ask') {
+              const paaItems = item.items || []
+              console.log('[DataForSEO] Found', paaItems.length, 'PAAs for', task.keyword, 'in', task.location)
 
-    // Log task-level status for debugging
-    for (const task of responseTasks) {
-      console.log('[DataForSEO] Task status:', task.status_code, task.status_message)
-    }
-
-    for (const task of responseTasks) {
-      const results = task.result || []
-      console.log('[DataForSEO] Results in task:', results.length)
-
-      for (const result of results) {
-        totalCost += result.cost || 0
-        const items = result.items || []
-
-        // Log all item types for debugging
-        const itemTypes = items.map(i => i.type)
-        console.log('[DataForSEO] Item types found:', [...new Set(itemTypes)])
-        console.log('[DataForSEO] Total items to scan:', items.length)
-
-        for (const item of items) {
-          // Log each item's type for debugging
-          if (item.type === 'people_also_ask') {
-            console.log('[DataForSEO] Found people_also_ask item:', JSON.stringify(item, null, 2).slice(0, 500))
-            // PAA questions are in the nested items array
-            const paaItems = item.items || []
-            console.log('[DataForSEO] PAA block found with', paaItems.length, 'questions')
-
-            for (const paaItem of paaItems) {
-              console.log('[DataForSEO] PAA element:', paaItem.type, '| title:', paaItem.title)
-              if (paaItem.type === 'people_also_ask_element' && paaItem.title) {
-                // Get answer from expanded_element if available
-                const expanded = paaItem.expanded_element?.[0]
-                allPAAs.push({
-                  question: paaItem.title,
-                  answer: expanded?.description,
-                  source: expanded?.url,
-                })
-                console.log('[DataForSEO] Added PAA:', paaItem.title)
+              for (const paaItem of paaItems) {
+                if (paaItem.type === 'people_also_ask_element' && paaItem.title) {
+                  const expanded = paaItem.expanded_element?.[0]
+                  allPAAs.push({
+                    question: paaItem.title,
+                    answer: expanded?.description,
+                    source: expanded?.url,
+                  })
+                }
               }
             }
           }
