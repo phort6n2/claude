@@ -38,9 +38,10 @@ export default function Sidebar() {
           alt="Auto Glass Marketing Pros"
           width={180}
           height={72}
-          className="mb-1"
+          className="mb-2"
           priority
         />
+        <span className="text-xs text-gray-400 font-medium">Command Center</span>
       </div>
 
       {/* Navigation */}
