@@ -34,10 +34,10 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="flex flex-col items-center justify-center py-4 border-b border-gray-800">
         <Image
-          src="/logo.png"
+          src="/logo.svg"
           alt="Auto Glass Marketing Pros"
           width={180}
-          height={80}
+          height={72}
           className="mb-1"
           priority
         />

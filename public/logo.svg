@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 120" fill="white">
+  <!-- Car silhouette -->
+  <path d="M70 45 Q90 25 150 25 Q210 25 230 45 Q240 50 245 55 L250 60 Q252 65 250 70 L245 72 Q243 75 240 75 L225 75 Q220 85 210 85 Q200 85 195 75 L105 75 Q100 85 90 85 Q80 85 75 75 L60 75 Q57 75 55 72 L50 70 Q48 65 50 60 L55 55 Q60 50 70 45 Z"
+        fill="none" stroke="white" stroke-width="1.5"/>
+  <!-- Car window -->
+  <path d="M95 45 Q110 32 150 32 Q190 32 205 45 L200 52 L100 52 Z"
+        fill="none" stroke="white" stroke-width="1"/>
+
+  <!-- AUTO GLASS text -->
+  <text x="150" y="78" font-family="Arial, sans-serif" font-size="22" font-weight="bold" text-anchor="middle" letter-spacing="4">AUTO GLASS</text>
+
+  <!-- MARKETING PROS text -->
+  <text x="150" y="100" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" letter-spacing="6">MARKETING PROS</text>
+</svg>
