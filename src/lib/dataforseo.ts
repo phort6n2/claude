@@ -92,7 +92,7 @@ export async function fetchPAAsForLocation(
     console.log('[DataForSEO] Searching for keywords:', broadKeywords)
 
     // Send all keywords as separate tasks in one API call
-    const tasks = broadKeywords.map(keyword => ({
+    const requestTasks = broadKeywords.map(keyword => ({
       keyword,
       location_name: 'United States',
       language_name: 'English',
@@ -107,7 +107,7 @@ export async function fetchPAAsForLocation(
         'Authorization': 'Basic ' + Buffer.from(`${login}:${password}`).toString('base64'),
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(tasks),
+      body: JSON.stringify(requestTasks),
     })
 
     if (!response.ok) {
@@ -130,10 +130,10 @@ export async function fetchPAAsForLocation(
     }
 
     // Extract PAAs from results
-    const tasks = data.tasks || []
-    console.log('[DataForSEO] Tasks returned:', tasks.length)
+    const responseTasks = data.tasks || []
+    console.log('[DataForSEO] Tasks returned:', responseTasks.length)
 
-    for (const task of tasks) {
+    for (const task of responseTasks) {
       const results = task.result || []
       console.log('[DataForSEO] Results in task:', results.length)
 
