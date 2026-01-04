@@ -82,96 +82,112 @@ async function ClientCards() {
         const hasDisconnected = disconnectedPlatforms.length > 0
 
         return (
-          <Card key={client.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              {/* Header: Logo + Name + Status */}
-              <div className="flex items-start gap-3 mb-3">
+          <Card key={client.id} className="hover:shadow-lg transition-all duration-200 group">
+            <CardContent className="p-5">
+              {/* Centered Header */}
+              <div className="flex flex-col items-center text-center mb-4">
                 <ClientLogo
                   logoUrl={client.logoUrl}
                   businessName={client.businessName}
                   primaryColor={client.primaryColor}
-                  size="md"
+                  size="lg"
                 />
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900 text-sm truncate" title={client.businessName}>
-                    {client.businessName}
-                  </h3>
-                  <p className="text-xs text-gray-500">{client.city}, {client.state}</p>
-                  <div className="mt-1">
-                    <StatusBadge status={client.status} />
-                  </div>
+                <h3 className="font-semibold text-gray-900 mt-3 leading-tight line-clamp-2 min-h-[2.5rem]">
+                  {client.businessName}
+                </h3>
+                <p className="text-sm text-gray-500 mt-0.5">{client.city}, {client.state}</p>
+                <div className="mt-2">
+                  <StatusBadge status={client.status} />
                 </div>
               </div>
 
-              {/* Stats Row */}
-              <div className="flex items-center gap-4 mb-3 text-xs">
-                <div className="flex items-center gap-1" title="Posts this month">
-                  <FileText className="h-3.5 w-3.5 text-gray-400" />
-                  <span className="font-medium text-gray-700">{client._count.contentItems}</span>
-                </div>
-                <div className="flex items-center gap-1" title={client.autoScheduleEnabled ? 'Auto-schedule ON' : 'Auto-schedule OFF'}>
-                  <Zap className={`h-3.5 w-3.5 ${client.autoScheduleEnabled ? 'text-green-500' : 'text-gray-300'}`} />
-                  <span className={client.autoScheduleEnabled ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                    {client.autoScheduleEnabled ? 'Auto' : 'Off'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1" title={client.wordpressConnected ? 'WordPress connected' : 'WordPress not connected'}>
+              {/* Status Indicators - Centered Pills */}
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                    client.autoScheduleEnabled
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-gray-100 text-gray-500'
+                  }`}
+                  title={client.autoScheduleEnabled ? 'Auto-scheduling is enabled' : 'Auto-scheduling is disabled'}
+                >
+                  <Zap className="h-3 w-3" />
+                  {client.autoScheduleEnabled ? 'Auto' : 'Manual'}
+                </span>
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                    client.wordpressConnected
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-gray-100 text-gray-500'
+                  }`}
+                  title={client.wordpressConnected ? 'WordPress is connected and publishing' : 'WordPress not connected'}
+                >
                   {client.wordpressConnected ? (
-                    <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                    <CheckCircle className="h-3 w-3" />
                   ) : (
-                    <span className="h-3.5 w-3.5 rounded-full border border-gray-300" />
+                    <span className="h-3 w-3 rounded-full border border-current opacity-50" />
                   )}
-                  <span className={client.wordpressConnected ? 'text-green-600' : 'text-gray-400'}>WP</span>
-                </div>
+                  WP
+                </span>
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600"
+                  title={`${client._count.contentItems} posts published this month`}
+                >
+                  <FileText className="h-3 w-3" />
+                  {client._count.contentItems}
+                </span>
               </div>
 
-              {/* Social Platforms */}
-              <div className="flex items-center gap-1 mb-3">
+              {/* Social Platforms - Centered */}
+              <div className="flex items-center justify-center gap-1.5 mb-4">
                 {hasDisconnected && (
                   <span
-                    className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-red-100 text-red-600"
-                    title={`Disconnected: ${disconnectedPlatforms.join(', ')}`}
+                    className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-100 text-red-600 cursor-help"
+                    title={`⚠️ Disconnected accounts: ${disconnectedPlatforms.join(', ')}`}
                   >
-                    <AlertTriangle className="h-3 w-3" />
+                    <AlertTriangle className="h-3.5 w-3.5" />
                   </span>
                 )}
-                {client.socialPlatforms.slice(0, 4).map((platform: string) => {
+                {client.socialPlatforms.slice(0, 5).map((platform: string) => {
                   const isDisconnected = disconnectedPlatforms.includes(platform.toLowerCase())
                   return (
                     <span
                       key={platform}
-                      className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-medium ${
+                      className={`inline-flex items-center justify-center h-6 w-6 rounded-full text-xs font-semibold cursor-help transition-transform hover:scale-110 ${
                         isDisconnected
-                          ? 'bg-red-100 text-red-600 ring-1 ring-red-300'
-                          : 'bg-gray-100 text-gray-600'
+                          ? 'bg-red-100 text-red-600 ring-2 ring-red-200'
+                          : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700'
                       }`}
-                      title={isDisconnected ? `${platform} (DISCONNECTED)` : platform}
+                      title={isDisconnected ? `${platform} - ⚠️ DISCONNECTED` : `${platform} - Connected`}
                     >
                       {platform[0].toUpperCase()}
                     </span>
                   )
                 })}
-                {client.socialPlatforms.length > 4 && (
-                  <span className="text-[10px] text-gray-500">
-                    +{client.socialPlatforms.length - 4}
+                {client.socialPlatforms.length > 5 && (
+                  <span
+                    className="text-xs text-gray-500 font-medium cursor-help"
+                    title={`Also connected: ${client.socialPlatforms.slice(5).join(', ')}`}
+                  >
+                    +{client.socialPlatforms.length - 5}
                   </span>
                 )}
                 {client.socialPlatforms.length === 0 && (
-                  <span className="text-xs text-gray-400">No social accounts</span>
+                  <span className="text-xs text-gray-400 italic">No social accounts</span>
                 )}
               </div>
 
-              {/* Quick Links */}
-              <div className="flex items-center gap-2 mb-3 border-t pt-3">
+              {/* Quick Links - Centered with labels on hover */}
+              <div className="flex items-center justify-center gap-3 py-3 border-t border-gray-100">
                 {client.wordpressUrl && (
                   <a
                     href={client.wordpressUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-1.5 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                    title="Website"
+                    className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-110 transition-all"
+                    title="🌐 Visit Website"
                   >
-                    <Globe className="h-3.5 w-3.5" />
+                    <Globe className="h-4 w-4" />
                   </a>
                 )}
                 {client.googleMapsUrl && (
@@ -179,10 +195,10 @@ async function ClientCards() {
                     href={client.googleMapsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-1.5 rounded-md bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                    title="Google Maps"
+                    className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 hover:scale-110 transition-all"
+                    title="📍 View on Google Maps"
                   >
-                    <MapPin className="h-3.5 w-3.5" />
+                    <MapPin className="h-4 w-4" />
                   </a>
                 )}
                 {client.podbeanPodcastUrl && (
@@ -190,10 +206,10 @@ async function ClientCards() {
                     href={client.podbeanPodcastUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-1.5 rounded-md bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
-                    title="Podcast"
+                    className="p-2 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 hover:scale-110 transition-all"
+                    title="🎙️ Listen to Podcast"
                   >
-                    <Podcast className="h-3.5 w-3.5" />
+                    <Podcast className="h-4 w-4" />
                   </a>
                 )}
                 {client.wrhqDirectoryUrl && (
@@ -201,26 +217,29 @@ async function ClientCards() {
                     href={client.wrhqDirectoryUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-1.5 rounded-md bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
-                    title="WRHQ Directory"
+                    className="p-2 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 hover:scale-110 transition-all"
+                    title="🏢 WRHQ Directory Listing"
                   >
-                    <Building2 className="h-3.5 w-3.5" />
+                    <Building2 className="h-4 w-4" />
                   </a>
+                )}
+                {!client.wordpressUrl && !client.googleMapsUrl && !client.podbeanPodcastUrl && !client.wrhqDirectoryUrl && (
+                  <span className="text-xs text-gray-400 italic">No quick links</span>
                 )}
               </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-2">
+              {/* Actions - Compact */}
+              <div className="flex items-center justify-center gap-2 mt-3">
                 <ScheduleActions
                   clientId={client.id}
                   clientName={client.businessName}
                   hasSchedule={client.calendarGenerated}
                   scheduledCount={client.scheduledCount}
                 />
-                <Link href={`/admin/clients/${client.id}`} className="flex-1">
-                  <Button variant="outline" size="sm" className="w-full text-xs">
+                <Link href={`/admin/clients/${client.id}`}>
+                  <button className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">
                     Edit
-                  </Button>
+                  </button>
                 </Link>
               </div>
             </CardContent>
