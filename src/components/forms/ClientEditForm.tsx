@@ -387,6 +387,12 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       const data = await response.json()
 
       if (response.ok) {
+        // Redirect immediately to the review page
+        if (data.reviewUrl) {
+          router.push(data.reviewUrl)
+          return
+        }
+
         setTestResult({
           success: true,
           message: data.message,
