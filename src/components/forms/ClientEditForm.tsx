@@ -23,6 +23,8 @@ import {
   Trash2,
   Zap,
   Calendar,
+  Search,
+  ExternalLink,
 } from 'lucide-react'
 
 interface PodbeanPodcast {
@@ -47,6 +49,14 @@ interface ServiceLocation {
   state: string
   neighborhood: string
   isHeadquarters: boolean
+}
+
+interface FetchedPAA {
+  original: string
+  formatted: string
+  answer?: string
+  source?: string
+  selected: boolean
 }
 
 interface ClientData {
@@ -191,6 +201,12 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   const [paaMessage, setPaaMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [loadingPaas, setLoadingPaas] = useState(false)
   const [existingPaaCount, setExistingPaaCount] = useState(0)
+
+  // Google PAA fetch state
+  const [fetchingGooglePaas, setFetchingGooglePaas] = useState(false)
+  const [fetchedPaas, setFetchedPaas] = useState<FetchedPAA[]>([])
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [fetchCost, setFetchCost] = useState<number | null>(null)
 
   // Load Podbean podcasts
   useEffect(() => {
@@ -486,6 +502,58 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
     } finally {
       setSavingPaas(false)
     }
+  }
+
+  async function fetchGooglePaas() {
+    setFetchingGooglePaas(true)
+    setFetchError(null)
+    setFetchedPaas([])
+    setFetchCost(null)
+
+    try {
+      const response = await fetch(`/api/clients/${client.id}/fetch-paas`, {
+        method: 'POST',
+      })
+      const data = await response.json()
+
+      if (response.ok) {
+        setFetchedPaas(data.paas.map((paa: { original: string; formatted: string; answer?: string; source?: string }) => ({
+          ...paa,
+          selected: true, // Select all by default
+        })))
+        setFetchCost(data.cost)
+      } else {
+        setFetchError(data.error || 'Failed to fetch PAAs')
+      }
+    } catch {
+      setFetchError('Failed to connect to DataForSEO')
+    } finally {
+      setFetchingGooglePaas(false)
+    }
+  }
+
+  function togglePaaSelection(index: number) {
+    setFetchedPaas(prev => prev.map((paa, i) =>
+      i === index ? { ...paa, selected: !paa.selected } : paa
+    ))
+  }
+
+  function selectAllPaas() {
+    setFetchedPaas(prev => prev.map(paa => ({ ...paa, selected: true })))
+  }
+
+  function deselectAllPaas() {
+    setFetchedPaas(prev => prev.map(paa => ({ ...paa, selected: false })))
+  }
+
+  function addSelectedPaasToTextarea() {
+    const selected = fetchedPaas.filter(paa => paa.selected)
+    if (selected.length === 0) return
+
+    const newText = selected.map(paa => paa.formatted).join('\n')
+    setPaaText(prev => prev ? `${prev}\n${newText}` : newText)
+    setFetchedPaas([]) // Clear after adding
+    setPaaMessage({ type: 'success', text: `Added ${selected.length} questions to queue` })
   }
 
   async function runAutomationTest() {
@@ -1443,6 +1511,124 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                   Add custom PAA questions for this client. <strong>Custom PAAs are used first</strong>, before Standard PAAs.
                   Each must include <code className="bg-gray-100 px-1 rounded">{'{location}'}</code> and end with <code className="bg-gray-100 px-1 rounded">?</code>
                 </p>
+
+                {/* Fetch from Google Section */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Search className="h-4 w-4 text-blue-600" />
+                      <h5 className="text-sm font-medium text-blue-900">Fetch PAAs from Google</h5>
+                    </div>
+                    <Button
+                      onClick={fetchGooglePaas}
+                      disabled={fetchingGooglePaas || !formData.city || !formData.state}
+                      variant="outline"
+                      className="text-sm"
+                    >
+                      {fetchingGooglePaas ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Searching...
+                        </>
+                      ) : (
+                        <>
+                          <Search className="h-4 w-4 mr-2" />
+                          Fetch for {formData.city || 'location'}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-blue-700">
+                    Search Google for real &quot;People Also Ask&quot; questions about auto glass in your location.
+                    Questions will be automatically formatted with {'{location}'} placeholder.
+                  </p>
+
+                  {/* Fetch Error */}
+                  {fetchError && (
+                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                      <AlertCircle className="h-4 w-4 inline mr-2" />
+                      {fetchError}
+                    </div>
+                  )}
+
+                  {/* Fetched Results */}
+                  {fetchedPaas.length > 0 && (
+                    <div className="mt-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-blue-900">
+                          Found {fetchedPaas.length} questions
+                          {fetchCost !== null && (
+                            <span className="ml-2 text-xs text-gray-500">
+                              (API cost: ${fetchCost.toFixed(4)})
+                            </span>
+                          )}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={selectAllPaas}
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            Select all
+                          </button>
+                          <span className="text-gray-300">|</span>
+                          <button
+                            onClick={deselectAllPaas}
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            Deselect all
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="max-h-64 overflow-y-auto space-y-2 bg-white rounded-lg border p-2">
+                        {fetchedPaas.map((paa, index) => (
+                          <label
+                            key={index}
+                            className={`flex items-start gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                              paa.selected ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50 border border-transparent'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={paa.selected}
+                              onChange={() => togglePaaSelection(index)}
+                              className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm text-gray-900">{paa.formatted}</div>
+                              {paa.original !== paa.formatted && (
+                                <div className="text-xs text-gray-400 mt-0.5">
+                                  Original: {paa.original}
+                                </div>
+                              )}
+                              {paa.source && (
+                                <a
+                                  href={paa.source}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-xs text-blue-500 hover:underline mt-1"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  Source
+                                </a>
+                              )}
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+
+                      <Button
+                        onClick={addSelectedPaasToTextarea}
+                        disabled={!fetchedPaas.some(p => p.selected)}
+                        className="w-full"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add {fetchedPaas.filter(p => p.selected).length} Selected Questions
+                      </Button>
+                    </div>
+                  )}
+                </div>
 
                 <textarea
                   value={paaText}
