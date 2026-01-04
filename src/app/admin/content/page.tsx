@@ -20,6 +20,14 @@ import {
   Eye,
   Trash2,
   Zap,
+  FileText,
+  ImageIcon,
+  Share2,
+  Mic,
+  Video,
+  Film,
+  Code,
+  Link2,
 } from 'lucide-react'
 import CreateContentModal from '@/components/admin/CreateContentModal'
 
@@ -358,7 +366,7 @@ export default function ContentCalendarPage() {
                   PAA Question
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
-                  Progress
+                  Content
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Actions
@@ -700,20 +708,36 @@ function getStepCompletion(item: ContentItem): { completed: number; total: numbe
   }
 }
 
-function StepProgress({ item }: { item: ContentItem }) {
-  const { completed, total, nextStep, isComplete } = getStepCompletion(item)
+function ContentTypeIcon({
+  icon: Icon,
+  done,
+  label
+}: {
+  icon: React.ElementType
+  done: boolean
+  label: string
+}) {
+  return (
+    <div
+      className={`p-1 rounded ${done ? 'text-green-600' : 'text-gray-300'}`}
+      title={`${label}: ${done ? 'Done' : 'Not done'}`}
+    >
+      <Icon className="h-3.5 w-3.5" />
+    </div>
+  )
+}
 
+function StepProgress({ item }: { item: ContentItem }) {
   // Show "Generating..." for items still generating
   if (item.status === 'GENERATING') {
     return (
-      <div className="flex items-center gap-3">
-        <div className="w-20 bg-gray-100 rounded-full h-1.5 overflow-hidden">
-          <div
-            className="bg-gradient-to-r from-purple-400 to-purple-600 h-1.5 rounded-full animate-pulse"
-            style={{ width: '25%' }}
-          />
+      <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 text-purple-400">
+          <FileText className="h-3.5 w-3.5 animate-pulse" />
+          <ImageIcon className="h-3.5 w-3.5 animate-pulse delay-75" />
+          <Share2 className="h-3.5 w-3.5 animate-pulse delay-100" />
         </div>
-        <span className="text-xs text-purple-600 font-medium whitespace-nowrap">Generating...</span>
+        <span className="text-xs text-purple-600 font-medium ml-1">Generating...</span>
       </div>
     )
   }
@@ -721,34 +745,27 @@ function StepProgress({ item }: { item: ContentItem }) {
   // Show "Not started" for drafts with no content
   if (!item.blogGenerated && item.status === 'DRAFT') {
     return (
-      <div className="flex items-center gap-3">
-        <div className="w-20 bg-gray-100 rounded-full h-1.5" />
-        <span className="text-xs text-gray-400 whitespace-nowrap">Not started</span>
-      </div>
+      <span className="text-xs text-gray-400">Not started</span>
     )
   }
 
-  // Show progress bar and next step
-  const progressPercent = (completed / total) * 100
+  // Content type status
+  const contentTypes = [
+    { icon: FileText, done: item.blogGenerated && !!item.blogPost?.wordpressPostId, label: 'Blog' },
+    { icon: ImageIcon, done: item.imagesGenerated && item.imagesApproved === 'APPROVED', label: 'Images' },
+    { icon: Share2, done: item.socialGenerated && !!item.socialPosts?.some(p => p.publishedUrl), label: 'Social' },
+    { icon: Mic, done: item.podcastGenerated && !!item.podcast?.podbeanUrl, label: 'Podcast' },
+    { icon: Video, done: item.shortVideoGenerated && !!item.shortFormVideos?.some(v => v.publishedUrls && Object.keys(v.publishedUrls).length > 0), label: 'Short Video' },
+    { icon: Film, done: !!item.longformVideoUrl, label: 'Long Video' },
+    { icon: Code, done: item.schemaGenerated && !!item.blogPost?.schemaJson, label: 'Schema' },
+    { icon: Link2, done: item.podcastAddedToPost || item.shortVideoAddedToPost || item.longVideoAddedToPost, label: 'Embedded' },
+  ]
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="w-20 bg-gray-100 rounded-full h-1.5" title={`${completed}/${total} steps complete`}>
-        <div
-          className={`h-1.5 rounded-full transition-all ${isComplete ? 'bg-green-500' : 'bg-blue-500'}`}
-          style={{ width: `${progressPercent}%` }}
-        />
-      </div>
-      {isComplete ? (
-        <span className="text-xs text-green-600 font-medium flex items-center gap-1 whitespace-nowrap">
-          <CheckCircle className="h-3.5 w-3.5" />
-          Complete
-        </span>
-      ) : (
-        <span className="text-xs text-gray-500 whitespace-nowrap">
-          {completed}/{total} · <span className="text-blue-600 font-medium">{nextStep}</span>
-        </span>
-      )}
+    <div className="flex items-center gap-0.5">
+      {contentTypes.map((type, i) => (
+        <ContentTypeIcon key={i} icon={type.icon} done={type.done} label={type.label} />
+      ))}
     </div>
   )
 }
