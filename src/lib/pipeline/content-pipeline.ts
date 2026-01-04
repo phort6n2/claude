@@ -1279,7 +1279,9 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         // Upload to YouTube (like manual flow)
         const youtubeConfigured = await isYouTubeConfigured()
         if (youtubeConfigured) {
-          log(ctx, 'Uploading video to YouTube...')
+          log(ctx, 'Uploading video to YouTube...', {
+            playlistId: contentItem.client.wrhqYoutubePlaylistId || 'none',
+          })
           try {
             // Get required URLs for description
             const clientBlogPost = await prisma.blogPost.findUnique({ where: { contentItemId } })
@@ -1305,6 +1307,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
                   state: contentItem.client.state,
                   paaQuestion: contentItem.paaQuestion,
                 }),
+                playlistId: contentItem.client.wrhqYoutubePlaylistId || undefined,
                 privacyStatus: 'public',
               }),
               TIMEOUTS.YOUTUBE_UPLOAD,
@@ -1336,7 +1339,10 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
               },
             })
 
-            log(ctx, '✅ Video uploaded to YouTube', { url: youtubeResult.videoUrl })
+            log(ctx, '✅ Video uploaded to YouTube', {
+              url: youtubeResult.videoUrl,
+              addedToPlaylist: !!contentItem.client.wrhqYoutubePlaylistId,
+            })
           } catch (youtubeError) {
             logError(ctx, 'Failed to upload video to YouTube', youtubeError)
             // Non-critical, video is still in GCS
