@@ -135,6 +135,12 @@ export async function fetchPAAsForLocation(
 
     const data: DataForSEOResponse = await response.json()
     console.log('[DataForSEO] Response status_code:', data.status_code, 'message:', data.status_message)
+    console.log('[DataForSEO] Raw response structure:', JSON.stringify({
+      tasks_count: data.tasks?.length,
+      first_task_results: data.tasks?.[0]?.result?.length,
+      first_result_items: data.tasks?.[0]?.result?.[0]?.items?.length,
+      item_types: data.tasks?.[0]?.result?.[0]?.items?.map(i => i.type),
+    }))
 
     if (data.status_code !== 20000) {
       console.log('[DataForSEO] Full error response:', JSON.stringify(data, null, 2))
@@ -165,14 +171,18 @@ export async function fetchPAAsForLocation(
         // Log all item types for debugging
         const itemTypes = items.map(i => i.type)
         console.log('[DataForSEO] Item types found:', [...new Set(itemTypes)])
+        console.log('[DataForSEO] Total items to scan:', items.length)
 
         for (const item of items) {
+          // Log each item's type for debugging
           if (item.type === 'people_also_ask') {
+            console.log('[DataForSEO] Found people_also_ask item:', JSON.stringify(item, null, 2).slice(0, 500))
             // PAA questions are in the nested items array
             const paaItems = item.items || []
             console.log('[DataForSEO] PAA block found with', paaItems.length, 'questions')
 
             for (const paaItem of paaItems) {
+              console.log('[DataForSEO] PAA element:', paaItem.type, '| title:', paaItem.title)
               if (paaItem.type === 'people_also_ask_element' && paaItem.title) {
                 // Get answer from expanded_element if available
                 const expanded = paaItem.expanded_element?.[0]
@@ -181,6 +191,7 @@ export async function fetchPAAsForLocation(
                   answer: expanded?.description,
                   source: expanded?.url,
                 })
+                console.log('[DataForSEO] Added PAA:', paaItem.title)
               }
             }
           }
