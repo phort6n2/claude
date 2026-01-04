@@ -539,6 +539,13 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       const data = await response.json()
 
       if (response.ok) {
+        // Check if API returned a message (e.g., no results)
+        if (data.message && (!data.paas || data.paas.length === 0)) {
+          setFetchError(data.message)
+          setFetchCost(data.cost)
+          return
+        }
+
         // Get current questions from textarea for duplicate checking
         const textareaQuestions = new Set(
           paaText.split('\n')
@@ -548,7 +555,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
 
         // Filter out duplicates
         let skipped = 0
-        const newPaas = data.paas.filter((paa: { formatted: string }) => {
+        const newPaas = (data.paas || []).filter((paa: { formatted: string }) => {
           const normalized = paa.formatted.toLowerCase().trim()
           const isDuplicate = existingPaaQuestions.has(normalized) || textareaQuestions.has(normalized)
           if (isDuplicate) skipped++
@@ -561,6 +568,10 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
           selected: true, // Select all by default
         })))
         setFetchCost(data.cost)
+
+        if (newPaas.length === 0 && skipped === 0) {
+          setFetchError('No PAA questions found for this search.')
+        }
 
         // Refresh balance after fetch
         fetch('/api/settings/dataforseo/balance')
@@ -601,7 +612,40 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
     const newText = selected.map(paa => paa.formatted).join('\n')
     setPaaText(prev => prev ? `${prev}\n${newText}` : newText)
     setFetchedPaas([]) // Clear after adding
-    setPaaMessage({ type: 'success', text: `Added ${selected.length} questions to queue` })
+    setPaaMessage({ type: 'success', text: `Added ${selected.length} questions - click "Add to Queue" to save` })
+  }
+
+  async function addSelectedPaasAndSave() {
+    const selected = fetchedPaas.filter(paa => paa.selected)
+    if (selected.length === 0) return
+
+    setSavingPaas(true)
+    try {
+      const questions = selected.map(paa => paa.formatted)
+      const response = await fetch(`/api/clients/${client.id}/paas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questions, mode: 'append' }),
+      })
+      const data = await response.json()
+      if (response.ok) {
+        setFetchedPaas([])
+        setExistingPaaCount(prev => prev + data.added)
+        // Add to existing questions set for duplicate checking
+        setExistingPaaQuestions(prev => {
+          const updated = new Set(prev)
+          questions.forEach(q => updated.add(q.toLowerCase().trim()))
+          return updated
+        })
+        setPaaMessage({ type: 'success', text: `Saved ${data.added} questions to queue` })
+      } else {
+        setPaaMessage({ type: 'error', text: data.error || 'Failed to save' })
+      }
+    } catch {
+      setPaaMessage({ type: 'error', text: 'Failed to save PAAs' })
+    } finally {
+      setSavingPaas(false)
+    }
   }
 
   async function runAutomationTest() {
@@ -1691,14 +1735,25 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                             ))}
                           </div>
 
-                          <Button
-                            onClick={addSelectedPaasToTextarea}
-                            disabled={!fetchedPaas.some(p => p.selected)}
-                            className="w-full"
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add {fetchedPaas.filter(p => p.selected).length} Selected Questions
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={addSelectedPaasAndSave}
+                              disabled={!fetchedPaas.some(p => p.selected) || savingPaas}
+                              className="flex-1"
+                            >
+                              {savingPaas ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Saving...
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  Save {fetchedPaas.filter(p => p.selected).length} to Queue
+                                </>
+                              )}
+                            </Button>
+                          </div>
                         </>
                       ) : duplicatesSkipped > 0 && (
                         <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">

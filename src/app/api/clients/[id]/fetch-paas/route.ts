@@ -71,11 +71,28 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       password,
     })
 
+    console.log('[DataForSEO] Fetch result:', {
+      success: result.success,
+      paaCount: result.paas?.length || 0,
+      cost: result.cost,
+      error: result.error,
+    })
+
     if (!result.success) {
       return NextResponse.json(
         { error: result.error || 'Failed to fetch PAAs' },
         { status: 500 }
       )
+    }
+
+    if (result.paas.length === 0) {
+      return NextResponse.json({
+        success: true,
+        location: `${client.city}, ${client.state}`,
+        paas: [],
+        cost: result.cost,
+        message: 'No PAA questions found for this location. Try a different search.',
+      })
     }
 
     // Format PAAs with {location} placeholder
