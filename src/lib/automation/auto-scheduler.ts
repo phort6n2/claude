@@ -116,9 +116,28 @@ async function getSlotUsage(): Promise<{
 }
 
 /**
+ * Get the allowed time slot range for a day pair.
+ * To avoid rolling 24h conflicts between consecutive days:
+ * - Day pairs starting on odd days (Mon=1, Wed=3) use MORNING slots (0-4)
+ * - Day pairs starting on even days (Tue=2) use EVENING slots (5-9)
+ *
+ * This ensures consecutive calendar days are 12h apart:
+ * - Monday 6AM (morning) → Tuesday 6PM (evening) = 12h gap
+ * - Tuesday 6PM (evening) → Wednesday 6AM (morning) = 12h gap
+ */
+function getAllowedSlotRange(dayPair: DayPairKey): { min: TimeSlotIndex; max: TimeSlotIndex } {
+  const pair = DAY_PAIRS[dayPair]
+  // Odd days (1,3,5) use morning, even days (2,4) use evening
+  const useMorning = pair.day1 % 2 === 1
+  return useMorning
+    ? { min: 0, max: 4 }   // Morning: 06:00-10:00
+    : { min: 5, max: 9 }   // Evening: 18:00-22:00
+}
+
+/**
  * Find the best available slot for a new client.
- * Prioritizes day pairs where both days have capacity (< 5 clients).
- * Then assigns to the least used time slot within that day pair.
+ * Prioritizes day pairs where both days have capacity.
+ * Assigns to morning or evening shift based on day pair to avoid 24h conflicts.
  */
 export async function findBestSlot(): Promise<SlotAssignment> {
   const { dayPairCounts, slotCounts, dayUsage } = await getSlotUsage()
@@ -130,7 +149,7 @@ export async function findBestSlot(): Promise<SlotAssignment> {
     const day1Usage = dayUsage[pairDays.day1] || 0
     const day2Usage = dayUsage[pairDays.day2] || 0
 
-    // Both days must have capacity
+    // Both days must have capacity (5 per shift = 10 total, but we check per day)
     if (day1Usage < MAX_CLIENTS_PER_DAY && day2Usage < MAX_CLIENTS_PER_DAY) {
       availablePairs.push({
         pair: pairKey as DayPairKey,
@@ -142,14 +161,17 @@ export async function findBestSlot(): Promise<SlotAssignment> {
   // Sort by least used
   availablePairs.sort((a, b) => a.totalUsage - b.totalUsage)
 
-  // Default to TUE_THU if nothing available (shouldn't happen with < 15 clients)
+  // Default to TUE_THU if nothing available
   const selectedPair = availablePairs[0]?.pair || 'TUE_THU'
 
-  // Find least used time slot within this day pair
-  let bestSlot: TimeSlotIndex = 0
+  // Get allowed slot range for this day pair (morning or evening)
+  const { min: minSlot, max: maxSlot } = getAllowedSlotRange(selectedPair)
+
+  // Find least used time slot within the allowed range
+  let bestSlot: TimeSlotIndex = minSlot as TimeSlotIndex
   let minUsage = Infinity
 
-  for (let slot = 0; slot < TIME_SLOTS.length; slot++) {
+  for (let slot = minSlot; slot <= maxSlot; slot++) {
     const slotKey = `${selectedPair}:${slot}`
     const usage = slotCounts[slotKey] || 0
     if (usage < minUsage) {
