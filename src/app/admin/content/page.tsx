@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/Button'
 import { StatusBadge } from '@/components/ui/Badge'
 import { formatDate, formatTime } from '@/lib/utils'
 import {
-  Plus,
   Calendar as CalendarIcon,
   List,
   Clock,
@@ -19,7 +18,6 @@ import {
   CheckCircle,
   Eye,
   Trash2,
-  Zap,
   FileText,
   ImageIcon,
   Share2,
@@ -29,7 +27,6 @@ import {
   Code,
   Link2,
 } from 'lucide-react'
-import CreateContentModal from '@/components/admin/CreateContentModal'
 
 type ViewMode = 'month' | 'list' | 'timeline'
 
@@ -121,7 +118,6 @@ export default function ContentCalendarPage() {
     failed: 0,
     needsAttention: 0,
   })
-  const [showCreateModal, setShowCreateModal] = useState(false)
 
   // Fetch all content for status counts
   const fetchAllContent = useCallback(async () => {
@@ -531,70 +527,6 @@ export default function ContentCalendarPage() {
     <div className="flex flex-col h-full">
       <Header title="Content Calendar" subtitle="Manage your content pipeline" />
       <div className="flex-1 p-6 overflow-auto">
-        {/* Status Filter Badges */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          <StatusFilterBadge
-            label="All"
-            count={statusCounts.all}
-            active={selectedStatus === 'all'}
-            onClick={() => setSelectedStatus('all')}
-          />
-          <StatusFilterBadge
-            label="Needs Attention"
-            count={statusCounts.needsAttention}
-            active={selectedStatus === 'needsAttention'}
-            onClick={() => setSelectedStatus('needsAttention')}
-            variant="warning"
-          />
-          <StatusFilterBadge
-            label="Review"
-            count={statusCounts.review}
-            active={selectedStatus === 'REVIEW'}
-            onClick={() => setSelectedStatus('REVIEW')}
-            variant="info"
-          />
-          <StatusFilterBadge
-            label="Generating"
-            count={statusCounts.generating}
-            active={selectedStatus === 'GENERATING'}
-            onClick={() => setSelectedStatus('GENERATING')}
-            variant="processing"
-          />
-          <StatusFilterBadge
-            label="Scheduled"
-            count={statusCounts.scheduled}
-            active={selectedStatus === 'SCHEDULED'}
-            onClick={() => setSelectedStatus('SCHEDULED')}
-          />
-          <StatusFilterBadge
-            label="Approved"
-            count={statusCounts.approved}
-            active={selectedStatus === 'APPROVED'}
-            onClick={() => setSelectedStatus('APPROVED')}
-            variant="success"
-          />
-          <StatusFilterBadge
-            label="Published"
-            count={statusCounts.published}
-            active={selectedStatus === 'PUBLISHED'}
-            onClick={() => setSelectedStatus('PUBLISHED')}
-            variant="success"
-          />
-          <StatusFilterBadge
-            label="Failed"
-            count={statusCounts.failed}
-            active={selectedStatus === 'FAILED'}
-            onClick={() => setSelectedStatus('FAILED')}
-            variant="danger"
-          />
-          <StatusFilterBadge
-            label="Draft"
-            count={statusCounts.draft}
-            active={selectedStatus === 'DRAFT'}
-            onClick={() => setSelectedStatus('DRAFT')}
-          />
-        </div>
-
         {/* Controls */}
         <div className="flex flex-wrap gap-4 mb-6">
           <div className="flex gap-2">
@@ -643,18 +575,6 @@ export default function ContentCalendarPage() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-
-          <Button onClick={() => setShowCreateModal(true)}>
-            <Zap className="h-4 w-4 mr-2" />
-            Create Now
-          </Button>
-
-          <Link href="/admin/content/new">
-            <Button variant="outline">
-              <Plus className="h-4 w-4 mr-2" />
-              Schedule
-            </Button>
-          </Link>
         </div>
 
         {/* Content */}
@@ -670,16 +590,6 @@ export default function ContentCalendarPage() {
           </>
         )}
       </div>
-
-      {/* Create Content Modal */}
-      <CreateContentModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSuccess={() => {
-          fetchContent()
-          fetchAllContent()
-        }}
-      />
     </div>
   )
 }
@@ -767,45 +677,6 @@ function StepProgress({ item }: { item: ContentItem }) {
         <ContentTypeIcon key={i} icon={type.icon} done={type.done} label={type.label} />
       ))}
     </div>
-  )
-}
-
-function StatusFilterBadge({
-  label,
-  count,
-  active,
-  onClick,
-  variant = 'default',
-}: {
-  label: string
-  count: number
-  active: boolean
-  onClick: () => void
-  variant?: 'default' | 'warning' | 'info' | 'processing' | 'success' | 'danger'
-}) {
-  const variantStyles = {
-    default: active ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
-    warning: active ? 'bg-yellow-500 text-white' : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200',
-    info: active ? 'bg-blue-500 text-white' : 'bg-blue-100 text-blue-800 hover:bg-blue-200',
-    processing: active ? 'bg-purple-500 text-white' : 'bg-purple-100 text-purple-800 hover:bg-purple-200',
-    success: active ? 'bg-green-500 text-white' : 'bg-green-100 text-green-800 hover:bg-green-200',
-    danger: active ? 'bg-red-500 text-white' : 'bg-red-100 text-red-800 hover:bg-red-200',
-  }
-
-  return (
-    <button
-      onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${variantStyles[variant]}`}
-    >
-      {label}
-      {count > 0 && (
-        <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-xs ${
-          active ? 'bg-white/20' : 'bg-black/10'
-        }`}>
-          {count}
-        </span>
-      )}
-    </button>
   )
 }
 

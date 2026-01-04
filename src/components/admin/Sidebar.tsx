@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import {
@@ -31,8 +32,15 @@ export default function Sidebar() {
   return (
     <div className="flex h-full w-64 flex-col bg-gray-900">
       {/* Logo */}
-      <div className="flex h-16 items-center justify-center border-b border-gray-800">
-        <h1 className="text-xl font-bold text-white">Auto Glass Platform</h1>
+      <div className="flex flex-col items-center justify-center py-4 border-b border-gray-800">
+        <Image
+          src="/logo.png"
+          alt="Auto Glass Marketing Pros"
+          width={180}
+          height={80}
+          className="mb-1"
+          priority
+        />
       </div>
 
       {/* Navigation */}
