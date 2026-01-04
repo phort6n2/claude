@@ -128,7 +128,7 @@ export async function fetchPAAsForLocation(
           language_name: 'English',
           device: 'desktop',
           os: 'windows',
-          depth: 20, // PAAs usually appear in top 20 results
+          depth: 10, // PAAs usually appear in top 10 results
         })
       }
     }
