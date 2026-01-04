@@ -19,13 +19,20 @@ export const DAY_PAIRS = {
 
 export type DayPairKey = keyof typeof DAY_PAIRS
 
-// Time slots (UTC) - staggered 1 hour apart to prevent overlap
-// Each slot can have 1 client running at a time
-export const TIME_SLOTS = ['06:00', '07:00', '08:00', '09:00', '10:00'] as const
-export type TimeSlotIndex = 0 | 1 | 2 | 3 | 4
+// Time slots (UTC) - staggered to prevent overlap
+// Morning shift: 6AM-10AM (slots 0-4)
+// Evening shift: 6PM-10PM (slots 5-9)
+// Rolling 24h limit: By posting on non-consecutive days (48h+ apart),
+// and spreading morning/evening 12h apart, we stay within limits
+export const TIME_SLOTS = [
+  '06:00', '07:00', '08:00', '09:00', '10:00',  // Morning shift (slots 0-4)
+  '18:00', '19:00', '20:00', '21:00', '22:00',  // Evening shift (slots 5-9)
+] as const
+export type TimeSlotIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
 
-// Max clients per day (Late.dev limit: 5 posts per account per day)
-const MAX_CLIENTS_PER_DAY = 5
+// Max clients per day - with rolling 24h and non-consecutive posting days,
+// we can safely run morning + evening shifts (staggered 12h apart)
+const MAX_CLIENTS_PER_DAY = 10
 
 // ============================================
 // INTERFACES
@@ -562,10 +569,12 @@ export async function getSchedulingCapacity(): Promise<{
 }> {
   const { dayPairCounts, dayUsage } = await getSlotUsage()
 
-  // Total possible: 6 day pairs × 5 time slots = 30 slots
-  // But constrained by 5 clients per day limit
-  // With 5 weekdays and 5 slots each = 25 slots, but overlap means ~12-15 effective max
-  const totalSlots = 15 // Practical max with constraints
+  // Total possible: 6 day pairs × 10 time slots = 60 slots
+  // But constrained by 10 clients per day limit (5 morning + 5 evening)
+  // With rolling 24h limits, morning and evening shifts are 12h apart,
+  // and non-consecutive posting days (48h+) keeps us within Late.dev limits
+  // Practical max: ~30 clients (10 per day × 3 effective day pairs accounting for overlap)
+  const totalSlots = 30 // Doubled from 15 with evening slots
   const usedSlots = Object.values(dayPairCounts).reduce((a, b) => a + b, 0)
 
   const dayNames: Record<number, string> = {
