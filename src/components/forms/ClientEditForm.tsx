@@ -209,6 +209,8 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [fetchCost, setFetchCost] = useState<number | null>(null)
   const [duplicatesSkipped, setDuplicatesSkipped] = useState(0)
+  const [dataForSeoBalance, setDataForSeoBalance] = useState<number | null>(null)
+  const [dataForSeoConfigured, setDataForSeoConfigured] = useState<boolean | null>(null)
 
   // Load Podbean podcasts
   useEffect(() => {
@@ -259,6 +261,19 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       .catch(() => {})
       .finally(() => setLoadingLocations(false))
   }, [client.id])
+
+  // Load DataForSEO balance
+  useEffect(() => {
+    fetch('/api/settings/dataforseo/balance')
+      .then((res) => res.json())
+      .then((data) => {
+        setDataForSeoConfigured(data.configured)
+        if (data.balance !== undefined) {
+          setDataForSeoBalance(data.balance)
+        }
+      })
+      .catch(() => setDataForSeoConfigured(false))
+  }, [])
 
   // Load existing PAAs
   useEffect(() => {
@@ -546,6 +561,15 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
           selected: true, // Select all by default
         })))
         setFetchCost(data.cost)
+
+        // Refresh balance after fetch
+        fetch('/api/settings/dataforseo/balance')
+          .then((res) => res.json())
+          .then((balanceData) => {
+            if (balanceData.balance !== undefined) {
+              setDataForSeoBalance(balanceData.balance)
+            }
+          })
       } else {
         setFetchError(data.error || 'Failed to fetch PAAs')
       }
@@ -1542,10 +1566,26 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                     <div className="flex items-center gap-2">
                       <Search className="h-4 w-4 text-blue-600" />
                       <h5 className="text-sm font-medium text-blue-900">Fetch PAAs from Google</h5>
+                      {dataForSeoConfigured === true && dataForSeoBalance !== null && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          dataForSeoBalance < 0.10
+                            ? 'bg-red-100 text-red-700'
+                            : dataForSeoBalance < 0.50
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-green-100 text-green-700'
+                        }`}>
+                          ${dataForSeoBalance.toFixed(2)} credit
+                        </span>
+                      )}
+                      {dataForSeoConfigured === false && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                          Not configured
+                        </span>
+                      )}
                     </div>
                     <Button
                       onClick={fetchGooglePaas}
-                      disabled={fetchingGooglePaas || !formData.city || !formData.state}
+                      disabled={fetchingGooglePaas || !formData.city || !formData.state || dataForSeoConfigured === false}
                       variant="outline"
                       className="text-sm"
                     >
