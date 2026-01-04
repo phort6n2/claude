@@ -14,7 +14,14 @@ interface Client {
   serviceAreas: string[]
   gbpRating: number | null
   gbpReviewCount: number | null
-  hasAdasCalibration: boolean
+  // Services offered
+  offersWindshieldRepair: boolean
+  offersWindshieldReplacement: boolean
+  offersSideWindowRepair: boolean
+  offersBackWindowRepair: boolean
+  offersSunroofRepair: boolean
+  offersRockChipRepair: boolean
+  offersAdasCalibration: boolean
   offersMobileService: boolean
 }
 
@@ -106,45 +113,85 @@ export function generateSchemaGraph(params: SchemaParams): string {
     hasOfferCatalog: {
       '@type': 'OfferCatalog',
       itemListElement: [
-        {
-          '@type': 'Offer',
-          itemOffered: {
-            '@type': 'Service',
-            name: 'Windshield Replacement',
-            description: 'Professional windshield replacement service',
-          },
-        },
-        {
-          '@type': 'Offer',
-          itemOffered: {
-            '@type': 'Service',
-            name: 'Rock Chip Repair',
-            description: 'Quick and affordable rock chip repair',
-          },
-        },
-        ...(client.hasAdasCalibration
-          ? [
-              {
-                '@type': 'Offer',
-                itemOffered: {
-                  '@type': 'Service',
-                  name: 'ADAS Calibration',
-                  description: 'Advanced Driver Assistance System calibration',
-                },
+        ...(client.offersWindshieldRepair
+          ? [{
+              '@type': 'Offer',
+              itemOffered: {
+                '@type': 'Service',
+                name: 'Windshield Repair',
+                description: 'Professional windshield crack and damage repair',
               },
-            ]
+            }]
+          : []),
+        ...(client.offersWindshieldReplacement
+          ? [{
+              '@type': 'Offer',
+              itemOffered: {
+                '@type': 'Service',
+                name: 'Windshield Replacement',
+                description: 'Complete windshield replacement service',
+              },
+            }]
+          : []),
+        ...(client.offersSideWindowRepair
+          ? [{
+              '@type': 'Offer',
+              itemOffered: {
+                '@type': 'Service',
+                name: 'Side Window Repair',
+                description: 'Car side window repair and replacement',
+              },
+            }]
+          : []),
+        ...(client.offersBackWindowRepair
+          ? [{
+              '@type': 'Offer',
+              itemOffered: {
+                '@type': 'Service',
+                name: 'Back Window Repair',
+                description: 'Rear window repair and replacement',
+              },
+            }]
+          : []),
+        ...(client.offersSunroofRepair
+          ? [{
+              '@type': 'Offer',
+              itemOffered: {
+                '@type': 'Service',
+                name: 'Sunroof Repair',
+                description: 'Sunroof and moonroof glass repair',
+              },
+            }]
+          : []),
+        ...(client.offersRockChipRepair
+          ? [{
+              '@type': 'Offer',
+              itemOffered: {
+                '@type': 'Service',
+                name: 'Rock Chip Repair',
+                description: 'Quick and affordable rock chip repair',
+              },
+            }]
+          : []),
+        ...(client.offersAdasCalibration
+          ? [{
+              '@type': 'Offer',
+              itemOffered: {
+                '@type': 'Service',
+                name: 'ADAS Calibration',
+                description: 'Advanced Driver Assistance System calibration',
+              },
+            }]
           : []),
         ...(client.offersMobileService
-          ? [
-              {
-                '@type': 'Offer',
-                itemOffered: {
-                  '@type': 'Service',
-                  name: 'Mobile Auto Glass Service',
-                  description: 'Convenient mobile auto glass repair and replacement',
-                },
+          ? [{
+              '@type': 'Offer',
+              itemOffered: {
+                '@type': 'Service',
+                name: 'Mobile Auto Glass Service',
+                description: 'Convenient mobile auto glass repair and replacement',
               },
-            ]
+            }]
           : []),
       ],
     },

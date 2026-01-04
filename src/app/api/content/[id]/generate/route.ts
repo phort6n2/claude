@@ -135,7 +135,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           state: contentState,
           brandVoice: contentItem.client.brandVoice || 'Professional, helpful, and knowledgeable',
           serviceAreas: contentItem.client.serviceAreas || [],
-          hasAdas: contentItem.client.hasAdasCalibration,
+          hasAdas: contentItem.client.offersAdasCalibration,
           ctaText: contentItem.client.ctaText,
           ctaUrl: servicePageUrl || contentItem.client.ctaUrl || '',
           phone: contentItem.client.phone,

@@ -49,9 +49,17 @@ model Client {
   // Service Details
   hasShopLocation       Boolean   @default(true)
   offersMobileService   Boolean   @default(false)
-  hasAdasCalibration    Boolean   @default(false)
   serviceAreas          String[]  // Array of cities/neighborhoods
   insuranceRelationships String[]
+
+  // Services Offered (for schema markup and content)
+  offersWindshieldRepair      Boolean   @default(true)
+  offersWindshieldReplacement Boolean   @default(true)
+  offersSideWindowRepair      Boolean   @default(false)
+  offersBackWindowRepair      Boolean   @default(false)
+  offersSunroofRepair         Boolean   @default(false)
+  offersRockChipRepair        Boolean   @default(true)
+  offersAdasCalibration       Boolean   @default(false)
 
   // Brand Settings
   logoUrl               String?

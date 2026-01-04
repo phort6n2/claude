@@ -52,7 +52,13 @@ interface ClientFormData {
   wrhqDirectoryUrl: string
   hasShopLocation: boolean
   offersMobileService: boolean
-  hasAdasCalibration: boolean
+  offersWindshieldRepair: boolean
+  offersWindshieldReplacement: boolean
+  offersSideWindowRepair: boolean
+  offersBackWindowRepair: boolean
+  offersSunroofRepair: boolean
+  offersRockChipRepair: boolean
+  offersAdasCalibration: boolean
   serviceAreas: string
   logoUrl: string
   primaryColor: string
@@ -95,7 +101,13 @@ const defaultData: ClientFormData = {
   wrhqDirectoryUrl: '',
   hasShopLocation: true,
   offersMobileService: false,
-  hasAdasCalibration: false,
+  offersWindshieldRepair: true,
+  offersWindshieldReplacement: true,
+  offersSideWindowRepair: false,
+  offersBackWindowRepair: false,
+  offersSunroofRepair: false,
+  offersRockChipRepair: true,
+  offersAdasCalibration: false,
   serviceAreas: '',
   logoUrl: '',
   primaryColor: '#1e40af',
@@ -734,7 +746,70 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
               <CardTitle>Step 2: Service Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersWindshieldRepair}
+                    onChange={(e) => updateField('offersWindshieldRepair', e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm">Windshield Repair</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersWindshieldReplacement}
+                    onChange={(e) => updateField('offersWindshieldReplacement', e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm">Windshield Replacement</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersSideWindowRepair}
+                    onChange={(e) => updateField('offersSideWindowRepair', e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm">Side Window Repair</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersBackWindowRepair}
+                    onChange={(e) => updateField('offersBackWindowRepair', e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm">Back Window Repair</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersSunroofRepair}
+                    onChange={(e) => updateField('offersSunroofRepair', e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm">Sunroof Repair</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersRockChipRepair}
+                    onChange={(e) => updateField('offersRockChipRepair', e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm">Rock Chip Repair</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersAdasCalibration}
+                    onChange={(e) => updateField('offersAdasCalibration', e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm">ADAS Calibration</span>
+                </label>
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -742,16 +817,7 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                     onChange={(e) => updateField('offersMobileService', e.target.checked)}
                     className="rounded border-gray-300"
                   />
-                  <span className="text-sm">Offers mobile service</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.hasAdasCalibration}
-                    onChange={(e) => updateField('hasAdasCalibration', e.target.checked)}
-                    className="rounded border-gray-300"
-                  />
-                  <span className="text-sm">Has ADAS calibration</span>
+                  <span className="text-sm">Mobile Service</span>
                 </label>
               </div>
             </CardContent>
@@ -1426,13 +1492,19 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Services:</span>
-                  <span className="font-medium">
+                  <span className="font-medium text-right">
                     {[
+                      formData.offersWindshieldRepair && 'Windshield Repair',
+                      formData.offersWindshieldReplacement && 'Windshield Replacement',
+                      formData.offersSideWindowRepair && 'Side Window',
+                      formData.offersBackWindowRepair && 'Back Window',
+                      formData.offersSunroofRepair && 'Sunroof',
+                      formData.offersRockChipRepair && 'Rock Chip',
+                      formData.offersAdasCalibration && 'ADAS',
                       formData.offersMobileService && 'Mobile',
-                      formData.hasAdasCalibration && 'ADAS',
                     ]
                       .filter(Boolean)
-                      .join(', ') || 'Standard'}
+                      .join(', ') || 'None selected'}
                   </span>
                 </div>
                 <div className="flex justify-between">

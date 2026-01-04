@@ -64,7 +64,14 @@ interface ClientData {
   wrhqDirectoryUrl: string | null
   hasShopLocation: boolean
   offersMobileService: boolean
-  hasAdasCalibration: boolean
+  // Services offered
+  offersWindshieldRepair: boolean
+  offersWindshieldReplacement: boolean
+  offersSideWindowRepair: boolean
+  offersBackWindowRepair: boolean
+  offersSunroofRepair: boolean
+  offersRockChipRepair: boolean
+  offersAdasCalibration: boolean
   serviceAreas: string[]
   logoUrl: string | null
   primaryColor: string | null
@@ -542,7 +549,70 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
 
             <div className="border-t pt-4 mt-4">
               <h4 className="text-sm font-medium text-gray-700 mb-3">Services Offered</h4>
-              <div className="flex flex-wrap gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersWindshieldRepair}
+                    onChange={(e) => updateField('offersWindshieldRepair', e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm">Windshield Repair</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersWindshieldReplacement}
+                    onChange={(e) => updateField('offersWindshieldReplacement', e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm">Windshield Replacement</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersSideWindowRepair}
+                    onChange={(e) => updateField('offersSideWindowRepair', e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm">Side Window Repair</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersBackWindowRepair}
+                    onChange={(e) => updateField('offersBackWindowRepair', e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm">Back Window Repair</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersSunroofRepair}
+                    onChange={(e) => updateField('offersSunroofRepair', e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm">Sunroof Repair</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersRockChipRepair}
+                    onChange={(e) => updateField('offersRockChipRepair', e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm">Rock Chip Repair</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersAdasCalibration}
+                    onChange={(e) => updateField('offersAdasCalibration', e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm">ADAS Calibration</span>
+                </label>
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -551,15 +621,6 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                     className="rounded"
                   />
                   <span className="text-sm">Mobile Service</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.hasAdasCalibration}
-                    onChange={(e) => updateField('hasAdasCalibration', e.target.checked)}
-                    className="rounded"
-                  />
-                  <span className="text-sm">ADAS Calibration</span>
                 </label>
               </div>
             </div>
