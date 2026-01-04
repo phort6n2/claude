@@ -568,15 +568,15 @@ function StepProgress({ item }: { item: ContentItem }) {
     )
   }
 
-  // Content type status - green only if published/live online
+  // Content type status - green if content exists/is online
   const blogPublished = !!item.blogPost?.wordpressPostId
   const contentTypes = [
     { icon: FileText, done: blogPublished, label: 'Blog Published' },
     { icon: Images, done: item.imagesGenerated && blogPublished, label: 'Images (in blog)' },
     { icon: Share2, done: !!item.socialPosts?.some(p => p.publishedUrl), label: 'Social Posted' },
-    { icon: Mic, done: !!item.podcast?.podbeanUrl, label: 'Podcast Published' },
-    { icon: Video, done: !!item.shortFormVideos?.some(v => v.publishedUrls && Object.keys(v.publishedUrls).length > 0), label: 'Short Video Published' },
-    { icon: Film, done: !!item.longformVideoUrl && item.longVideoAddedToPost, label: 'Long Video Added' },
+    { icon: Mic, done: item.podcastGenerated, label: 'Podcast Created' },
+    { icon: Video, done: item.shortVideoGenerated, label: 'Short Video Created' },
+    { icon: Film, done: !!item.longformVideoUrl, label: 'Long Video' },
     { icon: Code, done: item.schemaGenerated && blogPublished, label: 'Schema Live' },
     { icon: Link2, done: item.podcastAddedToPost || item.shortVideoAddedToPost || item.longVideoAddedToPost, label: 'Media Embedded' },
   ]
