@@ -859,6 +859,24 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
               publishedUrl: postResult.platformPostUrl,
             })
 
+            // Save WRHQ social post to database
+            await prisma.wRHQSocialPost.create({
+              data: {
+                contentItemId,
+                platform: platform.toUpperCase() as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
+                caption: captionResult.caption,
+                hashtags: captionResult.hashtags || [],
+                firstComment: captionResult.firstComment,
+                mediaUrls,
+                mediaType: 'image',
+                scheduledTime: new Date(),
+                getlatePostId: postResult.postId,
+                publishedUrl: postResult.platformPostUrl,
+                status: postResult.status === 'published' ? 'PUBLISHED' : postResult.status === 'failed' ? 'FAILED' : 'PROCESSING',
+                publishedAt: postResult.status === 'published' ? new Date() : undefined,
+              },
+            })
+
             log(ctx, `✅ WRHQ posted to ${platform}`, { status: postResult.status, url: postResult.platformPostUrl })
           } catch (platformError) {
             logError(ctx, `Failed to post WRHQ to ${platform}`, platformError)
