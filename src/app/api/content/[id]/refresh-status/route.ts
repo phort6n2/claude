@@ -167,9 +167,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
     }
 
-    // If video is READY but schema not generated, trigger pipeline completion
-    if (video?.status === 'READY' && !contentItem.schemaGenerated) {
-      console.log('[RefreshStatus] Video is READY but schema not generated. Triggering video-status endpoint...')
+    // If video is READY or FAILED but schema not generated, trigger pipeline completion
+    // Schema should run regardless of video success/failure
+    if ((video?.status === 'READY' || video?.status === 'FAILED') && !contentItem.schemaGenerated) {
+      console.log(`[RefreshStatus] Video is ${video.status} but schema not generated. Triggering video-status endpoint...`)
       try {
         const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3000'
         await fetch(`${baseUrl}/api/content/${id}/video-status`)

@@ -541,6 +541,28 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       })
     }
 
+    // If FAILED, check if schema still needs to run
+    if (video.status === 'FAILED') {
+      const contentItem = await prisma.contentItem.findUnique({
+        where: { id },
+        select: { schemaGenerated: true },
+      })
+
+      if (contentItem && !contentItem.schemaGenerated) {
+        console.log('[VideoStatus] Video FAILED but schema not generated - triggering schema generation')
+        after(async () => {
+          await completeRemainingPipeline(id, null, null, null)
+        })
+
+        return NextResponse.json({
+          status: 'failed',
+          message: 'Video failed, running schema generation...',
+        })
+      }
+
+      return NextResponse.json({ status: 'failed' })
+    }
+
     // If processing, check with Creatify API
     if (video.status === 'PROCESSING' && video.providerJobId) {
       try {
