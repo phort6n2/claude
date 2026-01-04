@@ -568,16 +568,17 @@ function StepProgress({ item }: { item: ContentItem }) {
     )
   }
 
-  // Content type status - green if generated/created
+  // Content type status - green only if published/live online
+  const blogPublished = !!item.blogPost?.wordpressPostId
   const contentTypes = [
-    { icon: FileText, done: item.blogGenerated, label: 'Blog' },
-    { icon: ImageIcon, done: item.imagesGenerated, label: 'Images' },
-    { icon: Share2, done: item.socialGenerated, label: 'Social' },
-    { icon: Mic, done: item.podcastGenerated, label: 'Podcast' },
-    { icon: Video, done: item.shortVideoGenerated, label: 'Short Video' },
-    { icon: Film, done: !!item.longformVideoUrl, label: 'Long Video' },
-    { icon: Code, done: item.schemaGenerated, label: 'Schema' },
-    { icon: Link2, done: item.podcastAddedToPost || item.shortVideoAddedToPost || item.longVideoAddedToPost, label: 'Embedded' },
+    { icon: FileText, done: blogPublished, label: 'Blog Published' },
+    { icon: ImageIcon, done: item.imagesGenerated && blogPublished, label: 'Images (in blog)' },
+    { icon: Share2, done: !!item.socialPosts?.some(p => p.publishedUrl), label: 'Social Posted' },
+    { icon: Mic, done: !!item.podcast?.podbeanUrl, label: 'Podcast Published' },
+    { icon: Video, done: !!item.shortFormVideos?.some(v => v.publishedUrls && Object.keys(v.publishedUrls).length > 0), label: 'Short Video Published' },
+    { icon: Film, done: !!item.longformVideoUrl && item.longVideoAddedToPost, label: 'Long Video Added' },
+    { icon: Code, done: item.schemaGenerated && blogPublished, label: 'Schema Live' },
+    { icon: Link2, done: item.podcastAddedToPost || item.shortVideoAddedToPost || item.longVideoAddedToPost, label: 'Media Embedded' },
   ]
 
   return (
