@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/auto-schedule-weekly",
+      "schedule": "0 18 * * 0"
+    },
+    {
       "path": "/api/cron/generate-content",
       "schedule": "*/15 * * * *"
     },
