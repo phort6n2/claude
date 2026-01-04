@@ -137,11 +137,8 @@ async function completeRemainingPipeline(contentItemId: string, videoUrl: string
     if (!gcsUrl?.includes('storage.googleapis.com')) {
       console.log('[VideoStatus] Uploading video to GCS...')
       try {
-        const gcsResult = await uploadFromUrl(videoUrl, {
-          contentType: 'video/mp4',
-          folder: `videos/${contentItem.clientId}`,
-          filename: `short-${contentItemId}-${Date.now()}.mp4`,
-        })
+        const videoFilename = `videos/${contentItem.clientId}/short-${contentItemId}-${Date.now()}.mp4`
+        const gcsResult = await uploadFromUrl(videoUrl, videoFilename)
         gcsUrl = gcsResult.url
 
         await prisma.video.update({
@@ -236,10 +233,11 @@ async function completeRemainingPipeline(contentItemId: string, videoUrl: string
     const VIDEO_PLATFORMS = ['tiktok', 'instagram'] as const
 
     for (const platform of VIDEO_PLATFORMS) {
+      const platformUpper = platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM'
       const existingPost = await prisma.wRHQSocialPost.findFirst({
         where: {
           contentItemId,
-          platform: platform.toUpperCase(),
+          platform: platformUpper,
           mediaType: 'video',
         },
       })

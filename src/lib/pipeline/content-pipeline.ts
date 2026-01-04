@@ -1047,13 +1047,23 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
 
     await logAction(ctx, 'social_post', 'SUCCESS')
 
-    // ============ STEP 5: Generate Podcast ============
+    // ============ STEP 5 & 6: Generate Podcast AND Video IN PARALLEL ============
+    // Running these in parallel saves significant time (each can take 5-10 minutes)
     ctx.step = 'podcast'
     await updatePipelineStep(contentItemId, 'podcast')
-    log(ctx, '🎙️ Starting podcast generation...')
-    await logAction(ctx, 'podcast_generate', 'STARTED')
+    log(ctx, '🎙️🎬 Starting podcast AND video generation in parallel...')
 
+    // First, prepare both jobs (script generation, job creation)
+    let podcastJob: { jobId: string } | null = null
+    let podcastRecord: { id: string } | null = null
+    let podcastDescriptionHtml = ''
+    let videoJob: { jobId: string } | null = null
+    let videoRecord: { id: string } | null = null
+
+    // Start podcast job
     try {
+      await logAction(ctx, 'podcast_generate', 'STARTED')
+
       podcastScript = await withTimeout(
         generatePodcastScript({
           businessName: contentItem.client.businessName,
@@ -1068,23 +1078,19 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       )
 
       log(ctx, 'Creating podcast job...')
-      const podcastJob = await withTimeout(
+      podcastJob = await withTimeout(
         createPodcast({
           script: podcastScript,
           title: blogResult!.title,
-          duration: 'default', // Use regular length (not long)
+          duration: 'short', // Use SHORT duration for faster generation (under 10 min)
         }),
         TIMEOUTS.PODCAST_CREATE,
         'Podcast job creation'
       )
 
-      // Generate proper podcast description using generatePodcastDescription
-      log(ctx, 'Generating podcast description...')
-      let podcastDescriptionHtml = ''
+      // Generate podcast description
       try {
-        // Get the first service page URL if available
         const servicePageUrl = contentItem.client.servicePages?.[0]?.url || undefined
-
         podcastDescriptionHtml = await withTimeout(
           generatePodcastDescription({
             businessName: contentItem.client.businessName,
@@ -1098,176 +1104,202 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           TIMEOUTS.SOCIAL_CAPTION,
           'Podcast description generation'
         )
-        log(ctx, '✅ Podcast description generated')
       } catch (descError) {
         logError(ctx, 'Failed to generate podcast description, using fallback', descError)
         podcastDescriptionHtml = `<p>${blogResult!.excerpt || contentItem.paaQuestion}</p>`
       }
 
-      // Create podcast record immediately with PROCESSING status so review page can show it
-      const podcastRecord = await prisma.podcast.create({
+      // Create podcast record with PROCESSING status
+      podcastRecord = await prisma.podcast.create({
         data: {
           contentItemId,
           clientId: contentItem.clientId,
-          audioUrl: '', // Will be updated when ready
+          audioUrl: '',
           script: podcastScript,
           description: podcastDescriptionHtml,
           autocontentJobId: podcastJob.jobId,
           status: 'PROCESSING',
         },
       })
-      log(ctx, '📝 Podcast record created with PROCESSING status', { podcastId: podcastRecord.id })
 
-      // Also update contentItem with the podcast description
       await prisma.contentItem.update({
         where: { id: contentItemId },
         data: { podcastDescription: podcastDescriptionHtml },
       })
 
-      log(ctx, 'Waiting for podcast to render...', { jobId: podcastJob.jobId })
-      const podcastResult = await withTimeout(
-        waitForPodcast(podcastJob.jobId),
-        TIMEOUTS.PODCAST_WAIT,
-        'Podcast rendering'
-      )
-
-      if (podcastResult.audioUrl) {
-        const podcastFilename = `${contentItem.client.slug}/${blogResult!.slug}/podcast.mp3`
-        const gcsResult = await withTimeout(
-          uploadFromUrl(podcastResult.audioUrl, podcastFilename),
-          TIMEOUTS.GCS_UPLOAD,
-          'Podcast GCS upload'
-        )
-
-        // Update podcast record with final audio URL and duration
-        await prisma.podcast.update({
-          where: { id: podcastRecord.id },
-          data: {
-            audioUrl: gcsResult.url,
-            duration: podcastResult.duration,
-            status: 'READY',
-          },
-        })
-
-        // Publish to Podbean (like manual flow)
-        log(ctx, 'Publishing podcast to Podbean...')
-        try {
-          const podbeanResult = await withTimeout(
-            publishToPodbean({
-              title: blogResult!.title,
-              description: podcastDescriptionHtml, // Use the properly generated HTML description
-              audioUrl: gcsResult.url,
-            }),
-            TIMEOUTS.PODBEAN_PUBLISH,
-            'Podbean publishing'
-          )
-
-          // Update podcast record with Podbean info
-          await prisma.podcast.update({
-            where: { id: podcastRecord.id },
-            data: {
-              podbeanEpisodeId: podbeanResult.episodeId,
-              podbeanUrl: podbeanResult.url,
-              podbeanPlayerUrl: podbeanResult.playerUrl,
-              status: 'PUBLISHED',
-            },
-          })
-
-          log(ctx, '✅ Podcast published to Podbean', { playerUrl: podbeanResult.playerUrl })
-        } catch (podbeanError) {
-          logError(ctx, 'Failed to publish podcast to Podbean', podbeanError)
-          // Non-critical, podcast is still in GCS
-        }
-
-        results.podcast = { success: true }
-        log(ctx, '✅ Podcast generated successfully', { duration: podcastResult.duration })
-
-        // Mark podcast as generated
-        await prisma.contentItem.update({
-          where: { id: contentItemId },
-          data: { podcastGenerated: true },
-        })
-      }
-      await logAction(ctx, 'podcast_generate', 'SUCCESS')
+      log(ctx, '📝 Podcast job started', { jobId: podcastJob.jobId })
     } catch (error) {
-      logError(ctx, 'Podcast generation failed', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      await logAction(ctx, 'podcast_generate', 'FAILED', { errorMessage })
-      results.podcast = { success: false, error: errorMessage }
-      log(ctx, '⚠️ Continuing without podcast...')
+      logError(ctx, 'Failed to start podcast job', error)
     }
 
-    // ============ STEP 6: Generate Videos ============
-    ctx.step = 'videos'
-    await updatePipelineStep(contentItemId, 'videos')
-    log(ctx, '🎬 Starting video generation...')
-    await logAction(ctx, 'video_generate', 'STARTED')
-
+    // Start video job
     try {
+      await logAction(ctx, 'video_generate', 'STARTED')
+
       const imageUrls = await prisma.image.findMany({
         where: { contentItemId },
         select: { gcsUrl: true },
       })
 
-      // Get the published blog URL for better video generation (URL-to-Video API)
       const blogPostForVideo = await prisma.blogPost.findUnique({ where: { contentItemId } })
       const blogUrlForVideo = blogPostForVideo?.wordpressUrl || null
 
       log(ctx, 'Creating short video job...', { blogUrl: blogUrlForVideo })
-      const videoJob = await withTimeout(
+      videoJob = await withTimeout(
         createShortVideo({
-          // Don't pass script when using blogUrl - let Creatify generate from the blog content
-          // Passing a script would override Creatify's natural generation and create podcast-like videos
           title: blogResult!.title,
-          blogUrl: blogUrlForVideo || undefined, // Use URL-to-Video API if blog is published
+          blogUrl: blogUrlForVideo || undefined,
           imageUrls: imageUrls.map((i: { gcsUrl: string }) => i.gcsUrl),
           aspectRatio: '9:16',
-          duration: 30, // 30 seconds for short-form video
-          scriptStyle: 'HowToV2', // How-to format for auto glass content
+          duration: 30,
+          scriptStyle: 'HowToV2',
         }),
         TIMEOUTS.VIDEO_CREATE,
         'Video job creation'
       )
 
-      // Create video record immediately with PROCESSING status so review page can show it
-      const videoRecord = await prisma.video.create({
+      videoRecord = await prisma.video.create({
         data: {
           contentItemId,
           clientId: contentItem.clientId,
           videoType: 'SHORT',
-          videoUrl: '', // Will be updated when ready
+          videoUrl: '',
           aspectRatio: '9:16',
           provider: 'CREATIFY',
           providerJobId: videoJob.jobId,
           status: 'PROCESSING',
         },
       })
-      log(ctx, '📝 Video record created with PROCESSING status', { videoId: videoRecord.id })
 
-      // Also mark short video as being generated
-      await prisma.contentItem.update({
-        where: { id: contentItemId },
-        data: { shortVideoGenerated: false, shortVideoStatus: 'PROCESSING' },
-      })
+      log(ctx, '📝 Video job started', { jobId: videoJob.jobId })
+    } catch (error) {
+      logError(ctx, 'Failed to start video job', error)
+    }
 
-      log(ctx, 'Waiting for video to render...', { jobId: videoJob.jobId })
-      const videoResult = await withTimeout(
-        waitForVideo(videoJob.jobId),
-        TIMEOUTS.VIDEO_WAIT,
-        'Video rendering'
-      )
+    // Now wait for BOTH jobs in parallel
+    log(ctx, '⏳ Waiting for podcast and video to render in parallel...')
+    ctx.step = 'podcast'
+    await updatePipelineStep(contentItemId, 'podcast')
 
-      if (videoResult.videoUrl) {
-        const videoFilename = `${contentItem.client.slug}/${blogResult!.slug}/video-short.mp4`
-        const gcsResult = await withTimeout(
-          uploadFromUrl(videoResult.videoUrl, videoFilename),
-          TIMEOUTS.GCS_UPLOAD,
-          'Video GCS upload'
+    // Use Promise.allSettled to wait for both, even if one fails
+    const [podcastSettled, videoSettled] = await Promise.allSettled([
+      // Podcast wait and post-processing
+      (async () => {
+        if (!podcastJob || !podcastRecord) {
+          throw new Error('Podcast job not started')
+        }
+
+        const podcastResult = await withTimeout(
+          waitForPodcast(podcastJob.jobId),
+          TIMEOUTS.PODCAST_WAIT,
+          'Podcast rendering'
         )
 
-        // Update video record with final URL and duration
+        if (podcastResult.audioUrl) {
+          const podcastFilename = `${contentItem.client.slug}/${blogResult!.slug}/podcast.mp3`
+          const gcsResult = await withTimeout(
+            uploadFromUrl(podcastResult.audioUrl, podcastFilename),
+            TIMEOUTS.GCS_UPLOAD,
+            'Podcast GCS upload'
+          )
+
+          await prisma.podcast.update({
+            where: { id: podcastRecord.id },
+            data: {
+              audioUrl: gcsResult.url,
+              duration: podcastResult.duration,
+              status: 'READY',
+            },
+          })
+
+          // Publish to Podbean
+          log(ctx, 'Publishing podcast to Podbean...')
+          try {
+            const podbeanResult = await withTimeout(
+              publishToPodbean({
+                title: blogResult!.title,
+                description: podcastDescriptionHtml,
+                audioUrl: gcsResult.url,
+              }),
+              TIMEOUTS.PODBEAN_PUBLISH,
+              'Podbean publishing'
+            )
+
+            await prisma.podcast.update({
+              where: { id: podcastRecord.id },
+              data: {
+                podbeanEpisodeId: podbeanResult.episodeId,
+                podbeanUrl: podbeanResult.url,
+                podbeanPlayerUrl: podbeanResult.playerUrl,
+                status: 'PUBLISHED',
+              },
+            })
+
+            log(ctx, '✅ Podcast published to Podbean', { playerUrl: podbeanResult.playerUrl })
+          } catch (podbeanError) {
+            logError(ctx, 'Failed to publish podcast to Podbean', podbeanError)
+          }
+
+          await prisma.contentItem.update({
+            where: { id: contentItemId },
+            data: { podcastGenerated: true },
+          })
+
+          return { success: true, duration: podcastResult.duration }
+        }
+        throw new Error('No audio URL returned')
+      })(),
+
+      // Video wait (post-processing will be handled later or by video-status endpoint)
+      (async () => {
+        if (!videoJob || !videoRecord) {
+          throw new Error('Video job not started')
+        }
+
+        const videoResult = await withTimeout(
+          waitForVideo(videoJob.jobId),
+          TIMEOUTS.VIDEO_WAIT,
+          'Video rendering'
+        )
+
+        return { success: true, videoResult, videoRecord }
+      })(),
+    ])
+
+    // Process podcast result
+    if (podcastSettled.status === 'fulfilled') {
+      results.podcast = { success: true }
+      log(ctx, '✅ Podcast completed', { duration: podcastSettled.value.duration })
+      await logAction(ctx, 'podcast_generate', 'SUCCESS')
+    } else {
+      const errorMessage = podcastSettled.reason instanceof Error ? podcastSettled.reason.message : 'Unknown error'
+      logError(ctx, 'Podcast generation failed', podcastSettled.reason)
+      await logAction(ctx, 'podcast_generate', 'FAILED', { errorMessage })
+      results.podcast = { success: false, error: errorMessage }
+    }
+
+    // Process video result - if successful, continue with post-processing
+    ctx.step = 'videos'
+    await updatePipelineStep(contentItemId, 'videos')
+
+    if (videoSettled.status === 'fulfilled' && videoSettled.value.videoResult && videoSettled.value.videoRecord) {
+      const { videoResult, videoRecord: vRecord } = videoSettled.value
+      log(ctx, '✅ Video rendering completed, starting post-processing...')
+
+      if (!videoResult.videoUrl) {
+        log(ctx, '❌ Video result missing videoUrl, skipping post-processing')
+      } else {
+        try {
+          // Upload to GCS
+          const videoFilename = `videos/${contentItem.clientId}/short-${contentItemId}-${Date.now()}.mp4`
+          const gcsResult = await withTimeout(
+            uploadFromUrl(videoResult.videoUrl, videoFilename),
+            TIMEOUTS.GCS_UPLOAD,
+            'Video GCS upload'
+          )
+
         await prisma.video.update({
-          where: { id: videoRecord.id },
+          where: { id: vRecord.id },
           data: {
             videoUrl: gcsResult.url,
             thumbnailUrl: videoResult.thumbnailUrl,
@@ -1275,15 +1307,15 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             status: 'READY',
           },
         })
+        log(ctx, '✅ Video uploaded to GCS')
 
-        // Upload to YouTube (like manual flow)
+        // Upload to YouTube
         const youtubeConfigured = await isYouTubeConfigured()
         if (youtubeConfigured) {
           log(ctx, 'Uploading video to YouTube...', {
             playlistId: contentItem.client.wrhqYoutubePlaylistId || 'none',
           })
           try {
-            // Get required URLs for description
             const clientBlogPost = await prisma.blogPost.findUnique({ where: { contentItemId } })
             const podcast = await prisma.podcast.findFirst({ where: { contentItemId } })
 
@@ -1314,16 +1346,11 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
               'YouTube upload'
             )
 
-            // Update video record status
             await prisma.video.update({
-              where: { id: videoRecord.id },
-              data: {
-                status: 'PUBLISHED',
-              },
+              where: { id: vRecord.id },
+              data: { status: 'PUBLISHED' },
             })
 
-            // Create a WRHQ social post record for the YouTube upload (for embed-all-media to find)
-            // This goes to WRHQ's YouTube channel, not the client's
             await prisma.wRHQSocialPost.create({
               data: {
                 contentItemId,
@@ -1345,30 +1372,21 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             })
           } catch (youtubeError) {
             logError(ctx, 'Failed to upload video to YouTube', youtubeError)
-            // Non-critical, video is still in GCS
           }
-        } else {
-          log(ctx, '⏭️ YouTube not configured - skipping upload')
         }
 
-        // Post short video to WRHQ TikTok and Instagram via Late
-        // (YouTube is handled above via YouTube API to avoid Late rate limits)
+        // Post to WRHQ TikTok and Instagram via Late
         const wrhqVideoAccountIds = await getWRHQLateAccountIds()
         const VIDEO_SOCIAL_PLATFORMS = ['tiktok', 'instagram'] as const
 
         for (const platform of VIDEO_SOCIAL_PLATFORMS) {
           const accountId = wrhqVideoAccountIds[platform]
-          if (!accountId) {
-            log(ctx, `⏭️ WRHQ ${platform} not configured - skipping video post`)
-            continue
-          }
+          if (!accountId) continue
 
-          // Generate a caption for the video (outside try block so it's available in catch)
           const videoCaption = `${blogResult!.title}\n\n${contentItem.client.businessName} in ${contentItem.client.city}, ${contentItem.client.state} answers: "${contentItem.paaQuestion}"\n\n#AutoGlass #WindshieldRepair #${contentItem.client.city.replace(/\s+/g, '')} #CarCare`
 
           try {
             log(ctx, `📤 Posting video to WRHQ ${platform}...`)
-
             const postResult = await withTimeout(
               postNowAndCheckStatus({
                 accountId,
@@ -1381,7 +1399,6 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
               `WRHQ ${platform} video posting`
             )
 
-            // Save to database
             await prisma.wRHQSocialPost.create({
               data: {
                 contentItemId,
@@ -1397,27 +1414,18 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
                 publishedAt: postResult.status === 'published' ? new Date() : undefined,
               },
             })
-
-            log(ctx, `✅ Video posted to WRHQ ${platform}`, { status: postResult.status, url: postResult.platformPostUrl })
+            log(ctx, `✅ Video posted to WRHQ ${platform}`)
           } catch (videoPostError) {
-            // Check if it's a rate limit error
             const errorMsg = videoPostError instanceof Error ? videoPostError.message : String(videoPostError)
-            const isRateLimit = errorMsg.toLowerCase().includes('rate') || errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('too many') || errorMsg.toLowerCase().includes('quota')
-
-            if (isRateLimit) {
-              log(ctx, `⚠️ WRHQ ${platform} rate limit reached - skipping`, { error: errorMsg })
-            } else {
-              logError(ctx, `Failed to post video to WRHQ ${platform}`, videoPostError)
-            }
-
-            // Save failed post to database so user can see it in the UI
+            const isRateLimit = errorMsg.toLowerCase().includes('rate') || errorMsg.toLowerCase().includes('limit')
+            logError(ctx, `Failed to post video to WRHQ ${platform}`, videoPostError)
             try {
               await prisma.wRHQSocialPost.create({
                 data: {
                   contentItemId,
                   platform: platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM',
                   caption: videoCaption,
-                  hashtags: ['AutoGlass', 'WindshieldRepair', contentItem.client.city.replace(/\s+/g, ''), 'CarCare'],
+                  hashtags: [],
                   mediaType: 'video',
                   mediaUrls: [gcsResult.url],
                   scheduledTime: new Date(),
@@ -1426,25 +1434,31 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
                 },
               })
             } catch (dbError) {
-              logError(ctx, `Failed to save failed WRHQ video post record for ${platform}`, dbError)
+              logError(ctx, 'Failed to save failed post record', dbError)
             }
-            // Continue with other platforms
           }
         }
 
         results.videos = { success: true }
-        log(ctx, '✅ Video generated successfully', { duration: videoResult.duration })
-
-        // Mark short video as generated
         await prisma.contentItem.update({
           where: { id: contentItemId },
           data: { shortVideoGenerated: true },
         })
+        log(ctx, '✅ Video processing complete')
+        await logAction(ctx, 'video_generate', 'SUCCESS')
+      } catch (videoPostError) {
+        logError(ctx, 'Video post-processing failed', videoPostError)
+        const errorMessage = videoPostError instanceof Error ? videoPostError.message : 'Unknown error'
+        await logAction(ctx, 'video_generate', 'FAILED', { errorMessage })
+        results.videos = { success: false, error: errorMessage }
+        }
       }
-      await logAction(ctx, 'video_generate', 'SUCCESS')
-    } catch (error) {
-      logError(ctx, 'Video generation failed', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    } else {
+      // Video rendering failed or didn't complete
+      const errorMessage = videoSettled.status === 'rejected'
+        ? (videoSettled.reason instanceof Error ? videoSettled.reason.message : 'Unknown error')
+        : 'Video job not started'
+      logError(ctx, 'Video generation failed', videoSettled.status === 'rejected' ? videoSettled.reason : new Error(errorMessage))
       await logAction(ctx, 'video_generate', 'FAILED', { errorMessage })
       results.videos = { success: false, error: errorMessage }
       log(ctx, '⚠️ Continuing without video...')
