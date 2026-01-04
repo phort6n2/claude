@@ -57,8 +57,23 @@ interface DataForSEOResponse {
   status_message?: string
 }
 
+// Map state abbreviations to full names for DataForSEO
+const stateAbbreviations: Record<string, string> = {
+  'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
+  'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 'FL': 'Florida', 'GA': 'Georgia',
+  'HI': 'Hawaii', 'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
+  'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
+  'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi', 'MO': 'Missouri',
+  'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey',
+  'NM': 'New Mexico', 'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio',
+  'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
+  'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah', 'VT': 'Vermont',
+  'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming'
+}
+
 /**
  * Fetch PAA questions from Google for auto glass searches in a specific location
+ * Optionally searches additional service areas for more variety
  */
 export async function fetchPAAsForLocation(
   city: string,
@@ -67,34 +82,13 @@ export async function fetchPAAsForLocation(
     login: string
     password: string
     keywords?: string[]
+    serviceAreas?: string[] // Additional cities to search (e.g., ["Beaverton", "Gresham"])
   }
 ): Promise<DataForSEOResult> {
-  const { login, password, keywords } = options
+  const { login, password, serviceAreas } = options
 
-  // Default auto glass related keywords to search
-  const searchKeywords = keywords || [
-    'auto glass replacement',
-    'windshield replacement',
-    'windshield repair near me',
-  ]
-
-  const location = `${city}, ${state}`
   const allPAAs: PAASuggestion[] = []
   let totalCost = 0
-
-  // Map state abbreviations to full names for DataForSEO
-  const stateAbbreviations: Record<string, string> = {
-    'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
-    'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 'FL': 'Florida', 'GA': 'Georgia',
-    'HI': 'Hawaii', 'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
-    'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
-    'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi', 'MO': 'Missouri',
-    'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey',
-    'NM': 'New Mexico', 'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio',
-    'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
-    'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah', 'VT': 'Vermont',
-    'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming'
-  }
 
   try {
     // Search multiple keywords to get more PAA variety
@@ -102,18 +96,44 @@ export async function fetchPAAsForLocation(
 
     // Convert state abbreviation to full name if needed
     const fullStateName = stateAbbreviations[state.toUpperCase()] || state
-    const locationName = `${city},${fullStateName},United States`
-    console.log('[DataForSEO] Searching for:', searchKeywords.join(', '), 'in', locationName)
 
-    // Create a task for each keyword
-    const requestTasks = searchKeywords.map(keyword => ({
-      keyword,
-      location_name: locationName,
-      language_name: 'English',
-      device: 'desktop',
-      os: 'windows',
-      depth: 20, // PAAs usually appear in top 20 results
-    }))
+    // Build list of locations to search: main city + up to 2 service areas
+    const locations: string[] = [`${city},${fullStateName},United States`]
+
+    // Add service areas (limit to 2 to control costs)
+    if (serviceAreas && serviceAreas.length > 0) {
+      const additionalLocations = serviceAreas
+        .slice(0, 2) // Max 2 additional locations
+        .map(area => `${area},${fullStateName},United States`)
+      locations.push(...additionalLocations)
+    }
+
+    console.log('[DataForSEO] Searching for:', searchKeywords.join(', '), 'in locations:', locations)
+
+    // Create a task for each keyword + location combination
+    const requestTasks: Array<{
+      keyword: string
+      location_name: string
+      language_name: string
+      device: string
+      os: string
+      depth: number
+    }> = []
+
+    for (const locationName of locations) {
+      for (const keyword of searchKeywords) {
+        requestTasks.push({
+          keyword,
+          location_name: locationName,
+          language_name: 'English',
+          device: 'desktop',
+          os: 'windows',
+          depth: 20, // PAAs usually appear in top 20 results
+        })
+      }
+    }
+
+    console.log('[DataForSEO] Total tasks:', requestTasks.length, '(2 keywords ×', locations.length, 'locations)')
 
     const response = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/advanced', {
       method: 'POST',

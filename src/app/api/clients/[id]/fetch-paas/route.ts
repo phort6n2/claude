@@ -45,12 +45,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       )
     }
 
-    // Get client location
+    // Get client location and service areas
     const client = await prisma.client.findUnique({
       where: { id },
       select: {
         city: true,
         state: true,
+        serviceAreas: true,
       },
     })
 
@@ -65,10 +66,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       )
     }
 
-    // Fetch PAAs from DataForSEO
+    // Fetch PAAs from DataForSEO (includes service areas for more variety)
     const result = await fetchPAAsForLocation(client.city, client.state, {
       login,
       password,
+      serviceAreas: client.serviceAreas || [],
     })
 
     console.log('[DataForSEO] Fetch result:', {
@@ -103,9 +105,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       source: paa.source,
     }))
 
+    // Build locations list for response
+    const searchedLocations = [client.city]
+    if (client.serviceAreas && client.serviceAreas.length > 0) {
+      searchedLocations.push(...client.serviceAreas.slice(0, 2))
+    }
+
     return NextResponse.json({
       success: true,
       location: `${client.city}, ${client.state}`,
+      locations: searchedLocations,
       paas: formattedPAAs,
       cost: result.cost,
     })
