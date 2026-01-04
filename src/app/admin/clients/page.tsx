@@ -7,8 +7,7 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { StatusBadge } from '@/components/ui/Badge'
 import { prisma } from '@/lib/db'
-import { formatDate } from '@/lib/utils'
-import { Plus, MoreVertical, Globe, RefreshCw, MapPin, Podcast, Building2, CheckCircle, AlertTriangle } from 'lucide-react'
+import { Plus, RefreshCw, Globe, MapPin, Podcast, Building2, CheckCircle, AlertTriangle, Calendar, Zap, FileText } from 'lucide-react'
 import ClientLogo from '@/components/ui/ClientLogo'
 import ScheduleActions from '@/components/admin/ScheduleActions'
 
@@ -56,7 +55,7 @@ async function getClients() {
   }))
 }
 
-async function ClientList() {
+async function ClientCards() {
   const clients = await getClients()
 
   if (clients.length === 0) {
@@ -76,190 +75,159 @@ async function ClientList() {
   }
 
   return (
-    <Card>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-gray-50">
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Client
-              </th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Next
-              </th>
-              <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Posts
-              </th>
-              <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Social
-              </th>
-              <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                WP
-              </th>
-              <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Links
-              </th>
-              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {clients.map((client) => (
-              <tr key={client.id} className="hover:bg-gray-50">
-                <td className="px-3 py-2 whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    <ClientLogo
-                      logoUrl={client.logoUrl}
-                      businessName={client.businessName}
-                      primaryColor={client.primaryColor}
-                      size="sm"
-                    />
-                    <div className="min-w-0">
-                      <p className="font-medium text-gray-900 text-sm truncate max-w-[180px]">
-                        {client.businessName}
-                      </p>
-                      <p className="text-xs text-gray-500">{client.city}, {client.state}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-3 py-2 whitespace-nowrap">
-                  <StatusBadge status={client.status} />
-                </td>
-                <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
-                  {client.contentItems[0]
-                    ? formatDate(client.contentItems[0].scheduledDate)
-                    : <span className="text-gray-400">—</span>}
-                </td>
-                <td className="px-3 py-2 whitespace-nowrap text-center text-sm text-gray-900 font-medium">
-                  {client._count.contentItems}
-                </td>
-                <td className="px-3 py-2 whitespace-nowrap">
-                  {(() => {
-                    const disconnected = client.disconnectedAccounts as Record<string, unknown> | null
-                    const disconnectedPlatforms = disconnected ? Object.keys(disconnected) : []
-                    const hasDisconnected = disconnectedPlatforms.length > 0
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+      {clients.map((client) => {
+        const disconnected = client.disconnectedAccounts as Record<string, unknown> | null
+        const disconnectedPlatforms = disconnected ? Object.keys(disconnected) : []
+        const hasDisconnected = disconnectedPlatforms.length > 0
 
-                    return (
-                      <div className="flex justify-center gap-0.5 items-center">
-                        {hasDisconnected && (
-                          <span
-                            className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-red-100 text-red-600 mr-1"
-                            title={`Disconnected: ${disconnectedPlatforms.join(', ')}`}
-                          >
-                            <AlertTriangle className="h-3 w-3" />
-                          </span>
-                        )}
-                        {client.socialPlatforms.slice(0, 3).map((platform: string) => {
-                          const isDisconnected = disconnectedPlatforms.includes(platform.toLowerCase())
-                          return (
-                            <span
-                              key={platform}
-                              className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-medium ${
-                                isDisconnected
-                                  ? 'bg-red-100 text-red-600 ring-1 ring-red-300'
-                                  : 'bg-gray-100 text-gray-600'
-                              }`}
-                              title={isDisconnected ? `${platform} (DISCONNECTED)` : platform}
-                            >
-                              {platform[0].toUpperCase()}
-                            </span>
-                          )
-                        })}
-                        {client.socialPlatforms.length > 3 && (
-                          <span className="text-[10px] text-gray-500 ml-0.5">
-                            +{client.socialPlatforms.length - 3}
-                          </span>
-                        )}
-                      </div>
-                    )
-                  })()}
-                </td>
-                <td className="px-3 py-2 whitespace-nowrap text-center">
+        return (
+          <Card key={client.id} className="hover:shadow-md transition-shadow">
+            <CardContent className="p-4">
+              {/* Header: Logo + Name + Status */}
+              <div className="flex items-start gap-3 mb-3">
+                <ClientLogo
+                  logoUrl={client.logoUrl}
+                  businessName={client.businessName}
+                  primaryColor={client.primaryColor}
+                  size="md"
+                />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-gray-900 text-sm truncate" title={client.businessName}>
+                    {client.businessName}
+                  </h3>
+                  <p className="text-xs text-gray-500">{client.city}, {client.state}</p>
+                  <div className="mt-1">
+                    <StatusBadge status={client.status} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Stats Row */}
+              <div className="flex items-center gap-4 mb-3 text-xs">
+                <div className="flex items-center gap-1" title="Posts this month">
+                  <FileText className="h-3.5 w-3.5 text-gray-400" />
+                  <span className="font-medium text-gray-700">{client._count.contentItems}</span>
+                </div>
+                <div className="flex items-center gap-1" title={client.autoScheduleEnabled ? 'Auto-schedule ON' : 'Auto-schedule OFF'}>
+                  <Zap className={`h-3.5 w-3.5 ${client.autoScheduleEnabled ? 'text-green-500' : 'text-gray-300'}`} />
+                  <span className={client.autoScheduleEnabled ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                    {client.autoScheduleEnabled ? 'Auto' : 'Off'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1" title={client.wordpressConnected ? 'WordPress connected' : 'WordPress not connected'}>
                   {client.wordpressConnected ? (
-                    <CheckCircle className="h-4 w-4 text-green-500 mx-auto" />
+                    <CheckCircle className="h-3.5 w-3.5 text-green-500" />
                   ) : (
-                    <span className="text-gray-300">—</span>
+                    <span className="h-3.5 w-3.5 rounded-full border border-gray-300" />
                   )}
-                </td>
-                <td className="px-3 py-2 whitespace-nowrap">
-                  <div className="flex items-center justify-center gap-1">
-                    {client.wordpressUrl && (
-                      <a
-                        href={client.wordpressUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-500 hover:text-blue-700 transition-colors"
-                        title="Website"
-                      >
-                        <Globe className="h-4 w-4" />
-                      </a>
-                    )}
-                    {client.googleMapsUrl && (
-                      <a
-                        href={client.googleMapsUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-red-500 hover:text-red-700 transition-colors"
-                        title="Google Maps"
-                      >
-                        <MapPin className="h-4 w-4" />
-                      </a>
-                    )}
-                    {client.podbeanPodcastUrl && (
-                      <a
-                        href={client.podbeanPodcastUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-purple-500 hover:text-purple-700 transition-colors"
-                        title="Podbean Podcast"
-                      >
-                        <Podcast className="h-4 w-4" />
-                      </a>
-                    )}
-                    {client.wrhqDirectoryUrl && (
-                      <a
-                        href={client.wrhqDirectoryUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-orange-500 hover:text-orange-700 transition-colors"
-                        title="WRHQ Directory"
-                      >
-                        <Building2 className="h-4 w-4" />
-                      </a>
-                    )}
-                    {!client.wordpressUrl && !client.googleMapsUrl && !client.podbeanPodcastUrl && !client.wrhqDirectoryUrl && (
-                      <span className="text-gray-300">—</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-3 py-2 whitespace-nowrap text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <ScheduleActions
-                      clientId={client.id}
-                      clientName={client.businessName}
-                      hasSchedule={client.calendarGenerated}
-                      scheduledCount={client.scheduledCount}
-                    />
-                    <Link href={`/admin/clients/${client.id}`}>
-                      <Button variant="outline" size="sm" className="text-xs px-2 py-1 h-7">
-                        Edit
-                      </Button>
-                    </Link>
-                    <Button variant="ghost" size="sm" className="px-1 py-1 h-7">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </Card>
+                  <span className={client.wordpressConnected ? 'text-green-600' : 'text-gray-400'}>WP</span>
+                </div>
+              </div>
+
+              {/* Social Platforms */}
+              <div className="flex items-center gap-1 mb-3">
+                {hasDisconnected && (
+                  <span
+                    className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-red-100 text-red-600"
+                    title={`Disconnected: ${disconnectedPlatforms.join(', ')}`}
+                  >
+                    <AlertTriangle className="h-3 w-3" />
+                  </span>
+                )}
+                {client.socialPlatforms.slice(0, 4).map((platform: string) => {
+                  const isDisconnected = disconnectedPlatforms.includes(platform.toLowerCase())
+                  return (
+                    <span
+                      key={platform}
+                      className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-medium ${
+                        isDisconnected
+                          ? 'bg-red-100 text-red-600 ring-1 ring-red-300'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}
+                      title={isDisconnected ? `${platform} (DISCONNECTED)` : platform}
+                    >
+                      {platform[0].toUpperCase()}
+                    </span>
+                  )
+                })}
+                {client.socialPlatforms.length > 4 && (
+                  <span className="text-[10px] text-gray-500">
+                    +{client.socialPlatforms.length - 4}
+                  </span>
+                )}
+                {client.socialPlatforms.length === 0 && (
+                  <span className="text-xs text-gray-400">No social accounts</span>
+                )}
+              </div>
+
+              {/* Quick Links */}
+              <div className="flex items-center gap-2 mb-3 border-t pt-3">
+                {client.wordpressUrl && (
+                  <a
+                    href={client.wordpressUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                    title="Website"
+                  >
+                    <Globe className="h-3.5 w-3.5" />
+                  </a>
+                )}
+                {client.googleMapsUrl && (
+                  <a
+                    href={client.googleMapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 rounded-md bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                    title="Google Maps"
+                  >
+                    <MapPin className="h-3.5 w-3.5" />
+                  </a>
+                )}
+                {client.podbeanPodcastUrl && (
+                  <a
+                    href={client.podbeanPodcastUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 rounded-md bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
+                    title="Podcast"
+                  >
+                    <Podcast className="h-3.5 w-3.5" />
+                  </a>
+                )}
+                {client.wrhqDirectoryUrl && (
+                  <a
+                    href={client.wrhqDirectoryUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 rounded-md bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
+                    title="WRHQ Directory"
+                  >
+                    <Building2 className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2">
+                <ScheduleActions
+                  clientId={client.id}
+                  clientName={client.businessName}
+                  hasSchedule={client.calendarGenerated}
+                  scheduledCount={client.scheduledCount}
+                />
+                <Link href={`/admin/clients/${client.id}`} className="flex-1">
+                  <Button variant="outline" size="sm" className="w-full text-xs">
+                    Edit
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })}
+    </div>
   )
 }
 
@@ -283,7 +251,7 @@ export default function ClientsPage() {
           </Link>
         </div>
         <Suspense fallback={<div>Loading clients...</div>}>
-          <ClientList />
+          <ClientCards />
         </Suspense>
       </div>
     </div>
