@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getPAAQueueStatus } from '@/lib/automation/paa-selector'
 import { getLocationRotationStatus } from '@/lib/automation/location-rotator'
+import { DAY_PAIRS, TIME_SLOTS, assignSlotToClient, getSchedulingCapacity } from '@/lib/automation/auto-scheduler'
+import type { DayPairKey, TimeSlotIndex } from '@/lib/automation/auto-scheduler'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -24,6 +26,8 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
         lastAutoScheduledAt: true,
         preferredPublishTime: true,
         timezone: true,
+        scheduleDayPair: true,
+        scheduleTimeSlot: true,
       },
     })
 
@@ -46,6 +50,13 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       },
     })
 
+    // Get scheduling capacity
+    const capacity = await getSchedulingCapacity()
+
+    // Build slot info
+    const dayPair = client.scheduleDayPair as DayPairKey | null
+    const timeSlot = client.scheduleTimeSlot as TimeSlotIndex | null
+
     return NextResponse.json({
       client: {
         id: client.id,
@@ -57,6 +68,17 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
         lastScheduledAt: client.lastAutoScheduledAt,
         publishTime: client.preferredPublishTime,
         timezone: client.timezone,
+      },
+      slot: {
+        dayPair: dayPair,
+        dayPairLabel: dayPair ? DAY_PAIRS[dayPair]?.label : null,
+        timeSlot: timeSlot,
+        timeSlotLabel: timeSlot !== null ? TIME_SLOTS[timeSlot] : null,
+      },
+      capacity: {
+        total: capacity.totalSlots,
+        used: capacity.usedSlots,
+        available: capacity.availableSlots,
       },
       paaQueue: {
         unused: paaStatus.unusedCount,
@@ -94,6 +116,8 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         id: true,
         autoScheduleEnabled: true,
         autoScheduleFrequency: true,
+        scheduleDayPair: true,
+        scheduleTimeSlot: true,
       },
     })
 
@@ -109,7 +133,29 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       )
     }
 
-    const updated = await prisma.client.update({
+    const newEnabled = data.enabled ?? existing.autoScheduleEnabled
+
+    // If enabling and no slot assigned, auto-assign one
+    let slotAssignment = null
+    if (newEnabled && !existing.scheduleDayPair) {
+      slotAssignment = await assignSlotToClient(id)
+    }
+
+    const updated = await prisma.client.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        businessName: true,
+        autoScheduleEnabled: true,
+        autoScheduleFrequency: true,
+        lastAutoScheduledAt: true,
+        scheduleDayPair: true,
+        scheduleTimeSlot: true,
+      },
+    })
+
+    // Apply remaining updates
+    const finalUpdated = await prisma.client.update({
       where: { id },
       data: {
         autoScheduleEnabled: data.enabled ?? existing.autoScheduleEnabled,
@@ -121,19 +167,31 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         autoScheduleEnabled: true,
         autoScheduleFrequency: true,
         lastAutoScheduledAt: true,
+        scheduleDayPair: true,
+        scheduleTimeSlot: true,
       },
     })
+
+    const dayPair = finalUpdated.scheduleDayPair as DayPairKey | null
+    const timeSlot = finalUpdated.scheduleTimeSlot as TimeSlotIndex | null
 
     return NextResponse.json({
       success: true,
       client: {
-        id: updated.id,
-        businessName: updated.businessName,
+        id: finalUpdated.id,
+        businessName: finalUpdated.businessName,
       },
       automation: {
-        enabled: updated.autoScheduleEnabled,
-        frequency: updated.autoScheduleFrequency,
-        lastScheduledAt: updated.lastAutoScheduledAt,
+        enabled: finalUpdated.autoScheduleEnabled,
+        frequency: finalUpdated.autoScheduleFrequency,
+        lastScheduledAt: finalUpdated.lastAutoScheduledAt,
+      },
+      slot: {
+        dayPair: dayPair,
+        dayPairLabel: dayPair ? DAY_PAIRS[dayPair]?.label : null,
+        timeSlot: timeSlot,
+        timeSlotLabel: timeSlot !== null ? TIME_SLOTS[timeSlot] : null,
+        justAssigned: slotAssignment !== null,
       },
     })
   } catch (error) {
