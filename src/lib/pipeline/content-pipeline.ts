@@ -20,10 +20,10 @@ const TIMEOUTS = {
   WORDPRESS_UPLOAD: 60_000,     // 60 seconds for WP media upload
   WORDPRESS_POST: 60_000,       // 60 seconds for WP post creation
   PODCAST_CREATE: 30_000,       // 30 seconds to start podcast job
-  PODCAST_WAIT: 180_000,        // 3 minutes max to wait for podcast
+  PODCAST_WAIT: 1_800_000,      // 30 minutes max to wait for podcast (takes a long time)
   PODBEAN_PUBLISH: 120_000,     // 2 minutes for Podbean publishing
   VIDEO_CREATE: 30_000,         // 30 seconds to start video job
-  VIDEO_WAIT: 180_000,          // 3 minutes max to wait for video
+  VIDEO_WAIT: 600_000,          // 10 minutes max to wait for video
   YOUTUBE_UPLOAD: 300_000,      // 5 minutes for YouTube upload
   SOCIAL_CAPTION: 30_000,       // 30 seconds for caption generation
   SOCIAL_SCHEDULE: 60_000,      // 60 seconds for scheduling
@@ -169,6 +169,30 @@ function generatePodcastEmbed(title: string, playerUrl: string): string {
     loading="lazy"
   ></iframe>
 </div>`
+}
+
+// Insert featured image after the 3rd H2 heading in the blog content
+function insertImageAfterThirdH2(content: string, imageUrl: string, altText: string): string {
+  // Find all H2 headings
+  const h2Regex = /<h2[^>]*>.*?<\/h2>/gi
+  const matches = [...content.matchAll(h2Regex)]
+
+  if (matches.length >= 3) {
+    // Get the position right after the 3rd H2
+    const thirdH2 = matches[2]
+    const insertPosition = thirdH2.index! + thirdH2[0].length
+
+    const imageHtml = `
+<!-- Featured Image -->
+<figure class="featured-image-inline" style="margin: 30px 0;">
+  <img src="${imageUrl}" alt="${altText}" style="width: 100%; height: auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" loading="lazy" />
+</figure>`
+
+    return content.slice(0, insertPosition) + imageHtml + content.slice(insertPosition)
+  }
+
+  // If fewer than 3 H2s, just return original content
+  return content
 }
 
 type PipelineStep = 'blog' | 'images' | 'wordpress' | 'wrhq' | 'podcast' | 'videos' | 'social' | 'schema'
@@ -483,13 +507,40 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           log(ctx, '⚠️ No BLOG_FEATURED image found in database')
         }
 
+        // Prepare blog content with inline image and Google Maps embed
+        let blogContent = blogResult.content
+
+        // Insert the 16:9 featured image after the 3rd H2 heading
+        if (featuredImage) {
+          blogContent = insertImageAfterThirdH2(
+            blogContent,
+            featuredImage.gcsUrl,
+            `${blogResult.title} - ${contentItem.client.businessName}`
+          )
+          log(ctx, '📸 Inserted featured image after 3rd H2')
+        }
+
+        // Add Google Maps embed at the end
+        if (contentItem.client.streetAddress && contentItem.client.city && contentItem.client.state) {
+          const mapsEmbed = generateGoogleMapsEmbed({
+            businessName: contentItem.client.businessName,
+            streetAddress: contentItem.client.streetAddress,
+            city: contentItem.client.city,
+            state: contentItem.client.state,
+            postalCode: contentItem.client.postalCode,
+            googleMapsUrl: contentItem.client.googleMapsUrl,
+          })
+          blogContent = blogContent + mapsEmbed
+          log(ctx, '📍 Added Google Maps embed to blog')
+        }
+
         // Create WordPress post (schema will be added later after all content is created)
         log(ctx, 'Creating WordPress post...')
         const wpPost = await withTimeout(
           createPost(wpCredentials, {
             title: blogResult.title,
             slug: blogResult.slug,
-            content: blogResult.content,
+            content: blogContent,
             excerpt: blogResult.excerpt || undefined,
             status: 'publish',
             featuredMediaId: featuredImageId,
@@ -613,12 +664,27 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           wrhqFeaturedImageId = wrhqMedia.id
         }
 
+        // Add Google Maps embed to WRHQ blog content
+        let wrhqBlogContent = wrhqBlogResult.content
+        if (contentItem.client.streetAddress && contentItem.client.city && contentItem.client.state) {
+          const wrhqMapsEmbed = generateGoogleMapsEmbed({
+            businessName: contentItem.client.businessName,
+            streetAddress: contentItem.client.streetAddress,
+            city: contentItem.client.city,
+            state: contentItem.client.state,
+            postalCode: contentItem.client.postalCode,
+            googleMapsUrl: contentItem.client.googleMapsUrl,
+          })
+          wrhqBlogContent = wrhqBlogContent + wrhqMapsEmbed
+          log(ctx, '📍 Added Google Maps embed to WRHQ blog')
+        }
+
         // Create WRHQ post
         const wrhqPost = await withTimeout(
           createPost(wrhqCredentials, {
             title: wrhqBlogResult.title,
             slug: `${contentItem.client.slug}-${wrhqBlogResult.slug}`,
-            content: wrhqBlogResult.content,
+            content: wrhqBlogContent,
             excerpt: wrhqBlogResult.excerpt || undefined,
             status: 'publish',
             featuredMediaId: wrhqFeaturedImageId,
@@ -637,7 +703,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             clientId: contentItem.clientId,
             title: wrhqBlogResult.title,
             slug: `${contentItem.client.slug}-${wrhqBlogResult.slug}`,
-            content: wrhqBlogResult.content,
+            content: wrhqBlogContent,
             excerpt: wrhqBlogResult.excerpt || null,
             wordpressPostId: wrhqPost.id,
             wordpressUrl: wrhqPost.link,
@@ -682,14 +748,23 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
     const blogPostRecord = await prisma.blogPost.findUnique({ where: { contentItemId } })
     const clientBlogUrl = blogPostRecord?.wordpressUrl || ''
 
-    // Only use blog images for social posts (16:9 BLOG_FEATURED or 1:1 INSTAGRAM_FEED)
-    const socialImages = await prisma.image.findMany({
-      where: {
-        contentItemId,
-        imageType: { in: ['BLOG_FEATURED', 'INSTAGRAM_FEED'] },
-      },
+    // Get both image types for platform-specific selection
+    const landscapeImage = await prisma.image.findFirst({
+      where: { contentItemId, imageType: 'BLOG_FEATURED' },
     })
-    const mediaUrls = socialImages.map(i => i.gcsUrl)
+    const squareImage = await prisma.image.findFirst({
+      where: { contentItemId, imageType: 'INSTAGRAM_FEED' },
+    })
+
+    // Helper to get the right image for each platform
+    const getMediaUrlsForPlatform = (platform: string): string[] => {
+      // Instagram uses 1:1 square image only
+      if (platform === 'instagram') {
+        return squareImage ? [squareImage.gcsUrl] : (landscapeImage ? [landscapeImage.gcsUrl] : [])
+      }
+      // All other platforms (Facebook, LinkedIn, Twitter, GBP, etc.) use 16:9 landscape only
+      return landscapeImage ? [landscapeImage.gcsUrl] : (squareImage ? [squareImage.gcsUrl] : [])
+    }
 
     // Client Social Posts
     const socialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
@@ -704,6 +779,9 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         for (const platform of contentItem.client.socialPlatforms) {
           const accountId = socialAccountIds[platform]
           if (!accountId) continue
+
+          // Get platform-specific image
+          const platformMediaUrls = getMediaUrlsForPlatform(platform)
 
           // Generate caption for this platform
           const captionResult = await withTimeout(
@@ -724,15 +802,20 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             fullCaption = `${captionResult.caption}\n\n${captionResult.hashtags.map(h => `#${h}`).join(' ')}`
           }
 
+          // Add Google Maps link for GBP posts
+          if (platform === 'gbp' && contentItem.client.googleMapsUrl) {
+            fullCaption = `${fullCaption}\n\n📍 Find us on Google Maps: ${contentItem.client.googleMapsUrl}`
+          }
+
           // Post immediately
-          log(ctx, `📤 Posting to ${platform}...`)
+          log(ctx, `📤 Posting to ${platform}...`, { imageType: platform === 'instagram' ? '1:1' : '16:9' })
           try {
             const postResult = await withTimeout(
               postNowAndCheckStatus({
                 accountId,
                 platform: platform as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
                 caption: fullCaption,
-                mediaUrls,
+                mediaUrls: platformMediaUrls,
                 mediaType: 'image',
                 firstComment: captionResult.firstComment,
                 ctaUrl: platform === 'gbp' ? clientBlogUrl : undefined,
@@ -811,6 +894,9 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           const accountId = wrhqLateAccountIds[platform]
           if (!accountId) continue
 
+          // Get platform-specific image (same logic as client posts)
+          const platformMediaUrls = getMediaUrlsForPlatform(platform)
+
           // Generate WRHQ caption for this platform
           const captionResult = await withTimeout(
             generateWRHQSocialCaption({
@@ -835,15 +921,20 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             fullCaption = `${captionResult.caption}\n\n${captionResult.hashtags.map(h => `#${h}`).join(' ')}`
           }
 
+          // Add Google Maps link for GBP posts
+          if (platform === 'gbp' && contentItem.client.googleMapsUrl) {
+            fullCaption = `${fullCaption}\n\n📍 Find us on Google Maps: ${contentItem.client.googleMapsUrl}`
+          }
+
           // Post immediately
-          log(ctx, `📤 Posting WRHQ to ${platform}...`)
+          log(ctx, `📤 Posting WRHQ to ${platform}...`, { imageType: platform === 'instagram' ? '1:1' : '16:9' })
           try {
             const postResult = await withTimeout(
               postNowAndCheckStatus({
                 accountId,
                 platform,
                 caption: fullCaption,
-                mediaUrls,
+                mediaUrls: platformMediaUrls,
                 mediaType: 'image',
                 firstComment: captionResult.firstComment,
                 ctaUrl: platform === 'gbp' ? wrhqBlogUrl : undefined,
@@ -867,7 +958,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
                 caption: captionResult.caption,
                 hashtags: captionResult.hashtags || [],
                 firstComment: captionResult.firstComment,
-                mediaUrls,
+                mediaUrls: platformMediaUrls,
                 mediaType: 'image',
                 scheduledTime: new Date(),
                 getlatePostId: postResult.postId,
@@ -939,6 +1030,20 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         'Podcast job creation'
       )
 
+      // Create podcast record immediately with PROCESSING status so review page can show it
+      const podcastRecord = await prisma.podcast.create({
+        data: {
+          contentItemId,
+          clientId: contentItem.clientId,
+          audioUrl: '', // Will be updated when ready
+          script: podcastScript,
+          description: blogResult!.excerpt || blogResult!.title,
+          autocontentJobId: podcastJob.jobId,
+          status: 'PROCESSING',
+        },
+      })
+      log(ctx, '📝 Podcast record created with PROCESSING status', { podcastId: podcastRecord.id })
+
       log(ctx, 'Waiting for podcast to render...', { jobId: podcastJob.jobId })
       const podcastResult = await withTimeout(
         waitForPodcast(podcastJob.jobId),
@@ -954,16 +1059,12 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           'Podcast GCS upload'
         )
 
-        // Create initial podcast record
-        const podcastRecord = await prisma.podcast.create({
+        // Update podcast record with final audio URL and duration
+        await prisma.podcast.update({
+          where: { id: podcastRecord.id },
           data: {
-            contentItemId,
-            clientId: contentItem.clientId,
             audioUrl: gcsResult.url,
             duration: podcastResult.duration,
-            script: podcastScript,
-            description: blogResult!.excerpt || blogResult!.title,
-            autocontentJobId: podcastJob.jobId,
             status: 'READY',
           },
         })
@@ -1048,6 +1149,27 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         'Video job creation'
       )
 
+      // Create video record immediately with PROCESSING status so review page can show it
+      const videoRecord = await prisma.video.create({
+        data: {
+          contentItemId,
+          clientId: contentItem.clientId,
+          videoType: 'SHORT',
+          videoUrl: '', // Will be updated when ready
+          aspectRatio: '9:16',
+          provider: 'CREATIFY',
+          providerJobId: videoJob.jobId,
+          status: 'PROCESSING',
+        },
+      })
+      log(ctx, '📝 Video record created with PROCESSING status', { videoId: videoRecord.id })
+
+      // Also mark short video as being generated
+      await prisma.contentItem.update({
+        where: { id: contentItemId },
+        data: { shortVideoGenerated: false, shortVideoStatus: 'PROCESSING' },
+      })
+
       log(ctx, 'Waiting for video to render...', { jobId: videoJob.jobId })
       const videoResult = await withTimeout(
         waitForVideo(videoJob.jobId),
@@ -1063,18 +1185,13 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           'Video GCS upload'
         )
 
-        // Create video record
-        const videoRecord = await prisma.video.create({
+        // Update video record with final URL and duration
+        await prisma.video.update({
+          where: { id: videoRecord.id },
           data: {
-            contentItemId,
-            clientId: contentItem.clientId,
-            videoType: 'SHORT',
             videoUrl: gcsResult.url,
             thumbnailUrl: videoResult.thumbnailUrl,
             duration: videoResult.duration,
-            aspectRatio: '9:16',
-            provider: 'CREATIFY',
-            providerJobId: videoJob.jobId,
             status: 'READY',
           },
         })
