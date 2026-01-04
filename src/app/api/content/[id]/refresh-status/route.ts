@@ -167,15 +167,28 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
     }
 
-    // If video is READY or FAILED but schema not generated, trigger pipeline completion
-    // Schema should run regardless of video success/failure
-    if ((video?.status === 'READY' || video?.status === 'FAILED') && !contentItem.schemaGenerated) {
-      console.log(`[RefreshStatus] Video is ${video.status} but schema not generated. Triggering video-status endpoint...`)
+    // If video is READY or FAILED AND podcast is done, but schema not generated, trigger pipeline completion
+    // Schema needs BOTH video AND podcast to be done (or failed/not configured)
+    const podcast = await prisma.podcast.findFirst({
+      where: { contentItemId: id },
+    })
+    const podcastDone = !podcast || podcast.status === 'READY' || podcast.status === 'PUBLISHED' || podcast.status === 'FAILED' || contentItem.podcastGenerated
+    const videoDone = !video || video.status === 'READY' || video.status === 'PUBLISHED' || video.status === 'FAILED'
+
+    if (videoDone && podcastDone && !contentItem.schemaGenerated) {
+      console.log(`[RefreshStatus] Both video (${video?.status || 'none'}) and podcast (${podcast?.status || 'none'}) done but schema not generated. Triggering video-status endpoint...`)
       try {
         const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3000'
         await fetch(`${baseUrl}/api/content/${id}/video-status`)
       } catch (triggerError) {
         console.error('[RefreshStatus] Failed to trigger video-status:', triggerError)
+      }
+    } else if (!contentItem.schemaGenerated) {
+      if (!videoDone) {
+        console.log('[RefreshStatus] Video still processing - schema will run when both video and podcast complete')
+      }
+      if (!podcastDone) {
+        console.log('[RefreshStatus] Podcast still processing - schema will run when both video and podcast complete')
       }
     }
 

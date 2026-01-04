@@ -511,15 +511,34 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 
     // If READY (video done but not fully processed), check if pipeline needs completion
     if (video.status === 'READY' && video.videoUrl) {
-      // Check if pipeline completion is needed
+      // Check if pipeline completion is needed - must wait for BOTH video AND podcast
       const contentItem = await prisma.contentItem.findUnique({
         where: { id },
-        select: { schemaGenerated: true },
+        select: { schemaGenerated: true, podcastGenerated: true },
       })
 
-      // If schema not generated, trigger pipeline completion in background
+      // If schema not generated AND podcast is done (or not configured), trigger pipeline completion
+      // Podcast being done means podcastGenerated is true OR there's a failed/ready podcast record
       if (contentItem && !contentItem.schemaGenerated) {
-        console.log('[VideoStatus] Video READY but schema not generated - triggering pipeline completion')
+        // Check if podcast is still processing
+        const podcast = await prisma.podcast.findFirst({
+          where: { contentItemId: id },
+        })
+
+        const podcastDone = !podcast || podcast.status === 'READY' || podcast.status === 'PUBLISHED' || podcast.status === 'FAILED' || contentItem.podcastGenerated
+
+        if (!podcastDone) {
+          console.log('[VideoStatus] Video READY but podcast still processing - waiting for podcast')
+          return NextResponse.json({
+            status: 'ready',
+            videoUrl: video.videoUrl,
+            thumbnailUrl: video.thumbnailUrl,
+            duration: video.duration,
+            message: 'Waiting for podcast to complete before running schema...',
+          })
+        }
+
+        console.log('[VideoStatus] Video READY and podcast done - triggering pipeline completion')
         after(async () => {
           await completeRemainingPipeline(id, video.videoUrl!, video.thumbnailUrl || null, video.duration || null)
         })
@@ -541,15 +560,30 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       })
     }
 
-    // If FAILED, check if schema still needs to run
+    // If FAILED, check if schema still needs to run (but wait for podcast too)
     if (video.status === 'FAILED') {
       const contentItem = await prisma.contentItem.findUnique({
         where: { id },
-        select: { schemaGenerated: true },
+        select: { schemaGenerated: true, podcastGenerated: true },
       })
 
       if (contentItem && !contentItem.schemaGenerated) {
-        console.log('[VideoStatus] Video FAILED but schema not generated - triggering schema generation')
+        // Check if podcast is still processing
+        const podcast = await prisma.podcast.findFirst({
+          where: { contentItemId: id },
+        })
+
+        const podcastDone = !podcast || podcast.status === 'READY' || podcast.status === 'PUBLISHED' || podcast.status === 'FAILED' || contentItem.podcastGenerated
+
+        if (!podcastDone) {
+          console.log('[VideoStatus] Video FAILED but podcast still processing - waiting for podcast')
+          return NextResponse.json({
+            status: 'failed',
+            message: 'Waiting for podcast to complete before running schema...',
+          })
+        }
+
+        console.log('[VideoStatus] Video FAILED and podcast done - triggering schema generation')
         after(async () => {
           await completeRemainingPipeline(id, null, null, null)
         })
@@ -589,19 +623,40 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
             },
           })
 
-          // Use after() to complete the remaining pipeline steps in the background
-          // This runs YouTube upload, social posting, and schema generation
-          after(async () => {
-            await completeRemainingPipeline(id, result.videoUrl!, result.thumbnailUrl || null, result.duration || null)
+          // Check if podcast is done before triggering schema (schema needs podcast URLs)
+          const contentItemForPodcast = await prisma.contentItem.findUnique({
+            where: { id },
+            select: { podcastGenerated: true },
           })
+          const podcast = await prisma.podcast.findFirst({
+            where: { contentItemId: id },
+          })
+          const podcastDone = !podcast || podcast.status === 'READY' || podcast.status === 'PUBLISHED' || podcast.status === 'FAILED' || contentItemForPodcast?.podcastGenerated
 
-          return NextResponse.json({
-            status: 'ready',
-            videoUrl: result.videoUrl,
-            thumbnailUrl: result.thumbnailUrl,
-            duration: result.duration,
-            message: 'Video ready, completing remaining pipeline steps...',
-          })
+          if (podcastDone) {
+            // Use after() to complete the remaining pipeline steps in the background
+            // This runs YouTube upload, social posting, and schema generation
+            after(async () => {
+              await completeRemainingPipeline(id, result.videoUrl!, result.thumbnailUrl || null, result.duration || null)
+            })
+
+            return NextResponse.json({
+              status: 'ready',
+              videoUrl: result.videoUrl,
+              thumbnailUrl: result.thumbnailUrl,
+              duration: result.duration,
+              message: 'Video ready, completing remaining pipeline steps...',
+            })
+          } else {
+            console.log('[VideoStatus] Video completed but podcast still processing - waiting for podcast')
+            return NextResponse.json({
+              status: 'ready',
+              videoUrl: result.videoUrl,
+              thumbnailUrl: result.thumbnailUrl,
+              duration: result.duration,
+              message: 'Video ready, waiting for podcast before schema...',
+            })
+          }
         }
 
         if (result.status === 'failed') {
@@ -615,21 +670,32 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
             data: { shortVideoStatus: 'failed' },
           })
 
-          // Still run schema generation even if video failed
-          // Check if schema needs to be generated
+          // Still run schema generation even if video failed, but wait for podcast
           const contentItemForSchema = await prisma.contentItem.findUnique({
             where: { id },
-            select: { schemaGenerated: true },
+            select: { schemaGenerated: true, podcastGenerated: true },
           })
 
           if (contentItemForSchema && !contentItemForSchema.schemaGenerated) {
-            console.log('[VideoStatus] Video failed but still running schema generation')
-            after(async () => {
-              await completeRemainingPipeline(id, null, null, null)
+            // Check if podcast is done
+            const podcast = await prisma.podcast.findFirst({
+              where: { contentItemId: id },
             })
+            const podcastDone = !podcast || podcast.status === 'READY' || podcast.status === 'PUBLISHED' || podcast.status === 'FAILED' || contentItemForSchema.podcastGenerated
+
+            if (podcastDone) {
+              console.log('[VideoStatus] Video failed and podcast done - running schema generation')
+              after(async () => {
+                await completeRemainingPipeline(id, null, null, null)
+              })
+              return NextResponse.json({ status: 'failed', message: 'Video failed, running schema generation...' })
+            } else {
+              console.log('[VideoStatus] Video failed but podcast still processing - waiting for podcast')
+              return NextResponse.json({ status: 'failed', message: 'Video failed, waiting for podcast before schema...' })
+            }
           }
 
-          return NextResponse.json({ status: 'failed', message: 'Video failed, running schema generation...' })
+          return NextResponse.json({ status: 'failed' })
         }
 
         // Still processing
