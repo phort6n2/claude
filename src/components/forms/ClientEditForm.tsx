@@ -173,6 +173,19 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
     }
   } | null>(null)
 
+  // PAA management state
+  const [paaText, setPaaText] = useState('')
+  const [paaValidation, setPaaValidation] = useState({
+    total: 0,
+    valid: 0,
+    invalid: 0,
+    errors: [] as string[],
+  })
+  const [savingPaas, setSavingPaas] = useState(false)
+  const [paaMessage, setPaaMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [loadingPaas, setLoadingPaas] = useState(false)
+  const [existingPaaCount, setExistingPaaCount] = useState(0)
+
   // Load Podbean podcasts
   useEffect(() => {
     setLoadingPodcasts(true)
@@ -222,6 +235,55 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       .catch(() => {})
       .finally(() => setLoadingLocations(false))
   }, [client.id])
+
+  // Load existing PAAs
+  useEffect(() => {
+    setLoadingPaas(true)
+    fetch(`/api/clients/${client.id}/paas`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.paas && Array.isArray(data.paas)) {
+          setExistingPaaCount(data.paas.length)
+          // Don't auto-populate - let user add new ones or view existing
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingPaas(false))
+  }, [client.id])
+
+  // Validate PAA text as user types
+  useEffect(() => {
+    const lines = paaText
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0)
+
+    let valid = 0
+    let invalid = 0
+    const errors: string[] = []
+
+    for (const line of lines) {
+      const hasLocation = /\{location\}/i.test(line)
+      const hasQuestionMark = line.endsWith('?')
+
+      if (hasLocation && hasQuestionMark) {
+        valid++
+      } else {
+        invalid++
+        const issues: string[] = []
+        if (!hasLocation) issues.push('missing {location}')
+        if (!hasQuestionMark) issues.push('missing ?')
+        errors.push(`"${line.slice(0, 40)}..." - ${issues.join(', ')}`)
+      }
+    }
+
+    setPaaValidation({
+      total: lines.length,
+      valid,
+      invalid,
+      errors,
+    })
+  }, [paaText])
 
   // Load auto-schedule status
   useEffect(() => {
@@ -372,6 +434,51 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function savePaas(append: boolean = false) {
+    if (paaValidation.valid === 0) {
+      setPaaMessage({ type: 'error', text: 'No valid PAA questions to save' })
+      return
+    }
+
+    setSavingPaas(true)
+    setPaaMessage(null)
+
+    try {
+      const response = await fetch(`/api/clients/${client.id}/paas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paaText, append }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setPaaMessage({ type: 'success', text: data.message || 'PAAs saved successfully' })
+        setPaaText('') // Clear the textarea after saving
+        setExistingPaaCount(data.total || paaValidation.valid)
+        // Refresh auto-schedule status to update PAA queue count
+        fetch(`/api/clients/${client.id}/auto-schedule`)
+          .then(res => res.json())
+          .then(statusData => {
+            if (statusData.paaQueue && statusData.locations) {
+              setAutoScheduleStatus({
+                paaQueue: statusData.paaQueue,
+                locations: statusData.locations,
+                upcoming: statusData.upcoming || { count: 0 },
+                slot: statusData.slot || { dayPair: null, dayPairLabel: null, timeSlot: null, timeSlotLabel: null },
+              })
+            }
+          })
+      } else {
+        setPaaMessage({ type: 'error', text: data.error || 'Failed to save PAAs' })
+      }
+    } catch {
+      setPaaMessage({ type: 'error', text: 'Failed to save PAAs' })
+    } finally {
+      setSavingPaas(false)
     }
   }
 
@@ -1300,6 +1407,101 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                 </div>
               </div>
             )}
+
+            {/* PAA Management */}
+            <div className="border-t pt-6">
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <FileQuestion className="h-4 w-4 text-blue-600" />
+                    <h4 className="text-sm font-medium text-gray-900">PAA Questions</h4>
+                  </div>
+                  {loadingPaas ? (
+                    <span className="text-xs text-gray-500">Loading...</span>
+                  ) : (
+                    <span className="text-xs text-gray-500">
+                      {existingPaaCount} questions in queue
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-500 mb-3">
+                  Add PAA (People Also Ask) questions. Each must include <code className="bg-gray-100 px-1 rounded">{'{location}'}</code> and end with <code className="bg-gray-100 px-1 rounded">?</code>
+                </p>
+
+                <textarea
+                  value={paaText}
+                  onChange={(e) => setPaaText(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  rows={6}
+                  placeholder={`What is the cost of windshield repair in {location}?\nHow long does auto glass replacement take in {location}?\nCan rock chips be repaired in {location}?`}
+                />
+
+                {/* Validation Status */}
+                {paaValidation.total > 0 && (
+                  <div className="flex items-center gap-4 text-sm mt-2">
+                    {paaValidation.valid > 0 && (
+                      <span className="text-green-600 font-medium">
+                        ✓ {paaValidation.valid} valid
+                      </span>
+                    )}
+                    {paaValidation.invalid > 0 && (
+                      <span className="text-amber-600 font-medium">
+                        ⚠️ {paaValidation.invalid} invalid
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Error List */}
+                {paaValidation.errors.length > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-2">
+                    <p className="text-xs font-medium text-amber-800 mb-1">Issues to fix:</p>
+                    <ul className="text-xs text-amber-700 space-y-0.5">
+                      {paaValidation.errors.slice(0, 3).map((error, i) => (
+                        <li key={i}>{error}</li>
+                      ))}
+                      {paaValidation.errors.length > 3 && (
+                        <li className="text-amber-600">... and {paaValidation.errors.length - 3} more</li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Save Buttons */}
+                {paaValidation.valid > 0 && (
+                  <div className="flex items-center gap-2 mt-3">
+                    <Button
+                      onClick={() => savePaas(true)}
+                      disabled={savingPaas}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      {savingPaas ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                      Add to Queue ({paaValidation.valid})
+                    </Button>
+                    <Button
+                      onClick={() => savePaas(false)}
+                      disabled={savingPaas}
+                      variant="outline"
+                      className="flex items-center gap-2 text-amber-600 hover:text-amber-700"
+                    >
+                      Replace All
+                    </Button>
+                  </div>
+                )}
+
+                {/* Message */}
+                {paaMessage && (
+                  <div className={`mt-3 p-3 rounded-lg text-sm ${
+                    paaMessage.type === 'success'
+                      ? 'bg-green-50 text-green-800 border border-green-200'
+                      : 'bg-red-50 text-red-800 border border-red-200'
+                  }`}>
+                    {paaMessage.text}
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Test Button */}
             <div className="border-t pt-6">
