@@ -15,11 +15,10 @@ import {
   ChevronRight,
   RefreshCw,
   AlertCircle,
-  CheckCircle,
   Eye,
   Trash2,
   FileText,
-  ImageIcon,
+  Images,
   Share2,
   Mic,
   Video,
@@ -87,18 +86,6 @@ interface Client {
   businessName: string
 }
 
-interface StatusCounts {
-  all: number
-  draft: number
-  scheduled: number
-  generating: number
-  review: number
-  approved: number
-  published: number
-  failed: number
-  needsAttention: number
-}
-
 export default function ContentCalendarPage() {
   const [view, setView] = useState<ViewMode>('list')
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -106,21 +93,9 @@ export default function ContentCalendarPage() {
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedClient, setSelectedClient] = useState<string>('all')
-  const [selectedStatus, setSelectedStatus] = useState<string>('all')
-  const [statusCounts, setStatusCounts] = useState<StatusCounts>({
-    all: 0,
-    draft: 0,
-    scheduled: 0,
-    generating: 0,
-    review: 0,
-    approved: 0,
-    published: 0,
-    failed: 0,
-    needsAttention: 0,
-  })
 
-  // Fetch all content for status counts
-  const fetchAllContent = useCallback(async () => {
+  const fetchContent = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true)
     try {
       const params = new URLSearchParams()
       if (selectedClient !== 'all') params.append('clientId', selectedClient)
@@ -128,56 +103,17 @@ export default function ContentCalendarPage() {
       const response = await fetch(`/api/content?${params}`)
       const data = await response.json()
 
-      // Calculate status counts
-      const counts: StatusCounts = {
-        all: data.length,
-        draft: data.filter((i: ContentItem) => i.status === 'DRAFT').length,
-        scheduled: data.filter((i: ContentItem) => i.status === 'SCHEDULED').length,
-        generating: data.filter((i: ContentItem) => i.status === 'GENERATING').length,
-        review: data.filter((i: ContentItem) => i.status === 'REVIEW').length,
-        approved: data.filter((i: ContentItem) => i.status === 'APPROVED').length,
-        published: data.filter((i: ContentItem) => i.status === 'PUBLISHED').length,
-        failed: data.filter((i: ContentItem) => i.status === 'FAILED').length,
-        needsAttention: data.filter((i: ContentItem) => i.needsAttention).length,
-      }
-      setStatusCounts(counts)
-    } catch (error) {
-      console.error('Failed to fetch all content:', error)
-    }
-  }, [selectedClient])
-
-  const fetchContent = useCallback(async (showLoading = true) => {
-    if (showLoading) setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (selectedClient !== 'all') params.append('clientId', selectedClient)
-      if (selectedStatus !== 'all' && selectedStatus !== 'needsAttention') {
-        params.append('status', selectedStatus)
-      }
-
-      const response = await fetch(`/api/content?${params}`)
-      let data = await response.json()
-
-      // Filter for needsAttention locally
-      if (selectedStatus === 'needsAttention') {
-        data = data.filter((i: ContentItem) => i.needsAttention)
-      }
-
       setContentItems(data)
     } catch (error) {
       console.error('Failed to fetch content:', error)
     } finally {
       if (showLoading) setLoading(false)
     }
-  }, [selectedClient, selectedStatus])
+  }, [selectedClient])
 
   useEffect(() => {
     fetchContent()
   }, [fetchContent])
-
-  useEffect(() => {
-    fetchAllContent()
-  }, [fetchAllContent])
 
   useEffect(() => {
     fetch('/api/clients')
@@ -193,11 +129,10 @@ export default function ContentCalendarPage() {
 
     const interval = setInterval(() => {
       fetchContent(false) // Silent refresh - no loading indicator
-      fetchAllContent()
     }, 10000) // Refresh every 10 seconds
 
     return () => clearInterval(interval)
-  }, [contentItems, fetchContent, fetchAllContent])
+  }, [contentItems, fetchContent])
 
   const handleDeleteContent = async (id: string, question: string) => {
     if (!confirm(`Delete this content item?\n\n"${question.substring(0, 60)}${question.length > 60 ? '...' : ''}"\n\nThis cannot be undone.`)) {
@@ -212,8 +147,6 @@ export default function ContentCalendarPage() {
       if (response.ok) {
         // Remove from local state
         setContentItems(prev => prev.filter(item => item.id !== id))
-        // Refresh counts
-        fetchAllContent()
       }
     } catch (error) {
       console.error('Failed to delete content:', error)
@@ -422,8 +355,8 @@ export default function ContentCalendarPage() {
                     <td className="px-4 py-3 whitespace-nowrap hidden lg:table-cell">
                       <StepProgress item={item} />
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-2 w-[120px]">
                         <Link href={`/admin/content/${item.id}/review`}>
                           <Button
                             variant={item.status === 'GENERATING' ? 'primary' : 'outline'}
@@ -571,7 +504,7 @@ export default function ContentCalendarPage() {
             ))}
           </select>
 
-          <Button variant="outline" size="sm" onClick={() => { fetchContent(); fetchAllContent(); }}>
+          <Button variant="outline" size="sm" onClick={() => fetchContent()}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -592,30 +525,6 @@ export default function ContentCalendarPage() {
       </div>
     </div>
   )
-}
-
-// Calculate step completion for an item
-function getStepCompletion(item: ContentItem): { completed: number; total: number; nextStep: string | null; isComplete: boolean } {
-  const steps = [
-    { name: 'Blog', done: item.blogGenerated && item.blogPost?.wordpressPostId },
-    { name: 'Images', done: item.imagesGenerated && item.imagesApproved === 'APPROVED' },
-    { name: 'Social', done: item.socialGenerated && item.socialPosts?.some(p => p.publishedUrl) },
-    { name: 'Podcast', done: item.podcastGenerated && item.podcast?.podbeanUrl },
-    { name: 'Short Video', done: item.shortVideoGenerated && item.shortFormVideos?.some(v => v.publishedUrls && Object.keys(v.publishedUrls).length > 0) },
-    { name: 'Long Video', done: !!item.longformVideoUrl },
-    { name: 'Schema', done: item.schemaGenerated && item.blogPost?.schemaJson },
-    { name: 'Embed', done: item.podcastAddedToPost || item.shortVideoAddedToPost || item.longVideoAddedToPost },
-  ]
-
-  const completed = steps.filter(s => s.done).length
-  const nextStep = steps.find(s => !s.done)?.name || null
-
-  return {
-    completed,
-    total: 8,
-    nextStep,
-    isComplete: completed === 8,
-  }
 }
 
 function ContentTypeIcon({
@@ -644,7 +553,7 @@ function StepProgress({ item }: { item: ContentItem }) {
       <div className="flex items-center gap-1">
         <div className="flex items-center gap-0.5 text-purple-400">
           <FileText className="h-3.5 w-3.5 animate-pulse" />
-          <ImageIcon className="h-3.5 w-3.5 animate-pulse delay-75" />
+          <Images className="h-3.5 w-3.5 animate-pulse delay-75" />
           <Share2 className="h-3.5 w-3.5 animate-pulse delay-100" />
         </div>
         <span className="text-xs text-purple-600 font-medium ml-1">Generating...</span>
@@ -659,16 +568,17 @@ function StepProgress({ item }: { item: ContentItem }) {
     )
   }
 
-  // Content type status
+  // Content type status - green if content exists/is online
+  const blogPublished = !!item.blogPost?.wordpressPostId
   const contentTypes = [
-    { icon: FileText, done: item.blogGenerated && !!item.blogPost?.wordpressPostId, label: 'Blog' },
-    { icon: ImageIcon, done: item.imagesGenerated && item.imagesApproved === 'APPROVED', label: 'Images' },
-    { icon: Share2, done: item.socialGenerated && !!item.socialPosts?.some(p => p.publishedUrl), label: 'Social' },
-    { icon: Mic, done: item.podcastGenerated && !!item.podcast?.podbeanUrl, label: 'Podcast' },
-    { icon: Video, done: item.shortVideoGenerated && !!item.shortFormVideos?.some(v => v.publishedUrls && Object.keys(v.publishedUrls).length > 0), label: 'Short Video' },
+    { icon: FileText, done: blogPublished, label: 'Blog Published' },
+    { icon: Images, done: item.imagesGenerated && blogPublished, label: 'Images (in blog)' },
+    { icon: Share2, done: !!item.socialPosts?.some(p => p.publishedUrl), label: 'Social Posted' },
+    { icon: Mic, done: item.podcastGenerated, label: 'Podcast Created' },
+    { icon: Video, done: item.shortVideoGenerated, label: 'Short Video Created' },
     { icon: Film, done: !!item.longformVideoUrl, label: 'Long Video' },
-    { icon: Code, done: item.schemaGenerated && !!item.blogPost?.schemaJson, label: 'Schema' },
-    { icon: Link2, done: item.podcastAddedToPost || item.shortVideoAddedToPost || item.longVideoAddedToPost, label: 'Embedded' },
+    { icon: Code, done: item.schemaGenerated && blogPublished, label: 'Schema Live' },
+    { icon: Link2, done: item.podcastAddedToPost || item.shortVideoAddedToPost || item.longVideoAddedToPost, label: 'Media Embedded' },
   ]
 
   return (
