@@ -91,12 +91,15 @@ export async function fetchPAAsForLocation(
 
     // Use just one keyword to minimize cost (PAAs are similar across keywords)
     const keyword = broadKeywords[0]
-    console.log('[DataForSEO] Searching for keyword:', keyword)
+
+    // Use client's location for geo-targeted search results
+    const locationName = `${city},${state},United States`
+    console.log('[DataForSEO] Searching for:', keyword, 'in', locationName)
 
     // Single task with reduced depth to minimize cost
     const requestTasks = [{
       keyword,
-      location_name: 'United States',
+      location_name: locationName,
       language_name: 'English',
       device: 'desktop',
       os: 'windows',
