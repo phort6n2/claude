@@ -738,15 +738,6 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={formData.hasShopLocation}
-                    onChange={(e) => updateField('hasShopLocation', e.target.checked)}
-                    className="rounded border-gray-300"
-                  />
-                  <span className="text-sm">Has physical shop location</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
                     checked={formData.offersMobileService}
                     onChange={(e) => updateField('offersMobileService', e.target.checked)}
                     className="rounded border-gray-300"
@@ -1437,7 +1428,6 @@ export default function ClientForm({ initialData, isEditing = false }: ClientFor
                   <span className="text-gray-500">Services:</span>
                   <span className="font-medium">
                     {[
-                      formData.hasShopLocation && 'Shop',
                       formData.offersMobileService && 'Mobile',
                       formData.hasAdasCalibration && 'ADAS',
                     ]

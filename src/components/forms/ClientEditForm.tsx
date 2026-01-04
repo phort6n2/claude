@@ -96,16 +96,6 @@ interface ClientEditFormProps {
   hasWordPressPassword?: boolean
 }
 
-const TIMEZONES = [
-  'America/Los_Angeles',
-  'America/Denver',
-  'America/Chicago',
-  'America/New_York',
-  'America/Phoenix',
-  'America/Anchorage',
-  'Pacific/Honolulu',
-]
-
 const socialPlatformOptions = [
   { value: 'facebook', label: 'Facebook' },
   { value: 'instagram', label: 'Instagram' },
@@ -121,7 +111,7 @@ const socialPlatformOptions = [
   { value: 'telegram', label: 'Telegram' },
 ]
 
-type SectionKey = 'business' | 'location' | 'serviceLocations' | 'branding' | 'wordpress' | 'social' | 'integrations' | 'publishing' | 'automation'
+type SectionKey = 'business' | 'location' | 'serviceLocations' | 'branding' | 'wordpress' | 'social' | 'integrations' | 'automation'
 
 export default function ClientEditForm({ client, hasWordPressPassword = false }: ClientEditFormProps) {
   const router = useRouter()
@@ -130,7 +120,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [expandedSections, setExpandedSections] = useState<Set<SectionKey>>(
-    new Set(['business', 'location', 'serviceLocations', 'branding', 'wordpress', 'social', 'integrations', 'publishing', 'automation'])
+    new Set(['business', 'location', 'serviceLocations', 'branding', 'wordpress', 'social', 'integrations', 'automation'])
   )
 
   // WordPress connection test state
@@ -157,6 +147,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
     paaQueue: { unused: number; total: number; isRecycling: boolean }
     locations: { active: number; neverUsed: number }
     upcoming: { count: number }
+    slot: { dayPair: string | null; dayPairLabel: string | null; timeSlot: number | null; timeSlotLabel: string | null }
   } | null>(null)
   const [loadingAutoSchedule, setLoadingAutoSchedule] = useState(false)
 
@@ -236,6 +227,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
             paaQueue: data.paaQueue,
             locations: data.locations,
             upcoming: data.upcoming,
+            slot: data.slot || { dayPair: null, dayPairLabel: null, timeSlot: null, timeSlotLabel: null },
           })
         }
       })
@@ -409,6 +401,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                 paaQueue: statusData.paaQueue,
                 locations: statusData.locations,
                 upcoming: statusData.upcoming,
+                slot: statusData.slot || { dayPair: null, dayPairLabel: null, timeSlot: null, timeSlotLabel: null },
               })
             }
           })
@@ -550,15 +543,6 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
             <div className="border-t pt-4 mt-4">
               <h4 className="text-sm font-medium text-gray-700 mb-3">Services Offered</h4>
               <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.hasShopLocation}
-                    onChange={(e) => updateField('hasShopLocation', e.target.checked)}
-                    className="rounded"
-                  />
-                  <span className="text-sm">Shop Location</span>
-                </label>
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -1129,52 +1113,13 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
         )}
       </div>
 
-      {/* Publishing Schedule */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-        <SectionHeader
-          section="publishing"
-          icon={Clock}
-          title="Publishing Schedule"
-          subtitle="Preferred time and timezone"
-        />
-        {expandedSections.has('publishing') && (
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Publish Time</label>
-                <input
-                  type="time"
-                  value={formData.preferredPublishTime}
-                  onChange={(e) => updateField('preferredPublishTime', e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
-                <select
-                  value={formData.timezone}
-                  onChange={(e) => updateField('timezone', e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                >
-                  {TIMEZONES.map((tz) => (
-                    <option key={tz} value={tz}>
-                      {tz}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Automation */}
       <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
         <SectionHeader
           section="automation"
           icon={Zap}
           title="Automated Content Scheduling"
-          subtitle="Automatic Tue/Thu content generation"
+          subtitle={autoScheduleStatus?.slot.dayPairLabel ? `Posts on ${autoScheduleStatus.slot.dayPairLabel}` : "Automatic weekly content generation"}
         />
         {expandedSections.has('automation') && (
           <div className="p-6 space-y-6">
@@ -1183,7 +1128,9 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
               <div>
                 <h4 className="text-sm font-medium text-gray-900">Enable Automatic Scheduling</h4>
                 <p className="text-sm text-gray-500 mt-1">
-                  Automatically create and generate content on Tuesdays and Thursdays
+                  {autoScheduleStatus?.slot.dayPairLabel
+                    ? `Automatically create and generate content on ${autoScheduleStatus.slot.dayPairLabel}`
+                    : 'Automatically create and generate content weekly (slot assigned on enable)'}
                 </p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
@@ -1210,7 +1157,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                     onChange={() => updateField('autoScheduleFrequency', 1)}
                     className="h-4 w-4 text-blue-600"
                   />
-                  <span className="text-sm text-gray-700">1 post (Tuesday only)</span>
+                  <span className="text-sm text-gray-700">1 post per week</span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input
@@ -1221,10 +1168,27 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                     onChange={() => updateField('autoScheduleFrequency', 2)}
                     className="h-4 w-4 text-blue-600"
                   />
-                  <span className="text-sm text-gray-700">2 posts (Tue & Thu)</span>
+                  <span className="text-sm text-gray-700">2 posts per week</span>
                 </label>
               </div>
             </div>
+
+            {/* Assigned Slot Info */}
+            {autoScheduleStatus?.slot.dayPairLabel && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Calendar className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-900">Assigned Schedule</span>
+                </div>
+                <p className="text-blue-800 font-semibold">{autoScheduleStatus.slot.dayPairLabel}</p>
+                {autoScheduleStatus.slot.timeSlotLabel && (
+                  <p className="text-sm text-blue-600 mt-1">
+                    <Clock className="h-3 w-3 inline mr-1" />
+                    {autoScheduleStatus.slot.timeSlotLabel} UTC
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Status Info */}
             {loadingAutoSchedule ? (
