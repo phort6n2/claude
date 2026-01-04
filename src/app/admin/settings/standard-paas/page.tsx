@@ -122,7 +122,7 @@ export default function StandardPaasPage() {
                 <strong>How Standard PAAs work:</strong>
                 <ul className="mt-2 space-y-1 list-disc list-inside">
                   <li>These are default questions available to ALL clients</li>
-                  <li>Clients can add their own "Custom PAAs" which take priority</li>
+                  <li>Clients can add their own &quot;Custom PAAs&quot; which take priority</li>
                   <li>Once a client exhausts their Custom PAAs, Standard PAAs are used</li>
                   <li>Each question must include <code className="bg-blue-100 px-1 rounded">{'{location}'}</code> and end with <code className="bg-blue-100 px-1 rounded">?</code></li>
                 </ul>
