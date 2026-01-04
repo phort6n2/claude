@@ -92,7 +92,7 @@ function generatePodcastEmbed(title: string, playerUrl: string): string {
   return `
 <!-- Podcast Episode -->
 <div class="podcast-embed" style="margin: 30px 0;">
-  <h3>Listen to This Episode</h3>
+  <h3>🎧 Listen to This Episode</h3>
   <iframe
     title="${title}"
     allowtransparency="true"
