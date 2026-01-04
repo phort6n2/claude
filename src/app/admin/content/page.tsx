@@ -355,8 +355,8 @@ export default function ContentCalendarPage() {
                     <td className="px-4 py-3 whitespace-nowrap hidden lg:table-cell">
                       <StepProgress item={item} />
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-2 w-[120px]">
                         <Link href={`/admin/content/${item.id}/review`}>
                           <Button
                             variant={item.status === 'GENERATING' ? 'primary' : 'outline'}
@@ -568,15 +568,15 @@ function StepProgress({ item }: { item: ContentItem }) {
     )
   }
 
-  // Content type status
+  // Content type status - green if generated/created
   const contentTypes = [
-    { icon: FileText, done: item.blogGenerated && !!item.blogPost?.wordpressPostId, label: 'Blog' },
-    { icon: ImageIcon, done: item.imagesGenerated && item.imagesApproved === 'APPROVED', label: 'Images' },
-    { icon: Share2, done: item.socialGenerated && !!item.socialPosts?.some(p => p.publishedUrl), label: 'Social' },
-    { icon: Mic, done: item.podcastGenerated && !!item.podcast?.podbeanUrl, label: 'Podcast' },
-    { icon: Video, done: item.shortVideoGenerated && !!item.shortFormVideos?.some(v => v.publishedUrls && Object.keys(v.publishedUrls).length > 0), label: 'Short Video' },
+    { icon: FileText, done: item.blogGenerated, label: 'Blog' },
+    { icon: ImageIcon, done: item.imagesGenerated, label: 'Images' },
+    { icon: Share2, done: item.socialGenerated, label: 'Social' },
+    { icon: Mic, done: item.podcastGenerated, label: 'Podcast' },
+    { icon: Video, done: item.shortVideoGenerated, label: 'Short Video' },
     { icon: Film, done: !!item.longformVideoUrl, label: 'Long Video' },
-    { icon: Code, done: item.schemaGenerated && !!item.blogPost?.schemaJson, label: 'Schema' },
+    { icon: Code, done: item.schemaGenerated, label: 'Schema' },
     { icon: Link2, done: item.podcastAddedToPost || item.shortVideoAddedToPost || item.longVideoAddedToPost, label: 'Embedded' },
   ]
 
