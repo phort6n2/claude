@@ -84,6 +84,8 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
         unused: paaStatus.unusedCount,
         total: paaStatus.totalCount,
         isRecycling: paaStatus.isRecycling,
+        custom: paaStatus.custom,
+        standard: paaStatus.standard,
       },
       locations: {
         active: locationStatus.activeCount,

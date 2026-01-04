@@ -151,7 +151,13 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
 
   // Auto-schedule status state
   const [autoScheduleStatus, setAutoScheduleStatus] = useState<{
-    paaQueue: { unused: number; total: number; isRecycling: boolean }
+    paaQueue: {
+      unused: number
+      total: number
+      isRecycling: boolean
+      custom: { unused: number; total: number }
+      standard: { unused: number; total: number }
+    }
     locations: { active: number; neverUsed: number }
     upcoming: { count: number }
     slot: { dayPair: string | null; dayPairLabel: string | null; timeSlot: number | null; timeSlotLabel: string | null }
@@ -1371,11 +1377,19 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                   <div className="text-2xl font-bold text-gray-900">
                     {autoScheduleStatus.paaQueue.unused}/{autoScheduleStatus.paaQueue.total}
                   </div>
-                  <div className="text-xs text-gray-500">
-                    {autoScheduleStatus.paaQueue.isRecycling ? (
-                      <span className="text-amber-600">Recycling - all PAAs used</span>
-                    ) : (
-                      'unused PAAs available'
+                  <div className="text-xs text-gray-500 space-y-0.5">
+                    {autoScheduleStatus.paaQueue.custom.total > 0 && (
+                      <div className="text-blue-600">
+                        Custom: {autoScheduleStatus.paaQueue.custom.unused}/{autoScheduleStatus.paaQueue.custom.total}
+                      </div>
+                    )}
+                    {autoScheduleStatus.paaQueue.standard.total > 0 && (
+                      <div className="text-gray-500">
+                        Standard: {autoScheduleStatus.paaQueue.standard.unused}/{autoScheduleStatus.paaQueue.standard.total}
+                      </div>
+                    )}
+                    {autoScheduleStatus.paaQueue.isRecycling && (
+                      <span className="text-amber-600">Recycling</span>
                     )}
                   </div>
                 </div>
@@ -1408,24 +1422,26 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
               </div>
             )}
 
-            {/* PAA Management */}
+            {/* Custom PAA Management */}
             <div className="border-t pt-6">
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <FileQuestion className="h-4 w-4 text-blue-600" />
-                    <h4 className="text-sm font-medium text-gray-900">PAA Questions</h4>
+                    <h4 className="text-sm font-medium text-gray-900">Custom PAA Questions</h4>
+                    <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded font-medium">PRIORITY</span>
                   </div>
                   {loadingPaas ? (
                     <span className="text-xs text-gray-500">Loading...</span>
                   ) : (
                     <span className="text-xs text-gray-500">
-                      {existingPaaCount} questions in queue
+                      {existingPaaCount} custom questions
                     </span>
                   )}
                 </div>
                 <p className="text-sm text-gray-500 mb-3">
-                  Add PAA (People Also Ask) questions. Each must include <code className="bg-gray-100 px-1 rounded">{'{location}'}</code> and end with <code className="bg-gray-100 px-1 rounded">?</code>
+                  Add custom PAA questions for this client. <strong>Custom PAAs are used first</strong>, before Standard PAAs.
+                  Each must include <code className="bg-gray-100 px-1 rounded">{'{location}'}</code> and end with <code className="bg-gray-100 px-1 rounded">?</code>
                 </p>
 
                 <textarea

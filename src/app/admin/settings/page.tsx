@@ -1,9 +1,15 @@
 import Link from 'next/link'
 import Header from '@/components/admin/Header'
 import { Card, CardContent } from '@/components/ui/Card'
-import { Key, ChevronRight, Building2 } from 'lucide-react'
+import { Key, ChevronRight, Building2, FileQuestion } from 'lucide-react'
 
 const settingsSections = [
+  {
+    title: 'Standard PAA Questions',
+    description: 'Manage default PAA questions used by all clients (100+ templates)',
+    href: '/admin/settings/standard-paas',
+    icon: FileQuestion,
+  },
   {
     title: 'WRHQ Settings',
     description: 'Windshield Repair HQ directory site configuration for dual publishing',

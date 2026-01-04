@@ -823,31 +823,57 @@ enum LogStatus {
 }
 
 // ============================================
-// CLIENT PAA QUESTIONS (Client-specific)
+// STANDARD PAA QUESTIONS (Global templates)
 // ============================================
 
-model ClientPAA {
+model StandardPAA {
   id           String        @id @default(cuid())
-  clientId     String
-  client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
   question     String        // Template with {location} placeholder
-  priority     Int           // Order pasted (1, 2, 3...)
+  priority     Int           // Order (1, 2, 3...)
   isActive     Boolean       @default(true)
-
-  // Automation tracking
-  usedAt       DateTime?     // When this PAA was last used (null = never)
-  usedCount    Int           @default(0)  // Total times used
+  category     String?       // Optional category for organization
 
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
+  // Clients using this standard PAA
+  clientPaas   ClientPAA[]
+
+  @@index([priority])
+  @@index([isActive])
+}
+
+// ============================================
+// CLIENT PAA QUESTIONS (Custom + synced standard)
+// ============================================
+
+model ClientPAA {
+  id             String        @id @default(cuid())
+  clientId       String
+  client         Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  question       String        // Template with {location} placeholder
+  priority       Int           // Custom PAAs: 1-999, Standard PAAs: 1000+
+  isActive       Boolean       @default(true)
+
+  // Link to standard PAA (null = custom PAA for this client only)
+  standardPaaId  String?
+  standardPaa    StandardPAA?  @relation(fields: [standardPaaId], references: [id], onDelete: SetNull)
+
+  // Automation tracking
+  usedAt         DateTime?     // When this PAA was last used (null = never)
+  usedCount      Int           @default(0)  // Total times used
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
   // Relations
-  contentItems ContentItem[]
+  contentItems   ContentItem[]
 
   @@index([clientId])
   @@index([priority])
   @@index([isActive])
   @@index([usedAt])
+  @@index([standardPaaId])
 }
 
 // ============================================
