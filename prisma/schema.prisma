@@ -124,9 +124,13 @@ model Client {
   calendarEndDate       DateTime? // How far out the calendar is populated
 
   // Automation Settings
-  autoScheduleEnabled   Boolean   @default(false)   // Opt-in for Tue/Thu automation
+  autoScheduleEnabled   Boolean   @default(false)   // Opt-in for automation
   autoScheduleFrequency Int       @default(2)       // Posts per week (1 or 2)
   lastAutoScheduledAt   DateTime?                   // Track last automation run
+
+  // Smart Scheduling (to avoid Late.dev 5-post-per-account limit)
+  scheduleDayPair       String?   // e.g., "MON_WED", "TUE_THU", "WED_FRI" - auto-assigned
+  scheduleTimeSlot      Int?      // 0-4 representing staggered times (6AM, 7AM, 8AM, 9AM, 10AM)
 
   // Relations
   contentItems          ContentItem[]
