@@ -43,6 +43,8 @@ interface DataForSEOItem {
 }
 
 interface DataForSEOTask {
+  status_code?: number
+  status_message?: string
   result?: Array<{
     items?: DataForSEOItem[]
     cost?: number
@@ -80,20 +82,27 @@ export async function fetchPAAsForLocation(
   const allPAAs: PAASuggestion[] = []
   let totalCost = 0
 
+  // Map state abbreviations to full names for DataForSEO
+  const stateAbbreviations: Record<string, string> = {
+    'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
+    'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 'FL': 'Florida', 'GA': 'Georgia',
+    'HI': 'Hawaii', 'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
+    'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
+    'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi', 'MO': 'Missouri',
+    'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey',
+    'NM': 'New Mexico', 'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio',
+    'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
+    'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah', 'VT': 'Vermont',
+    'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming'
+  }
+
   try {
-    // Use broad, popular keywords that trigger PAAs
-    // Don't include location - PAAs are usually location-agnostic
-    const broadKeywords = [
-      'windshield replacement',
-      'auto glass repair',
-      'windshield repair',
-    ]
+    // Use "auto glass repair" - confirmed to have PAAs
+    const keyword = 'auto glass repair'
 
-    // Use just one keyword to minimize cost (PAAs are similar across keywords)
-    const keyword = broadKeywords[0]
-
-    // Use client's location for geo-targeted search results
-    const locationName = `${city},${state},United States`
+    // Convert state abbreviation to full name if needed
+    const fullStateName = stateAbbreviations[state.toUpperCase()] || state
+    const locationName = `${city},${fullStateName},United States`
     console.log('[DataForSEO] Searching for:', keyword, 'in', locationName)
 
     // Single task with reduced depth to minimize cost
@@ -125,8 +134,10 @@ export async function fetchPAAsForLocation(
     }
 
     const data: DataForSEOResponse = await response.json()
+    console.log('[DataForSEO] Response status_code:', data.status_code, 'message:', data.status_message)
 
     if (data.status_code !== 20000) {
+      console.log('[DataForSEO] Full error response:', JSON.stringify(data, null, 2))
       return {
         success: false,
         paas: [],
@@ -137,6 +148,11 @@ export async function fetchPAAsForLocation(
     // Extract PAAs from results
     const responseTasks = data.tasks || []
     console.log('[DataForSEO] Tasks returned:', responseTasks.length)
+
+    // Log task-level status for debugging
+    for (const task of responseTasks) {
+      console.log('[DataForSEO] Task status:', task.status_code, task.status_message)
+    }
 
     for (const task of responseTasks) {
       const results = task.result || []
