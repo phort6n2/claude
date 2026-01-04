@@ -102,9 +102,10 @@ function generateShortVideoEmbed(youtubeUrl: string): string | null {
 </div>`
 }
 
-// Complete remaining pipeline steps after video is ready
-async function completeRemainingPipeline(contentItemId: string, videoUrl: string, thumbnailUrl: string | null, duration: number | null) {
-  console.log(`[VideoStatus] Starting post-video pipeline completion for ${contentItemId}`)
+// Complete remaining pipeline steps after video is ready (or failed)
+// videoUrl can be null if video generation failed - we'll still run schema/embed
+async function completeRemainingPipeline(contentItemId: string, videoUrl: string | null, thumbnailUrl: string | null, duration: number | null) {
+  console.log(`[VideoStatus] Starting post-video pipeline completion for ${contentItemId}`, { hasVideo: !!videoUrl })
 
   try {
     // Get content item with client data
@@ -122,169 +123,150 @@ async function completeRemainingPipeline(contentItemId: string, videoUrl: string
       return
     }
 
-    // Get or create video record
-    let video = await prisma.video.findFirst({
+    // Get video record (may not exist or may have failed)
+    const video = await prisma.video.findFirst({
       where: { contentItemId, videoType: 'SHORT' },
     })
 
-    if (!video) {
-      console.error('[VideoStatus] Video record not found')
-      return
-    }
-
-    // Step 1: Upload to GCS if not already done
-    let gcsUrl = video.videoUrl
-    if (!gcsUrl?.includes('storage.googleapis.com')) {
-      console.log('[VideoStatus] Uploading video to GCS...')
-      try {
-        const videoFilename = `videos/${contentItem.clientId}/short-${contentItemId}-${Date.now()}.mp4`
-        const gcsResult = await uploadFromUrl(videoUrl, videoFilename)
-        gcsUrl = gcsResult.url
-
-        await prisma.video.update({
-          where: { id: video.id },
-          data: {
-            videoUrl: gcsUrl,
-            thumbnailUrl: thumbnailUrl,
-            duration: duration,
-            status: 'READY',
-          },
-        })
-        console.log('[VideoStatus] Video uploaded to GCS:', gcsUrl)
-      } catch (gcsError) {
-        console.error('[VideoStatus] GCS upload failed:', gcsError)
-        // Continue with Creatify URL
-      }
-    }
-
-    // Step 2: Upload to YouTube if configured and not already done
-    const existingYoutubePost = await prisma.wRHQSocialPost.findFirst({
-      where: {
-        contentItemId,
-        platform: 'YOUTUBE',
-        mediaType: 'video',
-      },
-    })
-
+    // Track YouTube URL for embedding (may come from existing post or new upload)
     let youtubeVideoUrl: string | null = null
-    if (!existingYoutubePost) {
-      const youtubeConfigured = await isYouTubeConfigured()
-      if (youtubeConfigured) {
-        console.log('[VideoStatus] Uploading video to YouTube...')
+    let gcsUrl: string | null = video?.videoUrl || null
+
+    // Only run video-related steps if we have a video URL
+    if (videoUrl) {
+      // Step 1: Upload to GCS if not already done
+      if (!gcsUrl?.includes('storage.googleapis.com')) {
+        console.log('[VideoStatus] Uploading video to GCS...')
         try {
-          const youtubeResult = await uploadVideoFromUrl(gcsUrl || videoUrl, {
-            title: contentItem.blogPost?.title || contentItem.paaQuestion,
-            description: generateVideoDescription({
-              paaQuestion: contentItem.paaQuestion,
-              clientBlogUrl: contentItem.blogPost?.wordpressUrl || '',
-              wrhqBlogUrl: '',
-              googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
-              wrhqDirectoryUrl: contentItem.client.wrhqDirectoryUrl || undefined,
-              podbeanUrl: contentItem.podcast?.podbeanUrl || undefined,
-              businessName: contentItem.client.businessName,
-              city: contentItem.client.city,
-              state: contentItem.client.state,
-            }),
-            tags: generateVideoTags({
-              businessName: contentItem.client.businessName,
-              city: contentItem.client.city,
-              state: contentItem.client.state,
-              paaQuestion: contentItem.paaQuestion,
-            }),
-            playlistId: contentItem.client.wrhqYoutubePlaylistId || undefined,
-            privacyStatus: 'public',
-          })
+          const videoFilename = `videos/${contentItem.clientId}/short-${contentItemId}-${Date.now()}.mp4`
+          const gcsResult = await uploadFromUrl(videoUrl, videoFilename)
+          gcsUrl = gcsResult.url
 
-          youtubeVideoUrl = youtubeResult.videoUrl
-
-          // Update video status
-          await prisma.video.update({
-            where: { id: video.id },
-            data: { status: 'PUBLISHED' },
-          })
-
-          // Create WRHQ social post record
-          await prisma.wRHQSocialPost.create({
-            data: {
-              contentItemId,
-              platform: 'YOUTUBE',
-              caption: contentItem.blogPost?.title || contentItem.paaQuestion,
-              hashtags: [],
-              mediaType: 'video',
-              mediaUrls: [gcsUrl || videoUrl],
-              scheduledTime: new Date(),
-              publishedUrl: youtubeResult.videoUrl,
-              status: 'PUBLISHED',
-              publishedAt: new Date(),
-            },
-          })
-
-          console.log('[VideoStatus] Video uploaded to YouTube:', youtubeResult.videoUrl)
-        } catch (youtubeError) {
-          console.error('[VideoStatus] YouTube upload failed:', youtubeError)
+          if (video) {
+            await prisma.video.update({
+              where: { id: video.id },
+              data: {
+                videoUrl: gcsUrl,
+                thumbnailUrl: thumbnailUrl,
+                duration: duration,
+                status: 'READY',
+              },
+            })
+          }
+          console.log('[VideoStatus] Video uploaded to GCS:', gcsUrl)
+        } catch (gcsError) {
+          console.error('[VideoStatus] GCS upload failed:', gcsError)
+          // Continue with Creatify URL
+          gcsUrl = videoUrl
         }
       }
-    } else {
-      youtubeVideoUrl = existingYoutubePost.publishedUrl
-    }
 
-    // Step 3: Post to WRHQ TikTok and Instagram via Late
-    const wrhqVideoAccountIds = await getWRHQLateAccountIds()
-    const VIDEO_PLATFORMS = ['tiktok', 'instagram'] as const
-
-    for (const platform of VIDEO_PLATFORMS) {
-      const platformUpper = platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM'
-      const existingPost = await prisma.wRHQSocialPost.findFirst({
+      // Step 2: Upload to YouTube if configured and not already done
+      const existingYoutubePost = await prisma.wRHQSocialPost.findFirst({
         where: {
           contentItemId,
-          platform: platformUpper,
+          platform: 'YOUTUBE',
           mediaType: 'video',
         },
       })
 
-      if (existingPost) continue // Already posted
+      if (!existingYoutubePost) {
+        const youtubeConfigured = await isYouTubeConfigured()
+        if (youtubeConfigured) {
+          console.log('[VideoStatus] Uploading video to YouTube...')
+          try {
+            const youtubeResult = await uploadVideoFromUrl(gcsUrl || videoUrl, {
+              title: contentItem.blogPost?.title || contentItem.paaQuestion,
+              description: generateVideoDescription({
+                paaQuestion: contentItem.paaQuestion,
+                clientBlogUrl: contentItem.blogPost?.wordpressUrl || '',
+                wrhqBlogUrl: '',
+                googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+                wrhqDirectoryUrl: contentItem.client.wrhqDirectoryUrl || undefined,
+                podbeanUrl: contentItem.podcast?.podbeanUrl || undefined,
+                businessName: contentItem.client.businessName,
+                city: contentItem.client.city,
+                state: contentItem.client.state,
+              }),
+              tags: generateVideoTags({
+                businessName: contentItem.client.businessName,
+                city: contentItem.client.city,
+                state: contentItem.client.state,
+                paaQuestion: contentItem.paaQuestion,
+              }),
+              playlistId: contentItem.client.wrhqYoutubePlaylistId || undefined,
+              privacyStatus: 'public',
+            })
 
-      const accountId = wrhqVideoAccountIds[platform]
-      if (!accountId) {
-        console.log(`[VideoStatus] WRHQ ${platform} not configured - skipping`)
-        continue
+            youtubeVideoUrl = youtubeResult.videoUrl
+
+            // Update video status
+            if (video) {
+              await prisma.video.update({
+                where: { id: video.id },
+                data: { status: 'PUBLISHED' },
+              })
+            }
+
+            // Create WRHQ social post record
+            await prisma.wRHQSocialPost.create({
+              data: {
+                contentItemId,
+                platform: 'YOUTUBE',
+                caption: contentItem.blogPost?.title || contentItem.paaQuestion,
+                hashtags: [],
+                mediaType: 'video',
+                mediaUrls: [gcsUrl || videoUrl],
+                scheduledTime: new Date(),
+                publishedUrl: youtubeResult.videoUrl,
+                status: 'PUBLISHED',
+                publishedAt: new Date(),
+              },
+            })
+
+            console.log('[VideoStatus] Video uploaded to YouTube:', youtubeResult.videoUrl)
+          } catch (youtubeError) {
+            console.error('[VideoStatus] YouTube upload failed:', youtubeError)
+          }
+        }
+      } else {
+        youtubeVideoUrl = existingYoutubePost.publishedUrl
       }
 
-      const videoCaption = `${contentItem.blogPost?.title || contentItem.paaQuestion}\n\n${contentItem.client.businessName} in ${contentItem.client.city}, ${contentItem.client.state} answers: "${contentItem.paaQuestion}"\n\n#AutoGlass #WindshieldRepair #${contentItem.client.city.replace(/\s+/g, '')} #CarCare`
+      // Step 3: Post to WRHQ TikTok and Instagram via Late
+      const wrhqVideoAccountIds = await getWRHQLateAccountIds()
+      const VIDEO_PLATFORMS = ['tiktok', 'instagram'] as const
 
-      try {
-        console.log(`[VideoStatus] Posting video to WRHQ ${platform}...`)
-        const postResult = await postNowAndCheckStatus({
-          accountId,
-          platform: platform as 'tiktok' | 'instagram',
-          caption: videoCaption,
-          mediaUrls: [gcsUrl || videoUrl],
-          mediaType: 'video',
-        })
-
-        await prisma.wRHQSocialPost.create({
-          data: {
+      for (const platform of VIDEO_PLATFORMS) {
+        const platformUpper = platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM'
+        const existingPost = await prisma.wRHQSocialPost.findFirst({
+          where: {
             contentItemId,
-            platform: platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM',
-            caption: videoCaption,
-            hashtags: ['AutoGlass', 'WindshieldRepair', contentItem.client.city.replace(/\s+/g, ''), 'CarCare'],
+            platform: platformUpper,
             mediaType: 'video',
-            mediaUrls: [gcsUrl || videoUrl],
-            scheduledTime: new Date(),
-            getlatePostId: postResult.postId,
-            publishedUrl: postResult.platformPostUrl,
-            status: postResult.status === 'published' ? 'PUBLISHED' : postResult.status === 'failed' ? 'FAILED' : 'PROCESSING',
-            publishedAt: postResult.status === 'published' ? new Date() : undefined,
           },
         })
 
-        console.log(`[VideoStatus] Video posted to WRHQ ${platform}:`, postResult.status)
-      } catch (postError) {
-        const errorMsg = postError instanceof Error ? postError.message : String(postError)
-        console.error(`[VideoStatus] Failed to post to ${platform}:`, errorMsg)
+        if (existingPost) continue // Already posted
 
-        // Save failed post record
+        const accountId = wrhqVideoAccountIds[platform]
+        if (!accountId) {
+          console.log(`[VideoStatus] WRHQ ${platform} not configured - skipping`)
+          continue
+        }
+
+        const videoCaption = `${contentItem.blogPost?.title || contentItem.paaQuestion}\n\n${contentItem.client.businessName} in ${contentItem.client.city}, ${contentItem.client.state} answers: "${contentItem.paaQuestion}"\n\n#AutoGlass #WindshieldRepair #${contentItem.client.city.replace(/\s+/g, '')} #CarCare`
+
         try {
+          console.log(`[VideoStatus] Posting video to WRHQ ${platform}...`)
+          const postResult = await postNowAndCheckStatus({
+            accountId,
+            platform: platform as 'tiktok' | 'instagram',
+            caption: videoCaption,
+            mediaUrls: [gcsUrl || videoUrl],
+            mediaType: 'video',
+          })
+
           await prisma.wRHQSocialPost.create({
             data: {
               contentItemId,
@@ -294,17 +276,54 @@ async function completeRemainingPipeline(contentItemId: string, videoUrl: string
               mediaType: 'video',
               mediaUrls: [gcsUrl || videoUrl],
               scheduledTime: new Date(),
-              status: 'FAILED',
-              errorMessage: errorMsg.substring(0, 500),
+              getlatePostId: postResult.postId,
+              publishedUrl: postResult.platformPostUrl,
+              status: postResult.status === 'published' ? 'PUBLISHED' : postResult.status === 'failed' ? 'FAILED' : 'PROCESSING',
+              publishedAt: postResult.status === 'published' ? new Date() : undefined,
             },
           })
-        } catch (dbError) {
-          console.error('[VideoStatus] Failed to save failed post record:', dbError)
+
+          console.log(`[VideoStatus] Video posted to WRHQ ${platform}:`, postResult.status)
+        } catch (postError) {
+          const errorMsg = postError instanceof Error ? postError.message : String(postError)
+          console.error(`[VideoStatus] Failed to post to ${platform}:`, errorMsg)
+
+          // Save failed post record
+          try {
+            await prisma.wRHQSocialPost.create({
+              data: {
+                contentItemId,
+                platform: platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM',
+                caption: videoCaption,
+                hashtags: ['AutoGlass', 'WindshieldRepair', contentItem.client.city.replace(/\s+/g, ''), 'CarCare'],
+                mediaType: 'video',
+                mediaUrls: [gcsUrl || videoUrl],
+                scheduledTime: new Date(),
+                status: 'FAILED',
+                errorMessage: errorMsg.substring(0, 500),
+              },
+            })
+          } catch (dbError) {
+            console.error('[VideoStatus] Failed to save failed post record:', dbError)
+          }
         }
+      }
+    } else {
+      console.log('[VideoStatus] No video URL - skipping video upload steps, proceeding to schema')
+      // Check if there's an existing YouTube post we should use for embedding
+      const existingYoutubePost = await prisma.wRHQSocialPost.findFirst({
+        where: {
+          contentItemId,
+          platform: 'YOUTUBE',
+          mediaType: 'video',
+        },
+      })
+      if (existingYoutubePost?.publishedUrl) {
+        youtubeVideoUrl = existingYoutubePost.publishedUrl
       }
     }
 
-    // Step 4: Run schema generation and embedding
+    // Step 4: Run schema generation and embedding (runs regardless of video status)
     const blogPost = contentItem.blogPost
     if (blogPost && blogPost.wordpressPostId && contentItem.client.wordpressUrl) {
       console.log('[VideoStatus] Starting schema generation and embedding...')
@@ -341,7 +360,7 @@ async function completeRemainingPipeline(contentItemId: string, videoUrl: string
             paaQuestion: contentItem.paaQuestion,
           },
           podcast: contentItem.podcast ? { audioUrl: contentItem.podcast.audioUrl, duration: contentItem.podcast.duration } : undefined,
-          video: { videoUrl: gcsUrl || videoUrl, thumbnailUrl, duration },
+          video: (gcsUrl || videoUrl) ? { videoUrl: gcsUrl || videoUrl!, thumbnailUrl, duration } : undefined,
         })
 
         // Save schema to blog post
@@ -574,7 +593,21 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
             data: { shortVideoStatus: 'failed' },
           })
 
-          return NextResponse.json({ status: 'failed' })
+          // Still run schema generation even if video failed
+          // Check if schema needs to be generated
+          const contentItemForSchema = await prisma.contentItem.findUnique({
+            where: { id },
+            select: { schemaGenerated: true },
+          })
+
+          if (contentItemForSchema && !contentItemForSchema.schemaGenerated) {
+            console.log('[VideoStatus] Video failed but still running schema generation')
+            after(async () => {
+              await completeRemainingPipeline(id, null, null, null)
+            })
+          }
+
+          return NextResponse.json({ status: 'failed', message: 'Video failed, running schema generation...' })
         }
 
         // Still processing
