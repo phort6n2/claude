@@ -15,7 +15,6 @@ import {
   ChevronRight,
   RefreshCw,
   AlertCircle,
-  CheckCircle,
   Eye,
   Trash2,
   FileText,
@@ -87,18 +86,6 @@ interface Client {
   businessName: string
 }
 
-interface StatusCounts {
-  all: number
-  draft: number
-  scheduled: number
-  generating: number
-  review: number
-  approved: number
-  published: number
-  failed: number
-  needsAttention: number
-}
-
 export default function ContentCalendarPage() {
   const [view, setView] = useState<ViewMode>('list')
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -106,21 +93,9 @@ export default function ContentCalendarPage() {
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedClient, setSelectedClient] = useState<string>('all')
-  const [selectedStatus, setSelectedStatus] = useState<string>('all')
-  const [statusCounts, setStatusCounts] = useState<StatusCounts>({
-    all: 0,
-    draft: 0,
-    scheduled: 0,
-    generating: 0,
-    review: 0,
-    approved: 0,
-    published: 0,
-    failed: 0,
-    needsAttention: 0,
-  })
 
-  // Fetch all content for status counts
-  const fetchAllContent = useCallback(async () => {
+  const fetchContent = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true)
     try {
       const params = new URLSearchParams()
       if (selectedClient !== 'all') params.append('clientId', selectedClient)
@@ -128,56 +103,17 @@ export default function ContentCalendarPage() {
       const response = await fetch(`/api/content?${params}`)
       const data = await response.json()
 
-      // Calculate status counts
-      const counts: StatusCounts = {
-        all: data.length,
-        draft: data.filter((i: ContentItem) => i.status === 'DRAFT').length,
-        scheduled: data.filter((i: ContentItem) => i.status === 'SCHEDULED').length,
-        generating: data.filter((i: ContentItem) => i.status === 'GENERATING').length,
-        review: data.filter((i: ContentItem) => i.status === 'REVIEW').length,
-        approved: data.filter((i: ContentItem) => i.status === 'APPROVED').length,
-        published: data.filter((i: ContentItem) => i.status === 'PUBLISHED').length,
-        failed: data.filter((i: ContentItem) => i.status === 'FAILED').length,
-        needsAttention: data.filter((i: ContentItem) => i.needsAttention).length,
-      }
-      setStatusCounts(counts)
-    } catch (error) {
-      console.error('Failed to fetch all content:', error)
-    }
-  }, [selectedClient])
-
-  const fetchContent = useCallback(async (showLoading = true) => {
-    if (showLoading) setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (selectedClient !== 'all') params.append('clientId', selectedClient)
-      if (selectedStatus !== 'all' && selectedStatus !== 'needsAttention') {
-        params.append('status', selectedStatus)
-      }
-
-      const response = await fetch(`/api/content?${params}`)
-      let data = await response.json()
-
-      // Filter for needsAttention locally
-      if (selectedStatus === 'needsAttention') {
-        data = data.filter((i: ContentItem) => i.needsAttention)
-      }
-
       setContentItems(data)
     } catch (error) {
       console.error('Failed to fetch content:', error)
     } finally {
       if (showLoading) setLoading(false)
     }
-  }, [selectedClient, selectedStatus])
+  }, [selectedClient])
 
   useEffect(() => {
     fetchContent()
   }, [fetchContent])
-
-  useEffect(() => {
-    fetchAllContent()
-  }, [fetchAllContent])
 
   useEffect(() => {
     fetch('/api/clients')
@@ -193,11 +129,10 @@ export default function ContentCalendarPage() {
 
     const interval = setInterval(() => {
       fetchContent(false) // Silent refresh - no loading indicator
-      fetchAllContent()
     }, 10000) // Refresh every 10 seconds
 
     return () => clearInterval(interval)
-  }, [contentItems, fetchContent, fetchAllContent])
+  }, [contentItems, fetchContent])
 
   const handleDeleteContent = async (id: string, question: string) => {
     if (!confirm(`Delete this content item?\n\n"${question.substring(0, 60)}${question.length > 60 ? '...' : ''}"\n\nThis cannot be undone.`)) {
@@ -212,8 +147,6 @@ export default function ContentCalendarPage() {
       if (response.ok) {
         // Remove from local state
         setContentItems(prev => prev.filter(item => item.id !== id))
-        // Refresh counts
-        fetchAllContent()
       }
     } catch (error) {
       console.error('Failed to delete content:', error)
@@ -571,7 +504,7 @@ export default function ContentCalendarPage() {
             ))}
           </select>
 
-          <Button variant="outline" size="sm" onClick={() => { fetchContent(); fetchAllContent(); }}>
+          <Button variant="outline" size="sm" onClick={() => fetchContent()}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -592,30 +525,6 @@ export default function ContentCalendarPage() {
       </div>
     </div>
   )
-}
-
-// Calculate step completion for an item
-function getStepCompletion(item: ContentItem): { completed: number; total: number; nextStep: string | null; isComplete: boolean } {
-  const steps = [
-    { name: 'Blog', done: item.blogGenerated && item.blogPost?.wordpressPostId },
-    { name: 'Images', done: item.imagesGenerated && item.imagesApproved === 'APPROVED' },
-    { name: 'Social', done: item.socialGenerated && item.socialPosts?.some(p => p.publishedUrl) },
-    { name: 'Podcast', done: item.podcastGenerated && item.podcast?.podbeanUrl },
-    { name: 'Short Video', done: item.shortVideoGenerated && item.shortFormVideos?.some(v => v.publishedUrls && Object.keys(v.publishedUrls).length > 0) },
-    { name: 'Long Video', done: !!item.longformVideoUrl },
-    { name: 'Schema', done: item.schemaGenerated && item.blogPost?.schemaJson },
-    { name: 'Embed', done: item.podcastAddedToPost || item.shortVideoAddedToPost || item.longVideoAddedToPost },
-  ]
-
-  const completed = steps.filter(s => s.done).length
-  const nextStep = steps.find(s => !s.done)?.name || null
-
-  return {
-    completed,
-    total: 8,
-    nextStep,
-    isComplete: completed === 8,
-  }
 }
 
 function ContentTypeIcon({
