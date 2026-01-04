@@ -201,12 +201,14 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   const [paaMessage, setPaaMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [loadingPaas, setLoadingPaas] = useState(false)
   const [existingPaaCount, setExistingPaaCount] = useState(0)
+  const [existingPaaQuestions, setExistingPaaQuestions] = useState<Set<string>>(new Set())
 
   // Google PAA fetch state
   const [fetchingGooglePaas, setFetchingGooglePaas] = useState(false)
   const [fetchedPaas, setFetchedPaas] = useState<FetchedPAA[]>([])
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [fetchCost, setFetchCost] = useState<number | null>(null)
+  const [duplicatesSkipped, setDuplicatesSkipped] = useState(0)
 
   // Load Podbean podcasts
   useEffect(() => {
@@ -266,7 +268,11 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       .then((data) => {
         if (data.paas && Array.isArray(data.paas)) {
           setExistingPaaCount(data.paas.length)
-          // Don't auto-populate - let user add new ones or view existing
+          // Store normalized questions for duplicate checking
+          const questions = new Set<string>(
+            data.paas.map((p: { question: string }) => p.question.toLowerCase().trim())
+          )
+          setExistingPaaQuestions(questions)
         }
       })
       .catch(() => {})
@@ -509,6 +515,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
     setFetchError(null)
     setFetchedPaas([])
     setFetchCost(null)
+    setDuplicatesSkipped(0)
 
     try {
       const response = await fetch(`/api/clients/${client.id}/fetch-paas`, {
@@ -517,7 +524,24 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       const data = await response.json()
 
       if (response.ok) {
-        setFetchedPaas(data.paas.map((paa: { original: string; formatted: string; answer?: string; source?: string }) => ({
+        // Get current questions from textarea for duplicate checking
+        const textareaQuestions = new Set(
+          paaText.split('\n')
+            .map(l => l.trim().toLowerCase())
+            .filter(l => l.length > 0)
+        )
+
+        // Filter out duplicates
+        let skipped = 0
+        const newPaas = data.paas.filter((paa: { formatted: string }) => {
+          const normalized = paa.formatted.toLowerCase().trim()
+          const isDuplicate = existingPaaQuestions.has(normalized) || textareaQuestions.has(normalized)
+          if (isDuplicate) skipped++
+          return !isDuplicate
+        })
+
+        setDuplicatesSkipped(skipped)
+        setFetchedPaas(newPaas.map((paa: { original: string; formatted: string; answer?: string; source?: string }) => ({
           ...paa,
           selected: true, // Select all by default
         })))
@@ -1552,80 +1576,95 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                   )}
 
                   {/* Fetched Results */}
-                  {fetchedPaas.length > 0 && (
+                  {(fetchedPaas.length > 0 || duplicatesSkipped > 0) && (
                     <div className="mt-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-blue-900">
-                          Found {fetchedPaas.length} questions
+                          Found {fetchedPaas.length} new question{fetchedPaas.length !== 1 ? 's' : ''}
+                          {duplicatesSkipped > 0 && (
+                            <span className="ml-2 text-xs text-amber-600">
+                              ({duplicatesSkipped} duplicate{duplicatesSkipped !== 1 ? 's' : ''} skipped)
+                            </span>
+                          )}
                           {fetchCost !== null && (
                             <span className="ml-2 text-xs text-gray-500">
                               (API cost: ${fetchCost.toFixed(4)})
                             </span>
                           )}
                         </span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={selectAllPaas}
-                            className="text-xs text-blue-600 hover:underline"
-                          >
-                            Select all
-                          </button>
-                          <span className="text-gray-300">|</span>
-                          <button
-                            onClick={deselectAllPaas}
-                            className="text-xs text-blue-600 hover:underline"
-                          >
-                            Deselect all
-                          </button>
-                        </div>
+                        {fetchedPaas.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={selectAllPaas}
+                              className="text-xs text-blue-600 hover:underline"
+                            >
+                              Select all
+                            </button>
+                            <span className="text-gray-300">|</span>
+                            <button
+                              onClick={deselectAllPaas}
+                              className="text-xs text-blue-600 hover:underline"
+                            >
+                              Deselect all
+                            </button>
+                          </div>
+                        )}
                       </div>
 
-                      <div className="max-h-64 overflow-y-auto space-y-2 bg-white rounded-lg border p-2">
-                        {fetchedPaas.map((paa, index) => (
-                          <label
-                            key={index}
-                            className={`flex items-start gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
-                              paa.selected ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50 border border-transparent'
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={paa.selected}
-                              onChange={() => togglePaaSelection(index)}
-                              className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm text-gray-900">{paa.formatted}</div>
-                              {paa.original !== paa.formatted && (
-                                <div className="text-xs text-gray-400 mt-0.5">
-                                  Original: {paa.original}
+                      {fetchedPaas.length > 0 ? (
+                        <>
+                          <div className="max-h-64 overflow-y-auto space-y-2 bg-white rounded-lg border p-2">
+                            {fetchedPaas.map((paa, index) => (
+                              <label
+                                key={index}
+                                className={`flex items-start gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                                  paa.selected ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50 border border-transparent'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={paa.selected}
+                                  onChange={() => togglePaaSelection(index)}
+                                  className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm text-gray-900">{paa.formatted}</div>
+                                  {paa.original !== paa.formatted && (
+                                    <div className="text-xs text-gray-400 mt-0.5">
+                                      Original: {paa.original}
+                                    </div>
+                                  )}
+                                  {paa.source && (
+                                    <a
+                                      href={paa.source}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-xs text-blue-500 hover:underline mt-1"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <ExternalLink className="h-3 w-3" />
+                                      Source
+                                    </a>
+                                  )}
                                 </div>
-                              )}
-                              {paa.source && (
-                                <a
-                                  href={paa.source}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 text-xs text-blue-500 hover:underline mt-1"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <ExternalLink className="h-3 w-3" />
-                                  Source
-                                </a>
-                              )}
-                            </div>
-                          </label>
-                        ))}
-                      </div>
+                              </label>
+                            ))}
+                          </div>
 
-                      <Button
-                        onClick={addSelectedPaasToTextarea}
-                        disabled={!fetchedPaas.some(p => p.selected)}
-                        className="w-full"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add {fetchedPaas.filter(p => p.selected).length} Selected Questions
-                      </Button>
+                          <Button
+                            onClick={addSelectedPaasToTextarea}
+                            disabled={!fetchedPaas.some(p => p.selected)}
+                            className="w-full"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add {fetchedPaas.filter(p => p.selected).length} Selected Questions
+                          </Button>
+                        </>
+                      ) : duplicatesSkipped > 0 && (
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                          All {duplicatesSkipped} questions from Google are already in your queue.
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
