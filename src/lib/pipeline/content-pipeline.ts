@@ -32,6 +32,46 @@ const TIMEOUTS = {
 
 // ============ Embed Helper Functions (matching embed-all-media route) ============
 
+function generateGoogleMapsEmbed(params: {
+  businessName: string
+  streetAddress: string
+  city: string
+  state: string
+  postalCode: string
+  googleMapsUrl?: string | null
+}): string {
+  // Create a search query from the address
+  const addressQuery = encodeURIComponent(
+    `${params.businessName}, ${params.streetAddress}, ${params.city}, ${params.state} ${params.postalCode}`
+  )
+
+  // Use the embedded maps URL format
+  const embedUrl = `https://www.google.com/maps?q=${addressQuery}&output=embed`
+
+  return `<!-- Google Maps Embed -->
+<div class="google-maps-embed" style="margin: 30px 0;">
+  <h3 style="margin: 0 0 15px 0; font-size: 1.25rem;">📍 Find ${params.businessName}</h3>
+  <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+    <iframe
+      src="${embedUrl}"
+      width="100%"
+      height="100%"
+      style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
+      allowfullscreen=""
+      loading="lazy"
+      referrerpolicy="no-referrer-when-downgrade"
+      title="Map showing ${params.businessName} location">
+    </iframe>
+  </div>
+  ${params.googleMapsUrl ? `
+  <p style="margin: 15px 0 0 0; text-align: center;">
+    <a href="${params.googleMapsUrl}" target="_blank" rel="noopener" style="color: #4285f4; text-decoration: none; font-weight: 500;">
+      Open in Google Maps →
+    </a>
+  </p>` : ''}
+</div>`
+}
+
 function generateSchemaEmbed(schemaJson: string): string {
   try {
     const schema = JSON.parse(schemaJson)
@@ -1132,6 +1172,9 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         fullContent = fullContent.replace(/<div class="video-container"[\s\S]*?<\/div>/g, '')
         fullContent = fullContent.replace(/<!-- Podcast Episode -->[\s\S]*?<\/div>/g, '')
         fullContent = fullContent.replace(/<div class="podcast-embed"[\s\S]*?<\/div>/g, '')
+        fullContent = fullContent.replace(/<!-- Google Maps Embed -->[\s\S]*?<\/div>\s*<\/div>/g, '')
+        fullContent = fullContent.replace(/<div class="google-maps-embed"[\s\S]*?<\/div>\s*<\/div>/g, '')
+        fullContent = fullContent.replace(/<div class="google-maps-link"[\s\S]*?<\/div>/g, '') // Remove old link-only version
 
         const embedded: string[] = []
 
@@ -1157,6 +1200,20 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           embedded.push('podcast')
         }
 
+        // Add Google Maps embed at the very end
+        if (contentItem.client.streetAddress && contentItem.client.city && contentItem.client.state) {
+          const mapsEmbed = generateGoogleMapsEmbed({
+            businessName: contentItem.client.businessName,
+            streetAddress: contentItem.client.streetAddress,
+            city: contentItem.client.city,
+            state: contentItem.client.state,
+            postalCode: contentItem.client.postalCode,
+            googleMapsUrl: contentItem.client.googleMapsUrl,
+          })
+          fullContent = fullContent + mapsEmbed
+          embedded.push('google-maps')
+        }
+
         // Update WordPress with all embeds
         await updatePost(wpCredentials, blogPostForEmbed.wordpressPostId, { content: fullContent })
         log(ctx, '✅ All media embedded in WordPress', { embedded })
@@ -1173,6 +1230,45 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             where: { id: contentItemId },
             data: { shortVideoAddedToPost: true, shortVideoAddedAt: new Date() },
           })
+        }
+      }
+
+      // Also add Google Maps embed to WRHQ blog post if it exists
+      const wrhqBlogPost = await prisma.wRHQBlogPost.findUnique({ where: { contentItemId } })
+      if (wrhqBlogPost && wrhqBlogPost.wordpressPostId && wrhqConfig.wordpress.isConfigured) {
+        try {
+          const wrhqWpCredentials = {
+            url: wrhqConfig.wordpress.url!,
+            username: wrhqConfig.wordpress.username!,
+            password: wrhqConfig.wordpress.appPassword!,
+            isDecrypted: true,
+          }
+
+          const wrhqCurrentPost = await getPost(wrhqWpCredentials, wrhqBlogPost.wordpressPostId)
+          let wrhqFullContent = wrhqCurrentPost.content
+
+          // Remove existing Google Maps embeds
+          wrhqFullContent = wrhqFullContent.replace(/<!-- Google Maps Embed -->[\s\S]*?<\/div>\s*<\/div>/g, '')
+          wrhqFullContent = wrhqFullContent.replace(/<div class="google-maps-embed"[\s\S]*?<\/div>\s*<\/div>/g, '')
+
+          // Add Google Maps embed to WRHQ blog post
+          if (contentItem.client.streetAddress && contentItem.client.city && contentItem.client.state) {
+            const wrhqMapsEmbed = generateGoogleMapsEmbed({
+              businessName: contentItem.client.businessName,
+              streetAddress: contentItem.client.streetAddress,
+              city: contentItem.client.city,
+              state: contentItem.client.state,
+              postalCode: contentItem.client.postalCode,
+              googleMapsUrl: contentItem.client.googleMapsUrl,
+            })
+            wrhqFullContent = wrhqFullContent + wrhqMapsEmbed
+
+            await updatePost(wrhqWpCredentials, wrhqBlogPost.wordpressPostId, { content: wrhqFullContent })
+            log(ctx, '✅ Google Maps embed added to WRHQ blog')
+          }
+        } catch (wrhqEmbedError) {
+          logError(ctx, 'Failed to add Google Maps embed to WRHQ blog', wrhqEmbedError)
+          // Non-critical, continue
         }
       }
 
