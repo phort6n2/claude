@@ -632,7 +632,175 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       log(ctx, '⏭️ WRHQ not configured - skipping')
     }
 
-    // ============ STEP 4: Generate Podcast ============
+    // ============ STEP 4: Schedule Social Posts ============
+    // (Moved BEFORE podcast/video to match manual flow)
+    ctx.step = 'social'
+    await updatePipelineStep(contentItemId, 'social')
+    log(ctx, '📱 Starting social scheduling...')
+    await logAction(ctx, 'social_schedule', 'STARTED')
+
+    const blogPostRecord = await prisma.blogPost.findUnique({ where: { contentItemId } })
+    const clientBlogUrl = blogPostRecord?.wordpressUrl || ''
+
+    const socialImages = await prisma.image.findMany({
+      where: {
+        contentItemId,
+        imageType: { in: ['FACEBOOK', 'INSTAGRAM_FEED', 'TWITTER', 'LINKEDIN', 'TIKTOK', 'BLOG_FEATURED'] },
+      },
+    })
+    const mediaUrls = socialImages.length > 0
+      ? socialImages.map(i => i.gcsUrl)
+      : (await prisma.image.findMany({ where: { contentItemId, imageType: 'BLOG_FEATURED' } })).map(i => i.gcsUrl)
+
+    // Client Social Posts
+    const socialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
+    if (contentItem.client.socialPlatforms.length > 0 && socialAccountIds && Object.keys(socialAccountIds).length > 0) {
+      results.social.skipped = false
+      log(ctx, 'Scheduling client social posts...', { platforms: contentItem.client.socialPlatforms })
+
+      try {
+        const clientCaptions: Record<string, { caption: string; hashtags: string[]; firstComment: string }> = {}
+
+        for (const platform of contentItem.client.socialPlatforms) {
+          const captionResult = await withTimeout(
+            generateSocialCaption({
+              platform: platform as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
+              blogTitle: blogResult!.title,
+              blogExcerpt: blogResult!.excerpt,
+              businessName: contentItem.client.businessName,
+              blogUrl: clientBlogUrl,
+            }),
+            TIMEOUTS.SOCIAL_CAPTION,
+            `${platform} caption generation`
+          )
+          clientCaptions[platform] = captionResult
+        }
+
+        const clientSocialBaseTime = new Date()
+        clientSocialBaseTime.setHours(clientSocialBaseTime.getHours() + 2)
+
+        const clientScheduledPosts = await withTimeout(
+          scheduleSocialPosts({
+            accountIds: socialAccountIds,
+            platforms: contentItem.client.socialPlatforms as ('facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram')[],
+            captions: clientCaptions,
+            mediaUrls,
+            mediaType: 'image',
+            baseTime: clientSocialBaseTime,
+          }),
+          TIMEOUTS.SOCIAL_SCHEDULE,
+          'Client social scheduling'
+        )
+
+        for (const post of clientScheduledPosts) {
+          await prisma.socialPost.create({
+            data: {
+              contentItemId,
+              clientId: contentItem.clientId,
+              platform: post.platform.toUpperCase() as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
+              caption: clientCaptions[post.platform]?.caption || '',
+              hashtags: clientCaptions[post.platform]?.hashtags || [],
+              firstComment: clientCaptions[post.platform]?.firstComment,
+              scheduledTime: post.scheduledTime,
+              getlatePostId: post.postId,
+              status: 'SCHEDULED',
+            },
+          })
+        }
+
+        results.social = { success: true }
+        log(ctx, '✅ Client social posts scheduled', { count: clientScheduledPosts.length })
+
+        // Mark social as generated
+        await prisma.contentItem.update({
+          where: { id: contentItemId },
+          data: { socialGenerated: true },
+        })
+      } catch (error) {
+        logError(ctx, 'Client social scheduling failed', error)
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        results.social = { success: false, error: errorMessage }
+      }
+    } else {
+      log(ctx, '⏭️ Client social not configured - skipping')
+    }
+
+    // WRHQ Social Posts
+    const wrhqLateAccountIds = await getWRHQLateAccountIds()
+    if (Object.keys(wrhqLateAccountIds).length > 0 && wrhqBlogUrl) {
+      log(ctx, 'Scheduling WRHQ social posts...')
+      await logAction(ctx, 'wrhq_social_schedule', 'STARTED')
+
+      try {
+        const wrhqPlatforms = wrhqConfig.socialMedia.enabledPlatforms.filter(
+          p => wrhqLateAccountIds[p]
+        ) as ('facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram')[]
+
+        const wrhqCaptions: Record<string, { caption: string; hashtags: string[]; firstComment: string }> = {}
+        const VIDEO_PLATFORMS = ['tiktok', 'youtube']
+        const filteredPlatforms = wrhqPlatforms.filter(p => !VIDEO_PLATFORMS.includes(p))
+
+        for (const platform of filteredPlatforms) {
+          const captionResult = await withTimeout(
+            generateWRHQSocialCaption({
+              platform,
+              clientBusinessName: contentItem.client.businessName,
+              clientCity: contentItem.client.city,
+              clientState: contentItem.client.state,
+              paaQuestion: contentItem.paaQuestion,
+              wrhqBlogUrl: wrhqBlogUrl,
+              clientBlogUrl,
+              wrhqDirectoryUrl: contentItem.client.wrhqDirectoryUrl || undefined,
+              googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+              clientWebsite: contentItem.client.wordpressUrl || undefined,
+            }),
+            TIMEOUTS.SOCIAL_CAPTION,
+            `WRHQ ${platform} caption generation`
+          )
+          wrhqCaptions[platform] = captionResult
+        }
+
+        const wrhqSocialBaseTime = new Date()
+        wrhqSocialBaseTime.setHours(wrhqSocialBaseTime.getHours() + 6)
+
+        const wrhqScheduledPosts = await withTimeout(
+          scheduleSocialPosts({
+            accountIds: wrhqLateAccountIds,
+            platforms: filteredPlatforms,
+            captions: wrhqCaptions,
+            mediaUrls,
+            mediaType: 'image',
+            baseTime: wrhqSocialBaseTime,
+          }),
+          TIMEOUTS.SOCIAL_SCHEDULE,
+          'WRHQ social scheduling'
+        )
+
+        log(ctx, '✅ WRHQ social posts scheduled', { count: wrhqScheduledPosts.length })
+        await logAction(ctx, 'wrhq_social_schedule', 'SUCCESS', {
+          responseData: JSON.stringify({
+            scheduledPosts: wrhqScheduledPosts.length,
+            platforms: filteredPlatforms,
+          }),
+        })
+
+        // Mark WRHQ social as generated
+        await prisma.contentItem.update({
+          where: { id: contentItemId },
+          data: { wrhqSocialGenerated: true },
+        })
+      } catch (error) {
+        logError(ctx, 'WRHQ social scheduling failed', error)
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        await logAction(ctx, 'wrhq_social_schedule', 'FAILED', { errorMessage })
+      }
+    } else {
+      log(ctx, '⏭️ WRHQ social not configured or no WRHQ blog URL - skipping')
+    }
+
+    await logAction(ctx, 'social_schedule', 'SUCCESS')
+
+    // ============ STEP 5: Generate Podcast ============
     ctx.step = 'podcast'
     await updatePipelineStep(contentItemId, 'podcast')
     log(ctx, '🎙️ Starting podcast generation...')
@@ -740,7 +908,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       log(ctx, '⚠️ Continuing without podcast...')
     }
 
-    // ============ STEP 5: Generate Videos ============
+    // ============ STEP 6: Generate Videos ============
     ctx.step = 'videos'
     await updatePipelineStep(contentItemId, 'videos')
     log(ctx, '🎬 Starting video generation...')
@@ -889,169 +1057,6 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       results.videos = { success: false, error: errorMessage }
       log(ctx, '⚠️ Continuing without video...')
     }
-
-    // ============ STEP 6: Schedule Social Posts ============
-    ctx.step = 'social'
-    await updatePipelineStep(contentItemId, 'social')
-    log(ctx, '📱 Starting social scheduling...')
-    await logAction(ctx, 'social_schedule', 'STARTED')
-
-    const blogPostRecord = await prisma.blogPost.findUnique({ where: { contentItemId } })
-    const clientBlogUrl = blogPostRecord?.wordpressUrl || ''
-
-    const socialImages = await prisma.image.findMany({
-      where: {
-        contentItemId,
-        imageType: { in: ['FACEBOOK', 'INSTAGRAM_FEED', 'TWITTER', 'LINKEDIN', 'TIKTOK'] },
-      },
-    })
-    const mediaUrls = socialImages.map(i => i.gcsUrl)
-
-    // Client Social Posts
-    const socialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
-    if (contentItem.client.socialPlatforms.length > 0 && socialAccountIds && Object.keys(socialAccountIds).length > 0) {
-      results.social.skipped = false
-      log(ctx, 'Scheduling client social posts...', { platforms: contentItem.client.socialPlatforms })
-
-      try {
-        const clientCaptions: Record<string, { caption: string; hashtags: string[]; firstComment: string }> = {}
-
-        for (const platform of contentItem.client.socialPlatforms) {
-          const captionResult = await withTimeout(
-            generateSocialCaption({
-              platform: platform as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
-              blogTitle: blogResult!.title,
-              blogExcerpt: blogResult!.excerpt,
-              businessName: contentItem.client.businessName,
-              blogUrl: clientBlogUrl,
-            }),
-            TIMEOUTS.SOCIAL_CAPTION,
-            `${platform} caption generation`
-          )
-          clientCaptions[platform] = captionResult
-        }
-
-        const clientSocialBaseTime = new Date()
-        clientSocialBaseTime.setHours(clientSocialBaseTime.getHours() + 2)
-
-        const clientScheduledPosts = await withTimeout(
-          scheduleSocialPosts({
-            accountIds: socialAccountIds,
-            platforms: contentItem.client.socialPlatforms as ('facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram')[],
-            captions: clientCaptions,
-            mediaUrls,
-            mediaType: 'image',
-            baseTime: clientSocialBaseTime,
-          }),
-          TIMEOUTS.SOCIAL_SCHEDULE,
-          'Client social scheduling'
-        )
-
-        for (const post of clientScheduledPosts) {
-          await prisma.socialPost.create({
-            data: {
-              contentItemId,
-              clientId: contentItem.clientId,
-              platform: post.platform.toUpperCase() as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
-              caption: clientCaptions[post.platform]?.caption || '',
-              hashtags: clientCaptions[post.platform]?.hashtags || [],
-              firstComment: clientCaptions[post.platform]?.firstComment,
-              scheduledTime: post.scheduledTime,
-              getlatePostId: post.postId,
-              status: 'SCHEDULED',
-            },
-          })
-        }
-
-        results.social = { success: true }
-        log(ctx, '✅ Client social posts scheduled', { count: clientScheduledPosts.length })
-
-        // Mark social as generated
-        await prisma.contentItem.update({
-          where: { id: contentItemId },
-          data: { socialGenerated: true },
-        })
-      } catch (error) {
-        logError(ctx, 'Client social scheduling failed', error)
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        results.social = { success: false, error: errorMessage }
-      }
-    } else {
-      log(ctx, '⏭️ Client social not configured - skipping')
-    }
-
-    // WRHQ Social Posts
-    const wrhqLateAccountIds = await getWRHQLateAccountIds()
-    if (Object.keys(wrhqLateAccountIds).length > 0 && wrhqBlogUrl) {
-      log(ctx, 'Scheduling WRHQ social posts...')
-      await logAction(ctx, 'wrhq_social_schedule', 'STARTED')
-
-      try {
-        const wrhqPlatforms = wrhqConfig.socialMedia.enabledPlatforms.filter(
-          p => wrhqLateAccountIds[p]
-        ) as ('facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram')[]
-
-        const wrhqCaptions: Record<string, { caption: string; hashtags: string[]; firstComment: string }> = {}
-        const VIDEO_PLATFORMS = ['tiktok', 'youtube']
-        const filteredPlatforms = wrhqPlatforms.filter(p => !VIDEO_PLATFORMS.includes(p))
-
-        for (const platform of filteredPlatforms) {
-          const captionResult = await withTimeout(
-            generateWRHQSocialCaption({
-              platform,
-              clientBusinessName: contentItem.client.businessName,
-              clientCity: contentItem.client.city,
-              clientState: contentItem.client.state,
-              paaQuestion: contentItem.paaQuestion,
-              wrhqBlogUrl: wrhqBlogUrl,
-              clientBlogUrl,
-              wrhqDirectoryUrl: contentItem.client.wrhqDirectoryUrl || undefined,
-              googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
-              clientWebsite: contentItem.client.wordpressUrl || undefined,
-            }),
-            TIMEOUTS.SOCIAL_CAPTION,
-            `WRHQ ${platform} caption generation`
-          )
-          wrhqCaptions[platform] = captionResult
-        }
-
-        const wrhqSocialBaseTime = new Date()
-        wrhqSocialBaseTime.setHours(wrhqSocialBaseTime.getHours() + 6)
-
-        const wrhqScheduledPosts = await withTimeout(
-          scheduleSocialPosts({
-            accountIds: wrhqLateAccountIds,
-            platforms: wrhqPlatforms,
-            captions: wrhqCaptions,
-            mediaUrls,
-            mediaType: 'image',
-            baseTime: wrhqSocialBaseTime,
-          }),
-          TIMEOUTS.SOCIAL_SCHEDULE,
-          'WRHQ social scheduling'
-        )
-
-        log(ctx, '✅ WRHQ social posts scheduled', { count: wrhqScheduledPosts.length })
-        await logAction(ctx, 'wrhq_social_schedule', 'SUCCESS', {
-          responseData: JSON.stringify({
-            scheduledPosts: wrhqScheduledPosts.length,
-            platforms: wrhqPlatforms,
-          }),
-        })
-
-        // Mark WRHQ social as generated
-        await prisma.contentItem.update({
-          where: { id: contentItemId },
-          data: { wrhqSocialGenerated: true },
-        })
-      } catch (error) {
-        logError(ctx, 'WRHQ social scheduling failed', error)
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        await logAction(ctx, 'wrhq_social_schedule', 'FAILED', { errorMessage })
-      }
-    }
-
-    await logAction(ctx, 'social_schedule', 'SUCCESS')
 
     // ============ STEP 7: Generate Schema & Embed All Media ============
     // This matches the manual flow's "Embed All Media" step

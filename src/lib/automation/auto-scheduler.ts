@@ -215,10 +215,15 @@ export async function autoScheduleForClient(
 
     // Trigger generation if requested
     if (triggerGeneration) {
-      // Fire and forget - generation happens asynchronously
-      triggerContentGeneration(contentItem.id).catch(err => {
-        console.error(`Failed to trigger generation for content ${contentItem.id}:`, err)
-      })
+      // IMPORTANT: Await the full pipeline to ensure it completes
+      // This runs synchronously so each step finishes before the next
+      try {
+        await triggerContentGeneration(contentItem.id)
+        console.log(`✅ Content generation completed for ${contentItem.id}`)
+      } catch (err) {
+        console.error(`❌ Content generation failed for ${contentItem.id}:`, err)
+        // Don't throw - we want to continue with other scheduled items
+      }
     }
 
     return {
