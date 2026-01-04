@@ -3,7 +3,7 @@ import { generateBlogPost, generateSocialCaption, generatePodcastScript, generat
 import { generateBothImages } from '../integrations/nano-banana'
 import { createPodcast, waitForPodcast } from '../integrations/autocontent'
 import { createShortVideo, waitForVideo } from '../integrations/creatify'
-import { scheduleSocialPosts } from '../integrations/getlate'
+import { postNowAndCheckStatus } from '../integrations/getlate'
 import { createPost, uploadMedia, updatePost, getPost } from '../integrations/wordpress'
 import { uploadFromUrl } from '../integrations/gcs'
 import { generateSchemaGraph } from './schema-markup'
@@ -682,26 +682,30 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
     const blogPostRecord = await prisma.blogPost.findUnique({ where: { contentItemId } })
     const clientBlogUrl = blogPostRecord?.wordpressUrl || ''
 
+    // Only use blog images for social posts (16:9 BLOG_FEATURED or 1:1 INSTAGRAM_FEED)
     const socialImages = await prisma.image.findMany({
       where: {
         contentItemId,
-        imageType: { in: ['FACEBOOK', 'INSTAGRAM_FEED', 'TWITTER', 'LINKEDIN', 'TIKTOK', 'BLOG_FEATURED'] },
+        imageType: { in: ['BLOG_FEATURED', 'INSTAGRAM_FEED'] },
       },
     })
-    const mediaUrls = socialImages.length > 0
-      ? socialImages.map(i => i.gcsUrl)
-      : (await prisma.image.findMany({ where: { contentItemId, imageType: 'BLOG_FEATURED' } })).map(i => i.gcsUrl)
+    const mediaUrls = socialImages.map(i => i.gcsUrl)
 
     // Client Social Posts
     const socialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
     if (contentItem.client.socialPlatforms.length > 0 && socialAccountIds && Object.keys(socialAccountIds).length > 0) {
       results.social.skipped = false
-      log(ctx, 'Scheduling client social posts...', { platforms: contentItem.client.socialPlatforms })
+      log(ctx, 'Posting client social posts...', { platforms: contentItem.client.socialPlatforms })
 
       try {
-        const clientCaptions: Record<string, { caption: string; hashtags: string[]; firstComment: string }> = {}
+        const clientPostedPosts: Array<{ platform: string; postId: string; status: string; publishedUrl?: string }> = []
 
+        // Post to each platform immediately (not scheduled)
         for (const platform of contentItem.client.socialPlatforms) {
+          const accountId = socialAccountIds[platform]
+          if (!accountId) continue
+
+          // Generate caption for this platform
           const captionResult = await withTimeout(
             generateSocialCaption({
               platform: platform as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
@@ -713,43 +717,63 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             TIMEOUTS.SOCIAL_CAPTION,
             `${platform} caption generation`
           )
-          clientCaptions[platform] = captionResult
+
+          // Format caption with hashtags
+          let fullCaption = captionResult.caption
+          if (captionResult.hashtags && captionResult.hashtags.length > 0) {
+            fullCaption = `${captionResult.caption}\n\n${captionResult.hashtags.map(h => `#${h}`).join(' ')}`
+          }
+
+          // Post immediately
+          log(ctx, `📤 Posting to ${platform}...`)
+          try {
+            const postResult = await withTimeout(
+              postNowAndCheckStatus({
+                accountId,
+                platform: platform as 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram',
+                caption: fullCaption,
+                mediaUrls,
+                mediaType: 'image',
+                firstComment: captionResult.firstComment,
+                ctaUrl: platform === 'gbp' ? clientBlogUrl : undefined,
+              }),
+              TIMEOUTS.SOCIAL_SCHEDULE,
+              `${platform} posting`
+            )
+
+            clientPostedPosts.push({
+              platform,
+              postId: postResult.postId,
+              status: postResult.status,
+              publishedUrl: postResult.platformPostUrl,
+            })
+
+            // Save to database
+            await prisma.socialPost.create({
+              data: {
+                contentItemId,
+                clientId: contentItem.clientId,
+                platform: platform.toUpperCase() as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
+                caption: captionResult.caption,
+                hashtags: captionResult.hashtags || [],
+                firstComment: captionResult.firstComment,
+                scheduledTime: new Date(),
+                getlatePostId: postResult.postId,
+                publishedUrl: postResult.platformPostUrl,
+                status: postResult.status === 'published' ? 'PUBLISHED' : postResult.status === 'failed' ? 'FAILED' : 'PROCESSING',
+                publishedAt: postResult.status === 'published' ? new Date() : undefined,
+              },
+            })
+
+            log(ctx, `✅ Posted to ${platform}`, { status: postResult.status, url: postResult.platformPostUrl })
+          } catch (platformError) {
+            logError(ctx, `Failed to post to ${platform}`, platformError)
+            // Continue with other platforms
+          }
         }
 
-        const clientSocialBaseTime = new Date()
-        clientSocialBaseTime.setHours(clientSocialBaseTime.getHours() + 2)
-
-        const clientScheduledPosts = await withTimeout(
-          scheduleSocialPosts({
-            accountIds: socialAccountIds,
-            platforms: contentItem.client.socialPlatforms as ('facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram')[],
-            captions: clientCaptions,
-            mediaUrls,
-            mediaType: 'image',
-            baseTime: clientSocialBaseTime,
-          }),
-          TIMEOUTS.SOCIAL_SCHEDULE,
-          'Client social scheduling'
-        )
-
-        for (const post of clientScheduledPosts) {
-          await prisma.socialPost.create({
-            data: {
-              contentItemId,
-              clientId: contentItem.clientId,
-              platform: post.platform.toUpperCase() as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
-              caption: clientCaptions[post.platform]?.caption || '',
-              hashtags: clientCaptions[post.platform]?.hashtags || [],
-              firstComment: clientCaptions[post.platform]?.firstComment,
-              scheduledTime: post.scheduledTime,
-              getlatePostId: post.postId,
-              status: 'SCHEDULED',
-            },
-          })
-        }
-
-        results.social = { success: true }
-        log(ctx, '✅ Client social posts scheduled', { count: clientScheduledPosts.length })
+        results.social = { success: clientPostedPosts.length > 0 }
+        log(ctx, '✅ Client social posts published', { count: clientPostedPosts.length })
 
         // Mark social as generated
         await prisma.contentItem.update({
@@ -765,22 +789,29 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       log(ctx, '⏭️ Client social not configured - skipping')
     }
 
-    // WRHQ Social Posts
+    // WRHQ Social Posts (post immediately after client posts complete)
     const wrhqLateAccountIds = await getWRHQLateAccountIds()
     if (Object.keys(wrhqLateAccountIds).length > 0 && wrhqBlogUrl) {
-      log(ctx, 'Scheduling WRHQ social posts...')
-      await logAction(ctx, 'wrhq_social_schedule', 'STARTED')
+      log(ctx, 'Posting WRHQ social posts...')
+      await logAction(ctx, 'wrhq_social_post', 'STARTED')
 
       try {
         const wrhqPlatforms = wrhqConfig.socialMedia.enabledPlatforms.filter(
           p => wrhqLateAccountIds[p]
         ) as ('facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram')[]
 
-        const wrhqCaptions: Record<string, { caption: string; hashtags: string[]; firstComment: string }> = {}
+        // Skip video platforms (TikTok, YouTube) for image posts
         const VIDEO_PLATFORMS = ['tiktok', 'youtube']
         const filteredPlatforms = wrhqPlatforms.filter(p => !VIDEO_PLATFORMS.includes(p))
 
+        const wrhqPostedPosts: Array<{ platform: string; postId: string; status: string; publishedUrl?: string }> = []
+
+        // Post to each WRHQ platform immediately
         for (const platform of filteredPlatforms) {
+          const accountId = wrhqLateAccountIds[platform]
+          if (!accountId) continue
+
+          // Generate WRHQ caption for this platform
           const captionResult = await withTimeout(
             generateWRHQSocialCaption({
               platform,
@@ -797,29 +828,48 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             TIMEOUTS.SOCIAL_CAPTION,
             `WRHQ ${platform} caption generation`
           )
-          wrhqCaptions[platform] = captionResult
+
+          // Format caption with hashtags
+          let fullCaption = captionResult.caption
+          if (captionResult.hashtags && captionResult.hashtags.length > 0) {
+            fullCaption = `${captionResult.caption}\n\n${captionResult.hashtags.map(h => `#${h}`).join(' ')}`
+          }
+
+          // Post immediately
+          log(ctx, `📤 Posting WRHQ to ${platform}...`)
+          try {
+            const postResult = await withTimeout(
+              postNowAndCheckStatus({
+                accountId,
+                platform,
+                caption: fullCaption,
+                mediaUrls,
+                mediaType: 'image',
+                firstComment: captionResult.firstComment,
+                ctaUrl: platform === 'gbp' ? wrhqBlogUrl : undefined,
+              }),
+              TIMEOUTS.SOCIAL_SCHEDULE,
+              `WRHQ ${platform} posting`
+            )
+
+            wrhqPostedPosts.push({
+              platform,
+              postId: postResult.postId,
+              status: postResult.status,
+              publishedUrl: postResult.platformPostUrl,
+            })
+
+            log(ctx, `✅ WRHQ posted to ${platform}`, { status: postResult.status, url: postResult.platformPostUrl })
+          } catch (platformError) {
+            logError(ctx, `Failed to post WRHQ to ${platform}`, platformError)
+            // Continue with other platforms
+          }
         }
 
-        const wrhqSocialBaseTime = new Date()
-        wrhqSocialBaseTime.setHours(wrhqSocialBaseTime.getHours() + 6)
-
-        const wrhqScheduledPosts = await withTimeout(
-          scheduleSocialPosts({
-            accountIds: wrhqLateAccountIds,
-            platforms: filteredPlatforms,
-            captions: wrhqCaptions,
-            mediaUrls,
-            mediaType: 'image',
-            baseTime: wrhqSocialBaseTime,
-          }),
-          TIMEOUTS.SOCIAL_SCHEDULE,
-          'WRHQ social scheduling'
-        )
-
-        log(ctx, '✅ WRHQ social posts scheduled', { count: wrhqScheduledPosts.length })
-        await logAction(ctx, 'wrhq_social_schedule', 'SUCCESS', {
+        log(ctx, '✅ WRHQ social posts published', { count: wrhqPostedPosts.length })
+        await logAction(ctx, 'wrhq_social_post', 'SUCCESS', {
           responseData: JSON.stringify({
-            scheduledPosts: wrhqScheduledPosts.length,
+            postedPosts: wrhqPostedPosts.length,
             platforms: filteredPlatforms,
           }),
         })
@@ -830,9 +880,9 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           data: { wrhqSocialGenerated: true },
         })
       } catch (error) {
-        logError(ctx, 'WRHQ social scheduling failed', error)
+        logError(ctx, 'WRHQ social posting failed', error)
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        await logAction(ctx, 'wrhq_social_schedule', 'FAILED', { errorMessage })
+        await logAction(ctx, 'wrhq_social_post', 'FAILED', { errorMessage })
       }
     } else {
       log(ctx, '⏭️ WRHQ social not configured or no WRHQ blog URL - skipping')
