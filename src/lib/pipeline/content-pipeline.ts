@@ -845,10 +845,31 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           } catch (platformError) {
             // Check if it's a rate limit error
             const errorMsg = platformError instanceof Error ? platformError.message : String(platformError)
-            if (errorMsg.toLowerCase().includes('rate') || errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('too many') || errorMsg.toLowerCase().includes('quota')) {
+            const isRateLimit = errorMsg.toLowerCase().includes('rate') || errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('too many') || errorMsg.toLowerCase().includes('quota')
+
+            if (isRateLimit) {
               log(ctx, `⚠️ ${platform} rate limit reached - skipping`, { error: errorMsg })
             } else {
               logError(ctx, `Failed to post to ${platform}`, platformError)
+            }
+
+            // Save failed post to database so user can see it in the UI
+            try {
+              await prisma.socialPost.create({
+                data: {
+                  contentItemId,
+                  clientId: contentItem.clientId,
+                  platform: platform.toUpperCase() as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
+                  caption: captionResult.caption,
+                  hashtags: captionResult.hashtags || [],
+                  firstComment: captionResult.firstComment,
+                  scheduledTime: new Date(),
+                  status: 'FAILED',
+                  errorMessage: isRateLimit ? 'Rate limit reached' : errorMsg.substring(0, 500),
+                },
+              })
+            } catch (dbError) {
+              logError(ctx, `Failed to save failed post record for ${platform}`, dbError)
             }
             // Continue with other platforms
           }
@@ -971,10 +992,32 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           } catch (platformError) {
             // Check if it's a rate limit error
             const errorMsg = platformError instanceof Error ? platformError.message : String(platformError)
-            if (errorMsg.toLowerCase().includes('rate') || errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('too many') || errorMsg.toLowerCase().includes('quota')) {
+            const isRateLimit = errorMsg.toLowerCase().includes('rate') || errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('too many') || errorMsg.toLowerCase().includes('quota')
+
+            if (isRateLimit) {
               log(ctx, `⚠️ WRHQ ${platform} rate limit reached - skipping`, { error: errorMsg })
             } else {
               logError(ctx, `Failed to post WRHQ to ${platform}`, platformError)
+            }
+
+            // Save failed post to database so user can see it in the UI
+            try {
+              await prisma.wRHQSocialPost.create({
+                data: {
+                  contentItemId,
+                  platform: platform.toUpperCase() as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
+                  caption: captionResult.caption,
+                  hashtags: captionResult.hashtags || [],
+                  firstComment: captionResult.firstComment,
+                  mediaUrls: platformMediaUrls,
+                  mediaType: 'image',
+                  scheduledTime: new Date(),
+                  status: 'FAILED',
+                  errorMessage: isRateLimit ? 'Rate limit reached' : errorMsg.substring(0, 500),
+                },
+              })
+            } catch (dbError) {
+              logError(ctx, `Failed to save failed WRHQ post record for ${platform}`, dbError)
             }
             // Continue with other platforms
           }
@@ -1314,11 +1357,11 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             continue
           }
 
+          // Generate a caption for the video (outside try block so it's available in catch)
+          const videoCaption = `${blogResult!.title}\n\n${contentItem.client.businessName} in ${contentItem.client.city}, ${contentItem.client.state} answers: "${contentItem.paaQuestion}"\n\n#AutoGlass #WindshieldRepair #${contentItem.client.city.replace(/\s+/g, '')} #CarCare`
+
           try {
             log(ctx, `📤 Posting video to WRHQ ${platform}...`)
-
-            // Generate a caption for the video
-            const videoCaption = `${blogResult!.title}\n\n${contentItem.client.businessName} in ${contentItem.client.city}, ${contentItem.client.state} answers: "${contentItem.paaQuestion}"\n\n#AutoGlass #WindshieldRepair #${contentItem.client.city.replace(/\s+/g, '')} #CarCare`
 
             const postResult = await withTimeout(
               postNowAndCheckStatus({
@@ -1353,10 +1396,31 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           } catch (videoPostError) {
             // Check if it's a rate limit error
             const errorMsg = videoPostError instanceof Error ? videoPostError.message : String(videoPostError)
-            if (errorMsg.toLowerCase().includes('rate') || errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('too many') || errorMsg.toLowerCase().includes('quota')) {
+            const isRateLimit = errorMsg.toLowerCase().includes('rate') || errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('too many') || errorMsg.toLowerCase().includes('quota')
+
+            if (isRateLimit) {
               log(ctx, `⚠️ WRHQ ${platform} rate limit reached - skipping`, { error: errorMsg })
             } else {
               logError(ctx, `Failed to post video to WRHQ ${platform}`, videoPostError)
+            }
+
+            // Save failed post to database so user can see it in the UI
+            try {
+              await prisma.wRHQSocialPost.create({
+                data: {
+                  contentItemId,
+                  platform: platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM',
+                  caption: videoCaption,
+                  hashtags: ['AutoGlass', 'WindshieldRepair', contentItem.client.city.replace(/\s+/g, ''), 'CarCare'],
+                  mediaType: 'video',
+                  mediaUrls: [gcsResult.url],
+                  scheduledTime: new Date(),
+                  status: 'FAILED',
+                  errorMessage: isRateLimit ? 'Rate limit reached' : errorMsg.substring(0, 500),
+                },
+              })
+            } catch (dbError) {
+              logError(ctx, `Failed to save failed WRHQ video post record for ${platform}`, dbError)
             }
             // Continue with other platforms
           }
