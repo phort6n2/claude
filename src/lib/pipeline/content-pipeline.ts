@@ -1302,64 +1302,8 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           log(ctx, '⏭️ YouTube not configured - skipping upload')
         }
 
-        // Post short video to WRHQ social accounts (TikTok, Instagram Reels)
-        const wrhqVideoAccountIds = await getWRHQLateAccountIds()
-        const VIDEO_SOCIAL_PLATFORMS = ['tiktok', 'instagram'] as const
-
-        for (const platform of VIDEO_SOCIAL_PLATFORMS) {
-          const accountId = wrhqVideoAccountIds[platform]
-          if (!accountId) {
-            log(ctx, `⏭️ WRHQ ${platform} not configured - skipping video post`)
-            continue
-          }
-
-          try {
-            log(ctx, `📤 Posting video to WRHQ ${platform}...`)
-
-            // Generate a caption for the video
-            const videoCaption = `${blogResult!.title}\n\n${contentItem.client.businessName} in ${contentItem.client.city}, ${contentItem.client.state} answers: "${contentItem.paaQuestion}"\n\n#AutoGlass #WindshieldRepair #${contentItem.client.city.replace(/\s+/g, '')} #CarCare`
-
-            const postResult = await withTimeout(
-              postNowAndCheckStatus({
-                accountId,
-                platform: platform as 'tiktok' | 'instagram',
-                caption: videoCaption,
-                mediaUrls: [gcsResult.url],
-                mediaType: 'video',
-              }),
-              TIMEOUTS.SOCIAL_SCHEDULE,
-              `WRHQ ${platform} video posting`
-            )
-
-            // Save to database
-            await prisma.wRHQSocialPost.create({
-              data: {
-                contentItemId,
-                platform: platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM',
-                caption: videoCaption,
-                hashtags: ['AutoGlass', 'WindshieldRepair', contentItem.client.city.replace(/\s+/g, ''), 'CarCare'],
-                mediaType: 'video',
-                mediaUrls: [gcsResult.url],
-                scheduledTime: new Date(),
-                getlatePostId: postResult.postId,
-                publishedUrl: postResult.platformPostUrl,
-                status: postResult.status === 'published' ? 'PUBLISHED' : postResult.status === 'failed' ? 'FAILED' : 'PROCESSING',
-                publishedAt: postResult.status === 'published' ? new Date() : undefined,
-              },
-            })
-
-            log(ctx, `✅ Video posted to WRHQ ${platform}`, { status: postResult.status, url: postResult.platformPostUrl })
-          } catch (videoPostError) {
-            // Check if it's a rate limit error
-            const errorMsg = videoPostError instanceof Error ? videoPostError.message : String(videoPostError)
-            if (errorMsg.toLowerCase().includes('rate') || errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('too many')) {
-              log(ctx, `⚠️ WRHQ ${platform} rate limit reached - skipping`, { error: errorMsg })
-            } else {
-              logError(ctx, `Failed to post video to WRHQ ${platform}`, videoPostError)
-            }
-            // Continue with other platforms
-          }
-        }
+        // Note: Short videos are only posted to WRHQ YouTube channel via the YouTube API above
+        // We don't use Late for TikTok/Instagram video posting - only YouTube
 
         results.videos = { success: true }
         log(ctx, '✅ Video generated successfully', { duration: videoResult.duration })
@@ -1513,6 +1457,23 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             data: { shortVideoAddedToPost: true, shortVideoAddedAt: new Date() },
           })
         }
+
+        // Mark schema as generated (inside the if block where work was done)
+        await prisma.contentItem.update({
+          where: { id: contentItemId },
+          data: { schemaGenerated: true },
+        })
+
+        results.schema = { success: true }
+        log(ctx, '✅ Schema and embedding complete')
+      } else {
+        // Log why schema/embed was skipped
+        log(ctx, '⚠️ Schema/embed skipped - missing requirements:', {
+          hasBlogPost: !!blogPostForEmbed,
+          hasWordpressPostId: !!blogPostForEmbed?.wordpressPostId,
+          hasClientWordpressUrl: !!contentItem.client.wordpressUrl,
+        })
+        results.schema = { success: false, error: 'Missing blog post or WordPress configuration' }
       }
 
       // Also add Google Maps embed to WRHQ blog post if it exists
@@ -1554,15 +1515,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         }
       }
 
-      // Mark schema as generated
-      await prisma.contentItem.update({
-        where: { id: contentItemId },
-        data: { schemaGenerated: true },
-      })
-
-      results.schema = { success: true }
-      log(ctx, '✅ Schema and embedding complete')
-      await logAction(ctx, 'schema_embed', 'SUCCESS')
+      await logAction(ctx, 'schema_embed', results.schema.success ? 'SUCCESS' : 'FAILED')
     } catch (error) {
       logError(ctx, 'Schema/embedding failed', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
