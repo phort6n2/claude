@@ -501,7 +501,7 @@ function ReviewTab({
       step5: (content.videoSocialPosts.length > 0 || content.wrhqVideoSocialPosts.length > 0) && clientVidDone && wrhqVidDone,
       step6: content.longVideoUploaded,
       step7: content.schemaGenerated,
-      step8: content.shortVideoAddedToPost || content.longVideoAddedToPost,
+      step8: content.schemaGenerated, // Embeds run with schema
     })
   }, []) // Only run once on mount
 
@@ -589,7 +589,9 @@ function ReviewTab({
   const isStep5Complete = (content.videoSocialPosts.length > 0 || content.wrhqVideoSocialPosts.length > 0) && clientVideoComplete && wrhqVideoComplete
   const isStep6Complete = content.longVideoUploaded
   const isStep7Complete = content.schemaGenerated
-  const isStep8Complete = content.shortVideoAddedToPost || content.longVideoAddedToPost
+  // Step 8 (Embed All Media) completes with Step 7 since they run together
+  // The embed operation runs as part of schema generation
+  const isStep8Complete = content.schemaGenerated
 
   async function regenerateContent(type: 'blog' | 'images' | 'wrhqBlog' | 'social' | 'wrhqSocial' | 'podcast' | 'podcastDescription' | 'video' | 'videoDescription' | 'videoSocial') {
     setGenerating(type)
