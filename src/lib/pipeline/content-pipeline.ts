@@ -1302,8 +1302,65 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           log(ctx, '⏭️ YouTube not configured - skipping upload')
         }
 
-        // Note: Short videos are only posted to WRHQ YouTube channel via the YouTube API above
-        // We don't use Late for TikTok/Instagram video posting - only YouTube
+        // Post short video to WRHQ TikTok and Instagram via Late
+        // (YouTube is handled above via YouTube API to avoid Late rate limits)
+        const wrhqVideoAccountIds = await getWRHQLateAccountIds()
+        const VIDEO_SOCIAL_PLATFORMS = ['tiktok', 'instagram'] as const
+
+        for (const platform of VIDEO_SOCIAL_PLATFORMS) {
+          const accountId = wrhqVideoAccountIds[platform]
+          if (!accountId) {
+            log(ctx, `⏭️ WRHQ ${platform} not configured - skipping video post`)
+            continue
+          }
+
+          try {
+            log(ctx, `📤 Posting video to WRHQ ${platform}...`)
+
+            // Generate a caption for the video
+            const videoCaption = `${blogResult!.title}\n\n${contentItem.client.businessName} in ${contentItem.client.city}, ${contentItem.client.state} answers: "${contentItem.paaQuestion}"\n\n#AutoGlass #WindshieldRepair #${contentItem.client.city.replace(/\s+/g, '')} #CarCare`
+
+            const postResult = await withTimeout(
+              postNowAndCheckStatus({
+                accountId,
+                platform: platform as 'tiktok' | 'instagram',
+                caption: videoCaption,
+                mediaUrls: [gcsResult.url],
+                mediaType: 'video',
+              }),
+              TIMEOUTS.SOCIAL_SCHEDULE,
+              `WRHQ ${platform} video posting`
+            )
+
+            // Save to database
+            await prisma.wRHQSocialPost.create({
+              data: {
+                contentItemId,
+                platform: platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM',
+                caption: videoCaption,
+                hashtags: ['AutoGlass', 'WindshieldRepair', contentItem.client.city.replace(/\s+/g, ''), 'CarCare'],
+                mediaType: 'video',
+                mediaUrls: [gcsResult.url],
+                scheduledTime: new Date(),
+                getlatePostId: postResult.postId,
+                publishedUrl: postResult.platformPostUrl,
+                status: postResult.status === 'published' ? 'PUBLISHED' : postResult.status === 'failed' ? 'FAILED' : 'PROCESSING',
+                publishedAt: postResult.status === 'published' ? new Date() : undefined,
+              },
+            })
+
+            log(ctx, `✅ Video posted to WRHQ ${platform}`, { status: postResult.status, url: postResult.platformPostUrl })
+          } catch (videoPostError) {
+            // Check if it's a rate limit error
+            const errorMsg = videoPostError instanceof Error ? videoPostError.message : String(videoPostError)
+            if (errorMsg.toLowerCase().includes('rate') || errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('too many') || errorMsg.toLowerCase().includes('quota')) {
+              log(ctx, `⚠️ WRHQ ${platform} rate limit reached - skipping`, { error: errorMsg })
+            } else {
+              logError(ctx, `Failed to post video to WRHQ ${platform}`, videoPostError)
+            }
+            // Continue with other platforms
+          }
+        }
 
         results.videos = { success: true }
         log(ctx, '✅ Video generated successfully', { duration: videoResult.duration })
