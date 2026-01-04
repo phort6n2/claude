@@ -97,23 +97,23 @@ export async function fetchPAAsForLocation(
   }
 
   try {
-    // Use "auto glass repair" - confirmed to have PAAs
-    const keyword = 'auto glass repair'
+    // Search multiple keywords to get more PAA variety
+    const searchKeywords = ['auto glass repair', 'windshield replacement']
 
     // Convert state abbreviation to full name if needed
     const fullStateName = stateAbbreviations[state.toUpperCase()] || state
     const locationName = `${city},${fullStateName},United States`
-    console.log('[DataForSEO] Searching for:', keyword, 'in', locationName)
+    console.log('[DataForSEO] Searching for:', searchKeywords.join(', '), 'in', locationName)
 
-    // Single task with reduced depth to minimize cost
-    const requestTasks = [{
+    // Create a task for each keyword
+    const requestTasks = searchKeywords.map(keyword => ({
       keyword,
       location_name: locationName,
       language_name: 'English',
       device: 'desktop',
       os: 'windows',
       depth: 20, // PAAs usually appear in top 20 results
-    }]
+    }))
 
     const response = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/advanced', {
       method: 'POST',
