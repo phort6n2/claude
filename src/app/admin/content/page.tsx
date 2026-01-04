@@ -142,8 +142,8 @@ export default function ContentCalendarPage() {
     }
   }, [selectedClient])
 
-  const fetchContent = useCallback(async () => {
-    setLoading(true)
+  const fetchContent = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true)
     try {
       const params = new URLSearchParams()
       if (selectedClient !== 'all') params.append('clientId', selectedClient)
@@ -163,7 +163,7 @@ export default function ContentCalendarPage() {
     } catch (error) {
       console.error('Failed to fetch content:', error)
     } finally {
-      setLoading(false)
+      if (showLoading) setLoading(false)
     }
   }, [selectedClient, selectedStatus])
 
@@ -182,15 +182,15 @@ export default function ContentCalendarPage() {
       .catch(console.error)
   }, [])
 
-  // Auto-refresh when there are GENERATING items
+  // Auto-refresh when there are GENERATING items (silent refresh, no loading flash)
   useEffect(() => {
     const hasGenerating = contentItems.some(item => item.status === 'GENERATING')
     if (!hasGenerating) return
 
     const interval = setInterval(() => {
-      fetchContent()
+      fetchContent(false) // Silent refresh - no loading indicator
       fetchAllContent()
-    }, 5000) // Refresh every 5 seconds
+    }, 10000) // Refresh every 10 seconds
 
     return () => clearInterval(interval)
   }, [contentItems, fetchContent, fetchAllContent])
@@ -340,80 +340,93 @@ export default function ContentCalendarPage() {
 
   const renderListView = () => {
     return (
-      <Card>
+      <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full">
             <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+              <tr className="bg-gray-50/80 border-b border-gray-100">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Date
                 </th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Client
                 </th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">
                   Location
                 </th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   PAA Question
                 </th>
-                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
                   Progress
                 </th>
-                <th className="px-2 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody>
               {contentItems.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-gray-500">
-                    No content items found
+                  <td colSpan={6} className="px-4 py-16 text-center">
+                    <div className="text-gray-400">
+                      <CalendarIcon className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p className="text-sm font-medium">No content items found</p>
+                      <p className="text-xs mt-1">Try adjusting your filters or create new content</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
-                contentItems.map((item) => (
-                  <tr key={item.id} className={`hover:bg-gray-50 ${item.needsAttention ? 'bg-yellow-50' : ''}`}>
-                    <td className="px-2 py-2 whitespace-nowrap">
-                      <div className="font-medium text-gray-900 text-xs">
+                contentItems.map((item, index) => (
+                  <tr
+                    key={item.id}
+                    className={`
+                      group transition-colors
+                      ${item.needsAttention ? 'bg-amber-50/50 hover:bg-amber-50' : 'hover:bg-gray-50/50'}
+                      ${index !== contentItems.length - 1 ? 'border-b border-gray-100' : ''}
+                    `}
+                  >
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
                         {formatDate(item.scheduledDate)}
                       </div>
                     </td>
-                    <td className="px-2 py-2 whitespace-nowrap">
-                      <div className="flex items-center gap-1">
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
                         <div
-                          className="h-2 w-2 rounded-full flex-shrink-0"
+                          className="h-2.5 w-2.5 rounded-full flex-shrink-0 ring-2 ring-white shadow-sm"
                           style={{ backgroundColor: item.client.primaryColor || '#1e40af' }}
                         />
-                        <span className="text-xs truncate max-w-[100px]">{item.client.businessName}</span>
+                        <span className="text-sm text-gray-700 truncate max-w-[120px]">
+                          {item.client.businessName}
+                        </span>
                       </div>
                     </td>
-                    <td className="px-2 py-2 whitespace-nowrap hidden md:table-cell">
+                    <td className="px-4 py-3 whitespace-nowrap hidden md:table-cell">
                       <LocationBadge location={item.serviceLocation} />
                     </td>
-                    <td className="px-2 py-2">
-                      <div className="flex items-center gap-1">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
                         {item.needsAttention && (
-                          <AlertCircle className="h-3 w-3 text-yellow-500 flex-shrink-0" />
+                          <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0" />
                         )}
-                        <div className="text-xs text-gray-900 truncate max-w-[250px]">
+                        <span className="text-sm text-gray-900 truncate max-w-[300px]">
                           {item.paaQuestion}
-                        </div>
+                        </span>
                       </div>
                     </td>
-                    <td className="px-2 py-2 whitespace-nowrap hidden lg:table-cell">
+                    <td className="px-4 py-3 whitespace-nowrap hidden lg:table-cell">
                       <StepProgress item={item} />
                     </td>
-                    <td className="px-2 py-2 whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-1">
+                    <td className="px-4 py-3 whitespace-nowrap text-right">
+                      <div className="flex items-center justify-end gap-2">
                         <Link href={`/admin/content/${item.id}/review`}>
                           <Button
                             variant={item.status === 'GENERATING' ? 'primary' : 'outline'}
                             size="sm"
-                            className={`h-6 px-2 text-xs ${item.status === 'GENERATING' ? 'animate-pulse' : ''}`}
+                            className={`h-7 px-3 text-xs font-medium ${item.status === 'GENERATING' ? 'animate-pulse' : ''}`}
                           >
-                            <Eye className="h-3 w-3 mr-1" />
+                            <Eye className="h-3.5 w-3.5 mr-1.5" />
                             {item.status === 'GENERATING' ? 'View' : 'Review'}
                           </Button>
                         </Link>
@@ -422,10 +435,10 @@ export default function ContentCalendarPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteContent(item.id, item.paaQuestion)}
-                            className="h-6 px-1 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            className="h-7 w-7 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
                             title={item.status === 'GENERATING' ? 'Cancel & Delete' : 'Delete'}
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         )}
                       </div>
@@ -436,7 +449,7 @@ export default function ContentCalendarPage() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </div>
     )
   }
 
@@ -693,14 +706,14 @@ function StepProgress({ item }: { item: ContentItem }) {
   // Show "Generating..." for items still generating
   if (item.status === 'GENERATING') {
     return (
-      <div className="flex items-center gap-2">
-        <div className="w-16 bg-gray-200 rounded-full h-2">
+      <div className="flex items-center gap-3">
+        <div className="w-20 bg-gray-100 rounded-full h-1.5 overflow-hidden">
           <div
-            className="bg-purple-500 h-2 rounded-full animate-pulse"
-            style={{ width: '20%' }}
+            className="bg-gradient-to-r from-purple-400 to-purple-600 h-1.5 rounded-full animate-pulse"
+            style={{ width: '25%' }}
           />
         </div>
-        <span className="text-xs text-purple-600 font-medium">Generating...</span>
+        <span className="text-xs text-purple-600 font-medium whitespace-nowrap">Generating...</span>
       </div>
     )
   }
@@ -708,9 +721,9 @@ function StepProgress({ item }: { item: ContentItem }) {
   // Show "Not started" for drafts with no content
   if (!item.blogGenerated && item.status === 'DRAFT') {
     return (
-      <div className="flex items-center gap-2">
-        <div className="w-16 bg-gray-200 rounded-full h-2" />
-        <span className="text-xs text-gray-400">Not started</span>
+      <div className="flex items-center gap-3">
+        <div className="w-20 bg-gray-100 rounded-full h-1.5" />
+        <span className="text-xs text-gray-400 whitespace-nowrap">Not started</span>
       </div>
     )
   }
@@ -719,21 +732,21 @@ function StepProgress({ item }: { item: ContentItem }) {
   const progressPercent = (completed / total) * 100
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="w-16 bg-gray-200 rounded-full h-2" title={`${completed}/${total} steps complete`}>
+    <div className="flex items-center gap-3">
+      <div className="w-20 bg-gray-100 rounded-full h-1.5" title={`${completed}/${total} steps complete`}>
         <div
-          className={`h-2 rounded-full ${isComplete ? 'bg-green-500' : 'bg-blue-500'}`}
+          className={`h-1.5 rounded-full transition-all ${isComplete ? 'bg-green-500' : 'bg-blue-500'}`}
           style={{ width: `${progressPercent}%` }}
         />
       </div>
       {isComplete ? (
-        <span className="text-xs text-green-600 font-medium flex items-center gap-1">
-          <CheckCircle className="h-3 w-3" />
+        <span className="text-xs text-green-600 font-medium flex items-center gap-1 whitespace-nowrap">
+          <CheckCircle className="h-3.5 w-3.5" />
           Complete
         </span>
       ) : (
-        <span className="text-xs text-gray-600">
-          {completed}/{total} · <span className="text-blue-600">{nextStep}</span>
+        <span className="text-xs text-gray-500 whitespace-nowrap">
+          {completed}/{total} · <span className="text-blue-600 font-medium">{nextStep}</span>
         </span>
       )}
     </div>
@@ -781,10 +794,10 @@ function StatusFilterBadge({
 
 
 function LocationBadge({ location }: { location: ContentItem['serviceLocation'] }) {
-  if (!location) return <span className="text-xs text-gray-400">-</span>
+  if (!location) return <span className="text-sm text-gray-300">—</span>
 
   return (
-    <span className="text-xs text-gray-600">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 text-sm text-gray-600">
       {location.neighborhood ? `${location.neighborhood}, ` : ''}
       {location.city}
     </span>
