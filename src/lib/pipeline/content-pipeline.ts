@@ -1,5 +1,5 @@
 import { prisma } from '../db'
-import { generateBlogPost, generateSocialCaption, generatePodcastScript, generateWRHQBlogPost, generateWRHQSocialCaption } from '../integrations/claude'
+import { generateBlogPost, generateSocialCaption, generatePodcastScript, generatePodcastDescription, generateWRHQBlogPost, generateWRHQSocialCaption } from '../integrations/claude'
 import { generateBothImages } from '../integrations/nano-banana'
 import { createPodcast, waitForPodcast } from '../integrations/autocontent'
 import { createShortVideo, waitForVideo } from '../integrations/creatify'
@@ -50,7 +50,6 @@ function generateGoogleMapsEmbed(params: {
 
   return `<!-- Google Maps Embed -->
 <div class="google-maps-embed" style="margin: 30px 0;">
-  <h3 style="margin: 0 0 15px 0; font-size: 1.25rem;">📍 Find ${params.businessName}</h3>
   <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
     <iframe
       src="${embedUrl}"
@@ -63,12 +62,6 @@ function generateGoogleMapsEmbed(params: {
       title="Map showing ${params.businessName} location">
     </iframe>
   </div>
-  ${params.googleMapsUrl ? `
-  <p style="margin: 15px 0 0 0; text-align: center;">
-    <a href="${params.googleMapsUrl}" target="_blank" rel="noopener" style="color: #4285f4; text-decoration: none; font-weight: 500;">
-      Open in Google Maps →
-    </a>
-  </p>` : ''}
 </div>`
 }
 
@@ -850,7 +843,13 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
 
             log(ctx, `✅ Posted to ${platform}`, { status: postResult.status, url: postResult.platformPostUrl })
           } catch (platformError) {
-            logError(ctx, `Failed to post to ${platform}`, platformError)
+            // Check if it's a rate limit error
+            const errorMsg = platformError instanceof Error ? platformError.message : String(platformError)
+            if (errorMsg.toLowerCase().includes('rate') || errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('too many') || errorMsg.toLowerCase().includes('quota')) {
+              log(ctx, `⚠️ ${platform} rate limit reached - skipping`, { error: errorMsg })
+            } else {
+              logError(ctx, `Failed to post to ${platform}`, platformError)
+            }
             // Continue with other platforms
           }
         }
@@ -970,7 +969,13 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
 
             log(ctx, `✅ WRHQ posted to ${platform}`, { status: postResult.status, url: postResult.platformPostUrl })
           } catch (platformError) {
-            logError(ctx, `Failed to post WRHQ to ${platform}`, platformError)
+            // Check if it's a rate limit error
+            const errorMsg = platformError instanceof Error ? platformError.message : String(platformError)
+            if (errorMsg.toLowerCase().includes('rate') || errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('too many') || errorMsg.toLowerCase().includes('quota')) {
+              log(ctx, `⚠️ WRHQ ${platform} rate limit reached - skipping`, { error: errorMsg })
+            } else {
+              logError(ctx, `Failed to post WRHQ to ${platform}`, platformError)
+            }
             // Continue with other platforms
           }
         }
@@ -1024,11 +1029,37 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         createPodcast({
           script: podcastScript,
           title: blogResult!.title,
-          duration: 'long',
+          duration: 'default', // Use regular length (not long)
         }),
         TIMEOUTS.PODCAST_CREATE,
         'Podcast job creation'
       )
+
+      // Generate proper podcast description using generatePodcastDescription
+      log(ctx, 'Generating podcast description...')
+      let podcastDescriptionHtml = ''
+      try {
+        // Get the first service page URL if available
+        const servicePageUrl = contentItem.client.servicePages?.[0]?.url || undefined
+
+        podcastDescriptionHtml = await withTimeout(
+          generatePodcastDescription({
+            businessName: contentItem.client.businessName,
+            city: contentItem.client.city,
+            state: contentItem.client.state,
+            paaQuestion: contentItem.paaQuestion,
+            blogPostUrl: clientBlogUrl || contentItem.client.wordpressUrl || '',
+            servicePageUrl,
+            googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+          }),
+          TIMEOUTS.SOCIAL_CAPTION,
+          'Podcast description generation'
+        )
+        log(ctx, '✅ Podcast description generated')
+      } catch (descError) {
+        logError(ctx, 'Failed to generate podcast description, using fallback', descError)
+        podcastDescriptionHtml = `<p>${blogResult!.excerpt || contentItem.paaQuestion}</p>`
+      }
 
       // Create podcast record immediately with PROCESSING status so review page can show it
       const podcastRecord = await prisma.podcast.create({
@@ -1037,12 +1068,18 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           clientId: contentItem.clientId,
           audioUrl: '', // Will be updated when ready
           script: podcastScript,
-          description: blogResult!.excerpt || blogResult!.title,
+          description: podcastDescriptionHtml,
           autocontentJobId: podcastJob.jobId,
           status: 'PROCESSING',
         },
       })
       log(ctx, '📝 Podcast record created with PROCESSING status', { podcastId: podcastRecord.id })
+
+      // Also update contentItem with the podcast description
+      await prisma.contentItem.update({
+        where: { id: contentItemId },
+        data: { podcastDescription: podcastDescriptionHtml },
+      })
 
       log(ctx, 'Waiting for podcast to render...', { jobId: podcastJob.jobId })
       const podcastResult = await withTimeout(
@@ -1075,7 +1112,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           const podbeanResult = await withTimeout(
             publishToPodbean({
               title: blogResult!.title,
-              description: blogResult!.excerpt || contentItem.paaQuestion,
+              description: podcastDescriptionHtml, // Use the properly generated HTML description
               audioUrl: gcsResult.url,
             }),
             TIMEOUTS.PODBEAN_PUBLISH,
@@ -1144,7 +1181,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           imageUrls: imageUrls.map((i: { gcsUrl: string }) => i.gcsUrl),
           aspectRatio: '9:16',
           duration: 30, // 30 seconds for short-form video
-          scriptStyle: 'ProblemSolutionV2', // Problem/solution format for auto glass content
+          scriptStyle: 'HowToV2', // How-to format for auto glass content
         }),
         TIMEOUTS.VIDEO_CREATE,
         'Video job creation'
@@ -1264,6 +1301,65 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           }
         } else {
           log(ctx, '⏭️ YouTube not configured - skipping upload')
+        }
+
+        // Post short video to WRHQ social accounts (TikTok, Instagram Reels)
+        const wrhqVideoAccountIds = await getWRHQLateAccountIds()
+        const VIDEO_SOCIAL_PLATFORMS = ['tiktok', 'instagram'] as const
+
+        for (const platform of VIDEO_SOCIAL_PLATFORMS) {
+          const accountId = wrhqVideoAccountIds[platform]
+          if (!accountId) {
+            log(ctx, `⏭️ WRHQ ${platform} not configured - skipping video post`)
+            continue
+          }
+
+          try {
+            log(ctx, `📤 Posting video to WRHQ ${platform}...`)
+
+            // Generate a caption for the video
+            const videoCaption = `${blogResult!.title}\n\n${contentItem.client.businessName} in ${contentItem.client.city}, ${contentItem.client.state} answers: "${contentItem.paaQuestion}"\n\n#AutoGlass #WindshieldRepair #${contentItem.client.city.replace(/\s+/g, '')} #CarCare`
+
+            const postResult = await withTimeout(
+              postNowAndCheckStatus({
+                accountId,
+                platform: platform as 'tiktok' | 'instagram',
+                caption: videoCaption,
+                mediaUrls: [gcsResult.url],
+                mediaType: 'video',
+              }),
+              TIMEOUTS.SOCIAL_SCHEDULE,
+              `WRHQ ${platform} video posting`
+            )
+
+            // Save to database
+            await prisma.wRHQSocialPost.create({
+              data: {
+                contentItemId,
+                platform: platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM',
+                caption: videoCaption,
+                hashtags: ['AutoGlass', 'WindshieldRepair', contentItem.client.city.replace(/\s+/g, ''), 'CarCare'],
+                mediaType: 'video',
+                mediaUrls: [gcsResult.url],
+                scheduledTime: new Date(),
+                getlatePostId: postResult.postId,
+                publishedUrl: postResult.platformPostUrl,
+                status: postResult.status === 'published' ? 'PUBLISHED' : postResult.status === 'failed' ? 'FAILED' : 'PROCESSING',
+                publishedAt: postResult.status === 'published' ? new Date() : undefined,
+              },
+            })
+
+            log(ctx, `✅ Video posted to WRHQ ${platform}`, { status: postResult.status, url: postResult.platformPostUrl })
+          } catch (videoPostError) {
+            // Check if it's a rate limit error
+            const errorMsg = videoPostError instanceof Error ? videoPostError.message : String(videoPostError)
+            if (errorMsg.toLowerCase().includes('rate') || errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('too many')) {
+              log(ctx, `⚠️ WRHQ ${platform} rate limit reached - skipping`, { error: errorMsg })
+            } else {
+              logError(ctx, `Failed to post video to WRHQ ${platform}`, videoPostError)
+            }
+            // Continue with other platforms
+          }
         }
 
         results.videos = { success: true }

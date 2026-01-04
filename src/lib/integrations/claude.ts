@@ -128,16 +128,6 @@ Create a compelling final paragraph that:
 - Mentions location: ${location}
 - References the business name: ${params.businessName}
 - Can optionally include another link to ${servicePageUrl}
-${params.googleMapsUrl ? `
-**Google Maps Link (REQUIRED - After CTA):**
-After the final CTA paragraph, include this EXACT HTML block with a link to the Google Maps location:
-
-<div class="google-maps-link" style="margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 8px; text-align: center;">
-<h3 style="margin: 0 0 10px 0;">📍 Visit ${params.businessName}</h3>
-<p style="margin: 0 0 15px 0;">Get directions to our location</p>
-<a href="${params.googleMapsUrl}" target="_blank" rel="noopener" style="display: inline-block; padding: 12px 24px; background: #4285f4; color: white; text-decoration: none; border-radius: 6px; font-weight: 600;">Open in Google Maps →</a>
-</div>
-` : ''}
 
 **WRITING STYLE REQUIREMENTS:**
 - Conversational yet professional tone
@@ -170,7 +160,6 @@ Before finishing, ensure:
 - ✓ Strong CTA at the end
 - ✓ 1000-1100 word count achieved
 - ✓ No marketing fluff or filler content
-${params.googleMapsUrl ? '- ✓ Google Maps link button included at the end (use EXACT HTML provided)' : ''}
 
 **CRITICAL OUTPUT FORMAT:**
 Return a JSON object with these keys:

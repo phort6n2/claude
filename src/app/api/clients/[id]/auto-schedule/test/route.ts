@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { after } from 'next/server'
 import { prisma } from '@/lib/db'
 import { selectNextPAA, markPAAAsUsed, renderPAAQuestion } from '@/lib/automation/paa-selector'
 import { selectNextLocation, markLocationAsUsed, getDefaultLocation } from '@/lib/automation/location-rotator'
@@ -98,22 +99,26 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     // Build review URL for the response
     const reviewUrl = `/admin/content/${contentItem.id}/review`
 
-    // IMPORTANT: We must await the pipeline - fire-and-forget doesn't work on Vercel
-    // Vercel kills the function after response is sent, so the pipeline would never run
-    console.log(`[Test] Starting full generation for content item ${contentItem.id}`)
+    console.log(`[Test] Created content item ${contentItem.id}, scheduling pipeline in background`)
     console.log(`[Test] Review URL: ${reviewUrl}`)
 
-    try {
-      await triggerFullGeneration(contentItem.id)
-      console.log(`[Test] Generation completed for ${contentItem.id}`)
-    } catch (err) {
-      console.error(`[Test] Generation failed for ${contentItem.id}:`, err)
-      // Don't throw - the content item status is already set to FAILED in triggerFullGeneration
-    }
+    // Use Next.js after() to run the pipeline after the response is sent
+    // This allows the user to be redirected to the review page immediately
+    after(async () => {
+      console.log(`[Test] Background: Starting generation for ${contentItem.id}`)
+      try {
+        await triggerFullGeneration(contentItem.id)
+        console.log(`[Test] Background: Generation completed for ${contentItem.id}`)
+      } catch (err) {
+        console.error(`[Test] Background: Generation failed for ${contentItem.id}:`, err)
+        // Error is already handled in triggerFullGeneration
+      }
+    })
 
+    // Return immediately so user can be redirected to review page
     const response = {
       success: true,
-      message: 'Content generation complete. View on the review page.',
+      message: 'Content generation started. Redirecting to review page...',
       contentItemId: contentItem.id,
       details: {
         client: client.businessName,
