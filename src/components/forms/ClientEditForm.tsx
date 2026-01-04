@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import {
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   Building2,
   MapPin,
   Palette,
@@ -211,6 +212,17 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   const [duplicatesSkipped, setDuplicatesSkipped] = useState(0)
   const [dataForSeoBalance, setDataForSeoBalance] = useState<number | null>(null)
   const [dataForSeoConfigured, setDataForSeoConfigured] = useState<boolean | null>(null)
+
+  // Existing PAAs viewer state
+  const [showExistingPaas, setShowExistingPaas] = useState(false)
+  const [existingPaasList, setExistingPaasList] = useState<Array<{
+    id: string
+    question: string
+    priority: number
+    usedAt: string | null
+    usedCount: number
+  }>>([])
+  const [loadingExistingPaas, setLoadingExistingPaas] = useState(false)
 
   // Load Podbean podcasts
   useEffect(() => {
@@ -622,10 +634,12 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
     setSavingPaas(true)
     try {
       const questions = selected.map(paa => paa.formatted)
+      // API expects paaText (newline-separated) and append boolean
+      const paaTextToSave = questions.join('\n')
       const response = await fetch(`/api/clients/${client.id}/paas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questions, mode: 'append' }),
+        body: JSON.stringify({ paaText: paaTextToSave, append: true }),
       })
       const data = await response.json()
       if (response.ok) {
@@ -645,6 +659,27 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       setPaaMessage({ type: 'error', text: 'Failed to save PAAs' })
     } finally {
       setSavingPaas(false)
+    }
+  }
+
+  async function toggleExistingPaas() {
+    if (showExistingPaas) {
+      setShowExistingPaas(false)
+      return
+    }
+
+    setLoadingExistingPaas(true)
+    try {
+      const response = await fetch(`/api/clients/${client.id}/paas`)
+      const data = await response.json()
+      if (response.ok) {
+        setExistingPaasList(data.paas || [])
+        setShowExistingPaas(true)
+      }
+    } catch (error) {
+      console.error('Failed to load PAAs:', error)
+    } finally {
+      setLoadingExistingPaas(false)
     }
   }
 
@@ -1594,15 +1629,57 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                   {loadingPaas ? (
                     <span className="text-xs text-gray-500">Loading...</span>
                   ) : (
-                    <span className="text-xs text-gray-500">
+                    <button
+                      type="button"
+                      onClick={toggleExistingPaas}
+                      className="text-xs text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                      disabled={loadingExistingPaas}
+                    >
+                      {loadingExistingPaas ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : showExistingPaas ? (
+                        <ChevronUp className="h-3 w-3" />
+                      ) : (
+                        <ChevronDown className="h-3 w-3" />
+                      )}
                       {existingPaaCount} custom questions
-                    </span>
+                    </button>
                   )}
                 </div>
                 <p className="text-sm text-gray-500 mb-3">
                   Add custom PAA questions for this client. <strong>Custom PAAs are used first</strong>, before Standard PAAs.
                   Each must include <code className="bg-gray-100 px-1 rounded">{'{location}'}</code> and end with <code className="bg-gray-100 px-1 rounded">?</code>
                 </p>
+
+                {/* Existing PAAs List (collapsible) */}
+                {showExistingPaas && existingPaasList.length > 0 && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4 max-h-64 overflow-y-auto">
+                    <div className="space-y-2">
+                      {existingPaasList.map((paa, index) => (
+                        <div
+                          key={paa.id}
+                          className="flex items-start justify-between gap-2 text-sm bg-white p-2 rounded border"
+                        >
+                          <div className="flex-1">
+                            <span className="text-gray-400 mr-2">{index + 1}.</span>
+                            <span className="text-gray-800">{paa.question}</span>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {paa.usedCount > 0 ? (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                                Used {paa.usedCount}x
+                              </span>
+                            ) : (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                                Unused
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Fetch from Google Section */}
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-4">

@@ -89,9 +89,17 @@ export async function fetchPAAsForLocation(
       'windshield repair',
     ]
 
-    // Search multiple keywords to maximize PAA results
-    const keyword = broadKeywords[0]
-    console.log('[DataForSEO] Searching for broad keyword:', keyword)
+    console.log('[DataForSEO] Searching for keywords:', broadKeywords)
+
+    // Send all keywords as separate tasks in one API call
+    const tasks = broadKeywords.map(keyword => ({
+      keyword,
+      location_name: 'United States',
+      language_name: 'English',
+      device: 'desktop',
+      os: 'windows',
+      depth: 100, // Search deeper to find PAAs
+    }))
 
     const response = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/advanced', {
       method: 'POST',
@@ -99,16 +107,7 @@ export async function fetchPAAsForLocation(
         'Authorization': 'Basic ' + Buffer.from(`${login}:${password}`).toString('base64'),
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify([
-        {
-          keyword,
-          location_name: 'United States',
-          language_name: 'English',
-          device: 'desktop',
-          os: 'windows',
-          depth: 100, // Search deeper to find PAAs
-        }
-      ]),
+      body: JSON.stringify(tasks),
     })
 
     if (!response.ok) {
@@ -172,6 +171,7 @@ export async function fetchPAAsForLocation(
     const uniquePAAs = Array.from(
       new Map(allPAAs.map(p => [p.question.toLowerCase(), p])).values()
     )
+    console.log('[DataForSEO] Total PAAs found:', allPAAs.length, '| Unique:', uniquePAAs.length)
 
     return {
       success: true,
