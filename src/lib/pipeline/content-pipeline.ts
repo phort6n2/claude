@@ -676,8 +676,8 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
     // (Moved BEFORE podcast/video to match manual flow)
     ctx.step = 'social'
     await updatePipelineStep(contentItemId, 'social')
-    log(ctx, '📱 Starting social scheduling...')
-    await logAction(ctx, 'social_schedule', 'STARTED')
+    log(ctx, '📱 Starting social posting...')
+    await logAction(ctx, 'social_post', 'STARTED')
 
     const blogPostRecord = await prisma.blogPost.findUnique({ where: { contentItemId } })
     const clientBlogUrl = blogPostRecord?.wordpressUrl || ''
@@ -906,7 +906,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       log(ctx, '⏭️ WRHQ social not configured or no WRHQ blog URL - skipping')
     }
 
-    await logAction(ctx, 'social_schedule', 'SUCCESS')
+    await logAction(ctx, 'social_post', 'SUCCESS')
 
     // ============ STEP 5: Generate Podcast ============
     ctx.step = 'podcast'
@@ -1122,15 +1122,15 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
               },
             })
 
-            // Create a social post record for the YouTube upload (for embed-all-media to find)
-            await prisma.socialPost.create({
+            // Create a WRHQ social post record for the YouTube upload (for embed-all-media to find)
+            // This goes to WRHQ's YouTube channel, not the client's
+            await prisma.wRHQSocialPost.create({
               data: {
                 contentItemId,
-                clientId: contentItem.clientId,
                 platform: 'YOUTUBE',
                 caption: blogResult!.title,
                 hashtags: [],
-                mediaType: 'VIDEO',
+                mediaType: 'video',
                 mediaUrls: [gcsResult.url],
                 scheduledTime: new Date(),
                 publishedUrl: youtubeResult.videoUrl,
@@ -1169,6 +1169,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
     // ============ STEP 7: Generate Schema & Embed All Media ============
     // This matches the manual flow's "Embed All Media" step
     ctx.step = 'schema'
+    await updatePipelineStep(contentItemId, 'schema')
     log(ctx, '📋 Starting schema generation and media embedding...')
     await logAction(ctx, 'schema_embed', 'STARTED')
 
@@ -1177,7 +1178,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       const blogPostForEmbed = await prisma.blogPost.findUnique({ where: { contentItemId } })
       const podcast = await prisma.podcast.findFirst({ where: { contentItemId } })
       const video = await prisma.video.findFirst({ where: { contentItemId, videoType: 'SHORT' } })
-      const socialPosts = await prisma.socialPost.findMany({ where: { contentItemId } })
+      const wrhqSocialPosts = await prisma.wRHQSocialPost.findMany({ where: { contentItemId } })
 
       if (blogPostForEmbed && blogPostForEmbed.wordpressPostId && contentItem.client.wordpressUrl) {
         // 1. Generate schema with all content references
@@ -1251,8 +1252,8 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         fullContent = schemaEmbed + '\n\n' + fullContent
         embedded.push('schema')
 
-        // Add short video embed if YouTube URL exists
-        const youtubePost = socialPosts.find(p => p.platform === 'YOUTUBE' && p.publishedUrl)
+        // Add short video embed if YouTube URL exists (from WRHQ YouTube channel)
+        const youtubePost = wrhqSocialPosts.find(p => p.platform === 'YOUTUBE' && p.publishedUrl)
         if (youtubePost?.publishedUrl) {
           const shortVideoEmbed = generateShortVideoEmbed(youtubePost.publishedUrl)
           if (shortVideoEmbed) {
