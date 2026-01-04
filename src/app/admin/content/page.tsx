@@ -18,7 +18,7 @@ import {
   Eye,
   Trash2,
   FileText,
-  ImageIcon,
+  Images,
   Share2,
   Mic,
   Video,
@@ -553,7 +553,7 @@ function StepProgress({ item }: { item: ContentItem }) {
       <div className="flex items-center gap-1">
         <div className="flex items-center gap-0.5 text-purple-400">
           <FileText className="h-3.5 w-3.5 animate-pulse" />
-          <ImageIcon className="h-3.5 w-3.5 animate-pulse delay-75" />
+          <Images className="h-3.5 w-3.5 animate-pulse delay-75" />
           <Share2 className="h-3.5 w-3.5 animate-pulse delay-100" />
         </div>
         <span className="text-xs text-purple-600 font-medium ml-1">Generating...</span>
@@ -572,7 +572,7 @@ function StepProgress({ item }: { item: ContentItem }) {
   const blogPublished = !!item.blogPost?.wordpressPostId
   const contentTypes = [
     { icon: FileText, done: blogPublished, label: 'Blog Published' },
-    { icon: ImageIcon, done: item.imagesGenerated && blogPublished, label: 'Images (in blog)' },
+    { icon: Images, done: item.imagesGenerated && blogPublished, label: 'Images (in blog)' },
     { icon: Share2, done: !!item.socialPosts?.some(p => p.publishedUrl), label: 'Social Posted' },
     { icon: Mic, done: !!item.podcast?.podbeanUrl, label: 'Podcast Published' },
     { icon: Video, done: !!item.shortFormVideos?.some(v => v.publishedUrls && Object.keys(v.publishedUrls).length > 0), label: 'Short Video Published' },
