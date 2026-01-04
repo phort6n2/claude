@@ -490,8 +490,30 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       })
     }
 
-    // If READY (video done but not fully processed), just return
+    // If READY (video done but not fully processed), check if pipeline needs completion
     if (video.status === 'READY' && video.videoUrl) {
+      // Check if pipeline completion is needed
+      const contentItem = await prisma.contentItem.findUnique({
+        where: { id },
+        select: { schemaGenerated: true },
+      })
+
+      // If schema not generated, trigger pipeline completion in background
+      if (contentItem && !contentItem.schemaGenerated) {
+        console.log('[VideoStatus] Video READY but schema not generated - triggering pipeline completion')
+        after(async () => {
+          await completeRemainingPipeline(id, video.videoUrl!, video.thumbnailUrl || null, video.duration || null)
+        })
+
+        return NextResponse.json({
+          status: 'ready',
+          videoUrl: video.videoUrl,
+          thumbnailUrl: video.thumbnailUrl,
+          duration: video.duration,
+          message: 'Completing remaining pipeline steps...',
+        })
+      }
+
       return NextResponse.json({
         status: 'ready',
         videoUrl: video.videoUrl,

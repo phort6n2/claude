@@ -1813,40 +1813,109 @@ function ReviewTab({
               </div>
             )}
 
-            {/* WRHQ Video Social Posts Preview */}
+            {/* WRHQ Video Social Posts Preview - YouTube, TikTok, Instagram */}
             {content.wrhqVideoSocialPosts.length > 0 && (
               <div className="mt-6">
                 <h3 className="text-sm font-medium text-gray-700 mb-3">WRHQ Video Social Posts</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {content.wrhqVideoSocialPosts.map((post) => (
-                    <div key={post.id} className="border rounded-lg p-4 bg-white">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="flex items-center gap-2 font-medium">
-                          {PLATFORM_ICONS[post.platform] || '📱'} {post.platform}
-                        </span>
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          post.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' :
-                          post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
-                          post.status === 'FAILED' ? 'bg-red-100 text-red-700' :
-                          post.status === 'PROCESSING' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-gray-100 text-gray-700'
-                        }`}>
-                          {post.status}
-                        </span>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {content.wrhqVideoSocialPosts.map((post) => {
+                    // Extract YouTube video ID for embedding
+                    let youtubeVideoId: string | null = null
+                    if (post.platform === 'YOUTUBE' && post.publishedUrl) {
+                      try {
+                        const url = new URL(post.publishedUrl)
+                        if (url.hostname.includes('youtube.com')) {
+                          if (url.pathname.includes('/shorts/')) {
+                            youtubeVideoId = url.pathname.split('/shorts/')[1]?.split('?')[0] || null
+                          } else {
+                            youtubeVideoId = url.searchParams.get('v')
+                          }
+                        } else if (url.hostname.includes('youtu.be')) {
+                          youtubeVideoId = url.pathname.slice(1).split('?')[0] || null
+                        }
+                      } catch {
+                        // Invalid URL
+                      }
+                    }
+
+                    return (
+                      <div key={post.id} className="border rounded-lg overflow-hidden bg-white">
+                        {/* YouTube Video Embed */}
+                        {post.platform === 'YOUTUBE' && youtubeVideoId && (
+                          <div className="relative" style={{ paddingBottom: '177.78%' }}>
+                            <iframe
+                              src={`https://www.youtube.com/embed/${youtubeVideoId}?rel=0`}
+                              className="absolute top-0 left-0 w-full h-full"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            />
+                          </div>
+                        )}
+
+                        {/* Platform placeholder for TikTok/Instagram when no embed */}
+                        {(post.platform === 'TIKTOK' || post.platform === 'INSTAGRAM') && (
+                          <div className="aspect-[9/16] bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                            {post.status === 'PUBLISHED' && post.publishedUrl ? (
+                              <a
+                                href={post.publishedUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-white text-center p-4"
+                              >
+                                <Play className="h-12 w-12 mx-auto mb-2 opacity-80" />
+                                <span className="text-sm">View on {post.platform === 'TIKTOK' ? 'TikTok' : 'Instagram'}</span>
+                              </a>
+                            ) : post.status === 'PROCESSING' ? (
+                              <div className="text-white text-center p-4">
+                                <RefreshCw className="h-8 w-8 mx-auto mb-2 animate-spin opacity-80" />
+                                <span className="text-sm">Processing...</span>
+                              </div>
+                            ) : post.status === 'FAILED' ? (
+                              <div className="text-white text-center p-4">
+                                <XCircle className="h-8 w-8 mx-auto mb-2 opacity-80" />
+                                <span className="text-sm">Failed to post</span>
+                              </div>
+                            ) : (
+                              <div className="text-white text-center p-4">
+                                <Video className="h-8 w-8 mx-auto mb-2 opacity-80" />
+                                <span className="text-sm">Pending</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="flex items-center gap-2 font-medium text-sm">
+                              {PLATFORM_ICONS[post.platform] || '📱'} {post.platform}
+                            </span>
+                            <span className={`text-xs px-2 py-0.5 rounded ${
+                              post.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' :
+                              post.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
+                              post.status === 'FAILED' ? 'bg-red-100 text-red-700' :
+                              post.status === 'PROCESSING' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-gray-100 text-gray-700'
+                            }`}>
+                              {post.status}
+                            </span>
+                          </div>
+                          {post.status === 'FAILED' && post.errorMessage && (
+                            <p className="text-xs text-red-600 mb-2">{post.errorMessage}</p>
+                          )}
+                          {post.publishedUrl && (
+                            <a
+                              href={post.publishedUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1"
+                            >
+                              <ExternalLink className="h-3 w-3" /> View Post
+                            </a>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-600 whitespace-pre-wrap line-clamp-3">{post.caption}</p>
-                      {post.publishedUrl && (
-                        <a
-                          href={post.publishedUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:underline mt-2 inline-flex items-center gap-1"
-                        >
-                          <ExternalLink className="h-3 w-3" /> View Post
-                        </a>
-                      )}
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
