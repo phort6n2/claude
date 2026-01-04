@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import {
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   Building2,
   MapPin,
   Palette,
@@ -23,6 +24,8 @@ import {
   Trash2,
   Zap,
   Calendar,
+  Search,
+  ExternalLink,
 } from 'lucide-react'
 
 interface PodbeanPodcast {
@@ -49,6 +52,14 @@ interface ServiceLocation {
   isHeadquarters: boolean
 }
 
+interface FetchedPAA {
+  original: string
+  formatted: string
+  answer?: string
+  source?: string
+  selected: boolean
+}
+
 interface ClientData {
   id: string
   businessName: string
@@ -64,7 +75,14 @@ interface ClientData {
   wrhqDirectoryUrl: string | null
   hasShopLocation: boolean
   offersMobileService: boolean
-  hasAdasCalibration: boolean
+  // Services offered
+  offersWindshieldRepair: boolean
+  offersWindshieldReplacement: boolean
+  offersSideWindowRepair: boolean
+  offersBackWindowRepair: boolean
+  offersSunroofRepair: boolean
+  offersRockChipRepair: boolean
+  offersAdasCalibration: boolean
   serviceAreas: string[]
   logoUrl: string | null
   primaryColor: string | null
@@ -96,16 +114,6 @@ interface ClientEditFormProps {
   hasWordPressPassword?: boolean
 }
 
-const TIMEZONES = [
-  'America/Los_Angeles',
-  'America/Denver',
-  'America/Chicago',
-  'America/New_York',
-  'America/Phoenix',
-  'America/Anchorage',
-  'Pacific/Honolulu',
-]
-
 const socialPlatformOptions = [
   { value: 'facebook', label: 'Facebook' },
   { value: 'instagram', label: 'Instagram' },
@@ -121,7 +129,7 @@ const socialPlatformOptions = [
   { value: 'telegram', label: 'Telegram' },
 ]
 
-type SectionKey = 'business' | 'location' | 'serviceLocations' | 'branding' | 'wordpress' | 'social' | 'integrations' | 'publishing' | 'automation'
+type SectionKey = 'business' | 'location' | 'serviceLocations' | 'branding' | 'wordpress' | 'social' | 'integrations' | 'automation'
 
 export default function ClientEditForm({ client, hasWordPressPassword = false }: ClientEditFormProps) {
   const router = useRouter()
@@ -130,7 +138,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [expandedSections, setExpandedSections] = useState<Set<SectionKey>>(
-    new Set(['business', 'location', 'serviceLocations', 'branding', 'wordpress', 'social', 'integrations', 'publishing', 'automation'])
+    new Set(['business', 'location', 'serviceLocations', 'branding', 'wordpress', 'social', 'integrations', 'automation'])
   )
 
   // WordPress connection test state
@@ -154,9 +162,16 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
 
   // Auto-schedule status state
   const [autoScheduleStatus, setAutoScheduleStatus] = useState<{
-    paaQueue: { unused: number; total: number; isRecycling: boolean }
+    paaQueue: {
+      unused: number
+      total: number
+      isRecycling: boolean
+      custom: { unused: number; total: number }
+      standard: { unused: number; total: number }
+    }
     locations: { active: number; neverUsed: number }
     upcoming: { count: number }
+    slot: { dayPair: string | null; dayPairLabel: string | null; timeSlot: number | null; timeSlotLabel: string | null }
   } | null>(null)
   const [loadingAutoSchedule, setLoadingAutoSchedule] = useState(false)
 
@@ -174,6 +189,40 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       location: string
     }
   } | null>(null)
+
+  // PAA management state
+  const [paaText, setPaaText] = useState('')
+  const [paaValidation, setPaaValidation] = useState({
+    total: 0,
+    valid: 0,
+    invalid: 0,
+    errors: [] as string[],
+  })
+  const [savingPaas, setSavingPaas] = useState(false)
+  const [paaMessage, setPaaMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [loadingPaas, setLoadingPaas] = useState(false)
+  const [existingPaaCount, setExistingPaaCount] = useState(0)
+  const [existingPaaQuestions, setExistingPaaQuestions] = useState<Set<string>>(new Set())
+
+  // Google PAA fetch state
+  const [fetchingGooglePaas, setFetchingGooglePaas] = useState(false)
+  const [fetchedPaas, setFetchedPaas] = useState<FetchedPAA[]>([])
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [fetchCost, setFetchCost] = useState<number | null>(null)
+  const [duplicatesSkipped, setDuplicatesSkipped] = useState(0)
+  const [dataForSeoBalance, setDataForSeoBalance] = useState<number | null>(null)
+  const [dataForSeoConfigured, setDataForSeoConfigured] = useState<boolean | null>(null)
+
+  // Existing PAAs viewer state
+  const [showExistingPaas, setShowExistingPaas] = useState(false)
+  const [existingPaasList, setExistingPaasList] = useState<Array<{
+    id: string
+    question: string
+    priority: number
+    usedAt: string | null
+    usedCount: number
+  }>>([])
+  const [loadingExistingPaas, setLoadingExistingPaas] = useState(false)
 
   // Load Podbean podcasts
   useEffect(() => {
@@ -225,6 +274,72 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       .finally(() => setLoadingLocations(false))
   }, [client.id])
 
+  // Load DataForSEO balance
+  useEffect(() => {
+    fetch('/api/settings/dataforseo/balance')
+      .then((res) => res.json())
+      .then((data) => {
+        setDataForSeoConfigured(data.configured)
+        if (data.balance !== undefined) {
+          setDataForSeoBalance(data.balance)
+        }
+      })
+      .catch(() => setDataForSeoConfigured(false))
+  }, [])
+
+  // Load existing PAAs
+  useEffect(() => {
+    setLoadingPaas(true)
+    fetch(`/api/clients/${client.id}/paas`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.paas && Array.isArray(data.paas)) {
+          setExistingPaaCount(data.paas.length)
+          // Store normalized questions for duplicate checking
+          const questions = new Set<string>(
+            data.paas.map((p: { question: string }) => p.question.toLowerCase().trim())
+          )
+          setExistingPaaQuestions(questions)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingPaas(false))
+  }, [client.id])
+
+  // Validate PAA text as user types
+  useEffect(() => {
+    const lines = paaText
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0)
+
+    let valid = 0
+    let invalid = 0
+    const errors: string[] = []
+
+    for (const line of lines) {
+      const hasLocation = /\{location\}/i.test(line)
+      const hasQuestionMark = line.endsWith('?')
+
+      if (hasLocation && hasQuestionMark) {
+        valid++
+      } else {
+        invalid++
+        const issues: string[] = []
+        if (!hasLocation) issues.push('missing {location}')
+        if (!hasQuestionMark) issues.push('missing ?')
+        errors.push(`"${line.slice(0, 40)}..." - ${issues.join(', ')}`)
+      }
+    }
+
+    setPaaValidation({
+      total: lines.length,
+      valid,
+      invalid,
+      errors,
+    })
+  }, [paaText])
+
   // Load auto-schedule status
   useEffect(() => {
     setLoadingAutoSchedule(true)
@@ -236,6 +351,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
             paaQueue: data.paaQueue,
             locations: data.locations,
             upcoming: data.upcoming,
+            slot: data.slot || { dayPair: null, dayPairLabel: null, timeSlot: null, timeSlotLabel: null },
           })
         }
       })
@@ -376,6 +492,197 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
     }
   }
 
+  async function savePaas(append: boolean = false) {
+    if (paaValidation.valid === 0) {
+      setPaaMessage({ type: 'error', text: 'No valid PAA questions to save' })
+      return
+    }
+
+    setSavingPaas(true)
+    setPaaMessage(null)
+
+    try {
+      const response = await fetch(`/api/clients/${client.id}/paas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paaText, append }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setPaaMessage({ type: 'success', text: data.message || 'PAAs saved successfully' })
+        setPaaText('') // Clear the textarea after saving
+        setExistingPaaCount(data.total || paaValidation.valid)
+        // Refresh auto-schedule status to update PAA queue count
+        fetch(`/api/clients/${client.id}/auto-schedule`)
+          .then(res => res.json())
+          .then(statusData => {
+            if (statusData.paaQueue && statusData.locations) {
+              setAutoScheduleStatus({
+                paaQueue: statusData.paaQueue,
+                locations: statusData.locations,
+                upcoming: statusData.upcoming || { count: 0 },
+                slot: statusData.slot || { dayPair: null, dayPairLabel: null, timeSlot: null, timeSlotLabel: null },
+              })
+            }
+          })
+      } else {
+        setPaaMessage({ type: 'error', text: data.error || 'Failed to save PAAs' })
+      }
+    } catch {
+      setPaaMessage({ type: 'error', text: 'Failed to save PAAs' })
+    } finally {
+      setSavingPaas(false)
+    }
+  }
+
+  async function fetchGooglePaas() {
+    setFetchingGooglePaas(true)
+    setFetchError(null)
+    setFetchedPaas([])
+    setFetchCost(null)
+    setDuplicatesSkipped(0)
+
+    try {
+      const response = await fetch(`/api/clients/${client.id}/fetch-paas`, {
+        method: 'POST',
+      })
+      const data = await response.json()
+
+      if (response.ok) {
+        // Check if API returned a message (e.g., no results)
+        if (data.message && (!data.paas || data.paas.length === 0)) {
+          setFetchError(data.message)
+          setFetchCost(data.cost)
+          return
+        }
+
+        // Get current questions from textarea for duplicate checking
+        const textareaQuestions = new Set(
+          paaText.split('\n')
+            .map(l => l.trim().toLowerCase())
+            .filter(l => l.length > 0)
+        )
+
+        // Filter out duplicates
+        let skipped = 0
+        const newPaas = (data.paas || []).filter((paa: { formatted: string }) => {
+          const normalized = paa.formatted.toLowerCase().trim()
+          const isDuplicate = existingPaaQuestions.has(normalized) || textareaQuestions.has(normalized)
+          if (isDuplicate) skipped++
+          return !isDuplicate
+        })
+
+        setDuplicatesSkipped(skipped)
+        setFetchedPaas(newPaas.map((paa: { original: string; formatted: string; answer?: string; source?: string }) => ({
+          ...paa,
+          selected: true, // Select all by default
+        })))
+        setFetchCost(data.cost)
+
+        if (newPaas.length === 0 && skipped === 0) {
+          setFetchError('No PAA questions found for this search.')
+        }
+
+        // Refresh balance after fetch
+        fetch('/api/settings/dataforseo/balance')
+          .then((res) => res.json())
+          .then((balanceData) => {
+            if (balanceData.balance !== undefined) {
+              setDataForSeoBalance(balanceData.balance)
+            }
+          })
+      } else {
+        setFetchError(data.error || 'Failed to fetch PAAs')
+      }
+    } catch {
+      setFetchError('Failed to connect to DataForSEO')
+    } finally {
+      setFetchingGooglePaas(false)
+    }
+  }
+
+  function togglePaaSelection(index: number) {
+    setFetchedPaas(prev => prev.map((paa, i) =>
+      i === index ? { ...paa, selected: !paa.selected } : paa
+    ))
+  }
+
+  function selectAllPaas() {
+    setFetchedPaas(prev => prev.map(paa => ({ ...paa, selected: true })))
+  }
+
+  function deselectAllPaas() {
+    setFetchedPaas(prev => prev.map(paa => ({ ...paa, selected: false })))
+  }
+
+  function addSelectedPaasToTextarea() {
+    const selected = fetchedPaas.filter(paa => paa.selected)
+    if (selected.length === 0) return
+
+    const newText = selected.map(paa => paa.formatted).join('\n')
+    setPaaText(prev => prev ? `${prev}\n${newText}` : newText)
+    setFetchedPaas([]) // Clear after adding
+    setPaaMessage({ type: 'success', text: `Added ${selected.length} questions - click "Add to Queue" to save` })
+  }
+
+  async function addSelectedPaasAndSave() {
+    const selected = fetchedPaas.filter(paa => paa.selected)
+    if (selected.length === 0) return
+
+    setSavingPaas(true)
+    try {
+      const questions = selected.map(paa => paa.formatted)
+      // API expects paaText (newline-separated) and append boolean
+      const paaTextToSave = questions.join('\n')
+      const response = await fetch(`/api/clients/${client.id}/paas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paaText: paaTextToSave, append: true }),
+      })
+      const data = await response.json()
+      if (response.ok) {
+        setFetchedPaas([])
+        setExistingPaaCount(prev => prev + data.added)
+        // Add to existing questions set for duplicate checking
+        setExistingPaaQuestions(prev => {
+          const updated = new Set(prev)
+          questions.forEach(q => updated.add(q.toLowerCase().trim()))
+          return updated
+        })
+        setPaaMessage({ type: 'success', text: `Saved ${data.added} questions to queue` })
+      } else {
+        setPaaMessage({ type: 'error', text: data.error || 'Failed to save' })
+      }
+    } catch {
+      setPaaMessage({ type: 'error', text: 'Failed to save PAAs' })
+    } finally {
+      setSavingPaas(false)
+    }
+  }
+
+  async function toggleExistingPaas() {
+    if (showExistingPaas) {
+      setShowExistingPaas(false)
+      return
+    }
+
+    setLoadingExistingPaas(true)
+    try {
+      const response = await fetch(`/api/clients/${client.id}/paas`)
+      const data = await response.json()
+      if (response.ok) {
+        setExistingPaasList(data.paas || [])
+        setShowExistingPaas(true)
+      }
+    } catch (error) {
+      console.error('Failed to load PAAs:', error)
+    } finally {
+      setLoadingExistingPaas(false)
+    }
+  }
+
   async function runAutomationTest() {
     setTestRunning(true)
     setTestResult(null)
@@ -387,6 +694,12 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       const data = await response.json()
 
       if (response.ok) {
+        // Redirect immediately to the review page
+        if (data.reviewUrl) {
+          router.push(data.reviewUrl)
+          return
+        }
+
         setTestResult({
           success: true,
           message: data.message,
@@ -403,6 +716,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                 paaQueue: statusData.paaQueue,
                 locations: statusData.locations,
                 upcoming: statusData.upcoming,
+                slot: statusData.slot || { dayPair: null, dayPairLabel: null, timeSlot: null, timeSlotLabel: null },
               })
             }
           })
@@ -543,15 +857,69 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
 
             <div className="border-t pt-4 mt-4">
               <h4 className="text-sm font-medium text-gray-700 mb-3">Services Offered</h4>
-              <div className="flex flex-wrap gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={formData.hasShopLocation}
-                    onChange={(e) => updateField('hasShopLocation', e.target.checked)}
+                    checked={formData.offersWindshieldRepair}
+                    onChange={(e) => updateField('offersWindshieldRepair', e.target.checked)}
                     className="rounded"
                   />
-                  <span className="text-sm">Shop Location</span>
+                  <span className="text-sm">Windshield Repair</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersWindshieldReplacement}
+                    onChange={(e) => updateField('offersWindshieldReplacement', e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm">Windshield Replacement</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersSideWindowRepair}
+                    onChange={(e) => updateField('offersSideWindowRepair', e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm">Side Window Repair</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersBackWindowRepair}
+                    onChange={(e) => updateField('offersBackWindowRepair', e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm">Back Window Repair</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersSunroofRepair}
+                    onChange={(e) => updateField('offersSunroofRepair', e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm">Sunroof Repair</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersRockChipRepair}
+                    onChange={(e) => updateField('offersRockChipRepair', e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm">Rock Chip Repair</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersAdasCalibration}
+                    onChange={(e) => updateField('offersAdasCalibration', e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm">ADAS Calibration</span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input
@@ -561,15 +929,6 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                     className="rounded"
                   />
                   <span className="text-sm">Mobile Service</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.hasAdasCalibration}
-                    onChange={(e) => updateField('hasAdasCalibration', e.target.checked)}
-                    className="rounded"
-                  />
-                  <span className="text-sm">ADAS Calibration</span>
                 </label>
               </div>
             </div>
@@ -1123,52 +1482,13 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
         )}
       </div>
 
-      {/* Publishing Schedule */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-        <SectionHeader
-          section="publishing"
-          icon={Clock}
-          title="Publishing Schedule"
-          subtitle="Preferred time and timezone"
-        />
-        {expandedSections.has('publishing') && (
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Publish Time</label>
-                <input
-                  type="time"
-                  value={formData.preferredPublishTime}
-                  onChange={(e) => updateField('preferredPublishTime', e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
-                <select
-                  value={formData.timezone}
-                  onChange={(e) => updateField('timezone', e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                >
-                  {TIMEZONES.map((tz) => (
-                    <option key={tz} value={tz}>
-                      {tz}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Automation */}
       <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
         <SectionHeader
           section="automation"
           icon={Zap}
           title="Automated Content Scheduling"
-          subtitle="Automatic Tue/Thu content generation"
+          subtitle={autoScheduleStatus?.slot.dayPairLabel ? `Posts on ${autoScheduleStatus.slot.dayPairLabel}` : "Automatic weekly content generation"}
         />
         {expandedSections.has('automation') && (
           <div className="p-6 space-y-6">
@@ -1177,7 +1497,9 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
               <div>
                 <h4 className="text-sm font-medium text-gray-900">Enable Automatic Scheduling</h4>
                 <p className="text-sm text-gray-500 mt-1">
-                  Automatically create and generate content on Tuesdays and Thursdays
+                  {autoScheduleStatus?.slot.dayPairLabel
+                    ? `Automatically create and generate content on ${autoScheduleStatus.slot.dayPairLabel}`
+                    : 'Automatically create and generate content weekly (slot assigned on enable)'}
                 </p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
@@ -1204,7 +1526,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                     onChange={() => updateField('autoScheduleFrequency', 1)}
                     className="h-4 w-4 text-blue-600"
                   />
-                  <span className="text-sm text-gray-700">1 post (Tuesday only)</span>
+                  <span className="text-sm text-gray-700">1 post per week</span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input
@@ -1215,10 +1537,27 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                     onChange={() => updateField('autoScheduleFrequency', 2)}
                     className="h-4 w-4 text-blue-600"
                   />
-                  <span className="text-sm text-gray-700">2 posts (Tue & Thu)</span>
+                  <span className="text-sm text-gray-700">2 posts per week</span>
                 </label>
               </div>
             </div>
+
+            {/* Assigned Slot Info */}
+            {autoScheduleStatus?.slot.dayPairLabel && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Calendar className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-900">Assigned Schedule</span>
+                </div>
+                <p className="text-blue-800 font-semibold">{autoScheduleStatus.slot.dayPairLabel}</p>
+                {autoScheduleStatus.slot.timeSlotLabel && (
+                  <p className="text-sm text-blue-600 mt-1">
+                    <Clock className="h-3 w-3 inline mr-1" />
+                    {autoScheduleStatus.slot.timeSlotLabel} UTC
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Status Info */}
             {loadingAutoSchedule ? (
@@ -1233,11 +1572,19 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                   <div className="text-2xl font-bold text-gray-900">
                     {autoScheduleStatus.paaQueue.unused}/{autoScheduleStatus.paaQueue.total}
                   </div>
-                  <div className="text-xs text-gray-500">
-                    {autoScheduleStatus.paaQueue.isRecycling ? (
-                      <span className="text-amber-600">Recycling - all PAAs used</span>
-                    ) : (
-                      'unused PAAs available'
+                  <div className="text-xs text-gray-500 space-y-0.5">
+                    {autoScheduleStatus.paaQueue.custom.total > 0 && (
+                      <div className="text-blue-600">
+                        Custom: {autoScheduleStatus.paaQueue.custom.unused}/{autoScheduleStatus.paaQueue.custom.total}
+                      </div>
+                    )}
+                    {autoScheduleStatus.paaQueue.standard.total > 0 && (
+                      <div className="text-gray-500">
+                        Standard: {autoScheduleStatus.paaQueue.standard.unused}/{autoScheduleStatus.paaQueue.standard.total}
+                      </div>
+                    )}
+                    {autoScheduleStatus.paaQueue.isRecycling && (
+                      <span className="text-amber-600">Recycling</span>
                     )}
                   </div>
                 </div>
@@ -1269,6 +1616,305 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                 </div>
               </div>
             )}
+
+            {/* Custom PAA Management */}
+            <div className="border-t pt-6">
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <FileQuestion className="h-4 w-4 text-blue-600" />
+                    <h4 className="text-sm font-medium text-gray-900">Custom PAA Questions</h4>
+                    <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded font-medium">PRIORITY</span>
+                  </div>
+                  {loadingPaas ? (
+                    <span className="text-xs text-gray-500">Loading...</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={toggleExistingPaas}
+                      className="text-xs text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                      disabled={loadingExistingPaas}
+                    >
+                      {loadingExistingPaas ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : showExistingPaas ? (
+                        <ChevronUp className="h-3 w-3" />
+                      ) : (
+                        <ChevronDown className="h-3 w-3" />
+                      )}
+                      {existingPaaCount} custom questions
+                    </button>
+                  )}
+                </div>
+                <p className="text-sm text-gray-500 mb-3">
+                  Add custom PAA questions for this client. <strong>Custom PAAs are used first</strong>, before Standard PAAs.
+                  Each must include <code className="bg-gray-100 px-1 rounded">{'{location}'}</code> and end with <code className="bg-gray-100 px-1 rounded">?</code>
+                </p>
+
+                {/* Existing PAAs List (collapsible) */}
+                {showExistingPaas && existingPaasList.length > 0 && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4 max-h-64 overflow-y-auto">
+                    <div className="space-y-2">
+                      {existingPaasList.map((paa, index) => (
+                        <div
+                          key={paa.id}
+                          className="flex items-start justify-between gap-2 text-sm bg-white p-2 rounded border"
+                        >
+                          <div className="flex-1">
+                            <span className="text-gray-400 mr-2">{index + 1}.</span>
+                            <span className="text-gray-800">{paa.question}</span>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {paa.usedCount > 0 ? (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                                Used {paa.usedCount}x
+                              </span>
+                            ) : (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                                Unused
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Fetch from Google Section */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Search className="h-4 w-4 text-blue-600" />
+                      <h5 className="text-sm font-medium text-blue-900">Fetch PAAs from Google</h5>
+                      {dataForSeoConfigured === true && dataForSeoBalance !== null && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          dataForSeoBalance < 0.10
+                            ? 'bg-red-100 text-red-700'
+                            : dataForSeoBalance < 0.50
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-green-100 text-green-700'
+                        }`}>
+                          ${dataForSeoBalance.toFixed(2)} credit
+                        </span>
+                      )}
+                      {dataForSeoConfigured === false && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                          Not configured
+                        </span>
+                      )}
+                    </div>
+                    <Button
+                      onClick={fetchGooglePaas}
+                      disabled={fetchingGooglePaas || !formData.city || !formData.state || dataForSeoConfigured === false}
+                      variant="outline"
+                      className="text-sm"
+                    >
+                      {fetchingGooglePaas ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Searching...
+                        </>
+                      ) : (
+                        <>
+                          <Search className="h-4 w-4 mr-2" />
+                          Fetch for {formData.city || 'location'}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-blue-700">
+                    Search Google for real &quot;People Also Ask&quot; questions about auto glass in your location.
+                    Questions will be automatically formatted with {'{location}'} placeholder.
+                  </p>
+
+                  {/* Fetch Error */}
+                  {fetchError && (
+                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                      <AlertCircle className="h-4 w-4 inline mr-2" />
+                      {fetchError}
+                    </div>
+                  )}
+
+                  {/* Fetched Results */}
+                  {(fetchedPaas.length > 0 || duplicatesSkipped > 0) && (
+                    <div className="mt-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-blue-900">
+                          Found {fetchedPaas.length} new question{fetchedPaas.length !== 1 ? 's' : ''}
+                          {duplicatesSkipped > 0 && (
+                            <span className="ml-2 text-xs text-amber-600">
+                              ({duplicatesSkipped} duplicate{duplicatesSkipped !== 1 ? 's' : ''} skipped)
+                            </span>
+                          )}
+                          {fetchCost !== null && (
+                            <span className="ml-2 text-xs text-gray-500">
+                              (API cost: ${fetchCost.toFixed(4)})
+                            </span>
+                          )}
+                        </span>
+                        {fetchedPaas.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={selectAllPaas}
+                              className="text-xs text-blue-600 hover:underline"
+                            >
+                              Select all
+                            </button>
+                            <span className="text-gray-300">|</span>
+                            <button
+                              onClick={deselectAllPaas}
+                              className="text-xs text-blue-600 hover:underline"
+                            >
+                              Deselect all
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {fetchedPaas.length > 0 ? (
+                        <>
+                          <div className="max-h-64 overflow-y-auto space-y-2 bg-white rounded-lg border p-2">
+                            {fetchedPaas.map((paa, index) => (
+                              <label
+                                key={index}
+                                className={`flex items-start gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                                  paa.selected ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50 border border-transparent'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={paa.selected}
+                                  onChange={() => togglePaaSelection(index)}
+                                  className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm text-gray-900">{paa.formatted}</div>
+                                  {paa.original !== paa.formatted && (
+                                    <div className="text-xs text-gray-400 mt-0.5">
+                                      Original: {paa.original}
+                                    </div>
+                                  )}
+                                  {paa.source && (
+                                    <a
+                                      href={paa.source}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-xs text-blue-500 hover:underline mt-1"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <ExternalLink className="h-3 w-3" />
+                                      Source
+                                    </a>
+                                  )}
+                                </div>
+                              </label>
+                            ))}
+                          </div>
+
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={addSelectedPaasAndSave}
+                              disabled={!fetchedPaas.some(p => p.selected) || savingPaas}
+                              className="flex-1"
+                            >
+                              {savingPaas ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Saving...
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  Save {fetchedPaas.filter(p => p.selected).length} to Queue
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </>
+                      ) : duplicatesSkipped > 0 && (
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                          All {duplicatesSkipped} questions from Google are already in your queue.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <textarea
+                  value={paaText}
+                  onChange={(e) => setPaaText(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  rows={6}
+                  placeholder={`What is the cost of windshield repair in {location}?\nHow long does auto glass replacement take in {location}?\nCan rock chips be repaired in {location}?`}
+                />
+
+                {/* Validation Status */}
+                {paaValidation.total > 0 && (
+                  <div className="flex items-center gap-4 text-sm mt-2">
+                    {paaValidation.valid > 0 && (
+                      <span className="text-green-600 font-medium">
+                        ✓ {paaValidation.valid} valid
+                      </span>
+                    )}
+                    {paaValidation.invalid > 0 && (
+                      <span className="text-amber-600 font-medium">
+                        ⚠️ {paaValidation.invalid} invalid
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Error List */}
+                {paaValidation.errors.length > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-2">
+                    <p className="text-xs font-medium text-amber-800 mb-1">Issues to fix:</p>
+                    <ul className="text-xs text-amber-700 space-y-0.5">
+                      {paaValidation.errors.slice(0, 3).map((error, i) => (
+                        <li key={i}>{error}</li>
+                      ))}
+                      {paaValidation.errors.length > 3 && (
+                        <li className="text-amber-600">... and {paaValidation.errors.length - 3} more</li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Save Buttons */}
+                {paaValidation.valid > 0 && (
+                  <div className="flex items-center gap-2 mt-3">
+                    <Button
+                      onClick={() => savePaas(true)}
+                      disabled={savingPaas}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      {savingPaas ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                      Add to Queue ({paaValidation.valid})
+                    </Button>
+                    <Button
+                      onClick={() => savePaas(false)}
+                      disabled={savingPaas}
+                      variant="outline"
+                      className="flex items-center gap-2 text-amber-600 hover:text-amber-700"
+                    >
+                      Replace All
+                    </Button>
+                  </div>
+                )}
+
+                {/* Message */}
+                {paaMessage && (
+                  <div className={`mt-3 p-3 rounded-lg text-sm ${
+                    paaMessage.type === 'success'
+                      ? 'bg-green-50 text-green-800 border border-green-200'
+                      : 'bg-red-50 text-red-800 border border-red-200'
+                  }`}>
+                    {paaMessage.text}
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Test Button */}
             <div className="border-t pt-6">

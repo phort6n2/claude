@@ -102,7 +102,7 @@ export async function checkPodcastStatus(jobId: string): Promise<PodcastResult> 
   }
 }
 
-export async function waitForPodcast(jobId: string, maxAttempts = 30): Promise<PodcastResult> {
+export async function waitForPodcast(jobId: string, maxAttempts = 180): Promise<PodcastResult> {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const result = await checkPodcastStatus(jobId)
 

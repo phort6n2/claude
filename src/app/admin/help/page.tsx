@@ -49,7 +49,7 @@ export default function HelpPage() {
                   <li className="flex items-start gap-3">
                     <span className="flex-shrink-0 h-6 w-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-medium">2</span>
                     <div>
-                      <strong>Add PAA Questions</strong> - Configure "People Also Ask" questions for content
+                      <strong>Add PAA Questions</strong> - Configure &quot;People Also Ask&quot; questions for content
                     </div>
                   </li>
                   <li className="flex items-start gap-3">
@@ -116,7 +116,7 @@ export default function HelpPage() {
                 <div className="p-3 bg-gray-50 rounded-lg">
                   <strong className="text-sm">Step 5: PAA Questions</strong>
                   <p className="text-sm text-gray-600 mt-1">
-                    Add questions like "How much does windshield replacement cost in &#123;location&#125;?"
+                    Add questions like &quot;How much does windshield replacement cost in &#123;location&#125;?&quot;
                     Use &#123;location&#125; placeholder for location-specific content.
                   </p>
                 </div>
@@ -208,7 +208,7 @@ export default function HelpPage() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-medium">3.</span>
-                    Click <strong>"Generate Schedule"</strong> in the modal
+                    Click <strong>&quot;Generate Schedule&quot;</strong> in the modal
                   </li>
                 </ol>
               </div>
@@ -251,7 +251,7 @@ export default function HelpPage() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-medium">2.</span>
-                    Click the <strong>"Add Content"</strong> button
+                    Click the <strong>&quot;Add Content&quot;</strong> button
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-medium">3.</span>
@@ -263,7 +263,7 @@ export default function HelpPage() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-medium">5.</span>
-                    Click <strong>"Create Content"</strong>
+                    Click <strong>&quot;Create Content&quot;</strong>
                   </li>
                 </ol>
               </div>
@@ -372,7 +372,7 @@ export default function HelpPage() {
               {/* Image Generation */}
               <div className="p-4 border rounded-lg space-y-3">
                 <h4 className="font-medium flex items-center gap-2">
-                  <Image className="h-4 w-4 text-green-500" />
+                  <Image className="h-4 w-4 text-green-500" aria-hidden="true" />
                   Image Generation (Optional)
                 </h4>
                 <div className="text-sm text-gray-600 space-y-2">

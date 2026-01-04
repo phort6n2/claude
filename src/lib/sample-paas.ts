@@ -49,7 +49,58 @@ Can you fix a crack in a glass window without replacing it in {location}?
 What is the strongest crack filler in {location}?
 What is the average cost to replace a windshield in {location}?
 How much does ADAS calibration cost in {location}?
-What is ADAS calibration and why is it needed in {location}?`
+What is ADAS calibration and why is it needed in {location}?
+How long does windshield replacement take in {location}?
+Can I drive immediately after windshield replacement in {location}?
+What is the best windshield brand to use in {location}?
+Does OEM glass matter for windshield replacement in {location}?
+How long should I wait to wash my car after windshield replacement in {location}?
+What causes windshield cracks to spread in {location}?
+Can extreme heat crack a windshield in {location}?
+Can cold weather crack a windshield in {location}?
+How do I stop a windshield crack from spreading in {location}?
+What size crack can be repaired in a windshield in {location}?
+Is windshield repair or replacement better in {location}?
+How much does rock chip repair cost in {location}?
+Can a rock chip be repaired in {location}?
+How many rock chips can be repaired on a windshield in {location}?
+Does rock chip repair really work in {location}?
+How long does rock chip repair last in {location}?
+Can you repair a rock chip in cold weather in {location}?
+What happens if you don't fix a rock chip in {location}?
+How big of a chip can be repaired in {location}?
+Does insurance cover rock chip repair in {location}?
+How much does side window replacement cost in {location}?
+How much does it cost to replace a car door window in {location}?
+Can a broken car window be repaired in {location}?
+How long does it take to replace a car side window in {location}?
+Why is car side window replacement so expensive in {location}?
+Does insurance cover broken car windows in {location}?
+How much does rear window replacement cost in {location}?
+Can a rear windshield be repaired in {location}?
+How long does it take to replace a rear windshield in {location}?
+Is rear window replacement covered by insurance in {location}?
+How much does sunroof glass replacement cost in {location}?
+Can a cracked sunroof be repaired in {location}?
+How long does sunroof replacement take in {location}?
+Does insurance cover sunroof damage in {location}?
+What is mobile windshield replacement in {location}?
+Do mobile auto glass services come to your home in {location}?
+Is mobile windshield replacement as good as shop replacement in {location}?
+How much does mobile windshield replacement cost in {location}?
+Can windshield replacement be done in the rain in {location}?
+What is the warranty on windshield replacement in {location}?
+How do I know if my windshield was installed correctly in {location}?
+What happens if my new windshield leaks in {location}?
+Can a windshield be replaced same day in {location}?
+Do I need to recalibrate my camera after windshield replacement in {location}?
+What cars require ADAS calibration after windshield replacement in {location}?
+How do I find a certified auto glass installer in {location}?
+What is the difference between OEM and aftermarket windshields in {location}?
+Should I tip my windshield installer in {location}?
+How do I prepare my car for windshield replacement in {location}?
+Can windshield replacement affect my car's safety in {location}?
+What is the best time of year to replace a windshield in {location}?`
 
 export function getSamplePAAsArray(): string[] {
   return SAMPLE_PAAS.split('\n').filter(line => line.trim().length > 0)

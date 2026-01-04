@@ -50,6 +50,7 @@ interface BlogPostParams {
   ctaUrl: string
   phone: string
   website: string
+  googleMapsUrl?: string  // Google Maps profile URL
 }
 
 interface BlogPostResult {

@@ -16,6 +16,7 @@ import {
   Video,
   Bot,
   ExternalLink,
+  Search,
 } from 'lucide-react'
 
 interface IntegrationStatus {
@@ -36,6 +37,7 @@ const INTEGRATION_ICONS: Record<string, React.ReactNode> = {
   'GOOGLE_PLACES_API_KEY': <MapPin className="h-5 w-5" />,
   'GOOGLE_CLOUD_CREDENTIALS': <Cloud className="h-5 w-5" />,
   'CREATIFY_API_KEY': <Video className="h-5 w-5" />,
+  'DATAFORSEO_PASSWORD': <Search className="h-5 w-5" />,
 }
 
 const INTEGRATION_DESCRIPTIONS: Record<string, string> = {
@@ -47,6 +49,7 @@ const INTEGRATION_DESCRIPTIONS: Record<string, string> = {
   'GOOGLE_PLACES_API_KEY': 'Business lookup and address autocomplete',
   'GOOGLE_CLOUD_CREDENTIALS': 'Media file storage (images, audio, video)',
   'CREATIFY_API_KEY': 'AI video creation and lip-sync',
+  'DATAFORSEO_PASSWORD': 'Fetch People Also Ask questions from Google',
 }
 
 export default function ApiStatusPage() {

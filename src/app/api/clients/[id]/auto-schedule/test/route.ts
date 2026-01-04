@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { after } from 'next/server'
 import { prisma } from '@/lib/db'
 import { selectNextPAA, markPAAAsUsed, renderPAAQuestion } from '@/lib/automation/paa-selector'
 import { selectNextLocation, markLocationAsUsed, getDefaultLocation } from '@/lib/automation/location-rotator'
+
+// Allow up to 10 minutes for the full pipeline (blog + images + WP + WRHQ + podcast + video + social)
+export const maxDuration = 600
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -92,10 +96,29 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       await markLocationAsUsed(locationId)
     }
 
-    // Log initial response with content item ID so user can track
-    const initialResponse = {
+    // Build review URL for the response
+    const reviewUrl = `/admin/content/${contentItem.id}/review`
+
+    console.log(`[Test] Created content item ${contentItem.id}, scheduling pipeline in background`)
+    console.log(`[Test] Review URL: ${reviewUrl}`)
+
+    // Use Next.js after() to run the pipeline after the response is sent
+    // This allows the user to be redirected to the review page immediately
+    after(async () => {
+      console.log(`[Test] Background: Starting generation for ${contentItem.id}`)
+      try {
+        await triggerFullGeneration(contentItem.id)
+        console.log(`[Test] Background: Generation completed for ${contentItem.id}`)
+      } catch (err) {
+        console.error(`[Test] Background: Generation failed for ${contentItem.id}:`, err)
+        // Error is already handled in triggerFullGeneration
+      }
+    })
+
+    // Return immediately so user can be redirected to review page
+    const response = {
       success: true,
-      message: 'Test content created - generation starting',
+      message: 'Content generation started. Redirecting to review page...',
       contentItemId: contentItem.id,
       details: {
         client: client.businessName,
@@ -103,15 +126,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         location: locationString,
         scheduledDate: today.toISOString().split('T')[0],
       },
-      reviewUrl: `/admin/content/${contentItem.id}/review`,
+      reviewUrl,
+      durationMs: Date.now() - startTime,
     }
 
-    // Trigger generation asynchronously (don't await - let it run in background)
-    triggerFullGeneration(contentItem.id).catch((err) => {
-      console.error(`Test generation failed for ${contentItem.id}:`, err)
-    })
-
-    return NextResponse.json(initialResponse)
+    return NextResponse.json(response)
   } catch (error) {
     console.error('Test automation error:', error)
     return NextResponse.json(
@@ -129,13 +148,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
  * Trigger full content generation for a test item
  */
 async function triggerFullGeneration(contentItemId: string): Promise<void> {
+  console.log(`[Test] Starting generation for content item ${contentItemId}`)
+
   try {
     // Import the content pipeline
+    console.log(`[Test] Importing content pipeline...`)
     const { runContentPipeline } = await import('@/lib/pipeline/content-pipeline')
+    console.log(`[Test] Content pipeline imported successfully`)
 
     // Note: runContentPipeline runs the full pipeline including blog, images,
     // podcast, short video, social posts, and WRHQ publishing.
     // Long video is already skipped by default in the pipeline.
+    console.log(`[Test] Running content pipeline...`)
     await runContentPipeline(contentItemId)
 
     // Update status to REVIEW after successful generation
@@ -144,9 +168,10 @@ async function triggerFullGeneration(contentItemId: string): Promise<void> {
       data: { status: 'REVIEW' },
     })
 
-    console.log(`Test generation complete for ${contentItemId}`)
+    console.log(`[Test] Generation complete for ${contentItemId}`)
   } catch (error) {
-    console.error(`Test generation failed for ${contentItemId}:`, error)
+    console.error(`[Test] Generation failed for ${contentItemId}:`, error)
+    console.error(`[Test] Error details:`, error instanceof Error ? error.stack : String(error))
 
     // Update status to FAILED
     await prisma.contentItem.update({

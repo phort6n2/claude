@@ -5,7 +5,7 @@ import { generateBlogPost, generatePodcastDescription } from '@/lib/integrations
 import { generateBothImages } from '@/lib/integrations/nano-banana'
 import { uploadFromUrl } from '@/lib/integrations/gcs'
 import { getSetting, WRHQ_SETTINGS_KEYS } from '@/lib/settings'
-import { ImageType } from '@prisma/client'
+import { ImageType, SocialPlatform } from '@prisma/client'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           state: contentState,
           brandVoice: contentItem.client.brandVoice || 'Professional, helpful, and knowledgeable',
           serviceAreas: contentItem.client.serviceAreas || [],
-          hasAdas: contentItem.client.hasAdasCalibration,
+          hasAdas: contentItem.client.offersAdasCalibration,
           ctaText: contentItem.client.ctaText,
           ctaUrl: servicePageUrl || contentItem.client.ctaUrl || '',
           phone: contentItem.client.phone,
@@ -1015,7 +1015,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             const publishedPlatformSet = new Set(existingPublishedPlatforms.map(p => p.platform))
 
             // Filter out platforms that already have published posts
-            const platformsToGenerate = clientVideoPlatforms.filter(p => !publishedPlatformSet.has(p as any))
+            const platformsToGenerate = clientVideoPlatforms.filter(p => !publishedPlatformSet.has(p as SocialPlatform))
 
             const videoSocialPostsData = await Promise.all(
               platformsToGenerate.map(async (platform) => {
@@ -1100,7 +1100,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             const wrhqPublishedPlatformSet = new Set(existingWrhqPublishedPlatforms.map(p => p.platform))
 
             // Filter out platforms that already have published posts
-            const wrhqPlatformsToGenerate = wrhqVideoPlatforms.filter(p => !wrhqPublishedPlatformSet.has(p as any))
+            const wrhqPlatformsToGenerate = wrhqVideoPlatforms.filter(p => !wrhqPublishedPlatformSet.has(p as SocialPlatform))
             console.log('WRHQ published platforms (skipping):', Array.from(wrhqPublishedPlatformSet))
             console.log('WRHQ platforms to generate:', wrhqPlatformsToGenerate)
 

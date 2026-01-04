@@ -82,6 +82,18 @@ const API_KEYS: ApiKeyConfig[] = [
     isTextarea: true,
     testable: true,
   },
+  {
+    key: 'DATAFORSEO_LOGIN',
+    label: 'DataForSEO Login',
+    description: 'Email/login for DataForSEO SERP API (fetches Google PAAs)',
+    testable: false,
+  },
+  {
+    key: 'DATAFORSEO_PASSWORD',
+    label: 'DataForSEO Password',
+    description: 'API password for DataForSEO',
+    testable: true,
+  },
 ]
 
 interface SettingState {

@@ -210,6 +210,37 @@ async function testGooglePlaces(apiKey: string): Promise<{ success: boolean; mes
   }
 }
 
+async function testDataForSEO(login: string, password: string): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await fetch('https://api.dataforseo.com/v3/appendix/user_data', {
+      method: 'GET',
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from(`${login}:${password}`).toString('base64'),
+      },
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      if (data.status_code === 20000) {
+        const balance = data.tasks?.[0]?.result?.[0]?.money?.balance
+        if (balance !== undefined) {
+          return { success: true, message: `Connected - Balance: $${balance.toFixed(2)}` }
+        }
+        return { success: true, message: 'Connected successfully' }
+      }
+      return { success: false, message: data.status_message || 'API error' }
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      return { success: false, message: 'Invalid credentials' }
+    }
+
+    return { success: false, message: `HTTP error: ${response.status}` }
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : 'Connection failed' }
+  }
+}
+
 export async function POST(request: Request) {
   const session = await auth()
   if (!session) {
@@ -263,9 +294,18 @@ export async function POST(request: Request) {
     case 'GOOGLE_PLACES_API_KEY':
       result = await testGooglePlaces(apiKey)
       break
+    case 'DATAFORSEO_PASSWORD':
+      const dataForSeoLogin = await getApiKey('DATAFORSEO_LOGIN')
+      if (!dataForSeoLogin) {
+        result = { success: false, message: 'DataForSEO Login must be configured first' }
+      } else {
+        result = await testDataForSEO(dataForSeoLogin, apiKey)
+      }
+      break
     case 'PODBEAN_CLIENT_ID':
     case 'GOOGLE_CLOUD_PROJECT_ID':
     case 'GOOGLE_CLOUD_STORAGE_BUCKET':
+    case 'DATAFORSEO_LOGIN':
       // These are just config values, not testable APIs
       result = { success: true, message: 'Configuration value saved' }
       break

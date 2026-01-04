@@ -195,6 +195,31 @@ async function testGoogleCloud(credentials: string): Promise<{ success: boolean;
   }
 }
 
+async function testDataForSEO(login: string, password: string): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await fetch('https://api.dataforseo.com/v3/appendix/user_data', {
+      method: 'GET',
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from(`${login}:${password}`).toString('base64'),
+      },
+    })
+    if (response.ok) {
+      const data = await response.json()
+      const balance = data.tasks?.[0]?.result?.[0]?.money?.balance
+      if (balance !== undefined) {
+        return { success: true, message: `Connected - $${balance.toFixed(2)} balance` }
+      }
+      return { success: true, message: 'Connected' }
+    }
+    if (response.status === 401 || response.status === 403) {
+      return { success: false, message: 'Invalid credentials' }
+    }
+    return { success: false, message: `Error: ${response.status}` }
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : 'Connection failed' }
+  }
+}
+
 // GET - Return status of all integrations (quick check, no live testing)
 export async function GET() {
   const session = await auth()
@@ -259,6 +284,13 @@ export async function GET() {
       status: 'not_configured',
       message: 'Not configured',
     },
+    {
+      name: 'DataForSEO (PAA Research)',
+      key: 'DATAFORSEO_PASSWORD',
+      configured: false,
+      status: 'not_configured',
+      message: 'Not configured',
+    },
   ]
 
   // Check which integrations are configured
@@ -287,6 +319,22 @@ export async function GET() {
     }
   }
 
+  // Special check for DataForSEO (needs both login and password)
+  const dataForSeoIntegration = integrations.find(i => i.key === 'DATAFORSEO_PASSWORD')
+  if (dataForSeoIntegration) {
+    const login = await getApiKey('DATAFORSEO_LOGIN')
+    const password = await getApiKey('DATAFORSEO_PASSWORD')
+    if (login && password) {
+      dataForSeoIntegration.configured = true
+      dataForSeoIntegration.status = 'connected'
+      dataForSeoIntegration.message = 'Configured (not tested)'
+    } else if (login || password) {
+      dataForSeoIntegration.configured = false
+      dataForSeoIntegration.status = 'error'
+      dataForSeoIntegration.message = 'Partially configured'
+    }
+  }
+
   return NextResponse.json({ integrations })
 }
 
@@ -300,7 +348,7 @@ export async function POST(request: Request) {
   const { key } = await request.json()
 
   const apiKey = await getApiKey(key)
-  if (!apiKey && key !== 'PODBEAN_CLIENT_SECRET') {
+  if (!apiKey && key !== 'PODBEAN_CLIENT_SECRET' && key !== 'DATAFORSEO_PASSWORD') {
     return NextResponse.json({
       success: false,
       message: 'Not configured',
@@ -340,6 +388,15 @@ export async function POST(request: Request) {
       break
     case 'CREATIFY_API_KEY':
       result = await testCreatify(apiKey!)
+      break
+    case 'DATAFORSEO_PASSWORD':
+      const dfLogin = await getApiKey('DATAFORSEO_LOGIN')
+      const dfPassword = await getApiKey('DATAFORSEO_PASSWORD')
+      if (!dfLogin || !dfPassword) {
+        result = { success: false, message: 'Missing login or password' }
+      } else {
+        result = await testDataForSEO(dfLogin, dfPassword)
+      }
       break
     default:
       result = { success: false, message: 'Unknown integration' }
