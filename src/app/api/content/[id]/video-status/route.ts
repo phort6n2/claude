@@ -22,17 +22,35 @@ function generatePodcastEmbed(title: string, playerUrl: string): string {
 </div>`
 }
 
-function generateGoogleMapsEmbed(googleMapsUrl: string): string | null {
-  const match = googleMapsUrl.match(/place\/([^/]+)\//)
-  if (!match) return null
+function generateGoogleMapsEmbed(params: {
+  businessName: string
+  streetAddress: string
+  city: string
+  state: string
+  postalCode: string
+  googleMapsUrl?: string | null
+}): string {
+  // Create a search query from the address
+  const addressQuery = encodeURIComponent(
+    `${params.businessName}, ${params.streetAddress}, ${params.city}, ${params.state} ${params.postalCode}`
+  )
 
-  const placeName = decodeURIComponent(match[1].replace(/\+/g, ' '))
-  const embedUrl = `https://www.google.com/maps/embed/v1/place?key=${process.env.GOOGLE_MAPS_API_KEY || ''}&q=${encodeURIComponent(placeName)}`
+  // Use the embedded maps URL format (no API key needed)
+  const embedUrl = `https://www.google.com/maps?q=${addressQuery}&output=embed`
 
   return `<!-- Google Maps Embed -->
 <div class="google-maps-embed" style="margin: 30px 0;">
   <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-    <iframe src="${embedUrl}" width="100%" height="100%" style="position: absolute; top: 0; left: 0; border: 0;" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+    <iframe
+      src="${embedUrl}"
+      width="100%"
+      height="100%"
+      style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
+      allowfullscreen=""
+      loading="lazy"
+      referrerpolicy="no-referrer-when-downgrade"
+      title="Map showing ${params.businessName} location">
+    </iframe>
   </div>
 </div>`
 }
@@ -423,12 +441,17 @@ ${schemaJson}
         }
 
         // Add Google Maps embed at the very end
-        if (contentItem.client.googleMapsUrl) {
-          const mapsEmbed = generateGoogleMapsEmbed(contentItem.client.googleMapsUrl)
-          if (mapsEmbed) {
-            fullContent = fullContent + mapsEmbed
-            embedded.push('google-maps')
-          }
+        if (contentItem.client.streetAddress && contentItem.client.city && contentItem.client.state) {
+          const mapsEmbed = generateGoogleMapsEmbed({
+            businessName: contentItem.client.businessName,
+            streetAddress: contentItem.client.streetAddress,
+            city: contentItem.client.city,
+            state: contentItem.client.state,
+            postalCode: contentItem.client.postalCode,
+            googleMapsUrl: contentItem.client.googleMapsUrl,
+          })
+          fullContent = fullContent + mapsEmbed
+          embedded.push('google-maps')
         }
 
         // Update WordPress with all embeds
@@ -472,7 +495,7 @@ ${schemaJson}
       where: { id: contentItemId },
       data: {
         status: 'PUBLISHED',
-        pipelineStep: 'complete',
+        pipelineStep: null,
       },
     })
 

@@ -289,7 +289,6 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
   let blogResult: { title: string; slug: string; content: string; excerpt: string; metaTitle: string; metaDescription: string; focusKeyword: string } | null = null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let blogPost: any = null
-  let podcastScript: string = ''
   let wrhqBlogUrl: string | null = null
   let wrhqWordpressPostId: number | null = null
 
@@ -1072,7 +1071,6 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           TIMEOUTS.BLOG_GENERATION,
           'Podcast script generation'
         )
-        podcastScript = script
 
         log(ctx, 'Creating podcast job...')
         const podcastJob = await withTimeout(
@@ -1106,7 +1104,6 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           logError(ctx, 'Failed to generate podcast description, using fallback', descError)
           descriptionHtml = `<p>${blogResult!.excerpt || contentItem.paaQuestion}</p>`
         }
-        podcastDescriptionHtml = descriptionHtml
 
         // Create podcast record with PROCESSING status
         const podcastRecord = await prisma.podcast.create({
@@ -1120,7 +1117,6 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             status: 'PROCESSING',
           },
         })
-        podcastRecordId = podcastRecord.id
 
         await prisma.contentItem.update({
           where: { id: contentItemId },
@@ -1232,7 +1228,6 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             status: 'PROCESSING',
           },
         })
-        videoRecordId = videoRecord.id
 
         log(ctx, '📝 Video job started, waiting for render...', { jobId: videoJob.jobId })
 
