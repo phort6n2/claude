@@ -81,8 +81,16 @@ export async function fetchPAAsForLocation(
   let totalCost = 0
 
   try {
-    // Search with primary keyword for cost efficiency
-    const keyword = `${searchKeywords[0]} ${location}`
+    // Search multiple keywords to find PAAs
+    const searchQueries = [
+      `${searchKeywords[0]} ${location}`,
+      `auto glass ${location}`,
+      `windshield repair ${location}`,
+    ]
+
+    // Use first query as primary search
+    const keyword = searchQueries[0]
+    console.log('[DataForSEO] Searching for:', keyword)
 
     const response = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/advanced', {
       method: 'POST',
@@ -97,7 +105,7 @@ export async function fetchPAAsForLocation(
           language_name: 'English',
           device: 'desktop',
           os: 'windows',
-          depth: 10, // Just first page, we only need PAAs
+          depth: 100, // Search deeper to find PAAs
         }
       ]),
     })
@@ -123,16 +131,26 @@ export async function fetchPAAsForLocation(
 
     // Extract PAAs from results
     const tasks = data.tasks || []
+    console.log('[DataForSEO] Tasks returned:', tasks.length)
+
     for (const task of tasks) {
       const results = task.result || []
+      console.log('[DataForSEO] Results in task:', results.length)
+
       for (const result of results) {
         totalCost += result.cost || 0
         const items = result.items || []
+
+        // Log all item types for debugging
+        const itemTypes = items.map(i => i.type)
+        console.log('[DataForSEO] Item types found:', [...new Set(itemTypes)])
 
         for (const item of items) {
           if (item.type === 'people_also_ask') {
             // PAA questions are in the nested items array
             const paaItems = item.items || []
+            console.log('[DataForSEO] PAA block found with', paaItems.length, 'questions')
+
             for (const paaItem of paaItems) {
               if (paaItem.type === 'people_also_ask_element' && paaItem.title) {
                 // Get answer from expanded_element if available
