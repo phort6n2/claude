@@ -7,9 +7,25 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { StatusBadge } from '@/components/ui/Badge'
 import { prisma } from '@/lib/db'
-import { Plus, RefreshCw, Globe, MapPin, Podcast, Building2, CheckCircle, AlertTriangle, Calendar, Zap, FileText } from 'lucide-react'
+import { Plus, RefreshCw, Globe, MapPin, Podcast, Building2, CheckCircle, AlertTriangle, Zap, FileText, ExternalLink, Rss } from 'lucide-react'
 import ClientLogo from '@/components/ui/ClientLogo'
 import ScheduleActions from '@/components/admin/ScheduleActions'
+
+// Brand colors for social platforms
+const PLATFORM_STYLES: Record<string, { bg: string; text: string; label: string }> = {
+  facebook: { bg: 'bg-[#1877F2]', text: 'text-white', label: 'FB' },
+  instagram: { bg: 'bg-gradient-to-br from-[#833AB4] via-[#E1306C] to-[#F77737]', text: 'text-white', label: 'IG' },
+  linkedin: { bg: 'bg-[#0A66C2]', text: 'text-white', label: 'in' },
+  twitter: { bg: 'bg-black', text: 'text-white', label: 'X' },
+  tiktok: { bg: 'bg-black', text: 'text-white', label: 'TT' },
+  gbp: { bg: 'bg-[#4285F4]', text: 'text-white', label: 'G' },
+  youtube: { bg: 'bg-[#FF0000]', text: 'text-white', label: 'YT' },
+  bluesky: { bg: 'bg-[#0085FF]', text: 'text-white', label: 'BS' },
+  threads: { bg: 'bg-black', text: 'text-white', label: 'TH' },
+  reddit: { bg: 'bg-[#FF4500]', text: 'text-white', label: 'R' },
+  pinterest: { bg: 'bg-[#E60023]', text: 'text-white', label: 'P' },
+  telegram: { bg: 'bg-[#26A5E4]', text: 'text-white', label: 'TG' },
+}
 
 async function getClients() {
   const clients = await prisma.client.findMany({
@@ -75,170 +91,185 @@ async function ClientCards() {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
       {clients.map((client) => {
         const disconnected = client.disconnectedAccounts as Record<string, unknown> | null
         const disconnectedPlatforms = disconnected ? Object.keys(disconnected) : []
         const hasDisconnected = disconnectedPlatforms.length > 0
 
         return (
-          <Card key={client.id} className="hover:shadow-lg transition-all duration-200 group">
-            <CardContent className="p-5">
-              {/* Centered Header */}
-              <div className="flex flex-col items-center text-center mb-4">
+          <Card key={client.id} className="hover:shadow-lg transition-all duration-200">
+            <CardContent className="p-4">
+              {/* Header: Logo + Name + Location */}
+              <div className="flex flex-col items-center text-center mb-3">
                 <ClientLogo
                   logoUrl={client.logoUrl}
                   businessName={client.businessName}
                   primaryColor={client.primaryColor}
                   size="lg"
                 />
-                <h3 className="font-semibold text-gray-900 mt-3 leading-tight line-clamp-2 min-h-[2.5rem]">
+                <h3 className="font-semibold text-gray-900 mt-2 leading-tight line-clamp-2 text-sm">
                   {client.businessName}
                 </h3>
-                <p className="text-sm text-gray-500 mt-0.5">{client.city}, {client.state}</p>
-                <div className="mt-2">
-                  <StatusBadge status={client.status} />
-                </div>
+                <p className="text-xs text-gray-500">{client.city}, {client.state}</p>
               </div>
 
-              {/* Status Indicators - Centered Pills */}
-              <div className="flex items-center justify-center gap-2 mb-4">
+              {/* Status Row: Badge + Auto + Blog */}
+              <div className="flex items-center justify-center gap-1.5 mb-3">
+                <StatusBadge status={client.status} />
                 <span
-                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${
                     client.autoScheduleEnabled
                       ? 'bg-green-100 text-green-700'
                       : 'bg-gray-100 text-gray-500'
                   }`}
-                  title={client.autoScheduleEnabled ? 'Auto-scheduling is enabled' : 'Auto-scheduling is disabled'}
+                  title={client.autoScheduleEnabled ? 'Autopilot ON: Content is auto-generated and published' : 'Autopilot OFF: Manual content management'}
                 >
-                  <Zap className="h-3 w-3" />
+                  <Zap className="h-2.5 w-2.5" />
                   {client.autoScheduleEnabled ? 'Auto' : 'Manual'}
                 </span>
                 <span
-                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${
                     client.wordpressConnected
                       ? 'bg-blue-100 text-blue-700'
                       : 'bg-gray-100 text-gray-500'
                   }`}
-                  title={client.wordpressConnected ? 'WordPress is connected and publishing' : 'WordPress not connected'}
+                  title={client.wordpressConnected ? 'Blog Connected: Posts auto-publish to WordPress' : 'Blog Not Connected: WordPress credentials needed'}
                 >
-                  {client.wordpressConnected ? (
-                    <CheckCircle className="h-3 w-3" />
-                  ) : (
-                    <span className="h-3 w-3 rounded-full border border-current opacity-50" />
-                  )}
-                  WP
-                </span>
-                <span
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600"
-                  title={`${client._count.contentItems} posts published this month`}
-                >
-                  <FileText className="h-3 w-3" />
-                  {client._count.contentItems}
+                  {client.wordpressConnected ? <CheckCircle className="h-2.5 w-2.5" /> : <Rss className="h-2.5 w-2.5" />}
+                  Blog
                 </span>
               </div>
 
-              {/* Social Platforms - Centered */}
-              <div className="flex items-center justify-center gap-1.5 mb-4">
-                {hasDisconnected && (
-                  <span
-                    className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-100 text-red-600 cursor-help"
-                    title={`⚠️ Disconnected accounts: ${disconnectedPlatforms.join(', ')}`}
-                  >
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                  </span>
-                )}
-                {client.socialPlatforms.slice(0, 5).map((platform: string) => {
-                  const isDisconnected = disconnectedPlatforms.includes(platform.toLowerCase())
-                  return (
+              {/* Connected Platforms with Brand Colors */}
+              <div className="mb-3">
+                <div className="text-[10px] text-gray-400 text-center mb-1.5">Social Accounts</div>
+                <div className="flex items-center justify-center gap-1 flex-wrap">
+                  {hasDisconnected && (
                     <span
-                      key={platform}
-                      className={`inline-flex items-center justify-center h-6 w-6 rounded-full text-xs font-semibold cursor-help transition-transform hover:scale-110 ${
-                        isDisconnected
-                          ? 'bg-red-100 text-red-600 ring-2 ring-red-200'
-                          : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700'
-                      }`}
-                      title={isDisconnected ? `${platform} - ⚠️ DISCONNECTED` : `${platform} - Connected`}
+                      className="inline-flex items-center justify-center h-6 w-6 rounded bg-red-500 text-white cursor-help"
+                      title={`⚠️ DISCONNECTED: ${disconnectedPlatforms.join(', ')} - reconnect in Late.dev`}
                     >
-                      {platform[0].toUpperCase()}
+                      <AlertTriangle className="h-3 w-3" />
                     </span>
-                  )
-                })}
-                {client.socialPlatforms.length > 5 && (
-                  <span
-                    className="text-xs text-gray-500 font-medium cursor-help"
-                    title={`Also connected: ${client.socialPlatforms.slice(5).join(', ')}`}
-                  >
-                    +{client.socialPlatforms.length - 5}
-                  </span>
-                )}
-                {client.socialPlatforms.length === 0 && (
-                  <span className="text-xs text-gray-400 italic">No social accounts</span>
-                )}
+                  )}
+                  {client.socialPlatforms.slice(0, 6).map((platform: string) => {
+                    const platformKey = platform.toLowerCase()
+                    const style = PLATFORM_STYLES[platformKey] || { bg: 'bg-gray-500', text: 'text-white', label: platform[0].toUpperCase() }
+                    const isDisconnected = disconnectedPlatforms.includes(platformKey)
+                    return (
+                      <span
+                        key={platform}
+                        className={`inline-flex items-center justify-center h-6 w-6 rounded text-[10px] font-bold cursor-help transition-transform hover:scale-110 ${
+                          isDisconnected
+                            ? 'bg-red-200 text-red-700 ring-2 ring-red-400'
+                            : `${style.bg} ${style.text}`
+                        }`}
+                        title={isDisconnected
+                          ? `${platform} DISCONNECTED - Reconnect in Late.dev to resume posting`
+                          : `${platform} connected and ready to post`}
+                      >
+                        {style.label}
+                      </span>
+                    )
+                  })}
+                  {client.socialPlatforms.length > 6 && (
+                    <span
+                      className="inline-flex items-center justify-center h-6 px-1.5 rounded bg-gray-200 text-gray-600 text-[10px] font-medium cursor-help"
+                      title={`More accounts: ${client.socialPlatforms.slice(6).join(', ')}`}
+                    >
+                      +{client.socialPlatforms.length - 6}
+                    </span>
+                  )}
+                  {client.socialPlatforms.length === 0 && (
+                    <span className="text-[10px] text-gray-400">None connected</span>
+                  )}
+                </div>
               </div>
 
-              {/* Quick Links - Centered with labels on hover */}
-              <div className="flex items-center justify-center gap-3 py-3 border-t border-gray-100">
-                {client.wordpressUrl && (
-                  <a
-                    href={client.wordpressUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-110 transition-all"
-                    title="🌐 Visit Website"
-                  >
-                    <Globe className="h-4 w-4" />
-                  </a>
-                )}
-                {client.googleMapsUrl && (
-                  <a
-                    href={client.googleMapsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 hover:scale-110 transition-all"
-                    title="📍 View on Google Maps"
-                  >
-                    <MapPin className="h-4 w-4" />
-                  </a>
-                )}
-                {client.podbeanPodcastUrl && (
-                  <a
-                    href={client.podbeanPodcastUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 hover:scale-110 transition-all"
-                    title="🎙️ Listen to Podcast"
-                  >
-                    <Podcast className="h-4 w-4" />
-                  </a>
-                )}
-                {client.wrhqDirectoryUrl && (
-                  <a
-                    href={client.wrhqDirectoryUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 hover:scale-110 transition-all"
-                    title="🏢 WRHQ Directory Listing"
-                  >
-                    <Building2 className="h-4 w-4" />
-                  </a>
-                )}
-                {!client.wordpressUrl && !client.googleMapsUrl && !client.podbeanPodcastUrl && !client.wrhqDirectoryUrl && (
-                  <span className="text-xs text-gray-400 italic">No quick links</span>
-                )}
+              {/* Quick Links with Labels */}
+              <div className="border-t border-gray-100 pt-2 mb-2">
+                <div className="flex items-center justify-center gap-2">
+                  {client.wordpressUrl && (
+                    <a
+                      href={client.wordpressUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-col items-center gap-0.5 p-1.5 rounded hover:bg-gray-50 transition-colors group"
+                      title="Open client website in new tab"
+                    >
+                      <span className="relative">
+                        <Globe className="h-4 w-4 text-blue-600" />
+                        <ExternalLink className="h-2 w-2 absolute -top-0.5 -right-1 text-gray-400 group-hover:text-blue-600" />
+                      </span>
+                      <span className="text-[9px] text-gray-500">Site</span>
+                    </a>
+                  )}
+                  {client.googleMapsUrl && (
+                    <a
+                      href={client.googleMapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-col items-center gap-0.5 p-1.5 rounded hover:bg-gray-50 transition-colors group"
+                      title="View business location on Google Maps"
+                    >
+                      <span className="relative">
+                        <MapPin className="h-4 w-4 text-red-600" />
+                        <ExternalLink className="h-2 w-2 absolute -top-0.5 -right-1 text-gray-400 group-hover:text-red-600" />
+                      </span>
+                      <span className="text-[9px] text-gray-500">Map</span>
+                    </a>
+                  )}
+                  {client.podbeanPodcastUrl && (
+                    <a
+                      href={client.podbeanPodcastUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-col items-center gap-0.5 p-1.5 rounded hover:bg-gray-50 transition-colors group"
+                      title="Listen to podcast episodes on Podbean"
+                    >
+                      <span className="relative">
+                        <Podcast className="h-4 w-4 text-purple-600" />
+                        <ExternalLink className="h-2 w-2 absolute -top-0.5 -right-1 text-gray-400 group-hover:text-purple-600" />
+                      </span>
+                      <span className="text-[9px] text-gray-500">Podcast</span>
+                    </a>
+                  )}
+                  {client.wrhqDirectoryUrl && (
+                    <a
+                      href={client.wrhqDirectoryUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-col items-center gap-0.5 p-1.5 rounded hover:bg-gray-50 transition-colors group"
+                      title="View listing on WRHQ Directory"
+                    >
+                      <span className="relative">
+                        <Building2 className="h-4 w-4 text-orange-600" />
+                        <ExternalLink className="h-2 w-2 absolute -top-0.5 -right-1 text-gray-400 group-hover:text-orange-600" />
+                      </span>
+                      <span className="text-[9px] text-gray-500">WRHQ</span>
+                    </a>
+                  )}
+                </div>
               </div>
 
-              {/* Actions - Compact */}
-              <div className="flex items-center justify-center gap-2 mt-3">
+              {/* Posts This Month */}
+              <div className="flex items-center justify-center gap-1 text-[10px] text-gray-500 mb-2">
+                <FileText className="h-3 w-3" />
+                <span>{client._count.contentItems} posts this month</span>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2">
                 <ScheduleActions
                   clientId={client.id}
                   clientName={client.businessName}
                   hasSchedule={client.calendarGenerated}
                   scheduledCount={client.scheduledCount}
                 />
-                <Link href={`/admin/clients/${client.id}`}>
-                  <button className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">
-                    Edit
+                <Link href={`/admin/clients/${client.id}`} className="flex-1">
+                  <button className="w-full px-3 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
+                    Edit Client
                   </button>
                 </Link>
               </div>
