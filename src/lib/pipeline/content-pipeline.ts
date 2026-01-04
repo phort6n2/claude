@@ -1170,12 +1170,11 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       const blogPostForVideo = await prisma.blogPost.findUnique({ where: { contentItemId } })
       const blogUrlForVideo = blogPostForVideo?.wordpressUrl || null
 
-      const scriptForVideo = podcastScript || blogResult!.excerpt || blogResult!.title
-
       log(ctx, 'Creating short video job...', { blogUrl: blogUrlForVideo })
       const videoJob = await withTimeout(
         createShortVideo({
-          script: scriptForVideo.substring(0, 500),
+          // Don't pass script when using blogUrl - let Creatify generate from the blog content
+          // Passing a script would override Creatify's natural generation and create podcast-like videos
           title: blogResult!.title,
           blogUrl: blogUrlForVideo || undefined, // Use URL-to-Video API if blog is published
           imageUrls: imageUrls.map((i: { gcsUrl: string }) => i.gcsUrl),
