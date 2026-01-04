@@ -1143,7 +1143,8 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           blogUrl: blogUrlForVideo || undefined, // Use URL-to-Video API if blog is published
           imageUrls: imageUrls.map((i: { gcsUrl: string }) => i.gcsUrl),
           aspectRatio: '9:16',
-          duration: 30, // 30 seconds for short-form video (URL-to-Video supports 15, 30, 45, 60)
+          duration: 30, // 30 seconds for short-form video
+          scriptStyle: 'ProblemSolutionV2', // Problem/solution format for auto glass content
         }),
         TIMEOUTS.VIDEO_CREATE,
         'Video job creation'
