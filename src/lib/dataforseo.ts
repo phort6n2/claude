@@ -18,15 +18,28 @@ export interface DataForSEOResult {
   error?: string
 }
 
+interface PAAExpandedElement {
+  type: string
+  featured_title?: string
+  url?: string
+  domain?: string
+  title?: string
+  description?: string
+}
+
+interface PAAElement {
+  type: string
+  title?: string
+  seed_question?: string | null
+  expanded_element?: PAAExpandedElement[]
+}
+
 interface DataForSEOItem {
   type: string
   title?: string
-  expanded_element?: Array<{
-    type: string
-    title?: string
-    description?: string
-    url?: string
-  }>
+  // For people_also_ask, questions are in items array
+  items?: PAAElement[]
+  expanded_element?: PAAExpandedElement[]
 }
 
 interface DataForSEOTask {
@@ -118,19 +131,16 @@ export async function fetchPAAsForLocation(
 
         for (const item of items) {
           if (item.type === 'people_also_ask') {
-            // Extract questions from the PAA block
-            if (item.title) {
-              allPAAs.push({ question: item.title })
-            }
-
-            // Also check expanded elements
-            const expanded = item.expanded_element || []
-            for (const elem of expanded) {
-              if (elem.type === 'people_also_ask_element' && elem.title) {
+            // PAA questions are in the nested items array
+            const paaItems = item.items || []
+            for (const paaItem of paaItems) {
+              if (paaItem.type === 'people_also_ask_element' && paaItem.title) {
+                // Get answer from expanded_element if available
+                const expanded = paaItem.expanded_element?.[0]
                 allPAAs.push({
-                  question: elem.title,
-                  answer: elem.description,
-                  source: elem.url,
+                  question: paaItem.title,
+                  answer: expanded?.description,
+                  source: expanded?.url,
                 })
               }
             }
