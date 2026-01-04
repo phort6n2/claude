@@ -81,16 +81,17 @@ export async function fetchPAAsForLocation(
   let totalCost = 0
 
   try {
-    // Search multiple keywords to find PAAs
-    const searchQueries = [
-      `${searchKeywords[0]} ${location}`,
-      `auto glass ${location}`,
-      `windshield repair ${location}`,
+    // Use broad, popular keywords that trigger PAAs
+    // Don't include location - PAAs are usually location-agnostic
+    const broadKeywords = [
+      'windshield replacement',
+      'auto glass repair',
+      'windshield repair',
     ]
 
-    // Use first query as primary search
-    const keyword = searchQueries[0]
-    console.log('[DataForSEO] Searching for:', keyword)
+    // Search multiple keywords to maximize PAA results
+    const keyword = broadKeywords[0]
+    console.log('[DataForSEO] Searching for broad keyword:', keyword)
 
     const response = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/advanced', {
       method: 'POST',
