@@ -105,10 +105,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       source: paa.source,
     }))
 
-    // Build locations list for response
+    // Build locations list for response (main city + all service areas)
     const searchedLocations = [client.city]
     if (client.serviceAreas && client.serviceAreas.length > 0) {
-      searchedLocations.push(...client.serviceAreas.slice(0, 2))
+      // Add all service areas, excluding duplicates of main city
+      const uniqueAreas = client.serviceAreas.filter(area =>
+        area.toLowerCase() !== client.city.toLowerCase()
+      )
+      searchedLocations.push(...uniqueAreas)
     }
 
     return NextResponse.json({

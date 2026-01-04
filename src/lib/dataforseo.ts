@@ -97,14 +97,13 @@ export async function fetchPAAsForLocation(
     // Convert state abbreviation to full name if needed
     const fullStateName = stateAbbreviations[state.toUpperCase()] || state
 
-    // Build list of locations to search: main city + up to 2 service areas
+    // Build list of locations to search: main city + all service areas
     const mainLocation = `${city},${fullStateName},United States`
     const locationsSet = new Set<string>([mainLocation])
 
-    // Add service areas (limit to 2 to control costs), excluding duplicates
+    // Add all service areas, excluding duplicates
     if (serviceAreas && serviceAreas.length > 0) {
       for (const area of serviceAreas) {
-        if (locationsSet.size >= 3) break // Max 3 locations total (main + 2 service areas)
         const areaLocation = `${area},${fullStateName},United States`
         if (areaLocation !== mainLocation) {
           locationsSet.add(areaLocation)
