@@ -731,13 +731,13 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       log(ctx, '⏭️ WRHQ not configured - skipping')
     }
 
-    // ============ STEP 4: Schedule Social Posts ============
-    // (Moved BEFORE podcast/video to match manual flow)
+    // ============ STEP 4-6: Social Posts, Podcast AND Video IN PARALLEL ============
+    // Running all three in parallel saves significant time
     ctx.step = 'social'
     await updatePipelineStep(contentItemId, 'social')
-    log(ctx, '📱 Starting social posting...')
-    await logAction(ctx, 'social_post', 'STARTED')
+    log(ctx, '📱🎙️🎬 Starting social posts, podcast AND video in parallel...')
 
+    // Fetch shared data needed by social posts upfront
     const blogPostRecord = await prisma.blogPost.findUnique({ where: { contentItemId } })
     const clientBlogUrl = blogPostRecord?.wordpressUrl || ''
 
@@ -759,22 +759,31 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       return landscapeImage ? [landscapeImage.gcsUrl] : (squareImage ? [squareImage.gcsUrl] : [])
     }
 
-    // Client Social Posts
-    const socialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
-    if (contentItem.client.socialPlatforms.length > 0 && socialAccountIds && Object.keys(socialAccountIds).length > 0) {
-      results.social.skipped = false
-      log(ctx, 'Posting client social posts...', { platforms: contentItem.client.socialPlatforms })
+    // Start log action for social posts (podcast/video log their own start inside Promise.allSettled)
+    await logAction(ctx, 'social_post', 'STARTED')
 
-      try {
-        const clientPostedPosts: Array<{ platform: string; postId: string; status: string; publishedUrl?: string }> = []
+    // Run all three operations in parallel using Promise.allSettled
+    const [socialSettled, podcastSettled, videoSettled] = await Promise.allSettled([
+      // ========== SOCIAL POSTS ==========
+      (async () => {
+        const socialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
+        let clientPostedCount = 0
+        let wrhqPostedCount = 0
 
-        // Post to each platform immediately (not scheduled)
-        for (const platform of contentItem.client.socialPlatforms) {
-          const accountId = socialAccountIds[platform]
-          if (!accountId) continue
+        // Client Social Posts
+        if (contentItem.client.socialPlatforms.length > 0 && socialAccountIds && Object.keys(socialAccountIds).length > 0) {
+          results.social.skipped = false
+          log(ctx, 'Posting client social posts...', { platforms: contentItem.client.socialPlatforms })
 
-          // Get platform-specific image
-          const platformMediaUrls = getMediaUrlsForPlatform(platform)
+          const clientPostedPosts: Array<{ platform: string; postId: string; status: string; publishedUrl?: string }> = []
+
+          // Post to each platform immediately (not scheduled)
+          for (const platform of contentItem.client.socialPlatforms) {
+            const accountId = socialAccountIds[platform]
+            if (!accountId) continue
+
+            // Get platform-specific image
+            const platformMediaUrls = getMediaUrlsForPlatform(platform)
 
           // Generate caption for this platform
           const captionResult = await withTimeout(
@@ -875,387 +884,359 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           }
         }
 
-        results.social = { success: clientPostedPosts.length > 0 }
-        log(ctx, '✅ Client social posts published', { count: clientPostedPosts.length })
+          clientPostedCount = clientPostedPosts.length
+          results.social = { success: clientPostedPosts.length > 0 }
+          log(ctx, '✅ Client social posts published', { count: clientPostedPosts.length })
 
-        // Mark social as generated
-        await prisma.contentItem.update({
-          where: { id: contentItemId },
-          data: { socialGenerated: true },
-        })
-      } catch (error) {
-        logError(ctx, 'Client social scheduling failed', error)
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        results.social = { success: false, error: errorMessage }
-      }
-    } else {
-      log(ctx, '⏭️ Client social not configured - skipping')
-    }
-
-    // WRHQ Social Posts (post immediately after client posts complete)
-    const wrhqLateAccountIds = await getWRHQLateAccountIds()
-    if (Object.keys(wrhqLateAccountIds).length > 0 && wrhqBlogUrl) {
-      log(ctx, 'Posting WRHQ social posts...')
-      await logAction(ctx, 'wrhq_social_post', 'STARTED')
-
-      try {
-        const wrhqPlatforms = wrhqConfig.socialMedia.enabledPlatforms.filter(
-          p => wrhqLateAccountIds[p]
-        ) as ('facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram')[]
-
-        // Skip video platforms (TikTok, YouTube) for image posts
-        const VIDEO_PLATFORMS = ['tiktok', 'youtube']
-        const filteredPlatforms = wrhqPlatforms.filter(p => !VIDEO_PLATFORMS.includes(p))
-
-        const wrhqPostedPosts: Array<{ platform: string; postId: string; status: string; publishedUrl?: string }> = []
-
-        // Post to each WRHQ platform immediately
-        for (const platform of filteredPlatforms) {
-          const accountId = wrhqLateAccountIds[platform]
-          if (!accountId) continue
-
-          // Get platform-specific image (same logic as client posts)
-          const platformMediaUrls = getMediaUrlsForPlatform(platform)
-
-          // Generate WRHQ caption for this platform
-          const captionResult = await withTimeout(
-            generateWRHQSocialCaption({
-              platform,
-              clientBusinessName: contentItem.client.businessName,
-              clientCity: contentItem.client.city,
-              clientState: contentItem.client.state,
-              paaQuestion: contentItem.paaQuestion,
-              wrhqBlogUrl: wrhqBlogUrl,
-              clientBlogUrl,
-              wrhqDirectoryUrl: contentItem.client.wrhqDirectoryUrl || undefined,
-              googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
-              clientWebsite: contentItem.client.wordpressUrl || undefined,
-            }),
-            TIMEOUTS.SOCIAL_CAPTION,
-            `WRHQ ${platform} caption generation`
-          )
-
-          // Format caption with hashtags
-          let fullCaption = captionResult.caption
-          if (captionResult.hashtags && captionResult.hashtags.length > 0) {
-            fullCaption = `${captionResult.caption}\n\n${captionResult.hashtags.map(h => `#${h}`).join(' ')}`
-          }
-
-          // Add Google Maps link for GBP posts
-          if (platform === 'gbp' && contentItem.client.googleMapsUrl) {
-            fullCaption = `${fullCaption}\n\n📍 Find us on Google Maps: ${contentItem.client.googleMapsUrl}`
-          }
-
-          // Post immediately
-          log(ctx, `📤 Posting WRHQ to ${platform}...`, { imageType: platform === 'instagram' ? '1:1' : '16:9' })
-          try {
-            const postResult = await withTimeout(
-              postNowAndCheckStatus({
-                accountId,
-                platform,
-                caption: fullCaption,
-                mediaUrls: platformMediaUrls,
-                mediaType: 'image',
-                firstComment: captionResult.firstComment,
-                ctaUrl: platform === 'gbp' ? wrhqBlogUrl : undefined,
-              }),
-              TIMEOUTS.SOCIAL_SCHEDULE,
-              `WRHQ ${platform} posting`
-            )
-
-            wrhqPostedPosts.push({
-              platform,
-              postId: postResult.postId,
-              status: postResult.status,
-              publishedUrl: postResult.platformPostUrl,
-            })
-
-            // Save WRHQ social post to database
-            await prisma.wRHQSocialPost.create({
-              data: {
-                contentItemId,
-                platform: platform.toUpperCase() as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
-                caption: captionResult.caption,
-                hashtags: captionResult.hashtags || [],
-                firstComment: captionResult.firstComment,
-                mediaUrls: platformMediaUrls,
-                mediaType: 'image',
-                scheduledTime: new Date(),
-                getlatePostId: postResult.postId,
-                publishedUrl: postResult.platformPostUrl,
-                status: postResult.status === 'published' ? 'PUBLISHED' : postResult.status === 'failed' ? 'FAILED' : 'PROCESSING',
-                publishedAt: postResult.status === 'published' ? new Date() : undefined,
-              },
-            })
-
-            log(ctx, `✅ WRHQ posted to ${platform}`, { status: postResult.status, url: postResult.platformPostUrl })
-          } catch (platformError) {
-            // Check if it's a rate limit error
-            const errorMsg = platformError instanceof Error ? platformError.message : String(platformError)
-            const isRateLimit = errorMsg.toLowerCase().includes('rate') || errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('too many') || errorMsg.toLowerCase().includes('quota')
-
-            if (isRateLimit) {
-              log(ctx, `⚠️ WRHQ ${platform} rate limit reached - skipping`, { error: errorMsg })
-            } else {
-              logError(ctx, `Failed to post WRHQ to ${platform}`, platformError)
-            }
-
-            // Save failed post to database so user can see it in the UI
-            try {
-              await prisma.wRHQSocialPost.create({
-                data: {
-                  contentItemId,
-                  platform: platform.toUpperCase() as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
-                  caption: captionResult.caption,
-                  hashtags: captionResult.hashtags || [],
-                  firstComment: captionResult.firstComment,
-                  mediaUrls: platformMediaUrls,
-                  mediaType: 'image',
-                  scheduledTime: new Date(),
-                  status: 'FAILED',
-                  errorMessage: isRateLimit ? 'Rate limit reached' : errorMsg.substring(0, 500),
-                },
-              })
-            } catch (dbError) {
-              logError(ctx, `Failed to save failed WRHQ post record for ${platform}`, dbError)
-            }
-            // Continue with other platforms
-          }
+          // Mark social as generated
+          await prisma.contentItem.update({
+            where: { id: contentItemId },
+            data: { socialGenerated: true },
+          })
+        } else {
+          log(ctx, '⏭️ Client social not configured - skipping')
         }
 
-        log(ctx, '✅ WRHQ social posts published', { count: wrhqPostedPosts.length })
-        await logAction(ctx, 'wrhq_social_post', 'SUCCESS', {
-          responseData: JSON.stringify({
-            postedPosts: wrhqPostedPosts.length,
-            platforms: filteredPlatforms,
-          }),
-        })
+        // WRHQ Social Posts
+        const wrhqLateAccountIds = await getWRHQLateAccountIds()
+        if (Object.keys(wrhqLateAccountIds).length > 0 && wrhqBlogUrl) {
+          log(ctx, 'Posting WRHQ social posts...')
+          await logAction(ctx, 'wrhq_social_post', 'STARTED')
 
-        // Mark WRHQ social as generated
-        await prisma.contentItem.update({
-          where: { id: contentItemId },
-          data: { wrhqSocialGenerated: true },
-        })
-      } catch (error) {
-        logError(ctx, 'WRHQ social posting failed', error)
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        await logAction(ctx, 'wrhq_social_post', 'FAILED', { errorMessage })
-      }
-    } else {
-      log(ctx, '⏭️ WRHQ social not configured or no WRHQ blog URL - skipping')
-    }
+          try {
+            const wrhqPlatforms = wrhqConfig.socialMedia.enabledPlatforms.filter(
+              p => wrhqLateAccountIds[p]
+            ) as ('facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram')[]
 
-    await logAction(ctx, 'social_post', 'SUCCESS')
+            // Skip video platforms (TikTok, YouTube) for image posts
+            const VIDEO_PLATFORMS = ['tiktok', 'youtube']
+            const filteredPlatforms = wrhqPlatforms.filter(p => !VIDEO_PLATFORMS.includes(p))
 
-    // ============ STEP 5 & 6: Generate Podcast AND Video IN PARALLEL ============
-    // Running these in parallel saves significant time (each can take 5-10 minutes)
-    ctx.step = 'podcast'
-    await updatePipelineStep(contentItemId, 'podcast')
-    log(ctx, '🎙️🎬 Starting podcast AND video generation in parallel...')
+            const wrhqPostedPosts: Array<{ platform: string; postId: string; status: string; publishedUrl?: string }> = []
 
-    // First, prepare both jobs (script generation, job creation)
-    let podcastJob: { jobId: string } | null = null
-    let podcastRecord: { id: string } | null = null
-    let podcastDescriptionHtml = ''
-    let videoJob: { jobId: string } | null = null
-    let videoRecord: { id: string } | null = null
+            // Post to each WRHQ platform immediately
+            for (const platform of filteredPlatforms) {
+              const accountId = wrhqLateAccountIds[platform]
+              if (!accountId) continue
 
-    // Start podcast job
-    try {
-      await logAction(ctx, 'podcast_generate', 'STARTED')
+              // Get platform-specific image (same logic as client posts)
+              const platformMediaUrls = getMediaUrlsForPlatform(platform)
 
-      podcastScript = await withTimeout(
-        generatePodcastScript({
-          businessName: contentItem.client.businessName,
-          city: contentItem.client.city,
-          paaQuestion: contentItem.paaQuestion,
-          blogContent: blogResult!.content,
-          phone: contentItem.client.phone,
-          website: contentItem.client.wordpressUrl || '',
-        }),
-        TIMEOUTS.BLOG_GENERATION,
-        'Podcast script generation'
-      )
+              // Generate WRHQ caption for this platform
+              const captionResult = await withTimeout(
+                generateWRHQSocialCaption({
+                  platform,
+                  clientBusinessName: contentItem.client.businessName,
+                  clientCity: contentItem.client.city,
+                  clientState: contentItem.client.state,
+                  paaQuestion: contentItem.paaQuestion,
+                  wrhqBlogUrl: wrhqBlogUrl,
+                  clientBlogUrl,
+                  wrhqDirectoryUrl: contentItem.client.wrhqDirectoryUrl || undefined,
+                  googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+                  clientWebsite: contentItem.client.wordpressUrl || undefined,
+                }),
+                TIMEOUTS.SOCIAL_CAPTION,
+                `WRHQ ${platform} caption generation`
+              )
 
-      log(ctx, 'Creating podcast job...')
-      podcastJob = await withTimeout(
-        createPodcast({
-          script: podcastScript,
-          title: blogResult!.title,
-          duration: 'short', // Use SHORT duration for faster generation (under 10 min)
-        }),
-        TIMEOUTS.PODCAST_CREATE,
-        'Podcast job creation'
-      )
+              // Format caption with hashtags
+              let fullCaption = captionResult.caption
+              if (captionResult.hashtags && captionResult.hashtags.length > 0) {
+                fullCaption = `${captionResult.caption}\n\n${captionResult.hashtags.map(h => `#${h}`).join(' ')}`
+              }
 
-      // Generate podcast description
-      try {
-        const servicePageUrl = contentItem.client.servicePages?.[0]?.url || undefined
-        podcastDescriptionHtml = await withTimeout(
-          generatePodcastDescription({
+              // Add Google Maps link for GBP posts
+              if (platform === 'gbp' && contentItem.client.googleMapsUrl) {
+                fullCaption = `${fullCaption}\n\n📍 Find us on Google Maps: ${contentItem.client.googleMapsUrl}`
+              }
+
+              // Post immediately
+              log(ctx, `📤 Posting WRHQ to ${platform}...`, { imageType: platform === 'instagram' ? '1:1' : '16:9' })
+              try {
+                const postResult = await withTimeout(
+                  postNowAndCheckStatus({
+                    accountId,
+                    platform,
+                    caption: fullCaption,
+                    mediaUrls: platformMediaUrls,
+                    mediaType: 'image',
+                    firstComment: captionResult.firstComment,
+                    ctaUrl: platform === 'gbp' ? wrhqBlogUrl : undefined,
+                  }),
+                  TIMEOUTS.SOCIAL_SCHEDULE,
+                  `WRHQ ${platform} posting`
+                )
+
+                wrhqPostedPosts.push({
+                  platform,
+                  postId: postResult.postId,
+                  status: postResult.status,
+                  publishedUrl: postResult.platformPostUrl,
+                })
+
+                // Save WRHQ social post to database
+                await prisma.wRHQSocialPost.create({
+                  data: {
+                    contentItemId,
+                    platform: platform.toUpperCase() as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
+                    caption: captionResult.caption,
+                    hashtags: captionResult.hashtags || [],
+                    firstComment: captionResult.firstComment,
+                    mediaUrls: platformMediaUrls,
+                    mediaType: 'image',
+                    scheduledTime: new Date(),
+                    getlatePostId: postResult.postId,
+                    publishedUrl: postResult.platformPostUrl,
+                    status: postResult.status === 'published' ? 'PUBLISHED' : postResult.status === 'failed' ? 'FAILED' : 'PROCESSING',
+                    publishedAt: postResult.status === 'published' ? new Date() : undefined,
+                  },
+                })
+
+                log(ctx, `✅ WRHQ posted to ${platform}`, { status: postResult.status, url: postResult.platformPostUrl })
+              } catch (platformError) {
+                // Check if it's a rate limit error
+                const errorMsg = platformError instanceof Error ? platformError.message : String(platformError)
+                const isRateLimit = errorMsg.toLowerCase().includes('rate') || errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('too many') || errorMsg.toLowerCase().includes('quota')
+
+                if (isRateLimit) {
+                  log(ctx, `⚠️ WRHQ ${platform} rate limit reached - skipping`, { error: errorMsg })
+                } else {
+                  logError(ctx, `Failed to post WRHQ to ${platform}`, platformError)
+                }
+
+                // Save failed post to database so user can see it in the UI
+                try {
+                  await prisma.wRHQSocialPost.create({
+                    data: {
+                      contentItemId,
+                      platform: platform.toUpperCase() as 'FACEBOOK' | 'INSTAGRAM' | 'LINKEDIN' | 'TWITTER' | 'TIKTOK' | 'GBP' | 'YOUTUBE' | 'BLUESKY' | 'THREADS' | 'REDDIT' | 'PINTEREST' | 'TELEGRAM',
+                      caption: captionResult.caption,
+                      hashtags: captionResult.hashtags || [],
+                      firstComment: captionResult.firstComment,
+                      mediaUrls: platformMediaUrls,
+                      mediaType: 'image',
+                      scheduledTime: new Date(),
+                      status: 'FAILED',
+                      errorMessage: isRateLimit ? 'Rate limit reached' : errorMsg.substring(0, 500),
+                    },
+                  })
+                } catch (dbError) {
+                  logError(ctx, `Failed to save failed WRHQ post record for ${platform}`, dbError)
+                }
+                // Continue with other platforms
+              }
+            }
+
+            wrhqPostedCount = wrhqPostedPosts.length
+            log(ctx, '✅ WRHQ social posts published', { count: wrhqPostedPosts.length })
+            await logAction(ctx, 'wrhq_social_post', 'SUCCESS', {
+              responseData: JSON.stringify({
+                postedPosts: wrhqPostedPosts.length,
+                platforms: filteredPlatforms,
+              }),
+            })
+
+            // Mark WRHQ social as generated
+            await prisma.contentItem.update({
+              where: { id: contentItemId },
+              data: { wrhqSocialGenerated: true },
+            })
+          } catch (error) {
+            logError(ctx, 'WRHQ social posting failed', error)
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+            await logAction(ctx, 'wrhq_social_post', 'FAILED', { errorMessage })
+          }
+        } else {
+          log(ctx, '⏭️ WRHQ social not configured or no WRHQ blog URL - skipping')
+        }
+
+        return { success: true, clientPostedCount, wrhqPostedCount }
+      })(),
+
+      // ========== PODCAST GENERATION ==========
+      (async () => {
+        log(ctx, '🎙️ Starting podcast generation...')
+        await logAction(ctx, 'podcast_generate', 'STARTED')
+
+        // Generate podcast script
+        const script = await withTimeout(
+          generatePodcastScript({
             businessName: contentItem.client.businessName,
             city: contentItem.client.city,
-            state: contentItem.client.state,
             paaQuestion: contentItem.paaQuestion,
-            blogPostUrl: clientBlogUrl || contentItem.client.wordpressUrl || '',
-            servicePageUrl,
-            googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+            blogContent: blogResult!.content,
+            phone: contentItem.client.phone,
+            website: contentItem.client.wordpressUrl || '',
           }),
-          TIMEOUTS.SOCIAL_CAPTION,
-          'Podcast description generation'
+          TIMEOUTS.BLOG_GENERATION,
+          'Podcast script generation'
         )
-      } catch (descError) {
-        logError(ctx, 'Failed to generate podcast description, using fallback', descError)
-        podcastDescriptionHtml = `<p>${blogResult!.excerpt || contentItem.paaQuestion}</p>`
-      }
+        podcastScript = script
 
-      // Create podcast record with PROCESSING status
-      podcastRecord = await prisma.podcast.create({
-        data: {
-          contentItemId,
-          clientId: contentItem.clientId,
-          audioUrl: '',
-          script: podcastScript,
-          description: podcastDescriptionHtml,
-          autocontentJobId: podcastJob.jobId,
-          status: 'PROCESSING',
-        },
-      })
+        log(ctx, 'Creating podcast job...')
+        const podcastJob = await withTimeout(
+          createPodcast({
+            script,
+            title: blogResult!.title,
+            duration: 'short', // Use SHORT duration for faster generation (under 10 min)
+          }),
+          TIMEOUTS.PODCAST_CREATE,
+          'Podcast job creation'
+        )
 
-      await prisma.contentItem.update({
-        where: { id: contentItemId },
-        data: { podcastDescription: podcastDescriptionHtml },
-      })
-
-      log(ctx, '📝 Podcast job started', { jobId: podcastJob.jobId })
-    } catch (error) {
-      logError(ctx, 'Failed to start podcast job', error)
-    }
-
-    // Start video job
-    try {
-      await logAction(ctx, 'video_generate', 'STARTED')
-
-      const imageUrls = await prisma.image.findMany({
-        where: { contentItemId },
-        select: { gcsUrl: true },
-      })
-
-      const blogPostForVideo = await prisma.blogPost.findUnique({ where: { contentItemId } })
-      const blogUrlForVideo = blogPostForVideo?.wordpressUrl || null
-
-      log(ctx, 'Creating short video job...', { blogUrl: blogUrlForVideo })
-      videoJob = await withTimeout(
-        createShortVideo({
-          title: blogResult!.title,
-          blogUrl: blogUrlForVideo || undefined,
-          imageUrls: imageUrls.map((i: { gcsUrl: string }) => i.gcsUrl),
-          aspectRatio: '9:16',
-          duration: 30,
-          scriptStyle: 'HowToV2',
-        }),
-        TIMEOUTS.VIDEO_CREATE,
-        'Video job creation'
-      )
-
-      videoRecord = await prisma.video.create({
-        data: {
-          contentItemId,
-          clientId: contentItem.clientId,
-          videoType: 'SHORT',
-          videoUrl: '',
-          aspectRatio: '9:16',
-          provider: 'CREATIFY',
-          providerJobId: videoJob.jobId,
-          status: 'PROCESSING',
-        },
-      })
-
-      log(ctx, '📝 Video job started', { jobId: videoJob.jobId })
-    } catch (error) {
-      logError(ctx, 'Failed to start video job', error)
-    }
-
-    // Now wait for BOTH jobs in parallel
-    log(ctx, '⏳ Waiting for podcast and video to render in parallel...')
-    ctx.step = 'podcast'
-    await updatePipelineStep(contentItemId, 'podcast')
-
-    // Use Promise.allSettled to wait for both, even if one fails
-    const [podcastSettled, videoSettled] = await Promise.allSettled([
-      // Podcast wait and post-processing
-      (async () => {
-        if (!podcastJob || !podcastRecord) {
-          throw new Error('Podcast job not started')
+        // Generate podcast description
+        let descriptionHtml = ''
+        try {
+          const servicePageUrl = contentItem.client.servicePages?.[0]?.url || undefined
+          descriptionHtml = await withTimeout(
+            generatePodcastDescription({
+              businessName: contentItem.client.businessName,
+              city: contentItem.client.city,
+              state: contentItem.client.state,
+              paaQuestion: contentItem.paaQuestion,
+              blogPostUrl: clientBlogUrl || contentItem.client.wordpressUrl || '',
+              servicePageUrl,
+              googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+            }),
+            TIMEOUTS.SOCIAL_CAPTION,
+            'Podcast description generation'
+          )
+        } catch (descError) {
+          logError(ctx, 'Failed to generate podcast description, using fallback', descError)
+          descriptionHtml = `<p>${blogResult!.excerpt || contentItem.paaQuestion}</p>`
         }
+        podcastDescriptionHtml = descriptionHtml
 
+        // Create podcast record with PROCESSING status
+        const podcastRecord = await prisma.podcast.create({
+          data: {
+            contentItemId,
+            clientId: contentItem.clientId,
+            audioUrl: '',
+            script,
+            description: descriptionHtml,
+            autocontentJobId: podcastJob.jobId,
+            status: 'PROCESSING',
+          },
+        })
+        podcastRecordId = podcastRecord.id
+
+        await prisma.contentItem.update({
+          where: { id: contentItemId },
+          data: { podcastDescription: descriptionHtml },
+        })
+
+        log(ctx, '📝 Podcast job started, waiting for render...', { jobId: podcastJob.jobId })
+
+        // Wait for podcast to render
         const podcastResult = await withTimeout(
           waitForPodcast(podcastJob.jobId),
           TIMEOUTS.PODCAST_WAIT,
           'Podcast rendering'
         )
 
-        if (podcastResult.audioUrl) {
-          const podcastFilename = `${contentItem.client.slug}/${blogResult!.slug}/podcast.mp3`
-          const gcsResult = await withTimeout(
-            uploadFromUrl(podcastResult.audioUrl, podcastFilename),
-            TIMEOUTS.GCS_UPLOAD,
-            'Podcast GCS upload'
+        if (!podcastResult.audioUrl) {
+          throw new Error('No audio URL returned')
+        }
+
+        // Upload to GCS
+        const podcastFilename = `${contentItem.client.slug}/${blogResult!.slug}/podcast.mp3`
+        const gcsResult = await withTimeout(
+          uploadFromUrl(podcastResult.audioUrl, podcastFilename),
+          TIMEOUTS.GCS_UPLOAD,
+          'Podcast GCS upload'
+        )
+
+        await prisma.podcast.update({
+          where: { id: podcastRecord.id },
+          data: {
+            audioUrl: gcsResult.url,
+            duration: podcastResult.duration,
+            status: 'READY',
+          },
+        })
+
+        // Publish to Podbean
+        log(ctx, 'Publishing podcast to Podbean...')
+        try {
+          const podbeanResult = await withTimeout(
+            publishToPodbean({
+              title: blogResult!.title,
+              description: descriptionHtml,
+              audioUrl: gcsResult.url,
+            }),
+            TIMEOUTS.PODBEAN_PUBLISH,
+            'Podbean publishing'
           )
 
           await prisma.podcast.update({
             where: { id: podcastRecord.id },
             data: {
-              audioUrl: gcsResult.url,
-              duration: podcastResult.duration,
-              status: 'READY',
+              podbeanEpisodeId: podbeanResult.episodeId,
+              podbeanUrl: podbeanResult.url,
+              podbeanPlayerUrl: podbeanResult.playerUrl,
+              status: 'PUBLISHED',
             },
           })
 
-          // Publish to Podbean
-          log(ctx, 'Publishing podcast to Podbean...')
-          try {
-            const podbeanResult = await withTimeout(
-              publishToPodbean({
-                title: blogResult!.title,
-                description: podcastDescriptionHtml,
-                audioUrl: gcsResult.url,
-              }),
-              TIMEOUTS.PODBEAN_PUBLISH,
-              'Podbean publishing'
-            )
-
-            await prisma.podcast.update({
-              where: { id: podcastRecord.id },
-              data: {
-                podbeanEpisodeId: podbeanResult.episodeId,
-                podbeanUrl: podbeanResult.url,
-                podbeanPlayerUrl: podbeanResult.playerUrl,
-                status: 'PUBLISHED',
-              },
-            })
-
-            log(ctx, '✅ Podcast published to Podbean', { playerUrl: podbeanResult.playerUrl })
-          } catch (podbeanError) {
-            logError(ctx, 'Failed to publish podcast to Podbean', podbeanError)
-          }
-
-          await prisma.contentItem.update({
-            where: { id: contentItemId },
-            data: { podcastGenerated: true },
-          })
-
-          return { success: true, duration: podcastResult.duration }
+          log(ctx, '✅ Podcast published to Podbean', { playerUrl: podbeanResult.playerUrl })
+        } catch (podbeanError) {
+          logError(ctx, 'Failed to publish podcast to Podbean', podbeanError)
         }
-        throw new Error('No audio URL returned')
+
+        await prisma.contentItem.update({
+          where: { id: contentItemId },
+          data: { podcastGenerated: true },
+        })
+
+        return { success: true, duration: podcastResult.duration }
       })(),
 
-      // Video wait (post-processing will be handled later or by video-status endpoint)
+      // ========== VIDEO GENERATION ==========
       (async () => {
-        if (!videoJob || !videoRecord) {
-          throw new Error('Video job not started')
-        }
+        log(ctx, '🎬 Starting video generation...')
+        await logAction(ctx, 'video_generate', 'STARTED')
 
+        const imageUrls = await prisma.image.findMany({
+          where: { contentItemId },
+          select: { gcsUrl: true },
+        })
+
+        const blogPostForVideo = await prisma.blogPost.findUnique({ where: { contentItemId } })
+        const blogUrlForVideo = blogPostForVideo?.wordpressUrl || null
+
+        log(ctx, 'Creating short video job...', { blogUrl: blogUrlForVideo })
+        const videoJob = await withTimeout(
+          createShortVideo({
+            title: blogResult!.title,
+            blogUrl: blogUrlForVideo || undefined,
+            imageUrls: imageUrls.map((i: { gcsUrl: string }) => i.gcsUrl),
+            aspectRatio: '9:16',
+            duration: 30,
+            scriptStyle: 'HowToV2',
+          }),
+          TIMEOUTS.VIDEO_CREATE,
+          'Video job creation'
+        )
+
+        const videoRecord = await prisma.video.create({
+          data: {
+            contentItemId,
+            clientId: contentItem.clientId,
+            videoType: 'SHORT',
+            videoUrl: '',
+            aspectRatio: '9:16',
+            provider: 'CREATIFY',
+            providerJobId: videoJob.jobId,
+            status: 'PROCESSING',
+          },
+        })
+        videoRecordId = videoRecord.id
+
+        log(ctx, '📝 Video job started, waiting for render...', { jobId: videoJob.jobId })
+
+        // Wait for video to render
         const videoResult = await withTimeout(
           waitForVideo(videoJob.jobId),
           TIMEOUTS.VIDEO_WAIT,
@@ -1265,6 +1246,19 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         return { success: true, videoResult, videoRecord }
       })(),
     ])
+
+    // Process social result
+    if (socialSettled.status === 'fulfilled') {
+      log(ctx, '✅ Social posts completed', {
+        clientPosts: socialSettled.value.clientPostedCount,
+        wrhqPosts: socialSettled.value.wrhqPostedCount
+      })
+      await logAction(ctx, 'social_post', 'SUCCESS')
+    } else {
+      const errorMessage = socialSettled.reason instanceof Error ? socialSettled.reason.message : 'Unknown error'
+      logError(ctx, 'Social posting failed', socialSettled.reason)
+      await logAction(ctx, 'social_post', 'FAILED', { errorMessage })
+    }
 
     // Process podcast result
     if (podcastSettled.status === 'fulfilled') {
