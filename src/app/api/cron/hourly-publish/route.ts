@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
           const contentItem = await prisma.contentItem.create({
             data: {
               clientId: client.id,
-              paaQuestionId: paa.id,
+              clientPAAId: paa.id,
               serviceLocationId: defaultLoc.locationId,
               paaQuestion: renderedQuestion,
               scheduledDate: now,
@@ -182,7 +182,7 @@ export async function GET(request: NextRequest) {
         const contentItem = await prisma.contentItem.create({
           data: {
             clientId: client.id,
-            paaQuestionId: paa.id,
+            clientPAAId: paa.id,
             serviceLocationId: selectedLocation.id,
             paaQuestion: renderedQuestion,
             scheduledDate: now,
