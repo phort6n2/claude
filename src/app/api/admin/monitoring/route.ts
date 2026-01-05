@@ -170,12 +170,18 @@ export async function GET() {
       take: 20,
     })
 
-    // This week content stats
+    // This week content stats (use createdAt as fallback for publishedAt)
     const thisWeekCreated = await prisma.contentItem.count({
       where: { createdAt: { gte: thisWeekStart } },
     })
     const thisWeekPublished = await prisma.contentItem.count({
-      where: { publishedAt: { gte: thisWeekStart } },
+      where: {
+        status: 'PUBLISHED',
+        OR: [
+          { publishedAt: { gte: thisWeekStart } },
+          { createdAt: { gte: thisWeekStart }, publishedAt: null },
+        ],
+      },
     })
 
     // Last week content stats
@@ -186,7 +192,11 @@ export async function GET() {
     })
     const lastWeekPublished = await prisma.contentItem.count({
       where: {
-        publishedAt: { gte: lastWeekStart, lt: lastWeekEnd },
+        status: 'PUBLISHED',
+        OR: [
+          { publishedAt: { gte: lastWeekStart, lt: lastWeekEnd } },
+          { createdAt: { gte: lastWeekStart, lt: lastWeekEnd }, publishedAt: null },
+        ],
       },
     })
 
@@ -207,13 +217,20 @@ export async function GET() {
       take: 20,
     })
 
-    // Get weekly activity breakdown (content published per day this week)
-    const weeklyActivity = await prisma.contentItem.groupBy({
-      by: ['publishedAt'],
+    // Get weekly activity breakdown (PUBLISHED content per day this week)
+    // Fetch all published content this week and aggregate by day in JS
+    const publishedThisWeek = await prisma.contentItem.findMany({
       where: {
-        publishedAt: { gte: thisWeekStart },
+        status: 'PUBLISHED',
+        OR: [
+          { publishedAt: { gte: thisWeekStart } },
+          { createdAt: { gte: thisWeekStart }, publishedAt: null },
+        ],
       },
-      _count: true,
+      select: {
+        publishedAt: true,
+        createdAt: true,
+      },
     })
 
     // Calculate next publish day for each client
@@ -246,11 +263,13 @@ export async function GET() {
     const activityByDay: Record<string, number> = {}
     weekDays.forEach(day => { activityByDay[day] = 0 })
 
-    weeklyActivity.forEach(item => {
-      if (item.publishedAt) {
-        const dayIndex = new Date(item.publishedAt).getDay()
+    publishedThisWeek.forEach(item => {
+      // Use publishedAt if available, otherwise fall back to createdAt
+      const dateToUse = item.publishedAt || item.createdAt
+      if (dateToUse) {
+        const dayIndex = new Date(dateToUse).getDay()
         const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayIndex]
-        activityByDay[dayName] = (activityByDay[dayName] || 0) + item._count
+        activityByDay[dayName] = (activityByDay[dayName] || 0) + 1
       }
     })
 
