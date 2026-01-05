@@ -25,10 +25,6 @@ interface WRHQConfig {
     telegram: string | null
     enabledPlatforms: string[]
   }
-  publishing: {
-    preferredTime: string
-    timezone: string
-  }
   youtubeApi: {
     clientId: string | null
     clientSecret: string | null
@@ -38,16 +34,6 @@ interface WRHQConfig {
     isConfigured: boolean
   }
 }
-
-const TIMEZONES = [
-  'America/Los_Angeles',
-  'America/Denver',
-  'America/Chicago',
-  'America/New_York',
-  'America/Phoenix',
-  'America/Anchorage',
-  'Pacific/Honolulu',
-]
 
 const SOCIAL_PLATFORMS = [
   { key: 'facebook', label: 'Facebook', icon: '📘' },
@@ -80,10 +66,6 @@ export default function WRHQSettingsPage() {
   })
   const [socialForm, setSocialForm] = useState<Record<string, string>>({})
   const [enabledPlatforms, setEnabledPlatforms] = useState<string[]>([])
-  const [publishingForm, setPublishingForm] = useState({
-    preferredTime: '10:00',
-    timezone: 'America/Los_Angeles',
-  })
   const [youtubeForm, setYoutubeForm] = useState({
     clientId: '',
     clientSecret: '',
@@ -116,11 +98,6 @@ export default function WRHQSettingsPage() {
         }
         setSocialForm(social)
         setEnabledPlatforms(data.socialMedia.enabledPlatforms || [])
-
-        setPublishingForm({
-          preferredTime: data.publishing.preferredTime || '10:00',
-          timezone: data.publishing.timezone || 'America/Los_Angeles',
-        })
 
         // Load YouTube API settings
         if (data.youtubeApi) {
@@ -444,56 +421,6 @@ export default function WRHQSettingsPage() {
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
           >
             {saving === 'socialMedia' ? 'Saving...' : 'Save Social Media Settings'}
-          </button>
-        </div>
-
-        {/* Publishing Preferences */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Publishing Preferences</h2>
-            <p className="text-sm text-gray-500">
-              Configure when WRHQ posts are published (offset from client posts)
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Preferred Publish Time
-              </label>
-              <input
-                type="time"
-                value={publishingForm.preferredTime}
-                onChange={(e) => setPublishingForm({ ...publishingForm, preferredTime: e.target.value })}
-                className="w-full px-3 py-2 border rounded-md"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                WRHQ posts are scheduled 2-4 hours after client posts
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Timezone
-              </label>
-              <select
-                value={publishingForm.timezone}
-                onChange={(e) => setPublishingForm({ ...publishingForm, timezone: e.target.value })}
-                className="w-full px-3 py-2 border rounded-md"
-              >
-                {TIMEZONES.map((tz) => (
-                  <option key={tz} value={tz}>{tz}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <button
-            onClick={() => saveSection('publishing', publishingForm)}
-            disabled={saving === 'publishing'}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-          >
-            {saving === 'publishing' ? 'Saving...' : 'Save Publishing Preferences'}
           </button>
         </div>
 
