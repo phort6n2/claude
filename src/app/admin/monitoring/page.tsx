@@ -25,6 +25,7 @@ interface CronRun {
   id: string
   action: string
   status: 'SUCCESS' | 'FAILED' | 'STARTED' | 'RETRYING'
+  clientId: string | null
   clientName: string
   startedAt: string
   completedAt: string | null
@@ -479,9 +480,16 @@ export default function MonitoringPage() {
                     </span>
                   </div>
                   <div className="mt-1 ml-6 text-xs text-gray-500">
-                    {run.clientName !== 'System' && (
+                    {run.clientName !== 'System' && run.clientId ? (
+                      <Link
+                        href={`/admin/clients/${run.clientId}`}
+                        className="mr-3 text-blue-600 hover:underline"
+                      >
+                        {run.clientName}
+                      </Link>
+                    ) : run.clientName !== 'System' ? (
                       <span className="mr-3">{run.clientName}</span>
-                    )}
+                    ) : null}
                     <span className="text-gray-400">{formatDuration(run.durationMs)}</span>
                     {run.responseData?.processed !== undefined && (
                       <span className="ml-3">
@@ -551,7 +559,7 @@ export default function MonitoringPage() {
                     </div>
                     <div className="text-right">
                       {client.lastContent ? (
-                        <>
+                        <Link href={`/admin/content/${client.lastContent.id}/review`} className="block hover:opacity-80">
                           <span className={`text-xs px-1.5 py-0.5 rounded ${
                             client.lastContent.status === 'PUBLISHED'
                               ? 'bg-green-100 text-green-700'
@@ -561,10 +569,10 @@ export default function MonitoringPage() {
                           }`}>
                             {client.lastContent.status}
                           </span>
-                          <div className="text-xs text-gray-400 mt-0.5">
-                            {formatTimeAgo(client.lastContent.createdAt)}
+                          <div className="text-xs text-gray-400 mt-0.5 hover:text-blue-600">
+                            {formatTimeAgo(client.lastContent.createdAt)} →
                           </div>
-                        </>
+                        </Link>
                       ) : (
                         <span className="text-xs text-gray-400">No content yet</span>
                       )}
@@ -578,7 +586,7 @@ export default function MonitoringPage() {
       </div>
 
       {/* Recent Content */}
-      <div className="bg-white rounded-lg border mb-6">
+      <div className="bg-white rounded-lg border mt-6 mb-6">
         <div className="p-4 border-b">
           <h2 className="font-semibold text-gray-900 flex items-center gap-2">
             <List className="h-5 w-5" />
@@ -647,21 +655,29 @@ export default function MonitoringPage() {
           <div className="divide-y">
             {data.failedContent.map((item) => (
               <div key={item.id} className="p-3 hover:bg-gray-50">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <Link
-                      href={`/admin/clients/${item.clientId}`}
-                      className="font-medium text-sm text-blue-600 hover:underline"
-                    >
-                      {item.clientName}
-                    </Link>
-                    <div className="text-xs text-gray-600 mt-0.5 max-w-md truncate">
-                      {item.paaQuestion}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/admin/clients/${item.clientId}`}
+                        className="font-medium text-sm text-blue-600 hover:underline"
+                      >
+                        {item.clientName}
+                      </Link>
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-700">
+                        FAILED
+                      </span>
                     </div>
+                    <Link
+                      href={`/admin/content/${item.id}/review`}
+                      className="text-xs text-gray-600 mt-0.5 truncate block hover:text-blue-600 hover:underline"
+                    >
+                      {item.paaQuestion}
+                    </Link>
                   </div>
-                  <span className="text-xs text-gray-400">
+                  <div className="text-right text-xs text-gray-400 whitespace-nowrap">
                     {formatTimeAgo(item.createdAt)}
-                  </span>
+                  </div>
                 </div>
               </div>
             ))}

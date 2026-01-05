@@ -294,6 +294,7 @@ export async function GET() {
         id: run.id,
         action: run.action,
         status: run.status,
+        clientId: run.client?.id || null,
         clientName: run.client?.businessName || 'System',
         startedAt: run.startedAt,
         completedAt: run.completedAt,
