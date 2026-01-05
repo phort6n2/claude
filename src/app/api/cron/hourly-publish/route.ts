@@ -253,7 +253,7 @@ export async function GET(request: NextRequest) {
         data: {
           clientId: results[0].clientId,
           action: 'cron_hourly_publish',
-          status: failCount === 0 ? 'SUCCESS' : successCount > 0 ? 'PARTIAL' : 'FAILED',
+          status: failCount === 0 ? 'SUCCESS' : 'FAILED',
           responseData: JSON.stringify({
             timeSlot: currentTimeSlot,
             slotIndex,
