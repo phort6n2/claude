@@ -1563,7 +1563,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
             {loadingAutoSchedule ? (
               <div className="text-sm text-gray-500">Loading status...</div>
             ) : autoScheduleStatus && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <FileQuestion className="h-4 w-4 text-blue-600" />
@@ -1599,19 +1599,6 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                   </div>
                   <div className="text-xs text-gray-500">
                     active service locations
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Calendar className="h-4 w-4 text-purple-600" />
-                    <span className="text-sm font-medium text-gray-700">Upcoming</span>
-                  </div>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {autoScheduleStatus.upcoming.count}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    content items scheduled
                   </div>
                 </div>
               </div>
