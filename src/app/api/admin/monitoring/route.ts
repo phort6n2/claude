@@ -140,10 +140,15 @@ export async function GET() {
       },
     })
 
-    // Get content items published today
+    // Get content items published today (status PUBLISHED + either publishedAt or createdAt today)
+    // This handles cases where publishedAt might not be set or timezone differences
     const contentPublishedToday = await prisma.contentItem.count({
       where: {
-        publishedAt: { gte: todayStart },
+        status: 'PUBLISHED',
+        OR: [
+          { publishedAt: { gte: todayStart } },
+          { createdAt: { gte: todayStart }, publishedAt: null },
+        ],
       },
     })
 

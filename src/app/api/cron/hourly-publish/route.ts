@@ -82,10 +82,14 @@ export async function GET(request: NextRequest) {
     console.log(`[HourlyPublish] ${clientsForToday.length} clients scheduled for today`)
 
     if (clientsForToday.length === 0) {
+      // Note: Can't log to publishingLog without a clientId
+      // The cron health is visible in Vercel cron logs
       return NextResponse.json({
         success: true,
         message: `No clients scheduled for day ${currentDay} at slot ${slotIndex}`,
         timeSlot: currentTimeSlot,
+        slotIndex,
+        day: currentDay,
         processed: 0,
       })
     }
