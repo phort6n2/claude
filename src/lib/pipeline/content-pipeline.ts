@@ -1154,17 +1154,27 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           },
         })
 
-        // Publish to Podbean
+        // Wait a few seconds for GCS to fully propagate before Podbean fetches it
+        log(ctx, 'Waiting for GCS propagation...')
+        await new Promise(resolve => setTimeout(resolve, 5000))
+
+        // Publish to Podbean with retry logic
         log(ctx, 'Publishing podcast to Podbean...')
         try {
-          const podbeanResult = await withTimeout(
-            publishToPodbean({
-              title: blogResult!.title,
-              description: descriptionHtml,
-              audioUrl: gcsResult.url,
-            }),
-            TIMEOUTS.PODBEAN_PUBLISH,
-            'Podbean publishing'
+          const podbeanResult = await retryWithBackoff(
+            async () => {
+              return await withTimeout(
+                publishToPodbean({
+                  title: blogResult!.title,
+                  description: descriptionHtml,
+                  audioUrl: gcsResult.url,
+                }),
+                TIMEOUTS.PODBEAN_PUBLISH,
+                'Podbean publishing'
+              )
+            },
+            3,  // 3 attempts
+            3000 // 3 second base delay (3s, 6s, 12s backoff)
           )
 
           await prisma.podcast.update({
@@ -1179,7 +1189,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
 
           log(ctx, '✅ Podcast published to Podbean', { playerUrl: podbeanResult.playerUrl })
         } catch (podbeanError) {
-          logError(ctx, 'Failed to publish podcast to Podbean', podbeanError)
+          logError(ctx, 'Failed to publish podcast to Podbean after 3 attempts', podbeanError)
         }
 
         await prisma.contentItem.update({
