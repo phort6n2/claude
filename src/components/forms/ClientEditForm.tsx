@@ -114,6 +114,20 @@ interface ClientEditFormProps {
   hasWordPressPassword?: boolean
 }
 
+// Convert slot index to Mountain Time display
+const SLOT_TO_MOUNTAIN_TIME: Record<number, string> = {
+  0: '7:00 AM',
+  1: '8:00 AM',
+  2: '9:00 AM',
+  3: '10:00 AM',
+  4: '11:00 AM',
+  5: '1:00 PM',
+  6: '2:00 PM',
+  7: '3:00 PM',
+  8: '4:00 PM',
+  9: '5:00 PM',
+}
+
 const socialPlatformOptions = [
   { value: 'facebook', label: 'Facebook' },
   { value: 'instagram', label: 'Instagram' },
@@ -1550,10 +1564,10 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                   <span className="text-sm font-medium text-blue-900">Assigned Schedule</span>
                 </div>
                 <p className="text-blue-800 font-semibold">{autoScheduleStatus.slot.dayPairLabel}</p>
-                {autoScheduleStatus.slot.timeSlotLabel && (
+                {autoScheduleStatus.slot.timeSlot !== null && autoScheduleStatus.slot.timeSlot !== undefined && (
                   <p className="text-sm text-blue-600 mt-1">
                     <Clock className="h-3 w-3 inline mr-1" />
-                    {autoScheduleStatus.slot.timeSlotLabel} UTC
+                    {SLOT_TO_MOUNTAIN_TIME[autoScheduleStatus.slot.timeSlot] || autoScheduleStatus.slot.timeSlotLabel} MT
                   </p>
                 )}
               </div>
