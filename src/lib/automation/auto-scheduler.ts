@@ -19,14 +19,13 @@ export const DAY_PAIRS = {
 
 export type DayPairKey = keyof typeof DAY_PAIRS
 
-// Time slots (UTC) - staggered to prevent overlap
-// Morning shift: 6AM-10AM (slots 0-4)
-// Evening shift: 6PM-10PM (slots 5-9)
-// Rolling 24h limit: By posting on non-consecutive days (48h+ apart),
-// and spreading morning/evening 12h apart, we stay within limits
+// Time slots (UTC) - Mountain Time based
+// Morning shift: 6-10 AM Mountain = 13:00-17:00 UTC (MST) / 12:00-16:00 UTC (MDT)
+// Using MST (UTC-7) as baseline since it's more conservative
+// Afternoon shift: 12-4 PM Mountain = 19:00-23:00 UTC (MST)
 export const TIME_SLOTS = [
-  '06:00', '07:00', '08:00', '09:00', '10:00',  // Morning shift (slots 0-4)
-  '18:00', '19:00', '20:00', '21:00', '22:00',  // Evening shift (slots 5-9)
+  '13:00', '14:00', '15:00', '16:00', '17:00',  // Morning MT (slots 0-4): 6-10 AM MST
+  '19:00', '20:00', '21:00', '22:00', '23:00',  // Afternoon MT (slots 5-9): 12-4 PM MST
 ] as const
 export type TimeSlotIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
 
