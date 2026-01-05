@@ -61,7 +61,6 @@ export async function GET(request: NextRequest) {
         serviceLocations: {
           where: { isActive: true },
         },
-        paaQuestions: true,
       },
     })
 

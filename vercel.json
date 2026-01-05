@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/hourly-publish",
-      "schedule": "0 13-17,19-23 * * 1-5"
+      "schedule": "0 0,14-18,20-23 * * 1-5"
     },
     {
       "path": "/api/cron/generate-press-releases",
