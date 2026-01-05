@@ -48,9 +48,10 @@ function generateGoogleMapsEmbed(params: {
   // Use the embedded maps URL format
   const embedUrl = `https://www.google.com/maps?q=${addressQuery}&output=embed`
 
-  return `<!-- Google Maps Embed -->
+  return `
+<!-- Google Maps Embed -->
 <div class="google-maps-embed" style="margin: 30px 0;">
-  <h3 style="margin-bottom: 15px;">📍 Find ${params.businessName}</h3>
+  <h3>📍 Find ${params.businessName}</h3>
   <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
     <iframe
       src="${embedUrl}"
