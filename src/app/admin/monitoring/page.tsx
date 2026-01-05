@@ -14,6 +14,11 @@ import {
   ArrowLeft,
   Calendar,
   Loader2,
+  TrendingUp,
+  TrendingDown,
+  BarChart3,
+  List,
+  CalendarDays,
 } from 'lucide-react'
 
 interface CronRun {
@@ -43,6 +48,7 @@ interface ClientStatus {
   scheduleDayPair: string | null
   scheduleTimeSlot: number | null
   lastAutoScheduledAt: string | null
+  nextPublish: { day: string; daysUntil: number } | null
   lastContent: {
     id: string
     status: string
@@ -62,6 +68,16 @@ interface FailedContent {
   status: string
 }
 
+interface RecentContent {
+  id: string
+  clientName: string
+  clientId: string
+  paaQuestion: string
+  status: string
+  createdAt: string
+  publishedAt: string | null
+}
+
 interface MonitoringData {
   overview: {
     contentCreatedToday: number
@@ -69,12 +85,19 @@ interface MonitoringData {
     activeClientsWithSchedule: number
     failedContentLast7Days: number
   }
+  weeklyComparison: {
+    thisWeek: { created: number; published: number }
+    lastWeek: { created: number; published: number }
+    weekStartDate: string
+  }
+  activityByDay: Record<string, number>
   stats: {
     last24Hours: { success: number; failed: number; total: number }
     last7Days: { success: number; failed: number; total: number }
   }
   recentCronRuns: CronRun[]
   clientStatus: ClientStatus[]
+  recentContent: RecentContent[]
   failedContent: FailedContent[]
 }
 
@@ -192,11 +215,11 @@ export default function MonitoringPage() {
 
   const successRate24h = data.stats.last24Hours.total > 0
     ? ((data.stats.last24Hours.success / data.stats.last24Hours.total) * 100).toFixed(0)
-    : '100'
+    : null  // No data = null, not 100%
 
   const successRate7d = data.stats.last7Days.total > 0
     ? ((data.stats.last7Days.success / data.stats.last7Days.total) * 100).toFixed(0)
-    : '100'
+    : null  // No data = null, not 100%
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -274,14 +297,108 @@ export default function MonitoringPage() {
         </div>
       </div>
 
+      {/* Weekly Comparison & Activity */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        {/* This Week vs Last Week */}
+        <div className="bg-white rounded-lg border p-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Weekly Comparison
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-blue-50 rounded-lg p-3">
+              <div className="text-xs text-blue-600 font-medium mb-1">This Week</div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-blue-700">{data.weeklyComparison.thisWeek.published}</span>
+                <span className="text-sm text-blue-600">published</span>
+              </div>
+              <div className="text-xs text-blue-500 mt-1">
+                {data.weeklyComparison.thisWeek.created} created
+              </div>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-3">
+              <div className="text-xs text-gray-600 font-medium mb-1">Last Week</div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-gray-700">{data.weeklyComparison.lastWeek.published}</span>
+                <span className="text-sm text-gray-600">published</span>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                {data.weeklyComparison.lastWeek.created} created
+              </div>
+            </div>
+          </div>
+          {data.weeklyComparison.thisWeek.published !== data.weeklyComparison.lastWeek.published && (
+            <div className="mt-3 flex items-center gap-1 text-sm">
+              {data.weeklyComparison.thisWeek.published > data.weeklyComparison.lastWeek.published ? (
+                <>
+                  <TrendingUp className="h-4 w-4 text-green-500" />
+                  <span className="text-green-600">
+                    +{data.weeklyComparison.thisWeek.published - data.weeklyComparison.lastWeek.published} from last week
+                  </span>
+                </>
+              ) : (
+                <>
+                  <TrendingDown className="h-4 w-4 text-orange-500" />
+                  <span className="text-orange-600">
+                    {data.weeklyComparison.thisWeek.published - data.weeklyComparison.lastWeek.published} from last week
+                  </span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Activity by Day */}
+        <div className="bg-white rounded-lg border p-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+            <CalendarDays className="h-4 w-4" />
+            This Week&apos;s Activity
+          </h3>
+          <div className="flex items-end justify-between gap-1 h-24">
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => {
+              const count = data.activityByDay[day] || 0
+              const maxCount = Math.max(...Object.values(data.activityByDay), 1)
+              const height = count > 0 ? Math.max((count / maxCount) * 100, 10) : 0
+              const isToday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()] === day
+
+              return (
+                <div key={day} className="flex-1 flex flex-col items-center">
+                  <div className="flex-1 w-full flex items-end justify-center">
+                    <div
+                      className={`w-full max-w-8 rounded-t ${
+                        count > 0 ? (isToday ? 'bg-blue-500' : 'bg-green-500') : 'bg-gray-200'
+                      }`}
+                      style={{ height: `${height}%` }}
+                      title={`${day}: ${count} published`}
+                    />
+                  </div>
+                  {count > 0 && (
+                    <div className="text-xs font-medium text-gray-700 mt-1">{count}</div>
+                  )}
+                  <div className={`text-xs mt-1 ${isToday ? 'font-bold text-blue-600' : 'text-gray-500'}`}>
+                    {day}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
       {/* Success Rate Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div className="bg-white rounded-lg border p-4">
           <h3 className="text-sm font-medium text-gray-700 mb-3">Last 24 Hours</h3>
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-3xl font-bold text-gray-900">{successRate24h}%</span>
-              <span className="text-sm text-gray-500 ml-2">success rate</span>
+              {successRate24h !== null ? (
+                <>
+                  <span className="text-3xl font-bold text-gray-900">{successRate24h}%</span>
+                  <span className="text-sm text-gray-500 ml-2">success rate</span>
+                </>
+              ) : (
+                <span className="text-2xl font-bold text-gray-400">No cron runs</span>
+              )}
             </div>
             <div className="text-right text-sm">
               <div className="text-green-600">{data.stats.last24Hours.success} succeeded</div>
@@ -289,20 +406,28 @@ export default function MonitoringPage() {
               <div className="text-gray-400">{data.stats.last24Hours.total} total</div>
             </div>
           </div>
-          <div className="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-green-500"
-              style={{ width: `${successRate24h}%` }}
-            />
-          </div>
+          {successRate24h !== null && (
+            <div className="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-green-500"
+                style={{ width: `${successRate24h}%` }}
+              />
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-lg border p-4">
           <h3 className="text-sm font-medium text-gray-700 mb-3">Last 7 Days</h3>
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-3xl font-bold text-gray-900">{successRate7d}%</span>
-              <span className="text-sm text-gray-500 ml-2">success rate</span>
+              {successRate7d !== null ? (
+                <>
+                  <span className="text-3xl font-bold text-gray-900">{successRate7d}%</span>
+                  <span className="text-sm text-gray-500 ml-2">success rate</span>
+                </>
+              ) : (
+                <span className="text-2xl font-bold text-gray-400">No cron runs</span>
+              )}
             </div>
             <div className="text-right text-sm">
               <div className="text-green-600">{data.stats.last7Days.success} succeeded</div>
@@ -310,12 +435,14 @@ export default function MonitoringPage() {
               <div className="text-gray-400">{data.stats.last7Days.total} total</div>
             </div>
           </div>
-          <div className="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-green-500"
-              style={{ width: `${successRate7d}%` }}
-            />
-          </div>
+          {successRate7d !== null && (
+            <div className="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-green-500"
+                style={{ width: `${successRate7d}%` }}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -410,6 +537,17 @@ export default function MonitoringPage() {
                           </span>
                         )}
                       </div>
+                      {client.nextPublish && (
+                        <div className="text-xs mt-1">
+                          {client.nextPublish.daysUntil === 0 ? (
+                            <span className="text-green-600 font-medium">Publishing today</span>
+                          ) : client.nextPublish.daysUntil === 1 ? (
+                            <span className="text-blue-600">Next: Tomorrow ({client.nextPublish.day})</span>
+                          ) : (
+                            <span className="text-gray-500">Next: {client.nextPublish.day} ({client.nextPublish.daysUntil} days)</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="text-right">
                       {client.lastContent ? (
@@ -436,6 +574,61 @@ export default function MonitoringPage() {
               ))
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Recent Content */}
+      <div className="bg-white rounded-lg border mb-6">
+        <div className="p-4 border-b">
+          <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+            <List className="h-5 w-5" />
+            Recent Content (Last 7 Days)
+          </h2>
+        </div>
+        <div className="divide-y max-h-96 overflow-y-auto">
+          {data.recentContent.length === 0 ? (
+            <div className="p-4 text-gray-500 text-sm text-center">
+              No content created in the last 7 days
+            </div>
+          ) : (
+            data.recentContent.map((item) => (
+              <div key={item.id} className="p-3 hover:bg-gray-50">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/admin/clients/${item.clientId}`}
+                        className="font-medium text-sm text-blue-600 hover:underline"
+                      >
+                        {item.clientName}
+                      </Link>
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${
+                        item.status === 'PUBLISHED'
+                          ? 'bg-green-100 text-green-700'
+                          : item.status === 'GENERATING'
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : item.status === 'FAILED'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {item.status}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600 mt-0.5 truncate">
+                      {item.paaQuestion}
+                    </div>
+                  </div>
+                  <div className="text-right text-xs text-gray-400 whitespace-nowrap">
+                    {item.publishedAt ? (
+                      <div className="text-green-600">Published {formatTimeAgo(item.publishedAt)}</div>
+                    ) : (
+                      <div>Created {formatTimeAgo(item.createdAt)}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
