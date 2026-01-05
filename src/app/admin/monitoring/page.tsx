@@ -614,9 +614,12 @@ export default function MonitoringPage() {
                         {item.status}
                       </span>
                     </div>
-                    <div className="text-xs text-gray-600 mt-0.5 truncate">
+                    <Link
+                      href={`/admin/content/${item.id}/review`}
+                      className="text-xs text-gray-600 mt-0.5 truncate block hover:text-blue-600 hover:underline"
+                    >
                       {item.paaQuestion}
-                    </div>
+                    </Link>
                   </div>
                   <div className="text-right text-xs text-gray-400 whitespace-nowrap">
                     {item.publishedAt ? (
