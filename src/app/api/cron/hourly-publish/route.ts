@@ -252,26 +252,32 @@ export async function GET(request: NextRequest) {
     const successCount = results.filter(r => r.success).length
     const failCount = results.filter(r => !r.success).length
 
+    // Always log when we processed clients
     if (results.length > 0) {
-      await prisma.publishingLog.create({
-        data: {
-          clientId: results[0].clientId,
-          action: 'cron_hourly_publish',
-          status: failCount === 0 ? 'SUCCESS' : 'FAILED',
-          responseData: JSON.stringify({
-            timeSlot: currentTimeSlot,
-            slotIndex,
-            day: currentDay,
-            processed: results.length,
-            successful: successCount,
-            failed: failCount,
-            results,
-          }),
-          startedAt: new Date(startTime),
-          completedAt: new Date(),
-          durationMs: Date.now() - startTime,
-        },
-      })
+      try {
+        await prisma.publishingLog.create({
+          data: {
+            clientId: results[0].clientId,
+            action: 'cron_hourly_publish',
+            status: failCount === 0 ? 'SUCCESS' : 'FAILED',
+            responseData: JSON.stringify({
+              timeSlot: currentTimeSlot,
+              slotIndex,
+              day: currentDay,
+              processed: results.length,
+              successful: successCount,
+              failed: failCount,
+              results,
+            }),
+            startedAt: new Date(startTime),
+            completedAt: new Date(),
+            durationMs: Date.now() - startTime,
+          },
+        })
+        console.log(`[HourlyPublish] Logged cron run: ${successCount} success, ${failCount} failed`)
+      } catch (logError) {
+        console.error('[HourlyPublish] Failed to log cron run:', logError)
+      }
     }
 
     return NextResponse.json({
@@ -288,6 +294,37 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('[HourlyPublish] Cron error:', error)
+
+    // Try to log the error
+    try {
+      // Find any active client to associate the error log with
+      const anyClient = await prisma.client.findFirst({
+        where: { status: 'ACTIVE', autoScheduleEnabled: true },
+        select: { id: true },
+      })
+      if (anyClient) {
+        await prisma.publishingLog.create({
+          data: {
+            clientId: anyClient.id,
+            action: 'cron_hourly_publish',
+            status: 'FAILED',
+            errorMessage: error instanceof Error ? error.message : 'Unknown error',
+            responseData: JSON.stringify({
+              timeSlot: currentTimeSlot,
+              slotIndex,
+              day: currentDay,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            }),
+            startedAt: new Date(startTime),
+            completedAt: new Date(),
+            durationMs: Date.now() - startTime,
+          },
+        })
+      }
+    } catch (logError) {
+      console.error('[HourlyPublish] Failed to log error:', logError)
+    }
+
     return NextResponse.json(
       {
         success: false,
