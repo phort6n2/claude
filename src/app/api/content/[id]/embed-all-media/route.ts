@@ -284,6 +284,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         email: contentItem.client.email || '',
         logoUrl: contentItem.client.logoUrl,
         wordpressUrl: contentItem.client.wordpressUrl,
+        googleMapsUrl: contentItem.client.googleMapsUrl,
         serviceAreas: contentItem.client.serviceAreas,
         gbpRating: contentItem.client.gbpRating,
         gbpReviewCount: contentItem.client.gbpReviewCount,

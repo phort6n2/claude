@@ -360,6 +360,7 @@ async function completeRemainingPipeline(contentItemId: string, videoUrl: string
             email: contentItem.client.email || '',
             logoUrl: contentItem.client.logoUrl,
             wordpressUrl: contentItem.client.wordpressUrl,
+            googleMapsUrl: contentItem.client.googleMapsUrl,
             serviceAreas: contentItem.client.serviceAreas,
             gbpRating: contentItem.client.gbpRating,
             gbpReviewCount: contentItem.client.gbpReviewCount,

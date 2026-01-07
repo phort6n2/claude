@@ -1494,6 +1494,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             email: contentItem.client.email || '',
             logoUrl: contentItem.client.logoUrl,
             wordpressUrl: contentItem.client.wordpressUrl,
+            googleMapsUrl: contentItem.client.googleMapsUrl,
             serviceAreas: contentItem.client.serviceAreas,
             gbpRating: contentItem.client.gbpRating,
             gbpReviewCount: contentItem.client.gbpReviewCount,

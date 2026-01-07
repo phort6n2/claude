@@ -11,6 +11,7 @@ interface Client {
   email: string
   logoUrl: string | null
   wordpressUrl: string | null
+  googleMapsUrl: string | null
   serviceAreas: string[]
   gbpRating: number | null
   gbpReviewCount: number | null
@@ -60,14 +61,18 @@ interface PodcastEpisodeSchema extends Record<string, unknown> {
   '@id': string
   name: string
   description: string | null
-  audio: {
+  url: string
+  datePublished?: string
+  associatedMedia: {
     '@type': 'AudioObject'
     contentUrl: string
+    encodingFormat: string
     duration?: string
   }
   partOfSeries: {
     '@type': 'PodcastSeries'
     name: string
+    url: string
   }
 }
 
@@ -206,6 +211,9 @@ export function generateSchemaGraph(params: SchemaParams): string {
           },
         }
       : {}),
+    ...(client.googleMapsUrl
+      ? { hasMap: client.googleMapsUrl }
+      : {}),
   }
 
   // BlogPosting Schema
@@ -277,16 +285,20 @@ export function generateSchemaGraph(params: SchemaParams): string {
     podcastEpisode = {
       '@type': 'PodcastEpisode',
       '@id': `${articleUrl}#podcast`,
-      name: blogPost.title,
+      name: `${blogPost.title} - Podcast Episode`,
       description: blogPost.excerpt,
-      audio: {
+      url: articleUrl,
+      datePublished: blogPost.publishedAt?.toISOString(),
+      associatedMedia: {
         '@type': 'AudioObject',
         contentUrl: podcast.audioUrl,
+        encodingFormat: 'audio/mpeg',
         duration: podcast.duration ? formatDuration(podcast.duration) : undefined,
       },
       partOfSeries: {
         '@type': 'PodcastSeries',
         name: `${client.businessName} Auto Glass Insights`,
+        url: baseUrl,
       },
     }
 
