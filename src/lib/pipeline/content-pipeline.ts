@@ -1567,6 +1567,49 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           }
         }
 
+        // Check if podcast was generated but not published to Podbean - if so, try to publish it now
+        if (podcast && podcast.audioUrl && podcast.status === 'READY' && !podcast.podbeanPlayerUrl) {
+          log(ctx, '🎙️ Podcast was generated but not published to Podbean - attempting to publish now...')
+          try {
+            const podbeanResult = await retryWithBackoff(
+              async () => {
+                return await withTimeout(
+                  publishToPodbean({
+                    title: blogPostForEmbed.title,
+                    description: podcast.description || blogPostForEmbed.excerpt || '',
+                    audioUrl: podcast.audioUrl,
+                  }),
+                  TIMEOUTS.PODBEAN_PUBLISH,
+                  'Podbean publishing (retry during embed)'
+                )
+              },
+              3,  // 3 attempts
+              3000 // 3 second base delay
+            )
+
+            // Update podcast record with Podbean info
+            await prisma.podcast.update({
+              where: { id: podcast.id },
+              data: {
+                podbeanEpisodeId: podbeanResult.episodeId,
+                podbeanUrl: podbeanResult.url,
+                podbeanPlayerUrl: podbeanResult.playerUrl,
+                status: 'PUBLISHED',
+              },
+            })
+
+            // Update the local podcast object so embed works
+            podcast.podbeanPlayerUrl = podbeanResult.playerUrl
+            podcast.podbeanUrl = podbeanResult.url
+            podcast.podbeanEpisodeId = podbeanResult.episodeId
+            podcast.status = 'PUBLISHED'
+
+            log(ctx, '✅ Podcast published to Podbean during embed step', { playerUrl: podbeanResult.playerUrl })
+          } catch (podbeanError) {
+            logError(ctx, 'Failed to publish podcast to Podbean during embed step', podbeanError)
+          }
+        }
+
         // Add podcast embed at the end if published to Podbean
         if (podcast?.podbeanPlayerUrl) {
           const podcastEmbed = generatePodcastEmbed(blogPostForEmbed.title, podcast.podbeanPlayerUrl)
