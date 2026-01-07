@@ -99,6 +99,7 @@ export function generateSchemaGraph(params: SchemaParams): string {
     url: baseUrl,
     telephone: client.phone,
     email: client.email,
+    priceRange: '$$',
     address: {
       '@type': 'PostalAddress',
       streetAddress: client.streetAddress,
