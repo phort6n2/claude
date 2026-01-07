@@ -6,6 +6,10 @@ import { selectNextPAA, markPAAAsUsed, renderPAAQuestion } from '@/lib/automatio
 import { selectNextLocation, markLocationAsUsed, getDefaultLocation } from '@/lib/automation/location-rotator'
 import { runContentPipeline } from '@/lib/pipeline/content-pipeline'
 
+// Allow up to 10 minutes for the full content pipeline
+// Podcast generation can take 5-10 minutes on slower plans
+export const maxDuration = 600
+
 /**
  * Hourly Publishing Cron Job
  * Runs every hour to check if any clients should publish NOW
