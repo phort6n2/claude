@@ -19,6 +19,7 @@ import {
   BarChart3,
   List,
   CalendarDays,
+  Timer,
 } from 'lucide-react'
 
 interface CronRun {
@@ -79,6 +80,15 @@ interface RecentContent {
   publishedAt: string | null
 }
 
+interface UpcomingRun {
+  clientId: string
+  clientName: string
+  scheduledTime: string
+  displayTime: string
+  dayName: string
+  hoursUntil: number
+}
+
 interface MonitoringData {
   overview: {
     contentCreatedToday: number
@@ -92,6 +102,7 @@ interface MonitoringData {
     weekStartDate: string
   }
   activityByDay: Record<string, number>
+  upcomingRuns: UpcomingRun[]
   stats: {
     last24Hours: { success: number; failed: number; total: number }
     last7Days: { success: number; failed: number; total: number }
@@ -385,6 +396,45 @@ export default function MonitoringPage() {
           </div>
         </div>
       </div>
+
+      {/* Upcoming Runs (Next 24 Hours) */}
+      {data.upcomingRuns.length > 0 && (
+        <div className="bg-white rounded-lg border p-4 mb-6">
+          <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+            <Timer className="h-4 w-4" />
+            Upcoming Runs (Next 24 Hours)
+          </h3>
+          <div className="space-y-2">
+            {data.upcomingRuns.map((run, idx) => (
+              <div key={`${run.clientId}-${idx}`} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full ${run.hoursUntil === 0 ? 'bg-green-500 animate-pulse' : run.hoursUntil <= 2 ? 'bg-yellow-500' : 'bg-blue-500'}`} />
+                  <Link
+                    href={`/admin/clients/${run.clientId}`}
+                    className="font-medium text-sm text-blue-600 hover:underline"
+                  >
+                    {run.clientName}
+                  </Link>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-medium text-gray-700">
+                    {run.dayName} @ {run.displayTime} MT
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {run.hoursUntil === 0 ? (
+                      <span className="text-green-600 font-medium">Running now</span>
+                    ) : run.hoursUntil === 1 ? (
+                      <span className="text-yellow-600">In 1 hour</span>
+                    ) : (
+                      <span>In {run.hoursUntil} hours</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Success Rate Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">

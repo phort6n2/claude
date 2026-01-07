@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { TIME_SLOTS, DAY_PAIRS, DayPairKey } from '@/lib/automation/auto-scheduler'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +12,20 @@ const DAY_PAIR_TO_DAYS: Record<string, number[]> = {
   MON_THU: [1, 4],
   TUE_FRI: [2, 5],
   MON_FRI: [1, 5],
+}
+
+// Slot to Mountain Time display
+const SLOT_TO_MT: Record<number, string> = {
+  0: '7:00 AM',
+  1: '8:00 AM',
+  2: '9:00 AM',
+  3: '10:00 AM',
+  4: '11:00 AM',
+  5: '1:00 PM',
+  6: '2:00 PM',
+  7: '3:00 PM',
+  8: '4:00 PM',
+  9: '5:00 PM',
 }
 
 function getNextPublishDate(dayPair: string, currentDay: number): { day: string, daysUntil: number } {
@@ -273,6 +288,56 @@ export async function GET() {
       }
     })
 
+    // Calculate upcoming runs in the next 24 hours
+    const upcomingRuns: Array<{
+      clientId: string
+      clientName: string
+      scheduledTime: Date
+      timeSlot: number
+      displayTime: string
+      dayName: string
+      hoursUntil: number
+    }> = []
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+    // Check each hour in the next 24 hours
+    for (let hoursAhead = 0; hoursAhead <= 24; hoursAhead++) {
+      const futureTime = new Date(now.getTime() + hoursAhead * 60 * 60 * 1000)
+      const futureHour = futureTime.getUTCHours()
+      const futureDay = futureTime.getUTCDay()
+      const futureTimeSlot = `${futureHour.toString().padStart(2, '0')}:00`
+
+      // Check if this hour matches a time slot
+      const slotIndex = TIME_SLOTS.indexOf(futureTimeSlot as typeof TIME_SLOTS[number])
+      if (slotIndex === -1) continue
+
+      // Find clients scheduled for this slot and day
+      for (const client of activeClients) {
+        if (client.scheduleTimeSlot !== slotIndex) continue
+
+        const dayPair = client.scheduleDayPair as DayPairKey | null
+        if (!dayPair || !DAY_PAIRS[dayPair]) continue
+
+        const { day1, day2 } = DAY_PAIRS[dayPair]
+        if (futureDay !== day1 && futureDay !== day2) continue
+
+        // This client is scheduled for this time
+        upcomingRuns.push({
+          clientId: client.id,
+          clientName: client.businessName,
+          scheduledTime: futureTime,
+          timeSlot: slotIndex,
+          displayTime: SLOT_TO_MT[slotIndex] || futureTimeSlot,
+          dayName: dayNames[futureDay],
+          hoursUntil: hoursAhead,
+        })
+      }
+    }
+
+    // Sort by scheduled time
+    upcomingRuns.sort((a, b) => a.scheduledTime.getTime() - b.scheduledTime.getTime())
+
     return NextResponse.json({
       overview: {
         contentCreatedToday,
@@ -286,6 +351,14 @@ export async function GET() {
         weekStartDate: thisWeekStart,
       },
       activityByDay,
+      upcomingRuns: upcomingRuns.map(run => ({
+        clientId: run.clientId,
+        clientName: run.clientName,
+        scheduledTime: run.scheduledTime.toISOString(),
+        displayTime: run.displayTime,
+        dayName: run.dayName,
+        hoursUntil: run.hoursUntil,
+      })),
       stats: {
         last24Hours: stats24h,
         last7Days: stats7d,
