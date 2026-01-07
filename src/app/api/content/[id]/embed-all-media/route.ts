@@ -2,9 +2,42 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { updatePost, getPost } from '@/lib/integrations/wordpress'
+import { generateSchemaGraph } from '@/lib/pipeline/schema-markup'
 
 interface RouteContext {
   params: Promise<{ id: string }>
+}
+
+// Generate Google Maps embed with heading
+function generateGoogleMapsEmbed(params: {
+  businessName: string
+  streetAddress: string
+  city: string
+  state: string
+  postalCode: string
+}): string {
+  const addressQuery = encodeURIComponent(
+    `${params.businessName}, ${params.streetAddress}, ${params.city}, ${params.state} ${params.postalCode}`
+  )
+  const embedUrl = `https://www.google.com/maps?q=${addressQuery}&output=embed`
+
+  return `
+<!-- Google Maps Embed -->
+<div class="google-maps-embed" style="margin: 30px 0;">
+  <h3>📍 Find ${params.businessName}</h3>
+  <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+    <iframe
+      src="${embedUrl}"
+      width="100%"
+      height="100%"
+      style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
+      allowfullscreen=""
+      loading="lazy"
+      referrerpolicy="no-referrer-when-downgrade"
+      title="Map showing ${params.businessName} location">
+    </iframe>
+  </div>
+</div>`
 }
 
 // Generate short-form video embed (9:16 vertical, floated right)
@@ -190,6 +223,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         wrhqSocialPosts: true,
         shortFormVideos: true,
         videos: true,
+        images: true,
       },
     })
 
@@ -232,13 +266,63 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     fullContent = fullContent.replace(/<div class="video-container"[\s\S]*?<\/div>/g, '')
     fullContent = fullContent.replace(/<!-- Podcast Episode -->[\s\S]*?<\/div>/g, '')
     fullContent = fullContent.replace(/<div class="podcast-embed"[\s\S]*?<\/div>/g, '')
+    // Remove old Google Maps embeds (with or without heading) to regenerate with latest format
+    fullContent = fullContent.replace(/<!-- Google Maps Embed -->[\s\S]*?<\/div>\s*<\/div>/g, '')
+    fullContent = fullContent.replace(/<div class="google-maps-embed"[\s\S]*?<\/div>\s*<\/div>/g, '')
 
-    // 0. Add JSON-LD schema markup (at the very beginning)
-    if (contentItem.blogPost.schemaJson) {
-      const schemaEmbed = generateSchemaEmbed(contentItem.blogPost.schemaJson)
-      fullContent = schemaEmbed + '\n\n' + fullContent
-      embedded.push('schema')
-    }
+    // 0. REGENERATE schema using latest code (with image, priceRange, etc.)
+    const featuredImage = contentItem.images.find(img => img.imageType === 'BLOG_FEATURED')
+    const schemaJson = generateSchemaGraph({
+      client: {
+        businessName: contentItem.client.businessName,
+        streetAddress: contentItem.client.streetAddress,
+        city: contentItem.client.city,
+        state: contentItem.client.state,
+        postalCode: contentItem.client.postalCode,
+        country: contentItem.client.country || 'US',
+        phone: contentItem.client.phone,
+        email: contentItem.client.email || '',
+        logoUrl: contentItem.client.logoUrl,
+        wordpressUrl: contentItem.client.wordpressUrl,
+        serviceAreas: contentItem.client.serviceAreas,
+        gbpRating: contentItem.client.gbpRating,
+        gbpReviewCount: contentItem.client.gbpReviewCount,
+        offersWindshieldRepair: contentItem.client.offersWindshieldRepair,
+        offersWindshieldReplacement: contentItem.client.offersWindshieldReplacement,
+        offersSideWindowRepair: contentItem.client.offersSideWindowRepair,
+        offersBackWindowRepair: contentItem.client.offersBackWindowRepair,
+        offersSunroofRepair: contentItem.client.offersSunroofRepair,
+        offersRockChipRepair: contentItem.client.offersRockChipRepair,
+        offersAdasCalibration: contentItem.client.offersAdasCalibration,
+        offersMobileService: contentItem.client.offersMobileService,
+      },
+      blogPost: {
+        title: contentItem.blogPost.title,
+        slug: contentItem.blogPost.slug,
+        content: contentItem.blogPost.content,
+        excerpt: contentItem.blogPost.excerpt,
+        metaDescription: contentItem.blogPost.metaDescription,
+        wordpressUrl: contentItem.blogPost.wordpressUrl,
+        publishedAt: contentItem.blogPost.publishedAt,
+        imageUrl: featuredImage?.gcsUrl || null,
+      },
+      contentItem: {
+        paaQuestion: contentItem.paaQuestion,
+      },
+      podcast: contentItem.podcast ? { audioUrl: contentItem.podcast.audioUrl, duration: contentItem.podcast.duration } : undefined,
+      video: contentItem.videos[0] ? { videoUrl: contentItem.videos[0].videoUrl, thumbnailUrl: contentItem.videos[0].thumbnailUrl, duration: contentItem.videos[0].duration } : undefined,
+    })
+
+    // Save regenerated schema to database
+    await prisma.blogPost.update({
+      where: { id: contentItem.blogPost.id },
+      data: { schemaJson },
+    })
+
+    // Embed the fresh schema
+    const schemaEmbed = generateSchemaEmbed(schemaJson)
+    fullContent = schemaEmbed + '\n\n' + fullContent
+    embedded.push('schema')
 
     // 1. Add short-form video (floated right)
     // YouTube URL is in socialPosts.publishedUrl after publishing via Late
@@ -281,25 +365,25 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
 
     // 2. Add long-form video embed (if present)
+    // Appended at end - Google Maps and Podcast will be added after this
     if (contentItem.longformVideoUrl) {
       const longVideoEmbed = generateLongVideoEmbed(contentItem.longformVideoUrl)
-      // Insert before Google Maps embed (which is at the end)
-      const mapsIndex = fullContent.indexOf('<div class="google-maps-embed"')
-      if (mapsIndex !== -1) {
-        fullContent = fullContent.slice(0, mapsIndex) + longVideoEmbed + '\n\n' + fullContent.slice(mapsIndex)
-      } else {
-        // No maps embed found, insert before last paragraph
-        const lastParagraphStart = fullContent.lastIndexOf('<p>')
-        if (lastParagraphStart !== -1) {
-          fullContent = fullContent.slice(0, lastParagraphStart) + '\n\n' + longVideoEmbed + '\n\n' + fullContent.slice(lastParagraphStart)
-        } else {
-          fullContent = fullContent + '\n\n' + longVideoEmbed
-        }
-      }
+      fullContent = fullContent + '\n\n' + longVideoEmbed
       embedded.push('long-video')
     }
 
-    // 3. Add podcast embed at the very end (after Google Maps)
+    // 3. Add Google Maps embed with heading (regenerated with latest format)
+    const mapsEmbed = generateGoogleMapsEmbed({
+      businessName: contentItem.client.businessName,
+      streetAddress: contentItem.client.streetAddress,
+      city: contentItem.client.city,
+      state: contentItem.client.state,
+      postalCode: contentItem.client.postalCode,
+    })
+    fullContent = fullContent + mapsEmbed
+    embedded.push('google-maps')
+
+    // 4. Add podcast embed at the very end (after Google Maps)
     if (contentItem.podcast?.podbeanPlayerUrl) {
       const podcastEmbed = generatePodcastEmbed(
         contentItem.blogPost.title,
