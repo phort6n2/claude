@@ -33,6 +33,7 @@ interface BlogPost {
   metaDescription: string | null
   wordpressUrl: string | null
   publishedAt: Date | null
+  imageUrl: string | null
 }
 
 interface ContentItem {
@@ -207,11 +208,21 @@ export function generateSchemaGraph(params: SchemaParams): string {
   }
 
   // BlogPosting Schema
+  // Build the image array - use blog post image if available, fallback to client logo
+  const articleImages: string[] = []
+  if (blogPost.imageUrl) {
+    articleImages.push(blogPost.imageUrl)
+  }
+  if (client.logoUrl && client.logoUrl !== blogPost.imageUrl) {
+    articleImages.push(client.logoUrl)
+  }
+
   const blogPosting = {
     '@type': 'BlogPosting',
     '@id': articleId,
     headline: blogPost.title,
     description: blogPost.metaDescription || blogPost.excerpt,
+    ...(articleImages.length > 0 ? { image: articleImages } : {}),
     author: {
       '@type': 'Organization',
       '@id': organizationId,

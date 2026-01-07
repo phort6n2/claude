@@ -1478,6 +1478,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       const podcast = await prisma.podcast.findFirst({ where: { contentItemId } })
       const video = await prisma.video.findFirst({ where: { contentItemId, videoType: 'SHORT' } })
       const wrhqSocialPosts = await prisma.wRHQSocialPost.findMany({ where: { contentItemId } })
+      const featuredImageForSchema = await prisma.image.findFirst({ where: { contentItemId, imageType: 'BLOG_FEATURED' } })
 
       if (blogPostForEmbed && blogPostForEmbed.wordpressPostId && contentItem.client.wordpressUrl) {
         // 1. Generate schema with all content references
@@ -1513,6 +1514,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             metaDescription: blogPostForEmbed.metaDescription,
             wordpressUrl: blogPostForEmbed.wordpressUrl,
             publishedAt: blogPostForEmbed.publishedAt,
+            imageUrl: featuredImageForSchema?.gcsUrl || null,
           },
           contentItem: {
             paaQuestion: contentItem.paaQuestion,

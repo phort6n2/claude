@@ -133,6 +133,7 @@ async function completeRemainingPipeline(contentItemId: string, videoUrl: string
         client: true,
         blogPost: true,
         podcast: true,
+        images: true,
       },
     })
 
@@ -379,6 +380,7 @@ async function completeRemainingPipeline(contentItemId: string, videoUrl: string
             metaDescription: blogPost.metaDescription,
             wordpressUrl: blogPost.wordpressUrl,
             publishedAt: blogPost.publishedAt,
+            imageUrl: contentItem.images.find(img => img.imageType === 'BLOG_FEATURED')?.gcsUrl || null,
           },
           contentItem: {
             paaQuestion: contentItem.paaQuestion,
