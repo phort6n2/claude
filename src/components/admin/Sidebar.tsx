@@ -14,6 +14,7 @@ import {
   Activity,
   HelpCircle,
   Monitor,
+  Store,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -21,6 +22,7 @@ const navigation = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
   { name: 'Clients', href: '/admin/clients', icon: Users },
   { name: 'Content Calendar', href: '/admin/content', icon: Calendar },
+  { name: 'GBP Posts', href: '/admin/gbp', icon: Store },
   { name: 'Press Releases', href: '/admin/press-releases', icon: FileText },
   { name: 'Monitoring', href: '/admin/monitoring', icon: Monitor },
   { name: 'API Status', href: '/admin/api-status', icon: Activity },
