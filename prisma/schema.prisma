@@ -155,6 +155,10 @@ model Client {
   serviceLocations      ServiceLocation[]
   clientPAAs            ClientPAA[]
   publishingLogs        PublishingLog[]
+
+  // GBP Posting Service
+  gbpPostConfig         GBPPostConfig?
+  gbpPosts              GBPPost[]
 }
 
 enum ClientStatus {
@@ -904,6 +908,123 @@ model ServiceLocation {
   @@index([clientId])
   @@index([isActive])
   @@index([lastUsedAt])
+}
+
+// ============================================
+// GBP POSTING SERVICE
+// ============================================
+
+model GBPPostConfig {
+  id              String    @id @default(cuid())
+  clientId        String    @unique
+  client          Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Schedule
+  enabled         Boolean   @default(false)
+  frequency       GBPPostFrequency @default(WEEKLY)
+  preferredDays   Int[]     // 0=Sunday, 1=Monday, etc.
+  preferredTime   String    @default("10:00")
+
+  // Link Rotation
+  rotationLinks   Json?     // Array of { url, label, type, weight? }
+  currentLinkIndex Int      @default(0)
+
+  // Content Settings
+  postTopics      String[]  // Optional topic suggestions
+  includePromo    Boolean   @default(true)
+  includePhone    Boolean   @default(true)
+
+  // Google OAuth (for photo fetching from GBP)
+  googleAccessToken   String?   // Encrypted
+  googleRefreshToken  String?   // Encrypted
+  googleTokenExpiry   DateTime?
+  googleAccountId     String?   // GBP account ID from Google
+
+  // Cached Photos from GBP
+  cachedPhotos        Json?     // Array of { url, thumbnailUrl, category, name }
+  photosLastFetched   DateTime?
+
+  // AI Image Generation Option
+  useAiGeneratedImages Boolean  @default(false)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  posts           GBPPost[]
+
+  @@index([enabled])
+}
+
+model GBPPost {
+  id              String    @id @default(cuid())
+  clientId        String
+  client          Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  configId        String
+  config          GBPPostConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  // Content
+  content         String    @db.Text
+  photoUrl        String?
+  photoSource     GBPPhotoSource @default(GBP_PROFILE)
+  ctaUrl          String?
+  ctaType         GBPCtaType?
+
+  // Link used (for rotation tracking)
+  rotationLinkIndex Int?
+  rotationLinkLabel String?
+
+  // Status
+  status          GBPPostStatus @default(DRAFT)
+  scheduledFor    DateTime?
+  publishedAt     DateTime?
+
+  // Late Integration
+  latePostId      String?
+  platformPostUrl String?   // URL to view on GBP
+
+  // Error tracking
+  errorMessage    String?
+  retryCount      Int       @default(0)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([clientId])
+  @@index([status])
+  @@index([scheduledFor])
+}
+
+enum GBPPostFrequency {
+  DAILY
+  TWICE_WEEKLY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum GBPPhotoSource {
+  GBP_PROFILE     // Photo fetched from Google Business Profile
+  AI_GENERATED    // Photo generated via Nano Banana Pro
+  UPLOADED        // Manually uploaded
+  CLIENT_IMAGES   // From client's existing images
+}
+
+enum GBPCtaType {
+  LEARN_MORE
+  BOOK
+  ORDER
+  SHOP
+  SIGN_UP
+  CALL
+}
+
+enum GBPPostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  FAILED
 }
 
 // ============================================
