@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import {
   ChevronDown,
@@ -26,6 +27,7 @@ import {
   Calendar,
   Search,
   ExternalLink,
+  Store,
 } from 'lucide-react'
 
 interface PodbeanPodcast {
@@ -786,37 +788,56 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   return (
     <div className="space-y-4">
       {/* Sticky Save Bar */}
-      <div className="sticky top-0 z-10 bg-white border-b shadow-sm -mx-6 -mt-6 px-6 py-3 mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg font-semibold">{formData.businessName}</h1>
-          {saveSuccess && (
-            <span className="flex items-center gap-1 text-sm text-green-600">
-              <Check className="h-4 w-4" /> Saved
-            </span>
-          )}
-          {error && (
-            <span className="flex items-center gap-1 text-sm text-red-600">
-              <AlertCircle className="h-4 w-4" /> {error}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => router.back()}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                Save Changes
-              </>
+      <div className="sticky top-0 z-10 bg-white border-b shadow-sm -mx-6 -mt-6 px-6 py-3 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h1 className="text-lg font-semibold">{formData.businessName}</h1>
+            {saveSuccess && (
+              <span className="flex items-center gap-1 text-sm text-green-600">
+                <Check className="h-4 w-4" /> Saved
+              </span>
             )}
-          </Button>
+            {error && (
+              <span className="flex items-center gap-1 text-sm text-red-600">
+                <AlertCircle className="h-4 w-4" /> {error}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={() => router.back()}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Changes
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+        {/* Quick Links */}
+        <div className="flex items-center gap-4 mt-2 pt-2 border-t border-gray-100">
+          <Link
+            href={`/admin/clients/${formData.id}/calendar`}
+            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600"
+          >
+            <Calendar className="h-4 w-4" />
+            Content Calendar
+          </Link>
+          <Link
+            href={`/admin/clients/${formData.id}/gbp`}
+            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600"
+          >
+            <Store className="h-4 w-4" />
+            GBP Posts
+          </Link>
         </div>
       </div>
 
