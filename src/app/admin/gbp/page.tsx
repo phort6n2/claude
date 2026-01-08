@@ -4,31 +4,33 @@ import Link from 'next/link'
 import { prisma } from '@/lib/db'
 
 export default async function GBPDashboardPage() {
-  // Get all clients with GBP config
-  const configs = await prisma.gBPPostConfig.findMany({
-    include: {
-      client: {
+  // Get ALL active clients
+  const allClients = await prisma.client.findMany({
+    where: {
+      status: 'ACTIVE',
+    },
+    select: {
+      id: true,
+      businessName: true,
+      city: true,
+      state: true,
+      socialAccountIds: true,
+      gbpPostConfig: {
         select: {
           id: true,
-          businessName: true,
-          city: true,
-          state: true,
-          status: true,
-          socialAccountIds: true,
-        },
-      },
-      posts: {
-        orderBy: { createdAt: 'desc' },
-        take: 1,
-      },
-      _count: {
-        select: {
-          posts: true,
+          enabled: true,
+          googleRefreshToken: true,
+          frequency: true,
+          _count: {
+            select: {
+              posts: true,
+            },
+          },
         },
       },
     },
     orderBy: {
-      updatedAt: 'desc',
+      businessName: 'asc',
     },
   })
 
@@ -47,17 +49,10 @@ export default async function GBPDashboardPage() {
   })
 
   // Calculate stats
-  const enabledCount = configs.filter(c => c.enabled).length
-  const connectedCount = configs.filter(c => c.googleRefreshToken).length
-  const totalPosts = configs.reduce((sum, c) => sum + c._count.posts, 0)
-  const publishedThisWeek = await prisma.gBPPost.count({
-    where: {
-      status: 'PUBLISHED',
-      publishedAt: {
-        gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-      },
-    },
-  })
+  const configuredCount = allClients.filter(c => c.gbpPostConfig).length
+  const enabledCount = allClients.filter(c => c.gbpPostConfig?.enabled).length
+  const connectedCount = allClients.filter(c => c.gbpPostConfig?.googleRefreshToken).length
+  const totalPosts = allClients.reduce((sum, c) => sum + (c.gbpPostConfig?._count?.posts || 0), 0)
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -73,8 +68,12 @@ export default async function GBPDashboardPage() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-lg shadow p-6">
+            <div className="text-3xl font-bold text-gray-600">{allClients.length}</div>
+            <div className="text-sm text-gray-600">Total Clients</div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6">
             <div className="text-3xl font-bold text-blue-600">{enabledCount}</div>
-            <div className="text-sm text-gray-600">Clients Enabled</div>
+            <div className="text-sm text-gray-600">GBP Enabled</div>
           </div>
           <div className="bg-white rounded-lg shadow p-6">
             <div className="text-3xl font-bold text-green-600">{connectedCount}</div>
@@ -84,75 +83,74 @@ export default async function GBPDashboardPage() {
             <div className="text-3xl font-bold text-purple-600">{totalPosts}</div>
             <div className="text-sm text-gray-600">Total Posts</div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-3xl font-bold text-orange-600">{publishedThisWeek}</div>
-            <div className="text-sm text-gray-600">Published This Week</div>
-          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Client List */}
           <div className="lg:col-span-2 bg-white rounded-lg shadow">
             <div className="p-4 border-b">
-              <h2 className="text-lg font-semibold">Clients</h2>
+              <h2 className="text-lg font-semibold">All Clients</h2>
+              <p className="text-sm text-gray-500">Click on a client to set up or manage their GBP posts</p>
             </div>
-            <div className="divide-y">
-              {configs.length === 0 ? (
+            <div className="divide-y max-h-[600px] overflow-y-auto">
+              {allClients.length === 0 ? (
                 <div className="p-6 text-center text-gray-500">
-                  No clients have GBP posting configured yet.
+                  No active clients found.
                 </div>
               ) : (
-                configs.map(config => {
-                  const hasLateGBP = !!(config.client.socialAccountIds as Record<string, string> | null)?.gbp
-                  const lastPost = config.posts[0]
+                allClients.map(client => {
+                  const config = client.gbpPostConfig
+                  const hasLateGBP = !!(client.socialAccountIds as Record<string, string> | null)?.gbp
 
                   return (
-                    <div key={config.id} className="p-4 hover:bg-gray-50">
+                    <Link
+                      key={client.id}
+                      href={`/admin/clients/${client.id}/gbp`}
+                      className="block p-4 hover:bg-gray-50 transition-colors"
+                    >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <Link
-                            href={`/admin/clients/${config.client.id}/gbp`}
-                            className="font-medium text-blue-600 hover:underline"
-                          >
-                            {config.client.businessName}
-                          </Link>
+                          <div className="font-medium text-gray-900">
+                            {client.businessName}
+                          </div>
                           <div className="text-sm text-gray-500">
-                            {config.client.city}, {config.client.state}
+                            {client.city}, {client.state}
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2">
-                          {/* Status badges */}
-                          <span className={`text-xs px-2 py-1 rounded ${
-                            config.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-                          }`}>
-                            {config.enabled ? 'Enabled' : 'Disabled'}
-                          </span>
+                          {config ? (
+                            <>
+                              <span className={`text-xs px-2 py-1 rounded ${
+                                config.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {config.enabled ? 'Enabled' : 'Disabled'}
+                              </span>
 
-                          {config.googleRefreshToken && (
-                            <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
-                              Google Connected
+                              {config.googleRefreshToken && (
+                                <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
+                                  Google
+                                </span>
+                              )}
+
+                              {hasLateGBP && (
+                                <span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-800">
+                                  Late
+                                </span>
+                              )}
+
+                              <span className="text-xs text-gray-500">
+                                {config._count.posts} posts
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-800">
+                              Not Set Up
                             </span>
                           )}
-
-                          {hasLateGBP && (
-                            <span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-800">
-                              Late GBP
-                            </span>
-                          )}
-
-                          <span className="text-xs text-gray-500">
-                            {config._count.posts} posts
-                          </span>
                         </div>
                       </div>
-
-                      {lastPost && (
-                        <div className="mt-2 text-xs text-gray-500">
-                          Last post: {new Date(lastPost.createdAt).toLocaleDateString()} - {lastPost.status}
-                        </div>
-                      )}
-                    </div>
+                    </Link>
                   )
                 })
               )}
@@ -167,7 +165,7 @@ export default async function GBPDashboardPage() {
             <div className="divide-y max-h-[600px] overflow-y-auto">
               {recentPosts.length === 0 ? (
                 <div className="p-6 text-center text-gray-500">
-                  No posts yet.
+                  No posts yet. Set up a client to get started!
                 </div>
               ) : (
                 recentPosts.map(post => (
@@ -201,16 +199,16 @@ export default async function GBPDashboardPage() {
 
         {/* Quick Setup Guide */}
         <div className="bg-blue-50 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-2">Quick Setup</h3>
+          <h3 className="text-lg font-semibold text-blue-900 mb-2">Quick Setup Guide</h3>
           <ol className="list-decimal list-inside text-sm text-blue-800 space-y-1">
-            <li>Go to a client&apos;s GBP settings page</li>
-            <li>Connect their Google account to fetch photos</li>
+            <li>Click on any client above to open their GBP settings</li>
+            <li>Connect their Google account to fetch photos (optional)</li>
             <li>Add rotation links (service pages, citations, etc.)</li>
             <li>Set posting frequency and preferred days</li>
             <li>Enable automated posting</li>
           </ol>
           <p className="text-xs text-blue-700 mt-3">
-            Note: Clients need a GBP account connected in Late for posts to publish.
+            Note: Clients need a GBP account connected in Late for posts to actually publish.
           </p>
         </div>
       </div>
