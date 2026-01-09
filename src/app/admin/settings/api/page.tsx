@@ -104,7 +104,7 @@ const API_KEYS: ApiKeyConfig[] = [
     key: 'GBP_CLIENT_SECRET',
     label: 'Google Business Profile Client Secret',
     description: 'OAuth client secret for GBP photo fetching',
-    testable: false,
+    testable: true,
   },
 ]
 
