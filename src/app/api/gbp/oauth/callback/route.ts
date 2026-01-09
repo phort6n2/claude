@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       return redirectWithError(errorDescription)
     }
 
-    if (!code || !state) {
+    if (!code || !clientId) {
       return redirectWithError('Missing OAuth parameters')
     }
 
@@ -42,10 +42,10 @@ export async function GET(request: NextRequest) {
     // Exchange code for tokens
     const tokens = await exchangeCodeForTokens(code, redirectUri)
 
-    // Store tokens for the client
+    // Store tokens for the client (clientId is guaranteed to be string after the check above)
     try {
       await storeGBPTokens(
-        clientId,
+        clientId as string,
         tokens.accessToken,
         tokens.refreshToken,
         tokens.expiresIn
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch photos immediately after connecting
     try {
-      await refreshClientPhotos(clientId)
+      await refreshClientPhotos(clientId as string)
     } catch (photoError) {
       console.error('Failed to fetch initial photos:', photoError)
       // Don't fail the whole flow if photo fetch fails
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
 
     // Redirect back to the client's GBP settings page
     return NextResponse.redirect(
-      new URL(`/admin/clients/${clientId}/gbp?success=connected`, request.url)
+      new URL(`/admin/clients/${clientId as string}/gbp?success=connected`, request.url)
     )
   } catch (error) {
     console.error('OAuth callback error:', error)
