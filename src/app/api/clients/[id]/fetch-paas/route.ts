@@ -51,6 +51,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       select: {
         city: true,
         state: true,
+        country: true,
         serviceAreas: true,
       },
     })
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       login,
       password,
       serviceAreas: client.serviceAreas || [],
+      country: client.country || 'US',
     })
 
     console.log('[DataForSEO] Fetch result:', {

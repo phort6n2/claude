@@ -59,6 +59,7 @@ interface DataForSEOResponse {
 
 // Map state abbreviations to full names for DataForSEO
 const stateAbbreviations: Record<string, string> = {
+  // US States
   'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
   'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 'FL': 'Florida', 'GA': 'Georgia',
   'HI': 'Hawaii', 'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
@@ -68,7 +69,20 @@ const stateAbbreviations: Record<string, string> = {
   'NM': 'New Mexico', 'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio',
   'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
   'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah', 'VT': 'Vermont',
-  'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming'
+  'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming',
+  // Canadian Provinces
+  'AB': 'Alberta', 'BC': 'British Columbia', 'MB': 'Manitoba', 'NB': 'New Brunswick',
+  'NL': 'Newfoundland and Labrador', 'NS': 'Nova Scotia', 'NT': 'Northwest Territories',
+  'NU': 'Nunavut', 'ON': 'Ontario', 'PE': 'Prince Edward Island', 'QC': 'Quebec',
+  'SK': 'Saskatchewan', 'YT': 'Yukon'
+}
+
+// Map country codes to DataForSEO country names
+const countryNames: Record<string, string> = {
+  'US': 'United States',
+  'USA': 'United States',
+  'CA': 'Canada',
+  'CAN': 'Canada',
 }
 
 /**
@@ -83,9 +97,10 @@ export async function fetchPAAsForLocation(
     password: string
     keywords?: string[]
     serviceAreas?: string[] // Additional cities to search (e.g., ["Beaverton", "Gresham"])
+    country?: string // Country code: "US", "CA", etc.
   }
 ): Promise<DataForSEOResult> {
-  const { login, password, serviceAreas } = options
+  const { login, password, serviceAreas, country = 'US' } = options
 
   const allPAAs: PAASuggestion[] = []
   let totalCost = 0
@@ -94,17 +109,20 @@ export async function fetchPAAsForLocation(
     // Search multiple keywords to get more PAA variety
     const searchKeywords = ['auto glass repair', 'windshield replacement']
 
-    // Convert state abbreviation to full name if needed
+    // Convert state/province abbreviation to full name if needed
     const fullStateName = stateAbbreviations[state.toUpperCase()] || state
 
+    // Get full country name for DataForSEO
+    const fullCountryName = countryNames[country.toUpperCase()] || country
+
     // Build list of locations to search: main city + all service areas
-    const mainLocation = `${city},${fullStateName},United States`
+    const mainLocation = `${city},${fullStateName},${fullCountryName}`
     const locationsSet = new Set<string>([mainLocation])
 
     // Add all service areas, excluding duplicates
     if (serviceAreas && serviceAreas.length > 0) {
       for (const area of serviceAreas) {
-        const areaLocation = `${area},${fullStateName},United States`
+        const areaLocation = `${area},${fullStateName},${fullCountryName}`
         if (areaLocation !== mainLocation) {
           locationsSet.add(areaLocation)
         }
@@ -215,8 +233,9 @@ export async function fetchPAAsForLocation(
 export function formatPAAAsTemplate(question: string, city: string, state: string): string {
   let template = question
 
-  // All US state names and abbreviations
+  // All US state and Canadian province names and abbreviations
   const states = [
+    // US States
     'Alabama', 'AL', 'Alaska', 'AK', 'Arizona', 'AZ', 'Arkansas', 'AR', 'California', 'CA',
     'Colorado', 'CO', 'Connecticut', 'CT', 'Delaware', 'DE', 'Florida', 'FL', 'Georgia', 'GA',
     'Hawaii', 'HI', 'Idaho', 'ID', 'Illinois', 'IL', 'Indiana', 'IN', 'Iowa', 'IA',
@@ -226,7 +245,12 @@ export function formatPAAAsTemplate(question: string, city: string, state: strin
     'New Mexico', 'NM', 'New York', 'NY', 'North Carolina', 'NC', 'North Dakota', 'ND', 'Ohio', 'OH',
     'Oklahoma', 'OK', 'Oregon', 'OR', 'Pennsylvania', 'PA', 'Rhode Island', 'RI', 'South Carolina', 'SC',
     'South Dakota', 'SD', 'Tennessee', 'TN', 'Texas', 'TX', 'Utah', 'UT', 'Vermont', 'VT',
-    'Virginia', 'VA', 'Washington', 'WA', 'West Virginia', 'WV', 'Wisconsin', 'WI', 'Wyoming', 'WY'
+    'Virginia', 'VA', 'Washington', 'WA', 'West Virginia', 'WV', 'Wisconsin', 'WI', 'Wyoming', 'WY',
+    // Canadian Provinces
+    'Alberta', 'AB', 'British Columbia', 'BC', 'Manitoba', 'MB', 'New Brunswick', 'NB',
+    'Newfoundland and Labrador', 'NL', 'Nova Scotia', 'NS', 'Northwest Territories', 'NT',
+    'Nunavut', 'NU', 'Ontario', 'ON', 'Prince Edward Island', 'PE', 'Quebec', 'QC',
+    'Saskatchewan', 'SK', 'Yukon', 'YT'
   ]
 
   // Replace the specific client city/state first

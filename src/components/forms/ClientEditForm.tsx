@@ -72,6 +72,7 @@ interface ClientData {
   city: string
   state: string
   postalCode: string
+  country: string
   googlePlaceId: string | null
   googleMapsUrl: string | null
   wrhqDirectoryUrl: string | null
@@ -1012,7 +1013,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                   className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div className="col-span-2">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code</label>
                 <input
                   type="text"
@@ -1020,6 +1021,17 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                   onChange={(e) => updateField('postalCode', e.target.value)}
                   className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                <select
+                  value={formData.country || 'US'}
+                  onChange={(e) => updateField('country', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="US">United States</option>
+                  <option value="CA">Canada</option>
+                </select>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

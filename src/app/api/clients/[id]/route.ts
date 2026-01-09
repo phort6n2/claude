@@ -84,6 +84,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         city: data.city,
         state: data.state,
         postalCode: data.postalCode,
+        country: data.country || existing.country || 'US',
         googlePlaceId: data.googlePlaceId || null,
         googleMapsUrl: data.googleMapsUrl || null,
         wrhqDirectoryUrl: data.wrhqDirectoryUrl || null,
