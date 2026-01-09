@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { decrypt } from '@/lib/encryption'
 
 export const dynamic = 'force-dynamic'
 
@@ -7,15 +8,34 @@ export async function POST(request: NextRequest) {
   try {
     const { url, username, password, clientId } = await request.json()
 
-    if (!url || !username || !password) {
+    if (!url || !username) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       )
     }
 
+    // If no password provided but clientId is, use stored credentials
+    let actualPassword = password
+    if (!password && clientId) {
+      const client = await prisma.client.findUnique({
+        where: { id: clientId },
+        select: { wordpressAppPassword: true },
+      })
+      if (client?.wordpressAppPassword) {
+        actualPassword = decrypt(client.wordpressAppPassword)
+      }
+    }
+
+    if (!actualPassword) {
+      return NextResponse.json(
+        { error: 'Password required - either enter a new password or save one first' },
+        { status: 400 }
+      )
+    }
+
     // Test connection to WordPress REST API
-    const credentials = Buffer.from(`${username}:${password}`).toString('base64')
+    const credentials = Buffer.from(`${username}:${actualPassword}`).toString('base64')
 
     const response = await fetch(`${url}/wp-json/wp/v2/users/me`, {
       headers: {

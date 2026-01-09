@@ -26,7 +26,13 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 })
     }
 
-    return NextResponse.json(client)
+    // Don't send encrypted password to frontend - just indicate if one exists
+    const { wordpressAppPassword, ...clientWithoutPassword } = client
+    return NextResponse.json({
+      ...clientWithoutPassword,
+      wordpressAppPassword: null, // Never send encrypted password to client
+      hasWordPressPassword: !!wordpressAppPassword,
+    })
   } catch (error) {
     console.error('Failed to fetch client:', error)
     return NextResponse.json(
@@ -106,7 +112,13 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       },
     })
 
-    return NextResponse.json(client)
+    // Don't send encrypted password to frontend
+    const { wordpressAppPassword: _, ...clientWithoutPassword } = client
+    return NextResponse.json({
+      ...clientWithoutPassword,
+      wordpressAppPassword: null,
+      hasWordPressPassword: !!client.wordpressAppPassword,
+    })
   } catch (error) {
     console.error('Failed to update client:', error)
     return NextResponse.json(
