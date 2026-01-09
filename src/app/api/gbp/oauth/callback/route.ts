@@ -8,28 +8,32 @@ export const dynamic = 'force-dynamic'
  * Handle OAuth callback from Google
  */
 export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const state = searchParams.get('state') // Contains client ID
+  const clientId = state
+
+  // Helper to redirect with error
+  const redirectWithError = (errorMessage: string) => {
+    const redirectPath = clientId
+      ? `/admin/clients/${clientId}/gbp?error=${encodeURIComponent(errorMessage)}`
+      : `/admin/gbp?error=${encodeURIComponent(errorMessage)}`
+    return NextResponse.redirect(new URL(redirectPath, request.url))
+  }
+
   try {
-    const { searchParams } = new URL(request.url)
     const code = searchParams.get('code')
-    const state = searchParams.get('state') // Contains client ID
     const error = searchParams.get('error')
 
-    // Handle OAuth errors
+    // Handle OAuth errors from Google
     if (error) {
-      const errorDescription = searchParams.get('error_description') || 'Unknown error'
+      const errorDescription = searchParams.get('error_description') || error
       console.error('OAuth error:', error, errorDescription)
-      return NextResponse.redirect(
-        new URL(`/admin/clients/${state}/gbp?error=${encodeURIComponent(errorDescription)}`, request.url)
-      )
+      return redirectWithError(errorDescription)
     }
 
     if (!code || !state) {
-      return NextResponse.redirect(
-        new URL('/admin?error=missing_oauth_params', request.url)
-      )
+      return redirectWithError('Missing OAuth parameters')
     }
-
-    const clientId = state
 
     // Get the redirect URI
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin
@@ -39,12 +43,24 @@ export async function GET(request: NextRequest) {
     const tokens = await exchangeCodeForTokens(code, redirectUri)
 
     // Store tokens for the client
-    await storeGBPTokens(
-      clientId,
-      tokens.accessToken,
-      tokens.refreshToken,
-      tokens.expiresIn
-    )
+    try {
+      await storeGBPTokens(
+        clientId,
+        tokens.accessToken,
+        tokens.refreshToken,
+        tokens.expiresIn
+      )
+    } catch (storeError) {
+      console.error('Failed to store tokens or fetch accounts:', storeError)
+      const errorMsg = storeError instanceof Error ? storeError.message : 'Failed to connect'
+
+      // Check for quota/API access errors
+      if (errorMsg.includes('429') || errorMsg.includes('RESOURCE_EXHAUSTED') || errorMsg.includes('Quota exceeded')) {
+        return redirectWithError('Google My Business API access required. Apply at: developers.google.com/my-business')
+      }
+
+      return redirectWithError(errorMsg)
+    }
 
     // Fetch photos immediately after connecting
     try {
@@ -61,8 +77,6 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('OAuth callback error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    return NextResponse.redirect(
-      new URL(`/admin?error=${encodeURIComponent(errorMessage)}`, request.url)
-    )
+    return redirectWithError(errorMessage)
   }
 }
