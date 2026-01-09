@@ -8,38 +8,6 @@ interface RouteContext {
   params: Promise<{ id: string }>
 }
 
-// Generate Google Maps embed with heading
-function generateGoogleMapsEmbed(params: {
-  businessName: string
-  streetAddress: string
-  city: string
-  state: string
-  postalCode: string
-}): string {
-  const addressQuery = encodeURIComponent(
-    `${params.businessName}, ${params.streetAddress}, ${params.city}, ${params.state} ${params.postalCode}`
-  )
-  const embedUrl = `https://www.google.com/maps?q=${addressQuery}&output=embed`
-
-  return `
-<!-- Google Maps Embed -->
-<div class="google-maps-embed" style="margin: 30px 0;">
-  <h3>📍 Find ${params.businessName}</h3>
-  <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-    <iframe
-      src="${embedUrl}"
-      width="100%"
-      height="100%"
-      style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
-      allowfullscreen=""
-      loading="lazy"
-      referrerpolicy="no-referrer-when-downgrade"
-      title="Map showing ${params.businessName} location">
-    </iframe>
-  </div>
-</div>`
-}
-
 // Generate short-form video embed (9:16 vertical, floated right)
 function generateShortVideoEmbed(youtubeUrl: string): string | null {
   // Extract YouTube video ID
@@ -266,14 +234,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     fullContent = fullContent.replace(/<div class="video-container"[\s\S]*?<\/div>/g, '')
     fullContent = fullContent.replace(/<!-- Podcast Episode -->[\s\S]*?<\/div>/g, '')
     fullContent = fullContent.replace(/<div class="podcast-embed"[\s\S]*?<\/div>/g, '')
-    // Remove old Google Maps embeds (with or without heading) to regenerate with latest format
-    // Note: Initial publish uses "Google Maps Location" (has <p> link), re-embed uses "Google Maps Embed"
-    // Match from comment to the final </div> of the google-maps-embed container
-    fullContent = fullContent.replace(/<!-- Google Maps Embed -->[\s\S]*?<\/div>\s*<\/div>/g, '')
-    fullContent = fullContent.replace(/<!-- Google Maps Location -->[\s\S]*?<\/p>\s*<\/div>/g, '')
-    // Also match by class in case comments were stripped
-    fullContent = fullContent.replace(/<div class="google-maps-embed"[^>]*>[\s\S]*?<\/iframe>\s*<\/div>\s*<\/div>/g, '')
-    fullContent = fullContent.replace(/<div class="google-maps-embed"[^>]*>[\s\S]*?<\/iframe>\s*<\/div>\s*<\/p>\s*<\/div>/g, '')
+    // NOTE: We do NOT remove or regenerate Google Maps embeds here
+    // The initial publish creates a good map embed that shows the business listing
+    // Re-embed should preserve that original map
 
     // 0. REGENERATE schema using latest code (with image, priceRange, etc.)
     const featuredImage = contentItem.images.find(img => img.imageType === 'BLOG_FEATURED')
@@ -371,25 +334,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
 
     // 2. Add long-form video embed (if present)
-    // Appended at end - Google Maps and Podcast will be added after this
     if (contentItem.longformVideoUrl) {
       const longVideoEmbed = generateLongVideoEmbed(contentItem.longformVideoUrl)
       fullContent = fullContent + '\n\n' + longVideoEmbed
       embedded.push('long-video')
     }
 
-    // 3. Add Google Maps embed with heading (regenerated with latest format)
-    const mapsEmbed = generateGoogleMapsEmbed({
-      businessName: contentItem.client.businessName,
-      streetAddress: contentItem.client.streetAddress,
-      city: contentItem.client.city,
-      state: contentItem.client.state,
-      postalCode: contentItem.client.postalCode,
-    })
-    fullContent = fullContent + mapsEmbed
-    embedded.push('google-maps')
+    // NOTE: Google Maps is NOT added here - we preserve the one from initial publish
+    // which shows the actual Google Business listing with ratings
 
-    // 4. Add podcast embed at the very end (after Google Maps)
+    // 3. Add podcast embed at the end
     if (contentItem.podcast?.podbeanPlayerUrl) {
       const podcastEmbed = generatePodcastEmbed(
         contentItem.blogPost.title,
