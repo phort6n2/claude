@@ -162,12 +162,20 @@ export default function ClientGBPPage() {
   async function connectGoogle() {
     try {
       const res = await fetch(`/api/clients/${clientId}/gbp-config/oauth?action=connect`)
-      if (res.ok) {
-        const data = await res.json()
+      const data = await res.json()
+
+      if (res.ok && data.oauthUrl) {
         window.location.href = data.oauthUrl
+      } else if (data.needsConfiguration) {
+        setMessage({
+          type: 'error',
+          text: 'GBP OAuth not configured. Please add GBP_CLIENT_ID and GBP_CLIENT_SECRET in Settings → API Settings first.',
+        })
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to start OAuth flow' })
       }
     } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to start OAuth flow' })
+      setMessage({ type: 'error', text: 'Failed to start OAuth flow. Check your network connection.' })
     }
   }
 
@@ -584,6 +592,7 @@ export default function ClientGBPPage() {
                 <div>
                   <p className="text-sm text-gray-600 mb-4">
                     Connect your Google account to pull photos from your Business Profile for use in posts.
+                    This is optional - posts can also use AI-generated images.
                   </p>
                   <button
                     onClick={connectGoogle}
@@ -591,6 +600,9 @@ export default function ClientGBPPage() {
                   >
                     Connect Google Account
                   </button>
+                  <p className="text-xs text-gray-500 mt-3">
+                    Note: Requires <Link href="/admin/settings/api" className="text-blue-600 hover:underline">GBP OAuth credentials</Link> to be configured first.
+                  </p>
                 </div>
               )}
             </div>

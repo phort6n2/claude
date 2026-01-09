@@ -73,7 +73,17 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     })
   } catch (error) {
     console.error('GBP OAuth error:', error)
-    return NextResponse.json({ error: 'OAuth operation failed' }, { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : 'OAuth operation failed'
+
+    // Check if the error is about missing OAuth credentials
+    if (errorMessage.includes('GBP OAuth not configured')) {
+      return NextResponse.json({
+        error: 'GBP OAuth not configured. Please add GBP_CLIENT_ID and GBP_CLIENT_SECRET in Settings → API Settings.',
+        needsConfiguration: true,
+      }, { status: 400 })
+    }
+
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }
 
