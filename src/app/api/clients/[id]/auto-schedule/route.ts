@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getPAAQueueStatus } from '@/lib/automation/paa-selector'
+import { getPAACombinationStatus } from '@/lib/automation/paa-selector'
 import { getLocationRotationStatus } from '@/lib/automation/location-rotator'
 import { DAY_PAIRS, TIME_SLOTS, assignSlotToClient, getSchedulingCapacity } from '@/lib/automation/auto-scheduler'
 import type { DayPairKey, TimeSlotIndex } from '@/lib/automation/auto-scheduler'
@@ -35,8 +35,8 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 })
     }
 
-    // Get PAA queue status
-    const paaStatus = await getPAAQueueStatus(id)
+    // Get PAA + Location combination status
+    const combinationStatus = await getPAACombinationStatus(id)
 
     // Get location rotation status
     const locationStatus = await getLocationRotationStatus(id)
@@ -81,11 +81,16 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
         available: capacity.availableSlots,
       },
       paaQueue: {
-        unused: paaStatus.unusedCount,
-        total: paaStatus.totalCount,
-        isRecycling: paaStatus.isRecycling,
-        custom: paaStatus.custom,
-        standard: paaStatus.standard,
+        // Now shows combinations (PAAs × Locations) instead of just PAAs
+        unused: combinationStatus.remainingCombinations,
+        total: combinationStatus.totalCombinations,
+        isRecycling: combinationStatus.isRecycling,
+        custom: { unused: combinationStatus.customPaas, total: combinationStatus.customPaas },
+        standard: { unused: combinationStatus.standardPaas, total: combinationStatus.standardPaas },
+        // Additional detail
+        totalPaas: combinationStatus.totalPaas,
+        totalLocations: combinationStatus.totalLocations,
+        usedCombinations: combinationStatus.usedCombinations,
       },
       locations: {
         active: locationStatus.activeCount,

@@ -184,6 +184,9 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       isRecycling: boolean
       custom: { unused: number; total: number }
       standard: { unused: number; total: number }
+      totalPaas?: number
+      totalLocations?: number
+      usedCombinations?: number
     }
     locations: { active: number; neverUsed: number }
     upcoming: { count: number }
@@ -1604,24 +1607,17 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <FileQuestion className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium text-gray-700">PAA Queue</span>
+                    <span className="text-sm font-medium text-gray-700">Content Queue</span>
                   </div>
                   <div className="text-2xl font-bold text-gray-900">
                     {autoScheduleStatus.paaQueue.unused}/{autoScheduleStatus.paaQueue.total}
                   </div>
                   <div className="text-xs text-gray-500 space-y-0.5">
-                    {autoScheduleStatus.paaQueue.custom.total > 0 && (
-                      <div className="text-blue-600">
-                        Custom: {autoScheduleStatus.paaQueue.custom.unused}/{autoScheduleStatus.paaQueue.custom.total}
-                      </div>
-                    )}
-                    {autoScheduleStatus.paaQueue.standard.total > 0 && (
-                      <div className="text-gray-500">
-                        Standard: {autoScheduleStatus.paaQueue.standard.unused}/{autoScheduleStatus.paaQueue.standard.total}
-                      </div>
-                    )}
+                    <div className="text-blue-600">
+                      {autoScheduleStatus.paaQueue.totalPaas || autoScheduleStatus.paaQueue.custom.total} PAAs × {autoScheduleStatus.paaQueue.totalLocations || autoScheduleStatus.locations.active} locations
+                    </div>
                     {autoScheduleStatus.paaQueue.isRecycling && (
-                      <span className="text-amber-600">Recycling</span>
+                      <span className="text-amber-600">All combinations used, recycling</span>
                     )}
                   </div>
                 </div>
