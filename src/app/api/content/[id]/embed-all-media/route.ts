@@ -267,8 +267,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     fullContent = fullContent.replace(/<!-- Podcast Episode -->[\s\S]*?<\/div>/g, '')
     fullContent = fullContent.replace(/<div class="podcast-embed"[\s\S]*?<\/div>/g, '')
     // Remove old Google Maps embeds (with or without heading) to regenerate with latest format
+    // Note: Initial publish uses "Google Maps Location" (has <p> link), re-embed uses "Google Maps Embed"
+    // Match from comment to the final </div> of the google-maps-embed container
     fullContent = fullContent.replace(/<!-- Google Maps Embed -->[\s\S]*?<\/div>\s*<\/div>/g, '')
-    fullContent = fullContent.replace(/<div class="google-maps-embed"[\s\S]*?<\/div>\s*<\/div>/g, '')
+    fullContent = fullContent.replace(/<!-- Google Maps Location -->[\s\S]*?<\/p>\s*<\/div>/g, '')
+    // Also match by class in case comments were stripped
+    fullContent = fullContent.replace(/<div class="google-maps-embed"[^>]*>[\s\S]*?<\/iframe>\s*<\/div>\s*<\/div>/g, '')
+    fullContent = fullContent.replace(/<div class="google-maps-embed"[^>]*>[\s\S]*?<\/iframe>\s*<\/div>\s*<\/p>\s*<\/div>/g, '')
 
     // 0. REGENERATE schema using latest code (with image, priceRange, etc.)
     const featuredImage = contentItem.images.find(img => img.imageType === 'BLOG_FEATURED')
