@@ -57,8 +57,20 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
 
     // Encrypt WordPress password if changed
     let encryptedPassword = existing.wordpressAppPassword
-    if (data.wordpressAppPassword && data.wordpressAppPassword !== '') {
+    const hasNewPassword = data.wordpressAppPassword && data.wordpressAppPassword !== ''
+    console.log('[Client Update] Password handling:', {
+      businessName: existing.businessName,
+      hasNewPasswordFromForm: hasNewPassword,
+      newPasswordLength: hasNewPassword ? data.wordpressAppPassword.length : 0,
+      hasExistingPassword: !!existing.wordpressAppPassword,
+      existingPasswordPrefix: existing.wordpressAppPassword?.substring(0, 10),
+    })
+    if (hasNewPassword) {
       encryptedPassword = encrypt(data.wordpressAppPassword)
+      console.log('[Client Update] Encrypted new password:', {
+        encryptedPrefix: encryptedPassword?.substring(0, 10),
+        encryptedLength: encryptedPassword?.length,
+      })
     }
 
     const client = await prisma.client.update({
@@ -110,6 +122,12 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         autoScheduleEnabled: data.autoScheduleEnabled ?? existing.autoScheduleEnabled,
         autoScheduleFrequency: data.autoScheduleFrequency ?? existing.autoScheduleFrequency,
       },
+    })
+
+    console.log('[Client Update] Saved successfully:', {
+      businessName: client.businessName,
+      hasPasswordAfterSave: !!client.wordpressAppPassword,
+      savedPasswordPrefix: client.wordpressAppPassword?.substring(0, 10),
     })
 
     // Don't send encrypted password to frontend
