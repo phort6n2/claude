@@ -8,7 +8,14 @@ export async function POST(request: NextRequest) {
   try {
     const { url, username, password, clientId } = await request.json()
 
-    console.log('[WP Test] Request:', { url, username, hasPassword: !!password, clientId })
+    console.log('[WP Test] Request:', {
+      url,
+      username,
+      hasPassword: !!password,
+      passwordLength: password?.length || 0,
+      passwordType: typeof password,
+      clientId
+    })
 
     if (!url || !username) {
       return NextResponse.json(
