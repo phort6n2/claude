@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
-import { selectNextPAA, markPAAAsUsed, renderPAAQuestion } from './paa-selector'
-import { selectNextLocation, markLocationAsUsed, getDefaultLocation } from './location-rotator'
+import { selectNextPAACombination, markPAAAsUsed, renderPAAQuestion } from './paa-selector'
+import { markLocationAsUsed } from './location-rotator'
 
 // ============================================
 // SMART SCHEDULING CONFIGURATION
@@ -352,12 +352,14 @@ export async function autoScheduleForClient(
       }
     }
 
-    // Select next PAA
-    const paa = await selectNextPAA(clientId)
-    if (!paa) {
+    // Select next PAA + Location combination
+    // This ensures all combinations are used before any repeat
+    // e.g., 10 PAAs × 4 locations = 40 unique posts before cycling
+    const combination = await selectNextPAACombination(clientId)
+    if (!combination) {
       return {
         success: false,
-        error: 'No active PAA questions available',
+        error: 'No active PAA questions or locations available',
         details: {
           clientId,
           clientName: client.businessName,
@@ -368,24 +370,7 @@ export async function autoScheduleForClient(
       }
     }
 
-    // Select next location (or use default if no service locations)
-    let location = await selectNextLocation(clientId)
-    let locationId: string | null = null
-
-    if (location) {
-      locationId = location.id
-    } else {
-      // Fall back to default location
-      const defaultLoc = await getDefaultLocation(clientId)
-      location = {
-        id: defaultLoc.locationId || '',
-        city: defaultLoc.city,
-        state: defaultLoc.state,
-        neighborhood: defaultLoc.neighborhood,
-        isHeadquarters: true,
-      }
-      locationId = defaultLoc.locationId
-    }
+    const { paa, location } = combination
 
     // Render the PAA question with location
     const renderedQuestion = renderPAAQuestion(paa.question, {
@@ -408,7 +393,7 @@ export async function autoScheduleForClient(
       data: {
         clientId,
         clientPAAId: paa.id,
-        serviceLocationId: locationId,
+        serviceLocationId: location.id,
         paaQuestion: renderedQuestion,
         scheduledDate,
         scheduledTime: timeSlot,
@@ -416,11 +401,9 @@ export async function autoScheduleForClient(
       },
     })
 
-    // Mark PAA and location as used
+    // Mark PAA and location as used (for legacy tracking)
     await markPAAAsUsed(paa.id)
-    if (locationId) {
-      await markLocationAsUsed(locationId)
-    }
+    await markLocationAsUsed(location.id)
 
     // Update client's last auto-scheduled timestamp
     await prisma.client.update({

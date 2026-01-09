@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { headers } from 'next/headers'
 import { TIME_SLOTS, DAY_PAIRS, DayPairKey } from '@/lib/automation/auto-scheduler'
-import { selectNextPAA, markPAAAsUsed, renderPAAQuestion } from '@/lib/automation/paa-selector'
-import { selectNextLocation, markLocationAsUsed, getDefaultLocation } from '@/lib/automation/location-rotator'
+import { selectNextPAACombination, markPAAAsUsed, renderPAAQuestion } from '@/lib/automation/paa-selector'
+import { markLocationAsUsed } from '@/lib/automation/location-rotator'
 import { runContentPipeline } from '@/lib/pipeline/content-pipeline'
 
 // Allow up to 12 minutes for the full content pipeline
@@ -111,88 +111,30 @@ export async function GET(request: NextRequest) {
       console.log(`[HourlyPublish] Processing client: ${client.businessName}`)
 
       try {
-        // Select next PAA question
-        const paa = await selectNextPAA(client.id)
-        if (!paa) {
+        // Select next PAA + Location combination
+        // This ensures all combinations are used before any repeat
+        const combination = await selectNextPAACombination(client.id)
+        if (!combination) {
           results.push({
             clientId: client.id,
             clientName: client.businessName,
             success: false,
-            error: 'No PAA questions available',
+            error: 'No PAA questions or locations available',
           })
           continue
         }
 
-        // Select next location
-        const selectedLocation = await selectNextLocation(client.id)
-        if (!selectedLocation) {
-          // Try to get default location as fallback
-          const defaultLoc = await getDefaultLocation(client.id)
-          if (!defaultLoc.locationId) {
-            results.push({
-              clientId: client.id,
-              clientName: client.businessName,
-              success: false,
-              error: 'No service locations available',
-            })
-            continue
-          }
-          // Use default location for rendering, but we'll need to handle content creation differently
-          const renderedQuestion = renderPAAQuestion(paa.question, defaultLoc)
-
-          const contentItem = await prisma.contentItem.create({
-            data: {
-              clientId: client.id,
-              clientPAAId: paa.id,
-              serviceLocationId: defaultLoc.locationId,
-              paaQuestion: renderedQuestion,
-              scheduledDate: now,
-              status: 'GENERATING',
-              priority: 1,
-            },
-          })
-
-          console.log(`[HourlyPublish] Created content item ${contentItem.id} for ${client.businessName} (default location)`)
-          await markPAAAsUsed(paa.id)
-          if (defaultLoc.locationId) {
-            await markLocationAsUsed(defaultLoc.locationId)
-          }
-
-          // Run pipeline
-          try {
-            await runContentPipeline(contentItem.id)
-            results.push({
-              clientId: client.id,
-              clientName: client.businessName,
-              success: true,
-              contentItemId: contentItem.id,
-            })
-          } catch (pipelineError) {
-            console.error(`[HourlyPublish] Pipeline error for ${client.businessName}:`, pipelineError)
-            await prisma.contentItem.update({
-              where: { id: contentItem.id },
-              data: { status: 'FAILED', pipelineStep: 'error' },
-            })
-            results.push({
-              clientId: client.id,
-              clientName: client.businessName,
-              success: false,
-              contentItemId: contentItem.id,
-              error: pipelineError instanceof Error ? pipelineError.message : 'Pipeline failed',
-            })
-          }
-          continue
-        }
+        const { paa, location } = combination
 
         // Render the PAA question with location
-        const renderedQuestion = renderPAAQuestion(paa.question, selectedLocation)
+        const renderedQuestion = renderPAAQuestion(paa.question, location)
 
         // Create the content item with current time as scheduled date
         const contentItem = await prisma.contentItem.create({
           data: {
             clientId: client.id,
             clientPAAId: paa.id,
-            serviceLocationId: selectedLocation.id,
+            serviceLocationId: location.id,
             paaQuestion: renderedQuestion,
             scheduledDate: now,
             status: 'GENERATING',
@@ -202,9 +144,9 @@ export async function GET(request: NextRequest) {
 
         console.log(`[HourlyPublish] Created content item ${contentItem.id} for ${client.businessName}`)
 
-        // Mark PAA and location as used
+        // Mark PAA and location as used (for legacy tracking)
         await markPAAAsUsed(paa.id)
-        await markLocationAsUsed(selectedLocation.id)
+        await markLocationAsUsed(location.id)
 
         // Run the full content pipeline (generates and publishes)
         try {
