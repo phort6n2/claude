@@ -18,10 +18,10 @@ import {
   Eye,
   Trash2,
   FileText,
-  Images,
+  Aperture,
   Share2,
   Mic,
-  Video,
+  Clapperboard,
   Film,
   Code,
   Link2,
@@ -553,7 +553,7 @@ function StepProgress({ item }: { item: ContentItem }) {
       <div className="flex items-center gap-1">
         <div className="flex items-center gap-0.5 text-purple-400">
           <FileText className="h-3.5 w-3.5 animate-pulse" />
-          <Images className="h-3.5 w-3.5 animate-pulse delay-75" />
+          <Aperture className="h-3.5 w-3.5 animate-pulse delay-75" />
           <Share2 className="h-3.5 w-3.5 animate-pulse delay-100" />
         </div>
         <span className="text-xs text-purple-600 font-medium ml-1">Generating...</span>
@@ -570,12 +570,13 @@ function StepProgress({ item }: { item: ContentItem }) {
 
   // Content type status - green if content exists/is online
   const blogPublished = !!item.blogPost?.wordpressPostId
+  const hasShortVideos = item.shortVideoGenerated || (item.shortFormVideos && item.shortFormVideos.length > 0)
   const contentTypes = [
     { icon: FileText, done: blogPublished, label: 'Blog Published' },
-    { icon: Images, done: item.imagesGenerated && blogPublished, label: 'Images (in blog)' },
+    { icon: Aperture, done: item.imagesGenerated && blogPublished, label: 'Images (in blog)' },
     { icon: Share2, done: !!item.socialPosts?.some(p => p.publishedUrl), label: 'Social Posted' },
     { icon: Mic, done: item.podcastGenerated, label: 'Podcast Created' },
-    { icon: Video, done: item.shortVideoGenerated, label: 'Short Video Created' },
+    { icon: Clapperboard, done: hasShortVideos, label: 'Short Video Created' },
     { icon: Film, done: !!item.longformVideoUrl, label: 'Long Video' },
     { icon: Code, done: item.schemaGenerated && blogPublished, label: 'Schema Live' },
     { icon: Link2, done: item.podcastAddedToPost || item.shortVideoAddedToPost || item.longVideoAddedToPost, label: 'Media Embedded' },
