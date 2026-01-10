@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sendEnhancedConversion } from '@/lib/google-ads'
+import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -156,7 +157,7 @@ export async function POST(request: NextRequest) {
         adId,
         source: 'FORM',
         landingPageUrl,
-        formData: Object.keys(formData).length > 0 ? formData : null,
+        formData: Object.keys(formData).length > 0 ? (formData as Prisma.InputJsonValue) : undefined,
         formName: formInfo.name || null,
         highlevelContactId,
         status: 'NEW',

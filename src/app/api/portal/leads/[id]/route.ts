@@ -91,7 +91,6 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     if (data.status !== undefined) {
       updateData.status = data.status
       updateData.statusUpdatedAt = new Date()
-      updateData.statusUpdatedBy = session.userEmail // Track who updated
     }
 
     // Sale info
