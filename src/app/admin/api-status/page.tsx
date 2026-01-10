@@ -17,6 +17,7 @@ import {
   Bot,
   ExternalLink,
   Search,
+  Megaphone,
 } from 'lucide-react'
 
 interface IntegrationStatus {
@@ -38,6 +39,7 @@ const INTEGRATION_ICONS: Record<string, React.ReactNode> = {
   'GOOGLE_CLOUD_CREDENTIALS': <Cloud className="h-5 w-5" />,
   'CREATIFY_API_KEY': <Video className="h-5 w-5" />,
   'DATAFORSEO_PASSWORD': <Search className="h-5 w-5" />,
+  'GOOGLE_ADS': <Megaphone className="h-5 w-5" />,
 }
 
 const INTEGRATION_DESCRIPTIONS: Record<string, string> = {
@@ -50,6 +52,7 @@ const INTEGRATION_DESCRIPTIONS: Record<string, string> = {
   'GOOGLE_CLOUD_CREDENTIALS': 'Media file storage (images, audio, video)',
   'CREATIFY_API_KEY': 'AI video creation and lip-sync',
   'DATAFORSEO_PASSWORD': 'Fetch People Also Ask questions from Google',
+  'GOOGLE_ADS': 'Conversion tracking and offline conversion import',
 }
 
 export default function ApiStatusPage() {
@@ -306,7 +309,7 @@ export default function ApiStatusPage() {
                   </button>
                 ) : (
                   <a
-                    href="/admin/settings/api"
+                    href={integration.key === 'GOOGLE_ADS' ? '/admin/settings/google-ads' : '/admin/settings/api'}
                     className="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 flex items-center gap-1"
                   >
                     <ExternalLink className="h-3 w-3" />

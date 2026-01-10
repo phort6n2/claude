@@ -220,6 +220,79 @@ async function testDataForSEO(login: string, password: string): Promise<{ succes
   }
 }
 
+async function testGoogleAds(): Promise<{ success: boolean; message: string }> {
+  try {
+    const config = await prisma.googleAdsConfig.findFirst() as GoogleAdsConfigExtended | null
+    if (!config) {
+      return { success: false, message: 'Not configured' }
+    }
+
+    if (!config.oauthClientId || !config.oauthClientSecret) {
+      return { success: false, message: 'Missing OAuth credentials' }
+    }
+
+    if (!config.developerToken) {
+      return { success: false, message: 'Missing Developer Token' }
+    }
+
+    if (!config.isConnected || !config.refreshToken) {
+      return { success: false, message: 'Not connected - click Configure to connect' }
+    }
+
+    // Try to refresh the token to verify connection
+    const clientId = decrypt(config.oauthClientId)
+    const clientSecret = decrypt(config.oauthClientSecret)
+    const refreshToken = decrypt(config.refreshToken)
+
+    if (!clientId || !clientSecret || !refreshToken) {
+      return { success: false, message: 'Failed to decrypt credentials' }
+    }
+
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }),
+    })
+
+    if (tokenResponse.ok) {
+      return {
+        success: true,
+        message: config.mccCustomerId
+          ? `Connected - MCC ${config.mccCustomerId}`
+          : 'Connected',
+      }
+    }
+
+    if (tokenResponse.status === 401 || tokenResponse.status === 400) {
+      return { success: false, message: 'Token expired - reconnect required' }
+    }
+
+    return { success: false, message: `Error: ${tokenResponse.status}` }
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : 'Connection failed' }
+  }
+}
+
+// Extended type for GoogleAdsConfig with new OAuth fields
+interface GoogleAdsConfigExtended {
+  id: string
+  mccCustomerId: string | null
+  accessToken: string | null
+  refreshToken: string | null
+  tokenExpiry: Date | null
+  developerToken: string | null
+  oauthClientId: string | null
+  oauthClientSecret: string | null
+  isConnected: boolean
+  lastSyncAt: Date | null
+  lastError: string | null
+}
+
 // GET - Return status of all integrations (quick check, no live testing)
 export async function GET() {
   const session = await auth()
@@ -291,6 +364,13 @@ export async function GET() {
       status: 'not_configured',
       message: 'Not configured',
     },
+    {
+      name: 'Google Ads',
+      key: 'GOOGLE_ADS',
+      configured: false,
+      status: 'not_configured',
+      message: 'Not configured',
+    },
   ]
 
   // Check which integrations are configured
@@ -332,6 +412,32 @@ export async function GET() {
       dataForSeoIntegration.configured = false
       dataForSeoIntegration.status = 'error'
       dataForSeoIntegration.message = 'Partially configured'
+    }
+  }
+
+  // Special check for Google Ads (uses GoogleAdsConfig table)
+  const googleAdsIntegration = integrations.find(i => i.key === 'GOOGLE_ADS')
+  if (googleAdsIntegration) {
+    const googleAdsConfig = await prisma.googleAdsConfig.findFirst() as GoogleAdsConfigExtended | null
+    if (googleAdsConfig) {
+      const hasOAuthCreds = googleAdsConfig.oauthClientId && googleAdsConfig.oauthClientSecret
+      const hasDeveloperToken = !!googleAdsConfig.developerToken
+
+      if (googleAdsConfig.isConnected) {
+        googleAdsIntegration.configured = true
+        googleAdsIntegration.status = 'connected'
+        googleAdsIntegration.message = googleAdsConfig.mccCustomerId
+          ? `Connected - MCC ${googleAdsConfig.mccCustomerId}`
+          : 'Connected'
+      } else if (hasOAuthCreds && hasDeveloperToken) {
+        googleAdsIntegration.configured = true
+        googleAdsIntegration.status = 'error'
+        googleAdsIntegration.message = 'Configured but not connected'
+      } else if (hasOAuthCreds || hasDeveloperToken) {
+        googleAdsIntegration.configured = false
+        googleAdsIntegration.status = 'error'
+        googleAdsIntegration.message = 'Partially configured'
+      }
     }
   }
 
@@ -397,6 +503,9 @@ export async function POST(request: Request) {
       } else {
         result = await testDataForSEO(dfLogin, dfPassword)
       }
+      break
+    case 'GOOGLE_ADS':
+      result = await testGoogleAds()
       break
     default:
       result = { success: false, message: 'Unknown integration' }
