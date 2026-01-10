@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getPortalSession } from '@/lib/portal-auth'
+import { sendOfflineConversion } from '@/lib/google-ads'
 
 export const dynamic = 'force-dynamic'
 
@@ -123,10 +124,54 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         saleValue: true,
         saleDate: true,
         saleNotes: true,
+        gclid: true,
+        offlineConversionSent: true,
       },
     })
 
-    return NextResponse.json(updated)
+    // Send Offline Conversion when marked as SOLD with a sale value
+    if (
+      data.status === 'SOLD' &&
+      updated.gclid &&
+      !existing.offlineConversionSent &&
+      (updated.saleValue || data.saleValue)
+    ) {
+      try {
+        const googleAdsConfig = await prisma.clientGoogleAds.findUnique({
+          where: { clientId: session.clientId },
+        })
+
+        if (googleAdsConfig?.isActive && googleAdsConfig.saleConversionActionId) {
+          const conversionValue = updated.saleValue || data.saleValue || 0
+          const conversionDate = updated.saleDate || new Date()
+
+          const result = await sendOfflineConversion({
+            customerId: googleAdsConfig.customerId,
+            gclid: updated.gclid,
+            conversionAction: googleAdsConfig.saleConversionActionId,
+            conversionDateTime: new Date(conversionDate),
+            conversionValue,
+          })
+
+          if (result.success) {
+            await prisma.lead.update({
+              where: { id },
+              data: { offlineConversionSent: true },
+            })
+            console.log(`[Portal] Offline conversion sent for lead ${id}`)
+          } else {
+            console.warn(`[Portal] Offline conversion failed for lead ${id}:`, result.error)
+          }
+        }
+      } catch (err) {
+        console.error(`[Portal] Offline conversion error for lead ${id}:`, err)
+      }
+    }
+
+    // Remove gclid and offlineConversionSent from response
+    const { gclid: _g, offlineConversionSent: _o, ...responseData } = updated
+
+    return NextResponse.json(responseData)
   } catch (error) {
     console.error('Failed to update lead:', error)
     return NextResponse.json(

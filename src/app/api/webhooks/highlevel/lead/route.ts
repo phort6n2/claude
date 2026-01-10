@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { sendEnhancedConversion } from '@/lib/google-ads'
 
 export const dynamic = 'force-dynamic'
 
@@ -164,10 +165,40 @@ export async function POST(request: NextRequest) {
 
     console.log(`[HighLevel Webhook] Created lead ${lead.id} for ${client.businessName}`)
 
-    // TODO: Trigger Enhanced Conversions to Google Ads (Phase 3)
-    // if (email || phone) {
-    //   await sendEnhancedConversion(client.id, lead.id, { email, phone })
-    // }
+    // Send Enhanced Conversion to Google Ads if GCLID is present
+    if (gclid && (email || phone)) {
+      try {
+        // Get client's Google Ads config
+        const googleAdsConfig = await prisma.clientGoogleAds.findUnique({
+          where: { clientId: client.id },
+        })
+
+        if (googleAdsConfig?.isActive && googleAdsConfig.leadConversionActionId) {
+          const result = await sendEnhancedConversion({
+            customerId: googleAdsConfig.customerId,
+            gclid,
+            email: email || undefined,
+            phone: phone || undefined,
+            conversionAction: googleAdsConfig.leadConversionActionId,
+            conversionDateTime: new Date(),
+          })
+
+          if (result.success) {
+            // Mark the lead as having sent enhanced conversion
+            await prisma.lead.update({
+              where: { id: lead.id },
+              data: { enhancedConversionSent: true },
+            })
+            console.log(`[HighLevel Webhook] Enhanced conversion sent for lead ${lead.id}`)
+          } else {
+            console.warn(`[HighLevel Webhook] Enhanced conversion failed for lead ${lead.id}:`, result.error)
+          }
+        }
+      } catch (err) {
+        // Log but don't fail the webhook
+        console.error(`[HighLevel Webhook] Enhanced conversion error for lead ${lead.id}:`, err)
+      }
+    }
 
     return NextResponse.json({
       success: true,

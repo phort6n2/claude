@@ -29,6 +29,7 @@ import {
   ExternalLink,
   Store,
   Users,
+  TrendingUp,
 } from 'lucide-react'
 
 interface PodbeanPodcast {
@@ -1014,6 +1015,13 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
             >
               <Users className="h-4 w-4" />
               Portal Users
+            </Link>
+            <Link
+              href={`/admin/clients/${client!.id}/google-ads`}
+              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600"
+            >
+              <TrendingUp className="h-4 w-4" />
+              Google Ads
             </Link>
           </div>
         )}
