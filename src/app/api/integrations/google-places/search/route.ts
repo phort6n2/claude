@@ -39,12 +39,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Search for businesses (establishments) in the US
+    // Search for businesses (establishments) in US and Canada
     const response = await fetch(
       `https://maps.googleapis.com/maps/api/place/autocomplete/json?` +
       `input=${encodeURIComponent(query)}` +
       `&types=establishment` +
-      `&components=country:us` +
       `&key=${apiKey}`
     )
 
