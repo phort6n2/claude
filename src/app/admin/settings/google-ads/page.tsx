@@ -16,12 +16,15 @@ import {
   Link2,
   Unlink,
   AlertCircle,
+  Key,
 } from 'lucide-react'
 
 interface GoogleAdsStatus {
   connected: boolean
   mccCustomerId: string | null
   developerToken: boolean
+  oauthClientId: boolean
+  oauthClientSecret: boolean
   lastSyncAt: string | null
   lastError: string | null
 }
@@ -37,6 +40,8 @@ export default function GoogleAdsSettingsPage() {
   // Form state
   const [mccCustomerId, setMccCustomerId] = useState('')
   const [developerToken, setDeveloperToken] = useState('')
+  const [oauthClientId, setOauthClientId] = useState('')
+  const [oauthClientSecret, setOauthClientSecret] = useState('')
 
   // Load status
   useEffect(() => {
@@ -53,10 +58,14 @@ export default function GoogleAdsSettingsPage() {
     const params = new URLSearchParams(window.location.search)
     if (params.get('success') === 'connected') {
       setSuccess('Google Ads connected successfully!')
-      // Clean up URL
       window.history.replaceState({}, '', '/admin/settings/google-ads')
     } else if (params.get('error')) {
-      setError(`Connection failed: ${params.get('error')}`)
+      const errorMsg = params.get('error')
+      if (errorMsg === 'oauth_not_configured') {
+        setError('Please enter OAuth Client ID and Secret first, then save before connecting.')
+      } else {
+        setError(`Connection failed: ${errorMsg}`)
+      }
       window.history.replaceState({}, '', '/admin/settings/google-ads')
     }
   }, [])
@@ -73,6 +82,8 @@ export default function GoogleAdsSettingsPage() {
         body: JSON.stringify({
           mccCustomerId: mccCustomerId || null,
           developerToken: developerToken || undefined,
+          oauthClientId: oauthClientId || undefined,
+          oauthClientSecret: oauthClientSecret || undefined,
         }),
       })
 
@@ -84,6 +95,8 @@ export default function GoogleAdsSettingsPage() {
 
       setStatus((prev) => prev ? { ...prev, ...data } : null)
       setDeveloperToken('')
+      setOauthClientId('')
+      setOauthClientSecret('')
       setSuccess('Configuration saved!')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save')
@@ -102,7 +115,7 @@ export default function GoogleAdsSettingsPage() {
       await fetch('/api/integrations/google-ads/status', { method: 'DELETE' })
       setStatus((prev) => prev ? { ...prev, connected: false } : null)
       setSuccess('Google Ads disconnected')
-    } catch (err) {
+    } catch {
       setError('Failed to disconnect')
     } finally {
       setDisconnecting(false)
@@ -123,6 +136,8 @@ export default function GoogleAdsSettingsPage() {
       </div>
     )
   }
+
+  const canConnect = status?.oauthClientId && status?.oauthClientSecret
 
   return (
     <div className="flex flex-col h-full">
@@ -157,71 +172,74 @@ export default function GoogleAdsSettingsPage() {
             </div>
           )}
 
-          {/* Connection Status Card */}
+          {/* OAuth App Credentials Card */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                OAuth Connection
+                <Key className="h-5 w-5" />
+                OAuth App Credentials
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  {status?.connected ? (
-                    <>
-                      <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-green-800">Connected</p>
-                        <p className="text-sm text-gray-500">OAuth tokens are active</p>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
-                        <XCircle className="h-5 w-5 text-gray-500" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-700">Not Connected</p>
-                        <p className="text-sm text-gray-500">Connect to enable Google Ads features</p>
-                      </div>
-                    </>
-                  )}
-                </div>
-                {status?.connected ? (
-                  <Button
-                    variant="outline"
-                    onClick={handleDisconnect}
-                    disabled={disconnecting}
-                  >
-                    {disconnecting ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Unlink className="h-4 w-4 mr-2" />
-                    )}
-                    Disconnect
-                  </Button>
-                ) : (
-                  <Button onClick={handleConnect}>
-                    <Link2 className="h-4 w-4 mr-2" />
-                    Connect Google Ads
-                  </Button>
+              <p className="text-sm text-gray-600">
+                Create these in{' '}
+                <a
+                  href="https://console.cloud.google.com/apis/credentials"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  Google Cloud Console
+                  <ExternalLink className="h-3 w-3 inline ml-1" />
+                </a>
+                {' '}→ Create Credentials → OAuth client ID → Web application
+              </p>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  OAuth Client ID
+                </label>
+                <input
+                  type="text"
+                  value={oauthClientId}
+                  onChange={(e) => setOauthClientId(e.target.value)}
+                  placeholder={status?.oauthClientId ? '••••••••••••' : 'Enter Client ID'}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm"
+                />
+                {status?.oauthClientId && (
+                  <p className="text-xs text-green-600 mt-1">✓ Configured</p>
                 )}
               </div>
 
-              <p className="text-sm text-gray-500">
-                Connecting allows the platform to send Enhanced Conversions and import offline conversions
-                to your Google Ads accounts.
-              </p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  OAuth Client Secret
+                </label>
+                <input
+                  type="password"
+                  value={oauthClientSecret}
+                  onChange={(e) => setOauthClientSecret(e.target.value)}
+                  placeholder={status?.oauthClientSecret ? '••••••••••••' : 'Enter Client Secret'}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+                {status?.oauthClientSecret && (
+                  <p className="text-xs text-green-600 mt-1">✓ Configured</p>
+                )}
+              </div>
+
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                <strong>Redirect URI:</strong> Add this to your OAuth app&apos;s Authorized redirect URIs:
+                <code className="block mt-1 p-2 bg-white rounded border text-xs break-all">
+                  {typeof window !== 'undefined' ? `${window.location.origin}/api/integrations/google-ads/callback` : ''}
+                </code>
+              </div>
             </CardContent>
           </Card>
 
           {/* MCC Configuration Card */}
           <Card>
             <CardHeader>
-              <CardTitle>MCC Configuration</CardTitle>
+              <CardTitle>API Configuration</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -263,6 +281,9 @@ export default function GoogleAdsSettingsPage() {
                     <ExternalLink className="h-3 w-3 inline ml-1" />
                   </a>
                 </p>
+                {status?.developerToken && (
+                  <p className="text-xs text-green-600 mt-1">✓ Configured</p>
+                )}
               </div>
 
               <Button onClick={handleSaveConfig} disabled={saving}>
@@ -276,6 +297,71 @@ export default function GoogleAdsSettingsPage() {
             </CardContent>
           </Card>
 
+          {/* Connection Status Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                OAuth Connection
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  {status?.connected ? (
+                    <>
+                      <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-green-800">Connected</p>
+                        <p className="text-sm text-gray-500">OAuth tokens are active</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
+                        <XCircle className="h-5 w-5 text-gray-500" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-700">Not Connected</p>
+                        <p className="text-sm text-gray-500">
+                          {canConnect
+                            ? 'Click Connect to authorize'
+                            : 'Save OAuth credentials first'}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+                {status?.connected ? (
+                  <Button
+                    variant="outline"
+                    onClick={handleDisconnect}
+                    disabled={disconnecting}
+                  >
+                    {disconnecting ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Unlink className="h-4 w-4 mr-2" />
+                    )}
+                    Disconnect
+                  </Button>
+                ) : (
+                  <Button onClick={handleConnect} disabled={!canConnect}>
+                    <Link2 className="h-4 w-4 mr-2" />
+                    Connect Google Ads
+                  </Button>
+                )}
+              </div>
+
+              <p className="text-sm text-gray-500">
+                Connecting allows the platform to send Enhanced Conversions and import offline conversions
+                to your Google Ads accounts.
+              </p>
+            </CardContent>
+          </Card>
+
           {/* Setup Instructions */}
           <Card>
             <CardHeader>
@@ -284,7 +370,19 @@ export default function GoogleAdsSettingsPage() {
             <CardContent className="space-y-4 text-sm text-gray-600">
               <ol className="list-decimal list-inside space-y-3">
                 <li>
-                  <strong>Get a Developer Token:</strong> Go to{' '}
+                  <strong>Create OAuth App:</strong> Go to{' '}
+                  <a
+                    href="https://console.cloud.google.com/apis/credentials"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    Google Cloud Console
+                  </a>
+                  , create an OAuth 2.0 Client ID (Web application), and enter the credentials above.
+                </li>
+                <li>
+                  <strong>Get Developer Token:</strong> Go to{' '}
                   <a
                     href="https://ads.google.com/aw/apicenter"
                     target="_blank"
@@ -300,26 +398,13 @@ export default function GoogleAdsSettingsPage() {
                   of Google Ads.
                 </li>
                 <li>
-                  <strong>Connect OAuth:</strong> Click &quot;Connect Google Ads&quot; to authorize API access.
+                  <strong>Save &amp; Connect:</strong> Save your configuration, then click &quot;Connect Google Ads&quot; to authorize.
                 </li>
                 <li>
                   <strong>Configure Clients:</strong> For each client, go to their settings and link
                   their Google Ads customer ID and conversion actions.
                 </li>
               </ol>
-
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                <p className="text-blue-800">
-                  <strong>Environment Variables Required:</strong>
-                </p>
-                <ul className="mt-2 font-mono text-xs space-y-1">
-                  <li>GOOGLE_ADS_CLIENT_ID</li>
-                  <li>GOOGLE_ADS_CLIENT_SECRET</li>
-                </ul>
-                <p className="mt-2 text-blue-700 text-xs">
-                  Create these in the Google Cloud Console under APIs & Services → Credentials.
-                </p>
-              </div>
             </CardContent>
           </Card>
         </div>

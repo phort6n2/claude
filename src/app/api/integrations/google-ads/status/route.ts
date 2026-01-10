@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { encrypt, decrypt } from '@/lib/encryption'
-import { listAccessibleCustomers } from '@/lib/google-ads'
+import { encrypt } from '@/lib/encryption'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +23,8 @@ export async function GET() {
         connected: false,
         mccCustomerId: null,
         developerToken: false,
+        oauthClientId: false,
+        oauthClientSecret: false,
       })
     }
 
@@ -31,6 +32,8 @@ export async function GET() {
       connected: config.isConnected,
       mccCustomerId: config.mccCustomerId,
       developerToken: !!config.developerToken,
+      oauthClientId: !!config.oauthClientId,
+      oauthClientSecret: !!config.oauthClientSecret,
       lastSyncAt: config.lastSyncAt,
       lastError: config.lastError,
     })
@@ -45,7 +48,7 @@ export async function GET() {
 
 /**
  * POST /api/integrations/google-ads/status
- * Update Google Ads configuration (MCC ID, developer token)
+ * Update Google Ads configuration (MCC ID, developer token, OAuth credentials)
  */
 export async function POST(request: NextRequest) {
   const session = await auth()
@@ -70,8 +73,16 @@ export async function POST(request: NextRequest) {
       updateData.mccCustomerId = data.mccCustomerId || null
     }
 
-    if (data.developerToken !== undefined) {
-      updateData.developerToken = data.developerToken ? encrypt(data.developerToken) : null
+    if (data.developerToken !== undefined && data.developerToken) {
+      updateData.developerToken = encrypt(data.developerToken)
+    }
+
+    if (data.oauthClientId !== undefined && data.oauthClientId) {
+      updateData.oauthClientId = encrypt(data.oauthClientId)
+    }
+
+    if (data.oauthClientSecret !== undefined && data.oauthClientSecret) {
+      updateData.oauthClientSecret = encrypt(data.oauthClientSecret)
     }
 
     const config = await prisma.googleAdsConfig.upsert({
@@ -88,6 +99,8 @@ export async function POST(request: NextRequest) {
       connected: config.isConnected,
       mccCustomerId: config.mccCustomerId,
       developerToken: !!config.developerToken,
+      oauthClientId: !!config.oauthClientId,
+      oauthClientSecret: !!config.oauthClientSecret,
     })
   } catch (error) {
     console.error('Failed to update Google Ads config:', error)

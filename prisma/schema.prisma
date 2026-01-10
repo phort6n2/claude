@@ -1163,6 +1163,10 @@ model ClientUser {
 model GoogleAdsConfig {
   id String @id @default(cuid())
 
+  // OAuth App Credentials (from Google Cloud Console)
+  oauthClientId     String? // Encrypted
+  oauthClientSecret String? // Encrypted
+
   // MCC (Manager Account) OAuth - your agency account
   mccCustomerId String? // Your MCC customer ID (xxx-xxx-xxxx format)
   accessToken   String? // Encrypted

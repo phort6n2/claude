@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { getGoogleAdsAuthUrl } from '@/lib/google-ads'
+import { getGoogleAdsAuthUrl, getOAuthCredentials } from '@/lib/google-ads'
 import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
@@ -15,19 +15,20 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Check if required env vars are set
-  if (!process.env.GOOGLE_ADS_CLIENT_ID || !process.env.GOOGLE_ADS_CLIENT_SECRET) {
-    return NextResponse.json(
-      { error: 'Google Ads API credentials not configured' },
-      { status: 500 }
+  // Check if OAuth credentials are configured in the database
+  const oauthCreds = await getOAuthCredentials()
+  if (!oauthCreds) {
+    // Redirect back with error
+    return NextResponse.redirect(
+      new URL('/admin/settings/google-ads?error=oauth_not_configured', process.env.NEXT_PUBLIC_APP_URL!)
     )
   }
 
   // Generate a random state for CSRF protection
   const state = crypto.randomBytes(16).toString('hex')
 
-  // Store state in a cookie for verification (expires in 10 minutes)
-  const authUrl = getGoogleAdsAuthUrl(state)
+  // Get the auth URL (now async)
+  const authUrl = await getGoogleAdsAuthUrl(state)
 
   const response = NextResponse.redirect(authUrl)
   response.cookies.set('google_ads_oauth_state', state, {

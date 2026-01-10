@@ -10,7 +10,7 @@ const GOOGLE_OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const GOOGLE_OAUTH_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 
 /**
- * Get Google Ads API credentials from environment or database
+ * Get Google Ads API credentials from database
  */
 export async function getGoogleAdsCredentials() {
   // Get MCC config from database
@@ -26,18 +26,40 @@ export async function getGoogleAdsCredentials() {
     refreshToken: config.refreshToken ? decrypt(config.refreshToken) : null,
     tokenExpiry: config.tokenExpiry,
     developerToken: config.developerToken ? decrypt(config.developerToken) : null,
+    oauthClientId: config.oauthClientId ? decrypt(config.oauthClientId) : null,
+    oauthClientSecret: config.oauthClientSecret ? decrypt(config.oauthClientSecret) : null,
+  }
+}
+
+/**
+ * Get OAuth credentials from database (for use before connection is established)
+ */
+export async function getOAuthCredentials() {
+  const config = await prisma.googleAdsConfig.findFirst()
+
+  if (!config?.oauthClientId || !config?.oauthClientSecret) {
+    return null
+  }
+
+  return {
+    clientId: decrypt(config.oauthClientId),
+    clientSecret: decrypt(config.oauthClientSecret),
   }
 }
 
 /**
  * Generate OAuth URL for Google Ads authorization
  */
-export function getGoogleAdsAuthUrl(state: string) {
-  const clientId = process.env.GOOGLE_ADS_CLIENT_ID
+export async function getGoogleAdsAuthUrl(state: string) {
+  const oauthCreds = await getOAuthCredentials()
+  if (!oauthCreds) {
+    throw new Error('OAuth Client ID and Secret must be configured first')
+  }
+
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/google-ads/callback`
 
   const params = new URLSearchParams({
-    client_id: clientId!,
+    client_id: oauthCreds.clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'https://www.googleapis.com/auth/adwords',
@@ -53,8 +75,11 @@ export function getGoogleAdsAuthUrl(state: string) {
  * Exchange authorization code for tokens
  */
 export async function exchangeCodeForTokens(code: string) {
-  const clientId = process.env.GOOGLE_ADS_CLIENT_ID
-  const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET
+  const oauthCreds = await getOAuthCredentials()
+  if (!oauthCreds) {
+    throw new Error('OAuth credentials not configured')
+  }
+
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/google-ads/callback`
 
   const response = await fetch(GOOGLE_OAUTH_TOKEN_URL, {
@@ -62,8 +87,8 @@ export async function exchangeCodeForTokens(code: string) {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       code,
-      client_id: clientId!,
-      client_secret: clientSecret!,
+      client_id: oauthCreds.clientId,
+      client_secret: oauthCreds.clientSecret,
       redirect_uri: redirectUri,
       grant_type: 'authorization_code',
     }),
@@ -81,16 +106,18 @@ export async function exchangeCodeForTokens(code: string) {
  * Refresh access token
  */
 export async function refreshAccessToken(refreshToken: string): Promise<string> {
-  const clientId = process.env.GOOGLE_ADS_CLIENT_ID
-  const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET
+  const oauthCreds = await getOAuthCredentials()
+  if (!oauthCreds) {
+    throw new Error('OAuth credentials not configured')
+  }
 
   const response = await fetch(GOOGLE_OAUTH_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       refresh_token: refreshToken,
-      client_id: clientId!,
-      client_secret: clientSecret!,
+      client_id: oauthCreds.clientId,
+      client_secret: oauthCreds.clientSecret,
       grant_type: 'refresh_token',
     }),
   })
