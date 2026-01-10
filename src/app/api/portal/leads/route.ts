@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status')
-  const limit = parseInt(searchParams.get('limit') || '50')
+  const dateStr = searchParams.get('date') // Format: YYYY-MM-DD
+  const limit = parseInt(searchParams.get('limit') || '100')
   const offset = parseInt(searchParams.get('offset') || '0')
 
   try {
@@ -26,6 +27,16 @@ export async function GET(request: NextRequest) {
 
     if (status) {
       where.status = status
+    }
+
+    // Date filter - filter by the date the lead was created
+    if (dateStr) {
+      const startOfDay = new Date(dateStr + 'T00:00:00.000Z')
+      const endOfDay = new Date(dateStr + 'T23:59:59.999Z')
+      where.createdAt = {
+        gte: startOfDay,
+        lte: endOfDay,
+      }
     }
 
     // Fetch leads for this client only
@@ -43,6 +54,7 @@ export async function GET(request: NextRequest) {
           formName: true,
           saleValue: true,
           saleDate: true,
+          saleNotes: true,
           createdAt: true,
           statusUpdatedAt: true,
         },

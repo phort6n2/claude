@@ -1,23 +1,24 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import {
   Phone,
   Mail,
   Calendar,
-  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   DollarSign,
   CheckCircle2,
   XCircle,
   Clock,
   MessageSquare,
   TrendingUp,
-  Users,
-  Search,
   LogOut,
-  ExternalLink,
+  X,
+  Save,
+  Loader2,
+  User,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 
@@ -31,37 +32,56 @@ interface Lead {
   source: string
   saleValue: number | null
   saleDate: string | null
+  saleNotes: string | null
   createdAt: string
   formName: string | null
 }
 
 interface Session {
   authenticated: boolean
-  clientName?: string
-  userEmail?: string
+  user?: {
+    clientId: string
+    businessName: string
+    email: string
+    name: string | null
+  }
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  NEW: { label: 'New', color: 'bg-blue-100 text-blue-800', icon: Clock },
-  CONTACTED: { label: 'Contacted', color: 'bg-yellow-100 text-yellow-800', icon: MessageSquare },
-  QUALIFIED: { label: 'Qualified', color: 'bg-green-100 text-green-800', icon: CheckCircle2 },
-  UNQUALIFIED: { label: 'Unqualified', color: 'bg-gray-100 text-gray-800', icon: XCircle },
-  QUOTED: { label: 'Quoted', color: 'bg-purple-100 text-purple-800', icon: DollarSign },
-  SOLD: { label: 'Sold', color: 'bg-emerald-100 text-emerald-800', icon: TrendingUp },
-  LOST: { label: 'Lost', color: 'bg-red-100 text-red-800', icon: XCircle },
+const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: React.ElementType }> = {
+  NEW: { label: 'New', color: 'text-blue-700', bgColor: 'bg-blue-100', icon: Clock },
+  CONTACTED: { label: 'Contacted', color: 'text-yellow-700', bgColor: 'bg-yellow-100', icon: MessageSquare },
+  QUALIFIED: { label: 'Qualified', color: 'text-green-700', bgColor: 'bg-green-100', icon: CheckCircle2 },
+  UNQUALIFIED: { label: 'Unqualified', color: 'text-gray-700', bgColor: 'bg-gray-100', icon: XCircle },
+  QUOTED: { label: 'Quoted', color: 'text-purple-700', bgColor: 'bg-purple-100', icon: DollarSign },
+  SOLD: { label: 'Sold', color: 'text-emerald-700', bgColor: 'bg-emerald-100', icon: TrendingUp },
+  LOST: { label: 'Lost', color: 'text-red-700', bgColor: 'bg-red-100', icon: XCircle },
 }
+
+const STATUS_OPTIONS = Object.entries(STATUS_CONFIG).map(([value, config]) => ({
+  value,
+  label: config.label,
+}))
 
 export default function PortalLeadsPage() {
   const router = useRouter()
   const [session, setSession] = useState<Session | null>(null)
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
-  const [total, setTotal] = useState(0)
-  const [stats, setStats] = useState<{ byStatus: Record<string, number> }>({ byStatus: {} })
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date()
+    return today.toISOString().split('T')[0]
+  })
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+  const [mobilePageIndex, setMobilePageIndex] = useState(0)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
-  // Filters
-  const [selectedStatus, setSelectedStatus] = useState<string>('')
-  const [searchQuery, setSearchQuery] = useState('')
+  // Lead detail form state
+  const [editStatus, setEditStatus] = useState('')
+  const [editSaleValue, setEditSaleValue] = useState('')
+  const [editSaleDate, setEditSaleDate] = useState('')
+  const [editSaleNotes, setEditSaleNotes] = useState('')
+  const [saving, setSaving] = useState(false)
 
   // Check session
   useEffect(() => {
@@ -79,46 +99,59 @@ export default function PortalLeadsPage() {
       })
   }, [router])
 
-  // Load leads
+  // Load leads for selected date
   useEffect(() => {
     if (!session?.authenticated) return
 
     setLoading(true)
-    const params = new URLSearchParams()
-    if (selectedStatus) params.set('status', selectedStatus)
-
-    fetch(`/api/portal/leads?${params.toString()}`)
+    setMobilePageIndex(0)
+    fetch(`/api/portal/leads?date=${selectedDate}`)
       .then((res) => res.json())
       .then((data) => {
         setLeads(data.leads || [])
-        setTotal(data.total || 0)
-        setStats(data.stats || { byStatus: {} })
       })
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [session, selectedStatus])
+  }, [session, selectedDate])
 
-  // Filter leads by search query (client-side)
-  const filteredLeads = leads.filter((lead) => {
-    if (!searchQuery) return true
-    const query = searchQuery.toLowerCase()
-    return (
-      lead.email?.toLowerCase().includes(query) ||
-      lead.phone?.includes(query) ||
-      lead.firstName?.toLowerCase().includes(query) ||
-      lead.lastName?.toLowerCase().includes(query)
-    )
-  })
+  // When lead is selected, populate form
+  useEffect(() => {
+    if (selectedLead) {
+      setEditStatus(selectedLead.status)
+      setEditSaleValue(selectedLead.saleValue?.toString() || '')
+      setEditSaleDate(selectedLead.saleDate?.split('T')[0] || '')
+      setEditSaleNotes(selectedLead.saleNotes || '')
+    }
+  }, [selectedLead])
 
-  async function handleLogout() {
-    await fetch('/api/portal/auth/logout', { method: 'POST' })
-    router.push('/portal/login')
+  function changeDate(days: number) {
+    const date = new Date(selectedDate)
+    date.setDate(date.getDate() + days)
+    setSelectedDate(date.toISOString().split('T')[0])
   }
 
-  function formatDate(dateString: string) {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  function formatDateDisplay(dateStr: string) {
+    const date = new Date(dateStr + 'T00:00:00')
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today'
+    }
+    if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday'
+    }
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
       month: 'short',
       day: 'numeric',
+    })
+  }
+
+  function formatTime(dateString: string) {
+    return new Date(dateString).toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
     })
@@ -135,170 +168,445 @@ export default function PortalLeadsPage() {
     return phone
   }
 
+  async function handleLogout() {
+    await fetch('/api/portal/auth/logout', { method: 'POST' })
+    router.push('/portal/login')
+  }
+
+  async function handleSaveLead() {
+    if (!selectedLead) return
+    setSaving(true)
+
+    try {
+      const response = await fetch(`/api/portal/leads/${selectedLead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: editStatus,
+          saleValue: editSaleValue ? parseFloat(editSaleValue) : null,
+          saleDate: editSaleDate || null,
+          saleNotes: editSaleNotes || null,
+        }),
+      })
+
+      if (!response.ok) throw new Error('Failed to save')
+
+      const updated = await response.json()
+      setLeads((prev) =>
+        prev.map((l) => (l.id === selectedLead.id ? { ...l, ...updated } : l))
+      )
+      setSelectedLead(null)
+    } catch (err) {
+      alert('Failed to save changes')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Mobile pagination
+  const cardsPerPage = 6
+  const totalPages = Math.ceil(leads.length / cardsPerPage)
+  const mobileLeads = leads.slice(
+    mobilePageIndex * cardsPerPage,
+    (mobilePageIndex + 1) * cardsPerPage
+  )
+
+  // Handle swipe
+  function handleSwipe(direction: 'left' | 'right') {
+    if (direction === 'left' && mobilePageIndex < totalPages - 1) {
+      setMobilePageIndex(mobilePageIndex + 1)
+    } else if (direction === 'right' && mobilePageIndex > 0) {
+      setMobilePageIndex(mobilePageIndex - 1)
+    }
+  }
+
+  // Touch handling for swipe
+  const touchStart = useRef<number | null>(null)
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStart.current = e.touches[0].clientX
+  }
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (touchStart.current === null) return
+    const touchEnd = e.changedTouches[0].clientX
+    const diff = touchStart.current - touchEnd
+    if (Math.abs(diff) > 50) {
+      handleSwipe(diff > 0 ? 'left' : 'right')
+    }
+    touchStart.current = null
+  }
+
   if (!session?.authenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">Loading...</div>
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <header className="bg-white border-b">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">{session.clientName}</h1>
-            <p className="text-sm text-gray-500">Lead Portal</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">{session.userEmail}</span>
+      <header className="bg-white border-b sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-lg font-bold text-gray-900">{session.user?.businessName}</h1>
+              <p className="text-xs text-gray-500">Lead Portal</p>
+            </div>
             <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline ml-2">Logout</span>
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto p-4 md:p-6">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
-          <div
-            className={`bg-white rounded-lg border p-3 cursor-pointer transition-all ${
-              selectedStatus === '' ? 'ring-2 ring-blue-500' : ''
-            }`}
-            onClick={() => setSelectedStatus('')}
-          >
-            <div className="flex items-center gap-2 text-gray-600 mb-1">
-              <Users className="h-4 w-4" />
-              <span className="text-xs">All</span>
-            </div>
-            <div className="text-xl font-bold">{total}</div>
-          </div>
-          {Object.entries(STATUS_CONFIG).map(([status, config]) => (
-            <div
-              key={status}
-              className={`rounded-lg border p-3 cursor-pointer transition-all ${
-                selectedStatus === status ? 'ring-2 ring-blue-500' : ''
-              } ${config.color.replace('text-', 'bg-').replace('-800', '-50')}`}
-              onClick={() => setSelectedStatus(selectedStatus === status ? '' : status)}
+      {/* Date Navigation */}
+      <div className="bg-white border-b sticky top-[57px] z-30">
+        <div className="max-w-6xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={() => changeDate(-1)}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
-              <div className="flex items-center gap-1 mb-1">
-                <config.icon className="h-3 w-3" />
-                <span className="text-xs">{config.label}</span>
-              </div>
-              <div className="text-xl font-bold">{stats.byStatus[status] || 0}</div>
-            </div>
-          ))}
-        </div>
+              <ChevronLeft className="h-5 w-5" />
+            </button>
 
-        {/* Search */}
-        <div className="bg-white rounded-lg border p-4 mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by name, email, phone..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            />
+            <button
+              onClick={() => setShowCalendar(!showCalendar)}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors min-w-[160px] justify-center"
+            >
+              <Calendar className="h-4 w-4" />
+              <span className="font-medium">{formatDateDisplay(selectedDate)}</span>
+            </button>
+
+            <button
+              onClick={() => changeDate(1)}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
           </div>
-        </div>
 
-        {/* Leads List */}
-        <div className="bg-white rounded-lg border overflow-hidden">
-          {loading ? (
-            <div className="p-8 text-center text-gray-500">Loading leads...</div>
-          ) : filteredLeads.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
-              <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p>No leads found</p>
-              {selectedStatus && (
+          {/* Calendar Popup */}
+          {showCalendar && (
+            <div className="absolute left-1/2 -translate-x-1/2 mt-2 bg-white rounded-lg shadow-lg border p-4 z-50">
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => {
+                  setSelectedDate(e.target.value)
+                  setShowCalendar(false)
+                }}
+                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+              <div className="flex gap-2 mt-3">
                 <button
-                  onClick={() => setSelectedStatus('')}
-                  className="mt-2 text-blue-600 hover:underline text-sm"
+                  onClick={() => {
+                    setSelectedDate(new Date().toISOString().split('T')[0])
+                    setShowCalendar(false)
+                  }}
+                  className="flex-1 px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
                 >
-                  Clear filter
+                  Today
                 </button>
-              )}
-            </div>
-          ) : (
-            <div className="divide-y">
-              {filteredLeads.map((lead) => {
-                const statusConfig = STATUS_CONFIG[lead.status] || STATUS_CONFIG.NEW
-                const StatusIcon = statusConfig.icon
-                const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'
-
-                return (
-                  <Link
-                    key={lead.id}
-                    href={`/portal/leads/${lead.id}`}
-                    className="block hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        {/* Left: Contact Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 mb-1">
-                            <span className="font-medium text-gray-900 truncate">
-                              {fullName}
-                            </span>
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.color}`}>
-                              <StatusIcon className="h-3 w-3" />
-                              {statusConfig.label}
-                            </span>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
-                            {lead.email && (
-                              <span className="flex items-center gap-1">
-                                <Mail className="h-3.5 w-3.5" />
-                                {lead.email}
-                              </span>
-                            )}
-                            {lead.phone && (
-                              <span className="flex items-center gap-1">
-                                <Phone className="h-3.5 w-3.5" />
-                                {formatPhoneDisplay(lead.phone)}
-                              </span>
-                            )}
-                            <span className="flex items-center gap-1 text-gray-400">
-                              <Calendar className="h-3.5 w-3.5" />
-                              {formatDate(lead.createdAt)}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Right: Sale Value & Arrow */}
-                        <div className="flex items-center gap-3">
-                          {lead.saleValue ? (
-                            <div className="text-lg font-semibold text-emerald-600">
-                              ${lead.saleValue.toLocaleString()}
-                            </div>
-                          ) : lead.status === 'SOLD' ? (
-                            <div className="text-sm text-amber-600">Add sale value</div>
-                          ) : null}
-                          <ExternalLink className="h-4 w-4 text-gray-400" />
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                )
-              })}
+                <button
+                  onClick={() => setShowCalendar(false)}
+                  className="flex-1 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           )}
         </div>
+      </div>
 
-        {/* Pagination hint */}
-        {filteredLeads.length > 0 && filteredLeads.length < total && (
-          <div className="mt-4 text-center text-sm text-gray-500">
-            Showing {filteredLeads.length} of {total} leads
+      {/* Lead Count */}
+      <div className="max-w-6xl mx-auto px-4 py-2">
+        <p className="text-sm text-gray-500">
+          {loading ? 'Loading...' : `${leads.length} lead${leads.length !== 1 ? 's' : ''} on ${formatDateDisplay(selectedDate)}`}
+        </p>
+      </div>
+
+      {/* Leads Grid */}
+      <div className="max-w-6xl mx-auto px-4 pb-6">
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
           </div>
+        ) : leads.length === 0 ? (
+          <div className="bg-white rounded-xl p-8 text-center">
+            <User className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <p className="text-gray-500">No leads on this date</p>
+            <button
+              onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+              className="mt-3 text-blue-600 hover:underline text-sm"
+            >
+              Go to today
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Mobile View - Swipeable Cards */}
+            <div
+              className="md:hidden"
+              ref={scrollContainerRef}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+            >
+              <div className="grid grid-cols-2 gap-3">
+                {mobileLeads.map((lead) => (
+                  <LeadCard
+                    key={lead.id}
+                    lead={lead}
+                    onClick={() => setSelectedLead(lead)}
+                  />
+                ))}
+              </div>
+
+              {/* Pagination Dots */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-4">
+                  {Array.from({ length: totalPages }).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setMobilePageIndex(i)}
+                      className={`w-2 h-2 rounded-full transition-colors ${
+                        i === mobilePageIndex ? 'bg-blue-600' : 'bg-gray-300'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Swipe hint */}
+              {totalPages > 1 && (
+                <p className="text-center text-xs text-gray-400 mt-2">
+                  Swipe or tap dots to see more
+                </p>
+              )}
+            </div>
+
+            {/* Desktop View - All Cards */}
+            <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {leads.map((lead) => (
+                <LeadCard
+                  key={lead.id}
+                  lead={lead}
+                  onClick={() => setSelectedLead(lead)}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
+
+      {/* Lead Detail Modal */}
+      {selectedLead && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center">
+          <div className="bg-white w-full md:max-w-lg md:rounded-xl rounded-t-xl max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between">
+              <h2 className="font-semibold text-lg">Lead Details</h2>
+              <button
+                onClick={() => setSelectedLead(null)}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-4 space-y-4">
+              {/* Contact Info */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="font-medium text-gray-900 text-lg mb-2">
+                  {[selectedLead.firstName, selectedLead.lastName].filter(Boolean).join(' ') || 'Unknown'}
+                </h3>
+                <div className="space-y-2 text-sm">
+                  {selectedLead.email && (
+                    <a
+                      href={`mailto:${selectedLead.email}`}
+                      className="flex items-center gap-2 text-blue-600"
+                    >
+                      <Mail className="h-4 w-4" />
+                      {selectedLead.email}
+                    </a>
+                  )}
+                  {selectedLead.phone && (
+                    <a
+                      href={`tel:${selectedLead.phone}`}
+                      className="flex items-center gap-2 text-blue-600"
+                    >
+                      <Phone className="h-4 w-4" />
+                      {formatPhoneDisplay(selectedLead.phone)}
+                    </a>
+                  )}
+                  <p className="text-gray-500 flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    {new Date(selectedLead.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status
+                </label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value)}
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base"
+                >
+                  {STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Sale Value */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Sale Value
+                </label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="number"
+                    value={editSaleValue}
+                    onChange={(e) => setEditSaleValue(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base"
+                  />
+                </div>
+              </div>
+
+              {/* Sale Date */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Sale Date
+                </label>
+                <input
+                  type="date"
+                  value={editSaleDate}
+                  onChange={(e) => setEditSaleDate(e.target.value)}
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base"
+                />
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Notes
+                </label>
+                <textarea
+                  value={editSaleNotes}
+                  onChange={(e) => setEditSaleNotes(e.target.value)}
+                  placeholder="Add notes about this sale..."
+                  rows={3}
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="sticky bottom-0 bg-white border-t px-4 py-3 flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setSelectedLead(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handleSaveLead}
+                disabled={saving}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Click outside calendar to close */}
+      {showCalendar && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setShowCalendar(false)}
+        />
+      )}
     </div>
+  )
+}
+
+// Lead Card Component
+function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
+  const statusConfig = STATUS_CONFIG[lead.status] || STATUS_CONFIG.NEW
+  const StatusIcon = statusConfig.icon
+  const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'
+
+  return (
+    <button
+      onClick={onClick}
+      className="bg-white rounded-xl p-4 text-left shadow-sm hover:shadow-md transition-shadow w-full"
+    >
+      {/* Status Badge */}
+      <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color} mb-2`}>
+        <StatusIcon className="h-3 w-3" />
+        {statusConfig.label}
+      </div>
+
+      {/* Name */}
+      <h3 className="font-medium text-gray-900 truncate mb-1">{fullName}</h3>
+
+      {/* Contact */}
+      <div className="space-y-1 text-xs text-gray-500">
+        {lead.phone && (
+          <p className="flex items-center gap-1 truncate">
+            <Phone className="h-3 w-3 flex-shrink-0" />
+            {lead.phone}
+          </p>
+        )}
+        {lead.email && (
+          <p className="flex items-center gap-1 truncate">
+            <Mail className="h-3 w-3 flex-shrink-0" />
+            {lead.email}
+          </p>
+        )}
+      </div>
+
+      {/* Sale Value */}
+      {lead.saleValue ? (
+        <div className="mt-2 text-emerald-600 font-semibold">
+          ${lead.saleValue.toLocaleString()}
+        </div>
+      ) : lead.status === 'SOLD' ? (
+        <div className="mt-2 text-amber-600 text-xs">+ Add sale value</div>
+      ) : null}
+
+      {/* Time */}
+      <p className="text-xs text-gray-400 mt-2">
+        {new Date(lead.createdAt).toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+        })}
+      </p>
+    </button>
   )
 }
