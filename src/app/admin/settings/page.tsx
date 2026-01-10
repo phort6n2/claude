@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import Header from '@/components/admin/Header'
 import { Card, CardContent } from '@/components/ui/Card'
-import { Key, ChevronRight, Building2, FileQuestion } from 'lucide-react'
+import { Key, ChevronRight, Building2, FileQuestion, TrendingUp } from 'lucide-react'
 
 const settingsSections = [
   {
@@ -21,6 +21,12 @@ const settingsSections = [
     description: 'Configure external API keys and integrations',
     href: '/admin/settings/api',
     icon: Key,
+  },
+  {
+    title: 'Google Ads',
+    description: 'Connect your MCC for Enhanced Conversions and Offline Conversion Import',
+    href: '/admin/settings/google-ads',
+    icon: TrendingUp,
   },
 ]
 

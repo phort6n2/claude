@@ -241,6 +241,51 @@ async function testDataForSEO(login: string, password: string): Promise<{ succes
   }
 }
 
+async function testGBPOAuth(clientId: string, clientSecret: string): Promise<{ success: boolean; message: string }> {
+  try {
+    // Validate Client ID format (should end with .apps.googleusercontent.com)
+    if (!clientId.endsWith('.apps.googleusercontent.com')) {
+      return { success: false, message: 'Invalid Client ID format - should end with .apps.googleusercontent.com' }
+    }
+
+    // Test credentials by attempting a token exchange with a dummy code
+    // Google will return specific errors that tell us if credentials are valid
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        code: 'test_invalid_code',
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: 'https://localhost/callback',
+        grant_type: 'authorization_code',
+      }),
+    })
+
+    const data = await response.json()
+
+    // If we get "invalid_grant" or "invalid_code", the credentials are valid but code is bad (expected)
+    // If we get "invalid_client", the credentials themselves are wrong
+    if (data.error === 'invalid_grant' || data.error === 'invalid_request') {
+      return { success: true, message: 'Credentials valid - ready for OAuth flow' }
+    }
+
+    if (data.error === 'invalid_client') {
+      return { success: false, message: 'Invalid Client ID or Client Secret' }
+    }
+
+    if (data.error === 'unauthorized_client') {
+      return { success: false, message: 'Client not authorized - check OAuth consent screen setup' }
+    }
+
+    return { success: false, message: data.error_description || data.error || 'Unknown error' }
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : 'Connection failed' }
+  }
+}
+
 export async function POST(request: Request) {
   const session = await auth()
   if (!session) {
@@ -302,10 +347,19 @@ export async function POST(request: Request) {
         result = await testDataForSEO(dataForSeoLogin, apiKey)
       }
       break
+    case 'GBP_CLIENT_SECRET':
+      const gbpClientId = await getApiKey('GBP_CLIENT_ID')
+      if (!gbpClientId) {
+        result = { success: false, message: 'GBP Client ID must be configured first' }
+      } else {
+        result = await testGBPOAuth(gbpClientId, apiKey)
+      }
+      break
     case 'PODBEAN_CLIENT_ID':
     case 'GOOGLE_CLOUD_PROJECT_ID':
     case 'GOOGLE_CLOUD_STORAGE_BUCKET':
     case 'DATAFORSEO_LOGIN':
+    case 'GBP_CLIENT_ID':
       // These are just config values, not testable APIs
       result = { success: true, message: 'Configuration value saved' }
       break

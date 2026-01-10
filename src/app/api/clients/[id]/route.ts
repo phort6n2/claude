@@ -26,7 +26,13 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 })
     }
 
-    return NextResponse.json(client)
+    // Don't send encrypted password to frontend - just indicate if one exists
+    const { wordpressAppPassword, ...clientWithoutPassword } = client
+    return NextResponse.json({
+      ...clientWithoutPassword,
+      wordpressAppPassword: null, // Never send encrypted password to client
+      hasWordPressPassword: !!wordpressAppPassword,
+    })
   } catch (error) {
     console.error('Failed to fetch client:', error)
     return NextResponse.json(
@@ -51,8 +57,20 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
 
     // Encrypt WordPress password if changed
     let encryptedPassword = existing.wordpressAppPassword
-    if (data.wordpressAppPassword && data.wordpressAppPassword !== '') {
+    const hasNewPassword = data.wordpressAppPassword && data.wordpressAppPassword !== ''
+    console.log('[Client Update] Password handling:', {
+      businessName: existing.businessName,
+      hasNewPasswordFromForm: hasNewPassword,
+      newPasswordLength: hasNewPassword ? data.wordpressAppPassword.length : 0,
+      hasExistingPassword: !!existing.wordpressAppPassword,
+      existingPasswordPrefix: existing.wordpressAppPassword?.substring(0, 10),
+    })
+    if (hasNewPassword) {
       encryptedPassword = encrypt(data.wordpressAppPassword)
+      console.log('[Client Update] Encrypted new password:', {
+        encryptedPrefix: encryptedPassword?.substring(0, 10),
+        encryptedLength: encryptedPassword?.length,
+      })
     }
 
     const client = await prisma.client.update({
@@ -66,6 +84,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         city: data.city,
         state: data.state,
         postalCode: data.postalCode,
+        country: data.country || existing.country || 'US',
         googlePlaceId: data.googlePlaceId || null,
         googleMapsUrl: data.googleMapsUrl || null,
         wrhqDirectoryUrl: data.wrhqDirectoryUrl || null,
@@ -106,7 +125,19 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       },
     })
 
-    return NextResponse.json(client)
+    console.log('[Client Update] Saved successfully:', {
+      businessName: client.businessName,
+      hasPasswordAfterSave: !!client.wordpressAppPassword,
+      savedPasswordPrefix: client.wordpressAppPassword?.substring(0, 10),
+    })
+
+    // Don't send encrypted password to frontend
+    const { wordpressAppPassword: _, ...clientWithoutPassword } = client
+    return NextResponse.json({
+      ...clientWithoutPassword,
+      wordpressAppPassword: null,
+      hasWordPressPassword: !!client.wordpressAppPassword,
+    })
   } catch (error) {
     console.error('Failed to update client:', error)
     return NextResponse.json(

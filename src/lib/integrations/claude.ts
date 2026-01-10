@@ -213,6 +213,8 @@ export async function generateSocialCaption(params: SocialCaptionParams): Promis
   // Special handling for GBP - uses specific prompt format
   if (params.platform === 'gbp') {
     const mapsLink = params.googleMapsUrl || ''
+    const hasValidMapsLink = mapsLink && mapsLink.length > 0
+
     const gbpPrompt = `Write a Google Business Profile post for this auto glass business.
 
 **CRITICAL RULES:**
@@ -221,28 +223,28 @@ export async function generateSocialCaption(params: SocialCaptionParams): Promis
 - Emojis are allowed and encouraged (1-3 relevant emojis)
 - NO hashtags in main text
 - Professional, conversational tone
-- MUST include the Google Maps link at the end
+${hasValidMapsLink ? '- Include the Google Maps link at the end' : '- Do NOT include any URLs or links'}
 
 **Business Info:**
 Business: ${params.businessName}
 Location: ${params.location || 'your area'}
 Topic: ${params.blogTitle}
-Google Maps Link: ${mapsLink}
+${hasValidMapsLink ? `Google Maps Link: ${mapsLink}` : ''}
 
 **Writing Guidelines:**
 1. Start with attention-grabbing question or statement
 2. Use 1-3 relevant emojis naturally in the text
 3. Provide 1-2 key insights about the topic
 4. Mention business name naturally
-5. End with the Google Maps link on its own line
+${hasValidMapsLink ? '5. End with the Google Maps link on its own line' : '5. End with a call to action mentioning the business'}
 
 **Example:**
 🚗 Wondering about windshield chip repair? Most chips under a quarter are fixable and cost less than replacement. Visit Collision Auto Glass in Portland to learn more!
-
-${mapsLink ? mapsLink : 'https://maps.google.com/...'}
+${hasValidMapsLink ? `\n${mapsLink}` : ''}
 
 **Output Format:**
-Return ONLY the post text with the link. No quotes, no labels. Just the post content.
+Return ONLY the post text${hasValidMapsLink ? ' with the link' : ''}. No quotes, no labels. Just the post content.
+${hasValidMapsLink ? '' : 'IMPORTANT: Do NOT include any generic URLs like maps.google.com or any placeholder links.'}
 
 Write the post now.`
 

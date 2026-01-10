@@ -15,10 +15,21 @@ interface RouteContext {
 
 // Generate embeds (matching pipeline functions)
 function generatePodcastEmbed(title: string, playerUrl: string): string {
-  return `<!-- Podcast Episode -->
-<div class="podcast-embed" style="margin: 30px 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-  <h4 style="margin: 0 0 15px 0; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">🎙️ Listen to This Article</h4>
-  <iframe src="${playerUrl}" width="100%" height="150" style="border: none; border-radius: 8px;"></iframe>
+  return `
+<!-- Podcast Episode -->
+<div class="podcast-embed" style="margin: 30px 0;">
+  <h3>🎧 Listen to This Episode</h3>
+  <iframe
+    title="${title}"
+    allowtransparency="true"
+    height="150"
+    width="100%"
+    style="border: none; min-width: min(100%, 430px);height:150px;"
+    scrolling="no"
+    data-name="pb-iframe-player"
+    src="${playerUrl}&from=pb6admin&share=1&download=1&rtl=0&fonts=Arial&skin=1&font-color=&logo_link=episode_page&btn-skin=7"
+    loading="lazy"
+  ></iframe>
 </div>`
 }
 
@@ -38,8 +49,10 @@ function generateGoogleMapsEmbed(params: {
   // Use the embedded maps URL format (no API key needed)
   const embedUrl = `https://www.google.com/maps?q=${addressQuery}&output=embed`
 
-  return `<!-- Google Maps Embed -->
+  return `
+<!-- Google Maps Embed -->
 <div class="google-maps-embed" style="margin: 30px 0;">
+  <h3>📍 Find ${params.businessName}</h3>
   <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
     <iframe
       src="${embedUrl}"
@@ -133,6 +146,7 @@ async function completeRemainingPipeline(contentItemId: string, videoUrl: string
         client: true,
         blogPost: true,
         podcast: true,
+        images: true,
       },
     })
 
@@ -359,6 +373,7 @@ async function completeRemainingPipeline(contentItemId: string, videoUrl: string
             email: contentItem.client.email || '',
             logoUrl: contentItem.client.logoUrl,
             wordpressUrl: contentItem.client.wordpressUrl,
+            googleMapsUrl: contentItem.client.googleMapsUrl,
             serviceAreas: contentItem.client.serviceAreas,
             gbpRating: contentItem.client.gbpRating,
             gbpReviewCount: contentItem.client.gbpReviewCount,
@@ -379,6 +394,7 @@ async function completeRemainingPipeline(contentItemId: string, videoUrl: string
             metaDescription: blogPost.metaDescription,
             wordpressUrl: blogPost.wordpressUrl,
             publishedAt: blogPost.publishedAt,
+            imageUrl: contentItem.images.find(img => img.imageType === 'BLOG_FEATURED')?.gcsUrl || null,
           },
           contentItem: {
             paaQuestion: contentItem.paaQuestion,

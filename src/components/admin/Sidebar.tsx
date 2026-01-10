@@ -13,14 +13,20 @@ import {
   LogOut,
   Activity,
   HelpCircle,
+  Monitor,
+  Store,
+  UserCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navigation = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
   { name: 'Clients', href: '/admin/clients', icon: Users },
+  { name: 'Leads', href: '/admin/leads', icon: UserCheck },
   { name: 'Content Calendar', href: '/admin/content', icon: Calendar },
+  { name: 'GBP Posts', href: '/admin/gbp', icon: Store },
   { name: 'Press Releases', href: '/admin/press-releases', icon: FileText },
+  { name: 'Monitoring', href: '/admin/monitoring', icon: Monitor },
   { name: 'API Status', href: '/admin/api-status', icon: Activity },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
   { name: 'Help', href: '/admin/help', icon: HelpCircle },

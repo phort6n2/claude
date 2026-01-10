@@ -12,13 +12,13 @@ datasource db {
 // ============================================
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  password      String
-  name          String?
-  role          UserRole  @default(ADMIN)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      UserRole @default(ADMIN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum UserRole {
@@ -31,88 +31,88 @@ enum UserRole {
 // ============================================
 
 model Client {
-  id                    String    @id @default(cuid())
-  slug                  String    @unique
-  status                ClientStatus @default(ACTIVE)
+  id     String       @id @default(cuid())
+  slug   String       @unique
+  status ClientStatus @default(ACTIVE)
 
   // Business Info
-  businessName          String
-  contactPerson         String?
-  phone                 String
-  email                 String
-  streetAddress         String
-  city                  String
-  state                 String
-  postalCode            String
-  country               String    @default("US")
+  businessName  String
+  contactPerson String?
+  phone         String
+  email         String
+  streetAddress String
+  city          String
+  state         String
+  postalCode    String
+  country       String  @default("US")
 
   // Service Details
-  hasShopLocation       Boolean   @default(true)
-  offersMobileService   Boolean   @default(false)
-  serviceAreas          String[]  // Array of cities/neighborhoods
+  hasShopLocation        Boolean  @default(true)
+  offersMobileService    Boolean  @default(false)
+  serviceAreas           String[] // Array of cities/neighborhoods
   insuranceRelationships String[]
 
   // Services Offered (for schema markup and content)
-  offersWindshieldRepair      Boolean   @default(true)
-  offersWindshieldReplacement Boolean   @default(true)
-  offersSideWindowRepair      Boolean   @default(false)
-  offersBackWindowRepair      Boolean   @default(false)
-  offersSunroofRepair         Boolean   @default(false)
-  offersRockChipRepair        Boolean   @default(true)
-  offersAdasCalibration       Boolean   @default(false)
+  offersWindshieldRepair      Boolean @default(true)
+  offersWindshieldReplacement Boolean @default(true)
+  offersSideWindowRepair      Boolean @default(false)
+  offersBackWindowRepair      Boolean @default(false)
+  offersSunroofRepair         Boolean @default(false)
+  offersRockChipRepair        Boolean @default(true)
+  offersAdasCalibration       Boolean @default(false)
 
   // Brand Settings
-  logoUrl               String?
-  primaryColor          String?   @default("#1e40af")
-  secondaryColor        String?   @default("#3b82f6")
-  accentColor           String?   @default("#f59e0b")
-  brandVoice            String?   @default("Professional, helpful, and knowledgeable")
+  logoUrl        String?
+  primaryColor   String? @default("#1e40af")
+  secondaryColor String? @default("#3b82f6")
+  accentColor    String? @default("#f59e0b")
+  brandVoice     String? @default("Professional, helpful, and knowledgeable")
 
   // WordPress Connection
-  wordpressUrl          String?
-  wordpressUsername     String?
-  wordpressAppPassword  String?   // Encrypted
-  wordpressConnected    Boolean   @default(false)
+  wordpressUrl         String?
+  wordpressUsername    String?
+  wordpressAppPassword String? // Encrypted
+  wordpressConnected   Boolean @default(false)
 
   // CTA Configuration
-  ctaText               String    @default("Get a Free Quote")
-  ctaUrl                String?
+  ctaText String  @default("Get a Free Quote")
+  ctaUrl  String?
 
   // Video Generation Settings
-  creatifyTemplateId    String?   // Custom Creatify template UUID for branded videos
+  creatifyTemplateId String? // Custom Creatify template UUID for branded videos
 
   // Publishing Preferences (Tue/Thu schedule)
-  preferredPublishTime  String    @default("09:00")
-  timezone              String    @default("America/Los_Angeles")
+  preferredPublishTime String @default("09:00")
+  timezone             String @default("America/Los_Angeles")
 
   // Social Media
-  socialPlatforms       String[]  // facebook, instagram, linkedin, twitter, tiktok, gbp
-  socialAccountIds      Json?     // { facebook: "lateId1", instagram: "lateId2", ... }
-  disconnectedAccounts  Json?     // { facebook: { disconnectedAt: "ISO date", reason: "..." }, ... }
+  socialPlatforms      String[] // facebook, instagram, linkedin, twitter, tiktok, gbp
+  socialAccountIds     Json? // { facebook: "lateId1", instagram: "lateId2", ... }
+  disconnectedAccounts Json? // { facebook: { disconnectedAt: "ISO date", reason: "..." }, ... }
 
   // Client Portal
-  portalPassword        String?   // Encrypted
+  portalPassword String? // Encrypted
 
   // Google Places / Maps
-  googlePlaceId         String?   // Google Places API place_id
-  googleMapsUrl         String?   // Direct link to Google Maps
+  googlePlaceId String? // Google Places API place_id
+  googleMapsUrl String? // Direct link to Google Maps
 
   // WRHQ Directory
-  wrhqDirectoryUrl      String?   // Link to WRHQ directory listing
+  wrhqDirectoryUrl String? // Link to WRHQ directory listing
 
   // GBP Data (for press releases)
-  gbpPlaceId            String?
-  gbpRating             Float?
-  gbpReviewCount        Int?
+  gbpPlaceId     String?
+  gbpRating      Float?
+  gbpReviewCount Int?
 
   // Podbean Podcast Association
-  podbeanPodcastId      String?   // Selected podcast ID from global Podbean account
-  podbeanPodcastTitle   String?   // Cached podcast title for display
-  podbeanPodcastUrl     String?   // Public URL to the podcast page
+  podbeanPodcastId    String? // Selected podcast ID from global Podbean account
+  podbeanPodcastTitle String? // Cached podcast title for display
+  podbeanPodcastUrl   String? // Public URL to the podcast page
 
   // WRHQ YouTube Playlist (for long-form video uploads)
-  wrhqYoutubePlaylistId    String?   // YouTube playlist ID for this client
-  wrhqYoutubePlaylistTitle String?   // Cached playlist title for display
+  wrhqYoutubePlaylistId    String? // YouTube playlist ID for this client
+  wrhqYoutubePlaylistTitle String? // Cached playlist title for display
 
   // Subscription Management
   subscriptionStatus    SubscriptionStatus @default(TRIAL)
@@ -123,38 +123,47 @@ model Client {
   stripeCustomerId      String?
   stripeSubscriptionId  String?
 
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Calendar Generation
-  calendarGenerated     Boolean   @default(false)
-  calendarGeneratedAt   DateTime?
-  calendarEndDate       DateTime? // How far out the calendar is populated
+  calendarGenerated   Boolean   @default(false)
+  calendarGeneratedAt DateTime?
+  calendarEndDate     DateTime? // How far out the calendar is populated
 
   // Automation Settings
-  autoScheduleEnabled   Boolean   @default(false)   // Opt-in for automation
-  autoScheduleFrequency Int       @default(2)       // Posts per week (1 or 2)
-  lastAutoScheduledAt   DateTime?                   // Track last automation run
+  autoScheduleEnabled   Boolean   @default(false) // Opt-in for automation
+  autoScheduleFrequency Int       @default(2) // Posts per week (1 or 2)
+  lastAutoScheduledAt   DateTime? // Track last automation run
 
   // Smart Scheduling (to avoid Late.dev 5-post-per-account limit)
-  scheduleDayPair       String?   // e.g., "MON_WED", "TUE_THU", "WED_FRI" - auto-assigned
-  scheduleTimeSlot      Int?      // 0-4 representing staggered times (6AM, 7AM, 8AM, 9AM, 10AM)
+  scheduleDayPair  String? // e.g., "MON_WED", "TUE_THU", "WED_FRI" - auto-assigned
+  scheduleTimeSlot Int? // 0-4 representing staggered times (6AM, 7AM, 8AM, 9AM, 10AM)
 
   // Relations
-  contentItems          ContentItem[]
-  blogPosts             BlogPost[]
-  wrhqBlogPosts         WRHQBlogPost[]
-  images                Image[]
-  podcasts              Podcast[]
-  videos                Video[]
-  shortFormVideos       ShortFormVideo[]
-  socialPosts           SocialPost[]
-  pressReleases         PressRelease[]
-  servicePages          ServicePage[]
-  locationPages         LocationPage[]
-  serviceLocations      ServiceLocation[]
-  clientPAAs            ClientPAA[]
-  publishingLogs        PublishingLog[]
+  contentItems     ContentItem[]
+  blogPosts        BlogPost[]
+  wrhqBlogPosts    WRHQBlogPost[]
+  images           Image[]
+  podcasts         Podcast[]
+  videos           Video[]
+  shortFormVideos  ShortFormVideo[]
+  socialPosts      SocialPost[]
+  pressReleases    PressRelease[]
+  servicePages     ServicePage[]
+  locationPages    LocationPage[]
+  serviceLocations ServiceLocation[]
+  clientPAAs       ClientPAA[]
+  publishingLogs   PublishingLog[]
+
+  // GBP Posting Service
+  gbpPostConfig GBPPostConfig?
+  gbpPosts      GBPPost[]
+
+  // Leads & Client Portal
+  leads           Lead[]
+  clientUsers     ClientUser[]
+  googleAdsConfig ClientGoogleAds?
 }
 
 enum ClientStatus {
@@ -172,9 +181,9 @@ enum SubscriptionStatus {
 }
 
 enum SubscriptionPlan {
-  STARTER     // Basic plan
-  GROWTH      // Mid-tier
-  ENTERPRISE  // Full service
+  STARTER // Basic plan
+  GROWTH // Mid-tier
+  ENTERPRISE // Full service
 }
 
 // ============================================
@@ -182,37 +191,37 @@ enum SubscriptionPlan {
 // ============================================
 
 model ContentItem {
-  id                String    @id @default(cuid())
-  clientId          String
-  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   // PAA Question (link to client's PAA)
-  clientPAAId       String?
-  clientPAA         ClientPAA? @relation(fields: [clientPAAId], references: [id])
-  paaQuestion       String    // Rendered/final question text (with location substituted)
-  topic             String?   // AI-suggested topic category
+  clientPAAId String?
+  clientPAA   ClientPAA? @relation(fields: [clientPAAId], references: [id])
+  paaQuestion String // Rendered/final question text (with location substituted)
+  topic       String? // AI-suggested topic category
 
   // Service Location (link to client location)
   serviceLocationId String?
   serviceLocation   ServiceLocation? @relation(fields: [serviceLocationId], references: [id])
 
   // Scheduling
-  scheduledDate     DateTime
-  scheduledTime     String    @default("09:00")
-  priority          Int       @default(0)
+  scheduledDate DateTime
+  scheduledTime String   @default("09:00")
+  priority      Int      @default(0)
 
   // Status
-  status            ContentStatus @default(DRAFT)
-  pipelineStep      String?   // Current step in pipeline
-  retryCount        Int       @default(0)
-  lastError         String?
+  status       ContentStatus @default(DRAFT)
+  pipelineStep String? // Current step in pipeline
+  retryCount   Int           @default(0)
+  lastError    String?
 
   // Notes
-  notes             String?
+  notes String?
 
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  publishedAt       DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
 
   // ============================================
   // APPROVAL TRACKING
@@ -229,11 +238,11 @@ model ContentItem {
   // ============================================
   // GENERATION STATUS
   // ============================================
-  blogGenerated         Boolean @default(false)
-  imagesGenerated       Boolean @default(false)
-  socialGenerated       Boolean @default(false)
-  wrhqBlogGenerated     Boolean @default(false)
-  wrhqSocialGenerated   Boolean @default(false)
+  blogGenerated       Boolean @default(false)
+  imagesGenerated     Boolean @default(false)
+  socialGenerated     Boolean @default(false)
+  wrhqBlogGenerated   Boolean @default(false)
+  wrhqSocialGenerated Boolean @default(false)
 
   // ============================================
   // APPROVAL COUNTS (for multi-item approvals)
@@ -248,60 +257,60 @@ model ContentItem {
   // ============================================
   // PUBLISHING STATUS
   // ============================================
-  clientBlogPublished     Boolean   @default(false)
-  clientBlogPublishedAt   DateTime?
-  clientBlogUrl           String?
-  wrhqBlogPublished       Boolean   @default(false)
-  wrhqBlogPublishedAt     DateTime?
-  wrhqBlogUrl             String?
-  socialPublished         Boolean   @default(false)
-  socialPublishedAt       DateTime?
+  clientBlogPublished   Boolean   @default(false)
+  clientBlogPublishedAt DateTime?
+  clientBlogUrl         String?
+  wrhqBlogPublished     Boolean   @default(false)
+  wrhqBlogPublishedAt   DateTime?
+  wrhqBlogUrl           String?
+  socialPublished       Boolean   @default(false)
+  socialPublishedAt     DateTime?
 
   // ============================================
   // MEDIA STATUS
   // ============================================
-  podcastGenerated        Boolean   @default(false)
-  podcastStatus           String?   // 'generating', 'ready', 'approved', 'failed'
-  podcastDescription      String?
-  podcastUrl              String?   // Direct URL to podcast audio file
-  podcastAddedToPost      Boolean   @default(false)
-  podcastAddedAt          DateTime?
+  podcastGenerated   Boolean   @default(false)
+  podcastStatus      String? // 'generating', 'ready', 'approved', 'failed'
+  podcastDescription String?
+  podcastUrl         String? // Direct URL to podcast audio file
+  podcastAddedToPost Boolean   @default(false)
+  podcastAddedAt     DateTime?
 
-  shortVideoGenerated     Boolean   @default(false)
-  shortVideoStatus        String?   // 'generating', 'ready', 'approved', 'failed'
-  shortVideoDescription   String?
-  shortVideoAddedToPost   Boolean   @default(false)
-  shortVideoAddedAt       DateTime?
+  shortVideoGenerated   Boolean   @default(false)
+  shortVideoStatus      String? // 'generating', 'ready', 'approved', 'failed'
+  shortVideoDescription String?
+  shortVideoAddedToPost Boolean   @default(false)
+  shortVideoAddedAt     DateTime?
 
-  longVideoUploaded       Boolean   @default(false)
-  longformVideoUrl        String?
-  longformVideoDesc       String?
-  longVideoAddedToPost    Boolean   @default(false)
-  longVideoAddedAt        DateTime?
+  longVideoUploaded    Boolean   @default(false)
+  longformVideoUrl     String?
+  longformVideoDesc    String?
+  longVideoAddedToPost Boolean   @default(false)
+  longVideoAddedAt     DateTime?
 
   // ============================================
   // SCHEMA STATUS
   // ============================================
-  schemaGenerated         Boolean   @default(false)
-  schemaUpdateCount       Int       @default(0)
-  schemaLastUpdated       DateTime?
+  schemaGenerated   Boolean   @default(false)
+  schemaUpdateCount Int       @default(0)
+  schemaLastUpdated DateTime?
 
   // ============================================
   // DASHBOARD FLAGS
   // ============================================
-  needsAttention          Boolean   @default(false)
-  completionPercent       Int       @default(0)
+  needsAttention    Boolean @default(false)
+  completionPercent Int     @default(0)
 
   // Relations
-  blogPost          BlogPost?
-  wrhqBlogPost      WRHQBlogPost?
-  images            Image[]
-  podcast           Podcast?
-  videos            Video[]
-  shortFormVideos   ShortFormVideo[]
-  socialPosts       SocialPost[]
-  wrhqSocialPosts   WRHQSocialPost[]
-  publishingLogs    PublishingLog[]
+  blogPost        BlogPost?
+  wrhqBlogPost    WRHQBlogPost?
+  images          Image[]
+  podcast         Podcast?
+  videos          Video[]
+  shortFormVideos ShortFormVideo[]
+  socialPosts     SocialPost[]
+  wrhqSocialPosts WRHQSocialPost[]
+  publishingLogs  PublishingLog[]
 
   @@index([clientId])
   @@index([status])
@@ -315,8 +324,8 @@ enum ContentStatus {
   DRAFT
   SCHEDULED
   GENERATING
-  REVIEW        // New - waiting for approval
-  APPROVED      // New - all items approved
+  REVIEW // New - waiting for approval
+  APPROVED // New - all items approved
   PUBLISHING
   PUBLISHED
   FAILED
@@ -335,43 +344,43 @@ enum ApprovalStatus {
 // ============================================
 
 model BlogPost {
-  id                String    @id @default(cuid())
-  contentItemId     String    @unique
-  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
-  clientId          String
-  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id            String      @id @default(cuid())
+  contentItemId String      @unique
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   // Content
-  title             String
-  slug              String
-  content           String    // HTML content
-  excerpt           String?
+  title   String
+  slug    String
+  content String // HTML content
+  excerpt String?
 
   // SEO
-  metaTitle         String?
-  metaDescription   String?
-  focusKeyword      String?
+  metaTitle       String?
+  metaDescription String?
+  focusKeyword    String?
 
   // WordPress
-  wordpressPostId   Int?
-  wordpressUrl      String?
-  featuredImageId   Int?
+  wordpressPostId Int?
+  wordpressUrl    String?
+  featuredImageId Int?
 
   // Schema Markup
-  schemaJson        String?   // Full JSON-LD schema graph
+  schemaJson String? // Full JSON-LD schema graph
 
   // Stats
-  wordCount         Int?
+  wordCount Int?
 
   // Dates
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  publishedAt       DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
 
   // Linked Pages
-  servicePageId     String?
-  servicePage       ServicePage? @relation(fields: [servicePageId], references: [id])
-  locationPageIds   String[]
+  servicePageId   String?
+  servicePage     ServicePage? @relation(fields: [servicePageId], references: [id])
+  locationPageIds String[]
 }
 
 // ============================================
@@ -379,35 +388,35 @@ model BlogPost {
 // ============================================
 
 model WRHQBlogPost {
-  id                String    @id @default(cuid())
-  contentItemId     String    @unique
-  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
-  clientId          String
-  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id            String      @id @default(cuid())
+  contentItemId String      @unique
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   // Content
-  title             String
-  slug              String
-  content           String    @db.Text  // HTML content
-  excerpt           String?
+  title   String
+  slug    String
+  content String  @db.Text // HTML content
+  excerpt String?
 
   // SEO
-  metaTitle         String?
-  metaDescription   String?
-  focusKeyword      String?
+  metaTitle       String?
+  metaDescription String?
+  focusKeyword    String?
 
   // WordPress (WRHQ site)
-  wordpressPostId   Int?
-  wordpressUrl      String?
-  featuredImageUrl  String?   // URL to the image used in the post
+  wordpressPostId  Int?
+  wordpressUrl     String?
+  featuredImageUrl String? // URL to the image used in the post
 
   // Stats
-  wordCount         Int?
+  wordCount Int?
 
   // Dates
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  publishedAt       DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
 }
 
 // ============================================
@@ -415,40 +424,40 @@ model WRHQBlogPost {
 // ============================================
 
 model Image {
-  id                String    @id @default(cuid())
-  contentItemId     String
-  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
-  clientId          String
-  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id            String      @id @default(cuid())
+  contentItemId String
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   // Image Type
-  imageType         ImageType
+  imageType ImageType
 
   // File Info
-  fileName          String
-  gcsUrl            String
-  width             Int
-  height            Int
-  fileSize          Int?
+  fileName String
+  gcsUrl   String
+  width    Int
+  height   Int
+  fileSize Int?
 
   // Alt Text
-  altText           String?
+  altText String?
 
   // Approval
-  approved          Boolean   @default(false)
-  approvedAt        DateTime?
+  approved   Boolean   @default(false)
+  approvedAt DateTime?
 
-  createdAt         DateTime  @default(now())
+  createdAt DateTime @default(now())
 }
 
 enum ImageType {
-  BLOG_FEATURED     // 1200x800
-  FACEBOOK          // 1200x630
-  INSTAGRAM_FEED    // 1080x1080
-  INSTAGRAM_STORY   // 1080x1920
-  TWITTER           // 1200x675
-  LINKEDIN          // 1200x627
-  TIKTOK            // 1080x1920
+  BLOG_FEATURED // 1200x800
+  FACEBOOK // 1200x630
+  INSTAGRAM_FEED // 1080x1080
+  INSTAGRAM_STORY // 1080x1920
+  TWITTER // 1200x675
+  LINKEDIN // 1200x627
+  TIKTOK // 1080x1920
 }
 
 // ============================================
@@ -456,35 +465,35 @@ enum ImageType {
 // ============================================
 
 model Podcast {
-  id                String    @id @default(cuid())
-  contentItemId     String    @unique
-  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
-  clientId          String
-  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id            String      @id @default(cuid())
+  contentItemId String      @unique
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   // Audio File
-  audioUrl          String
-  duration          Int?      // seconds
+  audioUrl String
+  duration Int? // seconds
 
   // Script
-  script            String?
+  script String?
 
   // Description (HTML for podcast platforms)
-  description       String?   @db.Text
+  description String? @db.Text
 
   // API Reference
-  autocontentJobId  String?
+  autocontentJobId String?
 
   // Podbean Publishing
-  podbeanEpisodeId  String?
-  podbeanUrl        String?
-  podbeanPlayerUrl  String?
+  podbeanEpisodeId String?
+  podbeanUrl       String?
+  podbeanPlayerUrl String?
 
   // Status
-  status            MediaStatus @default(PENDING)
+  status MediaStatus @default(PENDING)
 
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum MediaStatus {
@@ -500,41 +509,41 @@ enum MediaStatus {
 // ============================================
 
 model Video {
-  id                String    @id @default(cuid())
-  contentItemId     String
-  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
-  clientId          String
-  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id            String      @id @default(cuid())
+  contentItemId String
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   // Video Type
-  videoType         VideoType
+  videoType VideoType
 
   // File Info
-  videoUrl          String
-  thumbnailUrl      String?
-  duration          Int?      // seconds
-  aspectRatio       String?   // 16:9, 9:16, 1:1
+  videoUrl     String
+  thumbnailUrl String?
+  duration     Int? // seconds
+  aspectRatio  String? // 16:9, 9:16, 1:1
 
   // API Reference
-  provider          VideoProvider
-  providerJobId     String?
+  provider      VideoProvider
+  providerJobId String?
 
   // Status
-  status            MediaStatus @default(PENDING)
+  status MediaStatus @default(PENDING)
 
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum VideoType {
-  SHORT             // 60-90 seconds
-  LONG              // 3-5 minutes
+  SHORT // 60-90 seconds
+  LONG // 3-5 minutes
 }
 
 enum VideoProvider {
   CREATIFY
   PICTORY
-  MANUAL      // For uploaded videos
+  MANUAL // For uploaded videos
 }
 
 // ============================================
@@ -542,46 +551,46 @@ enum VideoProvider {
 // ============================================
 
 model ShortFormVideo {
-  id                String    @id @default(cuid())
-  contentItemId     String
-  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
-  clientId          String
-  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id            String      @id @default(cuid())
+  contentItemId String
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   // Video Info
-  title             String?
-  description       String?
-  videoUrl          String
-  thumbnailUrl      String?
-  duration          Int?      // seconds
-  aspectRatio       String    @default("9:16")
+  title        String?
+  description  String?
+  videoUrl     String
+  thumbnailUrl String?
+  duration     Int? // seconds
+  aspectRatio  String  @default("9:16")
 
   // Platform Assignment
-  platforms         SocialPlatform[]  // Can target multiple platforms
+  platforms SocialPlatform[] // Can target multiple platforms
 
   // Scheduling
-  scheduledDate     DateTime?
-  scheduledTime     String?   // "09:00", "13:00", "17:00"
-  dayNumber         Int?      // Which day in the schedule (1, 2, 3, etc.)
-  slotNumber        Int?      // Which slot in the day (1, 2, 3)
+  scheduledDate DateTime?
+  scheduledTime String? // "09:00", "13:00", "17:00"
+  dayNumber     Int? // Which day in the schedule (1, 2, 3, etc.)
+  slotNumber    Int? // Which slot in the day (1, 2, 3)
 
   // Late.dev References
-  getlatePostIds    Json?     // { platform: postId } mapping
+  getlatePostIds Json? // { platform: postId } mapping
 
   // Approval
-  approved          Boolean   @default(false)
-  approvedAt        DateTime?
+  approved   Boolean   @default(false)
+  approvedAt DateTime?
 
   // Status
-  status            SocialPostStatus @default(DRAFT)
-  publishedUrls     Json?     // { platform: url } mapping
+  status        SocialPostStatus @default(DRAFT)
+  publishedUrls Json? // { platform: url } mapping
 
   // Order
-  sortOrder         Int       @default(0)
+  sortOrder Int @default(0)
 
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  publishedAt       DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
 
   @@index([contentItemId])
   @@index([scheduledDate])
@@ -592,42 +601,42 @@ model ShortFormVideo {
 // ============================================
 
 model SocialPost {
-  id                String    @id @default(cuid())
-  contentItemId     String
-  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
-  clientId          String
-  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id            String      @id @default(cuid())
+  contentItemId String
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   // Platform
-  platform          SocialPlatform
+  platform SocialPlatform
 
   // Content
-  caption           String
-  hashtags          String[]
-  firstComment      String?   // Link to blog post
+  caption      String
+  hashtags     String[]
+  firstComment String? // Link to blog post
 
   // Media
-  mediaUrls         String[]
-  mediaType         String?   // image, video
+  mediaUrls String[]
+  mediaType String? // image, video
 
   // Scheduling
-  scheduledTime     DateTime
+  scheduledTime DateTime
 
   // getlate.dev Reference
-  getlatePostId     String?
+  getlatePostId String?
 
   // Approval
-  approved          Boolean   @default(false)
-  approvedAt        DateTime?
+  approved   Boolean   @default(false)
+  approvedAt DateTime?
 
   // Status
-  status            SocialPostStatus @default(DRAFT)
-  publishedUrl      String?
-  errorMessage      String?   // Error message if post failed
+  status       SocialPostStatus @default(DRAFT)
+  publishedUrl String?
+  errorMessage String? // Error message if post failed
 
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  publishedAt       DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
 }
 
 // ============================================
@@ -635,40 +644,40 @@ model SocialPost {
 // ============================================
 
 model WRHQSocialPost {
-  id                String    @id @default(cuid())
-  contentItemId     String
-  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  id            String      @id @default(cuid())
+  contentItemId String
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
 
   // Platform
-  platform          SocialPlatform
+  platform SocialPlatform
 
   // Content
-  caption           String
-  hashtags          String[]
-  firstComment      String?
+  caption      String
+  hashtags     String[]
+  firstComment String?
 
   // Media
-  mediaUrls         String[]
-  mediaType         String?   // image, video
+  mediaUrls String[]
+  mediaType String? // image, video
 
   // Scheduling
-  scheduledTime     DateTime
+  scheduledTime DateTime
 
   // getlate.dev Reference
-  getlatePostId     String?
+  getlatePostId String?
 
   // Approval
-  approved          Boolean   @default(false)
-  approvedAt        DateTime?
+  approved   Boolean   @default(false)
+  approvedAt DateTime?
 
   // Status
-  status            SocialPostStatus @default(DRAFT)
-  publishedUrl      String?
-  errorMessage      String?   // Error message if post failed
+  status       SocialPostStatus @default(DRAFT)
+  publishedUrl String?
+  errorMessage String? // Error message if post failed
 
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  publishedAt       DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
 }
 
 enum SocialPlatform {
@@ -689,7 +698,7 @@ enum SocialPlatform {
 enum SocialPostStatus {
   DRAFT
   SCHEDULED
-  PROCESSING  // Sent to Late API, awaiting platform confirmation
+  PROCESSING // Sent to Late API, awaiting platform confirmation
   PUBLISHED
   FAILED
 }
@@ -699,34 +708,34 @@ enum SocialPostStatus {
 // ============================================
 
 model PressRelease {
-  id                String    @id @default(cuid())
-  clientId          String
-  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   // Month
-  month             DateTime  // First day of the month
+  month DateTime // First day of the month
 
   // Featured Content
-  featuredPaaIds    String[]  // Top 3 PAAs from previous month
+  featuredPaaIds String[] // Top 3 PAAs from previous month
 
   // GBP Milestones
-  newReviews        Int?
-  totalReviews      Int?
-  averageRating     Float?
+  newReviews    Int?
+  totalReviews  Int?
+  averageRating Float?
 
   // Content Stats
-  blogPostsCount    Int?
+  blogPostsCount     Int?
   totalContentPieces Int?
 
   // Press Release Content
-  headline          String?
-  content           String?   // Full press release text
+  headline String?
+  content  String? // Full press release text
 
   // Status
-  status            PressReleaseStatus @default(DRAFT)
+  status PressReleaseStatus @default(DRAFT)
 
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum PressReleaseStatus {
@@ -740,48 +749,48 @@ enum PressReleaseStatus {
 // ============================================
 
 model ServicePage {
-  id                String    @id @default(cuid())
-  clientId          String
-  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   // Page Info
-  title             String
-  url               String
-  slug              String
+  title String
+  url   String
+  slug  String
 
   // Service Details
-  serviceType       String?   // windshield-replacement, adas-calibration, rock-chip-repair, etc.
-  keywords          String[]
+  serviceType String? // windshield-replacement, adas-calibration, rock-chip-repair, etc.
+  keywords    String[]
 
   // Auto-detected or Manual
-  isVerified        Boolean   @default(false)
+  isVerified Boolean @default(false)
 
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  blogPosts         BlogPost[]
+  blogPosts BlogPost[]
 }
 
 model LocationPage {
-  id                String    @id @default(cuid())
-  clientId          String
-  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   // Page Info
-  title             String
-  url               String
-  slug              String
+  title String
+  url   String
+  slug  String
 
   // Location Details
-  cityName          String
-  neighborhood      String?
+  cityName     String
+  neighborhood String?
 
   // Auto-detected or Manual
-  isVerified        Boolean   @default(false)
+  isVerified Boolean @default(false)
 
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ============================================
@@ -789,30 +798,30 @@ model LocationPage {
 // ============================================
 
 model PublishingLog {
-  id                String    @id @default(cuid())
-  contentItemId     String?
-  contentItem       ContentItem? @relation(fields: [contentItemId], references: [id], onDelete: SetNull)
-  clientId          String
-  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id            String       @id @default(cuid())
+  contentItemId String?
+  contentItem   ContentItem? @relation(fields: [contentItemId], references: [id], onDelete: SetNull)
+  clientId      String
+  client        Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   // Action
-  action            String    // blog_generate, image_generate, wordpress_publish, podcast_generate, etc.
+  action String // blog_generate, image_generate, wordpress_publish, podcast_generate, etc.
 
   // Status
-  status            LogStatus
+  status LogStatus
 
   // Details
-  requestPayload    String?   // JSON
-  responseData      String?   // JSON
-  errorMessage      String?
+  requestPayload String? // JSON
+  responseData   String? // JSON
+  errorMessage   String?
 
   // Timing
-  startedAt         DateTime  @default(now())
-  completedAt       DateTime?
-  durationMs        Int?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  durationMs  Int?
 
   // Retry Info
-  attemptNumber     Int       @default(1)
+  attemptNumber Int @default(1)
 }
 
 enum LogStatus {
@@ -827,17 +836,17 @@ enum LogStatus {
 // ============================================
 
 model StandardPAA {
-  id           String        @id @default(cuid())
-  question     String        // Template with {location} placeholder
-  priority     Int           // Order (1, 2, 3...)
-  isActive     Boolean       @default(true)
-  category     String?       // Optional category for organization
+  id       String  @id @default(cuid())
+  question String // Template with {location} placeholder
+  priority Int // Order (1, 2, 3...)
+  isActive Boolean @default(true)
+  category String? // Optional category for organization
 
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Clients using this standard PAA
-  clientPaas   ClientPAA[]
+  clientPaas ClientPAA[]
 
   @@index([priority])
   @@index([isActive])
@@ -848,26 +857,26 @@ model StandardPAA {
 // ============================================
 
 model ClientPAA {
-  id             String        @id @default(cuid())
-  clientId       String
-  client         Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  question       String        // Template with {location} placeholder
-  priority       Int           // Custom PAAs: 1-999, Standard PAAs: 1000+
-  isActive       Boolean       @default(true)
+  id       String  @id @default(cuid())
+  clientId String
+  client   Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  question String // Template with {location} placeholder
+  priority Int // Custom PAAs: 1-999, Standard PAAs: 1000+
+  isActive Boolean @default(true)
 
   // Link to standard PAA (null = custom PAA for this client only)
-  standardPaaId  String?
-  standardPaa    StandardPAA?  @relation(fields: [standardPaaId], references: [id], onDelete: SetNull)
+  standardPaaId String?
+  standardPaa   StandardPAA? @relation(fields: [standardPaaId], references: [id], onDelete: SetNull)
 
   // Automation tracking
-  usedAt         DateTime?     // When this PAA was last used (null = never)
-  usedCount      Int           @default(0)  // Total times used
+  usedAt    DateTime? // When this PAA was last used (null = never)
+  usedCount Int       @default(0) // Total times used
 
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  contentItems   ContentItem[]
+  contentItems ContentItem[]
 
   @@index([clientId])
   @@index([priority])
@@ -881,21 +890,21 @@ model ClientPAA {
 // ============================================
 
 model ServiceLocation {
-  id           String   @id @default(cuid())
-  clientId     String
-  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
-  city         String
-  state        String
-  neighborhood String?  // Optional: specific neighborhood
+  city           String
+  state          String
+  neighborhood   String? // Optional: specific neighborhood
   isHeadquarters Boolean @default(false)
-  isActive     Boolean  @default(true)
+  isActive       Boolean @default(true)
 
   // Automation tracking
-  lastUsedAt   DateTime?  // When this location was last used for content
+  lastUsedAt DateTime? // When this location was last used for content
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   contentItems ContentItem[]
@@ -907,13 +916,307 @@ model ServiceLocation {
 }
 
 // ============================================
+// GBP POSTING SERVICE
+// ============================================
+
+model GBPPostConfig {
+  id       String @id @default(cuid())
+  clientId String @unique
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Schedule
+  enabled       Boolean          @default(false)
+  frequency     GBPPostFrequency @default(WEEKLY)
+  preferredDays Int[] // 0=Sunday, 1=Monday, etc.
+  preferredTime String           @default("10:00")
+
+  // Link Rotation
+  rotationLinks    Json? // Array of { url, label, type, weight? }
+  currentLinkIndex Int   @default(0)
+
+  // Content Settings
+  postTopics   String[] // Optional topic suggestions
+  includePromo Boolean  @default(true)
+  includePhone Boolean  @default(true)
+
+  // Google OAuth (for photo fetching from GBP)
+  googleAccessToken  String? // Encrypted
+  googleRefreshToken String? // Encrypted
+  googleTokenExpiry  DateTime?
+  googleAccountId    String? // GBP account ID from Google
+
+  // Cached Photos from GBP
+  cachedPhotos      Json? // Array of { url, thumbnailUrl, category, name }
+  photosLastFetched DateTime?
+
+  // AI Image Generation Option
+  useAiGeneratedImages Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  posts GBPPost[]
+
+  @@index([enabled])
+}
+
+model GBPPost {
+  id       String        @id @default(cuid())
+  clientId String
+  client   Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  configId String
+  config   GBPPostConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  // Content
+  content     String         @db.Text
+  photoUrl    String?
+  photoSource GBPPhotoSource @default(GBP_PROFILE)
+  ctaUrl      String?
+  ctaType     GBPCtaType?
+
+  // Link used (for rotation tracking)
+  rotationLinkIndex Int?
+  rotationLinkLabel String?
+
+  // Status
+  status       GBPPostStatus @default(DRAFT)
+  scheduledFor DateTime?
+  publishedAt  DateTime?
+
+  // Late Integration
+  latePostId      String?
+  platformPostUrl String? // URL to view on GBP
+
+  // Error tracking
+  errorMessage String?
+  retryCount   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([status])
+  @@index([scheduledFor])
+}
+
+enum GBPPostFrequency {
+  DAILY
+  TWICE_WEEKLY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum GBPPhotoSource {
+  GBP_PROFILE // Photo fetched from Google Business Profile
+  AI_GENERATED // Photo generated via Nano Banana Pro
+  UPLOADED // Manually uploaded
+  CLIENT_IMAGES // From client's existing images
+}
+
+enum GBPCtaType {
+  LEARN_MORE
+  BOOK
+  ORDER
+  SHOP
+  SIGN_UP
+  CALL
+}
+
+enum GBPPostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  FAILED
+}
+
+// ============================================
+// LEADS (from Google Ads via HighLevel)
+// ============================================
+
+model Lead {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Contact Info
+  email     String?
+  phone     String?
+  firstName String?
+  lastName  String?
+
+  // Google Ads Tracking (critical for offline conversions)
+  gclid  String? // Google Click ID - needed for offline conversion import
+  gbraid String? // Google GBRAID for iOS 14+
+  wbraid String? // Google WBRAID for web-to-app
+
+  // UTM Parameters (from your tracking template)
+  utmSource    String? // adwords
+  utmMedium    String? // {adname}
+  utmCampaign  String? // {campaignname}
+  utmContent   String? // {adgroupname}
+  utmKeyword   String? // {keyword}
+  utmMatchtype String? // {matchtype}
+  campaignId   String? // {campaignid}
+  adGroupId    String? // {adgroupid}
+  adId         String? // {creative}
+
+  // Lead Source
+  source         LeadSource @default(FORM)
+  landingPageUrl String?
+  referrerUrl    String?
+
+  // Form Data (store any extra fields)
+  formData Json? // { vehicleType: "truck", zipCode: "85001", message: "..." }
+  formName String? // Which form submitted (e.g., "homepage-quote", "mobile-landing")
+
+  // HighLevel Reference
+  highlevelContactId String?
+
+  // Lead Status (updated by client)
+  status          LeadStatus @default(NEW)
+  statusUpdatedAt DateTime?
+  statusUpdatedBy String? // ClientUser ID who updated
+
+  // Qualification
+  qualified          Boolean? // null = not yet assessed
+  qualifiedAt        DateTime?
+  qualificationNotes String?
+
+  // Sale Info (for offline conversion import)
+  saleValue    Float? // Revenue amount if sold
+  saleCurrency String    @default("USD")
+  saleDate     DateTime?
+  saleNotes    String?
+
+  // Google Ads Sync Status
+  enhancedConversionSent   Boolean   @default(false) // Email/phone sent to Google
+  enhancedConversionSentAt DateTime?
+  offlineConversionSent    Boolean   @default(false) // Sale data sent to Google
+  offlineConversionSentAt  DateTime?
+  googleSyncError          String? // Last sync error if any
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([status])
+  @@index([gclid])
+  @@index([email])
+  @@index([createdAt])
+  @@index([offlineConversionSent])
+}
+
+enum LeadSource {
+  FORM // Quote form submission
+  PHONE // Phone call (from HighLevel call tracking)
+  CHAT // Live chat
+  MANUAL // Manually entered
+}
+
+enum LeadStatus {
+  NEW // Just received
+  CONTACTED // Client reached out
+  QUALIFIED // Confirmed good lead
+  UNQUALIFIED // Not a good fit
+  QUOTED // Quote sent
+  SOLD // Converted to sale
+  LOST // Lost to competitor or no response
+}
+
+// ============================================
+// CLIENT USERS (Portal Login)
+// ============================================
+
+model ClientUser {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Auth
+  email        String  @unique
+  name         String?
+  passwordHash String? // For password login (optional)
+
+  // Magic Link
+  magicLinkToken  String?   @unique
+  magicLinkExpiry DateTime?
+
+  // Session
+  lastLoginAt DateTime?
+  isActive    Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([magicLinkToken])
+}
+
+// ============================================
+// GOOGLE ADS INTEGRATION
+// ============================================
+
+model GoogleAdsConfig {
+  id String @id @default(cuid())
+
+  // OAuth App Credentials (from Google Cloud Console)
+  oauthClientId     String? // Encrypted
+  oauthClientSecret String? // Encrypted
+
+  // MCC (Manager Account) OAuth - your agency account
+  mccCustomerId String? // Your MCC customer ID (xxx-xxx-xxxx format)
+  accessToken   String? // Encrypted
+  refreshToken  String? // Encrypted
+  tokenExpiry   DateTime?
+
+  // Developer Token
+  developerToken String? // Encrypted - from Google Ads API Center
+
+  // Status
+  isConnected Boolean   @default(false)
+  lastSyncAt  DateTime?
+  lastError   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Link clients to their Google Ads customer IDs (under your MCC)
+model ClientGoogleAds {
+  id       String @id @default(cuid())
+  clientId String @unique
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Client's Google Ads Customer ID (under your MCC)
+  customerId String // Format: xxx-xxx-xxxx
+
+  // Conversion Actions (for offline import)
+  leadConversionActionId String? // Conversion action for new leads
+  saleConversionActionId String? // Conversion action for sales
+
+  // Status
+  isActive   Boolean   @default(true)
+  lastSyncAt DateTime?
+  lastError  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+}
+
+// ============================================
 // SETTINGS
 // ============================================
 
 model Setting {
   id        String   @id @default(cuid())
   key       String   @unique
-  value     String   // Encrypted for sensitive values
+  value     String // Encrypted for sensitive values
   encrypted Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

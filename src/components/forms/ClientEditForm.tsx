@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import {
   ChevronDown,
@@ -26,6 +27,11 @@ import {
   Calendar,
   Search,
   ExternalLink,
+  Store,
+  Users,
+  TrendingUp,
+  Copy,
+  Webhook,
 } from 'lucide-react'
 
 interface PodbeanPodcast {
@@ -60,8 +66,16 @@ interface FetchedPAA {
   selected: boolean
 }
 
+interface PlacePrediction {
+  placeId: string
+  description: string
+  mainText: string
+  secondaryText: string
+}
+
 interface ClientData {
   id: string
+  slug?: string
   businessName: string
   contactPerson: string | null
   phone: string
@@ -70,6 +84,7 @@ interface ClientData {
   city: string
   state: string
   postalCode: string
+  country: string
   googlePlaceId: string | null
   googleMapsUrl: string | null
   wrhqDirectoryUrl: string | null
@@ -110,8 +125,71 @@ interface ClientData {
 }
 
 interface ClientEditFormProps {
-  client: ClientData
+  client?: ClientData | null
   hasWordPressPassword?: boolean
+}
+
+// Default values for a new client
+const defaultClientData: Omit<ClientData, 'id'> & { id: string } = {
+  id: '',
+  businessName: '',
+  contactPerson: null,
+  phone: '',
+  email: '',
+  streetAddress: '',
+  city: '',
+  state: '',
+  postalCode: '',
+  country: 'US',
+  googlePlaceId: null,
+  googleMapsUrl: null,
+  wrhqDirectoryUrl: null,
+  hasShopLocation: true,
+  offersMobileService: false,
+  offersWindshieldRepair: true,
+  offersWindshieldReplacement: true,
+  offersSideWindowRepair: false,
+  offersBackWindowRepair: false,
+  offersSunroofRepair: false,
+  offersRockChipRepair: true,
+  offersAdasCalibration: false,
+  serviceAreas: [],
+  logoUrl: null,
+  primaryColor: '#1e40af',
+  secondaryColor: '#3b82f6',
+  accentColor: '#f59e0b',
+  brandVoice: 'Professional, helpful, and knowledgeable',
+  wordpressUrl: null,
+  wordpressUsername: null,
+  wordpressAppPassword: null,
+  ctaText: 'Get a Free Quote',
+  ctaUrl: null,
+  creatifyTemplateId: null,
+  preferredPublishTime: '09:00',
+  timezone: 'America/Los_Angeles',
+  socialPlatforms: [],
+  socialAccountIds: null,
+  podbeanPodcastId: null,
+  podbeanPodcastTitle: null,
+  podbeanPodcastUrl: null,
+  wrhqYoutubePlaylistId: null,
+  wrhqYoutubePlaylistTitle: null,
+  autoScheduleEnabled: false,
+  autoScheduleFrequency: 2,
+}
+
+// Convert slot index to Mountain Time display
+const SLOT_TO_MOUNTAIN_TIME: Record<number, string> = {
+  0: '7:00 AM',
+  1: '8:00 AM',
+  2: '9:00 AM',
+  3: '10:00 AM',
+  4: '11:00 AM',
+  5: '1:00 PM',
+  6: '2:00 PM',
+  7: '3:00 PM',
+  8: '4:00 PM',
+  9: '5:00 PM',
 }
 
 const socialPlatformOptions = [
@@ -129,11 +207,12 @@ const socialPlatformOptions = [
   { value: 'telegram', label: 'Telegram' },
 ]
 
-type SectionKey = 'business' | 'location' | 'serviceLocations' | 'branding' | 'wordpress' | 'social' | 'integrations' | 'automation'
+type SectionKey = 'business' | 'location' | 'serviceLocations' | 'branding' | 'wordpress' | 'social' | 'integrations' | 'automation' | 'googleads'
 
 export default function ClientEditForm({ client, hasWordPressPassword = false }: ClientEditFormProps) {
   const router = useRouter()
-  const [formData, setFormData] = useState<ClientData>(client)
+  const isNewClient = !client?.id
+  const [formData, setFormData] = useState<ClientData>(client || defaultClientData as ClientData)
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -145,6 +224,13 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   const [testingConnection, setTestingConnection] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'success' | 'error' | null>(null)
   const [connectionError, setConnectionError] = useState<string | null>(null)
+
+  // Google Places search state
+  const [placeSearch, setPlaceSearch] = useState('')
+  const [placePredictions, setPlacePredictions] = useState<PlacePrediction[]>([])
+  const [placeSearchLoading, setPlaceSearchLoading] = useState(false)
+  const [showPredictions, setShowPredictions] = useState(false)
+  const [placeSelected, setPlaceSelected] = useState(false)
 
   // Podbean state
   const [podbeanPodcasts, setPodbeanPodcasts] = useState<PodbeanPodcast[]>([])
@@ -168,6 +254,9 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       isRecycling: boolean
       custom: { unused: number; total: number }
       standard: { unused: number; total: number }
+      totalPaas?: number
+      totalLocations?: number
+      usedCombinations?: number
     }
     locations: { active: number; neverUsed: number }
     upcoming: { count: number }
@@ -254,10 +343,11 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       .finally(() => setLoadingYoutube(false))
   }, [])
 
-  // Load service locations
+  // Load service locations (only for existing clients)
   useEffect(() => {
+    if (isNewClient) return
     setLoadingLocations(true)
-    fetch(`/api/clients/${client.id}/locations`)
+    fetch(`/api/clients/${client!.id}/locations`)
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -272,7 +362,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       })
       .catch(() => {})
       .finally(() => setLoadingLocations(false))
-  }, [client.id])
+  }, [client?.id, isNewClient])
 
   // Load DataForSEO balance
   useEffect(() => {
@@ -287,10 +377,11 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       .catch(() => setDataForSeoConfigured(false))
   }, [])
 
-  // Load existing PAAs
+  // Load existing PAAs (only for existing clients)
   useEffect(() => {
+    if (isNewClient) return
     setLoadingPaas(true)
-    fetch(`/api/clients/${client.id}/paas`)
+    fetch(`/api/clients/${client!.id}/paas`)
       .then((res) => res.json())
       .then((data) => {
         if (data.paas && Array.isArray(data.paas)) {
@@ -304,7 +395,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       })
       .catch(() => {})
       .finally(() => setLoadingPaas(false))
-  }, [client.id])
+  }, [client?.id, isNewClient])
 
   // Validate PAA text as user types
   useEffect(() => {
@@ -340,10 +431,11 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
     })
   }, [paaText])
 
-  // Load auto-schedule status
+  // Load auto-schedule status (only for existing clients)
   useEffect(() => {
+    if (isNewClient) return
     setLoadingAutoSchedule(true)
-    fetch(`/api/clients/${client.id}/auto-schedule`)
+    fetch(`/api/clients/${client!.id}/auto-schedule`)
       .then((res) => res.json())
       .then((data) => {
         if (data.paaQueue && data.locations) {
@@ -357,7 +449,79 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       })
       .catch(() => {})
       .finally(() => setLoadingAutoSchedule(false))
-  }, [client.id])
+  }, [client?.id, isNewClient])
+
+  // Place search with debounce
+  useEffect(() => {
+    if (!placeSearch || placeSearch.length < 3 || placeSelected) {
+      setPlacePredictions([])
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      setPlaceSearchLoading(true)
+      try {
+        const response = await fetch(`/api/integrations/google-places/search?query=${encodeURIComponent(placeSearch)}`)
+        const data = await response.json()
+        if (data.predictions) {
+          setPlacePredictions(data.predictions)
+          setShowPredictions(true)
+        }
+      } catch (err) {
+        console.error('Place search error:', err)
+      } finally {
+        setPlaceSearchLoading(false)
+      }
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [placeSearch, placeSelected])
+
+  async function selectPlace(prediction: PlacePrediction) {
+    setPlaceSearchLoading(true)
+    setShowPredictions(false)
+    setPlaceSelected(true)
+
+    try {
+      const response = await fetch(`/api/integrations/google-places/details?placeId=${prediction.placeId}`)
+      const details = await response.json()
+
+      if (!response.ok) {
+        console.error('Failed to fetch place details:', details.error)
+        return
+      }
+
+      // Update form with place details
+      setFormData((prev) => ({
+        ...prev,
+        businessName: details.businessName || prev.businessName,
+        phone: details.phone || prev.phone,
+        streetAddress: details.streetAddress || prev.streetAddress,
+        city: details.city || prev.city,
+        state: details.state || prev.state,
+        postalCode: details.postalCode || prev.postalCode,
+        googlePlaceId: details.placeId,
+        googleMapsUrl: details.googleMapsUrl,
+      }))
+
+      setPlaceSearch(details.businessName)
+    } catch (err) {
+      console.error('Error fetching place details:', err)
+    } finally {
+      setPlaceSearchLoading(false)
+    }
+  }
+
+  function clearPlaceSelection() {
+    setPlaceSearch('')
+    setPlaceSelected(false)
+    setPlacePredictions([])
+    setFormData((prev) => ({
+      ...prev,
+      googlePlaceId: null,
+      googleMapsUrl: null,
+    }))
+  }
 
   function toggleSection(section: SectionKey) {
     setExpandedSections((prev) => {
@@ -430,7 +594,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
           url: formData.wordpressUrl,
           username: formData.wordpressUsername,
           password: formData.wordpressAppPassword,
-          clientId: client.id,
+          clientId: isNewClient ? undefined : client!.id,
         }),
       })
       const data = await response.json()
@@ -454,8 +618,12 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
     setSaveSuccess(false)
 
     try {
-      const response = await fetch(`/api/clients/${client.id}`, {
-        method: 'PUT',
+      // Determine the API endpoint and method
+      const url = isNewClient ? '/api/clients' : `/api/clients/${client!.id}`
+      const method = isNewClient ? 'POST' : 'PUT'
+
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
@@ -468,10 +636,13 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
         throw new Error(data.error || 'Failed to save')
       }
 
+      const clientData = await response.json()
+      const clientId = clientData.id || client?.id
+
       // Save service locations
       const validLocations = serviceLocations.filter((loc) => loc.city && loc.state)
-      if (validLocations.length > 0) {
-        const locResponse = await fetch(`/api/clients/${client.id}/locations`, {
+      if (validLocations.length > 0 && clientId) {
+        const locResponse = await fetch(`/api/clients/${clientId}/locations`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ locations: validLocations }),
@@ -483,8 +654,13 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
         }
       }
 
-      setSaveSuccess(true)
-      setTimeout(() => setSaveSuccess(false), 3000)
+      if (isNewClient) {
+        // Redirect to the new client's edit page
+        router.push(`/admin/clients/${clientId}`)
+      } else {
+        setSaveSuccess(true)
+        setTimeout(() => setSaveSuccess(false), 3000)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
@@ -497,12 +673,16 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       setPaaMessage({ type: 'error', text: 'No valid PAA questions to save' })
       return
     }
+    if (isNewClient) {
+      setPaaMessage({ type: 'error', text: 'Save the client first before adding PAA questions' })
+      return
+    }
 
     setSavingPaas(true)
     setPaaMessage(null)
 
     try {
-      const response = await fetch(`/api/clients/${client.id}/paas`, {
+      const response = await fetch(`/api/clients/${client!.id}/paas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paaText, append }),
@@ -515,7 +695,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
         setPaaText('') // Clear the textarea after saving
         setExistingPaaCount(data.total || paaValidation.valid)
         // Refresh auto-schedule status to update PAA queue count
-        fetch(`/api/clients/${client.id}/auto-schedule`)
+        fetch(`/api/clients/${client!.id}/auto-schedule`)
           .then(res => res.json())
           .then(statusData => {
             if (statusData.paaQueue && statusData.locations) {
@@ -538,6 +718,10 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   }
 
   async function fetchGooglePaas() {
+    if (isNewClient) {
+      setFetchError('Save the client first before fetching PAAs')
+      return
+    }
     setFetchingGooglePaas(true)
     setFetchError(null)
     setFetchedPaas([])
@@ -545,7 +729,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
     setDuplicatesSkipped(0)
 
     try {
-      const response = await fetch(`/api/clients/${client.id}/fetch-paas`, {
+      const response = await fetch(`/api/clients/${client!.id}/fetch-paas`, {
         method: 'POST',
       })
       const data = await response.json()
@@ -630,13 +814,14 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   async function addSelectedPaasAndSave() {
     const selected = fetchedPaas.filter(paa => paa.selected)
     if (selected.length === 0) return
+    if (isNewClient) return
 
     setSavingPaas(true)
     try {
       const questions = selected.map(paa => paa.formatted)
       // API expects paaText (newline-separated) and append boolean
       const paaTextToSave = questions.join('\n')
-      const response = await fetch(`/api/clients/${client.id}/paas`, {
+      const response = await fetch(`/api/clients/${client!.id}/paas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paaText: paaTextToSave, append: true }),
@@ -667,10 +852,11 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       setShowExistingPaas(false)
       return
     }
+    if (isNewClient) return
 
     setLoadingExistingPaas(true)
     try {
-      const response = await fetch(`/api/clients/${client.id}/paas`)
+      const response = await fetch(`/api/clients/${client!.id}/paas`)
       const data = await response.json()
       if (response.ok) {
         setExistingPaasList(data.paas || [])
@@ -684,11 +870,12 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   }
 
   async function runAutomationTest() {
+    if (isNewClient) return
     setTestRunning(true)
     setTestResult(null)
 
     try {
-      const response = await fetch(`/api/clients/${client.id}/auto-schedule/test`, {
+      const response = await fetch(`/api/clients/${client!.id}/auto-schedule/test`, {
         method: 'POST',
       })
       const data = await response.json()
@@ -708,7 +895,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
           details: data.details,
         })
         // Refresh the auto-schedule status after test
-        fetch(`/api/clients/${client.id}/auto-schedule`)
+        fetch(`/api/clients/${client!.id}/auto-schedule`)
           .then((res) => res.json())
           .then((statusData) => {
             if (statusData.paaQueue && statusData.locations) {
@@ -772,38 +959,100 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   return (
     <div className="space-y-4">
       {/* Sticky Save Bar */}
-      <div className="sticky top-0 z-10 bg-white border-b shadow-sm -mx-6 -mt-6 px-6 py-3 mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg font-semibold">{formData.businessName}</h1>
-          {saveSuccess && (
-            <span className="flex items-center gap-1 text-sm text-green-600">
-              <Check className="h-4 w-4" /> Saved
-            </span>
-          )}
-          {error && (
-            <span className="flex items-center gap-1 text-sm text-red-600">
-              <AlertCircle className="h-4 w-4" /> {error}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => router.back()}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                Save Changes
-              </>
+      <div className="sticky top-0 z-10 bg-white border-b shadow-sm -mx-6 -mt-6 px-6 py-3 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h1 className="text-lg font-semibold">
+              {isNewClient ? 'New Client' : formData.businessName || 'Edit Client'}
+            </h1>
+            {saveSuccess && (
+              <span className="flex items-center gap-1 text-sm text-green-600">
+                <Check className="h-4 w-4" /> Saved
+              </span>
             )}
-          </Button>
+            {error && (
+              <span className="flex items-center gap-1 text-sm text-red-600">
+                <AlertCircle className="h-4 w-4" /> {error}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={() => router.push('/admin/clients')}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  {isNewClient ? 'Creating...' : 'Saving...'}
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  {isNewClient ? 'Create Client' : 'Save Changes'}
+                </>
+              )}
+            </Button>
+          </div>
         </div>
+        {/* Quick Links - only show for existing clients */}
+        {!isNewClient && (
+          <div className="flex items-center gap-4 mt-2 pt-2 border-t border-gray-100">
+            <Link
+              href={`/admin/clients/${client!.id}/calendar`}
+              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600"
+            >
+              <Calendar className="h-4 w-4" />
+              Content Calendar
+            </Link>
+            <Link
+              href={`/admin/clients/${client!.id}/gbp`}
+              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600"
+            >
+              <Store className="h-4 w-4" />
+              GBP Posts
+            </Link>
+            <Link
+              href={`/admin/clients/${client!.id}/users`}
+              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600"
+            >
+              <Users className="h-4 w-4" />
+              Portal Users
+            </Link>
+            <Link
+              href={`/admin/clients/${client!.id}/google-ads`}
+              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600"
+            >
+              <TrendingUp className="h-4 w-4" />
+              Google Ads
+            </Link>
+          </div>
+        )}
+
+        {/* Webhook URL - only show for existing clients */}
+        {!isNewClient && client?.slug && (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="flex items-center gap-2 text-sm">
+              <Webhook className="h-4 w-4 text-gray-400" />
+              <span className="text-gray-500">Webhook URL:</span>
+              <code className="px-2 py-1 bg-gray-100 rounded text-xs font-mono text-gray-700 flex-1 truncate">
+                https://agmp-paa-pro.vercel.app/api/webhooks/highlevel/lead?client={client.slug}
+              </code>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(
+                    `https://agmp-paa-pro.vercel.app/api/webhooks/highlevel/lead?client=${client.slug}`
+                  )
+                }}
+                className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                title="Copy webhook URL"
+              >
+                <Copy className="h-4 w-4 text-gray-500" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Business Information */}
@@ -816,6 +1065,65 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
         />
         {expandedSections.has('business') && (
           <div className="p-6 space-y-4">
+            {/* Google Places Search */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Search size={18} className="text-blue-600" />
+                <label className="block text-sm font-medium text-blue-900">
+                  Search for Business on Google
+                </label>
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={placeSearch}
+                  onChange={(e) => {
+                    setPlaceSearch(e.target.value)
+                    setPlaceSelected(false)
+                  }}
+                  placeholder="Start typing business name..."
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {placeSearchLoading && (
+                  <div className="absolute right-3 top-2.5">
+                    <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                  </div>
+                )}
+                {showPredictions && placePredictions.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                    {placePredictions.map((prediction) => (
+                      <button
+                        key={prediction.placeId}
+                        type="button"
+                        onClick={() => selectPlace(prediction)}
+                        className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b last:border-b-0"
+                      >
+                        <div className="font-medium text-gray-900">{prediction.mainText}</div>
+                        <div className="text-sm text-gray-500">{prediction.secondaryText}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {formData.googlePlaceId && (
+                <div className="mt-2 flex items-center justify-between text-sm">
+                  <span className="text-green-600 flex items-center gap-1">
+                    ✓ Business found - details populated below
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearPlaceSelection}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    Clear & search again
+                  </button>
+                </div>
+              )}
+              <p className="text-xs text-blue-700 mt-2">
+                Search to auto-fill business info from Google, or enter manually below.
+              </p>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
@@ -974,7 +1282,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                   className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div className="col-span-2">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code</label>
                 <input
                   type="text"
@@ -982,6 +1290,17 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                   onChange={(e) => updateField('postalCode', e.target.value)}
                   className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                <select
+                  value={formData.country || 'US'}
+                  onChange={(e) => updateField('country', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="US">United States</option>
+                  <option value="CA">Canada</option>
+                </select>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1256,6 +1575,8 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                 onChange={(e) => updateField('wordpressAppPassword', e.target.value)}
                 className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
                 placeholder={hasWordPressPassword ? "Leave blank to keep existing password" : "Enter application password"}
+                autoComplete="new-password"
+                name="wp-app-password"
               />
               <p className="text-xs text-gray-500 mt-1">
                 {hasWordPressPassword
@@ -1550,10 +1871,10 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                   <span className="text-sm font-medium text-blue-900">Assigned Schedule</span>
                 </div>
                 <p className="text-blue-800 font-semibold">{autoScheduleStatus.slot.dayPairLabel}</p>
-                {autoScheduleStatus.slot.timeSlotLabel && (
+                {autoScheduleStatus.slot.timeSlot !== null && autoScheduleStatus.slot.timeSlot !== undefined && (
                   <p className="text-sm text-blue-600 mt-1">
                     <Clock className="h-3 w-3 inline mr-1" />
-                    {autoScheduleStatus.slot.timeSlotLabel} UTC
+                    {SLOT_TO_MOUNTAIN_TIME[autoScheduleStatus.slot.timeSlot] || autoScheduleStatus.slot.timeSlotLabel} MT
                   </p>
                 )}
               </div>
@@ -1563,28 +1884,21 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
             {loadingAutoSchedule ? (
               <div className="text-sm text-gray-500">Loading status...</div>
             ) : autoScheduleStatus && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <FileQuestion className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium text-gray-700">PAA Queue</span>
+                    <span className="text-sm font-medium text-gray-700">Content Queue</span>
                   </div>
                   <div className="text-2xl font-bold text-gray-900">
                     {autoScheduleStatus.paaQueue.unused}/{autoScheduleStatus.paaQueue.total}
                   </div>
                   <div className="text-xs text-gray-500 space-y-0.5">
-                    {autoScheduleStatus.paaQueue.custom.total > 0 && (
-                      <div className="text-blue-600">
-                        Custom: {autoScheduleStatus.paaQueue.custom.unused}/{autoScheduleStatus.paaQueue.custom.total}
-                      </div>
-                    )}
-                    {autoScheduleStatus.paaQueue.standard.total > 0 && (
-                      <div className="text-gray-500">
-                        Standard: {autoScheduleStatus.paaQueue.standard.unused}/{autoScheduleStatus.paaQueue.standard.total}
-                      </div>
-                    )}
+                    <div className="text-blue-600">
+                      {autoScheduleStatus.paaQueue.totalPaas || autoScheduleStatus.paaQueue.custom.total} PAAs × {autoScheduleStatus.paaQueue.totalLocations || autoScheduleStatus.locations.active} locations
+                    </div>
                     {autoScheduleStatus.paaQueue.isRecycling && (
-                      <span className="text-amber-600">Recycling</span>
+                      <span className="text-amber-600">All combinations used, recycling</span>
                     )}
                   </div>
                 </div>
@@ -1599,19 +1913,6 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                   </div>
                   <div className="text-xs text-gray-500">
                     active service locations
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Calendar className="h-4 w-4 text-purple-600" />
-                    <span className="text-sm font-medium text-gray-700">Upcoming</span>
-                  </div>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {autoScheduleStatus.upcoming.count}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    content items scheduled
                   </div>
                 </div>
               </div>
@@ -1995,21 +2296,57 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
         )}
       </div>
 
+      {/* Google Ads - only show for existing clients */}
+      {!isNewClient && (
+        <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+          <SectionHeader
+            section="googleads"
+            icon={TrendingUp}
+            title="Google Ads Conversion Tracking"
+            subtitle="Enhanced Conversions and Offline Conversion Import"
+          />
+          {expandedSections.has('googleads') && (
+            <div className="p-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <div className="flex items-start gap-3">
+                  <TrendingUp className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-medium">Link this client to Google Ads to:</p>
+                    <ul className="mt-2 list-disc list-inside space-y-1">
+                      <li>Send Enhanced Conversions when leads arrive (with GCLID)</li>
+                      <li>Send Offline Conversions when leads convert to sales</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <Link
+                href={`/admin/clients/${client!.id}/google-ads`}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <TrendingUp className="h-4 w-4" />
+                Configure Google Ads
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Bottom Save Button */}
       <div className="flex justify-end gap-3 pt-4">
-        <Button variant="outline" onClick={() => router.back()}>
+        <Button variant="outline" onClick={() => router.push('/admin/clients')}>
           Cancel
         </Button>
         <Button onClick={handleSave} disabled={saving}>
           {saving ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Saving...
+              {isNewClient ? 'Creating...' : 'Saving...'}
             </>
           ) : (
             <>
               <Save className="h-4 w-4 mr-2" />
-              Save Changes
+              {isNewClient ? 'Create Client' : 'Save Changes'}
             </>
           )}
         </Button>

@@ -4,6 +4,8 @@ export {
   markPAAAsUsed,
   getPAAQueueStatus,
   renderPAAQuestion,
+  selectNextPAACombination,
+  getPAACombinationStatus,
 } from './paa-selector'
 
 export {

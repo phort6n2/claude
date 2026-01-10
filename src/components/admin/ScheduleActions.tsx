@@ -40,6 +40,20 @@ interface AutoScheduleStatus {
   }
 }
 
+// Convert slot index to Mountain Time display
+const SLOT_TO_MOUNTAIN_TIME: Record<number, string> = {
+  0: '7:00 AM',
+  1: '8:00 AM',
+  2: '9:00 AM',
+  3: '10:00 AM',
+  4: '11:00 AM',
+  5: '1:00 PM',
+  6: '2:00 PM',
+  7: '3:00 PM',
+  8: '4:00 PM',
+  9: '5:00 PM',
+}
+
 export default function ScheduleActions({
   clientId,
   clientName,
@@ -51,6 +65,7 @@ export default function ScheduleActions({
   const [isLoading, setIsLoading] = useState(false)
   const [isFetching, setIsFetching] = useState(false)
   const [status, setStatus] = useState<AutoScheduleStatus | null>(null)
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
 
   // Fetch status when modal opens
@@ -62,14 +77,18 @@ export default function ScheduleActions({
 
   const fetchStatus = async () => {
     setIsFetching(true)
+    setFetchError(null)
     try {
       const response = await fetch(`/api/clients/${clientId}/auto-schedule`)
+      const data = await response.json()
       if (response.ok) {
-        const data = await response.json()
         setStatus(data)
+      } else {
+        setFetchError(data.error || `Failed to load (${response.status})`)
       }
     } catch (error) {
       console.error('Failed to fetch auto-schedule status:', error)
+      setFetchError(error instanceof Error ? error.message : 'Network error')
     } finally {
       setIsFetching(false)
     }
@@ -155,6 +174,7 @@ export default function ScheduleActions({
   const handleClose = () => {
     setIsOpen(false)
     setResult(null)
+    setFetchError(null)
   }
 
   const isEnabled = status?.automation.enabled ?? false
@@ -197,9 +217,28 @@ export default function ScheduleActions({
             </div>
 
             {/* Loading state */}
-            {isFetching && !status && (
+            {isFetching && !status && !fetchError && (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              </div>
+            )}
+
+            {/* Fetch error */}
+            {fetchError && (
+              <div className="mb-4 p-4 bg-red-50 rounded-lg">
+                <div className="flex items-center gap-2 text-red-700">
+                  <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">Failed to load schedule status</p>
+                    <p className="text-sm mt-1">{fetchError}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={fetchStatus}
+                  className="mt-3 px-3 py-1.5 text-sm bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors"
+                >
+                  Try Again
+                </button>
               </div>
             )}
 
@@ -252,10 +291,10 @@ export default function ScheduleActions({
                       <span className="text-sm font-medium text-blue-900">Schedule Slot</span>
                     </div>
                     <p className="text-blue-800 font-semibold">{status.slot.dayPairLabel}</p>
-                    {status.slot.timeSlotLabel && (
+                    {status.slot.timeSlot !== null && (
                       <div className="flex items-center gap-1 mt-1 text-sm text-blue-600">
                         <Clock className="h-3 w-3" />
-                        {status.slot.timeSlotLabel} UTC
+                        {SLOT_TO_MOUNTAIN_TIME[status.slot.timeSlot] || status.slot.timeSlotLabel} MT
                       </div>
                     )}
                   </div>

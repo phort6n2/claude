@@ -48,9 +48,10 @@ function generateGoogleMapsEmbed(params: {
   // Use the embedded maps URL format
   const embedUrl = `https://www.google.com/maps?q=${addressQuery}&output=embed`
 
-  return `<!-- Google Maps Embed -->
+  return `
+<!-- Google Maps Embed -->
 <div class="google-maps-embed" style="margin: 30px 0;">
-  <h3 style="margin-bottom: 15px;">📍 Find ${params.businessName}</h3>
+  <h3>📍 Find ${params.businessName}</h3>
   <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
     <iframe
       src="${embedUrl}"
@@ -1154,17 +1155,27 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           },
         })
 
-        // Publish to Podbean
+        // Wait a few seconds for GCS to fully propagate before Podbean fetches it
+        log(ctx, 'Waiting for GCS propagation...')
+        await new Promise(resolve => setTimeout(resolve, 5000))
+
+        // Publish to Podbean with retry logic
         log(ctx, 'Publishing podcast to Podbean...')
         try {
-          const podbeanResult = await withTimeout(
-            publishToPodbean({
-              title: blogResult!.title,
-              description: descriptionHtml,
-              audioUrl: gcsResult.url,
-            }),
-            TIMEOUTS.PODBEAN_PUBLISH,
-            'Podbean publishing'
+          const podbeanResult = await retryWithBackoff(
+            async () => {
+              return await withTimeout(
+                publishToPodbean({
+                  title: blogResult!.title,
+                  description: descriptionHtml,
+                  audioUrl: gcsResult.url,
+                }),
+                TIMEOUTS.PODBEAN_PUBLISH,
+                'Podbean publishing'
+              )
+            },
+            3,  // 3 attempts
+            3000 // 3 second base delay (3s, 6s, 12s backoff)
           )
 
           await prisma.podcast.update({
@@ -1179,7 +1190,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
 
           log(ctx, '✅ Podcast published to Podbean', { playerUrl: podbeanResult.playerUrl })
         } catch (podbeanError) {
-          logError(ctx, 'Failed to publish podcast to Podbean', podbeanError)
+          logError(ctx, 'Failed to publish podcast to Podbean after 3 attempts', podbeanError)
         }
 
         await prisma.contentItem.update({
@@ -1467,6 +1478,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       const podcast = await prisma.podcast.findFirst({ where: { contentItemId } })
       const video = await prisma.video.findFirst({ where: { contentItemId, videoType: 'SHORT' } })
       const wrhqSocialPosts = await prisma.wRHQSocialPost.findMany({ where: { contentItemId } })
+      const featuredImageForSchema = await prisma.image.findFirst({ where: { contentItemId, imageType: 'BLOG_FEATURED' } })
 
       if (blogPostForEmbed && blogPostForEmbed.wordpressPostId && contentItem.client.wordpressUrl) {
         // 1. Generate schema with all content references
@@ -1482,6 +1494,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             email: contentItem.client.email || '',
             logoUrl: contentItem.client.logoUrl,
             wordpressUrl: contentItem.client.wordpressUrl,
+            googleMapsUrl: contentItem.client.googleMapsUrl,
             serviceAreas: contentItem.client.serviceAreas,
             gbpRating: contentItem.client.gbpRating,
             gbpReviewCount: contentItem.client.gbpReviewCount,
@@ -1502,6 +1515,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             metaDescription: blogPostForEmbed.metaDescription,
             wordpressUrl: blogPostForEmbed.wordpressUrl,
             publishedAt: blogPostForEmbed.publishedAt,
+            imageUrl: featuredImageForSchema?.gcsUrl || null,
           },
           contentItem: {
             paaQuestion: contentItem.paaQuestion,
@@ -1553,6 +1567,49 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           if (shortVideoEmbed) {
             fullContent = shortVideoEmbed + '\n' + fullContent
             embedded.push('short-video')
+          }
+        }
+
+        // Check if podcast was generated but not published to Podbean - if so, try to publish it now
+        if (podcast && podcast.audioUrl && podcast.status === 'READY' && !podcast.podbeanPlayerUrl) {
+          log(ctx, '🎙️ Podcast was generated but not published to Podbean - attempting to publish now...')
+          try {
+            const podbeanResult = await retryWithBackoff(
+              async () => {
+                return await withTimeout(
+                  publishToPodbean({
+                    title: blogPostForEmbed.title,
+                    description: podcast.description || blogPostForEmbed.excerpt || '',
+                    audioUrl: podcast.audioUrl,
+                  }),
+                  TIMEOUTS.PODBEAN_PUBLISH,
+                  'Podbean publishing (retry during embed)'
+                )
+              },
+              3,  // 3 attempts
+              3000 // 3 second base delay
+            )
+
+            // Update podcast record with Podbean info
+            await prisma.podcast.update({
+              where: { id: podcast.id },
+              data: {
+                podbeanEpisodeId: podbeanResult.episodeId,
+                podbeanUrl: podbeanResult.url,
+                podbeanPlayerUrl: podbeanResult.playerUrl,
+                status: 'PUBLISHED',
+              },
+            })
+
+            // Update the local podcast object so embed works
+            podcast.podbeanPlayerUrl = podbeanResult.playerUrl
+            podcast.podbeanUrl = podbeanResult.url
+            podcast.podbeanEpisodeId = podbeanResult.episodeId
+            podcast.status = 'PUBLISHED'
+
+            log(ctx, '✅ Podcast published to Podbean during embed step', { playerUrl: podbeanResult.playerUrl })
+          } catch (podbeanError) {
+            logError(ctx, 'Failed to publish podcast to Podbean during embed step', podbeanError)
           }
         }
 

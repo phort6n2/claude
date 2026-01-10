@@ -300,3 +300,232 @@ export function renderPAAQuestion(
     .replace(/\{state\}/gi, location.state)
     .replace(/\{neighborhood\}/gi, location.neighborhood || location.city)
 }
+
+// ============================================
+// PAA + LOCATION COMBINATION SELECTION
+// ============================================
+
+interface SelectedCombination {
+  paa: {
+    id: string
+    question: string
+    priority: number
+    isCustom: boolean
+  }
+  location: {
+    id: string
+    city: string
+    state: string
+    neighborhood: string | null
+  }
+}
+
+/**
+ * Select the next PAA + Location combination ensuring all combinations are used.
+ *
+ * Strategy:
+ * 1. Get all active PAAs (custom first, then standard)
+ * 2. Get all active locations for the client
+ * 3. Find which combinations have already been used (from ContentItem records)
+ * 4. Select an unused combination, prioritizing variety:
+ *    - Avoid same PAA as last post
+ *    - Avoid same location as last post
+ *    - Prefer lower priority PAAs (process in order)
+ * 5. When all combinations exhausted, reset and start over
+ *
+ * This ensures: 10 PAAs × 4 locations = 40 unique posts before any repeat
+ *
+ * @param clientId - The client to select for
+ * @returns The selected PAA + Location combination, or null if none available
+ */
+export async function selectNextPAACombination(clientId: string): Promise<SelectedCombination | null> {
+  // Get all active PAAs for this client (custom first by priority, then standard)
+  const allPaas = await prisma.clientPAA.findMany({
+    where: {
+      clientId,
+      isActive: true,
+    },
+    orderBy: [
+      { priority: 'asc' },
+    ],
+    select: {
+      id: true,
+      question: true,
+      priority: true,
+      standardPaaId: true,
+    },
+  })
+
+  if (allPaas.length === 0) {
+    return null
+  }
+
+  // Get all active locations for this client
+  const allLocations = await prisma.serviceLocation.findMany({
+    where: {
+      clientId,
+      isActive: true,
+    },
+    select: {
+      id: true,
+      city: true,
+      state: true,
+      neighborhood: true,
+    },
+  })
+
+  // If no locations, we can't create combinations
+  if (allLocations.length === 0) {
+    return null
+  }
+
+  // Get the most recent content item to avoid repeating same PAA/location
+  const lastContent = await prisma.contentItem.findFirst({
+    where: {
+      clientId,
+      clientPAAId: { not: null },
+      serviceLocationId: { not: null },
+    },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      clientPAAId: true,
+      serviceLocationId: true,
+    },
+  })
+
+  // Get all used combinations (PAA + Location pairs that have content)
+  const usedCombinations = await prisma.contentItem.findMany({
+    where: {
+      clientId,
+      clientPAAId: { not: null },
+      serviceLocationId: { not: null },
+    },
+    select: {
+      clientPAAId: true,
+      serviceLocationId: true,
+    },
+    distinct: ['clientPAAId', 'serviceLocationId'],
+  })
+
+  // Create a set of used combination keys for fast lookup
+  const usedSet = new Set(
+    usedCombinations.map(c => `${c.clientPAAId}:${c.serviceLocationId}`)
+  )
+
+  // Generate all possible combinations
+  const allCombinations: Array<{
+    paa: typeof allPaas[0]
+    location: typeof allLocations[0]
+    key: string
+  }> = []
+
+  for (const paa of allPaas) {
+    for (const location of allLocations) {
+      allCombinations.push({
+        paa,
+        location,
+        key: `${paa.id}:${location.id}`,
+      })
+    }
+  }
+
+  // Find unused combinations
+  let unusedCombinations = allCombinations.filter(c => !usedSet.has(c.key))
+
+  // If all combinations used, reset by treating all as available
+  const isRecycling = unusedCombinations.length === 0
+  if (isRecycling) {
+    console.log(`[PAA Selector] All ${allCombinations.length} combinations used, starting new cycle`)
+    unusedCombinations = allCombinations
+  }
+
+  // Sort unused combinations to maximize variety:
+  // 1. Prefer different PAA than last used
+  // 2. Prefer different location than last used
+  // 3. Then by PAA priority (lower = higher priority)
+  unusedCombinations.sort((a, b) => {
+    const aLastPaa = lastContent && a.paa.id === lastContent.clientPAAId ? 1 : 0
+    const bLastPaa = lastContent && b.paa.id === lastContent.clientPAAId ? 1 : 0
+    const aLastLoc = lastContent && a.location.id === lastContent.serviceLocationId ? 1 : 0
+    const bLastLoc = lastContent && b.location.id === lastContent.serviceLocationId ? 1 : 0
+
+    // First: avoid same PAA as last
+    if (aLastPaa !== bLastPaa) return aLastPaa - bLastPaa
+    // Second: avoid same location as last
+    if (aLastLoc !== bLastLoc) return aLastLoc - bLastLoc
+    // Third: by PAA priority
+    return a.paa.priority - b.paa.priority
+  })
+
+  const selected = unusedCombinations[0]
+  if (!selected) {
+    return null
+  }
+
+  return {
+    paa: {
+      id: selected.paa.id,
+      question: selected.paa.question,
+      priority: selected.paa.priority,
+      isCustom: selected.paa.standardPaaId === null,
+    },
+    location: {
+      id: selected.location.id,
+      city: selected.location.city,
+      state: selected.location.state,
+      neighborhood: selected.location.neighborhood,
+    },
+  }
+}
+
+/**
+ * Get PAA combination status showing how many unique combinations have been used.
+ */
+export async function getPAACombinationStatus(clientId: string): Promise<{
+  totalPaas: number
+  totalLocations: number
+  totalCombinations: number
+  usedCombinations: number
+  remainingCombinations: number
+  isRecycling: boolean
+  customPaas: number
+  standardPaas: number
+}> {
+  const [customCount, standardCount, locationCount, usedCount] = await Promise.all([
+    prisma.clientPAA.count({
+      where: { clientId, isActive: true, standardPaaId: null },
+    }),
+    prisma.clientPAA.count({
+      where: { clientId, isActive: true, standardPaaId: { not: null } },
+    }),
+    prisma.serviceLocation.count({
+      where: { clientId, isActive: true },
+    }),
+    prisma.contentItem.findMany({
+      where: {
+        clientId,
+        clientPAAId: { not: null },
+        serviceLocationId: { not: null },
+      },
+      select: {
+        clientPAAId: true,
+        serviceLocationId: true,
+      },
+      distinct: ['clientPAAId', 'serviceLocationId'],
+    }).then(items => items.length),
+  ])
+
+  const totalPaas = customCount + standardCount
+  const totalCombinations = totalPaas * locationCount
+
+  return {
+    totalPaas,
+    totalLocations: locationCount,
+    totalCombinations,
+    usedCombinations: usedCount,
+    remainingCombinations: Math.max(0, totalCombinations - usedCount),
+    isRecycling: usedCount >= totalCombinations && totalCombinations > 0,
+    customPaas: customCount,
+    standardPaas: standardCount,
+  }
+}

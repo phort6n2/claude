@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { updatePost, getPost } from '@/lib/integrations/wordpress'
+import { generateSchemaGraph } from '@/lib/pipeline/schema-markup'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -190,6 +191,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         wrhqSocialPosts: true,
         shortFormVideos: true,
         videos: true,
+        images: true,
       },
     })
 
@@ -232,13 +234,64 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     fullContent = fullContent.replace(/<div class="video-container"[\s\S]*?<\/div>/g, '')
     fullContent = fullContent.replace(/<!-- Podcast Episode -->[\s\S]*?<\/div>/g, '')
     fullContent = fullContent.replace(/<div class="podcast-embed"[\s\S]*?<\/div>/g, '')
+    // NOTE: We do NOT remove or regenerate Google Maps embeds here
+    // The initial publish creates a good map embed that shows the business listing
+    // Re-embed should preserve that original map
 
-    // 0. Add JSON-LD schema markup (at the very beginning)
-    if (contentItem.blogPost.schemaJson) {
-      const schemaEmbed = generateSchemaEmbed(contentItem.blogPost.schemaJson)
-      fullContent = schemaEmbed + '\n\n' + fullContent
-      embedded.push('schema')
-    }
+    // 0. REGENERATE schema using latest code (with image, priceRange, etc.)
+    const featuredImage = contentItem.images.find(img => img.imageType === 'BLOG_FEATURED')
+    const schemaJson = generateSchemaGraph({
+      client: {
+        businessName: contentItem.client.businessName,
+        streetAddress: contentItem.client.streetAddress,
+        city: contentItem.client.city,
+        state: contentItem.client.state,
+        postalCode: contentItem.client.postalCode,
+        country: contentItem.client.country || 'US',
+        phone: contentItem.client.phone,
+        email: contentItem.client.email || '',
+        logoUrl: contentItem.client.logoUrl,
+        wordpressUrl: contentItem.client.wordpressUrl,
+        googleMapsUrl: contentItem.client.googleMapsUrl,
+        serviceAreas: contentItem.client.serviceAreas,
+        gbpRating: contentItem.client.gbpRating,
+        gbpReviewCount: contentItem.client.gbpReviewCount,
+        offersWindshieldRepair: contentItem.client.offersWindshieldRepair,
+        offersWindshieldReplacement: contentItem.client.offersWindshieldReplacement,
+        offersSideWindowRepair: contentItem.client.offersSideWindowRepair,
+        offersBackWindowRepair: contentItem.client.offersBackWindowRepair,
+        offersSunroofRepair: contentItem.client.offersSunroofRepair,
+        offersRockChipRepair: contentItem.client.offersRockChipRepair,
+        offersAdasCalibration: contentItem.client.offersAdasCalibration,
+        offersMobileService: contentItem.client.offersMobileService,
+      },
+      blogPost: {
+        title: contentItem.blogPost.title,
+        slug: contentItem.blogPost.slug,
+        content: contentItem.blogPost.content,
+        excerpt: contentItem.blogPost.excerpt,
+        metaDescription: contentItem.blogPost.metaDescription,
+        wordpressUrl: contentItem.blogPost.wordpressUrl,
+        publishedAt: contentItem.blogPost.publishedAt,
+        imageUrl: featuredImage?.gcsUrl || null,
+      },
+      contentItem: {
+        paaQuestion: contentItem.paaQuestion,
+      },
+      podcast: contentItem.podcast ? { audioUrl: contentItem.podcast.audioUrl, duration: contentItem.podcast.duration } : undefined,
+      video: contentItem.videos[0] ? { videoUrl: contentItem.videos[0].videoUrl, thumbnailUrl: contentItem.videos[0].thumbnailUrl, duration: contentItem.videos[0].duration } : undefined,
+    })
+
+    // Save regenerated schema to database
+    await prisma.blogPost.update({
+      where: { id: contentItem.blogPost.id },
+      data: { schemaJson },
+    })
+
+    // Embed the fresh schema
+    const schemaEmbed = generateSchemaEmbed(schemaJson)
+    fullContent = schemaEmbed + '\n\n' + fullContent
+    embedded.push('schema')
 
     // 1. Add short-form video (floated right)
     // YouTube URL is in socialPosts.publishedUrl after publishing via Late
@@ -283,23 +336,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     // 2. Add long-form video embed (if present)
     if (contentItem.longformVideoUrl) {
       const longVideoEmbed = generateLongVideoEmbed(contentItem.longformVideoUrl)
-      // Insert before Google Maps embed (which is at the end)
-      const mapsIndex = fullContent.indexOf('<div class="google-maps-embed"')
-      if (mapsIndex !== -1) {
-        fullContent = fullContent.slice(0, mapsIndex) + longVideoEmbed + '\n\n' + fullContent.slice(mapsIndex)
-      } else {
-        // No maps embed found, insert before last paragraph
-        const lastParagraphStart = fullContent.lastIndexOf('<p>')
-        if (lastParagraphStart !== -1) {
-          fullContent = fullContent.slice(0, lastParagraphStart) + '\n\n' + longVideoEmbed + '\n\n' + fullContent.slice(lastParagraphStart)
-        } else {
-          fullContent = fullContent + '\n\n' + longVideoEmbed
-        }
-      }
+      fullContent = fullContent + '\n\n' + longVideoEmbed
       embedded.push('long-video')
     }
 
-    // 3. Add podcast embed at the very end (after Google Maps)
+    // NOTE: Google Maps is NOT added here - we preserve the one from initial publish
+    // which shows the actual Google Business listing with ratings
+
+    // 3. Add podcast embed at the end
     if (contentItem.podcast?.podbeanPlayerUrl) {
       const podcastEmbed = generatePodcastEmbed(
         contentItem.blogPost.title,

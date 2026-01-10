@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getPAAQueueStatus } from '@/lib/automation/paa-selector'
+import { getPAACombinationStatus } from '@/lib/automation/paa-selector'
 import { getLocationRotationStatus } from '@/lib/automation/location-rotator'
 import { DAY_PAIRS, TIME_SLOTS, assignSlotToClient, getSchedulingCapacity } from '@/lib/automation/auto-scheduler'
 import type { DayPairKey, TimeSlotIndex } from '@/lib/automation/auto-scheduler'
@@ -35,11 +35,32 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 })
     }
 
-    // Get PAA queue status
-    const paaStatus = await getPAAQueueStatus(id)
+    // Get PAA + Location combination status (with error handling)
+    let combinationStatus
+    try {
+      combinationStatus = await getPAACombinationStatus(id)
+    } catch (err) {
+      console.error('Failed to get PAA combination status:', err)
+      combinationStatus = {
+        totalPaas: 0,
+        totalLocations: 0,
+        totalCombinations: 0,
+        usedCombinations: 0,
+        remainingCombinations: 0,
+        isRecycling: false,
+        customPaas: 0,
+        standardPaas: 0,
+      }
+    }
 
-    // Get location rotation status
-    const locationStatus = await getLocationRotationStatus(id)
+    // Get location rotation status (with error handling)
+    let locationStatus
+    try {
+      locationStatus = await getLocationRotationStatus(id)
+    } catch (err) {
+      console.error('Failed to get location rotation status:', err)
+      locationStatus = { activeCount: 0, neverUsedCount: 0, locations: [] }
+    }
 
     // Get upcoming scheduled content count
     const upcomingCount = await prisma.contentItem.count({
@@ -81,11 +102,16 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
         available: capacity.availableSlots,
       },
       paaQueue: {
-        unused: paaStatus.unusedCount,
-        total: paaStatus.totalCount,
-        isRecycling: paaStatus.isRecycling,
-        custom: paaStatus.custom,
-        standard: paaStatus.standard,
+        // Now shows combinations (PAAs × Locations) instead of just PAAs
+        unused: combinationStatus.remainingCombinations,
+        total: combinationStatus.totalCombinations,
+        isRecycling: combinationStatus.isRecycling,
+        custom: { unused: combinationStatus.customPaas, total: combinationStatus.customPaas },
+        standard: { unused: combinationStatus.standardPaas, total: combinationStatus.standardPaas },
+        // Additional detail
+        totalPaas: combinationStatus.totalPaas,
+        totalLocations: combinationStatus.totalLocations,
+        usedCombinations: combinationStatus.usedCombinations,
       },
       locations: {
         active: locationStatus.activeCount,

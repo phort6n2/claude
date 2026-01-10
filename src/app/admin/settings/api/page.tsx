@@ -94,6 +94,18 @@ const API_KEYS: ApiKeyConfig[] = [
     description: 'API password for DataForSEO',
     testable: true,
   },
+  {
+    key: 'GBP_CLIENT_ID',
+    label: 'Google Business Profile Client ID',
+    description: 'OAuth client ID for GBP photo fetching (create in Google Cloud Console)',
+    testable: false,
+  },
+  {
+    key: 'GBP_CLIENT_SECRET',
+    label: 'Google Business Profile Client Secret',
+    description: 'OAuth client secret for GBP photo fetching',
+    testable: true,
+  },
 ]
 
 interface SettingState {

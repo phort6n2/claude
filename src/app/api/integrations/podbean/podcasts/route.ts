@@ -67,9 +67,9 @@ export async function GET() {
 
     const accessToken = await getAccessToken(credentials.clientId, credentials.clientSecret)
 
-    // Get podcast info - Podbean returns the podcast associated with the API credentials
+    // Get all podcasts for the account
     const response = await fetch(
-      `https://api.podbean.com/v1/podcast?access_token=${accessToken}`,
+      `https://api.podbean.com/v1/podcasts?access_token=${accessToken}`,
       { method: 'GET' }
     )
 
@@ -83,18 +83,18 @@ export async function GET() {
 
     const data = await response.json()
 
-    // Podbean returns a single podcast object for the account
-    const podcast: PodbeanPodcast = {
-      id: data.podcast.id,
-      title: data.podcast.title,
-      logo: data.podcast.logo,
-      description: data.podcast.desc || '',
-      website: data.podcast.website || '',
-    }
+    // Podbean returns an array of podcasts
+    const podcasts: PodbeanPodcast[] = (data.podcasts || []).map((p: Record<string, unknown>) => ({
+      id: p.id as string,
+      title: p.title as string,
+      logo: p.logo as string || '',
+      description: (p.desc as string) || '',
+      website: (p.website as string) || '',
+    }))
 
     return NextResponse.json({
       connected: true,
-      podcasts: [podcast], // Return as array for consistency
+      podcasts,
     })
   } catch (error) {
     console.error('Failed to fetch Podbean podcasts:', error)

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { after } from 'next/server'
 import { prisma } from '@/lib/db'
-import { selectNextPAA, markPAAAsUsed, renderPAAQuestion } from '@/lib/automation/paa-selector'
-import { selectNextLocation, markLocationAsUsed, getDefaultLocation } from '@/lib/automation/location-rotator'
+import { selectNextPAACombination, markPAAAsUsed, renderPAAQuestion } from '@/lib/automation/paa-selector'
+import { markLocationAsUsed } from '@/lib/automation/location-rotator'
 
 // Allow up to 10 minutes for the full pipeline (blog + images + WP + WRHQ + podcast + video + social)
 export const maxDuration = 600
@@ -36,34 +36,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 })
     }
 
-    // Select next PAA
-    const paa = await selectNextPAA(clientId)
-    if (!paa) {
+    // Select next PAA + Location combination
+    // This ensures all combinations are used before any repeat
+    const combination = await selectNextPAACombination(clientId)
+    if (!combination) {
       return NextResponse.json({
         success: false,
-        error: 'No active PAA questions available. Add some PAAs for this client first.',
-        step: 'paa_selection',
+        error: 'No active PAA questions or locations available. Add PAAs and locations for this client first.',
+        step: 'combination_selection',
       }, { status: 400 })
     }
 
-    // Select next location
-    let location = await selectNextLocation(clientId)
-    let locationId: string | null = null
-
-    if (location) {
-      locationId = location.id
-    } else {
-      // Fall back to default location
-      const defaultLoc = await getDefaultLocation(clientId)
-      location = {
-        id: defaultLoc.locationId || '',
-        city: defaultLoc.city,
-        state: defaultLoc.state,
-        neighborhood: defaultLoc.neighborhood,
-        isHeadquarters: true,
-      }
-      locationId = defaultLoc.locationId
-    }
+    const { paa, location } = combination
 
     // Render the PAA question with location
     const renderedQuestion = renderPAAQuestion(paa.question, {
@@ -82,7 +66,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       data: {
         clientId,
         clientPAAId: paa.id,
-        serviceLocationId: locationId,
+        serviceLocationId: location.id,
         paaQuestion: renderedQuestion,
         scheduledDate: today,
         scheduledTime: client.preferredPublishTime,
@@ -90,11 +74,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       },
     })
 
-    // Mark PAA and location as used
+    // Mark PAA and location as used (for legacy tracking)
     await markPAAAsUsed(paa.id)
-    if (locationId) {
-      await markLocationAsUsed(locationId)
-    }
+    await markLocationAsUsed(location.id)
 
     // Build review URL for the response
     const reviewUrl = `/admin/content/${contentItem.id}/review`

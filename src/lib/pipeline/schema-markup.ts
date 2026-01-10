@@ -11,6 +11,7 @@ interface Client {
   email: string
   logoUrl: string | null
   wordpressUrl: string | null
+  googleMapsUrl: string | null
   serviceAreas: string[]
   gbpRating: number | null
   gbpReviewCount: number | null
@@ -33,6 +34,7 @@ interface BlogPost {
   metaDescription: string | null
   wordpressUrl: string | null
   publishedAt: Date | null
+  imageUrl: string | null
 }
 
 interface ContentItem {
@@ -59,14 +61,18 @@ interface PodcastEpisodeSchema extends Record<string, unknown> {
   '@id': string
   name: string
   description: string | null
-  audio: {
+  url: string
+  datePublished?: string
+  associatedMedia: {
     '@type': 'AudioObject'
     contentUrl: string
+    encodingFormat: string
     duration?: string
   }
   partOfSeries: {
     '@type': 'PodcastSeries'
     name: string
+    url: string
   }
 }
 
@@ -98,6 +104,7 @@ export function generateSchemaGraph(params: SchemaParams): string {
     url: baseUrl,
     telephone: client.phone,
     email: client.email,
+    priceRange: '$$',
     address: {
       '@type': 'PostalAddress',
       streetAddress: client.streetAddress,
@@ -204,14 +211,27 @@ export function generateSchemaGraph(params: SchemaParams): string {
           },
         }
       : {}),
+    ...(client.googleMapsUrl
+      ? { hasMap: client.googleMapsUrl }
+      : {}),
   }
 
   // BlogPosting Schema
+  // Build the image array - use blog post image if available, fallback to client logo
+  const articleImages: string[] = []
+  if (blogPost.imageUrl) {
+    articleImages.push(blogPost.imageUrl)
+  }
+  if (client.logoUrl && client.logoUrl !== blogPost.imageUrl) {
+    articleImages.push(client.logoUrl)
+  }
+
   const blogPosting = {
     '@type': 'BlogPosting',
     '@id': articleId,
     headline: blogPost.title,
     description: blogPost.metaDescription || blogPost.excerpt,
+    ...(articleImages.length > 0 ? { image: articleImages } : {}),
     author: {
       '@type': 'Organization',
       '@id': organizationId,
@@ -265,16 +285,20 @@ export function generateSchemaGraph(params: SchemaParams): string {
     podcastEpisode = {
       '@type': 'PodcastEpisode',
       '@id': `${articleUrl}#podcast`,
-      name: blogPost.title,
+      name: `${blogPost.title} - Podcast Episode`,
       description: blogPost.excerpt,
-      audio: {
+      url: articleUrl,
+      datePublished: blogPost.publishedAt?.toISOString(),
+      associatedMedia: {
         '@type': 'AudioObject',
         contentUrl: podcast.audioUrl,
+        encodingFormat: 'audio/mpeg',
         duration: podcast.duration ? formatDuration(podcast.duration) : undefined,
       },
       partOfSeries: {
         '@type': 'PodcastSeries',
         name: `${client.businessName} Auto Glass Insights`,
+        url: baseUrl,
       },
     }
 

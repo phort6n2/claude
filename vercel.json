@@ -1,12 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/cron/auto-schedule-weekly",
-      "schedule": "0 18 * * 0"
-    },
-    {
-      "path": "/api/cron/generate-content",
-      "schedule": "*/15 * * * *"
+      "path": "/api/cron/hourly-publish",
+      "schedule": "0 0,14-18,20-23 * * 1-5"
     },
     {
       "path": "/api/cron/generate-press-releases",
@@ -17,12 +13,8 @@
       "schedule": "0 */6 * * *"
     },
     {
-      "path": "/api/cron/weekly-generation",
-      "schedule": "0 6 * * 1"
-    },
-    {
-      "path": "/api/cron/daily-publish",
-      "schedule": "0 9 * * *"
+      "path": "/api/cron/gbp-posts",
+      "schedule": "0 14 * * *"
     }
   ]
 }
