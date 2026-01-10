@@ -28,6 +28,7 @@ import {
   Search,
   ExternalLink,
   Store,
+  Users,
 } from 'lucide-react'
 
 interface PodbeanPodcast {
@@ -1006,6 +1007,13 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
             >
               <Store className="h-4 w-4" />
               GBP Posts
+            </Link>
+            <Link
+              href={`/admin/clients/${client!.id}/users`}
+              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600"
+            >
+              <Users className="h-4 w-4" />
+              Portal Users
             </Link>
           </div>
         )}
