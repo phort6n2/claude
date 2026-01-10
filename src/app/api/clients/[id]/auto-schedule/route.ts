@@ -35,11 +35,32 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 })
     }
 
-    // Get PAA + Location combination status
-    const combinationStatus = await getPAACombinationStatus(id)
+    // Get PAA + Location combination status (with error handling)
+    let combinationStatus
+    try {
+      combinationStatus = await getPAACombinationStatus(id)
+    } catch (err) {
+      console.error('Failed to get PAA combination status:', err)
+      combinationStatus = {
+        totalPaas: 0,
+        totalLocations: 0,
+        totalCombinations: 0,
+        usedCombinations: 0,
+        remainingCombinations: 0,
+        isRecycling: false,
+        customPaas: 0,
+        standardPaas: 0,
+      }
+    }
 
-    // Get location rotation status
-    const locationStatus = await getLocationRotationStatus(id)
+    // Get location rotation status (with error handling)
+    let locationStatus
+    try {
+      locationStatus = await getLocationRotationStatus(id)
+    } catch (err) {
+      console.error('Failed to get location rotation status:', err)
+      locationStatus = { activeCount: 0, neverUsedCount: 0, locations: [] }
+    }
 
     // Get upcoming scheduled content count
     const upcomingCount = await prisma.contentItem.count({
