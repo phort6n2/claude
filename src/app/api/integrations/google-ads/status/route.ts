@@ -5,6 +5,21 @@ import { encrypt } from '@/lib/encryption'
 
 export const dynamic = 'force-dynamic'
 
+// Extended type for GoogleAdsConfig with new OAuth fields
+interface GoogleAdsConfigExtended {
+  id: string
+  mccCustomerId: string | null
+  accessToken: string | null
+  refreshToken: string | null
+  tokenExpiry: Date | null
+  developerToken: string | null
+  oauthClientId?: string | null
+  oauthClientSecret?: string | null
+  isConnected: boolean
+  lastSyncAt: Date | null
+  lastError: string | null
+}
+
 /**
  * GET /api/integrations/google-ads/status
  * Get Google Ads connection status
@@ -16,7 +31,7 @@ export async function GET() {
   }
 
   try {
-    const config = await prisma.googleAdsConfig.findFirst()
+    const config = await prisma.googleAdsConfig.findFirst() as GoogleAdsConfigExtended | null
 
     if (!config) {
       return NextResponse.json({
@@ -92,7 +107,7 @@ export async function POST(request: NextRequest) {
         ...updateData,
       },
       update: updateData,
-    })
+    }) as GoogleAdsConfigExtended
 
     return NextResponse.json({
       success: true,

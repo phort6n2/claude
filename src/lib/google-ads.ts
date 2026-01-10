@@ -9,12 +9,27 @@ const GOOGLE_ADS_API_BASE = `https://googleads.googleapis.com/${GOOGLE_ADS_API_V
 const GOOGLE_OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const GOOGLE_OAUTH_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 
+// Extended type for GoogleAdsConfig with new OAuth fields
+interface GoogleAdsConfigExtended {
+  id: string
+  mccCustomerId: string | null
+  accessToken: string | null
+  refreshToken: string | null
+  tokenExpiry: Date | null
+  developerToken: string | null
+  oauthClientId?: string | null
+  oauthClientSecret?: string | null
+  isConnected: boolean
+  lastSyncAt: Date | null
+  lastError: string | null
+}
+
 /**
  * Get Google Ads API credentials from database
  */
 export async function getGoogleAdsCredentials() {
   // Get MCC config from database
-  const config = await prisma.googleAdsConfig.findFirst()
+  const config = await prisma.googleAdsConfig.findFirst() as GoogleAdsConfigExtended | null
 
   if (!config?.isConnected) {
     return null
@@ -34,17 +49,22 @@ export async function getGoogleAdsCredentials() {
 /**
  * Get OAuth credentials from database (for use before connection is established)
  */
-export async function getOAuthCredentials() {
-  const config = await prisma.googleAdsConfig.findFirst()
+export async function getOAuthCredentials(): Promise<{ clientId: string; clientSecret: string } | null> {
+  const config = await prisma.googleAdsConfig.findFirst() as GoogleAdsConfigExtended | null
 
   if (!config?.oauthClientId || !config?.oauthClientSecret) {
     return null
   }
 
-  return {
-    clientId: decrypt(config.oauthClientId),
-    clientSecret: decrypt(config.oauthClientSecret),
+  const clientId = decrypt(config.oauthClientId)
+  const clientSecret = decrypt(config.oauthClientSecret)
+
+  // If decryption failed, return null
+  if (!clientId || !clientSecret) {
+    return null
   }
+
+  return { clientId, clientSecret }
 }
 
 /**
