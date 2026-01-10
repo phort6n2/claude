@@ -113,8 +113,57 @@ interface ClientData {
 }
 
 interface ClientEditFormProps {
-  client: ClientData
+  client?: ClientData | null
   hasWordPressPassword?: boolean
+}
+
+// Default values for a new client
+const defaultClientData: Omit<ClientData, 'id'> & { id: string } = {
+  id: '',
+  businessName: '',
+  contactPerson: null,
+  phone: '',
+  email: '',
+  streetAddress: '',
+  city: '',
+  state: '',
+  postalCode: '',
+  country: 'US',
+  googlePlaceId: null,
+  googleMapsUrl: null,
+  wrhqDirectoryUrl: null,
+  hasShopLocation: true,
+  offersMobileService: false,
+  offersWindshieldRepair: true,
+  offersWindshieldReplacement: true,
+  offersSideWindowRepair: false,
+  offersBackWindowRepair: false,
+  offersSunroofRepair: false,
+  offersRockChipRepair: true,
+  offersAdasCalibration: false,
+  serviceAreas: [],
+  logoUrl: null,
+  primaryColor: '#1e40af',
+  secondaryColor: '#3b82f6',
+  accentColor: '#f59e0b',
+  brandVoice: 'Professional, helpful, and knowledgeable',
+  wordpressUrl: null,
+  wordpressUsername: null,
+  wordpressAppPassword: null,
+  ctaText: 'Get a Free Quote',
+  ctaUrl: null,
+  creatifyTemplateId: null,
+  preferredPublishTime: '09:00',
+  timezone: 'America/Los_Angeles',
+  socialPlatforms: [],
+  socialAccountIds: null,
+  podbeanPodcastId: null,
+  podbeanPodcastTitle: null,
+  podbeanPodcastUrl: null,
+  wrhqYoutubePlaylistId: null,
+  wrhqYoutubePlaylistTitle: null,
+  autoScheduleEnabled: false,
+  autoScheduleFrequency: 2,
 }
 
 // Convert slot index to Mountain Time display
@@ -150,7 +199,8 @@ type SectionKey = 'business' | 'location' | 'serviceLocations' | 'branding' | 'w
 
 export default function ClientEditForm({ client, hasWordPressPassword = false }: ClientEditFormProps) {
   const router = useRouter()
-  const [formData, setFormData] = useState<ClientData>(client)
+  const isNewClient = !client?.id
+  const [formData, setFormData] = useState<ClientData>(client || defaultClientData as ClientData)
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -274,10 +324,11 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       .finally(() => setLoadingYoutube(false))
   }, [])
 
-  // Load service locations
+  // Load service locations (only for existing clients)
   useEffect(() => {
+    if (isNewClient) return
     setLoadingLocations(true)
-    fetch(`/api/clients/${client.id}/locations`)
+    fetch(`/api/clients/${client!.id}/locations`)
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -292,7 +343,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       })
       .catch(() => {})
       .finally(() => setLoadingLocations(false))
-  }, [client.id])
+  }, [client?.id, isNewClient])
 
   // Load DataForSEO balance
   useEffect(() => {
@@ -307,10 +358,11 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       .catch(() => setDataForSeoConfigured(false))
   }, [])
 
-  // Load existing PAAs
+  // Load existing PAAs (only for existing clients)
   useEffect(() => {
+    if (isNewClient) return
     setLoadingPaas(true)
-    fetch(`/api/clients/${client.id}/paas`)
+    fetch(`/api/clients/${client!.id}/paas`)
       .then((res) => res.json())
       .then((data) => {
         if (data.paas && Array.isArray(data.paas)) {
@@ -324,7 +376,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       })
       .catch(() => {})
       .finally(() => setLoadingPaas(false))
-  }, [client.id])
+  }, [client?.id, isNewClient])
 
   // Validate PAA text as user types
   useEffect(() => {
@@ -360,10 +412,11 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
     })
   }, [paaText])
 
-  // Load auto-schedule status
+  // Load auto-schedule status (only for existing clients)
   useEffect(() => {
+    if (isNewClient) return
     setLoadingAutoSchedule(true)
-    fetch(`/api/clients/${client.id}/auto-schedule`)
+    fetch(`/api/clients/${client!.id}/auto-schedule`)
       .then((res) => res.json())
       .then((data) => {
         if (data.paaQueue && data.locations) {
@@ -377,7 +430,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       })
       .catch(() => {})
       .finally(() => setLoadingAutoSchedule(false))
-  }, [client.id])
+  }, [client?.id, isNewClient])
 
   function toggleSection(section: SectionKey) {
     setExpandedSections((prev) => {
@@ -450,7 +503,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
           url: formData.wordpressUrl,
           username: formData.wordpressUsername,
           password: formData.wordpressAppPassword,
-          clientId: client.id,
+          clientId: isNewClient ? undefined : client!.id,
         }),
       })
       const data = await response.json()
@@ -474,8 +527,12 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
     setSaveSuccess(false)
 
     try {
-      const response = await fetch(`/api/clients/${client.id}`, {
-        method: 'PUT',
+      // Determine the API endpoint and method
+      const url = isNewClient ? '/api/clients' : `/api/clients/${client!.id}`
+      const method = isNewClient ? 'POST' : 'PUT'
+
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
@@ -488,10 +545,13 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
         throw new Error(data.error || 'Failed to save')
       }
 
+      const clientData = await response.json()
+      const clientId = clientData.id || client?.id
+
       // Save service locations
       const validLocations = serviceLocations.filter((loc) => loc.city && loc.state)
-      if (validLocations.length > 0) {
-        const locResponse = await fetch(`/api/clients/${client.id}/locations`, {
+      if (validLocations.length > 0 && clientId) {
+        const locResponse = await fetch(`/api/clients/${clientId}/locations`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ locations: validLocations }),
@@ -503,8 +563,13 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
         }
       }
 
-      setSaveSuccess(true)
-      setTimeout(() => setSaveSuccess(false), 3000)
+      if (isNewClient) {
+        // Redirect to the new client's edit page
+        router.push(`/admin/clients/${clientId}`)
+      } else {
+        setSaveSuccess(true)
+        setTimeout(() => setSaveSuccess(false), 3000)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
@@ -517,12 +582,16 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       setPaaMessage({ type: 'error', text: 'No valid PAA questions to save' })
       return
     }
+    if (isNewClient) {
+      setPaaMessage({ type: 'error', text: 'Save the client first before adding PAA questions' })
+      return
+    }
 
     setSavingPaas(true)
     setPaaMessage(null)
 
     try {
-      const response = await fetch(`/api/clients/${client.id}/paas`, {
+      const response = await fetch(`/api/clients/${client!.id}/paas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paaText, append }),
@@ -535,7 +604,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
         setPaaText('') // Clear the textarea after saving
         setExistingPaaCount(data.total || paaValidation.valid)
         // Refresh auto-schedule status to update PAA queue count
-        fetch(`/api/clients/${client.id}/auto-schedule`)
+        fetch(`/api/clients/${client!.id}/auto-schedule`)
           .then(res => res.json())
           .then(statusData => {
             if (statusData.paaQueue && statusData.locations) {
@@ -558,6 +627,10 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   }
 
   async function fetchGooglePaas() {
+    if (isNewClient) {
+      setFetchError('Save the client first before fetching PAAs')
+      return
+    }
     setFetchingGooglePaas(true)
     setFetchError(null)
     setFetchedPaas([])
@@ -565,7 +638,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
     setDuplicatesSkipped(0)
 
     try {
-      const response = await fetch(`/api/clients/${client.id}/fetch-paas`, {
+      const response = await fetch(`/api/clients/${client!.id}/fetch-paas`, {
         method: 'POST',
       })
       const data = await response.json()
@@ -650,13 +723,14 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   async function addSelectedPaasAndSave() {
     const selected = fetchedPaas.filter(paa => paa.selected)
     if (selected.length === 0) return
+    if (isNewClient) return
 
     setSavingPaas(true)
     try {
       const questions = selected.map(paa => paa.formatted)
       // API expects paaText (newline-separated) and append boolean
       const paaTextToSave = questions.join('\n')
-      const response = await fetch(`/api/clients/${client.id}/paas`, {
+      const response = await fetch(`/api/clients/${client!.id}/paas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paaText: paaTextToSave, append: true }),
@@ -687,10 +761,11 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       setShowExistingPaas(false)
       return
     }
+    if (isNewClient) return
 
     setLoadingExistingPaas(true)
     try {
-      const response = await fetch(`/api/clients/${client.id}/paas`)
+      const response = await fetch(`/api/clients/${client!.id}/paas`)
       const data = await response.json()
       if (response.ok) {
         setExistingPaasList(data.paas || [])
@@ -704,11 +779,12 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   }
 
   async function runAutomationTest() {
+    if (isNewClient) return
     setTestRunning(true)
     setTestResult(null)
 
     try {
-      const response = await fetch(`/api/clients/${client.id}/auto-schedule/test`, {
+      const response = await fetch(`/api/clients/${client!.id}/auto-schedule/test`, {
         method: 'POST',
       })
       const data = await response.json()
@@ -728,7 +804,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
           details: data.details,
         })
         // Refresh the auto-schedule status after test
-        fetch(`/api/clients/${client.id}/auto-schedule`)
+        fetch(`/api/clients/${client!.id}/auto-schedule`)
           .then((res) => res.json())
           .then((statusData) => {
             if (statusData.paaQueue && statusData.locations) {
@@ -795,7 +871,9 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       <div className="sticky top-0 z-10 bg-white border-b shadow-sm -mx-6 -mt-6 px-6 py-3 mb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-lg font-semibold">{formData.businessName}</h1>
+            <h1 className="text-lg font-semibold">
+              {isNewClient ? 'New Client' : formData.businessName || 'Edit Client'}
+            </h1>
             {saveSuccess && (
               <span className="flex items-center gap-1 text-sm text-green-600">
                 <Check className="h-4 w-4" /> Saved
@@ -808,41 +886,43 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
             )}
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={() => router.back()}>
+            <Button variant="outline" onClick={() => router.push('/admin/clients')}>
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Saving...
+                  {isNewClient ? 'Creating...' : 'Saving...'}
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  Save Changes
+                  {isNewClient ? 'Create Client' : 'Save Changes'}
                 </>
               )}
             </Button>
           </div>
         </div>
-        {/* Quick Links */}
-        <div className="flex items-center gap-4 mt-2 pt-2 border-t border-gray-100">
-          <Link
-            href={`/admin/clients/${formData.id}/calendar`}
-            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600"
-          >
-            <Calendar className="h-4 w-4" />
-            Content Calendar
-          </Link>
-          <Link
-            href={`/admin/clients/${formData.id}/gbp`}
-            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600"
-          >
-            <Store className="h-4 w-4" />
-            GBP Posts
-          </Link>
-        </div>
+        {/* Quick Links - only show for existing clients */}
+        {!isNewClient && (
+          <div className="flex items-center gap-4 mt-2 pt-2 border-t border-gray-100">
+            <Link
+              href={`/admin/clients/${client!.id}/calendar`}
+              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600"
+            >
+              <Calendar className="h-4 w-4" />
+              Content Calendar
+            </Link>
+            <Link
+              href={`/admin/clients/${client!.id}/gbp`}
+              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600"
+            >
+              <Store className="h-4 w-4" />
+              GBP Posts
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Business Information */}
@@ -2029,19 +2109,19 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
 
       {/* Bottom Save Button */}
       <div className="flex justify-end gap-3 pt-4">
-        <Button variant="outline" onClick={() => router.back()}>
+        <Button variant="outline" onClick={() => router.push('/admin/clients')}>
           Cancel
         </Button>
         <Button onClick={handleSave} disabled={saving}>
           {saving ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Saving...
+              {isNewClient ? 'Creating...' : 'Saving...'}
             </>
           ) : (
             <>
               <Save className="h-4 w-4 mr-2" />
-              Save Changes
+              {isNewClient ? 'Create Client' : 'Save Changes'}
             </>
           )}
         </Button>
