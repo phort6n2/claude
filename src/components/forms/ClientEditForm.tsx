@@ -62,6 +62,13 @@ interface FetchedPAA {
   selected: boolean
 }
 
+interface PlacePrediction {
+  placeId: string
+  description: string
+  mainText: string
+  secondaryText: string
+}
+
 interface ClientData {
   id: string
   businessName: string
@@ -212,6 +219,13 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   const [testingConnection, setTestingConnection] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'success' | 'error' | null>(null)
   const [connectionError, setConnectionError] = useState<string | null>(null)
+
+  // Google Places search state
+  const [placeSearch, setPlaceSearch] = useState('')
+  const [placePredictions, setPlacePredictions] = useState<PlacePrediction[]>([])
+  const [placeSearchLoading, setPlaceSearchLoading] = useState(false)
+  const [showPredictions, setShowPredictions] = useState(false)
+  const [placeSelected, setPlaceSelected] = useState(false)
 
   // Podbean state
   const [podbeanPodcasts, setPodbeanPodcasts] = useState<PodbeanPodcast[]>([])
@@ -431,6 +445,78 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       .catch(() => {})
       .finally(() => setLoadingAutoSchedule(false))
   }, [client?.id, isNewClient])
+
+  // Place search with debounce
+  useEffect(() => {
+    if (!placeSearch || placeSearch.length < 3 || placeSelected) {
+      setPlacePredictions([])
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      setPlaceSearchLoading(true)
+      try {
+        const response = await fetch(`/api/integrations/google-places/search?query=${encodeURIComponent(placeSearch)}`)
+        const data = await response.json()
+        if (data.predictions) {
+          setPlacePredictions(data.predictions)
+          setShowPredictions(true)
+        }
+      } catch (err) {
+        console.error('Place search error:', err)
+      } finally {
+        setPlaceSearchLoading(false)
+      }
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [placeSearch, placeSelected])
+
+  async function selectPlace(prediction: PlacePrediction) {
+    setPlaceSearchLoading(true)
+    setShowPredictions(false)
+    setPlaceSelected(true)
+
+    try {
+      const response = await fetch(`/api/integrations/google-places/details?placeId=${prediction.placeId}`)
+      const details = await response.json()
+
+      if (!response.ok) {
+        console.error('Failed to fetch place details:', details.error)
+        return
+      }
+
+      // Update form with place details
+      setFormData((prev) => ({
+        ...prev,
+        businessName: details.businessName || prev.businessName,
+        phone: details.phone || prev.phone,
+        streetAddress: details.streetAddress || prev.streetAddress,
+        city: details.city || prev.city,
+        state: details.state || prev.state,
+        postalCode: details.postalCode || prev.postalCode,
+        googlePlaceId: details.placeId,
+        googleMapsUrl: details.googleMapsUrl,
+      }))
+
+      setPlaceSearch(details.businessName)
+    } catch (err) {
+      console.error('Error fetching place details:', err)
+    } finally {
+      setPlaceSearchLoading(false)
+    }
+  }
+
+  function clearPlaceSelection() {
+    setPlaceSearch('')
+    setPlaceSelected(false)
+    setPlacePredictions([])
+    setFormData((prev) => ({
+      ...prev,
+      googlePlaceId: null,
+      googleMapsUrl: null,
+    }))
+  }
 
   function toggleSection(section: SectionKey) {
     setExpandedSections((prev) => {
@@ -935,6 +1021,65 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
         />
         {expandedSections.has('business') && (
           <div className="p-6 space-y-4">
+            {/* Google Places Search */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Search size={18} className="text-blue-600" />
+                <label className="block text-sm font-medium text-blue-900">
+                  Search for Business on Google
+                </label>
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={placeSearch}
+                  onChange={(e) => {
+                    setPlaceSearch(e.target.value)
+                    setPlaceSelected(false)
+                  }}
+                  placeholder="Start typing business name..."
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {placeSearchLoading && (
+                  <div className="absolute right-3 top-2.5">
+                    <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                  </div>
+                )}
+                {showPredictions && placePredictions.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                    {placePredictions.map((prediction) => (
+                      <button
+                        key={prediction.placeId}
+                        type="button"
+                        onClick={() => selectPlace(prediction)}
+                        className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b last:border-b-0"
+                      >
+                        <div className="font-medium text-gray-900">{prediction.mainText}</div>
+                        <div className="text-sm text-gray-500">{prediction.secondaryText}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {formData.googlePlaceId && (
+                <div className="mt-2 flex items-center justify-between text-sm">
+                  <span className="text-green-600 flex items-center gap-1">
+                    ✓ Business found - details populated below
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearPlaceSelection}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    Clear & search again
+                  </button>
+                </div>
+              )}
+              <p className="text-xs text-blue-700 mt-2">
+                Search to auto-fill business info from Google, or enter manually below.
+              </p>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
