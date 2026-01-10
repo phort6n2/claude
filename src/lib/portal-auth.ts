@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/db'
 import crypto from 'crypto'
+import bcrypt from 'bcryptjs'
 
 const PORTAL_SESSION_COOKIE = 'portal_session'
 const SESSION_DURATION_DAYS = 30
@@ -10,6 +11,79 @@ const SESSION_DURATION_DAYS = 30
  */
 export function generateToken(): string {
   return crypto.randomBytes(32).toString('hex')
+}
+
+/**
+ * Hash a password
+ */
+export async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 12)
+}
+
+/**
+ * Verify a password against a hash
+ */
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(password, hash)
+}
+
+/**
+ * Verify email/password login
+ */
+export async function verifyPasswordLogin(email: string, password: string): Promise<{
+  success: boolean
+  error?: string
+  clientUser?: {
+    id: string
+    email: string
+    name: string | null
+    clientId: string
+    client: { businessName: string }
+  }
+}> {
+  // Find client user by email
+  const clientUser = await prisma.clientUser.findUnique({
+    where: { email: email.toLowerCase() },
+    include: {
+      client: {
+        select: { id: true, businessName: true },
+      },
+    },
+  })
+
+  if (!clientUser) {
+    return { success: false, error: 'Invalid email or password' }
+  }
+
+  if (!clientUser.isActive) {
+    return { success: false, error: 'This account has been deactivated' }
+  }
+
+  if (!clientUser.passwordHash) {
+    return { success: false, error: 'Password not set. Please contact support.' }
+  }
+
+  const isValid = await verifyPassword(password, clientUser.passwordHash)
+  if (!isValid) {
+    return { success: false, error: 'Invalid email or password' }
+  }
+
+  // Update last login
+  await prisma.clientUser.update({
+    where: { id: clientUser.id },
+    data: { lastLoginAt: new Date() },
+  })
+
+  return {
+    success: true,
+    clientUser: {
+      id: clientUser.id,
+      email: clientUser.email,
+      name: clientUser.name,
+      clientId: clientUser.clientId,
+      client: { businessName: clientUser.client.businessName },
+    },
+  }
 }
 
 /**

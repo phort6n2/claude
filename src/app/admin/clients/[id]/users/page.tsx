@@ -14,7 +14,7 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle,
-  Send,
+  Key,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 
@@ -22,6 +22,7 @@ interface ClientUser {
   id: string
   email: string
   name: string | null
+  hasPassword: boolean
   isActive: boolean
   lastLoginAt: string | null
   createdAt: string
@@ -43,8 +44,13 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
   const [showAddForm, setShowAddForm] = useState(false)
   const [newEmail, setNewEmail] = useState('')
   const [newName, setNewName] = useState('')
+  const [newPassword, setNewPassword] = useState('')
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
+
+  // Password reset
+  const [settingPasswordFor, setSettingPasswordFor] = useState<string | null>(null)
+  const [resetPassword, setResetPassword] = useState('')
 
   // Load client and users
   useEffect(() => {
@@ -79,6 +85,12 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
     setAdding(true)
     setAddError(null)
 
+    if (!newPassword || newPassword.length < 6) {
+      setAddError('Password must be at least 6 characters')
+      setAdding(false)
+      return
+    }
+
     try {
       const response = await fetch(`/api/clients/${id}/users`, {
         method: 'POST',
@@ -86,6 +98,7 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
         body: JSON.stringify({
           email: newEmail,
           name: newName || null,
+          password: newPassword,
         }),
       })
 
@@ -98,11 +111,40 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
       setUsers((prev) => [data, ...prev])
       setNewEmail('')
       setNewName('')
+      setNewPassword('')
       setShowAddForm(false)
     } catch (err) {
       setAddError(err instanceof Error ? err.message : 'Failed to create user')
     } finally {
       setAdding(false)
+    }
+  }
+
+  async function handleSetPassword(userId: string) {
+    if (!resetPassword || resetPassword.length < 6) {
+      alert('Password must be at least 6 characters')
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/clients/${id}/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: resetPassword }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to set password')
+      }
+
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, hasPassword: true } : u))
+      )
+      setSettingPasswordFor(null)
+      setResetPassword('')
+      alert('Password updated successfully')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to set password')
     }
   }
 
@@ -142,25 +184,6 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
       setUsers((prev) => prev.filter((u) => u.id !== userId))
     } catch (err) {
       console.error('Delete failed:', err)
-    }
-  }
-
-  async function handleSendLoginLink(email: string) {
-    try {
-      const response = await fetch('/api/portal/auth/request-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to send')
-      }
-
-      alert(`Login link sent to ${email}`)
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to send login link')
     }
   }
 
@@ -214,7 +237,7 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
         {/* Info banner */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <p className="text-sm text-blue-800">
-            Portal users can log in to view and manage leads for this client. They receive a magic link via email to sign in.
+            Portal users can log in at <strong>agmp-paa-pro.vercel.app/portal/login</strong> to view and manage leads for this client.
           </p>
         </div>
 
@@ -258,6 +281,20 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
                 </div>
               </div>
 
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Password *
+                </label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  placeholder="Min 6 characters"
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none md:max-w-xs"
+                />
+              </div>
+
               <div className="flex gap-3">
                 <Button type="submit" disabled={adding}>
                   {adding ? (
@@ -279,6 +316,7 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
                     setShowAddForm(false)
                     setNewEmail('')
                     setNewName('')
+                    setNewPassword('')
                     setAddError(null)
                   }}
                 >
@@ -348,14 +386,43 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSendLoginLink(user.email)}
-                        title="Send login link"
-                      >
-                        <Send className="h-4 w-4" />
-                      </Button>
+                      {settingPasswordFor === user.id ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="password"
+                            value={resetPassword}
+                            onChange={(e) => setResetPassword(e.target.value)}
+                            placeholder="New password"
+                            className="w-32 px-2 py-1 text-sm border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => handleSetPassword(user.id)}
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSettingPasswordFor(null)
+                              setResetPassword('')
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSettingPasswordFor(user.id)}
+                          title={user.hasPassword ? 'Reset password' : 'Set password'}
+                        >
+                          <Key className="h-4 w-4 mr-1" />
+                          {user.hasPassword ? 'Reset' : 'Set'} Password
+                        </Button>
+                      )}
                       <button
                         onClick={() => handleToggleActive(user.id, user.isActive)}
                         className="p-2 hover:bg-gray-100 rounded-lg transition-colors"

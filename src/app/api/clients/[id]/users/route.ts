@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
+import { hashPassword } from '@/lib/portal-auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +27,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
         id: true,
         email: true,
         name: true,
+        passwordHash: true,
         isActive: true,
         lastLoginAt: true,
         createdAt: true,
@@ -33,7 +35,18 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       orderBy: { createdAt: 'desc' },
     })
 
-    return NextResponse.json(users)
+    // Transform to include hasPassword instead of passwordHash
+    const usersWithPasswordFlag = users.map(user => ({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      hasPassword: !!user.passwordHash,
+      isActive: user.isActive,
+      lastLoginAt: user.lastLoginAt,
+      createdAt: user.createdAt,
+    }))
+
+    return NextResponse.json(usersWithPasswordFlag)
   } catch (error) {
     console.error('Failed to fetch client users:', error)
     return NextResponse.json(
@@ -59,6 +72,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ error: 'Email is required' }, { status: 400 })
   }
 
+  if (!data.password || data.password.length < 6) {
+    return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
+  }
+
   try {
     // Check if client exists
     const client = await prisma.client.findUnique({
@@ -81,11 +98,15 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       )
     }
 
+    // Hash the password
+    const passwordHash = await hashPassword(data.password)
+
     const user = await prisma.clientUser.create({
       data: {
         clientId: id,
         email: data.email.toLowerCase(),
         name: data.name || null,
+        passwordHash,
         isActive: true,
       },
       select: {
@@ -97,7 +118,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       },
     })
 
-    return NextResponse.json(user, { status: 201 })
+    return NextResponse.json({ ...user, hasPassword: true }, { status: 201 })
   } catch (error) {
     console.error('Failed to create client user:', error)
     return NextResponse.json(

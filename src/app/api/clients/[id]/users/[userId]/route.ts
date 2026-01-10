@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
+import { hashPassword } from '@/lib/portal-auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,6 +42,15 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     if (data.isActive !== undefined) {
       updateData.isActive = data.isActive
     }
+    if (data.password) {
+      if (data.password.length < 6) {
+        return NextResponse.json(
+          { error: 'Password must be at least 6 characters' },
+          { status: 400 }
+        )
+      }
+      updateData.passwordHash = await hashPassword(data.password)
+    }
 
     const user = await prisma.clientUser.update({
       where: { id: userId },
@@ -49,13 +59,22 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         id: true,
         email: true,
         name: true,
+        passwordHash: true,
         isActive: true,
         lastLoginAt: true,
         createdAt: true,
       },
     })
 
-    return NextResponse.json(user)
+    return NextResponse.json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      hasPassword: !!user.passwordHash,
+      isActive: user.isActive,
+      lastLoginAt: user.lastLoginAt,
+      createdAt: user.createdAt,
+    })
   } catch (error) {
     console.error('Failed to update client user:', error)
     return NextResponse.json(
