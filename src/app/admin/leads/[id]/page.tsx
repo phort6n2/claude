@@ -194,7 +194,7 @@ export default function LeadDetailPage() {
   const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown Contact'
   const isPhoneLead = lead.source === 'PHONE'
   const fd = lead.formData as Record<string, unknown> | null
-  const hasDetails = fd && (fd.interested_in || fd.vehicle_year || fd.vehicle_make || fd.vehicle_model || fd.vin || fd.radio_3s0t || fd.postal_code)
+  const hasDetails = !!(fd && (fd.interested_in || fd.vehicle_year || fd.vehicle_make || fd.vehicle_model || fd.vin || fd.radio_3s0t || fd.postal_code))
 
   return (
     <div className="min-h-screen bg-gray-100">
