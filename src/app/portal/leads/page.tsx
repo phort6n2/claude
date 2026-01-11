@@ -8,6 +8,7 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   DollarSign,
   XCircle,
   Clock,
@@ -326,10 +327,11 @@ export default function PortalLeadsPage() {
 
             <button
               onClick={() => setShowCalendar(!showCalendar)}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors min-w-[160px] justify-center text-gray-900"
+              className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors min-w-[160px] justify-center text-gray-900"
             >
               <Calendar className="h-4 w-4" />
               <span className="font-medium">{formatDateDisplay(selectedDate)}</span>
+              <ChevronDown className={`h-4 w-4 transition-transform ${showCalendar ? 'rotate-180' : ''}`} />
             </button>
 
             <button
@@ -726,35 +728,48 @@ export default function PortalLeadsPage() {
       {showCalendar && (
         <>
           <div
-            className="fixed inset-0 bg-black/20 z-50"
+            className="fixed inset-0 bg-black/30 z-50"
             onClick={() => setShowCalendar(false)}
           />
-          <div className="fixed top-32 left-1/2 -translate-x-1/2 bg-white rounded-lg shadow-xl border p-4 z-[51]">
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => {
-                setSelectedDate(e.target.value)
-                setShowCalendar(false)
-              }}
-              className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900 text-base"
-            />
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={() => {
-                  setSelectedDate(new Date().toISOString().split('T')[0])
+          <div className="fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl w-[280px] z-[51] overflow-hidden">
+            <div className="bg-blue-600 text-white px-4 py-3">
+              <p className="text-sm opacity-80">Select Date</p>
+              <p className="text-xl font-semibold">
+                {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric'
+                })}
+              </p>
+            </div>
+            <div className="p-4">
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => {
+                  setSelectedDate(e.target.value)
                   setShowCalendar(false)
                 }}
-                className="flex-1 px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 font-medium"
-              >
-                Today
-              </button>
-              <button
-                onClick={() => setShowCalendar(false)}
-                className="flex-1 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
-              >
-                Close
-              </button>
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-gray-900 text-base"
+              />
+              <div className="flex gap-2 mt-4">
+                <button
+                  onClick={() => {
+                    setSelectedDate(new Date().toISOString().split('T')[0])
+                    setShowCalendar(false)
+                  }}
+                  className="flex-1 px-3 py-2.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                >
+                  Today
+                </button>
+                <button
+                  onClick={() => setShowCalendar(false)}
+                  className="flex-1 px-3 py-2.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </>
