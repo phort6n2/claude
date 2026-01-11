@@ -66,10 +66,33 @@ export async function POST(request: NextRequest) {
       finalLastName = nameParts.slice(1).join(' ') || null
     }
 
-    // GCLID is at root level - filter out unresolved template strings
-    let gclid = payload.gclid || null
-    if (gclid && (gclid.includes('{{') || gclid.includes('}}'))) {
-      gclid = null // Template wasn't resolved, treat as no GCLID
+    // GCLID can be in multiple locations depending on HighLevel setup
+    // Check: root level, contact object, attributionSource, customFields, attribution
+    const customFields = payload.customFields || payload.customData || payload.custom_fields || {}
+    let gclid =
+      payload.gclid ||
+      payload.contact?.gclid ||
+      payload.attributionSource?.gclid ||
+      payload.attribution?.gclid ||
+      customFields.gclid ||
+      null
+
+    // Filter out unresolved template strings like {{contact.gclid}}
+    if (gclid && typeof gclid === 'string' && (gclid.includes('{{') || gclid.includes('}}'))) {
+      gclid = null
+    }
+
+    // Log where we found GCLID for debugging
+    if (gclid) {
+      console.log(`[HighLevel Webhook] GCLID found: ${gclid}`)
+    } else {
+      console.log(`[HighLevel Webhook] No GCLID found. Checked locations:`, {
+        root: payload.gclid,
+        contact: payload.contact?.gclid,
+        attributionSource: payload.attributionSource?.gclid,
+        attribution: payload.attribution?.gclid,
+        customFields: customFields.gclid,
+      })
     }
 
     // Source information
@@ -89,9 +112,6 @@ export async function POST(request: NextRequest) {
     const city = payload.city || location.city || null
     const state = payload.state || location.state || null
     const postalCode = payload.postal_code || location.postalCode || null
-
-    // Custom fields can be at root level OR nested under customFields/customData
-    const customFields = payload.customFields || payload.customData || payload.custom_fields || {}
 
     // Helper to get custom field from multiple locations
     // Filters out unresolved template strings like {{contact.field_name}}
@@ -149,6 +169,14 @@ export async function POST(request: NextRequest) {
     // Add workflow info
     if (workflow.id) {
       formData.workflow = workflow
+    }
+
+    // Store raw payload for debugging (excluding sensitive data)
+    formData._rawPayload = {
+      ...payload,
+      // Redact any potential sensitive fields
+      password: payload.password ? '[REDACTED]' : undefined,
+      token: payload.token ? '[REDACTED]' : undefined,
     }
 
     // Remove null/undefined values from formData
