@@ -531,7 +531,7 @@ export default function PortalLeadsPage() {
                     value={editSaleValue}
                     onChange={(e) => setEditSaleValue(e.target.value)}
                     placeholder="0.00"
-                    className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base"
+                    className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base placeholder:text-gray-500"
                   />
                 </div>
               </div>
@@ -559,7 +559,7 @@ export default function PortalLeadsPage() {
                   onChange={(e) => setEditSaleNotes(e.target.value)}
                   placeholder="Add notes about this sale..."
                   rows={3}
-                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base resize-none"
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base resize-none placeholder:text-gray-500"
                 />
               </div>
             </div>
