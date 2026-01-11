@@ -9,7 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   DollarSign,
-  CheckCircle2,
   XCircle,
   Clock,
   MessageSquare,
@@ -51,8 +50,6 @@ interface Session {
 const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: React.ElementType }> = {
   NEW: { label: 'New', color: 'text-blue-700', bgColor: 'bg-blue-100', icon: Clock },
   CONTACTED: { label: 'Contacted', color: 'text-yellow-700', bgColor: 'bg-yellow-100', icon: MessageSquare },
-  QUALIFIED: { label: 'Qualified', color: 'text-green-700', bgColor: 'bg-green-100', icon: CheckCircle2 },
-  UNQUALIFIED: { label: 'Unqualified', color: 'text-gray-700', bgColor: 'bg-gray-100', icon: XCircle },
   QUOTED: { label: 'Quoted', color: 'text-purple-700', bgColor: 'bg-purple-100', icon: DollarSign },
   SOLD: { label: 'Sold', color: 'text-emerald-700', bgColor: 'bg-emerald-100', icon: TrendingUp },
   LOST: { label: 'Lost', color: 'text-red-700', bgColor: 'bg-red-100', icon: XCircle },
@@ -523,11 +520,11 @@ export default function PortalLeadsPage() {
                 )}
               </div>
 
-              {/* Form Data / Vehicle Info */}
+              {/* Form Data / Lead Details */}
               {selectedLead.formData && Object.keys(selectedLead.formData).length > 0 && (() => {
                 const fd = selectedLead.formData as Record<string, unknown>
-                const hasVehicleInfo = fd.interested_in || fd.vehicle_year || fd.vehicle_make || fd.vehicle_model || fd.vin || fd.radio_3s0t
-                if (!hasVehicleInfo) return null
+                const hasDetails = fd.interested_in || fd.vehicle_year || fd.vehicle_make || fd.vehicle_model || fd.vin || fd.radio_3s0t || fd.postal_code
+                if (!hasDetails) return null
                 return (
                   <div className="bg-blue-50 rounded-lg p-4">
                     <h4 className="font-medium text-gray-900 mb-3">Lead Details</h4>
@@ -536,6 +533,12 @@ export default function PortalLeadsPage() {
                         <div>
                           <span className="text-gray-500">Interested In</span>
                           <p className="font-medium text-gray-900">{String(fd.interested_in)}</p>
+                        </div>
+                      ) : null}
+                      {fd.postal_code ? (
+                        <div>
+                          <span className="text-gray-500">Zip Code</span>
+                          <p className="font-medium text-gray-900">{String(fd.postal_code)}</p>
                         </div>
                       ) : null}
                       {fd.vehicle_year ? (
@@ -684,6 +687,7 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
   const StatusIcon = statusConfig.icon
   const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'
   const isPhoneLead = lead.source === 'PHONE'
+  const interestedIn = lead.formData?.interested_in as string | undefined
 
   return (
     <button
@@ -708,6 +712,11 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
 
       {/* Name */}
       <h3 className="font-medium text-gray-900 truncate mb-1">{fullName}</h3>
+
+      {/* Interested In */}
+      {interestedIn && (
+        <p className="text-sm text-blue-700 font-medium truncate mb-1">{interestedIn}</p>
+      )}
 
       {/* Contact */}
       <div className="space-y-1 text-xs text-gray-700">
