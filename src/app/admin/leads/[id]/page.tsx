@@ -427,18 +427,34 @@ export default function LeadDetailPage() {
                     </div>
                   )}
 
-                  <div className="border-t pt-3 mt-3">
-                    <div className="text-sm">
-                      <span className="text-gray-500">Enhanced Conversion:</span>
-                      <span className={`ml-2 ${lead.enhancedConversionSent ? 'text-green-600' : 'text-gray-400'}`}>
-                        {lead.enhancedConversionSent ? 'Sent' : 'Pending'}
-                      </span>
+                  <div className="border-t pt-3 mt-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-500">Email/Phone:</span>
+                      {lead.enhancedConversionSent ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Sent to Google
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                          <Clock className="h-3 w-3" />
+                          Pending
+                        </span>
+                      )}
                     </div>
-                    <div className="text-sm">
-                      <span className="text-gray-500">Offline Conversion:</span>
-                      <span className={`ml-2 ${lead.offlineConversionSent ? 'text-green-600' : 'text-gray-400'}`}>
-                        {lead.offlineConversionSent ? 'Sent' : 'Pending'}
-                      </span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-500">Sale Value:</span>
+                      {lead.offlineConversionSent ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Sent to Google
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                          <Clock className="h-3 w-3" />
+                          Pending
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
