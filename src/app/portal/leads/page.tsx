@@ -325,7 +325,7 @@ export default function PortalLeadsPage() {
 
       {/* Lead Count */}
       <div className="max-w-6xl mx-auto px-4 py-2">
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-700">
           {loading ? 'Loading...' : `${leads.length} lead${leads.length !== 1 ? 's' : ''} on ${formatDateDisplay(selectedDate)}`}
         </p>
       </div>
@@ -383,7 +383,7 @@ export default function PortalLeadsPage() {
 
               {/* Swipe hint */}
               {totalPages > 1 && (
-                <p className="text-center text-xs text-gray-400 mt-2">
+                <p className="text-center text-xs text-gray-600 mt-2">
                   Swipe or tap dots to see more
                 </p>
               )}
@@ -627,7 +627,7 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
       <h3 className="font-medium text-gray-900 truncate mb-1">{fullName}</h3>
 
       {/* Contact */}
-      <div className="space-y-1 text-xs text-gray-500">
+      <div className="space-y-1 text-xs text-gray-700">
         {lead.phone && (
           <p className="flex items-center gap-1 truncate">
             <Phone className="h-3 w-3 flex-shrink-0" />
@@ -652,7 +652,7 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
       ) : null}
 
       {/* Time */}
-      <p className="text-xs text-gray-400 mt-2">
+      <p className="text-xs text-gray-600 mt-2">
         {new Date(lead.createdAt).toLocaleTimeString('en-US', {
           hour: 'numeric',
           minute: '2-digit',
