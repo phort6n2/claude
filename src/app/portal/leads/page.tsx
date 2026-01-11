@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import {
   Phone,
   Mail,
@@ -47,6 +46,7 @@ interface Session {
     email: string
     name: string | null
     logoUrl: string | null
+    primaryColor: string | null
   }
 }
 
@@ -289,17 +289,11 @@ export default function PortalLeadsPage() {
         <div className="max-w-6xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {session.user?.logoUrl && (
-                <div className="relative h-10 w-10 flex-shrink-0">
-                  <Image
-                    src={session.user.logoUrl}
-                    alt={session.user.businessName}
-                    fill
-                    className="object-contain rounded"
-                    unoptimized
-                  />
-                </div>
-              )}
+              <HeaderLogo
+                logoUrl={session.user?.logoUrl}
+                businessName={session.user?.businessName || ''}
+                primaryColor={session.user?.primaryColor}
+              />
               <div>
                 <h1 className="text-lg font-bold text-gray-900">{session.user?.businessName}</h1>
                 <p className="text-xs text-gray-600">Lead Portal</p>
@@ -794,6 +788,39 @@ export default function PortalLeadsPage() {
         </>
       )}
     </div>
+  )
+}
+
+// Header Logo Component with fallback
+function HeaderLogo({
+  logoUrl,
+  businessName,
+  primaryColor
+}: {
+  logoUrl: string | null | undefined
+  businessName: string
+  primaryColor: string | null | undefined
+}) {
+  const [imageError, setImageError] = useState(false)
+
+  if (!logoUrl || imageError) {
+    return (
+      <div
+        className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
+        style={{ backgroundColor: primaryColor || '#1e40af' }}
+      >
+        {businessName[0] || '?'}
+      </div>
+    )
+  }
+
+  return (
+    <img
+      src={logoUrl}
+      alt={businessName}
+      className="h-10 w-10 rounded-full object-cover flex-shrink-0"
+      onError={() => setImageError(true)}
+    />
   )
 }
 

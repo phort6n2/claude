@@ -233,6 +233,7 @@ export async function getPortalSession(): Promise<{
   businessName: string
   timezone: string
   logoUrl: string | null
+  primaryColor: string | null
 } | null> {
   const cookieStore = await cookies()
   const sessionCookie = cookieStore.get(PORTAL_SESSION_COOKIE)
@@ -257,7 +258,7 @@ export async function getPortalSession(): Promise<{
       where: { id: sessionData.userId },
       include: {
         client: {
-          select: { id: true, businessName: true, timezone: true, logoUrl: true },
+          select: { id: true, businessName: true, timezone: true, logoUrl: true, primaryColor: true },
         },
       },
     })
@@ -274,6 +275,7 @@ export async function getPortalSession(): Promise<{
       businessName: clientUser.client.businessName,
       timezone: clientUser.client.timezone,
       logoUrl: clientUser.client.logoUrl,
+      primaryColor: clientUser.client.primaryColor,
     }
   } catch {
     return null
