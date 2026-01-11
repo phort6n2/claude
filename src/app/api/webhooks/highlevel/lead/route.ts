@@ -102,6 +102,11 @@ export async function POST(request: NextRequest) {
       contact_type: payload.contact_type,
       tags: payload.tags,
       date_of_birth: payload.date_of_birth,
+      // Custom fields for auto glass
+      interested_in: payload.interested_in,
+      vehicle_year: payload.vehicle_year,
+      vehicle_make: payload.vehicle_make,
+      vehicle_model: payload.vehicle_model,
     }
 
     // Add location info
