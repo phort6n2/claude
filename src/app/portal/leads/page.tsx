@@ -35,6 +35,7 @@ interface Lead {
   saleNotes: string | null
   createdAt: string
   formName: string | null
+  formData: Record<string, unknown> | null
 }
 
 interface Session {
@@ -449,6 +450,51 @@ export default function PortalLeadsPage() {
                   </p>
                 </div>
               </div>
+
+              {/* Form Data / Vehicle Info */}
+              {selectedLead.formData && Object.keys(selectedLead.formData).length > 0 && (
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-3">Lead Details</h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    {selectedLead.formData.interested_in && (
+                      <div>
+                        <span className="text-gray-500">Interested In</span>
+                        <p className="font-medium">{String(selectedLead.formData.interested_in)}</p>
+                      </div>
+                    )}
+                    {selectedLead.formData.vehicle_year && (
+                      <div>
+                        <span className="text-gray-500">Year</span>
+                        <p className="font-medium">{String(selectedLead.formData.vehicle_year)}</p>
+                      </div>
+                    )}
+                    {selectedLead.formData.vehicle_make && (
+                      <div>
+                        <span className="text-gray-500">Make</span>
+                        <p className="font-medium">{String(selectedLead.formData.vehicle_make)}</p>
+                      </div>
+                    )}
+                    {selectedLead.formData.vehicle_model && (
+                      <div>
+                        <span className="text-gray-500">Model</span>
+                        <p className="font-medium">{String(selectedLead.formData.vehicle_model)}</p>
+                      </div>
+                    )}
+                    {selectedLead.formData.vin && (
+                      <div className="col-span-2">
+                        <span className="text-gray-500">VIN</span>
+                        <p className="font-medium font-mono">{String(selectedLead.formData.vin)}</p>
+                      </div>
+                    )}
+                    {selectedLead.formData.radio_3s0t && (
+                      <div className="col-span-2">
+                        <span className="text-gray-500">Radio Code</span>
+                        <p className="font-medium">{String(selectedLead.formData.radio_3s0t)}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Status */}
               <div>

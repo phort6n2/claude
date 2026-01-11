@@ -52,6 +52,7 @@ export async function GET(request: NextRequest) {
           status: true,
           source: true,
           formName: true,
+          formData: true,
           saleValue: true,
           saleDate: true,
           saleNotes: true,
