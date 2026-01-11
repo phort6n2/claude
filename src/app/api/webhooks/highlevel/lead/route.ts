@@ -87,6 +87,14 @@ export async function POST(request: NextRequest) {
     const state = payload.state || location.state || null
     const postalCode = payload.postal_code || location.postalCode || null
 
+    // Custom fields can be at root level OR nested under customFields/customData
+    const customFields = payload.customFields || payload.customData || payload.custom_fields || {}
+
+    // Helper to get custom field from multiple locations
+    const getCustomField = (fieldName: string) => {
+      return payload[fieldName] || customFields[fieldName] || null
+    }
+
     // Build form data JSON (store all extra fields for reference)
     const formData: Record<string, unknown> = {
       full_name: fullName,
@@ -102,13 +110,22 @@ export async function POST(request: NextRequest) {
       contact_type: payload.contact_type,
       tags: payload.tags,
       date_of_birth: payload.date_of_birth,
-      // Custom fields for auto glass
-      interested_in: payload.interested_in,
-      vehicle_year: payload.vehicle_year,
-      vehicle_make: payload.vehicle_make,
-      vehicle_model: payload.vehicle_model,
-      vin: payload.vin,
-      radio_3s0t: payload.radio_3s0t,
+      // Custom fields for auto glass - check both root and nested locations
+      interested_in: getCustomField('interested_in'),
+      vehicle_year: getCustomField('vehicle_year'),
+      vehicle_make: getCustomField('vehicle_make'),
+      vehicle_model: getCustomField('vehicle_model'),
+      vin: getCustomField('vin'),
+      radio_3s0t: getCustomField('radio_3s0t'),
+    }
+
+    // Also merge any other custom fields that came through
+    if (Object.keys(customFields).length > 0) {
+      for (const [key, value] of Object.entries(customFields)) {
+        if (!(key in formData)) {
+          formData[key] = value
+        }
+      }
     }
 
     // Add location info
