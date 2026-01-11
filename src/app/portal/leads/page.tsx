@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import {
   Phone,
   Mail,
@@ -170,24 +171,6 @@ export default function PortalLeadsPage() {
     })
   }
 
-  function formatTime(dateString: string) {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-    })
-  }
-
-  function formatPhoneDisplay(phone: string) {
-    const cleaned = phone.replace(/\D/g, '')
-    if (cleaned.length === 10) {
-      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`
-    }
-    if (cleaned.length === 11 && cleaned.startsWith('1')) {
-      return `(${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`
-    }
-    return phone
-  }
-
   async function handleLogout() {
     await fetch('/api/portal/auth/logout', { method: 'POST' })
     router.push('/portal/login')
@@ -230,7 +213,7 @@ export default function PortalLeadsPage() {
           }
         })
         .catch(() => {})
-    } catch (err) {
+    } catch {
       alert('Failed to save changes')
     } finally {
       setSaving(false)
@@ -307,11 +290,15 @@ export default function PortalLeadsPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {session.user?.logoUrl && (
-                <img
-                  src={session.user.logoUrl}
-                  alt={session.user.businessName}
-                  className="h-10 w-10 object-contain rounded"
-                />
+                <div className="relative h-10 w-10 flex-shrink-0">
+                  <Image
+                    src={session.user.logoUrl}
+                    alt={session.user.businessName}
+                    fill
+                    className="object-contain rounded"
+                    unoptimized
+                  />
+                </div>
               )}
               <div>
                 <h1 className="text-lg font-bold text-gray-900">{session.user?.businessName}</h1>

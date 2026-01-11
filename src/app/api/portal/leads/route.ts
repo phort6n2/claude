@@ -22,34 +22,16 @@ export async function GET(request: NextRequest) {
   try {
     // Helper function to get start/end of day in client's timezone
     function getDateRangeInTimezone(dateStr: string, timezone: string) {
-      // Create a date at midnight in the client's timezone
-      // We do this by formatting the date in the timezone and parsing it
-      const formatter = new Intl.DateTimeFormat('en-CA', {
-        timeZone: timezone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      })
-
       // Parse the input date parts
       const [year, month, day] = dateStr.split('-').map(Number)
 
-      // Create date at midnight UTC, then adjust for timezone offset
-      const testDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0)) // noon UTC to be safe
-      const formatted = formatter.format(testDate)
-
-      // Get the timezone offset by comparing local midnight to UTC
-      const localMidnight = new Date(`${dateStr}T00:00:00`)
-      const options = { timeZone: timezone, hour: 'numeric', hour12: false } as const
-      const hourInTz = parseInt(new Intl.DateTimeFormat('en-US', options).format(localMidnight))
-
-      // Calculate offset: for America/Los_Angeles (UTC-8), midnight local = 8:00 UTC
-      // Create start of day in UTC that corresponds to midnight in client timezone
+      // Get timezone offset from the timezone name
       const tzOffset = new Date().toLocaleString('en-US', { timeZone: timezone, timeZoneName: 'shortOffset' })
       const offsetMatch = tzOffset.match(/GMT([+-]\d+)/)
       const offsetHours = offsetMatch ? parseInt(offsetMatch[1]) : 0
 
       // Start of day in client's timezone converted to UTC
+      // For America/Los_Angeles (UTC-8), midnight local = 8:00 UTC
       const startOfDay = new Date(Date.UTC(year, month - 1, day, -offsetHours, 0, 0))
       const endOfDay = new Date(Date.UTC(year, month - 1, day, -offsetHours + 23, 59, 59, 999))
 
