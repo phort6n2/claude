@@ -78,6 +78,43 @@ export async function GET(request: NextRequest) {
       return acc
     }, {} as Record<string, number>)
 
+    // Calculate sales stats (today, this week, this month)
+    const now = new Date()
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const startOfWeek = new Date(startOfToday)
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()) // Sunday
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+    const [salesToday, salesWeek, salesMonth] = await Promise.all([
+      prisma.lead.aggregate({
+        where: {
+          clientId: session.clientId,
+          status: 'SOLD',
+          saleDate: { gte: startOfToday },
+        },
+        _sum: { saleValue: true },
+        _count: true,
+      }),
+      prisma.lead.aggregate({
+        where: {
+          clientId: session.clientId,
+          status: 'SOLD',
+          saleDate: { gte: startOfWeek },
+        },
+        _sum: { saleValue: true },
+        _count: true,
+      }),
+      prisma.lead.aggregate({
+        where: {
+          clientId: session.clientId,
+          status: 'SOLD',
+          saleDate: { gte: startOfMonth },
+        },
+        _sum: { saleValue: true },
+        _count: true,
+      }),
+    ])
+
     return NextResponse.json({
       leads,
       total,
@@ -86,6 +123,11 @@ export async function GET(request: NextRequest) {
       stats: {
         total,
         byStatus: statusCounts,
+      },
+      sales: {
+        today: { count: salesToday._count, total: salesToday._sum.saleValue || 0 },
+        week: { count: salesWeek._count, total: salesWeek._sum.saleValue || 0 },
+        month: { count: salesMonth._count, total: salesMonth._sum.saleValue || 0 },
       },
     })
   } catch (error) {

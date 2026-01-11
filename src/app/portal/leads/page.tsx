@@ -60,11 +60,18 @@ const STATUS_OPTIONS = Object.entries(STATUS_CONFIG).map(([value, config]) => ({
   label: config.label,
 }))
 
+interface SalesStats {
+  today: { count: number; total: number }
+  week: { count: number; total: number }
+  month: { count: number; total: number }
+}
+
 export default function PortalLeadsPage() {
   const router = useRouter()
   const [session, setSession] = useState<Session | null>(null)
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
+  const [sales, setSales] = useState<SalesStats | null>(null)
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date()
     return today.toISOString().split('T')[0]
@@ -111,6 +118,9 @@ export default function PortalLeadsPage() {
       .then((res) => res.json())
       .then((data) => {
         setLeads(data.leads || [])
+        if (data.sales) {
+          setSales(data.sales)
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false))
@@ -206,6 +216,16 @@ export default function PortalLeadsPage() {
         prev.map((l) => (l.id === selectedLead.id ? { ...l, ...updated } : l))
       )
       setSelectedLead(null)
+
+      // Refresh sales stats after save (in case sale value changed)
+      fetch(`/api/portal/leads?date=${selectedDate}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.sales) {
+            setSales(data.sales)
+          }
+        })
+        .catch(() => {})
     } catch (err) {
       alert('Failed to save changes')
     } finally {
@@ -353,6 +373,29 @@ export default function PortalLeadsPage() {
           )}
         </div>
       </div>
+
+      {/* Sales Stats */}
+      {sales && (
+        <div className="max-w-6xl mx-auto px-4 py-3">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+              <p className="text-xs text-gray-500 mb-1">Today</p>
+              <p className="text-lg font-bold text-emerald-600">${sales.today.total.toLocaleString()}</p>
+              <p className="text-xs text-gray-500">{sales.today.count} sale{sales.today.count !== 1 ? 's' : ''}</p>
+            </div>
+            <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+              <p className="text-xs text-gray-500 mb-1">This Week</p>
+              <p className="text-lg font-bold text-emerald-600">${sales.week.total.toLocaleString()}</p>
+              <p className="text-xs text-gray-500">{sales.week.count} sale{sales.week.count !== 1 ? 's' : ''}</p>
+            </div>
+            <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+              <p className="text-xs text-gray-500 mb-1">This Month</p>
+              <p className="text-lg font-bold text-emerald-600">${sales.month.total.toLocaleString()}</p>
+              <p className="text-xs text-gray-500">{sales.month.count} sale{sales.month.count !== 1 ? 's' : ''}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Lead Count */}
       <div className="max-w-6xl mx-auto px-4 py-2">
