@@ -230,7 +230,7 @@ export default function PortalLeadsPage() {
     }
   }
 
-  // Touch handling for swipe
+  // Touch handling for swipe (page navigation)
   const touchStart = useRef<number | null>(null)
   function handleTouchStart(e: React.TouchEvent) {
     touchStart.current = e.touches[0].clientX
@@ -243,6 +243,28 @@ export default function PortalLeadsPage() {
       handleSwipe(diff > 0 ? 'left' : 'right')
     }
     touchStart.current = null
+  }
+
+  // Modal swipe navigation between leads
+  const modalTouchStart = useRef<number | null>(null)
+  function handleModalTouchStart(e: React.TouchEvent) {
+    modalTouchStart.current = e.touches[0].clientX
+  }
+  function handleModalTouchEnd(e: React.TouchEvent) {
+    if (modalTouchStart.current === null || !selectedLead) return
+    const touchEnd = e.changedTouches[0].clientX
+    const diff = modalTouchStart.current - touchEnd
+    if (Math.abs(diff) > 50) {
+      const currentIndex = leads.findIndex(l => l.id === selectedLead.id)
+      if (diff > 0 && currentIndex < leads.length - 1) {
+        // Swipe left = next lead
+        setSelectedLead(leads[currentIndex + 1])
+      } else if (diff < 0 && currentIndex > 0) {
+        // Swipe right = previous lead
+        setSelectedLead(leads[currentIndex - 1])
+      }
+    }
+    modalTouchStart.current = null
   }
 
   if (!session?.authenticated) {
@@ -415,10 +437,19 @@ export default function PortalLeadsPage() {
       {/* Lead Detail Modal */}
       {selectedLead && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-hidden">
-          <div className="bg-white w-full md:max-w-lg rounded-xl max-h-[85vh] overflow-y-auto overflow-x-hidden">
+          <div
+            className="bg-white w-full md:max-w-lg rounded-xl max-h-[85vh] overflow-y-auto overflow-x-hidden"
+            onTouchStart={handleModalTouchStart}
+            onTouchEnd={handleModalTouchEnd}
+          >
             {/* Modal Header */}
             <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between rounded-t-xl">
-              <h2 className="font-semibold text-lg text-gray-900">Lead Details</h2>
+              <div>
+                <h2 className="font-semibold text-lg text-gray-900">Lead Details</h2>
+                <p className="text-xs text-gray-500">
+                  {leads.findIndex(l => l.id === selectedLead.id) + 1} of {leads.length} • Swipe to navigate
+                </p>
+              </div>
               <button
                 onClick={() => setSelectedLead(null)}
                 className="p-2 hover:bg-gray-100 rounded-full text-gray-700"
