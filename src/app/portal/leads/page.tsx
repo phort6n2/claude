@@ -414,8 +414,8 @@ export default function PortalLeadsPage() {
 
       {/* Lead Detail Modal */}
       {selectedLead && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full md:max-w-lg rounded-xl max-h-[85vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-hidden">
+          <div className="bg-white w-full md:max-w-lg rounded-xl max-h-[85vh] overflow-y-auto overflow-x-hidden">
             {/* Modal Header */}
             <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between rounded-t-xl">
               <h2 className="font-semibold text-lg text-gray-900">Lead Details</h2>
@@ -560,14 +560,14 @@ export default function PortalLeadsPage() {
                         </div>
                       ) : null}
                       {fd.vin ? (
-                        <div className="col-span-2">
+                        <div>
                           <span className="text-gray-500">VIN</span>
-                          <p className="font-medium font-mono text-gray-900">{String(fd.vin)}</p>
+                          <p className="font-medium font-mono text-gray-900 text-xs break-all">{String(fd.vin)}</p>
                         </div>
                       ) : null}
                       {fd.radio_3s0t ? (
-                        <div className="col-span-2">
-                          <span className="text-gray-500">Insurance Claim Help</span>
+                        <div>
+                          <span className="text-gray-500">Insurance Help</span>
                           <p className="font-medium text-gray-900">{String(fd.radio_3s0t)}</p>
                         </div>
                       ) : null}
