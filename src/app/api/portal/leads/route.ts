@@ -20,6 +20,24 @@ export async function GET(request: NextRequest) {
   const offset = parseInt(searchParams.get('offset') || '0')
 
   try {
+    // Helper function to get start/end of day in client's timezone
+    function getDateRangeInTimezone(dateStr: string, timezone: string) {
+      // Parse the input date parts
+      const [year, month, day] = dateStr.split('-').map(Number)
+
+      // Get timezone offset from the timezone name
+      const tzOffset = new Date().toLocaleString('en-US', { timeZone: timezone, timeZoneName: 'shortOffset' })
+      const offsetMatch = tzOffset.match(/GMT([+-]\d+)/)
+      const offsetHours = offsetMatch ? parseInt(offsetMatch[1]) : 0
+
+      // Start of day in client's timezone converted to UTC
+      // For America/Los_Angeles (UTC-8), midnight local = 8:00 UTC
+      const startOfDay = new Date(Date.UTC(year, month - 1, day, -offsetHours, 0, 0))
+      const endOfDay = new Date(Date.UTC(year, month - 1, day, -offsetHours + 23, 59, 59, 999))
+
+      return { startOfDay, endOfDay }
+    }
+
     // Build where clause - always filter by client
     const where: Record<string, unknown> = {
       clientId: session.clientId,
@@ -29,10 +47,9 @@ export async function GET(request: NextRequest) {
       where.status = status
     }
 
-    // Date filter - filter by the date the lead was created
+    // Date filter - filter by the date the lead was created in client's timezone
     if (dateStr) {
-      const startOfDay = new Date(dateStr + 'T00:00:00.000Z')
-      const endOfDay = new Date(dateStr + 'T23:59:59.999Z')
+      const { startOfDay, endOfDay } = getDateRangeInTimezone(dateStr, session.timezone)
       where.createdAt = {
         gte: startOfDay,
         lte: endOfDay,
@@ -52,6 +69,7 @@ export async function GET(request: NextRequest) {
           status: true,
           source: true,
           formName: true,
+          formData: true,
           saleValue: true,
           saleDate: true,
           saleNotes: true,
@@ -77,6 +95,59 @@ export async function GET(request: NextRequest) {
       return acc
     }, {} as Record<string, number>)
 
+    // Calculate sales stats (today, this week, this month) in client's timezone
+    // Get current date in client's timezone
+    const nowInTz = new Date().toLocaleString('en-US', { timeZone: session.timezone })
+    const clientNow = new Date(nowInTz)
+    const clientYear = clientNow.getFullYear()
+    const clientMonth = clientNow.getMonth()
+    const clientDate = clientNow.getDate()
+    const clientDay = clientNow.getDay()
+
+    // Get timezone offset
+    const tzOffset = new Date().toLocaleString('en-US', { timeZone: session.timezone, timeZoneName: 'shortOffset' })
+    const offsetMatch = tzOffset.match(/GMT([+-]\d+)/)
+    const offsetHours = offsetMatch ? parseInt(offsetMatch[1]) : 0
+
+    // Start of today in client's timezone (converted to UTC)
+    const startOfToday = new Date(Date.UTC(clientYear, clientMonth, clientDate, -offsetHours, 0, 0))
+
+    // Start of week (Sunday) in client's timezone
+    const startOfWeek = new Date(Date.UTC(clientYear, clientMonth, clientDate - clientDay, -offsetHours, 0, 0))
+
+    // Start of month in client's timezone
+    const startOfMonth = new Date(Date.UTC(clientYear, clientMonth, 1, -offsetHours, 0, 0))
+
+    const [salesToday, salesWeek, salesMonth] = await Promise.all([
+      prisma.lead.aggregate({
+        where: {
+          clientId: session.clientId,
+          status: 'SOLD',
+          saleDate: { gte: startOfToday },
+        },
+        _sum: { saleValue: true },
+        _count: true,
+      }),
+      prisma.lead.aggregate({
+        where: {
+          clientId: session.clientId,
+          status: 'SOLD',
+          saleDate: { gte: startOfWeek },
+        },
+        _sum: { saleValue: true },
+        _count: true,
+      }),
+      prisma.lead.aggregate({
+        where: {
+          clientId: session.clientId,
+          status: 'SOLD',
+          saleDate: { gte: startOfMonth },
+        },
+        _sum: { saleValue: true },
+        _count: true,
+      }),
+    ])
+
     return NextResponse.json({
       leads,
       total,
@@ -85,6 +156,11 @@ export async function GET(request: NextRequest) {
       stats: {
         total,
         byStatus: statusCounts,
+      },
+      sales: {
+        today: { count: salesToday._count, total: salesToday._sum.saleValue || 0 },
+        week: { count: salesWeek._count, total: salesWeek._sum.saleValue || 0 },
+        month: { count: salesMonth._count, total: salesMonth._sum.saleValue || 0 },
       },
     })
   } catch (error) {

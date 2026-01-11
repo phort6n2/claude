@@ -36,6 +36,8 @@ interface Lead {
   saleDate: string | null
   createdAt: string
   formName: string | null
+  enhancedConversionSent: boolean
+  offlineConversionSent: boolean
   client: {
     id: string
     businessName: string
@@ -256,6 +258,18 @@ export default function LeadsPage() {
                             {lead.gclid && (
                               <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded">
                                 Google Ads
+                              </span>
+                            )}
+                            {lead.gclid && lead.enhancedConversionSent && (
+                              <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded flex items-center gap-1">
+                                <CheckCircle2 className="h-3 w-3" />
+                                Email Sent
+                              </span>
+                            )}
+                            {lead.gclid && lead.offlineConversionSent && (
+                              <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded flex items-center gap-1">
+                                <CheckCircle2 className="h-3 w-3" />
+                                Sale Sent
                               </span>
                             )}
                           </div>

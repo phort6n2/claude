@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getPortalSession } from '@/lib/portal-auth'
-import { sendOfflineConversion } from '@/lib/google-ads'
+import { sendOfflineConversion, sendEnhancedConversion } from '@/lib/google-ads'
 
 export const dynamic = 'force-dynamic'
 
@@ -87,6 +87,20 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     // Build update data - clients can only update certain fields
     const updateData: Record<string, unknown> = {}
 
+    // Contact info updates (for phone leads that need info filled in)
+    if (data.firstName !== undefined) {
+      updateData.firstName = data.firstName
+    }
+    if (data.lastName !== undefined) {
+      updateData.lastName = data.lastName
+    }
+    if (data.email !== undefined) {
+      updateData.email = data.email
+    }
+    if (data.phone !== undefined) {
+      updateData.phone = data.phone
+    }
+
     // Status update
     if (data.status !== undefined) {
       updateData.status = data.status
@@ -120,6 +134,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         lastName: true,
         status: true,
         statusUpdatedAt: true,
+        source: true,
         saleValue: true,
         saleDate: true,
         saleNotes: true,
@@ -144,6 +159,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
           const conversionValue = updated.saleValue || data.saleValue || 0
           const conversionDate = updated.saleDate || new Date()
 
+          // Send the offline conversion (sale value)
           const result = await sendOfflineConversion({
             customerId: googleAdsConfig.customerId,
             gclid: updated.gclid,
@@ -158,6 +174,28 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
               data: { offlineConversionSent: true },
             })
             console.log(`[Portal] Offline conversion sent for lead ${id}`)
+
+            // Also send enhanced conversion with email/phone for better matching
+            const leadEmail = updated.email || data.email
+            const leadPhone = updated.phone || data.phone
+
+            if (leadEmail || leadPhone) {
+              const enhancedResult = await sendEnhancedConversion({
+                customerId: googleAdsConfig.customerId,
+                gclid: updated.gclid,
+                email: leadEmail || undefined,
+                phone: leadPhone || undefined,
+                conversionAction: googleAdsConfig.saleConversionActionId,
+                conversionDateTime: new Date(conversionDate),
+                conversionValue,
+              })
+
+              if (enhancedResult.success) {
+                console.log(`[Portal] Enhanced conversion sent for lead ${id}`)
+              } else {
+                console.warn(`[Portal] Enhanced conversion failed for lead ${id}:`, enhancedResult.error)
+              }
+            }
           } else {
             console.warn(`[Portal] Offline conversion failed for lead ${id}:`, result.error)
           }

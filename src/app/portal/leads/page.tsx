@@ -2,14 +2,15 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import {
   Phone,
   Mail,
   Calendar,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   DollarSign,
-  CheckCircle2,
   XCircle,
   Clock,
   MessageSquare,
@@ -35,6 +36,7 @@ interface Lead {
   saleNotes: string | null
   createdAt: string
   formName: string | null
+  formData: Record<string, unknown> | null
 }
 
 interface Session {
@@ -44,14 +46,13 @@ interface Session {
     businessName: string
     email: string
     name: string | null
+    logoUrl: string | null
   }
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: React.ElementType }> = {
   NEW: { label: 'New', color: 'text-blue-700', bgColor: 'bg-blue-100', icon: Clock },
   CONTACTED: { label: 'Contacted', color: 'text-yellow-700', bgColor: 'bg-yellow-100', icon: MessageSquare },
-  QUALIFIED: { label: 'Qualified', color: 'text-green-700', bgColor: 'bg-green-100', icon: CheckCircle2 },
-  UNQUALIFIED: { label: 'Unqualified', color: 'text-gray-700', bgColor: 'bg-gray-100', icon: XCircle },
   QUOTED: { label: 'Quoted', color: 'text-purple-700', bgColor: 'bg-purple-100', icon: DollarSign },
   SOLD: { label: 'Sold', color: 'text-emerald-700', bgColor: 'bg-emerald-100', icon: TrendingUp },
   LOST: { label: 'Lost', color: 'text-red-700', bgColor: 'bg-red-100', icon: XCircle },
@@ -62,14 +63,22 @@ const STATUS_OPTIONS = Object.entries(STATUS_CONFIG).map(([value, config]) => ({
   label: config.label,
 }))
 
+interface SalesStats {
+  today: { count: number; total: number }
+  week: { count: number; total: number }
+  month: { count: number; total: number }
+}
+
 export default function PortalLeadsPage() {
   const router = useRouter()
   const [session, setSession] = useState<Session | null>(null)
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
+  const [sales, setSales] = useState<SalesStats | null>(null)
   const [selectedDate, setSelectedDate] = useState(() => {
+    // Use local date, not UTC
     const today = new Date()
-    return today.toISOString().split('T')[0]
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   })
   const [showCalendar, setShowCalendar] = useState(false)
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
@@ -77,6 +86,10 @@ export default function PortalLeadsPage() {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   // Lead detail form state
+  const [editFirstName, setEditFirstName] = useState('')
+  const [editLastName, setEditLastName] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editPhone, setEditPhone] = useState('')
   const [editStatus, setEditStatus] = useState('')
   const [editSaleValue, setEditSaleValue] = useState('')
   const [editSaleDate, setEditSaleDate] = useState('')
@@ -109,6 +122,9 @@ export default function PortalLeadsPage() {
       .then((res) => res.json())
       .then((data) => {
         setLeads(data.leads || [])
+        if (data.sales) {
+          setSales(data.sales)
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false))
@@ -117,6 +133,10 @@ export default function PortalLeadsPage() {
   // When lead is selected, populate form
   useEffect(() => {
     if (selectedLead) {
+      setEditFirstName(selectedLead.firstName || '')
+      setEditLastName(selectedLead.lastName || '')
+      setEditEmail(selectedLead.email || '')
+      setEditPhone(selectedLead.phone || '')
       setEditStatus(selectedLead.status)
       setEditSaleValue(selectedLead.saleValue?.toString() || '')
       setEditSaleDate(selectedLead.saleDate?.split('T')[0] || '')
@@ -125,9 +145,10 @@ export default function PortalLeadsPage() {
   }, [selectedLead])
 
   function changeDate(days: number) {
-    const date = new Date(selectedDate)
+    const date = new Date(selectedDate + 'T12:00:00') // Use noon to avoid DST issues
     date.setDate(date.getDate() + days)
-    setSelectedDate(date.toISOString().split('T')[0])
+    const localDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+    setSelectedDate(localDate)
   }
 
   function formatDateDisplay(dateStr: string) {
@@ -150,24 +171,6 @@ export default function PortalLeadsPage() {
     })
   }
 
-  function formatTime(dateString: string) {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-    })
-  }
-
-  function formatPhoneDisplay(phone: string) {
-    const cleaned = phone.replace(/\D/g, '')
-    if (cleaned.length === 10) {
-      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`
-    }
-    if (cleaned.length === 11 && cleaned.startsWith('1')) {
-      return `(${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`
-    }
-    return phone
-  }
-
   async function handleLogout() {
     await fetch('/api/portal/auth/logout', { method: 'POST' })
     router.push('/portal/login')
@@ -182,6 +185,10 @@ export default function PortalLeadsPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          firstName: editFirstName || null,
+          lastName: editLastName || null,
+          email: editEmail || null,
+          phone: editPhone || null,
           status: editStatus,
           saleValue: editSaleValue ? parseFloat(editSaleValue) : null,
           saleDate: editSaleDate || null,
@@ -196,7 +203,17 @@ export default function PortalLeadsPage() {
         prev.map((l) => (l.id === selectedLead.id ? { ...l, ...updated } : l))
       )
       setSelectedLead(null)
-    } catch (err) {
+
+      // Refresh sales stats after save (in case sale value changed)
+      fetch(`/api/portal/leads?date=${selectedDate}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.sales) {
+            setSales(data.sales)
+          }
+        })
+        .catch(() => {})
+    } catch {
       alert('Failed to save changes')
     } finally {
       setSaving(false)
@@ -220,7 +237,7 @@ export default function PortalLeadsPage() {
     }
   }
 
-  // Touch handling for swipe
+  // Touch handling for swipe (page navigation)
   const touchStart = useRef<number | null>(null)
   function handleTouchStart(e: React.TouchEvent) {
     touchStart.current = e.touches[0].clientX
@@ -235,6 +252,28 @@ export default function PortalLeadsPage() {
     touchStart.current = null
   }
 
+  // Modal swipe navigation between leads
+  const modalTouchStart = useRef<number | null>(null)
+  function handleModalTouchStart(e: React.TouchEvent) {
+    modalTouchStart.current = e.touches[0].clientX
+  }
+  function handleModalTouchEnd(e: React.TouchEvent) {
+    if (modalTouchStart.current === null || !selectedLead) return
+    const touchEnd = e.changedTouches[0].clientX
+    const diff = modalTouchStart.current - touchEnd
+    if (Math.abs(diff) > 50) {
+      const currentIndex = leads.findIndex(l => l.id === selectedLead.id)
+      if (diff > 0 && currentIndex < leads.length - 1) {
+        // Swipe left = next lead
+        setSelectedLead(leads[currentIndex + 1])
+      } else if (diff < 0 && currentIndex > 0) {
+        // Swipe right = previous lead
+        setSelectedLead(leads[currentIndex - 1])
+      }
+    }
+    modalTouchStart.current = null
+  }
+
   if (!session?.authenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -244,14 +283,27 @@ export default function PortalLeadsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 overflow-x-hidden">
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-lg font-bold text-gray-900">{session.user?.businessName}</h1>
-              <p className="text-xs text-gray-500">Lead Portal</p>
+            <div className="flex items-center gap-3">
+              {session.user?.logoUrl && (
+                <div className="relative h-10 w-10 flex-shrink-0">
+                  <Image
+                    src={session.user.logoUrl}
+                    alt={session.user.businessName}
+                    fill
+                    className="object-contain rounded"
+                    unoptimized
+                  />
+                </div>
+              )}
+              <div>
+                <h1 className="text-lg font-bold text-gray-900">{session.user?.businessName}</h1>
+                <p className="text-xs text-gray-600">Lead Portal</p>
+              </div>
             </div>
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />
@@ -267,64 +319,57 @@ export default function PortalLeadsPage() {
           <div className="flex items-center justify-center gap-2">
             <button
               onClick={() => changeDate(-1)}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
 
             <button
               onClick={() => setShowCalendar(!showCalendar)}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors min-w-[160px] justify-center"
+              className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors min-w-[160px] justify-center text-gray-900"
             >
               <Calendar className="h-4 w-4" />
               <span className="font-medium">{formatDateDisplay(selectedDate)}</span>
+              <ChevronDown className={`h-4 w-4 transition-transform ${showCalendar ? 'rotate-180' : ''}`} />
             </button>
 
             <button
               onClick={() => changeDate(1)}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
           </div>
 
-          {/* Calendar Popup */}
-          {showCalendar && (
-            <div className="absolute left-1/2 -translate-x-1/2 mt-2 bg-white rounded-lg shadow-lg border p-4 z-50">
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => {
-                  setSelectedDate(e.target.value)
-                  setShowCalendar(false)
-                }}
-                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              />
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={() => {
-                    setSelectedDate(new Date().toISOString().split('T')[0])
-                    setShowCalendar(false)
-                  }}
-                  className="flex-1 px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                >
-                  Today
-                </button>
-                <button
-                  onClick={() => setShowCalendar(false)}
-                  className="flex-1 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
+      {/* Sales Stats */}
+      {sales && (
+        <div className="max-w-6xl mx-auto px-4 py-3">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+              <p className="text-xs text-gray-500 mb-1">Today</p>
+              <p className="text-lg font-bold text-emerald-600">${sales.today.total.toLocaleString()}</p>
+              <p className="text-xs text-gray-500">{sales.today.count} sale{sales.today.count !== 1 ? 's' : ''}</p>
+            </div>
+            <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+              <p className="text-xs text-gray-500 mb-1">This Week</p>
+              <p className="text-lg font-bold text-emerald-600">${sales.week.total.toLocaleString()}</p>
+              <p className="text-xs text-gray-500">{sales.week.count} sale{sales.week.count !== 1 ? 's' : ''}</p>
+            </div>
+            <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+              <p className="text-xs text-gray-500 mb-1">This Month</p>
+              <p className="text-lg font-bold text-emerald-600">${sales.month.total.toLocaleString()}</p>
+              <p className="text-xs text-gray-500">{sales.month.count} sale{sales.month.count !== 1 ? 's' : ''}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Lead Count */}
       <div className="max-w-6xl mx-auto px-4 py-2">
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-700">
           {loading ? 'Loading...' : `${leads.length} lead${leads.length !== 1 ? 's' : ''} on ${formatDateDisplay(selectedDate)}`}
         </p>
       </div>
@@ -340,7 +385,11 @@ export default function PortalLeadsPage() {
             <User className="h-12 w-12 mx-auto mb-4 text-gray-300" />
             <p className="text-gray-500">No leads on this date</p>
             <button
-              onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+              onClick={() => {
+                const today = new Date()
+                const localDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+                setSelectedDate(localDate)
+              }}
               className="mt-3 text-blue-600 hover:underline text-sm"
             >
               Go to today
@@ -382,7 +431,7 @@ export default function PortalLeadsPage() {
 
               {/* Swipe hint */}
               {totalPages > 1 && (
-                <p className="text-center text-xs text-gray-400 mt-2">
+                <p className="text-center text-xs text-gray-600 mt-2">
                   Swipe or tap dots to see more
                 </p>
               )}
@@ -404,14 +453,23 @@ export default function PortalLeadsPage() {
 
       {/* Lead Detail Modal */}
       {selectedLead && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center">
-          <div className="bg-white w-full md:max-w-lg md:rounded-xl rounded-t-xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-hidden">
+          <div
+            className="bg-white w-full md:max-w-lg rounded-xl max-h-[85vh] overflow-y-auto overflow-x-hidden"
+            onTouchStart={handleModalTouchStart}
+            onTouchEnd={handleModalTouchEnd}
+          >
             {/* Modal Header */}
-            <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between">
-              <h2 className="font-semibold text-lg">Lead Details</h2>
+            <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between rounded-t-xl">
+              <div>
+                <h2 className="font-semibold text-lg text-gray-900">Lead Details</h2>
+                <p className="text-xs text-gray-500">
+                  {leads.findIndex(l => l.id === selectedLead.id) + 1} of {leads.length} • Swipe to navigate
+                </p>
+              </div>
               <button
                 onClick={() => setSelectedLead(null)}
-                className="p-2 hover:bg-gray-100 rounded-full"
+                className="p-2 hover:bg-gray-100 rounded-full text-gray-700"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -419,36 +477,161 @@ export default function PortalLeadsPage() {
 
             {/* Modal Content */}
             <div className="p-4 space-y-4">
-              {/* Contact Info */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="font-medium text-gray-900 text-lg mb-2">
-                  {[selectedLead.firstName, selectedLead.lastName].filter(Boolean).join(' ') || 'Unknown'}
-                </h3>
-                <div className="space-y-2 text-sm">
-                  {selectedLead.email && (
-                    <a
-                      href={`mailto:${selectedLead.email}`}
-                      className="flex items-center gap-2 text-blue-600"
-                    >
-                      <Mail className="h-4 w-4" />
-                      {selectedLead.email}
-                    </a>
-                  )}
-                  {selectedLead.phone && (
-                    <a
-                      href={`tel:${selectedLead.phone}`}
-                      className="flex items-center gap-2 text-blue-600"
-                    >
-                      <Phone className="h-4 w-4" />
-                      {formatPhoneDisplay(selectedLead.phone)}
-                    </a>
-                  )}
-                  <p className="text-gray-500 flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
+              {/* Source indicator for phone leads */}
+              {selectedLead.source === 'PHONE' && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-orange-600" />
+                  <span className="text-sm text-orange-800 font-medium">Phone Call Lead</span>
+                </div>
+              )}
+
+              {/* Contact Info - Editable */}
+              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-gray-900">Contact Info</h4>
+                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
                     {new Date(selectedLead.createdAt).toLocaleString()}
                   </p>
                 </div>
+
+                {/* Name fields */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">First Name</label>
+                    <input
+                      type="text"
+                      value={editFirstName}
+                      onChange={(e) => setEditFirstName(e.target.value)}
+                      placeholder="First name"
+                      className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Last Name</label>
+                    <input
+                      type="text"
+                      value={editLastName}
+                      onChange={(e) => setEditLastName(e.target.value)}
+                      placeholder="Last name"
+                      className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    placeholder="email@example.com"
+                    className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
+                  />
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    placeholder="(555) 555-5555"
+                    className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
+                  />
+                </div>
+
+                {/* Quick contact actions */}
+                {(editPhone || editEmail) && (
+                  <div className="flex gap-2 pt-2">
+                    {editPhone && (
+                      <a
+                        href={`tel:${editPhone}`}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-medium hover:bg-green-200"
+                      >
+                        <Phone className="h-4 w-4" />
+                        Call
+                      </a>
+                    )}
+                    {editPhone && (
+                      <a
+                        href={`sms:${editPhone}`}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        Text
+                      </a>
+                    )}
+                    {editEmail && (
+                      <a
+                        href={`mailto:${editEmail}`}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200"
+                      >
+                        <Mail className="h-4 w-4" />
+                        Email
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
+
+              {/* Form Data / Lead Details */}
+              {selectedLead.formData && Object.keys(selectedLead.formData).length > 0 && (() => {
+                const fd = selectedLead.formData as Record<string, unknown>
+                const hasDetails = fd.interested_in || fd.vehicle_year || fd.vehicle_make || fd.vehicle_model || fd.vin || fd.radio_3s0t || fd.postal_code
+                if (!hasDetails) return null
+                return (
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <h4 className="font-medium text-gray-900 mb-3">Lead Details</h4>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      {fd.interested_in ? (
+                        <div>
+                          <span className="text-gray-500">Interested In</span>
+                          <p className="font-medium text-gray-900">{String(fd.interested_in)}</p>
+                        </div>
+                      ) : null}
+                      {fd.postal_code ? (
+                        <div>
+                          <span className="text-gray-500">Zip Code</span>
+                          <p className="font-medium text-gray-900">{String(fd.postal_code)}</p>
+                        </div>
+                      ) : null}
+                      {fd.vehicle_year ? (
+                        <div>
+                          <span className="text-gray-500">Year</span>
+                          <p className="font-medium text-gray-900">{String(fd.vehicle_year)}</p>
+                        </div>
+                      ) : null}
+                      {fd.vehicle_make ? (
+                        <div>
+                          <span className="text-gray-500">Make</span>
+                          <p className="font-medium text-gray-900">{String(fd.vehicle_make)}</p>
+                        </div>
+                      ) : null}
+                      {fd.vehicle_model ? (
+                        <div>
+                          <span className="text-gray-500">Model</span>
+                          <p className="font-medium text-gray-900">{String(fd.vehicle_model)}</p>
+                        </div>
+                      ) : null}
+                      {fd.vin ? (
+                        <div>
+                          <span className="text-gray-500">VIN</span>
+                          <p className="font-medium font-mono text-gray-900 text-xs break-all">{String(fd.vin)}</p>
+                        </div>
+                      ) : null}
+                      {fd.radio_3s0t ? (
+                        <div>
+                          <span className="text-gray-500">Insurance Help</span>
+                          <p className="font-medium text-gray-900">{String(fd.radio_3s0t)}</p>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* Status */}
               <div>
@@ -458,7 +641,7 @@ export default function PortalLeadsPage() {
                 <select
                   value={editStatus}
                   onChange={(e) => setEditStatus(e.target.value)}
-                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base"
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base text-gray-900"
                 >
                   {STATUS_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -480,7 +663,7 @@ export default function PortalLeadsPage() {
                     value={editSaleValue}
                     onChange={(e) => setEditSaleValue(e.target.value)}
                     placeholder="0.00"
-                    className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base"
+                    className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base text-gray-900 placeholder:text-gray-500"
                   />
                 </div>
               </div>
@@ -494,7 +677,7 @@ export default function PortalLeadsPage() {
                   type="date"
                   value={editSaleDate}
                   onChange={(e) => setEditSaleDate(e.target.value)}
-                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base"
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base text-gray-900"
                 />
               </div>
 
@@ -508,7 +691,7 @@ export default function PortalLeadsPage() {
                   onChange={(e) => setEditSaleNotes(e.target.value)}
                   placeholder="Add notes about this sale..."
                   rows={3}
-                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base resize-none"
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base text-gray-900 resize-none placeholder:text-gray-500"
                 />
               </div>
             </div>
@@ -544,12 +727,71 @@ export default function PortalLeadsPage() {
         </div>
       )}
 
-      {/* Click outside calendar to close */}
+      {/* Calendar Modal */}
       {showCalendar && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setShowCalendar(false)}
-        />
+        <>
+          <div
+            className="fixed inset-0 bg-black/30 z-50"
+            onClick={() => setShowCalendar(false)}
+          />
+          {/* Mobile: bottom sheet, Desktop: centered modal */}
+          <div className="fixed md:top-1/3 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 bottom-0 left-0 right-0 md:bottom-auto md:left-1/2 md:right-auto bg-white md:rounded-xl rounded-t-xl shadow-2xl md:w-[300px] w-full z-[51] overflow-hidden">
+            <div className="bg-blue-600 text-white px-4 py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm opacity-80">Select Date</p>
+                  <p className="text-xl font-semibold">
+                    {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowCalendar(false)}
+                  className="md:hidden p-2 hover:bg-white/20 rounded-full"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            <div className="p-4">
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => {
+                  setSelectedDate(e.target.value)
+                  setShowCalendar(false)
+                }}
+                className="w-full px-4 py-4 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-gray-900 text-lg"
+              />
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => {
+                    // Use local date, not UTC
+                    const today = new Date()
+                    const localDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+                    setSelectedDate(localDate)
+                    setShowCalendar(false)
+                  }}
+                  className="flex-1 px-4 py-3 text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                >
+                  Today
+                </button>
+                <button
+                  onClick={() => setShowCalendar(false)}
+                  className="flex-1 px-4 py-3 text-base bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            {/* Safe area padding for iOS */}
+            <div className="h-safe-area-inset-bottom md:hidden" />
+          </div>
+        </>
       )}
     </div>
   )
@@ -560,23 +802,40 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
   const statusConfig = STATUS_CONFIG[lead.status] || STATUS_CONFIG.NEW
   const StatusIcon = statusConfig.icon
   const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'
+  const isPhoneLead = lead.source === 'PHONE'
+  const interestedIn = lead.formData?.interested_in as string | undefined
 
   return (
     <button
       onClick={onClick}
-      className="bg-white rounded-xl p-4 text-left shadow-sm hover:shadow-md transition-shadow w-full"
+      className={`bg-white rounded-xl p-4 text-left shadow-sm hover:shadow-md transition-shadow w-full border-2 ${
+        isPhoneLead ? 'border-orange-400' : 'border-transparent'
+      }`}
     >
-      {/* Status Badge */}
-      <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color} mb-2`}>
-        <StatusIcon className="h-3 w-3" />
-        {statusConfig.label}
+      {/* Source & Status Badge */}
+      <div className="flex items-center gap-2 mb-2">
+        {isPhoneLead && (
+          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+            <Phone className="h-3 w-3" />
+            Call
+          </div>
+        )}
+        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}>
+          <StatusIcon className="h-3 w-3" />
+          {statusConfig.label}
+        </div>
       </div>
 
       {/* Name */}
       <h3 className="font-medium text-gray-900 truncate mb-1">{fullName}</h3>
 
+      {/* Interested In */}
+      {interestedIn && (
+        <p className="text-sm text-blue-700 font-medium truncate mb-1">{interestedIn}</p>
+      )}
+
       {/* Contact */}
-      <div className="space-y-1 text-xs text-gray-500">
+      <div className="space-y-1 text-xs text-gray-700">
         {lead.phone && (
           <p className="flex items-center gap-1 truncate">
             <Phone className="h-3 w-3 flex-shrink-0" />
@@ -591,6 +850,11 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
         )}
       </div>
 
+      {/* Missing info indicator for phone leads */}
+      {isPhoneLead && (!lead.firstName || !lead.email) && (
+        <div className="mt-2 text-orange-600 text-xs">+ Add missing info</div>
+      )}
+
       {/* Sale Value */}
       {lead.saleValue ? (
         <div className="mt-2 text-emerald-600 font-semibold">
@@ -601,7 +865,7 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
       ) : null}
 
       {/* Time */}
-      <p className="text-xs text-gray-400 mt-2">
+      <p className="text-xs text-gray-600 mt-2">
         {new Date(lead.createdAt).toLocaleTimeString('en-US', {
           hour: 'numeric',
           minute: '2-digit',
