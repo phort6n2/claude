@@ -66,8 +66,11 @@ export async function POST(request: NextRequest) {
       finalLastName = nameParts.slice(1).join(' ') || null
     }
 
-    // GCLID is at root level
-    const gclid = payload.gclid || null
+    // GCLID is at root level - filter out unresolved template strings
+    let gclid = payload.gclid || null
+    if (gclid && (gclid.includes('{{') || gclid.includes('}}'))) {
+      gclid = null // Template wasn't resolved, treat as no GCLID
+    }
 
     // Source information
     const contactSource = payload.contact_source || payload.source || null
@@ -91,8 +94,13 @@ export async function POST(request: NextRequest) {
     const customFields = payload.customFields || payload.customData || payload.custom_fields || {}
 
     // Helper to get custom field from multiple locations
+    // Filters out unresolved template strings like {{contact.field_name}}
     const getCustomField = (fieldName: string) => {
-      return payload[fieldName] || customFields[fieldName] || null
+      const value = payload[fieldName] || customFields[fieldName] || null
+      if (value && typeof value === 'string' && (value.includes('{{') || value.includes('}}'))) {
+        return null // Template wasn't resolved
+      }
+      return value
     }
 
     // Build form data JSON (store all extra fields for reference)
