@@ -741,17 +741,28 @@ export default function PortalLeadsPage() {
             className="fixed inset-0 bg-black/30 z-50"
             onClick={() => setShowCalendar(false)}
           />
-          <div className="fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl w-[280px] z-[51] overflow-hidden">
-            <div className="bg-blue-600 text-white px-4 py-3">
-              <p className="text-sm opacity-80">Select Date</p>
-              <p className="text-xl font-semibold">
-                {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric'
-                })}
-              </p>
+          {/* Mobile: bottom sheet, Desktop: centered modal */}
+          <div className="fixed md:top-1/3 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 bottom-0 left-0 right-0 md:bottom-auto md:left-1/2 md:right-auto bg-white md:rounded-xl rounded-t-xl shadow-2xl md:w-[300px] w-full z-[51] overflow-hidden">
+            <div className="bg-blue-600 text-white px-4 py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm opacity-80">Select Date</p>
+                  <p className="text-xl font-semibold">
+                    {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowCalendar(false)}
+                  className="md:hidden p-2 hover:bg-white/20 rounded-full"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
             <div className="p-4">
               <input
@@ -761,26 +772,28 @@ export default function PortalLeadsPage() {
                   setSelectedDate(e.target.value)
                   setShowCalendar(false)
                 }}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-gray-900 text-base"
+                className="w-full px-4 py-4 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-gray-900 text-lg"
               />
-              <div className="flex gap-2 mt-4">
+              <div className="flex gap-3 mt-4">
                 <button
                   onClick={() => {
                     setSelectedDate(new Date().toISOString().split('T')[0])
                     setShowCalendar(false)
                   }}
-                  className="flex-1 px-3 py-2.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                  className="flex-1 px-4 py-3 text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
                 >
                   Today
                 </button>
                 <button
                   onClick={() => setShowCalendar(false)}
-                  className="flex-1 px-3 py-2.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+                  className="flex-1 px-4 py-3 text-base bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
                 >
                   Close
                 </button>
               </div>
             </div>
+            {/* Safe area padding for iOS */}
+            <div className="h-safe-area-inset-bottom md:hidden" />
           </div>
         </>
       )}
