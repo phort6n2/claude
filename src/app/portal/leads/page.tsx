@@ -75,8 +75,9 @@ export default function PortalLeadsPage() {
   const [loading, setLoading] = useState(true)
   const [sales, setSales] = useState<SalesStats | null>(null)
   const [selectedDate, setSelectedDate] = useState(() => {
+    // Use local date, not UTC
     const today = new Date()
-    return today.toISOString().split('T')[0]
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   })
   const [showCalendar, setShowCalendar] = useState(false)
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
@@ -143,9 +144,10 @@ export default function PortalLeadsPage() {
   }, [selectedLead])
 
   function changeDate(days: number) {
-    const date = new Date(selectedDate)
+    const date = new Date(selectedDate + 'T12:00:00') // Use noon to avoid DST issues
     date.setDate(date.getDate() + days)
-    setSelectedDate(date.toISOString().split('T')[0])
+    const localDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+    setSelectedDate(localDate)
   }
 
   function formatDateDisplay(dateStr: string) {
@@ -396,7 +398,11 @@ export default function PortalLeadsPage() {
             <User className="h-12 w-12 mx-auto mb-4 text-gray-300" />
             <p className="text-gray-500">No leads on this date</p>
             <button
-              onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+              onClick={() => {
+                const today = new Date()
+                const localDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+                setSelectedDate(localDate)
+              }}
               className="mt-3 text-blue-600 hover:underline text-sm"
             >
               Go to today
@@ -777,7 +783,10 @@ export default function PortalLeadsPage() {
               <div className="flex gap-3 mt-4">
                 <button
                   onClick={() => {
-                    setSelectedDate(new Date().toISOString().split('T')[0])
+                    // Use local date, not UTC
+                    const today = new Date()
+                    const localDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+                    setSelectedDate(localDate)
                     setShowCalendar(false)
                   }}
                   className="flex-1 px-4 py-3 text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
