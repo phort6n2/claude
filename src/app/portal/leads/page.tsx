@@ -45,6 +45,7 @@ interface Session {
     businessName: string
     email: string
     name: string | null
+    logoUrl: string | null
   }
 }
 
@@ -302,9 +303,18 @@ export default function PortalLeadsPage() {
       <header className="bg-white border-b sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-lg font-bold text-gray-900">{session.user?.businessName}</h1>
-              <p className="text-xs text-gray-600">Lead Portal</p>
+            <div className="flex items-center gap-3">
+              {session.user?.logoUrl && (
+                <img
+                  src={session.user.logoUrl}
+                  alt={session.user.businessName}
+                  className="h-10 w-10 object-contain rounded"
+                />
+              )}
+              <div>
+                <h1 className="text-lg font-bold text-gray-900">{session.user?.businessName}</h1>
+                <p className="text-xs text-gray-600">Lead Portal</p>
+              </div>
             </div>
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />
