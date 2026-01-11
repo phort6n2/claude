@@ -488,7 +488,7 @@ export default function PortalLeadsPage() {
                     )}
                     {selectedLead.formData.radio_3s0t && (
                       <div className="col-span-2">
-                        <span className="text-gray-500">Radio Code</span>
+                        <span className="text-gray-500">Insurance Claim Help</span>
                         <p className="font-medium">{String(selectedLead.formData.radio_3s0t)}</p>
                       </div>
                     )}
