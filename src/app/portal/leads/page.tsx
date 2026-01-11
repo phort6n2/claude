@@ -21,6 +21,7 @@ import {
   User,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import ClientLogo from '@/components/ui/ClientLogo'
 
 interface Lead {
   id: string
@@ -44,6 +45,8 @@ interface Session {
     businessName: string
     email: string
     name: string | null
+    logoUrl: string | null
+    primaryColor: string | null
   }
 }
 
@@ -249,9 +252,17 @@ export default function PortalLeadsPage() {
       <header className="bg-white border-b sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-lg font-bold text-gray-900">{session.user?.businessName}</h1>
-              <p className="text-xs text-gray-500">Lead Portal</p>
+            <div className="flex items-center gap-3">
+              <ClientLogo
+                logoUrl={session.user?.logoUrl || null}
+                businessName={session.user?.businessName || '?'}
+                primaryColor={session.user?.primaryColor || null}
+                size="md"
+              />
+              <div>
+                <h1 className="text-lg font-bold text-gray-900">{session.user?.businessName}</h1>
+                <p className="text-xs text-gray-500">Lead Portal</p>
+              </div>
             </div>
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />
