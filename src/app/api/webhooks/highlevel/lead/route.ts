@@ -107,6 +107,8 @@ export async function POST(request: NextRequest) {
       vehicle_year: payload.vehicle_year,
       vehicle_make: payload.vehicle_make,
       vehicle_model: payload.vehicle_model,
+      vin: payload.vin,
+      radio_3s0t: payload.radio_3s0t,
     }
 
     // Add location info
