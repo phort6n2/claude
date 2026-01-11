@@ -20,6 +20,42 @@ export async function GET(request: NextRequest) {
   const offset = parseInt(searchParams.get('offset') || '0')
 
   try {
+    // Helper function to get start/end of day in client's timezone
+    function getDateRangeInTimezone(dateStr: string, timezone: string) {
+      // Create a date at midnight in the client's timezone
+      // We do this by formatting the date in the timezone and parsing it
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      })
+
+      // Parse the input date parts
+      const [year, month, day] = dateStr.split('-').map(Number)
+
+      // Create date at midnight UTC, then adjust for timezone offset
+      const testDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0)) // noon UTC to be safe
+      const formatted = formatter.format(testDate)
+
+      // Get the timezone offset by comparing local midnight to UTC
+      const localMidnight = new Date(`${dateStr}T00:00:00`)
+      const options = { timeZone: timezone, hour: 'numeric', hour12: false } as const
+      const hourInTz = parseInt(new Intl.DateTimeFormat('en-US', options).format(localMidnight))
+
+      // Calculate offset: for America/Los_Angeles (UTC-8), midnight local = 8:00 UTC
+      // Create start of day in UTC that corresponds to midnight in client timezone
+      const tzOffset = new Date().toLocaleString('en-US', { timeZone: timezone, timeZoneName: 'shortOffset' })
+      const offsetMatch = tzOffset.match(/GMT([+-]\d+)/)
+      const offsetHours = offsetMatch ? parseInt(offsetMatch[1]) : 0
+
+      // Start of day in client's timezone converted to UTC
+      const startOfDay = new Date(Date.UTC(year, month - 1, day, -offsetHours, 0, 0))
+      const endOfDay = new Date(Date.UTC(year, month - 1, day, -offsetHours + 23, 59, 59, 999))
+
+      return { startOfDay, endOfDay }
+    }
+
     // Build where clause - always filter by client
     const where: Record<string, unknown> = {
       clientId: session.clientId,
@@ -29,10 +65,9 @@ export async function GET(request: NextRequest) {
       where.status = status
     }
 
-    // Date filter - filter by the date the lead was created
+    // Date filter - filter by the date the lead was created in client's timezone
     if (dateStr) {
-      const startOfDay = new Date(dateStr + 'T00:00:00.000Z')
-      const endOfDay = new Date(dateStr + 'T23:59:59.999Z')
+      const { startOfDay, endOfDay } = getDateRangeInTimezone(dateStr, session.timezone)
       where.createdAt = {
         gte: startOfDay,
         lte: endOfDay,
@@ -78,12 +113,28 @@ export async function GET(request: NextRequest) {
       return acc
     }, {} as Record<string, number>)
 
-    // Calculate sales stats (today, this week, this month)
-    const now = new Date()
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const startOfWeek = new Date(startOfToday)
-    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()) // Sunday
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    // Calculate sales stats (today, this week, this month) in client's timezone
+    // Get current date in client's timezone
+    const nowInTz = new Date().toLocaleString('en-US', { timeZone: session.timezone })
+    const clientNow = new Date(nowInTz)
+    const clientYear = clientNow.getFullYear()
+    const clientMonth = clientNow.getMonth()
+    const clientDate = clientNow.getDate()
+    const clientDay = clientNow.getDay()
+
+    // Get timezone offset
+    const tzOffset = new Date().toLocaleString('en-US', { timeZone: session.timezone, timeZoneName: 'shortOffset' })
+    const offsetMatch = tzOffset.match(/GMT([+-]\d+)/)
+    const offsetHours = offsetMatch ? parseInt(offsetMatch[1]) : 0
+
+    // Start of today in client's timezone (converted to UTC)
+    const startOfToday = new Date(Date.UTC(clientYear, clientMonth, clientDate, -offsetHours, 0, 0))
+
+    // Start of week (Sunday) in client's timezone
+    const startOfWeek = new Date(Date.UTC(clientYear, clientMonth, clientDate - clientDay, -offsetHours, 0, 0))
+
+    // Start of month in client's timezone
+    const startOfMonth = new Date(Date.UTC(clientYear, clientMonth, 1, -offsetHours, 0, 0))
 
     const [salesToday, salesWeek, salesMonth] = await Promise.all([
       prisma.lead.aggregate({
