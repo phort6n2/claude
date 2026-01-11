@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
         firstName: finalFirstName,
         lastName: finalLastName,
         gclid,
-        source: contactSource || 'FORM',
+        source: 'FORM',
         formData: Object.keys(formData).length > 0 ? (formData as Prisma.InputJsonValue) : undefined,
         formName: workflow.name || campaign.name || null,
         highlevelContactId,
