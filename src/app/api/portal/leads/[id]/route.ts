@@ -87,6 +87,20 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     // Build update data - clients can only update certain fields
     const updateData: Record<string, unknown> = {}
 
+    // Contact info updates (for phone leads that need info filled in)
+    if (data.firstName !== undefined) {
+      updateData.firstName = data.firstName
+    }
+    if (data.lastName !== undefined) {
+      updateData.lastName = data.lastName
+    }
+    if (data.email !== undefined) {
+      updateData.email = data.email
+    }
+    if (data.phone !== undefined) {
+      updateData.phone = data.phone
+    }
+
     // Status update
     if (data.status !== undefined) {
       updateData.status = data.status
@@ -120,6 +134,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         lastName: true,
         status: true,
         statusUpdatedAt: true,
+        source: true,
         saleValue: true,
         saleDate: true,
         saleNotes: true,
