@@ -340,37 +340,6 @@ export default function PortalLeadsPage() {
             </button>
           </div>
 
-          {/* Calendar Popup */}
-          {showCalendar && (
-            <div className="absolute left-1/2 -translate-x-1/2 mt-2 bg-white rounded-lg shadow-lg border p-4 z-50">
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => {
-                  setSelectedDate(e.target.value)
-                  setShowCalendar(false)
-                }}
-                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              />
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={() => {
-                    setSelectedDate(new Date().toISOString().split('T')[0])
-                    setShowCalendar(false)
-                  }}
-                  className="flex-1 px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                >
-                  Today
-                </button>
-                <button
-                  onClick={() => setShowCalendar(false)}
-                  className="flex-1 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -753,12 +722,42 @@ export default function PortalLeadsPage() {
         </div>
       )}
 
-      {/* Click outside calendar to close */}
+      {/* Calendar Modal */}
       {showCalendar && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setShowCalendar(false)}
-        />
+        <>
+          <div
+            className="fixed inset-0 bg-black/20 z-50"
+            onClick={() => setShowCalendar(false)}
+          />
+          <div className="fixed top-32 left-1/2 -translate-x-1/2 bg-white rounded-lg shadow-xl border p-4 z-[51]">
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => {
+                setSelectedDate(e.target.value)
+                setShowCalendar(false)
+              }}
+              className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900 text-base"
+            />
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={() => {
+                  setSelectedDate(new Date().toISOString().split('T')[0])
+                  setShowCalendar(false)
+                }}
+                className="flex-1 px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 font-medium"
+              >
+                Today
+              </button>
+              <button
+                onClick={() => setShowCalendar(false)}
+                className="flex-1 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )
