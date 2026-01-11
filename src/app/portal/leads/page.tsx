@@ -459,7 +459,7 @@ export default function PortalLeadsPage() {
                       value={editFirstName}
                       onChange={(e) => setEditFirstName(e.target.value)}
                       placeholder="First name"
-                      className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
+                      className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
                     />
                   </div>
                   <div>
@@ -469,7 +469,7 @@ export default function PortalLeadsPage() {
                       value={editLastName}
                       onChange={(e) => setEditLastName(e.target.value)}
                       placeholder="Last name"
-                      className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
+                      className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
                     />
                   </div>
                 </div>
@@ -482,7 +482,7 @@ export default function PortalLeadsPage() {
                     value={editEmail}
                     onChange={(e) => setEditEmail(e.target.value)}
                     placeholder="email@example.com"
-                    className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
+                    className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
                   />
                 </div>
 
@@ -494,7 +494,7 @@ export default function PortalLeadsPage() {
                     value={editPhone}
                     onChange={(e) => setEditPhone(e.target.value)}
                     placeholder="(555) 555-5555"
-                    className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
+                    className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
                   />
                 </div>
 
@@ -535,37 +535,37 @@ export default function PortalLeadsPage() {
                       {fd.interested_in ? (
                         <div>
                           <span className="text-gray-500">Interested In</span>
-                          <p className="font-medium">{String(fd.interested_in)}</p>
+                          <p className="font-medium text-gray-900">{String(fd.interested_in)}</p>
                         </div>
                       ) : null}
                       {fd.vehicle_year ? (
                         <div>
                           <span className="text-gray-500">Year</span>
-                          <p className="font-medium">{String(fd.vehicle_year)}</p>
+                          <p className="font-medium text-gray-900">{String(fd.vehicle_year)}</p>
                         </div>
                       ) : null}
                       {fd.vehicle_make ? (
                         <div>
                           <span className="text-gray-500">Make</span>
-                          <p className="font-medium">{String(fd.vehicle_make)}</p>
+                          <p className="font-medium text-gray-900">{String(fd.vehicle_make)}</p>
                         </div>
                       ) : null}
                       {fd.vehicle_model ? (
                         <div>
                           <span className="text-gray-500">Model</span>
-                          <p className="font-medium">{String(fd.vehicle_model)}</p>
+                          <p className="font-medium text-gray-900">{String(fd.vehicle_model)}</p>
                         </div>
                       ) : null}
                       {fd.vin ? (
                         <div className="col-span-2">
                           <span className="text-gray-500">VIN</span>
-                          <p className="font-medium font-mono">{String(fd.vin)}</p>
+                          <p className="font-medium font-mono text-gray-900">{String(fd.vin)}</p>
                         </div>
                       ) : null}
                       {fd.radio_3s0t ? (
                         <div className="col-span-2">
                           <span className="text-gray-500">Insurance Claim Help</span>
-                          <p className="font-medium">{String(fd.radio_3s0t)}</p>
+                          <p className="font-medium text-gray-900">{String(fd.radio_3s0t)}</p>
                         </div>
                       ) : null}
                     </div>
@@ -581,7 +581,7 @@ export default function PortalLeadsPage() {
                 <select
                   value={editStatus}
                   onChange={(e) => setEditStatus(e.target.value)}
-                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base"
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base text-gray-900"
                 >
                   {STATUS_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -603,7 +603,7 @@ export default function PortalLeadsPage() {
                     value={editSaleValue}
                     onChange={(e) => setEditSaleValue(e.target.value)}
                     placeholder="0.00"
-                    className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base placeholder:text-gray-500"
+                    className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base text-gray-900 placeholder:text-gray-500"
                   />
                 </div>
               </div>
@@ -617,7 +617,7 @@ export default function PortalLeadsPage() {
                   type="date"
                   value={editSaleDate}
                   onChange={(e) => setEditSaleDate(e.target.value)}
-                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base"
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base text-gray-900"
                 />
               </div>
 
@@ -631,7 +631,7 @@ export default function PortalLeadsPage() {
                   onChange={(e) => setEditSaleNotes(e.target.value)}
                   placeholder="Add notes about this sale..."
                   rows={3}
-                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base resize-none placeholder:text-gray-500"
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base text-gray-900 resize-none placeholder:text-gray-500"
                 />
               </div>
             </div>
