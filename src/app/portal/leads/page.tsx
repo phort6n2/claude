@@ -452,49 +452,54 @@ export default function PortalLeadsPage() {
               </div>
 
               {/* Form Data / Vehicle Info */}
-              {selectedLead.formData && Object.keys(selectedLead.formData).length > 0 && (
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <h4 className="font-medium text-gray-900 mb-3">Lead Details</h4>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    {selectedLead.formData.interested_in && (
-                      <div>
-                        <span className="text-gray-500">Interested In</span>
-                        <p className="font-medium">{String(selectedLead.formData.interested_in)}</p>
-                      </div>
-                    )}
-                    {selectedLead.formData.vehicle_year && (
-                      <div>
-                        <span className="text-gray-500">Year</span>
-                        <p className="font-medium">{String(selectedLead.formData.vehicle_year)}</p>
-                      </div>
-                    )}
-                    {selectedLead.formData.vehicle_make && (
-                      <div>
-                        <span className="text-gray-500">Make</span>
-                        <p className="font-medium">{String(selectedLead.formData.vehicle_make)}</p>
-                      </div>
-                    )}
-                    {selectedLead.formData.vehicle_model && (
-                      <div>
-                        <span className="text-gray-500">Model</span>
-                        <p className="font-medium">{String(selectedLead.formData.vehicle_model)}</p>
-                      </div>
-                    )}
-                    {selectedLead.formData.vin && (
-                      <div className="col-span-2">
-                        <span className="text-gray-500">VIN</span>
-                        <p className="font-medium font-mono">{String(selectedLead.formData.vin)}</p>
-                      </div>
-                    )}
-                    {selectedLead.formData.radio_3s0t && (
-                      <div className="col-span-2">
-                        <span className="text-gray-500">Insurance Claim Help</span>
-                        <p className="font-medium">{String(selectedLead.formData.radio_3s0t)}</p>
-                      </div>
-                    )}
+              {selectedLead.formData && Object.keys(selectedLead.formData).length > 0 && (() => {
+                const fd = selectedLead.formData as Record<string, unknown>
+                const hasVehicleInfo = fd.interested_in || fd.vehicle_year || fd.vehicle_make || fd.vehicle_model || fd.vin || fd.radio_3s0t
+                if (!hasVehicleInfo) return null
+                return (
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <h4 className="font-medium text-gray-900 mb-3">Lead Details</h4>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      {fd.interested_in ? (
+                        <div>
+                          <span className="text-gray-500">Interested In</span>
+                          <p className="font-medium">{String(fd.interested_in)}</p>
+                        </div>
+                      ) : null}
+                      {fd.vehicle_year ? (
+                        <div>
+                          <span className="text-gray-500">Year</span>
+                          <p className="font-medium">{String(fd.vehicle_year)}</p>
+                        </div>
+                      ) : null}
+                      {fd.vehicle_make ? (
+                        <div>
+                          <span className="text-gray-500">Make</span>
+                          <p className="font-medium">{String(fd.vehicle_make)}</p>
+                        </div>
+                      ) : null}
+                      {fd.vehicle_model ? (
+                        <div>
+                          <span className="text-gray-500">Model</span>
+                          <p className="font-medium">{String(fd.vehicle_model)}</p>
+                        </div>
+                      ) : null}
+                      {fd.vin ? (
+                        <div className="col-span-2">
+                          <span className="text-gray-500">VIN</span>
+                          <p className="font-medium font-mono">{String(fd.vin)}</p>
+                        </div>
+                      ) : null}
+                      {fd.radio_3s0t ? (
+                        <div className="col-span-2">
+                          <span className="text-gray-500">Insurance Claim Help</span>
+                          <p className="font-medium">{String(fd.radio_3s0t)}</p>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-              )}
+                )
+              })()}
 
               {/* Status */}
               <div>
