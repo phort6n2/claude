@@ -19,6 +19,12 @@ import {
   Trash2,
   Globe,
   MousePointer,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Check,
+  Code,
+  Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 
@@ -96,6 +102,18 @@ export default function LeadDetailPage() {
   const [editSaleValue, setEditSaleValue] = useState('')
   const [editSaleDate, setEditSaleDate] = useState('')
   const [editSaleNotes, setEditSaleNotes] = useState('')
+
+  // Expandable sections for troubleshooting
+  const [showRawData, setShowRawData] = useState(false)
+  const [showUtmParams, setShowUtmParams] = useState(false)
+  const [copiedField, setCopiedField] = useState<string | null>(null)
+
+  // Copy to clipboard helper
+  const copyToClipboard = async (text: string, field: string) => {
+    await navigator.clipboard.writeText(text)
+    setCopiedField(field)
+    setTimeout(() => setCopiedField(null), 2000)
+  }
 
   // Load lead
   useEffect(() => {
@@ -435,66 +453,198 @@ export default function LeadDetailPage() {
               </Link>
             </div>
 
-            {/* Google Ads Info */}
+            {/* Conversion Tracking */}
             <div className="bg-white rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                <Globe className="h-4 w-4 text-blue-500" />
-                Google Ads
+                <Zap className="h-4 w-4 text-amber-500" />
+                Conversion Tracking
               </h4>
 
-              {lead.gclid ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-green-600 text-sm">
-                    <CheckCircle2 className="h-4 w-4" />
-                    GCLID captured
+              <div className="space-y-3">
+                {/* GCLID */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-gray-500">GCLID</span>
+                    {lead.gclid ? (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                        <CheckCircle2 className="h-3 w-3" />
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-600">
+                        <XCircle className="h-3 w-3" />
+                      </span>
+                    )}
                   </div>
-
-                  {lead.utmCampaign && (
-                    <div className="text-sm">
-                      <span className="text-gray-500">Campaign:</span>
-                      <p className="text-gray-900">{lead.utmCampaign}</p>
+                  {lead.gclid ? (
+                    <div className="flex items-center gap-1">
+                      <code className="flex-1 text-xs bg-gray-100 px-2 py-1 rounded font-mono text-gray-700 break-all">
+                        {lead.gclid}
+                      </code>
+                      <button
+                        onClick={() => copyToClipboard(lead.gclid!, 'gclid')}
+                        className="p-1 hover:bg-gray-100 rounded"
+                        title="Copy GCLID"
+                      >
+                        {copiedField === 'gclid' ? (
+                          <Check className="h-3.5 w-3.5 text-green-600" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5 text-gray-400" />
+                        )}
+                      </button>
                     </div>
+                  ) : (
+                    <p className="text-xs text-gray-400 italic">Not captured</p>
                   )}
-                  {lead.utmKeyword && (
-                    <div className="text-sm">
-                      <span className="text-gray-500">Keyword:</span>
-                      <p className="text-gray-900">{lead.utmKeyword}</p>
-                    </div>
-                  )}
+                </div>
 
-                  <div className="border-t pt-3 mt-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Email/Phone:</span>
-                      {lead.enhancedConversionSent ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Sent
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
-                          <Clock className="h-3 w-3" />
-                          Pending
-                        </span>
-                      )}
+                {/* GBRAID */}
+                {lead.gbraid && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-gray-500">GBRAID (iOS)</span>
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                        <CheckCircle2 className="h-3 w-3" />
+                      </span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Sale Value:</span>
-                      {lead.offlineConversionSent ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Sent
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
-                          <Clock className="h-3 w-3" />
-                          Pending
-                        </span>
-                      )}
+                    <div className="flex items-center gap-1">
+                      <code className="flex-1 text-xs bg-gray-100 px-2 py-1 rounded font-mono text-gray-700 break-all">
+                        {lead.gbraid}
+                      </code>
+                      <button
+                        onClick={() => copyToClipboard(lead.gbraid!, 'gbraid')}
+                        className="p-1 hover:bg-gray-100 rounded"
+                        title="Copy GBRAID"
+                      >
+                        {copiedField === 'gbraid' ? (
+                          <Check className="h-3.5 w-3.5 text-green-600" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5 text-gray-400" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* WBRAID */}
+                {lead.wbraid && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-gray-500">WBRAID (Web-to-App)</span>
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                        <CheckCircle2 className="h-3 w-3" />
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <code className="flex-1 text-xs bg-gray-100 px-2 py-1 rounded font-mono text-gray-700 break-all">
+                        {lead.wbraid}
+                      </code>
+                      <button
+                        onClick={() => copyToClipboard(lead.wbraid!, 'wbraid')}
+                        className="p-1 hover:bg-gray-100 rounded"
+                        title="Copy WBRAID"
+                      >
+                        {copiedField === 'wbraid' ? (
+                          <Check className="h-3.5 w-3.5 text-green-600" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5 text-gray-400" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Conversion Status */}
+                <div className="border-t pt-3 mt-3 space-y-2">
+                  <p className="text-xs font-medium text-gray-500 mb-2">Sync Status</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">Enhanced (Email/Phone):</span>
+                    {lead.enhancedConversionSent ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Sent
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                        <Clock className="h-3 w-3" />
+                        Pending
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">Offline (Sale Value):</span>
+                    {lead.offlineConversionSent ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Sent
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                        <Clock className="h-3 w-3" />
+                        Pending
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* UTM Parameters (Expandable) */}
+            <div className="bg-white rounded-lg overflow-hidden">
+              <button
+                onClick={() => setShowUtmParams(!showUtmParams)}
+                className="w-full p-4 flex items-center justify-between hover:bg-gray-50"
+              >
+                <h4 className="font-medium text-gray-900 flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-blue-500" />
+                  UTM Parameters
+                </h4>
+                {showUtmParams ? (
+                  <ChevronDown className="h-4 w-4 text-gray-400" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                )}
+              </button>
+              {showUtmParams && (
+                <div className="px-4 pb-4 space-y-2 text-sm border-t">
+                  <div className="pt-3 grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-xs text-gray-500">Source</span>
+                      <p className="text-gray-900 font-mono text-xs">{lead.utmSource || '—'}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500">Medium</span>
+                      <p className="text-gray-900 font-mono text-xs">{lead.utmMedium || '—'}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500">Campaign</span>
+                      <p className="text-gray-900 font-mono text-xs">{lead.utmCampaign || '—'}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500">Content</span>
+                      <p className="text-gray-900 font-mono text-xs">{lead.utmContent || '—'}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500">Keyword</span>
+                      <p className="text-gray-900 font-mono text-xs">{lead.utmKeyword || '—'}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500">Match Type</span>
+                      <p className="text-gray-900 font-mono text-xs">{lead.utmMatchtype || '—'}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500">Campaign ID</span>
+                      <p className="text-gray-900 font-mono text-xs">{lead.campaignId || '—'}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500">Ad Group ID</span>
+                      <p className="text-gray-900 font-mono text-xs">{lead.adGroupId || '—'}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500">Ad ID</span>
+                      <p className="text-gray-900 font-mono text-xs">{lead.adId || '—'}</p>
                     </div>
                   </div>
                 </div>
-              ) : (
-                <p className="text-sm text-gray-500">No GCLID captured</p>
               )}
             </div>
 
@@ -535,6 +685,85 @@ export default function LeadDetailPage() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Raw Webhook Data (Expandable) */}
+            <div className="bg-white rounded-lg overflow-hidden">
+              <button
+                onClick={() => setShowRawData(!showRawData)}
+                className="w-full p-4 flex items-center justify-between hover:bg-gray-50"
+              >
+                <h4 className="font-medium text-gray-900 flex items-center gap-2">
+                  <Code className="h-4 w-4 text-purple-500" />
+                  Raw Webhook Data
+                </h4>
+                {showRawData ? (
+                  <ChevronDown className="h-4 w-4 text-gray-400" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                )}
+              </button>
+              {showRawData && (
+                <div className="px-4 pb-4 border-t">
+                  <div className="pt-3">
+                    {lead.formData && Object.keys(lead.formData).length > 0 ? (
+                      <div className="space-y-3">
+                        {/* Copy All Button */}
+                        <div className="flex justify-end">
+                          <button
+                            onClick={() => copyToClipboard(JSON.stringify(lead.formData, null, 2), 'formData')}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+                          >
+                            {copiedField === 'formData' ? (
+                              <>
+                                <Check className="h-3 w-3 text-green-600" />
+                                Copied!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-3 w-3" />
+                                Copy JSON
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Individual Fields */}
+                        <div className="space-y-2">
+                          {Object.entries(lead.formData).map(([key, value]) => (
+                            <div key={key} className="border-b border-gray-100 pb-2 last:border-0">
+                              <span className="text-xs font-medium text-gray-500">{key}</span>
+                              <div className="mt-0.5">
+                                {typeof value === 'object' && value !== null ? (
+                                  <pre className="text-xs bg-gray-50 p-2 rounded overflow-x-auto font-mono text-gray-700">
+                                    {JSON.stringify(value, null, 2)}
+                                  </pre>
+                                ) : (
+                                  <p className="text-sm text-gray-900 font-mono break-all">
+                                    {String(value)}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Full JSON View */}
+                        <details className="mt-3">
+                          <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
+                            View as JSON
+                          </summary>
+                          <pre className="mt-2 text-xs bg-gray-900 text-gray-100 p-3 rounded overflow-x-auto font-mono">
+                            {JSON.stringify(lead.formData, null, 2)}
+                          </pre>
+                        </details>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">No form data captured</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
