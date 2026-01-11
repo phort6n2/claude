@@ -252,7 +252,7 @@ export default function PortalLeadsPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-lg font-bold text-gray-900">{session.user?.businessName}</h1>
-              <p className="text-xs text-gray-500">Lead Portal</p>
+              <p className="text-xs text-gray-600">Lead Portal</p>
             </div>
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />
@@ -268,14 +268,14 @@ export default function PortalLeadsPage() {
           <div className="flex items-center justify-center gap-2">
             <button
               onClick={() => changeDate(-1)}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
 
             <button
               onClick={() => setShowCalendar(!showCalendar)}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors min-w-[160px] justify-center"
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors min-w-[160px] justify-center text-gray-900"
             >
               <Calendar className="h-4 w-4" />
               <span className="font-medium">{formatDateDisplay(selectedDate)}</span>
@@ -283,7 +283,7 @@ export default function PortalLeadsPage() {
 
             <button
               onClick={() => changeDate(1)}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
@@ -405,14 +405,14 @@ export default function PortalLeadsPage() {
 
       {/* Lead Detail Modal */}
       {selectedLead && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center">
-          <div className="bg-white w-full md:max-w-lg md:rounded-xl rounded-t-xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full md:max-w-lg rounded-xl max-h-[85vh] overflow-y-auto">
             {/* Modal Header */}
-            <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between">
-              <h2 className="font-semibold text-lg">Lead Details</h2>
+            <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between rounded-t-xl">
+              <h2 className="font-semibold text-lg text-gray-900">Lead Details</h2>
               <button
                 onClick={() => setSelectedLead(null)}
-                className="p-2 hover:bg-gray-100 rounded-full"
+                className="p-2 hover:bg-gray-100 rounded-full text-gray-700"
               >
                 <X className="h-5 w-5" />
               </button>
