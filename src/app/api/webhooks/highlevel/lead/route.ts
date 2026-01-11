@@ -46,94 +46,88 @@ export async function POST(request: NextRequest) {
     const payload = await request.json()
     console.log(`[HighLevel Webhook] Received for ${client.businessName}:`, JSON.stringify(payload, null, 2))
 
-    // HighLevel webhook structure varies, but commonly includes:
-    // - contact: { email, phone, firstName, lastName, ... }
-    // - customFields: { ... }
-    // - form: { id, name }
-    // - location: { id, name }
-    // - attributionSource: { url, utmSource, utmMedium, ... }
+    // HighLevel sends data at root level with underscores:
+    // first_name, last_name, full_name, email, phone, gclid, contact_source, etc.
+    // Location data in location object, campaign in campaign object, etc.
 
-    // Extract contact info (handle different HighLevel payload structures)
-    const contact = payload.contact || payload
-    const customFields = payload.customFields || contact.customFields || {}
-    const attributionSource = payload.attributionSource || contact.attributionSource || {}
-    const formInfo = payload.form || {}
+    // Get contact details - fields are at root level with underscores
+    const email = payload.email || null
+    const phone = payload.phone || null
+    const firstName = payload.first_name || null
+    const lastName = payload.last_name || null
+    const fullName = payload.full_name || null
 
-    // Get contact details
-    const email = contact.email || contact.Email || null
-    const phone = contact.phone || contact.Phone || contact.phoneNumber || null
-    const firstName = contact.firstName || contact.first_name || contact.FirstName || null
-    const lastName = contact.lastName || contact.last_name || contact.LastName || null
-
-    // Extract GCLID from multiple possible sources:
-    // 1. Custom field named 'gclid'
-    // 2. Attribution source
-    // 3. URL parameter in landing page URL
-    let gclid = customFields.gclid ||
-                customFields.GCLID ||
-                attributionSource.gclid ||
-                null
-
-    // If no GCLID in custom fields, try to extract from landing page URL
-    const landingPageUrl = attributionSource.url ||
-                           contact.source ||
-                           customFields.landing_page_url ||
-                           null
-
-    if (!gclid && landingPageUrl) {
-      try {
-        const url = new URL(landingPageUrl)
-        gclid = url.searchParams.get('gclid')
-      } catch {
-        // Invalid URL, skip
-      }
+    // Use full_name to parse first/last if not provided separately
+    let finalFirstName = firstName
+    let finalLastName = lastName
+    if (!firstName && !lastName && fullName) {
+      const nameParts = fullName.trim().split(' ')
+      finalFirstName = nameParts[0] || null
+      finalLastName = nameParts.slice(1).join(' ') || null
     }
 
-    // Extract UTM parameters
-    const utmSource = attributionSource.utmSource ||
-                      attributionSource.utm_source ||
-                      customFields.utm_source ||
-                      null
-    const utmMedium = attributionSource.utmMedium ||
-                      attributionSource.utm_medium ||
-                      customFields.utm_medium ||
-                      null
-    const utmCampaign = attributionSource.utmCampaign ||
-                        attributionSource.utm_campaign ||
-                        customFields.utm_campaign ||
-                        null
-    const utmContent = attributionSource.utmContent ||
-                       attributionSource.utm_content ||
-                       customFields.utm_content ||
-                       null
-    const utmKeyword = attributionSource.utmKeyword ||
-                       attributionSource.utm_keyword ||
-                       customFields.utm_keyword ||
-                       null
-    const utmMatchtype = customFields.utm_matchtype || null
+    // GCLID is at root level
+    const gclid = payload.gclid || null
 
-    // Google Ads IDs from UTM params
-    const campaignId = customFields.campaign_id || null
-    const adGroupId = customFields.ad_group_id || null
-    const adId = customFields.ad_id || null
+    // Source information
+    const contactSource = payload.contact_source || payload.source || null
 
-    // iOS/Web attribution
-    const gbraid = customFields.gbraid || null
-    const wbraid = customFields.wbraid || null
+    // Location data
+    const location = payload.location || {}
 
-    // Build form data JSON (all extra fields)
-    const formData: Record<string, unknown> = {}
-    for (const [key, value] of Object.entries(customFields)) {
-      // Exclude fields we're storing in dedicated columns
-      if (!['gclid', 'gbraid', 'wbraid', 'utm_source', 'utm_medium', 'utm_campaign',
-            'utm_content', 'utm_keyword', 'utm_matchtype', 'campaign_id', 'ad_group_id',
-            'ad_id', 'landing_page_url'].includes(key.toLowerCase())) {
-        formData[key] = value
-      }
+    // Campaign data
+    const campaign = payload.campaign || {}
+
+    // Workflow data
+    const workflow = payload.workflow || {}
+
+    // Address info
+    const address = payload.address1 || null
+    const city = payload.city || location.city || null
+    const state = payload.state || location.state || null
+    const postalCode = payload.postal_code || location.postalCode || null
+
+    // Build form data JSON (store all extra fields for reference)
+    const formData: Record<string, unknown> = {
+      full_name: fullName,
+      company_name: payload.company_name,
+      website: payload.website,
+      address1: payload.address1,
+      city: payload.city,
+      state: payload.state,
+      country: payload.country,
+      postal_code: payload.postal_code,
+      timezone: payload.timezone,
+      contact_source: contactSource,
+      contact_type: payload.contact_type,
+      tags: payload.tags,
+      date_of_birth: payload.date_of_birth,
     }
+
+    // Add location info
+    if (location.id) {
+      formData.location = location
+    }
+
+    // Add campaign info
+    if (campaign.id) {
+      formData.campaign = campaign
+    }
+
+    // Add workflow info
+    if (workflow.id) {
+      formData.workflow = workflow
+    }
+
+    // Remove null/undefined values from formData
+    Object.keys(formData).forEach(key => {
+      if (formData[key] === null || formData[key] === undefined) {
+        delete formData[key]
+      }
+    })
 
     // HighLevel contact ID for reference
-    const highlevelContactId = contact.id || contact.contactId || null
+    const highlevelContactId = payload.id || null
 
     // Create the lead
     const lead = await prisma.lead.create({
@@ -141,24 +135,12 @@ export async function POST(request: NextRequest) {
         clientId: client.id,
         email,
         phone,
-        firstName,
-        lastName,
+        firstName: finalFirstName,
+        lastName: finalLastName,
         gclid,
-        gbraid,
-        wbraid,
-        utmSource,
-        utmMedium,
-        utmCampaign,
-        utmContent,
-        utmKeyword,
-        utmMatchtype,
-        campaignId,
-        adGroupId,
-        adId,
-        source: 'FORM',
-        landingPageUrl,
+        source: contactSource || 'FORM',
         formData: Object.keys(formData).length > 0 ? (formData as Prisma.InputJsonValue) : undefined,
-        formName: formInfo.name || null,
+        formName: workflow.name || campaign.name || null,
         highlevelContactId,
         status: 'NEW',
       },
