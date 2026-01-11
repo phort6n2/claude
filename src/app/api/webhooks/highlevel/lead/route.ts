@@ -161,6 +161,20 @@ export async function POST(request: NextRequest) {
     // HighLevel contact ID for reference
     const highlevelContactId = payload.id || null
 
+    // Determine lead source - check for phone call indicators
+    const sourceStr = (contactSource || '').toLowerCase()
+    const contactType = (payload.contact_type || '').toLowerCase()
+    const isPhoneCall =
+      sourceStr.includes('phone') ||
+      sourceStr.includes('call') ||
+      sourceStr.includes('inbound') ||
+      contactType === 'phone' ||
+      contactType === 'call' ||
+      payload.call !== undefined ||
+      payload.phone_call !== undefined
+
+    const leadSource = isPhoneCall ? 'PHONE' : 'FORM'
+
     // Create the lead
     const lead = await prisma.lead.create({
       data: {
@@ -170,7 +184,7 @@ export async function POST(request: NextRequest) {
         firstName: finalFirstName,
         lastName: finalLastName,
         gclid,
-        source: 'FORM',
+        source: leadSource,
         formData: Object.keys(formData).length > 0 ? (formData as Prisma.InputJsonValue) : undefined,
         formName: workflow.name || campaign.name || null,
         highlevelContactId,
