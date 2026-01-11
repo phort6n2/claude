@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   Phone,
   Mail,
-  Calendar,
   Building2,
   ExternalLink,
   DollarSign,
@@ -317,6 +316,15 @@ export default function LeadDetailPage() {
                     >
                       <Phone className="h-4 w-4" />
                       Call
+                    </a>
+                  )}
+                  {editPhone && (
+                    <a
+                      href={`sms:${editPhone}`}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      Text
                     </a>
                   )}
                   {editEmail && (
