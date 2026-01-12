@@ -17,7 +17,7 @@ import {
   Store,
   UserCheck,
   BarChart3,
-  Webhook,
+  Radio,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -31,7 +31,7 @@ const navigation = [
   { name: 'Monitoring', href: '/admin/monitoring', icon: Monitor },
   { name: 'API Status', href: '/admin/api-status', icon: Activity },
   { name: 'Google Ads', href: '/admin/google-ads-monitor', icon: BarChart3 },
-  { name: 'Webhook Status', href: '/admin/webhook-status', icon: Webhook },
+  { name: 'Webhook Status', href: '/admin/webhook-status', icon: Radio },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
   { name: 'Help', href: '/admin/help', icon: HelpCircle },
 ]
