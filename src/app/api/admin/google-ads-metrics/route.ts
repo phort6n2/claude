@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
     )
 
     // Calculate totals
-    const totals = accountResults.reduce(
+    const sums = accountResults.reduce(
       (acc, account) => {
         if (account.metrics) {
           acc.impressions += account.metrics.impressions
@@ -114,9 +114,12 @@ export async function GET(request: NextRequest) {
     )
 
     // Calculate aggregate rates
-    totals.costPerConversion = totals.conversions > 0 ? totals.cost / totals.conversions : 0
-    totals.ctr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0
-    totals.avgCpc = totals.clicks > 0 ? totals.cost / totals.clicks : 0
+    const totals = {
+      ...sums,
+      costPerConversion: sums.conversions > 0 ? sums.cost / sums.conversions : 0,
+      ctr: sums.impressions > 0 ? (sums.clicks / sums.impressions) * 100 : 0,
+      avgCpc: sums.clicks > 0 ? sums.cost / sums.clicks : 0,
+    }
 
     return NextResponse.json({
       connected: true,
