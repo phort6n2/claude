@@ -501,3 +501,333 @@ function formatCustomerId(id: string): string {
   if (clean.length !== 10) return id
   return `${clean.slice(0, 3)}-${clean.slice(3, 6)}-${clean.slice(6)}`
 }
+
+/**
+ * Execute a GAQL query against a customer account
+ */
+async function searchStreamQuery(
+  customerId: string,
+  query: string
+): Promise<{ success: boolean; results?: unknown[]; error?: string }> {
+  const accessToken = await getValidAccessToken()
+  const creds = await getGoogleAdsCredentials()
+
+  if (!accessToken || !creds?.developerToken || !creds?.mccCustomerId) {
+    return { success: false, error: 'Google Ads not configured' }
+  }
+
+  const cleanCustomerId = customerId.replace(/-/g, '')
+
+  try {
+    const response = await fetch(
+      `${GOOGLE_ADS_API_BASE}/customers/${cleanCustomerId}/googleAds:searchStream`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'developer-token': creds.developerToken,
+          'login-customer-id': creds.mccCustomerId.replace(/-/g, ''),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query }),
+      }
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      return { success: false, error: `API error: ${response.status} - ${error}` }
+    }
+
+    const data = await response.json()
+    const results: unknown[] = []
+
+    for (const batch of data || []) {
+      for (const result of batch.results || []) {
+        results.push(result)
+      }
+    }
+
+    return { success: true, results }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+  }
+}
+
+/**
+ * Get account-level metrics for a date range
+ */
+export async function getAccountMetrics(
+  customerId: string,
+  dateRange: 'TODAY' | 'YESTERDAY' | 'THIS_WEEK' | 'THIS_MONTH' | 'LAST_7_DAYS' | 'LAST_30_DAYS' = 'TODAY'
+): Promise<{
+  success: boolean
+  metrics?: {
+    impressions: number
+    clicks: number
+    cost: number
+    conversions: number
+    costPerConversion: number
+    conversionValue: number
+    ctr: number
+    avgCpc: number
+  }
+  error?: string
+}> {
+  // Build the date filter based on the range
+  let dateFilter = ''
+  const today = new Date()
+  const formatDate = (d: Date) => d.toISOString().split('T')[0].replace(/-/g, '')
+
+  switch (dateRange) {
+    case 'TODAY':
+      dateFilter = `segments.date = '${formatDate(today)}'`
+      break
+    case 'YESTERDAY': {
+      const yesterday = new Date(today)
+      yesterday.setDate(yesterday.getDate() - 1)
+      dateFilter = `segments.date = '${formatDate(yesterday)}'`
+      break
+    }
+    case 'THIS_WEEK': {
+      const weekStart = new Date(today)
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+      dateFilter = `segments.date BETWEEN '${formatDate(weekStart)}' AND '${formatDate(today)}'`
+      break
+    }
+    case 'THIS_MONTH': {
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+      dateFilter = `segments.date BETWEEN '${formatDate(monthStart)}' AND '${formatDate(today)}'`
+      break
+    }
+    case 'LAST_7_DAYS': {
+      const sevenDaysAgo = new Date(today)
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+      dateFilter = `segments.date BETWEEN '${formatDate(sevenDaysAgo)}' AND '${formatDate(today)}'`
+      break
+    }
+    case 'LAST_30_DAYS': {
+      const thirtyDaysAgo = new Date(today)
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      dateFilter = `segments.date BETWEEN '${formatDate(thirtyDaysAgo)}' AND '${formatDate(today)}'`
+      break
+    }
+  }
+
+  const query = `
+    SELECT
+      metrics.impressions,
+      metrics.clicks,
+      metrics.cost_micros,
+      metrics.conversions,
+      metrics.conversions_value,
+      metrics.ctr,
+      metrics.average_cpc
+    FROM customer
+    WHERE ${dateFilter}
+  `
+
+  const result = await searchStreamQuery(customerId, query)
+
+  if (!result.success) {
+    return { success: false, error: result.error }
+  }
+
+  // Aggregate the results (there may be multiple rows if querying a range)
+  let impressions = 0
+  let clicks = 0
+  let costMicros = 0
+  let conversions = 0
+  let conversionValue = 0
+
+  for (const row of result.results || []) {
+    const metrics = (row as { metrics?: Record<string, number> }).metrics || {}
+    impressions += Number(metrics.impressions || 0)
+    clicks += Number(metrics.clicks || 0)
+    costMicros += Number(metrics.cost_micros || metrics.costMicros || 0)
+    conversions += Number(metrics.conversions || 0)
+    conversionValue += Number(metrics.conversions_value || metrics.conversionsValue || 0)
+  }
+
+  const cost = costMicros / 1_000_000 // Convert micros to dollars
+  const costPerConversion = conversions > 0 ? cost / conversions : 0
+  const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0
+  const avgCpc = clicks > 0 ? cost / clicks : 0
+
+  return {
+    success: true,
+    metrics: {
+      impressions,
+      clicks,
+      cost,
+      conversions,
+      costPerConversion,
+      conversionValue,
+      ctr,
+      avgCpc,
+    },
+  }
+}
+
+/**
+ * Get campaign-level metrics for a customer
+ */
+export async function getCampaignMetrics(
+  customerId: string,
+  dateRange: 'TODAY' | 'YESTERDAY' | 'LAST_7_DAYS' | 'LAST_30_DAYS' = 'LAST_7_DAYS'
+): Promise<{
+  success: boolean
+  campaigns?: Array<{
+    id: string
+    name: string
+    status: string
+    impressions: number
+    clicks: number
+    cost: number
+    conversions: number
+    ctr: number
+  }>
+  error?: string
+}> {
+  const today = new Date()
+  const formatDate = (d: Date) => d.toISOString().split('T')[0].replace(/-/g, '')
+
+  let dateFilter = ''
+  switch (dateRange) {
+    case 'TODAY':
+      dateFilter = `segments.date = '${formatDate(today)}'`
+      break
+    case 'YESTERDAY': {
+      const yesterday = new Date(today)
+      yesterday.setDate(yesterday.getDate() - 1)
+      dateFilter = `segments.date = '${formatDate(yesterday)}'`
+      break
+    }
+    case 'LAST_7_DAYS': {
+      const sevenDaysAgo = new Date(today)
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+      dateFilter = `segments.date BETWEEN '${formatDate(sevenDaysAgo)}' AND '${formatDate(today)}'`
+      break
+    }
+    case 'LAST_30_DAYS': {
+      const thirtyDaysAgo = new Date(today)
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      dateFilter = `segments.date BETWEEN '${formatDate(thirtyDaysAgo)}' AND '${formatDate(today)}'`
+      break
+    }
+  }
+
+  const query = `
+    SELECT
+      campaign.id,
+      campaign.name,
+      campaign.status,
+      metrics.impressions,
+      metrics.clicks,
+      metrics.cost_micros,
+      metrics.conversions,
+      metrics.ctr
+    FROM campaign
+    WHERE campaign.status != 'REMOVED'
+      AND ${dateFilter}
+    ORDER BY metrics.cost_micros DESC
+    LIMIT 20
+  `
+
+  const result = await searchStreamQuery(customerId, query)
+
+  if (!result.success) {
+    return { success: false, error: result.error }
+  }
+
+  // Aggregate by campaign (since we might have multiple date rows per campaign)
+  const campaignMap = new Map<string, {
+    id: string
+    name: string
+    status: string
+    impressions: number
+    clicks: number
+    costMicros: number
+    conversions: number
+  }>()
+
+  for (const row of result.results || []) {
+    const r = row as { campaign?: Record<string, string>; metrics?: Record<string, number> }
+    const campaign = r.campaign || {}
+    const metrics = r.metrics || {}
+
+    const id = String(campaign.id)
+    const existing = campaignMap.get(id)
+
+    if (existing) {
+      existing.impressions += Number(metrics.impressions || 0)
+      existing.clicks += Number(metrics.clicks || 0)
+      existing.costMicros += Number(metrics.cost_micros || metrics.costMicros || 0)
+      existing.conversions += Number(metrics.conversions || 0)
+    } else {
+      campaignMap.set(id, {
+        id,
+        name: String(campaign.name || 'Unknown'),
+        status: String(campaign.status || 'UNKNOWN'),
+        impressions: Number(metrics.impressions || 0),
+        clicks: Number(metrics.clicks || 0),
+        costMicros: Number(metrics.cost_micros || metrics.costMicros || 0),
+        conversions: Number(metrics.conversions || 0),
+      })
+    }
+  }
+
+  const campaigns = Array.from(campaignMap.values())
+    .map((c) => ({
+      ...c,
+      cost: c.costMicros / 1_000_000,
+      ctr: c.impressions > 0 ? (c.clicks / c.impressions) * 100 : 0,
+    }))
+    .sort((a, b) => b.cost - a.cost)
+
+  return { success: true, campaigns }
+}
+
+/**
+ * Get customer account details (name, currency, etc.)
+ */
+export async function getCustomerDetails(customerId: string): Promise<{
+  success: boolean
+  details?: {
+    id: string
+    descriptiveName: string
+    currencyCode: string
+    timeZone: string
+  }
+  error?: string
+}> {
+  const query = `
+    SELECT
+      customer.id,
+      customer.descriptive_name,
+      customer.currency_code,
+      customer.time_zone
+    FROM customer
+    LIMIT 1
+  `
+
+  const result = await searchStreamQuery(customerId, query)
+
+  if (!result.success) {
+    return { success: false, error: result.error }
+  }
+
+  const row = result.results?.[0] as { customer?: Record<string, string> } | undefined
+  if (!row?.customer) {
+    return { success: false, error: 'No customer data returned' }
+  }
+
+  return {
+    success: true,
+    details: {
+      id: formatCustomerId(String(row.customer.id)),
+      descriptiveName: String(row.customer.descriptive_name || row.customer.descriptiveName || 'Unknown'),
+      currencyCode: String(row.customer.currency_code || row.customer.currencyCode || 'USD'),
+      timeZone: String(row.customer.time_zone || row.customer.timeZone || 'America/Los_Angeles'),
+    },
+  }
+}
