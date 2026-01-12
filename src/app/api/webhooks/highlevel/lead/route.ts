@@ -192,10 +192,13 @@ export async function POST(request: NextRequest) {
     // Determine lead source - check for phone call indicators
     const sourceStr = (contactSource || '').toLowerCase()
     const contactType = (payload.contact_type || '').toLowerCase()
+    const attributionMedium = (payload.attributionSource?.medium || '').toLowerCase()
     const isPhoneCall =
       sourceStr.includes('phone') ||
       sourceStr.includes('call') ||
       sourceStr.includes('inbound') ||
+      sourceStr.includes('(number pool)') || // HighLevel number pool tracking
+      attributionMedium === 'conversation' || // HighLevel call attribution
       contactType === 'phone' ||
       contactType === 'call' ||
       payload.call !== undefined ||
