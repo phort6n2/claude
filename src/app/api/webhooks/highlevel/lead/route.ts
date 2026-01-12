@@ -247,16 +247,40 @@ export async function POST(request: NextRequest) {
             // Mark the lead as having sent enhanced conversion
             await prisma.lead.update({
               where: { id: lead.id },
-              data: { enhancedConversionSent: true },
+              data: {
+                enhancedConversionSent: true,
+                enhancedConversionSentAt: new Date(),
+                googleSyncError: null, // Clear any previous error
+              },
             })
             console.log(`[HighLevel Webhook] Enhanced conversion sent for lead ${lead.id}`)
           } else {
+            // Track the failure for retry
+            await prisma.lead.update({
+              where: { id: lead.id },
+              data: {
+                googleSyncError: `Enhanced conversion failed: ${result.error}`,
+              },
+            })
             console.warn(`[HighLevel Webhook] Enhanced conversion failed for lead ${lead.id}:`, result.error)
           }
         }
       } catch (err) {
-        // Log but don't fail the webhook
-        console.error(`[HighLevel Webhook] Enhanced conversion error for lead ${lead.id}:`, err)
+        // Track the error for retry and log with context
+        const errorMessage = err instanceof Error ? err.message : String(err)
+        await prisma.lead.update({
+          where: { id: lead.id },
+          data: {
+            googleSyncError: `Enhanced conversion error: ${errorMessage}`,
+          },
+        }).catch(() => {}) // Don't fail if update fails
+
+        console.error(`[HighLevel Webhook] Enhanced conversion error:`, {
+          leadId: lead.id,
+          client: client.businessName,
+          gclid,
+          error: errorMessage,
+        })
       }
     }
 
@@ -267,9 +291,18 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('[HighLevel Webhook] Error:', error)
+    // Enhanced error logging with context
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorStack = error instanceof Error ? error.stack : undefined
+
+    console.error('[HighLevel Webhook] Error processing webhook:', {
+      error: errorMessage,
+      stack: errorStack,
+      url: request.url,
+    })
+
     return NextResponse.json(
-      { error: 'Failed to process webhook' },
+      { error: 'Failed to process webhook', details: errorMessage },
       { status: 500 }
     )
   }
