@@ -437,8 +437,21 @@ export async function listConversionActions(customerId: string): Promise<{
   const accessToken = await getValidAccessToken()
   const creds = await getGoogleAdsCredentials()
 
-  if (!accessToken || !creds?.developerToken || !creds?.mccCustomerId) {
-    return { success: false, error: 'Google Ads not configured' }
+  console.log('[Google Ads] listConversionActions called:', {
+    customerId,
+    hasAccessToken: !!accessToken,
+    hasDeveloperToken: !!creds?.developerToken,
+    mccCustomerId: creds?.mccCustomerId,
+  })
+
+  if (!accessToken) {
+    return { success: false, error: 'Google Ads not connected - no access token' }
+  }
+  if (!creds?.developerToken) {
+    return { success: false, error: 'Google Ads not configured - missing developer token' }
+  }
+  if (!creds?.mccCustomerId) {
+    return { success: false, error: 'Google Ads not configured - missing MCC customer ID' }
   }
 
   const cleanCustomerId = customerId.replace(/-/g, '')
@@ -453,6 +466,8 @@ export async function listConversionActions(customerId: string): Promise<{
       FROM conversion_action
       WHERE conversion_action.status = 'ENABLED'
     `
+
+    console.log('[Google Ads] Fetching conversion actions for customer:', cleanCustomerId)
 
     const response = await fetch(
       `${GOOGLE_ADS_API_BASE}/customers/${cleanCustomerId}/googleAds:searchStream`,
@@ -469,8 +484,13 @@ export async function listConversionActions(customerId: string): Promise<{
     )
 
     if (!response.ok) {
-      const error = await response.text()
-      return { success: false, error: `API error: ${response.status} - ${error}` }
+      const errorText = await response.text()
+      console.error('[Google Ads] API error fetching conversion actions:', {
+        status: response.status,
+        error: errorText,
+        customerId: cleanCustomerId,
+      })
+      return { success: false, error: `API error ${response.status}: ${errorText}` }
     }
 
     const data = await response.json()
@@ -479,16 +499,20 @@ export async function listConversionActions(customerId: string): Promise<{
     for (const batch of data || []) {
       for (const result of batch.results || []) {
         const action = result.conversionAction
-        actions.push({
-          id: action.id,
-          name: action.name,
-          category: action.category,
-        })
+        if (action) {
+          actions.push({
+            id: String(action.id),
+            name: String(action.name || 'Unknown'),
+            category: String(action.category || 'UNKNOWN'),
+          })
+        }
       }
     }
 
+    console.log('[Google Ads] Found conversion actions:', actions.length)
     return { success: true, actions }
   } catch (error) {
+    console.error('[Google Ads] Exception fetching conversion actions:', error)
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
   }
 }

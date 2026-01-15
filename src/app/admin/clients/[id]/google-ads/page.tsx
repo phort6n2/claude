@@ -50,6 +50,7 @@ export default function ClientGoogleAdsPage({ params }: { params: Promise<{ id: 
   const [customerId, setCustomerId] = useState('')
   const [leadConversionActionId, setLeadConversionActionId] = useState('')
   const [saleConversionActionId, setSaleConversionActionId] = useState('')
+  const [conversionActionsError, setConversionActionsError] = useState<string | null>(null)
 
   // Load client and config
   useEffect(() => {
@@ -89,19 +90,26 @@ export default function ClientGoogleAdsPage({ params }: { params: Promise<{ id: 
 
   async function loadConversionActions(custId: string) {
     setLoadingActions(true)
+    setConversionActionsError(null)
     try {
       const response = await fetch(
         `/api/integrations/google-ads/customers/${custId}/conversion-actions`
       )
+      const data = await response.json()
       if (response.ok) {
-        const data = await response.json()
         setConversionActions(data.actions || [])
+        if (data.actions?.length === 0) {
+          setConversionActionsError('No conversion actions found in this Google Ads account')
+        }
       } else {
-        const data = await response.json()
         console.warn('Failed to load conversion actions:', data.error)
+        setConversionActionsError(data.error || 'Failed to load conversion actions')
+        setConversionActions([])
       }
     } catch (err) {
       console.error('Error loading conversion actions:', err)
+      setConversionActionsError(err instanceof Error ? err.message : 'Network error')
+      setConversionActions([])
     } finally {
       setLoadingActions(false)
     }
@@ -301,12 +309,18 @@ export default function ClientGoogleAdsPage({ params }: { params: Promise<{ id: 
                 </p>
               </div>
             </>
-          ) : customerId.replace(/-/g, '').length === 10 ? (
+          ) : customerId.replace(/-/g, '').length === 10 && conversionActionsError ? (
             <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800">
-                No conversion actions found. Make sure:
+              <p className="text-sm font-medium text-yellow-800">
+                Error loading conversion actions:
               </p>
-              <ul className="mt-2 text-sm text-yellow-700 list-disc list-inside">
+              <p className="mt-1 text-sm text-yellow-700 font-mono bg-yellow-100 p-2 rounded">
+                {conversionActionsError}
+              </p>
+              <p className="mt-3 text-sm text-yellow-800">
+                Make sure:
+              </p>
+              <ul className="mt-1 text-sm text-yellow-700 list-disc list-inside">
                 <li>Google Ads is connected in Settings → Google Ads</li>
                 <li>This customer ID is accessible from your MCC</li>
                 <li>The customer has conversion actions set up</li>
