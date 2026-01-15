@@ -189,10 +189,48 @@ export async function POST(request: NextRequest) {
     // HighLevel contact ID for reference
     const highlevelContactId = payload.id || null
 
+    // Extract attribution source from contact object (where HighLevel stores it)
+    const attributionSource =
+      payload.contact?.attributionSource ||
+      payload.contact?.lastAttributionSource ||
+      payload.attributionSource ||
+      {}
+
+    // UTM Parameters - extract from attribution source
+    const utmSource = attributionSource.utmSource || payload.utm_source || null
+    const utmMedium = attributionSource.utmMedium || payload.utm_medium || null
+    const utmCampaign = attributionSource.campaign || attributionSource.utmCampaign || payload.utm_campaign || null
+    const utmContent = attributionSource.utmContent || payload.utm_content || null
+    const utmKeyword = attributionSource.utmKeyword || attributionSource.utmTerm || payload.utm_keyword || null
+    const utmMatchtype = attributionSource.utmMatchtype || payload.utm_matchtype || null
+    const campaignId = attributionSource.campaignId || payload.campaign_id || null
+    const adGroupId = attributionSource.adGroupId || payload.ad_group_id || null
+    const adId = attributionSource.adId || payload.ad_id || null
+
+    // Also check attribution source for GCLID/GBRAID/WBRAID if not found at root
+    if (!gclid) {
+      gclid = attributionSource.gclid || null
+    }
+    const gbraid = payload.gbraid || attributionSource.gbraid || null
+    const wbraid = payload.wbraid || attributionSource.wbraid || null
+
+    // Log attribution data for debugging
+    console.log(`[HighLevel Webhook] Attribution data:`, {
+      gclid,
+      gbraid,
+      wbraid,
+      utmSource,
+      utmMedium,
+      utmCampaign,
+      utmKeyword,
+      campaignId,
+      adGroupId,
+    })
+
     // Determine lead source - check for phone call indicators
     const sourceStr = (contactSource || '').toLowerCase()
     const contactType = (payload.contact_type || '').toLowerCase()
-    const attributionMedium = (payload.attributionSource?.medium || '').toLowerCase()
+    const attributionMedium = (attributionSource.medium || '').toLowerCase()
     const isPhoneCall =
       sourceStr.includes('phone') ||
       sourceStr.includes('call') ||
@@ -215,6 +253,19 @@ export async function POST(request: NextRequest) {
         firstName: finalFirstName,
         lastName: finalLastName,
         gclid,
+        gbraid,
+        wbraid,
+        // UTM Parameters
+        utmSource,
+        utmMedium,
+        utmCampaign,
+        utmContent,
+        utmKeyword,
+        utmMatchtype,
+        campaignId,
+        adGroupId,
+        adId,
+        // Other fields
         source: leadSource,
         formData: Object.keys(formData).length > 0 ? (formData as Prisma.InputJsonValue) : undefined,
         formName: workflow.name || campaign.name || null,
@@ -231,6 +282,13 @@ export async function POST(request: NextRequest) {
         // Get client's Google Ads config
         const googleAdsConfig = await prisma.clientGoogleAds.findUnique({
           where: { clientId: client.id },
+        })
+
+        console.log(`[HighLevel Webhook] Google Ads config for ${client.businessName}:`, {
+          hasConfig: !!googleAdsConfig,
+          isActive: googleAdsConfig?.isActive,
+          hasLeadConversionActionId: !!googleAdsConfig?.leadConversionActionId,
+          customerId: googleAdsConfig?.customerId,
         })
 
         if (googleAdsConfig?.isActive && googleAdsConfig.leadConversionActionId) {
@@ -264,6 +322,14 @@ export async function POST(request: NextRequest) {
             })
             console.warn(`[HighLevel Webhook] Enhanced conversion failed for lead ${lead.id}:`, result.error)
           }
+        } else {
+          // Log why enhanced conversion was skipped
+          const reason = !googleAdsConfig
+            ? 'No Google Ads config for client'
+            : !googleAdsConfig.isActive
+            ? 'Google Ads config is not active'
+            : 'No leadConversionActionId configured'
+          console.log(`[HighLevel Webhook] Enhanced conversion skipped for lead ${lead.id}: ${reason}`)
         }
       } catch (err) {
         // Track the error for retry and log with context
