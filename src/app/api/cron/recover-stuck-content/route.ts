@@ -58,23 +58,8 @@ export async function POST(request: NextRequest) {
 
     for (const item of stuckContent) {
       try {
-        const hasBlog = !!item.blogPost
-        const hasImages = item.images.length >= 2
-
-        if (hasBlog && hasImages) {
-          // Core content exists - mark as REVIEW so user can manually trigger remaining steps
-          await prisma.contentItem.update({
-            where: { id: item.id },
-            data: {
-              status: 'REVIEW',
-              lastError: 'Pipeline timed out - blog and images completed, other steps may need manual trigger',
-              pipelineStep: 'recovered',
-            },
-          })
-          console.log(`[Recovery] Content ${item.id} moved to REVIEW (has blog+images)`)
-          results.stuckGenerating.push(`${item.id}: moved to REVIEW`)
-        } else if (item.retryCount < 3) {
-          // Missing core content - retry the pipeline
+        if (item.retryCount < 3) {
+          // Retry the pipeline - it will skip already-completed steps
           console.log(`[Recovery] Retrying content ${item.id} (attempt ${item.retryCount + 1})`)
           await prisma.contentItem.update({
             where: { id: item.id },

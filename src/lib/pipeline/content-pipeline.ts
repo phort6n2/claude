@@ -260,6 +260,9 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           locationPages: true,
         },
       },
+      blogPost: true,
+      images: true,
+      podcast: true,
     },
   })
 
@@ -303,161 +306,193 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
 
     // ============ STEP 1: Generate Blog Post ============
     ctx.step = 'blog'
-    log(ctx, '📝 Starting blog generation...')
-    await logAction(ctx, 'blog_generate', 'STARTED')
 
-    try {
-      blogResult = await withTimeout(
-        retryWithBackoff(async () => {
-          return generateBlogPost({
-            businessName: contentItem.client.businessName,
-            city: contentItem.client.city,
-            state: contentItem.client.state,
-            hasAdas: contentItem.client.offersAdasCalibration,
-            serviceAreas: contentItem.client.serviceAreas,
-            brandVoice: contentItem.client.brandVoice || 'Professional and helpful',
-            paaQuestion: contentItem.paaQuestion,
-            servicePageUrl: contentItem.client.servicePages[0]?.url,
-            locationPageUrls: contentItem.client.locationPages.map((p: { url: string }) => p.url),
-            ctaText: contentItem.client.ctaText,
-            ctaUrl: contentItem.client.ctaUrl || contentItem.client.wordpressUrl || '',
-            phone: contentItem.client.phone,
-            website: contentItem.client.ctaUrl || contentItem.client.wordpressUrl || '',
-            googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
-          })
-        }),
-        TIMEOUTS.BLOG_GENERATION,
-        'Blog generation'
-      )
-
-      blogPost = await prisma.blogPost.create({
-        data: {
-          contentItemId,
-          clientId: contentItem.clientId,
-          title: blogResult.title,
-          slug: blogResult.slug,
-          content: blogResult.content,
-          excerpt: blogResult.excerpt,
-          metaTitle: blogResult.metaTitle,
-          metaDescription: blogResult.metaDescription,
-          focusKeyword: blogResult.focusKeyword,
-          wordCount: countWords(blogResult.content),
-        },
-      })
-
+    // Check if blog already exists (for retry scenarios)
+    if (contentItem.blogPost) {
+      log(ctx, '⏭️ Blog already exists, skipping generation')
+      blogPost = contentItem.blogPost
+      blogResult = {
+        title: blogPost.title,
+        slug: blogPost.slug,
+        content: blogPost.content,
+        excerpt: blogPost.excerpt || '',
+        metaTitle: blogPost.metaTitle || blogPost.title,
+        metaDescription: blogPost.metaDescription || '',
+        focusKeyword: blogPost.focusKeyword || '',
+      }
       results.blog = { success: true }
-      log(ctx, '✅ Blog generated successfully', { title: blogResult.title, wordCount: countWords(blogResult.content) })
-      await logAction(ctx, 'blog_generate', 'SUCCESS')
+    } else {
+      log(ctx, '📝 Starting blog generation...')
+      await logAction(ctx, 'blog_generate', 'STARTED')
 
-      // Mark blog as generated
-      await prisma.contentItem.update({
-        where: { id: contentItemId },
-        data: { blogGenerated: true },
-      })
-    } catch (error) {
-      logError(ctx, 'Blog generation failed', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      await logAction(ctx, 'blog_generate', 'FAILED', { errorMessage })
-      results.blog = { success: false, error: errorMessage }
-      // Blog is critical - throw to stop pipeline
-      throw error
+      try {
+        blogResult = await withTimeout(
+          retryWithBackoff(async () => {
+            return generateBlogPost({
+              businessName: contentItem.client.businessName,
+              city: contentItem.client.city,
+              state: contentItem.client.state,
+              hasAdas: contentItem.client.offersAdasCalibration,
+              serviceAreas: contentItem.client.serviceAreas,
+              brandVoice: contentItem.client.brandVoice || 'Professional and helpful',
+              paaQuestion: contentItem.paaQuestion,
+              servicePageUrl: contentItem.client.servicePages[0]?.url,
+              locationPageUrls: contentItem.client.locationPages.map((p: { url: string }) => p.url),
+              ctaText: contentItem.client.ctaText,
+              ctaUrl: contentItem.client.ctaUrl || contentItem.client.wordpressUrl || '',
+              phone: contentItem.client.phone,
+              website: contentItem.client.ctaUrl || contentItem.client.wordpressUrl || '',
+              googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
+            })
+          }),
+          TIMEOUTS.BLOG_GENERATION,
+          'Blog generation'
+        )
+
+        blogPost = await prisma.blogPost.create({
+          data: {
+            contentItemId,
+            clientId: contentItem.clientId,
+            title: blogResult.title,
+            slug: blogResult.slug,
+            content: blogResult.content,
+            excerpt: blogResult.excerpt,
+            metaTitle: blogResult.metaTitle,
+            metaDescription: blogResult.metaDescription,
+            focusKeyword: blogResult.focusKeyword,
+            wordCount: countWords(blogResult.content),
+          },
+        })
+
+        results.blog = { success: true }
+        log(ctx, '✅ Blog generated successfully', { title: blogResult.title, wordCount: countWords(blogResult.content) })
+        await logAction(ctx, 'blog_generate', 'SUCCESS')
+
+        // Mark blog as generated
+        await prisma.contentItem.update({
+          where: { id: contentItemId },
+          data: { blogGenerated: true },
+        })
+      } catch (error) {
+        logError(ctx, 'Blog generation failed', error)
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        await logAction(ctx, 'blog_generate', 'FAILED', { errorMessage })
+        results.blog = { success: false, error: errorMessage }
+        // Blog is critical - throw to stop pipeline
+        throw error
+      }
     }
 
     // ============ STEP 2: Generate Images ============
     ctx.step = 'images'
     await updatePipelineStep(contentItemId, 'images')
-    log(ctx, '🖼️ Starting image generation...')
-    await logAction(ctx, 'images_generate', 'STARTED')
 
-    try {
-      const address = `${contentItem.client.streetAddress}, ${contentItem.client.city}, ${contentItem.client.state} ${contentItem.client.postalCode}`
-      const imageApiKey = await getSetting('NANO_BANANA_API_KEY')
+    // Check if images already exist (for retry scenarios)
+    const existingFeaturedImage = contentItem.images.find(img => img.imageType === 'BLOG_FEATURED')
+    const existingSquareImage = contentItem.images.find(img => img.imageType === 'INSTAGRAM_FEED')
 
-      const images = await withTimeout(
-        retryWithBackoff(async () => {
-          return generateBothImages({
-            businessName: contentItem.client.businessName,
-            city: contentItem.client.city,
-            state: contentItem.client.state,
-            paaQuestion: contentItem.paaQuestion,
-            phone: contentItem.client.phone,
-            website: contentItem.client.ctaUrl || contentItem.client.wordpressUrl || '',
-            address: address,
-            apiKey: imageApiKey || '',
-          })
-        }),
-        TIMEOUTS.IMAGE_GENERATION,
-        'Image generation'
-      )
-
-      // Upload images to GCS
-      if (images.landscape) {
-        const filename = `${contentItem.client.slug}/${blogResult.slug}/landscape.png`
-        const gcsResult = await withTimeout(
-          uploadFromUrl(images.landscape.url, filename),
-          TIMEOUTS.GCS_UPLOAD,
-          'GCS landscape upload'
-        )
-
-        await prisma.image.create({
-          data: {
-            contentItemId,
-            clientId: contentItem.clientId,
-            imageType: 'BLOG_FEATURED',
-            fileName: filename,
-            gcsUrl: gcsResult.url,
-            width: images.landscape.width,
-            height: images.landscape.height,
-            altText: `${blogResult.title} - ${contentItem.client.businessName}`,
-          },
-        })
-      }
-
-      if (images.square) {
-        const filename = `${contentItem.client.slug}/${blogResult.slug}/square.png`
-        const gcsResult = await withTimeout(
-          uploadFromUrl(images.square.url, filename),
-          TIMEOUTS.GCS_UPLOAD,
-          'GCS square upload'
-        )
-
-        await prisma.image.create({
-          data: {
-            contentItemId,
-            clientId: contentItem.clientId,
-            imageType: 'INSTAGRAM_FEED',
-            fileName: filename,
-            gcsUrl: gcsResult.url,
-            width: images.square.width,
-            height: images.square.height,
-            altText: `${blogResult.title} - ${contentItem.client.businessName}`,
-          },
-        })
-      }
-
+    if (existingFeaturedImage && existingSquareImage) {
+      log(ctx, '⏭️ Images already exist, skipping generation')
       results.images = { success: true }
-      log(ctx, '✅ Images generated and uploaded successfully')
-      await logAction(ctx, 'images_generate', 'SUCCESS')
+    } else {
+      log(ctx, '🖼️ Starting image generation...')
+      await logAction(ctx, 'images_generate', 'STARTED')
 
-      // Mark images as generated
-      await prisma.contentItem.update({
-        where: { id: contentItemId },
-        data: { imagesGenerated: true },
-      })
-    } catch (error) {
-      logError(ctx, 'Image generation failed', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      await logAction(ctx, 'images_generate', 'FAILED', { errorMessage })
-      results.images = { success: false, error: errorMessage }
-      // Images are critical - throw to stop pipeline
-      throw error
+      try {
+        const address = `${contentItem.client.streetAddress}, ${contentItem.client.city}, ${contentItem.client.state} ${contentItem.client.postalCode}`
+        const imageApiKey = await getSetting('NANO_BANANA_API_KEY')
+
+        const images = await withTimeout(
+          retryWithBackoff(async () => {
+            return generateBothImages({
+              businessName: contentItem.client.businessName,
+              city: contentItem.client.city,
+              state: contentItem.client.state,
+              paaQuestion: contentItem.paaQuestion,
+              phone: contentItem.client.phone,
+              website: contentItem.client.ctaUrl || contentItem.client.wordpressUrl || '',
+              address: address,
+              apiKey: imageApiKey || '',
+            })
+          }),
+          TIMEOUTS.IMAGE_GENERATION,
+          'Image generation'
+        )
+
+        // Upload images to GCS
+        if (images.landscape && !existingFeaturedImage) {
+          const filename = `${contentItem.client.slug}/${blogResult!.slug}/landscape.png`
+          const gcsResult = await withTimeout(
+            uploadFromUrl(images.landscape.url, filename),
+            TIMEOUTS.GCS_UPLOAD,
+            'GCS landscape upload'
+          )
+
+          await prisma.image.create({
+            data: {
+              contentItemId,
+              clientId: contentItem.clientId,
+              imageType: 'BLOG_FEATURED',
+              fileName: filename,
+              gcsUrl: gcsResult.url,
+              width: images.landscape.width,
+              height: images.landscape.height,
+              altText: `${blogResult!.title} - ${contentItem.client.businessName}`,
+            },
+          })
+        }
+
+        if (images.square && !existingSquareImage) {
+          const filename = `${contentItem.client.slug}/${blogResult!.slug}/square.png`
+          const gcsResult = await withTimeout(
+            uploadFromUrl(images.square.url, filename),
+            TIMEOUTS.GCS_UPLOAD,
+            'GCS square upload'
+          )
+
+          await prisma.image.create({
+            data: {
+              contentItemId,
+              clientId: contentItem.clientId,
+              imageType: 'INSTAGRAM_FEED',
+              fileName: filename,
+              gcsUrl: gcsResult.url,
+              width: images.square.width,
+              height: images.square.height,
+              altText: `${blogResult!.title} - ${contentItem.client.businessName}`,
+            },
+          })
+        }
+
+        results.images = { success: true }
+        log(ctx, '✅ Images generated and uploaded successfully')
+        await logAction(ctx, 'images_generate', 'SUCCESS')
+
+        // Mark images as generated
+        await prisma.contentItem.update({
+          where: { id: contentItemId },
+          data: { imagesGenerated: true },
+        })
+      } catch (error) {
+        logError(ctx, 'Image generation failed', error)
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        await logAction(ctx, 'images_generate', 'FAILED', { errorMessage })
+        results.images = { success: false, error: errorMessage }
+        // Images are critical - throw to stop pipeline
+        throw error
+      }
     }
 
     // ============ STEP 3: Publish to WordPress ============
     ctx.step = 'wordpress'
     await updatePipelineStep(contentItemId, 'wordpress')
 
-    if (contentItem.client.wordpressUrl && contentItem.client.wordpressUsername && contentItem.client.wordpressAppPassword) {
+    // Check if already published to WordPress (for retry scenarios)
+    if (contentItem.blogPost?.wordpressPostId) {
+      log(ctx, '⏭️ Already published to WordPress, skipping', { postId: contentItem.blogPost.wordpressPostId })
+      results.wordpress = { success: true }
+      results.wordpress.skipped = false
+    } else if (contentItem.client.wordpressUrl && contentItem.client.wordpressUsername && contentItem.client.wordpressAppPassword) {
       results.wordpress.skipped = false
       log(ctx, '📤 Starting WordPress publishing...')
       await logAction(ctx, 'wordpress_publish', 'STARTED')
@@ -1057,6 +1092,115 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
 
       // ========== PODCAST GENERATION ==========
       (async () => {
+        // Check if podcast already exists and is complete (for retry scenarios)
+        if (contentItem.podcast?.status === 'PUBLISHED' && contentItem.podcast?.podbeanPlayerUrl) {
+          log(ctx, '⏭️ Podcast already exists and is published, skipping')
+          return { success: true, duration: contentItem.podcast.duration, skipped: true }
+        }
+
+        // Check if podcast exists but needs Podbean publishing
+        if (contentItem.podcast?.audioUrl && contentItem.podcast?.status === 'READY' && !contentItem.podcast?.podbeanPlayerUrl) {
+          log(ctx, '🔄 Podcast exists but needs Podbean publishing...')
+          try {
+            const podbeanResult = await retryWithBackoff(
+              async () => {
+                return await withTimeout(
+                  publishToPodbean({
+                    title: blogResult!.title,
+                    description: contentItem.podcast!.description || blogResult!.excerpt || '',
+                    audioUrl: contentItem.podcast!.audioUrl,
+                  }),
+                  TIMEOUTS.PODBEAN_PUBLISH,
+                  'Podbean publishing'
+                )
+              },
+              3,
+              3000
+            )
+
+            await prisma.podcast.update({
+              where: { id: contentItem.podcast.id },
+              data: {
+                podbeanEpisodeId: podbeanResult.episodeId,
+                podbeanUrl: podbeanResult.url,
+                podbeanPlayerUrl: podbeanResult.playerUrl,
+                status: 'PUBLISHED',
+              },
+            })
+
+            log(ctx, '✅ Podcast published to Podbean (retry)', { playerUrl: podbeanResult.playerUrl })
+            return { success: true, duration: contentItem.podcast.duration }
+          } catch (podbeanError) {
+            logError(ctx, 'Failed to publish podcast to Podbean on retry', podbeanError)
+            return { success: false, error: String(podbeanError) }
+          }
+        }
+
+        // Check if podcast is still processing (don't recreate)
+        if (contentItem.podcast?.status === 'PROCESSING' && contentItem.podcast?.autocontentJobId) {
+          log(ctx, '🔄 Podcast is still processing, checking status...')
+          try {
+            const podcastResult = await withTimeout(
+              waitForPodcast(contentItem.podcast.autocontentJobId),
+              TIMEOUTS.PODCAST_WAIT,
+              'Podcast rendering (retry)'
+            )
+
+            if (podcastResult.audioUrl) {
+              // Upload to GCS
+              const podcastFilename = `${contentItem.client.slug}/${blogResult!.slug}/podcast.mp3`
+              const gcsResult = await withTimeout(
+                uploadFromUrl(podcastResult.audioUrl, podcastFilename),
+                TIMEOUTS.GCS_UPLOAD,
+                'Podcast GCS upload'
+              )
+
+              await prisma.podcast.update({
+                where: { id: contentItem.podcast.id },
+                data: {
+                  audioUrl: gcsResult.url,
+                  duration: podcastResult.duration,
+                  status: 'READY',
+                },
+              })
+
+              // Publish to Podbean
+              log(ctx, 'Publishing podcast to Podbean...')
+              const podbeanResult = await retryWithBackoff(
+                async () => {
+                  return await withTimeout(
+                    publishToPodbean({
+                      title: blogResult!.title,
+                      description: contentItem.podcast!.description || blogResult!.excerpt || '',
+                      audioUrl: gcsResult.url,
+                    }),
+                    TIMEOUTS.PODBEAN_PUBLISH,
+                    'Podbean publishing'
+                  )
+                },
+                3,
+                3000
+              )
+
+              await prisma.podcast.update({
+                where: { id: contentItem.podcast.id },
+                data: {
+                  podbeanEpisodeId: podbeanResult.episodeId,
+                  podbeanUrl: podbeanResult.url,
+                  podbeanPlayerUrl: podbeanResult.playerUrl,
+                  status: 'PUBLISHED',
+                },
+              })
+
+              log(ctx, '✅ Podcast published to Podbean (from processing)', { playerUrl: podbeanResult.playerUrl })
+              return { success: true, duration: podcastResult.duration }
+            }
+          } catch (processingError) {
+            logError(ctx, 'Failed to complete processing podcast', processingError)
+            // Fall through to create new podcast
+          }
+        }
+
         log(ctx, '🎙️ Starting podcast generation...')
         await logAction(ctx, 'podcast_generate', 'STARTED')
 
@@ -1105,6 +1249,11 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         } catch (descError) {
           logError(ctx, 'Failed to generate podcast description, using fallback', descError)
           descriptionHtml = `<p>${blogResult!.excerpt || contentItem.paaQuestion}</p>`
+        }
+
+        // Delete old failed podcast record if exists
+        if (contentItem.podcast?.status === 'FAILED') {
+          await prisma.podcast.delete({ where: { id: contentItem.podcast.id } })
         }
 
         // Create podcast record with PROCESSING status
