@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/gbp-posts",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/recover-stuck-content",
+      "schedule": "0 */3 * * *"
     }
   ]
 }
