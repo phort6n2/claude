@@ -144,11 +144,12 @@ export async function POST(request: NextRequest) {
         podcastAddedToPost: true,
         podcast: {
           podbeanPlayerUrl: null,
-          status: 'PUBLISHED',
         },
       },
       include: {
         podcast: true,
+        client: true,
+        blogPost: true,
       },
       take: 10,
     })
@@ -156,15 +157,40 @@ export async function POST(request: NextRequest) {
     console.log(`[Recovery] Found ${missingPodcastUrl.length} items claiming podcast embedded but missing URL`)
 
     for (const item of missingPodcastUrl) {
-      // Reset the flag so user knows to re-embed after fixing podcast
-      await prisma.contentItem.update({
-        where: { id: item.id },
-        data: {
-          podcastAddedToPost: false,
-          podcastAddedAt: null,
-        },
-      })
-      results.missingEmbeds.push(`${item.id}: reset podcastAddedToPost flag`)
+      try {
+        // If podcast has audio but no Podbean URL, try to publish to Podbean and re-embed
+        if (item.podcast?.audioUrl && item.podcast?.status === 'READY') {
+          console.log(`[Recovery] Podcast ${item.podcast.id} has audio but no Podbean URL - re-running pipeline`)
+          await prisma.contentItem.update({
+            where: { id: item.id },
+            data: {
+              status: 'GENERATING',
+              pipelineStep: 'podcast',
+              podcastAddedToPost: false,
+              podcastAddedAt: null,
+            },
+          })
+          // Re-run pipeline to publish to Podbean and embed
+          runContentPipeline(item.id).catch(err => {
+            console.error(`[Recovery] Pipeline failed for ${item.id}:`, err)
+          })
+          results.missingEmbeds.push(`${item.id}: re-running pipeline to publish podcast to Podbean`)
+        } else {
+          // Just reset the flag - podcast needs to be regenerated
+          await prisma.contentItem.update({
+            where: { id: item.id },
+            data: {
+              podcastAddedToPost: false,
+              podcastAddedAt: null,
+            },
+          })
+          results.missingEmbeds.push(`${item.id}: reset podcastAddedToPost flag (no audio URL)`)
+        }
+      } catch (err) {
+        const error = `Error recovering ${item.id}: ${err}`
+        console.error(`[Recovery] ${error}`)
+        results.errors.push(error)
+      }
     }
 
     // 4. Find content published more than 1 hour ago that should have podcast but doesn't
@@ -180,14 +206,37 @@ export async function POST(request: NextRequest) {
         },
         publishedAt: { lt: oneHourAgo },
       },
-      select: { id: true },
+      include: {
+        client: true,
+        blogPost: true,
+        podcast: true,
+      },
       take: 10,
     })
 
     console.log(`[Recovery] Found ${needsPodcastEmbed.length} published items needing podcast embed`)
 
     for (const item of needsPodcastEmbed) {
-      results.missingEmbeds.push(`${item.id}: needs podcast embed (has podbeanPlayerUrl)`)
+      try {
+        // Re-run the pipeline - it will skip all generation steps and just do schema/embedding
+        console.log(`[Recovery] Re-triggering pipeline for ${item.id} to embed podcast`)
+        await prisma.contentItem.update({
+          where: { id: item.id },
+          data: {
+            status: 'GENERATING', // Set to GENERATING so pipeline runs embedding
+            pipelineStep: 'schema',
+          },
+        })
+        // Trigger pipeline in background
+        runContentPipeline(item.id).catch(err => {
+          console.error(`[Recovery] Pipeline embed retry failed for ${item.id}:`, err)
+        })
+        results.missingEmbeds.push(`${item.id}: re-running pipeline for podcast embed`)
+      } catch (err) {
+        const error = `Error triggering embed for ${item.id}: ${err}`
+        console.error(`[Recovery] ${error}`)
+        results.errors.push(error)
+      }
     }
 
     return NextResponse.json({
