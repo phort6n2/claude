@@ -263,6 +263,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       blogPost: true,
       images: true,
       podcast: true,
+      videos: true,
     },
   })
 
@@ -802,6 +803,13 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
     const [socialSettled, podcastSettled, videoSettled] = await Promise.allSettled([
       // ========== SOCIAL POSTS ==========
       (async () => {
+        // Check if social posts already exist (for retry scenarios)
+        if (contentItem.socialGenerated) {
+          log(ctx, '⏭️ Social posts already generated, skipping')
+          results.social = { success: true }
+          return { success: true, clientPostedCount: 0, wrhqPostedCount: 0, skipped: true }
+        }
+
         const socialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
         let clientPostedCount = 0
         let wrhqPostedCount = 0
@@ -1098,8 +1106,8 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           return { success: true, duration: contentItem.podcast.duration, skipped: true }
         }
 
-        // Check if podcast exists but needs Podbean publishing
-        if (contentItem.podcast?.audioUrl && contentItem.podcast?.status === 'READY' && !contentItem.podcast?.podbeanPlayerUrl) {
+        // Check if podcast exists but needs Podbean publishing (READY or PUBLISHED without URL)
+        if (contentItem.podcast?.audioUrl && (contentItem.podcast?.status === 'READY' || contentItem.podcast?.status === 'PUBLISHED') && !contentItem.podcast?.podbeanPlayerUrl) {
           log(ctx, '🔄 Podcast exists but needs Podbean publishing...')
           try {
             const podbeanResult = await retryWithBackoff(
@@ -1251,8 +1259,12 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           descriptionHtml = `<p>${blogResult!.excerpt || contentItem.paaQuestion}</p>`
         }
 
-        // Delete old failed podcast record if exists
-        if (contentItem.podcast?.status === 'FAILED') {
+        // Delete old podcast record if exists in invalid state (FAILED or stuck without audio)
+        if (contentItem.podcast && (contentItem.podcast.status === 'FAILED' || !contentItem.podcast.audioUrl)) {
+          log(ctx, '🗑️ Deleting old invalid podcast record', {
+            status: contentItem.podcast.status,
+            hasAudio: !!contentItem.podcast.audioUrl
+          })
           await prisma.podcast.delete({ where: { id: contentItem.podcast.id } })
         }
 
@@ -1352,6 +1364,45 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
 
       // ========== VIDEO GENERATION ==========
       (async () => {
+        // Check if video already exists (for retry scenarios)
+        const existingVideo = contentItem.videos.find(v => v.videoType === 'SHORT')
+
+        if (existingVideo?.status === 'READY' && existingVideo?.videoUrl) {
+          log(ctx, '⏭️ Video already exists and is ready, skipping')
+          return {
+            success: true,
+            videoResult: {
+              videoUrl: existingVideo.videoUrl,
+              thumbnailUrl: existingVideo.thumbnailUrl || undefined,
+              duration: existingVideo.duration || undefined
+            },
+            videoRecord: existingVideo,
+            skipped: true
+          }
+        }
+
+        // If video is still processing, wait for it instead of creating new
+        if (existingVideo?.status === 'PROCESSING' && existingVideo?.providerJobId) {
+          log(ctx, '🔄 Video is still processing, waiting...')
+          try {
+            const videoResult = await withTimeout(
+              waitForVideo(existingVideo.providerJobId),
+              TIMEOUTS.VIDEO_WAIT,
+              'Video rendering (retry)'
+            )
+            return { success: true, videoResult, videoRecord: existingVideo }
+          } catch (waitError) {
+            logError(ctx, 'Failed to wait for existing video', waitError)
+            // Delete failed video and create new one
+            await prisma.video.delete({ where: { id: existingVideo.id } })
+          }
+        }
+
+        // Delete any failed video before creating new
+        if (existingVideo?.status === 'FAILED') {
+          await prisma.video.delete({ where: { id: existingVideo.id } })
+        }
+
         log(ctx, '🎬 Starting video generation...')
         await logAction(ctx, 'video_generate', 'STARTED')
 
