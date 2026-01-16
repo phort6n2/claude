@@ -344,6 +344,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     // which shows the actual Google Business listing with ratings
 
     // 3. Add podcast embed at the end
+    console.log('=== PODCAST EMBED DEBUG ===')
+    console.log('Has podcast record:', !!contentItem.podcast)
+    let podcastSkipReason: string | null = null
+
+    if (contentItem.podcast) {
+      console.log('Podcast status:', contentItem.podcast.status)
+      console.log('Podcast podbeanPlayerUrl:', contentItem.podcast.podbeanPlayerUrl)
+      console.log('Podcast podbeanEpisodeId:', contentItem.podcast.podbeanEpisodeId)
+      console.log('Podcast podbeanUrl:', contentItem.podcast.podbeanUrl)
+      console.log('Podcast audioUrl:', contentItem.podcast.audioUrl)
+    }
+
     if (contentItem.podcast?.podbeanPlayerUrl) {
       const podcastEmbed = generatePodcastEmbed(
         contentItem.blogPost.title,
@@ -351,10 +363,25 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       )
       fullContent = fullContent + podcastEmbed
       embedded.push('podcast')
+      console.log('Podcast embed added successfully')
+    } else if (contentItem.podcast) {
+      // Podcast exists but no player URL - determine why
+      if (!contentItem.podcast.podbeanPlayerUrl) {
+        podcastSkipReason = `Podcast exists (status: ${contentItem.podcast.status}) but missing podbeanPlayerUrl - may not have been published to Podbean yet`
+      }
+      console.log('Podcast NOT embedded:', podcastSkipReason)
+    } else {
+      podcastSkipReason = 'No podcast record found for this content'
+      console.log('Podcast NOT embedded:', podcastSkipReason)
     }
 
     // Update WordPress with the content including new embeds
+    console.log('Updating WordPress post with embedded content...')
+    console.log('Content length:', fullContent.length)
+    console.log('Items to embed:', embedded)
+
     await updatePost(wpCredentials, contentItem.blogPost.wordpressPostId, { content: fullContent })
+    console.log('WordPress update completed')
 
     // Update tracking flags for what was embedded
     const updateData: Record<string, unknown> = {}
@@ -385,6 +412,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       message: embedded.length > 0
         ? `Embedded: ${embedded.join(', ')}`
         : 'No new media to embed',
+      podcastSkipReason: podcastSkipReason || undefined,
+      debug: {
+        hasPodcast: !!contentItem.podcast,
+        podcastStatus: contentItem.podcast?.status,
+        hasPodbeanPlayerUrl: !!contentItem.podcast?.podbeanPlayerUrl,
+      },
     })
   } catch (error) {
     console.error('Embed all media error:', error)
