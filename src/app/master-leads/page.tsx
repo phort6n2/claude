@@ -153,11 +153,12 @@ export default function StandaloneMasterLeadsPage() {
     setLoading(true)
     setMobilePageIndex(0)
 
-    // Fetch leads for the selected date (full day range)
-    const startDate = `${selectedDate}T00:00:00`
-    const endDate = `${selectedDate}T23:59:59`
+    // Fetch leads for the selected date (full day range in user's timezone)
+    const [year, month, day] = selectedDate.split('-').map(Number)
+    const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
+    const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
 
-    fetch(`/api/leads?clientId=${selectedClientId}&startDate=${startDate}&endDate=${endDate}`)
+    fetch(`/api/leads?clientId=${selectedClientId}&startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`)
       .then((res) => res.json())
       .then((data) => {
         setLeads(data.leads || [])
