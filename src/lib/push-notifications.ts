@@ -1,13 +1,32 @@
 import webpush from 'web-push'
 import { prisma } from './db'
 
-// Configure VAPID details
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || ''
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || ''
-const VAPID_SUBJECT = 'mailto:' + (process.env.ADMIN_EMAIL || 'admin@glassleads.app')
+// Lazy initialization flag
+let vapidConfigured = false
 
-if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY)
+/**
+ * Configure VAPID details (lazy initialization to avoid build-time errors)
+ */
+function ensureVapidConfigured(): boolean {
+  if (vapidConfigured) return true
+
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+  const privateKey = process.env.VAPID_PRIVATE_KEY
+  const subject = 'mailto:' + (process.env.ADMIN_EMAIL || 'admin@glassleads.app')
+
+  if (!publicKey || !privateKey) {
+    console.warn('[Push] VAPID keys not configured - push notifications disabled')
+    return false
+  }
+
+  try {
+    webpush.setVapidDetails(subject, publicKey, privateKey)
+    vapidConfigured = true
+    return true
+  } catch (error) {
+    console.error('[Push] Failed to configure VAPID:', error)
+    return false
+  }
 }
 
 export interface PushPayload {
@@ -26,6 +45,12 @@ export async function sendPushNotification(
   subscription: { endpoint: string; p256dh: string; auth: string },
   payload: PushPayload
 ): Promise<boolean> {
+  // Ensure VAPID is configured before sending
+  if (!ensureVapidConfigured()) {
+    console.warn('[Push] Cannot send notification - VAPID not configured')
+    return false
+  }
+
   try {
     const pushSubscription = {
       endpoint: subscription.endpoint,
