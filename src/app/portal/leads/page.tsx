@@ -96,6 +96,10 @@ export default function PortalLeadsPage() {
   const [editSaleNotes, setEditSaleNotes] = useState('')
   const [saving, setSaving] = useState(false)
 
+  // Modal slide animation state
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null)
+  const [isAnimating, setIsAnimating] = useState(false)
+
   // Check session
   useEffect(() => {
     fetch('/api/portal/auth/session')
@@ -252,26 +256,43 @@ export default function PortalLeadsPage() {
     touchStart.current = null
   }
 
-  // Modal swipe navigation between leads
+  // Modal swipe navigation between leads with animation
   const modalTouchStart = useRef<number | null>(null)
   function handleModalTouchStart(e: React.TouchEvent) {
     modalTouchStart.current = e.touches[0].clientX
   }
   function handleModalTouchEnd(e: React.TouchEvent) {
-    if (modalTouchStart.current === null || !selectedLead) return
+    if (modalTouchStart.current === null || !selectedLead || isAnimating) return
     const touchEnd = e.changedTouches[0].clientX
     const diff = modalTouchStart.current - touchEnd
     if (Math.abs(diff) > 50) {
       const currentIndex = leads.findIndex(l => l.id === selectedLead.id)
       if (diff > 0 && currentIndex < leads.length - 1) {
         // Swipe left = next lead
-        setSelectedLead(leads[currentIndex + 1])
+        navigateToLead(leads[currentIndex + 1], 'left')
       } else if (diff < 0 && currentIndex > 0) {
         // Swipe right = previous lead
-        setSelectedLead(leads[currentIndex - 1])
+        navigateToLead(leads[currentIndex - 1], 'right')
       }
     }
     modalTouchStart.current = null
+  }
+
+  // Animated navigation between leads
+  function navigateToLead(newLead: Lead, direction: 'left' | 'right') {
+    if (isAnimating) return
+    setIsAnimating(true)
+    setSlideDirection(direction)
+
+    // After slide-out animation, change the lead
+    setTimeout(() => {
+      setSelectedLead(newLead)
+      // Brief pause then slide in from opposite direction
+      setTimeout(() => {
+        setSlideDirection(null)
+        setIsAnimating(false)
+      }, 50)
+    }, 150)
   }
 
   if (!session?.authenticated) {
@@ -449,17 +470,51 @@ export default function PortalLeadsPage() {
       {selectedLead && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-hidden">
           <div
-            className="bg-white w-full md:max-w-lg rounded-xl max-h-[85vh] overflow-y-auto overflow-x-hidden"
+            className={`bg-white w-full md:max-w-lg rounded-xl max-h-[85vh] overflow-y-auto overflow-x-hidden transition-all duration-150 ease-out ${
+              slideDirection === 'left'
+                ? '-translate-x-full opacity-0'
+                : slideDirection === 'right'
+                ? 'translate-x-full opacity-0'
+                : 'translate-x-0 opacity-100'
+            }`}
             onTouchStart={handleModalTouchStart}
             onTouchEnd={handleModalTouchEnd}
           >
             {/* Modal Header */}
             <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between rounded-t-xl">
-              <div>
-                <h2 className="font-semibold text-lg text-gray-900">Lead Details</h2>
-                <p className="text-xs text-gray-500">
-                  {leads.findIndex(l => l.id === selectedLead.id) + 1} of {leads.length} • Swipe to navigate
-                </p>
+              <div className="flex items-center gap-2">
+                {/* Previous button */}
+                <button
+                  onClick={() => {
+                    const currentIndex = leads.findIndex(l => l.id === selectedLead.id)
+                    if (currentIndex > 0) {
+                      navigateToLead(leads[currentIndex - 1], 'right')
+                    }
+                  }}
+                  disabled={leads.findIndex(l => l.id === selectedLead.id) === 0 || isAnimating}
+                  className="p-2 hover:bg-gray-100 rounded-full text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <div>
+                  <h2 className="font-semibold text-lg text-gray-900">Lead Details</h2>
+                  <p className="text-xs text-gray-500">
+                    {leads.findIndex(l => l.id === selectedLead.id) + 1} of {leads.length}
+                  </p>
+                </div>
+                {/* Next button */}
+                <button
+                  onClick={() => {
+                    const currentIndex = leads.findIndex(l => l.id === selectedLead.id)
+                    if (currentIndex < leads.length - 1) {
+                      navigateToLead(leads[currentIndex + 1], 'left')
+                    }
+                  }}
+                  disabled={leads.findIndex(l => l.id === selectedLead.id) === leads.length - 1 || isAnimating}
+                  className="p-2 hover:bg-gray-100 rounded-full text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
               </div>
               <button
                 onClick={() => setSelectedLead(null)}
