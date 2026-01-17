@@ -26,7 +26,7 @@ const navigation = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
   { name: 'Clients', href: '/admin/clients', icon: Users },
   { name: 'Leads', href: '/admin/leads', icon: UserCheck },
-  { name: 'Master Leads', href: '/admin/master-leads', icon: Smartphone },
+  { name: 'Master Leads', href: '/master-leads', icon: Smartphone, external: true },
   { name: 'Content Calendar', href: '/admin/content', icon: Calendar },
   { name: 'GBP Posts', href: '/admin/gbp', icon: Store },
   { name: 'Press Releases', href: '/admin/press-releases', icon: FileText },
@@ -60,6 +60,23 @@ export default function Sidebar() {
       <nav className="flex-1 space-y-1 px-2 py-4">
         {navigation.map((item) => {
           const isActive = pathname.startsWith(item.href)
+
+          // External links open in new tab
+          if (item.external) {
+            return (
+              <a
+                key={item.name}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors text-gray-300 hover:bg-gray-800 hover:text-white"
+              >
+                <item.icon className="h-5 w-5" />
+                {item.name}
+              </a>
+            )
+          }
+
           return (
             <Link
               key={item.name}
