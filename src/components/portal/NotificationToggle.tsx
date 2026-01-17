@@ -94,10 +94,14 @@ export function NotificationToggle({ className = '' }: NotificationToggleProps) 
 
       if (saveResponse.ok) {
         setIsSubscribed(true)
+      } else {
+        const errorData = await saveResponse.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to save subscription')
       }
     } catch (error) {
       console.error('Failed to subscribe:', error)
-      alert('Failed to enable notifications. Please try again.')
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      alert(`Failed to enable notifications: ${message}`)
     } finally {
       setIsLoading(false)
     }
