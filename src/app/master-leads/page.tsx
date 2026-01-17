@@ -120,6 +120,7 @@ export default function StandaloneMasterLeadsPage() {
         } else {
           // User is logged in but not authorized
           setAuthenticated(false)
+          setClientsLoading(false) // Don't wait for clients if not authorized
         }
       })
       .catch(() => {
