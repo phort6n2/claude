@@ -572,56 +572,56 @@ export default function PortalLeadsPage() {
               </div>
 
               {/* Form Data / Lead Details */}
-              {selectedLead.formData && Object.keys(selectedLead.formData).length > 0 && (() => {
-                const fd = selectedLead.formData as Record<string, unknown>
-                const hasDetails = fd.interested_in || fd.vehicle_year || fd.vehicle_make || fd.vehicle_model || fd.vin || fd.radio_3s0t || fd.postal_code
+              {(() => {
+                const details = getLeadDetails(selectedLead)
+                const hasDetails = details.service || details.year || details.make || details.model || details.vin || details.zipCode || details.insuranceHelp
                 if (!hasDetails) return null
                 return (
                   <div className="bg-blue-50 rounded-lg p-4">
                     <h4 className="font-medium text-gray-900 mb-3">Lead Details</h4>
                     <div className="grid grid-cols-2 gap-3 text-sm">
-                      {fd.interested_in ? (
+                      {details.service && (
                         <div>
                           <span className="text-gray-500">Interested In</span>
-                          <p className="font-medium text-gray-900">{String(fd.interested_in)}</p>
+                          <p className="font-medium text-gray-900">{details.service}</p>
                         </div>
-                      ) : null}
-                      {fd.postal_code ? (
+                      )}
+                      {details.zipCode && (
                         <div>
                           <span className="text-gray-500">Zip Code</span>
-                          <p className="font-medium text-gray-900">{String(fd.postal_code)}</p>
+                          <p className="font-medium text-gray-900">{details.zipCode}</p>
                         </div>
-                      ) : null}
-                      {fd.vehicle_year ? (
+                      )}
+                      {details.year && (
                         <div>
                           <span className="text-gray-500">Year</span>
-                          <p className="font-medium text-gray-900">{String(fd.vehicle_year)}</p>
+                          <p className="font-medium text-gray-900">{details.year}</p>
                         </div>
-                      ) : null}
-                      {fd.vehicle_make ? (
+                      )}
+                      {details.make && (
                         <div>
                           <span className="text-gray-500">Make</span>
-                          <p className="font-medium text-gray-900">{String(fd.vehicle_make)}</p>
+                          <p className="font-medium text-gray-900">{details.make}</p>
                         </div>
-                      ) : null}
-                      {fd.vehicle_model ? (
+                      )}
+                      {details.model && (
                         <div>
                           <span className="text-gray-500">Model</span>
-                          <p className="font-medium text-gray-900">{String(fd.vehicle_model)}</p>
+                          <p className="font-medium text-gray-900">{details.model}</p>
                         </div>
-                      ) : null}
-                      {fd.vin ? (
+                      )}
+                      {details.vin && (
                         <div>
                           <span className="text-gray-500">VIN</span>
-                          <p className="font-medium font-mono text-gray-900 text-xs break-all">{String(fd.vin)}</p>
+                          <p className="font-medium font-mono text-gray-900 text-xs break-all">{details.vin}</p>
                         </div>
-                      ) : null}
-                      {fd.radio_3s0t ? (
+                      )}
+                      {details.insuranceHelp && (
                         <div>
                           <span className="text-gray-500">Insurance Help</span>
-                          <p className="font-medium text-gray-900">{String(fd.radio_3s0t)}</p>
+                          <p className="font-medium text-gray-900">{details.insuranceHelp}</p>
                         </div>
-                      ) : null}
+                      )}
                     </div>
                   </div>
                 )
@@ -824,13 +824,43 @@ function HeaderLogo({
   )
 }
 
+// Helper to extract lead details from formData with _rawPayload fallback
+function getLeadDetails(lead: Lead) {
+  const fd = lead.formData
+  const raw = fd?._rawPayload as Record<string, unknown> | null
+
+  const getField = (keys: string[]): string | null => {
+    for (const key of keys) {
+      if (fd?.[key]) return String(fd[key])
+    }
+    for (const key of keys) {
+      if (raw?.[key]) return String(raw[key])
+    }
+    return null
+  }
+
+  const service = getField(['interested_in', 'Interested In:', 'Interested In'])
+  const year = getField(['vehicle_year', 'Vehicle Year'])
+  const make = getField(['vehicle_make', 'Vehicle Make'])
+  const model = getField(['vehicle_model', 'Vehicle Model'])
+  const vin = getField(['vin', 'VIN', 'Vin'])
+  const zipCode = getField(['postal_code', 'postalCode'])
+  const insuranceHelp = getField(['insurance_help', 'Would You Like Us To Help Navigate Your Insurance Claim For You?', 'radio_3s0t'])
+
+  // Build vehicle string
+  const vehicleParts = [year, make, model].filter(Boolean)
+  const vehicle = vehicleParts.length > 0 ? vehicleParts.join(' ') : null
+
+  return { service, vehicle, year, make, model, vin, zipCode, insuranceHelp }
+}
+
 // Lead Card Component
 function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
   const statusConfig = STATUS_CONFIG[lead.status] || STATUS_CONFIG.NEW
   const StatusIcon = statusConfig.icon
   const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'
   const isPhoneLead = lead.source === 'PHONE'
-  const interestedIn = lead.formData?.interested_in as string | undefined
+  const details = getLeadDetails(lead)
 
   return (
     <button
@@ -856,9 +886,28 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
       {/* Name */}
       <h3 className="font-medium text-gray-900 truncate mb-1">{fullName}</h3>
 
-      {/* Interested In */}
-      {interestedIn && (
-        <p className="text-sm text-blue-700 font-medium truncate mb-1">{interestedIn}</p>
+      {/* Service/Vehicle Details */}
+      {(details.service || details.vehicle) && (
+        <div className="mb-2">
+          {details.service && (
+            <p className="text-sm text-blue-700 font-medium truncate">{details.service}</p>
+          )}
+          {details.vehicle && (
+            <p className="text-xs text-gray-600 truncate">{details.vehicle}</p>
+          )}
+        </div>
+      )}
+
+      {/* Zip & Insurance */}
+      {(details.zipCode || details.insuranceHelp) && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {details.zipCode && (
+            <span className="text-xs text-gray-500">ZIP: {details.zipCode}</span>
+          )}
+          {details.insuranceHelp && details.insuranceHelp.toLowerCase() === 'yes' && (
+            <span className="text-xs bg-green-50 text-green-700 px-1.5 py-0.5 rounded">Ins</span>
+          )}
+        </div>
       )}
 
       {/* Contact */}
