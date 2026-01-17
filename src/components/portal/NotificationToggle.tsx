@@ -9,11 +9,15 @@ interface NotificationToggleProps {
 
 export function NotificationToggle({ className = '' }: NotificationToggleProps) {
   const [isSupported, setIsSupported] = useState(false)
+  const [isIOS, setIsIOS] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [permission, setPermission] = useState<NotificationPermission>('default')
 
   useEffect(() => {
+    // Check if this is iOS
+    setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent))
+
     // Check if push notifications are supported
     const supported = 'serviceWorker' in navigator && 'PushManager' in window
     setIsSupported(supported)
@@ -138,8 +142,19 @@ export function NotificationToggle({ className = '' }: NotificationToggleProps) 
     }
   }
 
-  // Don't render if not supported
+  // Don't render if not supported - but show disabled icon on iOS
   if (!isSupported) {
+    if (isIOS) {
+      return (
+        <button
+          className={`p-2 rounded-full text-gray-400 ${className}`}
+          title="Add to Home Screen to enable notifications"
+          onClick={() => alert('To enable notifications on iOS:\n\n1. Tap the Share button\n2. Tap "Add to Home Screen"\n3. Open the app from your home screen\n4. Then you can enable notifications!')}
+        >
+          <BellOff className="h-5 w-5" />
+        </button>
+      )
+    }
     return null
   }
 
