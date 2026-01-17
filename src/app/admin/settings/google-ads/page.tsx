@@ -204,6 +204,9 @@ export default function GoogleAdsSettingsPage() {
                   value={oauthClientId}
                   onChange={(e) => setOauthClientId(e.target.value)}
                   placeholder={status?.oauthClientId ? '••••••••••••' : 'Enter Client ID'}
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-form-type="other"
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm"
                 />
                 {status?.oauthClientId && (
@@ -220,6 +223,9 @@ export default function GoogleAdsSettingsPage() {
                   value={oauthClientSecret}
                   onChange={(e) => setOauthClientSecret(e.target.value)}
                   placeholder={status?.oauthClientSecret ? '••••••••••••' : 'Enter Client Secret'}
+                  autoComplete="new-password"
+                  data-lpignore="true"
+                  data-form-type="other"
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
                 {status?.oauthClientSecret && (
@@ -267,6 +273,9 @@ export default function GoogleAdsSettingsPage() {
                   value={developerToken}
                   onChange={(e) => setDeveloperToken(e.target.value)}
                   placeholder={status?.developerToken ? '••••••••••••' : 'Enter developer token'}
+                  autoComplete="new-password"
+                  data-lpignore="true"
+                  data-form-type="other"
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
                 <p className="text-sm text-gray-500 mt-1">

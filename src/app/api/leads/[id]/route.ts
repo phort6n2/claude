@@ -73,6 +73,20 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     // Build update data
     const updateData: Record<string, unknown> = {}
 
+    // Contact info updates
+    if (data.firstName !== undefined) {
+      updateData.firstName = data.firstName
+    }
+    if (data.lastName !== undefined) {
+      updateData.lastName = data.lastName
+    }
+    if (data.email !== undefined) {
+      updateData.email = data.email
+    }
+    if (data.phone !== undefined) {
+      updateData.phone = data.phone
+    }
+
     // Status update
     if (data.status !== undefined) {
       updateData.status = data.status
@@ -106,6 +120,32 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     // If marking as SOLD and no sale date, set it now
     if (data.status === 'SOLD' && !existing.saleDate && !data.saleDate) {
       updateData.saleDate = new Date()
+    }
+
+    // Vehicle/service info - merge into formData
+    if (
+      data.vehicleYear !== undefined ||
+      data.vehicleMake !== undefined ||
+      data.vehicleModel !== undefined ||
+      data.interestedIn !== undefined
+    ) {
+      const existingFormData = (existing.formData as Record<string, unknown>) || {}
+      const updatedFormData = { ...existingFormData }
+
+      if (data.vehicleYear !== undefined) {
+        updatedFormData.vehicle_year = data.vehicleYear
+      }
+      if (data.vehicleMake !== undefined) {
+        updatedFormData.vehicle_make = data.vehicleMake
+      }
+      if (data.vehicleModel !== undefined) {
+        updatedFormData.vehicle_model = data.vehicleModel
+      }
+      if (data.interestedIn !== undefined) {
+        updatedFormData.interested_in = data.interestedIn
+      }
+
+      updateData.formData = updatedFormData
     }
 
     const updated = await prisma.lead.update({

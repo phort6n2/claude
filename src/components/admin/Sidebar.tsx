@@ -16,20 +16,64 @@ import {
   Monitor,
   Store,
   UserCheck,
+  BarChart3,
+  Radio,
+  Smartphone,
+  ExternalLink,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const navigation = [
-  { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-  { name: 'Clients', href: '/admin/clients', icon: Users },
-  { name: 'Leads', href: '/admin/leads', icon: UserCheck },
-  { name: 'Content Calendar', href: '/admin/content', icon: Calendar },
-  { name: 'GBP Posts', href: '/admin/gbp', icon: Store },
-  { name: 'Press Releases', href: '/admin/press-releases', icon: FileText },
-  { name: 'Monitoring', href: '/admin/monitoring', icon: Monitor },
-  { name: 'API Status', href: '/admin/api-status', icon: Activity },
-  { name: 'Settings', href: '/admin/settings', icon: Settings },
-  { name: 'Help', href: '/admin/help', icon: HelpCircle },
+interface NavItem {
+  name: string
+  href: string
+  icon: React.ElementType
+  external?: boolean
+}
+
+interface NavSection {
+  title: string
+  items: NavItem[]
+}
+
+const navigation: NavSection[] = [
+  {
+    title: 'Overview',
+    items: [
+      { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+    ],
+  },
+  {
+    title: 'CRM',
+    items: [
+      { name: 'Clients', href: '/admin/clients', icon: Users },
+      { name: 'Leads', href: '/admin/leads', icon: UserCheck },
+      { name: 'Master Leads', href: '/master-leads', icon: Smartphone, external: true },
+    ],
+  },
+  {
+    title: 'Content',
+    items: [
+      { name: 'Content Calendar', href: '/admin/content', icon: Calendar },
+      { name: 'GBP Posts', href: '/admin/gbp', icon: Store },
+      { name: 'Press Releases', href: '/admin/press-releases', icon: FileText },
+    ],
+  },
+  {
+    title: 'System',
+    items: [
+      { name: 'Monitoring', href: '/admin/monitoring', icon: Monitor },
+      { name: 'API Status', href: '/admin/api-status', icon: Activity },
+      { name: 'Google Ads', href: '/admin/google-ads-monitor', icon: BarChart3 },
+      { name: 'Webhook Status', href: '/admin/webhook-status', icon: Radio },
+    ],
+  },
+  {
+    title: 'Settings',
+    items: [
+      { name: 'Settings', href: '/admin/settings', icon: Settings },
+      { name: 'Help', href: '/admin/help', icon: HelpCircle },
+    ],
+  },
 ]
 
 export default function Sidebar() {
@@ -51,25 +95,54 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-2 py-4">
-        {navigation.map((item) => {
-          const isActive = pathname.startsWith(item.href)
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-gray-800 text-white'
-                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-              )}
-            >
-              <item.icon className="h-5 w-5" />
-              {item.name}
-            </Link>
-          )
-        })}
+      <nav className="flex-1 overflow-y-auto px-2 py-4">
+        {navigation.map((section, sectionIdx) => (
+          <div key={section.title} className={sectionIdx > 0 ? 'mt-6' : ''}>
+            <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              {section.title}
+            </h3>
+            <div className="mt-2 space-y-1">
+              {section.items.map((item) => {
+                const isActive = pathname.startsWith(item.href)
+
+                // External links open in new tab
+                if (item.external) {
+                  return (
+                    <a
+                      key={item.name}
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors text-gray-300 hover:bg-gray-800 hover:text-white group"
+                    >
+                      <span className="flex items-center gap-3">
+                        <item.icon className="h-5 w-5" />
+                        {item.name}
+                      </span>
+                      <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-50" />
+                    </a>
+                  )
+                }
+
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={cn(
+                      'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-gray-800 text-white'
+                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                    )}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {item.name}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Sign Out */}

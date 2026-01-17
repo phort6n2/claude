@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sendEnhancedConversion } from '@/lib/google-ads'
+import { notifyNewLead } from '@/lib/push-notifications'
 import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -66,10 +67,33 @@ export async function POST(request: NextRequest) {
       finalLastName = nameParts.slice(1).join(' ') || null
     }
 
-    // GCLID is at root level - filter out unresolved template strings
-    let gclid = payload.gclid || null
-    if (gclid && (gclid.includes('{{') || gclid.includes('}}'))) {
-      gclid = null // Template wasn't resolved, treat as no GCLID
+    // GCLID can be in multiple locations depending on HighLevel setup
+    // Check: root level, contact object, attributionSource, customFields, attribution
+    const customFields = payload.customFields || payload.customData || payload.custom_fields || {}
+    let gclid =
+      payload.gclid ||
+      payload.contact?.gclid ||
+      payload.attributionSource?.gclid ||
+      payload.attribution?.gclid ||
+      customFields.gclid ||
+      null
+
+    // Filter out unresolved template strings like {{contact.gclid}}
+    if (gclid && typeof gclid === 'string' && (gclid.includes('{{') || gclid.includes('}}'))) {
+      gclid = null
+    }
+
+    // Log where we found GCLID for debugging
+    if (gclid) {
+      console.log(`[HighLevel Webhook] GCLID found: ${gclid}`)
+    } else {
+      console.log(`[HighLevel Webhook] No GCLID found. Checked locations:`, {
+        root: payload.gclid,
+        contact: payload.contact?.gclid,
+        attributionSource: payload.attributionSource?.gclid,
+        attribution: payload.attribution?.gclid,
+        customFields: customFields.gclid,
+      })
     }
 
     // Source information
@@ -89,9 +113,6 @@ export async function POST(request: NextRequest) {
     const city = payload.city || location.city || null
     const state = payload.state || location.state || null
     const postalCode = payload.postal_code || location.postalCode || null
-
-    // Custom fields can be at root level OR nested under customFields/customData
-    const customFields = payload.customFields || payload.customData || payload.custom_fields || {}
 
     // Helper to get custom field from multiple locations
     // Filters out unresolved template strings like {{contact.field_name}}
@@ -118,12 +139,32 @@ export async function POST(request: NextRequest) {
       contact_type: payload.contact_type,
       tags: payload.tags,
       date_of_birth: payload.date_of_birth,
-      // Custom fields for auto glass - check both root and nested locations
-      interested_in: getCustomField('interested_in'),
-      vehicle_year: getCustomField('vehicle_year'),
-      vehicle_make: getCustomField('vehicle_make'),
-      vehicle_model: getCustomField('vehicle_model'),
-      vin: getCustomField('vin'),
+      // Custom fields for auto glass - check multiple key formats HighLevel uses
+      interested_in: getCustomField('interested_in') ||
+                     getCustomField('Interested In:') ||
+                     getCustomField('Interested In') ||
+                     getCustomField('interested in'),
+      vehicle_year: getCustomField('vehicle_year') ||
+                    getCustomField('Vehicle Year') ||
+                    getCustomField('vehicleYear'),
+      vehicle_make: getCustomField('vehicle_make') ||
+                    getCustomField('Vehicle Make') ||
+                    getCustomField('vehicleMake'),
+      vehicle_model: getCustomField('vehicle_model') ||
+                     getCustomField('Vehicle Model') ||
+                     getCustomField('vehicleModel'),
+      vin: getCustomField('vin') ||
+           getCustomField('VIN') ||
+           getCustomField('Vin'),
+      glass_type: getCustomField('glass_type') ||
+                  getCustomField('What type of glass do you need help with?') ||
+                  getCustomField('Glass Type'),
+      work_description: getCustomField('work_description') ||
+                        getCustomField('Description of Work Needed') ||
+                        getCustomField('description'),
+      insurance_help: getCustomField('insurance_help') ||
+                      getCustomField('Would You Like Us To Help Navigate Your Insurance Claim For You?') ||
+                      getCustomField('insurance'),
       radio_3s0t: getCustomField('radio_3s0t'),
     }
 
@@ -151,6 +192,14 @@ export async function POST(request: NextRequest) {
       formData.workflow = workflow
     }
 
+    // Store raw payload for debugging (excluding sensitive data)
+    formData._rawPayload = {
+      ...payload,
+      // Redact any potential sensitive fields
+      password: payload.password ? '[REDACTED]' : undefined,
+      token: payload.token ? '[REDACTED]' : undefined,
+    }
+
     // Remove null/undefined values from formData
     Object.keys(formData).forEach(key => {
       if (formData[key] === null || formData[key] === undefined) {
@@ -161,13 +210,54 @@ export async function POST(request: NextRequest) {
     // HighLevel contact ID for reference
     const highlevelContactId = payload.id || null
 
+    // Extract attribution source from contact object (where HighLevel stores it)
+    const attributionSource =
+      payload.contact?.attributionSource ||
+      payload.contact?.lastAttributionSource ||
+      payload.attributionSource ||
+      {}
+
+    // UTM Parameters - extract from attribution source
+    const utmSource = attributionSource.utmSource || payload.utm_source || null
+    const utmMedium = attributionSource.utmMedium || payload.utm_medium || null
+    const utmCampaign = attributionSource.campaign || attributionSource.utmCampaign || payload.utm_campaign || null
+    const utmContent = attributionSource.utmContent || payload.utm_content || null
+    const utmKeyword = attributionSource.utmKeyword || attributionSource.utmTerm || payload.utm_keyword || null
+    const utmMatchtype = attributionSource.utmMatchtype || payload.utm_matchtype || null
+    const campaignId = attributionSource.campaignId || payload.campaign_id || null
+    const adGroupId = attributionSource.adGroupId || payload.ad_group_id || null
+    const adId = attributionSource.adId || payload.ad_id || null
+
+    // Also check attribution source for GCLID/GBRAID/WBRAID if not found at root
+    if (!gclid) {
+      gclid = attributionSource.gclid || null
+    }
+    const gbraid = payload.gbraid || attributionSource.gbraid || null
+    const wbraid = payload.wbraid || attributionSource.wbraid || null
+
+    // Log attribution data for debugging
+    console.log(`[HighLevel Webhook] Attribution data:`, {
+      gclid,
+      gbraid,
+      wbraid,
+      utmSource,
+      utmMedium,
+      utmCampaign,
+      utmKeyword,
+      campaignId,
+      adGroupId,
+    })
+
     // Determine lead source - check for phone call indicators
     const sourceStr = (contactSource || '').toLowerCase()
     const contactType = (payload.contact_type || '').toLowerCase()
+    const attributionMedium = (attributionSource.medium || '').toLowerCase()
     const isPhoneCall =
       sourceStr.includes('phone') ||
       sourceStr.includes('call') ||
       sourceStr.includes('inbound') ||
+      sourceStr.includes('(number pool)') || // HighLevel number pool tracking
+      attributionMedium === 'conversation' || // HighLevel call attribution
       contactType === 'phone' ||
       contactType === 'call' ||
       payload.call !== undefined ||
@@ -184,6 +274,19 @@ export async function POST(request: NextRequest) {
         firstName: finalFirstName,
         lastName: finalLastName,
         gclid,
+        gbraid,
+        wbraid,
+        // UTM Parameters
+        utmSource,
+        utmMedium,
+        utmCampaign,
+        utmContent,
+        utmKeyword,
+        utmMatchtype,
+        campaignId,
+        adGroupId,
+        adId,
+        // Other fields
         source: leadSource,
         formData: Object.keys(formData).length > 0 ? (formData as Prisma.InputJsonValue) : undefined,
         formName: workflow.name || campaign.name || null,
@@ -194,12 +297,28 @@ export async function POST(request: NextRequest) {
 
     console.log(`[HighLevel Webhook] Created lead ${lead.id} for ${client.businessName}`)
 
+    // Send push notification to client users (non-blocking)
+    notifyNewLead(client.id, {
+      firstName: finalFirstName,
+      phone,
+      source: leadSource,
+    }).catch((err) => {
+      console.error(`[HighLevel Webhook] Failed to send push notification:`, err)
+    })
+
     // Send Enhanced Conversion to Google Ads if GCLID is present
     if (gclid && (email || phone)) {
       try {
         // Get client's Google Ads config
         const googleAdsConfig = await prisma.clientGoogleAds.findUnique({
           where: { clientId: client.id },
+        })
+
+        console.log(`[HighLevel Webhook] Google Ads config for ${client.businessName}:`, {
+          hasConfig: !!googleAdsConfig,
+          isActive: googleAdsConfig?.isActive,
+          hasLeadConversionActionId: !!googleAdsConfig?.leadConversionActionId,
+          customerId: googleAdsConfig?.customerId,
         })
 
         if (googleAdsConfig?.isActive && googleAdsConfig.leadConversionActionId) {
@@ -216,16 +335,48 @@ export async function POST(request: NextRequest) {
             // Mark the lead as having sent enhanced conversion
             await prisma.lead.update({
               where: { id: lead.id },
-              data: { enhancedConversionSent: true },
+              data: {
+                enhancedConversionSent: true,
+                enhancedConversionSentAt: new Date(),
+                googleSyncError: null, // Clear any previous error
+              },
             })
             console.log(`[HighLevel Webhook] Enhanced conversion sent for lead ${lead.id}`)
           } else {
+            // Track the failure for retry
+            await prisma.lead.update({
+              where: { id: lead.id },
+              data: {
+                googleSyncError: `Enhanced conversion failed: ${result.error}`,
+              },
+            })
             console.warn(`[HighLevel Webhook] Enhanced conversion failed for lead ${lead.id}:`, result.error)
           }
+        } else {
+          // Log why enhanced conversion was skipped
+          const reason = !googleAdsConfig
+            ? 'No Google Ads config for client'
+            : !googleAdsConfig.isActive
+            ? 'Google Ads config is not active'
+            : 'No leadConversionActionId configured'
+          console.log(`[HighLevel Webhook] Enhanced conversion skipped for lead ${lead.id}: ${reason}`)
         }
       } catch (err) {
-        // Log but don't fail the webhook
-        console.error(`[HighLevel Webhook] Enhanced conversion error for lead ${lead.id}:`, err)
+        // Track the error for retry and log with context
+        const errorMessage = err instanceof Error ? err.message : String(err)
+        await prisma.lead.update({
+          where: { id: lead.id },
+          data: {
+            googleSyncError: `Enhanced conversion error: ${errorMessage}`,
+          },
+        }).catch(() => {}) // Don't fail if update fails
+
+        console.error(`[HighLevel Webhook] Enhanced conversion error:`, {
+          leadId: lead.id,
+          client: client.businessName,
+          gclid,
+          error: errorMessage,
+        })
       }
     }
 
@@ -236,9 +387,18 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('[HighLevel Webhook] Error:', error)
+    // Enhanced error logging with context
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorStack = error instanceof Error ? error.stack : undefined
+
+    console.error('[HighLevel Webhook] Error processing webhook:', {
+      error: errorMessage,
+      stack: errorStack,
+      url: request.url,
+    })
+
     return NextResponse.json(
-      { error: 'Failed to process webhook' },
+      { error: 'Failed to process webhook', details: errorMessage },
       { status: 500 }
     )
   }

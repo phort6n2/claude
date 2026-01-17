@@ -27,6 +27,7 @@ export async function GET() {
         clientId: session.clientId,
         businessName: session.businessName,
         logoUrl: session.logoUrl,
+        primaryColor: session.primaryColor,
       },
     })
   } catch (error) {

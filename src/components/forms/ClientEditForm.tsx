@@ -1036,13 +1036,13 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
               <Webhook className="h-4 w-4 text-gray-400" />
               <span className="text-gray-500">Webhook URL:</span>
               <code className="px-2 py-1 bg-gray-100 rounded text-xs font-mono text-gray-700 flex-1 truncate">
-                https://agmp-paa-pro.vercel.app/api/webhooks/highlevel/lead?client={client.slug}
+                https://glassleads.app/api/webhooks/highlevel/lead?client={client.slug}
               </code>
               <button
                 type="button"
                 onClick={() => {
                   navigator.clipboard.writeText(
-                    `https://agmp-paa-pro.vercel.app/api/webhooks/highlevel/lead?client=${client.slug}`
+                    `https://glassleads.app/api/webhooks/highlevel/lead?client=${client.slug}`
                   )
                 }}
                 className="p-1.5 hover:bg-gray-100 rounded transition-colors"

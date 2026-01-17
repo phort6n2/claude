@@ -118,6 +118,32 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       updateData.saleNotes = data.saleNotes
     }
 
+    // Vehicle/service info - merge into formData
+    if (
+      data.vehicleYear !== undefined ||
+      data.vehicleMake !== undefined ||
+      data.vehicleModel !== undefined ||
+      data.interestedIn !== undefined
+    ) {
+      const existingFormData = (existing.formData as Record<string, unknown>) || {}
+      const updatedFormData = { ...existingFormData }
+
+      if (data.vehicleYear !== undefined) {
+        updatedFormData.vehicle_year = data.vehicleYear
+      }
+      if (data.vehicleMake !== undefined) {
+        updatedFormData.vehicle_make = data.vehicleMake
+      }
+      if (data.vehicleModel !== undefined) {
+        updatedFormData.vehicle_model = data.vehicleModel
+      }
+      if (data.interestedIn !== undefined) {
+        updatedFormData.interested_in = data.interestedIn
+      }
+
+      updateData.formData = updatedFormData
+    }
+
     // If marking as SOLD and no sale date, set it now
     if (data.status === 'SOLD' && !existing.saleDate && !data.saleDate) {
       updateData.saleDate = new Date()
@@ -138,6 +164,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         saleValue: true,
         saleDate: true,
         saleNotes: true,
+        formData: true,
         gclid: true,
         offlineConversionSent: true,
       },

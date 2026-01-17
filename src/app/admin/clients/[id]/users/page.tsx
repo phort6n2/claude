@@ -237,7 +237,7 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
         {/* Info banner */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <p className="text-sm text-blue-800">
-            Portal users can log in at <strong>agmp-paa-pro.vercel.app/portal/login</strong> to view and manage leads for this client.
+            Portal users can log in at <strong>glassleads.app/portal/login</strong> to view and manage leads for this client.
           </p>
         </div>
 

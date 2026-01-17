@@ -14,14 +14,14 @@ import {
   Clock,
   MessageSquare,
   TrendingUp,
-  LogOut,
   X,
   Save,
   Loader2,
   User,
+  Building2,
+  ShieldX,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { NotificationToggle } from '@/components/portal/NotificationToggle'
 
 interface Lead {
   id: string
@@ -39,16 +39,13 @@ interface Lead {
   formData: Record<string, unknown> | null
 }
 
-interface Session {
-  authenticated: boolean
-  user?: {
-    clientId: string
-    businessName: string
-    email: string
-    name: string | null
-    logoUrl: string | null
-    primaryColor: string | null
-  }
+interface Client {
+  id: string
+  businessName: string
+  slug: string
+  logoUrl: string | null
+  primaryColor: string | null
+  timezone?: string
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: React.ElementType }> = {
@@ -70,14 +67,18 @@ interface SalesStats {
   month: { count: number; total: number }
 }
 
-export default function PortalLeadsPage() {
+export default function StandaloneMasterLeadsPage() {
   const router = useRouter()
-  const [session, setSession] = useState<Session | null>(null)
+  const [authenticated, setAuthenticated] = useState(false)
+  const [authChecking, setAuthChecking] = useState(true)
+  const [clients, setClients] = useState<Client[]>([])
+  const [selectedClientId, setSelectedClientId] = useState<string>('')
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [leads, setLeads] = useState<Lead[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [clientsLoading, setClientsLoading] = useState(true)
   const [sales, setSales] = useState<SalesStats | null>(null)
   const [selectedDate, setSelectedDate] = useState(() => {
-    // Use local date, not UTC
     const today = new Date()
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   })
@@ -107,39 +108,85 @@ export default function PortalLeadsPage() {
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null)
   const [isAnimating, setIsAnimating] = useState(false)
 
-  // Check session
+  // Check master leads authorization
   useEffect(() => {
-    fetch('/api/portal/auth/session')
+    fetch('/api/admin/master-leads/auth')
       .then((res) => res.json())
       .then((data) => {
-        if (!data.authenticated) {
-          router.push('/portal/login')
+        if (data?.authorized) {
+          setAuthenticated(true)
+        } else if (data?.reason === 'not_authenticated') {
+          router.push('/login')
         } else {
-          setSession(data)
+          // User is logged in but not authorized
+          setAuthenticated(false)
+          setClientsLoading(false) // Don't wait for clients if not authorized
         }
       })
       .catch(() => {
-        router.push('/portal/login')
+        router.push('/login')
       })
+      .finally(() => setAuthChecking(false))
   }, [router])
 
-  // Load leads for selected date
+  // Load clients on mount
   useEffect(() => {
-    if (!session?.authenticated) return
+    if (!authenticated) return
+    fetch('/api/clients')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setClients(data)
+        }
+      })
+      .catch(console.error)
+      .finally(() => setClientsLoading(false))
+  }, [authenticated])
+
+  // Update selected client when ID changes
+  useEffect(() => {
+    if (selectedClientId) {
+      const client = clients.find(c => c.id === selectedClientId)
+      setSelectedClient(client || null)
+    } else {
+      setSelectedClient(null)
+    }
+  }, [selectedClientId, clients])
+
+  // Load leads for selected client and date
+  useEffect(() => {
+    if (!selectedClientId || !authenticated) {
+      setLeads([])
+      setSales(null)
+      return
+    }
 
     setLoading(true)
     setMobilePageIndex(0)
-    fetch(`/api/portal/leads?date=${selectedDate}`)
+
+    // Fetch leads for the selected date (full day range in user's timezone)
+    const [year, month, day] = selectedDate.split('-').map(Number)
+    const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
+    const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
+
+    fetch(`/api/leads?clientId=${selectedClientId}&startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`)
       .then((res) => res.json())
       .then((data) => {
         setLeads(data.leads || [])
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false))
+
+    // Fetch sales stats
+    fetch(`/api/admin/master-leads/stats?clientId=${selectedClientId}`)
+      .then((res) => res.json())
+      .then((data) => {
         if (data.sales) {
           setSales(data.sales)
         }
       })
       .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [session, selectedDate])
+  }, [selectedClientId, selectedDate, authenticated])
 
   // When lead is selected, populate form
   useEffect(() => {
@@ -163,7 +210,7 @@ export default function PortalLeadsPage() {
   }, [selectedLead])
 
   function changeDate(days: number) {
-    const date = new Date(selectedDate + 'T12:00:00') // Use noon to avoid DST issues
+    const date = new Date(selectedDate + 'T12:00:00')
     date.setDate(date.getDate() + days)
     const localDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
     setSelectedDate(localDate)
@@ -189,17 +236,12 @@ export default function PortalLeadsPage() {
     })
   }
 
-  async function handleLogout() {
-    await fetch('/api/portal/auth/logout', { method: 'POST' })
-    router.push('/portal/login')
-  }
-
   async function handleSaveLead() {
     if (!selectedLead) return
     setSaving(true)
 
     try {
-      const response = await fetch(`/api/portal/leads/${selectedLead.id}`, {
+      const response = await fetch(`/api/leads/${selectedLead.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -227,15 +269,17 @@ export default function PortalLeadsPage() {
       )
       setSelectedLead(null)
 
-      // Refresh sales stats after save (in case sale value changed)
-      fetch(`/api/portal/leads?date=${selectedDate}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.sales) {
-            setSales(data.sales)
-          }
-        })
-        .catch(() => {})
+      // Refresh sales stats after save
+      if (selectedClientId) {
+        fetch(`/api/admin/master-leads/stats?clientId=${selectedClientId}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.sales) {
+              setSales(data.sales)
+            }
+          })
+          .catch(() => {})
+      }
     } catch {
       alert('Failed to save changes')
     } finally {
@@ -314,7 +358,7 @@ export default function PortalLeadsPage() {
     }, 150)
   }
 
-  if (!session?.authenticated) {
+  if (authChecking || clientsLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
@@ -322,171 +366,215 @@ export default function PortalLeadsPage() {
     )
   }
 
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl p-8 text-center max-w-md shadow-lg">
+          <ShieldX className="h-16 w-16 mx-auto mb-4 text-red-400" />
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Access Denied</h1>
+          <p className="text-gray-600 mb-6">
+            You don&apos;t have permission to access this page.
+          </p>
+          <Button onClick={() => router.push('/admin')}>
+            Go to Admin
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 overflow-x-hidden">
-      {/* Header */}
+      {/* Header with Client Selector */}
       <header className="bg-white border-b sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <HeaderLogo
-                logoUrl={session.user?.logoUrl}
-                businessName={session.user?.businessName || ''}
-                primaryColor={session.user?.primaryColor}
-              />
-              <div>
-                <h1 className="text-lg font-bold text-gray-900">{session.user?.businessName}</h1>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              {selectedClient ? (
+                <ClientLogo
+                  logoUrl={selectedClient.logoUrl}
+                  businessName={selectedClient.businessName}
+                  primaryColor={selectedClient.primaryColor}
+                />
+              ) : (
+                <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                  <Building2 className="h-5 w-5 text-gray-500" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                {/* Client Selector Dropdown */}
+                <div className="relative">
+                  <select
+                    value={selectedClientId}
+                    onChange={(e) => setSelectedClientId(e.target.value)}
+                    className="w-full pr-8 py-1 text-lg font-bold text-gray-900 bg-transparent border-0 focus:ring-0 focus:outline-none appearance-none cursor-pointer truncate"
+                    style={{ paddingLeft: 0 }}
+                  >
+                    <option value="">Select Client...</option>
+                    {clients.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {client.businessName}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
                 <p className="text-xs text-gray-600">Lead Portal</p>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <NotificationToggle />
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline ml-2">Logout</span>
-              </Button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Date Navigation */}
-      <div className="bg-white border-b sticky top-[57px] z-30">
-        <div className="max-w-6xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-center gap-2">
-            <button
-              onClick={() => changeDate(-1)}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
+      {/* Show content only when client is selected */}
+      {selectedClientId ? (
+        <>
+          {/* Date Navigation */}
+          <div className="bg-white border-b sticky top-[57px] z-30">
+            <div className="max-w-6xl mx-auto px-4 py-3">
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  onClick={() => changeDate(-1)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
 
-            <button
-              onClick={() => setShowCalendar(!showCalendar)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors min-w-[160px] justify-center text-gray-900"
-            >
-              <Calendar className="h-4 w-4" />
-              <span className="font-medium">{formatDateDisplay(selectedDate)}</span>
-              <ChevronDown className={`h-4 w-4 transition-transform ${showCalendar ? 'rotate-180' : ''}`} />
-            </button>
+                <button
+                  onClick={() => setShowCalendar(!showCalendar)}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors min-w-[160px] justify-center text-gray-900"
+                >
+                  <Calendar className="h-4 w-4" />
+                  <span className="font-medium">{formatDateDisplay(selectedDate)}</span>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${showCalendar ? 'rotate-180' : ''}`} />
+                </button>
 
-            <button
-              onClick={() => changeDate(1)}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          </div>
-
-        </div>
-      </div>
-
-      {/* Sales Stats */}
-      {sales && (
-        <div className="max-w-6xl mx-auto px-4 py-3">
-          <div className="grid grid-cols-3 gap-2">
-            <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-              <p className="text-xs text-gray-500 mb-1">Today</p>
-              <p className="text-lg font-bold text-emerald-600">${sales.today.total.toLocaleString()}</p>
-              <p className="text-xs text-gray-500">{sales.today.count} sale{sales.today.count !== 1 ? 's' : ''}</p>
-            </div>
-            <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-              <p className="text-xs text-gray-500 mb-1">This Week</p>
-              <p className="text-lg font-bold text-emerald-600">${sales.week.total.toLocaleString()}</p>
-              <p className="text-xs text-gray-500">{sales.week.count} sale{sales.week.count !== 1 ? 's' : ''}</p>
-            </div>
-            <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-              <p className="text-xs text-gray-500 mb-1">This Month</p>
-              <p className="text-lg font-bold text-emerald-600">${sales.month.total.toLocaleString()}</p>
-              <p className="text-xs text-gray-500">{sales.month.count} sale{sales.month.count !== 1 ? 's' : ''}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Lead Count */}
-      <div className="max-w-6xl mx-auto px-4 py-2">
-        <p className="text-sm text-gray-700">
-          {loading ? 'Loading...' : `${leads.length} lead${leads.length !== 1 ? 's' : ''} on ${formatDateDisplay(selectedDate)}`}
-        </p>
-      </div>
-
-      {/* Leads Grid */}
-      <div className="max-w-6xl mx-auto px-4 pb-6">
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-          </div>
-        ) : leads.length === 0 ? (
-          <div className="bg-white rounded-xl p-8 text-center">
-            <User className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p className="text-gray-500">No leads on this date</p>
-            <button
-              onClick={() => {
-                const today = new Date()
-                const localDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-                setSelectedDate(localDate)
-              }}
-              className="mt-3 text-blue-600 hover:underline text-sm"
-            >
-              Go to today
-            </button>
-          </div>
-        ) : (
-          <>
-            {/* Mobile View - Swipeable Cards */}
-            <div
-              className="md:hidden"
-              ref={scrollContainerRef}
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
-            >
-              <div className="grid grid-cols-2 gap-3">
-                {mobileLeads.map((lead) => (
-                  <LeadCard
-                    key={lead.id}
-                    lead={lead}
-                    onClick={() => setSelectedLead(lead)}
-                  />
-                ))}
+                <button
+                  onClick={() => changeDate(1)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
               </div>
+            </div>
+          </div>
 
-              {/* Pagination Dots */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 mt-4">
-                  {Array.from({ length: totalPages }).map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setMobilePageIndex(i)}
-                      className={`w-2 h-2 rounded-full transition-colors ${
-                        i === mobilePageIndex ? 'bg-blue-600' : 'bg-gray-300'
-                      }`}
+          {/* Sales Stats */}
+          {sales && (
+            <div className="max-w-6xl mx-auto px-4 py-3">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+                  <p className="text-xs text-gray-500 mb-1">Today</p>
+                  <p className="text-lg font-bold text-emerald-600">${sales.today.total.toLocaleString()}</p>
+                  <p className="text-xs text-gray-500">{sales.today.count} sale{sales.today.count !== 1 ? 's' : ''}</p>
+                </div>
+                <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+                  <p className="text-xs text-gray-500 mb-1">This Week</p>
+                  <p className="text-lg font-bold text-emerald-600">${sales.week.total.toLocaleString()}</p>
+                  <p className="text-xs text-gray-500">{sales.week.count} sale{sales.week.count !== 1 ? 's' : ''}</p>
+                </div>
+                <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+                  <p className="text-xs text-gray-500 mb-1">This Month</p>
+                  <p className="text-lg font-bold text-emerald-600">${sales.month.total.toLocaleString()}</p>
+                  <p className="text-xs text-gray-500">{sales.month.count} sale{sales.month.count !== 1 ? 's' : ''}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Lead Count */}
+          <div className="max-w-6xl mx-auto px-4 py-2">
+            <p className="text-sm text-gray-700">
+              {loading ? 'Loading...' : `${leads.length} lead${leads.length !== 1 ? 's' : ''} on ${formatDateDisplay(selectedDate)}`}
+            </p>
+          </div>
+
+          {/* Leads Grid */}
+          <div className="max-w-6xl mx-auto px-4 pb-6">
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+              </div>
+            ) : leads.length === 0 ? (
+              <div className="bg-white rounded-xl p-8 text-center">
+                <User className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p className="text-gray-500">No leads on this date</p>
+                <button
+                  onClick={() => {
+                    const today = new Date()
+                    const localDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+                    setSelectedDate(localDate)
+                  }}
+                  className="mt-3 text-blue-600 hover:underline text-sm"
+                >
+                  Go to today
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Mobile View - Swipeable Cards */}
+                <div
+                  className="md:hidden"
+                  ref={scrollContainerRef}
+                  onTouchStart={handleTouchStart}
+                  onTouchEnd={handleTouchEnd}
+                >
+                  <div className="grid grid-cols-2 gap-3">
+                    {mobileLeads.map((lead) => (
+                      <LeadCard
+                        key={lead.id}
+                        lead={lead}
+                        onClick={() => setSelectedLead(lead)}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Pagination Dots */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-2 mt-4">
+                      {Array.from({ length: totalPages }).map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setMobilePageIndex(i)}
+                          className={`w-2 h-2 rounded-full transition-colors ${
+                            i === mobilePageIndex ? 'bg-blue-600' : 'bg-gray-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Swipe hint */}
+                  {totalPages > 1 && (
+                    <p className="text-center text-xs text-gray-600 mt-2">
+                      Swipe or tap dots to see more
+                    </p>
+                  )}
+                </div>
+
+                {/* Desktop View - All Cards */}
+                <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {leads.map((lead) => (
+                    <LeadCard
+                      key={lead.id}
+                      lead={lead}
+                      onClick={() => setSelectedLead(lead)}
                     />
                   ))}
                 </div>
-              )}
-
-              {/* Swipe hint */}
-              {totalPages > 1 && (
-                <p className="text-center text-xs text-gray-600 mt-2">
-                  Swipe or tap dots to see more
-                </p>
-              )}
-            </div>
-
-            {/* Desktop View - All Cards */}
-            <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {leads.map((lead) => (
-                <LeadCard
-                  key={lead.id}
-                  lead={lead}
-                  onClick={() => setSelectedLead(lead)}
-                />
-              ))}
-            </div>
-          </>
-        )}
-      </div>
+              </>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="max-w-6xl mx-auto px-4 py-20">
+          <div className="bg-white rounded-xl p-8 text-center">
+            <Building2 className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Select a Client</h2>
+            <p className="text-gray-500">Choose a client from the dropdown above to view their leads</p>
+          </div>
+        </div>
+      )}
 
       {/* Lead Detail Modal */}
       {selectedLead && (
@@ -835,7 +923,6 @@ export default function PortalLeadsPage() {
             className="fixed inset-0 bg-black/30 z-50"
             onClick={() => setShowCalendar(false)}
           />
-          {/* Mobile: bottom sheet, Desktop: centered modal */}
           <div className="fixed md:top-1/3 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 bottom-0 left-0 right-0 md:bottom-auto md:left-1/2 md:right-auto bg-white md:rounded-xl rounded-t-xl shadow-2xl md:w-[300px] w-full z-[51] overflow-hidden">
             <div className="bg-blue-600 text-white px-4 py-4">
               <div className="flex items-center justify-between">
@@ -871,7 +958,6 @@ export default function PortalLeadsPage() {
               <div className="flex gap-3 mt-4">
                 <button
                   onClick={() => {
-                    // Use local date, not UTC
                     const today = new Date()
                     const localDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
                     setSelectedDate(localDate)
@@ -889,7 +975,6 @@ export default function PortalLeadsPage() {
                 </button>
               </div>
             </div>
-            {/* Safe area padding for iOS */}
             <div className="h-safe-area-inset-bottom md:hidden" />
           </div>
         </>
@@ -898,8 +983,8 @@ export default function PortalLeadsPage() {
   )
 }
 
-// Header Logo Component with fallback
-function HeaderLogo({
+// Client Logo Component
+function ClientLogo({
   logoUrl,
   businessName,
   primaryColor
@@ -954,7 +1039,6 @@ function getLeadDetails(lead: Lead) {
   const zipCode = getField(['postal_code', 'postalCode'])
   const insuranceHelp = getField(['insurance_help', 'Would You Like Us To Help Navigate Your Insurance Claim For You?', 'radio_3s0t'])
 
-  // Build vehicle string
   const vehicleParts = [year, make, model].filter(Boolean)
   const vehicle = vehicleParts.length > 0 ? vehicleParts.join(' ') : null
 
@@ -1033,7 +1117,7 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
         )}
       </div>
 
-      {/* Missing info indicator for phone leads */}
+      {/* Missing info indicator */}
       {isPhoneLead && (!lead.firstName || !lead.email) && (
         <div className="mt-2 text-orange-600 text-xs">+ Add missing info</div>
       )}

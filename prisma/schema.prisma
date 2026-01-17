@@ -1152,8 +1152,40 @@ model ClientUser {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Relations
+  pushSubscriptions PushSubscription[]
+
   @@index([clientId])
   @@index([magicLinkToken])
+}
+
+// ============================================
+// PUSH NOTIFICATIONS
+// ============================================
+
+model PushSubscription {
+  id           String @id @default(cuid())
+  clientUserId String
+  clientUser   ClientUser @relation(fields: [clientUserId], references: [id], onDelete: Cascade)
+
+  // Web Push subscription data
+  endpoint String @unique
+  p256dh   String // Public key for encryption
+  auth     String // Auth secret
+
+  // Device info (optional, for debugging)
+  userAgent String?
+
+  // Status
+  isActive  Boolean   @default(true)
+  lastUsed  DateTime?
+  failCount Int       @default(0) // Track failed delivery attempts
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientUserId])
+  @@index([isActive])
 }
 
 // ============================================

@@ -36,6 +36,7 @@ interface Lead {
   saleDate: string | null
   createdAt: string
   formName: string | null
+  formData: Record<string, unknown> | null
   enhancedConversionSent: boolean
   offlineConversionSent: boolean
   client: {
@@ -132,6 +133,36 @@ export default function LeadsPage() {
       return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`
     }
     return phone
+  }
+
+  // Helper to extract lead details from formData
+  function getLeadDetails(lead: Lead) {
+    const fd = lead.formData
+    const raw = fd?._rawPayload as Record<string, unknown> | null
+
+    const getField = (keys: string[]): string | null => {
+      for (const key of keys) {
+        if (fd?.[key]) return String(fd[key])
+      }
+      for (const key of keys) {
+        if (raw?.[key]) return String(raw[key])
+      }
+      return null
+    }
+
+    const service = getField(['interested_in', 'Interested In:', 'Interested In'])
+    const year = getField(['vehicle_year', 'Vehicle Year'])
+    const make = getField(['vehicle_make', 'Vehicle Make'])
+    const model = getField(['vehicle_model', 'Vehicle Model'])
+    const vin = getField(['vin', 'VIN', 'Vin'])
+    const zipCode = getField(['postal_code', 'postalCode'])
+    const insuranceHelp = getField(['insurance_help', 'Would You Like Us To Help Navigate Your Insurance Claim For You?', 'radio_3s0t'])
+
+    // Build vehicle string
+    const vehicleParts = [year, make, model].filter(Boolean)
+    const vehicle = vehicleParts.length > 0 ? vehicleParts.join(' ') : null
+
+    return { service, vehicle, year, make, model, vin, zipCode, insuranceHelp }
   }
 
   return (
@@ -296,6 +327,33 @@ export default function LeadsPage() {
                               {formatDate(lead.createdAt)}
                             </span>
                           </div>
+
+                          {/* Service/Vehicle info */}
+                          {(() => {
+                            const details = getLeadDetails(lead)
+                            const hasAnyDetails = details.service || details.vehicle || details.zipCode || details.insuranceHelp
+                            if (!hasAnyDetails) return null
+                            return (
+                              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                                {details.service && (
+                                  <span className="inline-block bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
+                                    {details.service}
+                                  </span>
+                                )}
+                                {details.vehicle && (
+                                  <span className="text-gray-600">{details.vehicle}</span>
+                                )}
+                                {details.zipCode && (
+                                  <span className="text-gray-500">ZIP: {details.zipCode}</span>
+                                )}
+                                {details.insuranceHelp && details.insuranceHelp.toLowerCase() === 'yes' && (
+                                  <span className="inline-block bg-green-50 text-green-700 px-2 py-0.5 rounded">
+                                    Insurance Help
+                                  </span>
+                                )}
+                              </div>
+                            )
+                          })()}
 
                           {/* Campaign info */}
                           {(lead.utmCampaign || lead.utmKeyword) && (
