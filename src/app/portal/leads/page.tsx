@@ -21,6 +21,7 @@ import {
   User,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { NotificationToggle } from '@/components/portal/NotificationToggle'
 
 interface Lead {
   id: string
@@ -338,10 +339,13 @@ export default function PortalLeadsPage() {
                 <p className="text-xs text-gray-600">Lead Portal</p>
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline ml-2">Logout</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <NotificationToggle />
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Logout</span>
+              </Button>
+            </div>
           </div>
         </div>
       </header>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sendEnhancedConversion } from '@/lib/google-ads'
+import { notifyNewLead } from '@/lib/push-notifications'
 import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -295,6 +296,15 @@ export async function POST(request: NextRequest) {
     })
 
     console.log(`[HighLevel Webhook] Created lead ${lead.id} for ${client.businessName}`)
+
+    // Send push notification to client users (non-blocking)
+    notifyNewLead(client.id, {
+      firstName: finalFirstName,
+      phone,
+      source: leadSource,
+    }).catch((err) => {
+      console.error(`[HighLevel Webhook] Failed to send push notification:`, err)
+    })
 
     // Send Enhanced Conversion to Google Ads if GCLID is present
     if (gclid && (email || phone)) {
