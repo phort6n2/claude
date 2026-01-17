@@ -139,9 +139,9 @@ export default function MasterLeadsPage() {
     setLoading(true)
     setMobilePageIndex(0)
 
-    // Fetch leads for the selected date
-    const startDate = selectedDate
-    const endDate = selectedDate
+    // Fetch leads for the selected date (full day range)
+    const startDate = `${selectedDate}T00:00:00`
+    const endDate = `${selectedDate}T23:59:59`
 
     fetch(`/api/leads?clientId=${selectedClientId}&startDate=${startDate}&endDate=${endDate}`)
       .then((res) => res.json())
