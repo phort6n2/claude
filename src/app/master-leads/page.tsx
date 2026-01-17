@@ -19,6 +19,7 @@ import {
   Loader2,
   User,
   Building2,
+  ShieldX,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 
@@ -101,15 +102,18 @@ export default function StandaloneMasterLeadsPage() {
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null)
   const [isAnimating, setIsAnimating] = useState(false)
 
-  // Check admin auth
+  // Check master leads authorization
   useEffect(() => {
-    fetch('/api/auth/session')
+    fetch('/api/admin/master-leads/auth')
       .then((res) => res.json())
       .then((data) => {
-        if (data?.user) {
+        if (data?.authorized) {
           setAuthenticated(true)
-        } else {
+        } else if (data?.reason === 'not_authenticated') {
           router.push('/login')
+        } else {
+          // User is logged in but not authorized
+          setAuthenticated(false)
         }
       })
       .catch(() => {
@@ -344,7 +348,20 @@ export default function StandaloneMasterLeadsPage() {
   }
 
   if (!authenticated) {
-    return null
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl p-8 text-center max-w-md shadow-lg">
+          <ShieldX className="h-16 w-16 mx-auto mb-4 text-red-400" />
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Access Denied</h1>
+          <p className="text-gray-600 mb-6">
+            You don&apos;t have permission to access this page.
+          </p>
+          <Button onClick={() => router.push('/admin')}>
+            Go to Admin
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
