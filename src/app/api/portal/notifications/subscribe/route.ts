@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { getPortalSession } from '@/lib/portal-auth'
 import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -9,20 +9,11 @@ export const dynamic = 'force-dynamic'
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get portal session from cookie
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('portal_session')
+    // Get portal session
+    const session = await getPortalSession()
 
-    if (!sessionCookie?.value) {
+    if (!session) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
-    }
-
-    // Parse session
-    let session: { clientUserId: string; clientId: string }
-    try {
-      session = JSON.parse(sessionCookie.value)
-    } catch {
-      return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
     }
 
     const { subscription, userAgent } = await request.json()
@@ -46,7 +37,7 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date(),
       },
       create: {
-        clientUserId: session.clientUserId,
+        clientUserId: session.userId,
         endpoint: subscription.endpoint,
         p256dh: subscription.keys.p256dh,
         auth: subscription.keys.auth,
@@ -72,11 +63,10 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    // Get portal session from cookie
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('portal_session')
+    // Get portal session
+    const session = await getPortalSession()
 
-    if (!sessionCookie?.value) {
+    if (!session) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
@@ -110,25 +100,17 @@ export async function DELETE(request: NextRequest) {
  */
 export async function GET() {
   try {
-    // Get portal session from cookie
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('portal_session')
+    // Get portal session
+    const session = await getPortalSession()
 
-    if (!sessionCookie?.value) {
+    if (!session) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
-    }
-
-    let session: { clientUserId: string }
-    try {
-      session = JSON.parse(sessionCookie.value)
-    } catch {
-      return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
     }
 
     // Get active subscriptions count for this user
     const count = await prisma.pushSubscription.count({
       where: {
-        clientUserId: session.clientUserId,
+        clientUserId: session.userId,
         isActive: true,
       },
     })
