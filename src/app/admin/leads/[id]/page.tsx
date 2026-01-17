@@ -354,21 +354,15 @@ export default function LeadDetailPage() {
                 <h4 className="font-medium text-gray-900 mb-3">Lead Details</h4>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   {interestedIn && (
-                    <div className="col-span-2">
-                      <span className="text-gray-500">Service Requested</span>
+                    <div>
+                      <span className="text-gray-500">Interested In</span>
                       <p className="font-medium text-gray-900">{interestedIn}</p>
                     </div>
                   )}
-                  {glassType && (
-                    <div className="col-span-2">
-                      <span className="text-gray-500">Glass Type</span>
-                      <p className="font-medium text-gray-900">{glassType}</p>
-                    </div>
-                  )}
-                  {workDescription && (
-                    <div className="col-span-2">
-                      <span className="text-gray-500">Work Description</span>
-                      <p className="font-medium text-gray-900">{workDescription}</p>
+                  {postalCode && (
+                    <div>
+                      <span className="text-gray-500">Zip Code</span>
+                      <p className="font-medium text-gray-900">{postalCode}</p>
                     </div>
                   )}
                   {vehicleYear && (
@@ -395,16 +389,22 @@ export default function LeadDetailPage() {
                       <p className="font-medium font-mono text-gray-900 text-xs break-all">{vin}</p>
                     </div>
                   )}
-                  {postalCode && (
-                    <div>
-                      <span className="text-gray-500">Zip Code</span>
-                      <p className="font-medium text-gray-900">{postalCode}</p>
-                    </div>
-                  )}
                   {insuranceHelp && (
                     <div>
                       <span className="text-gray-500">Insurance Help</span>
                       <p className="font-medium text-gray-900">{insuranceHelp}</p>
+                    </div>
+                  )}
+                  {glassType && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500">Glass Type</span>
+                      <p className="font-medium text-gray-900">{glassType}</p>
+                    </div>
+                  )}
+                  {workDescription && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500">Work Description</span>
+                      <p className="font-medium text-gray-900">{workDescription}</p>
                     </div>
                   )}
                 </div>
