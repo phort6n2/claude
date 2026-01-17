@@ -210,7 +210,31 @@ export default function LeadDetailPage() {
   const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown Contact'
   const isPhoneLead = lead.source === 'PHONE'
   const fd = lead.formData as Record<string, unknown> | null
-  const hasDetails = !!(fd && (fd.interested_in || fd.vehicle_year || fd.vehicle_make || fd.vehicle_model || fd.vin || fd.radio_3s0t || fd.postal_code))
+  const rawPayload = fd?._rawPayload as Record<string, unknown> | null
+
+  // Helper to get field from formData or fall back to _rawPayload with various key formats
+  const getField = (keys: string[]): string | null => {
+    for (const key of keys) {
+      if (fd?.[key]) return String(fd[key])
+    }
+    for (const key of keys) {
+      if (rawPayload?.[key]) return String(rawPayload[key])
+    }
+    return null
+  }
+
+  // Extract fields with fallbacks for different key formats HighLevel uses
+  const interestedIn = getField(['interested_in', 'Interested In:', 'Interested In'])
+  const vehicleYear = getField(['vehicle_year', 'Vehicle Year', 'vehicleYear'])
+  const vehicleMake = getField(['vehicle_make', 'Vehicle Make', 'vehicleMake'])
+  const vehicleModel = getField(['vehicle_model', 'Vehicle Model', 'vehicleModel'])
+  const vin = getField(['vin', 'VIN', 'Vin'])
+  const glassType = getField(['glass_type', 'What type of glass do you need help with?', 'Glass Type'])
+  const workDescription = getField(['work_description', 'Description of Work Needed', 'description'])
+  const insuranceHelp = getField(['insurance_help', 'Would You Like Us To Help Navigate Your Insurance Claim For You?', 'radio_3s0t'])
+  const postalCode = getField(['postal_code', 'postalCode'])
+
+  const hasDetails = !!(interestedIn || vehicleYear || vehicleMake || vehicleModel || vin || glassType || workDescription || insuranceHelp || postalCode)
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -329,48 +353,60 @@ export default function LeadDetailPage() {
               <div className="bg-blue-50 rounded-lg p-4">
                 <h4 className="font-medium text-gray-900 mb-3">Lead Details</h4>
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  {fd?.interested_in ? (
-                    <div>
-                      <span className="text-gray-500">Interested In</span>
-                      <p className="font-medium text-gray-900">{String(fd.interested_in)}</p>
+                  {interestedIn && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500">Service Requested</span>
+                      <p className="font-medium text-gray-900">{interestedIn}</p>
                     </div>
-                  ) : null}
-                  {fd?.postal_code ? (
-                    <div>
-                      <span className="text-gray-500">Zip Code</span>
-                      <p className="font-medium text-gray-900">{String(fd.postal_code)}</p>
+                  )}
+                  {glassType && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500">Glass Type</span>
+                      <p className="font-medium text-gray-900">{glassType}</p>
                     </div>
-                  ) : null}
-                  {fd?.vehicle_year ? (
+                  )}
+                  {workDescription && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500">Work Description</span>
+                      <p className="font-medium text-gray-900">{workDescription}</p>
+                    </div>
+                  )}
+                  {vehicleYear && (
                     <div>
                       <span className="text-gray-500">Year</span>
-                      <p className="font-medium text-gray-900">{String(fd.vehicle_year)}</p>
+                      <p className="font-medium text-gray-900">{vehicleYear}</p>
                     </div>
-                  ) : null}
-                  {fd?.vehicle_make ? (
+                  )}
+                  {vehicleMake && (
                     <div>
                       <span className="text-gray-500">Make</span>
-                      <p className="font-medium text-gray-900">{String(fd.vehicle_make)}</p>
+                      <p className="font-medium text-gray-900">{vehicleMake}</p>
                     </div>
-                  ) : null}
-                  {fd?.vehicle_model ? (
+                  )}
+                  {vehicleModel && (
                     <div>
                       <span className="text-gray-500">Model</span>
-                      <p className="font-medium text-gray-900">{String(fd.vehicle_model)}</p>
+                      <p className="font-medium text-gray-900">{vehicleModel}</p>
                     </div>
-                  ) : null}
-                  {fd?.vin ? (
+                  )}
+                  {vin && (
                     <div>
                       <span className="text-gray-500">VIN</span>
-                      <p className="font-medium font-mono text-gray-900 text-xs break-all">{String(fd.vin)}</p>
+                      <p className="font-medium font-mono text-gray-900 text-xs break-all">{vin}</p>
                     </div>
-                  ) : null}
-                  {fd?.radio_3s0t ? (
+                  )}
+                  {postalCode && (
+                    <div>
+                      <span className="text-gray-500">Zip Code</span>
+                      <p className="font-medium text-gray-900">{postalCode}</p>
+                    </div>
+                  )}
+                  {insuranceHelp && (
                     <div>
                       <span className="text-gray-500">Insurance Help</span>
-                      <p className="font-medium text-gray-900">{String(fd.radio_3s0t)}</p>
+                      <p className="font-medium text-gray-900">{insuranceHelp}</p>
                     </div>
-                  ) : null}
+                  )}
                 </div>
               </div>
             )}

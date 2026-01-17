@@ -138,12 +138,32 @@ export async function POST(request: NextRequest) {
       contact_type: payload.contact_type,
       tags: payload.tags,
       date_of_birth: payload.date_of_birth,
-      // Custom fields for auto glass - check both root and nested locations
-      interested_in: getCustomField('interested_in'),
-      vehicle_year: getCustomField('vehicle_year'),
-      vehicle_make: getCustomField('vehicle_make'),
-      vehicle_model: getCustomField('vehicle_model'),
-      vin: getCustomField('vin'),
+      // Custom fields for auto glass - check multiple key formats HighLevel uses
+      interested_in: getCustomField('interested_in') ||
+                     getCustomField('Interested In:') ||
+                     getCustomField('Interested In') ||
+                     getCustomField('interested in'),
+      vehicle_year: getCustomField('vehicle_year') ||
+                    getCustomField('Vehicle Year') ||
+                    getCustomField('vehicleYear'),
+      vehicle_make: getCustomField('vehicle_make') ||
+                    getCustomField('Vehicle Make') ||
+                    getCustomField('vehicleMake'),
+      vehicle_model: getCustomField('vehicle_model') ||
+                     getCustomField('Vehicle Model') ||
+                     getCustomField('vehicleModel'),
+      vin: getCustomField('vin') ||
+           getCustomField('VIN') ||
+           getCustomField('Vin'),
+      glass_type: getCustomField('glass_type') ||
+                  getCustomField('What type of glass do you need help with?') ||
+                  getCustomField('Glass Type'),
+      work_description: getCustomField('work_description') ||
+                        getCustomField('Description of Work Needed') ||
+                        getCustomField('description'),
+      insurance_help: getCustomField('insurance_help') ||
+                      getCustomField('Would You Like Us To Help Navigate Your Insurance Claim For You?') ||
+                      getCustomField('insurance'),
       radio_3s0t: getCustomField('radio_3s0t'),
     }
 
