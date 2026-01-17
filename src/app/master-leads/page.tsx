@@ -98,6 +98,12 @@ export default function StandaloneMasterLeadsPage() {
   const [editSaleNotes, setEditSaleNotes] = useState('')
   const [saving, setSaving] = useState(false)
 
+  // Vehicle/service info (editable for phone leads)
+  const [editVehicleYear, setEditVehicleYear] = useState('')
+  const [editVehicleMake, setEditVehicleMake] = useState('')
+  const [editVehicleModel, setEditVehicleModel] = useState('')
+  const [editInterestedIn, setEditInterestedIn] = useState('')
+
   // Modal slide animation state
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null)
   const [isAnimating, setIsAnimating] = useState(false)
@@ -192,6 +198,13 @@ export default function StandaloneMasterLeadsPage() {
       setEditSaleValue(selectedLead.saleValue?.toString() || '')
       setEditSaleDate(selectedLead.saleDate?.split('T')[0] || '')
       setEditSaleNotes(selectedLead.saleNotes || '')
+
+      // Populate vehicle/service info from formData
+      const details = getLeadDetails(selectedLead)
+      setEditVehicleYear(details.year || '')
+      setEditVehicleMake(details.make || '')
+      setEditVehicleModel(details.model || '')
+      setEditInterestedIn(details.service || '')
     }
   }, [selectedLead])
 
@@ -239,6 +252,11 @@ export default function StandaloneMasterLeadsPage() {
           saleValue: editSaleValue ? parseFloat(editSaleValue) : null,
           saleDate: editSaleDate || null,
           saleNotes: editSaleNotes || null,
+          // Vehicle/service info
+          vehicleYear: editVehicleYear || null,
+          vehicleMake: editVehicleMake || null,
+          vehicleModel: editVehicleModel || null,
+          interestedIn: editInterestedIn || null,
         }),
       })
 
@@ -717,49 +735,79 @@ export default function StandaloneMasterLeadsPage() {
                 )}
               </div>
 
-              {/* Form Data / Lead Details */}
-              {(() => {
-                const details = getLeadDetails(selectedLead)
-                const hasDetails = details.service || details.year || details.make || details.model || details.vin || details.zipCode || details.insuranceHelp
-                if (!hasDetails) return null
-                return (
-                  <div className="bg-blue-50 rounded-lg p-4">
-                    <h4 className="font-medium text-gray-900 mb-3">Lead Details</h4>
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      {details.service && (
+              {/* Vehicle & Service Info - Editable */}
+              <div className="bg-blue-50 rounded-lg p-4 space-y-3">
+                <h4 className="font-medium text-gray-900">Vehicle & Service Info</h4>
+
+                {/* Interested In / Service */}
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Interested In</label>
+                  <select
+                    value={editInterestedIn}
+                    onChange={(e) => setEditInterestedIn(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  >
+                    <option value="">Select service...</option>
+                    <option value="Windshield Replacement">Windshield Replacement</option>
+                    <option value="Windshield Repair">Windshield Repair</option>
+                    <option value="Side Window">Side Window</option>
+                    <option value="Back Glass">Back Glass</option>
+                    <option value="Other Auto Glass">Other Auto Glass</option>
+                  </select>
+                </div>
+
+                {/* Vehicle Year/Make/Model */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Year</label>
+                    <input
+                      type="text"
+                      value={editVehicleYear}
+                      onChange={(e) => setEditVehicleYear(e.target.value)}
+                      placeholder="2024"
+                      maxLength={4}
+                      className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Make</label>
+                    <input
+                      type="text"
+                      value={editVehicleMake}
+                      onChange={(e) => setEditVehicleMake(e.target.value)}
+                      placeholder="Toyota"
+                      className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Model</label>
+                    <input
+                      type="text"
+                      value={editVehicleModel}
+                      onChange={(e) => setEditVehicleModel(e.target.value)}
+                      placeholder="Camry"
+                      className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Read-only details if present */}
+                {(() => {
+                  const details = getLeadDetails(selectedLead)
+                  const hasReadOnlyDetails = details.vin || details.zipCode || details.insuranceHelp
+                  if (!hasReadOnlyDetails) return null
+                  return (
+                    <div className="pt-2 border-t border-blue-100 grid grid-cols-2 gap-3 text-sm">
+                      {details.vin && (
                         <div>
-                          <span className="text-gray-500">Interested In</span>
-                          <p className="font-medium text-gray-900">{details.service}</p>
+                          <span className="text-gray-500">VIN</span>
+                          <p className="font-medium font-mono text-gray-900 text-xs break-all">{details.vin}</p>
                         </div>
                       )}
                       {details.zipCode && (
                         <div>
                           <span className="text-gray-500">Zip Code</span>
                           <p className="font-medium text-gray-900">{details.zipCode}</p>
-                        </div>
-                      )}
-                      {details.year && (
-                        <div>
-                          <span className="text-gray-500">Year</span>
-                          <p className="font-medium text-gray-900">{details.year}</p>
-                        </div>
-                      )}
-                      {details.make && (
-                        <div>
-                          <span className="text-gray-500">Make</span>
-                          <p className="font-medium text-gray-900">{details.make}</p>
-                        </div>
-                      )}
-                      {details.model && (
-                        <div>
-                          <span className="text-gray-500">Model</span>
-                          <p className="font-medium text-gray-900">{details.model}</p>
-                        </div>
-                      )}
-                      {details.vin && (
-                        <div>
-                          <span className="text-gray-500">VIN</span>
-                          <p className="font-medium font-mono text-gray-900 text-xs break-all">{details.vin}</p>
                         </div>
                       )}
                       {details.insuranceHelp && (
@@ -769,9 +817,9 @@ export default function StandaloneMasterLeadsPage() {
                         </div>
                       )}
                     </div>
-                  </div>
-                )
-              })()}
+                  )
+                })()}
+              </div>
 
               {/* Status */}
               <div>
