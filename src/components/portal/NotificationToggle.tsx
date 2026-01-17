@@ -70,16 +70,20 @@ export function NotificationToggle({ className = '' }: NotificationToggleProps) 
 
       // Get VAPID public key
       const response = await fetch('/api/portal/notifications/subscribe')
-      const { vapidPublicKey } = await response.json()
+      const data = await response.json()
 
-      if (!vapidPublicKey) {
-        throw new Error('VAPID public key not configured')
+      if (!response.ok) {
+        throw new Error(data.error || `API error: ${response.status}`)
+      }
+
+      if (!data.vapidPublicKey) {
+        throw new Error('VAPID public key not returned by server')
       }
 
       // Subscribe to push notifications
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
+        applicationServerKey: urlBase64ToUint8Array(data.vapidPublicKey) as BufferSource,
       })
 
       // Send subscription to server
