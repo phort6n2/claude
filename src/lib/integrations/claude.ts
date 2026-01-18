@@ -774,7 +774,7 @@ export async function generateVideoSocialCaption(params: {
 }> {
   const platformLimits = {
     tiktok: { caption: 2200, hashtags: 5 },
-    youtube: { caption: 5000, hashtags: 15 },
+    youtube: { caption: 5000, hashtags: 5 }, // YouTube Shorts: 3-5 hashtags optimal
     instagram: { caption: 2200, hashtags: 30 },
     facebook: { caption: 63206, hashtags: 10 },
   }
@@ -791,7 +791,55 @@ export async function generateVideoSocialCaption(params: {
   // For Instagram and TikTok, links go in first comment
   const includeUrlInCaption = params.platform === 'youtube' || params.platform === 'facebook'
 
-  const prompt = `Write a ${platformName} caption for this auto glass video.
+  // YouTube Shorts specific prompt following 2026 best practices
+  let prompt: string
+  if (params.platform === 'youtube') {
+    prompt = `Write a YouTube Shorts description following 2026 best practices for maximum visibility and engagement.
+
+**Context:**
+- Business: ${params.businessName}
+- Location: ${params.location}
+- Video Topic: ${params.blogTitle}
+- Content Summary: ${params.blogExcerpt}
+- Blog URL: ${params.blogUrl}
+${params.googleMapsUrl ? `- Google Maps: ${params.googleMapsUrl}` : ''}
+
+**CRITICAL: YouTube Shorts 2026 Best Practices**
+
+The first 100-150 characters are the ONLY text visible without clicking "more" - this is crucial!
+
+**Required Structure:**
+
+1. **HOOK (First 100-150 chars - MOST IMPORTANT)**
+   - Lead with compelling "what's in it for me" value
+   - Include primary keyword naturally (auto glass, windshield, etc.)
+   - Must grab attention immediately - this is all viewers see!
+
+2. **VIDEO SUMMARY (100-150 words)**
+   - Concise overview of what viewers will learn
+   - Short paragraphs, conversational tone
+   - Include the blog URL: ${params.blogUrl}
+${params.googleMapsUrl ? `   - Include Google Maps link: ${params.googleMapsUrl}` : ''}
+
+3. **CALL-TO-ACTION**
+   - Specific CTA: "Subscribe for more auto glass tips" or similar
+   - Encourage engagement (like, comment, share)
+
+4. **HASHTAGS (placed at the very end)**
+   - 3-5 relevant hashtags
+   - MUST include #Shorts
+   - Include location hashtag
+
+**Format your response as JSON:**
+{
+  "caption": "Full description following the structure above. Hook first (under 150 chars), then summary with links, then CTA. NO hashtags in caption.",
+  "hashtags": ["Shorts", "AutoGlass", "WindshieldRepair", "${params.location.replace(/[,\s]+/g, '')}", "CarTips"],
+  "firstComment": "Pinned comment with additional engagement prompt"
+}
+
+Return ONLY valid JSON. No explanation.`
+  } else {
+    prompt = `Write a ${platformName} caption for this auto glass video.
 
 **Context:**
 - Business: ${params.businessName}
@@ -818,6 +866,7 @@ ${includeUrlInCaption ? `- IMPORTANT: Include the blog URL (${params.blogUrl}) d
 }
 
 Return ONLY valid JSON. No explanation.`
+  }
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
@@ -870,7 +919,7 @@ export async function generateWRHQVideoSocialCaption(params: {
 }> {
   const platformLimits = {
     tiktok: { caption: 2200, hashtags: 5 },
-    youtube: { caption: 5000, hashtags: 15 },
+    youtube: { caption: 5000, hashtags: 5 }, // YouTube Shorts: 3-5 hashtags optimal
     instagram: { caption: 2200, hashtags: 30 },
     facebook: { caption: 63206, hashtags: 10 },
   }
@@ -887,8 +936,60 @@ export async function generateWRHQVideoSocialCaption(params: {
   // For Instagram and TikTok, links go in first comment
   const includeUrlInCaption = params.platform === 'youtube' || params.platform === 'facebook'
   const primaryUrl = params.wrhqBlogUrl || params.clientBlogUrl || params.wrhqDirectoryUrl
+  const location = `${params.clientCity}, ${params.clientState}`
 
-  const prompt = `Write a ${platformName} caption for WRHQ (Windshield Repair HeadQuarters) featuring a local auto glass partner.
+  // YouTube Shorts specific prompt following 2026 best practices
+  let prompt: string
+  if (params.platform === 'youtube') {
+    prompt = `Write a YouTube Shorts description for WRHQ (Windshield Repair HeadQuarters) featuring a local auto glass partner, following 2026 best practices.
+
+**Context:**
+- WRHQ is a directory/network featuring trusted auto glass shops
+- Featured Partner: ${params.clientBusinessName}
+- Location: ${location}
+- Topic: ${params.paaQuestion}
+- WRHQ Blog: ${params.wrhqBlogUrl || 'Not available'}
+- Partner Blog: ${params.clientBlogUrl || 'Not available'}
+- WRHQ Directory: ${params.wrhqDirectoryUrl || 'Not available'}
+- Partner Google Maps: ${params.googleMapsUrl || 'Not available'}
+
+**CRITICAL: YouTube Shorts 2026 Best Practices**
+
+The first 100-150 characters are the ONLY text visible without clicking "more" - this is crucial!
+
+**Required Structure:**
+
+1. **HOOK (First 100-150 chars - MOST IMPORTANT)**
+   - Lead with compelling "what's in it for me" value about the topic
+   - Include primary keyword naturally (auto glass, windshield, etc.)
+   - Must grab attention immediately - this is all viewers see!
+
+2. **VIDEO SUMMARY (100-150 words)**
+   - Concise overview of what viewers will learn
+   - Mention ${params.clientBusinessName} as a trusted WRHQ partner in ${location}
+   - Short paragraphs, conversational tone
+   - Include the primary URL: ${primaryUrl}
+${params.googleMapsUrl ? `   - Include Google Maps link: ${params.googleMapsUrl}` : ''}
+
+3. **CALL-TO-ACTION**
+   - Specific CTA: "Subscribe for more auto glass tips from WRHQ" or similar
+   - Encourage engagement (like, comment, share)
+
+4. **HASHTAGS (placed at the very end)**
+   - 3-5 relevant hashtags
+   - MUST include #Shorts
+   - Include #WRHQ and location hashtag
+
+**Format your response as JSON:**
+{
+  "caption": "Full description following the structure above. Hook first (under 150 chars), then summary with links, then CTA. NO hashtags in caption.",
+  "hashtags": ["Shorts", "WRHQ", "AutoGlass", "${location.replace(/[,\s]+/g, '')}", "WindshieldRepair"],
+  "firstComment": "Pinned comment with additional engagement prompt and partner info"
+}
+
+Return ONLY valid JSON. No explanation.`
+  } else {
+    prompt = `Write a ${platformName} caption for WRHQ (Windshield Repair HeadQuarters) featuring a local auto glass partner.
 
 **Context:**
 - WRHQ is a directory/network featuring trusted auto glass shops
@@ -918,6 +1019,7 @@ ${includeUrlInCaption && primaryUrl ? `- IMPORTANT: Include the blog URL (${prim
 }
 
 Return ONLY valid JSON. No explanation.`
+  }
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
