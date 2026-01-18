@@ -1879,32 +1879,14 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                     disabled={loadingCreatify}
                   >
                     <option value="">Default (Creatify chooses)</option>
-                    {/* Group avatars by location */}
-                    {['indoor', 'outdoor', 'fantasy', 'other'].map(location => {
-                      const locationAvatars = creatifyAvatars.filter(a =>
-                        (a.location || 'other').toLowerCase() === location
-                      )
-                      if (locationAvatars.length === 0) return null
-                      return (
-                        <optgroup key={location} label={`📍 ${location.charAt(0).toUpperCase() + location.slice(1)}`}>
-                          {locationAvatars.map(avatar => (
-                            <option key={avatar.id} value={avatar.useThisId}>
-                              {avatar.name} {avatar.gender === 'm' ? '👨' : avatar.gender === 'f' ? '👩' : ''} {avatar.style ? `(${avatar.style})` : ''}
-                            </option>
-                          ))}
-                        </optgroup>
-                      )
-                    })}
-                    {/* Avatars without location */}
-                    {creatifyAvatars.filter(a => !a.location).length > 0 && (
-                      <optgroup label="📍 Other">
-                        {creatifyAvatars.filter(a => !a.location).map(avatar => (
-                          <option key={avatar.id} value={avatar.useThisId}>
-                            {avatar.name} {avatar.gender === 'm' ? '👨' : avatar.gender === 'f' ? '👩' : ''}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
+                    {/* Sort avatars alphabetically by name */}
+                    {[...creatifyAvatars]
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map(avatar => (
+                        <option key={avatar.id} value={avatar.useThisId}>
+                          {avatar.name} ({avatar.location || 'studio'}{avatar.gender === 'm' ? ', male' : avatar.gender === 'f' ? ', female' : ''})
+                        </option>
+                      ))}
                   </select>
                 </div>
 
@@ -1923,31 +1905,14 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                     disabled={loadingCreatify}
                   >
                     <option value="">Default (Creatify chooses)</option>
-                    {/* Group voices by gender */}
-                    {['male', 'female', 'non_binary'].map(gender => {
-                      const genderVoices = creatifyVoices.filter(v => v.gender === gender)
-                      if (genderVoices.length === 0) return null
-                      const genderLabel = gender === 'male' ? '👨 Male' : gender === 'female' ? '👩 Female' : '🧑 Non-Binary'
-                      return (
-                        <optgroup key={gender} label={genderLabel}>
-                          {genderVoices.map(voice => (
-                            <option key={voice.id} value={voice.useThisId}>
-                              {voice.name} {voice.accents.length > 1 ? `(${voice.accents.length} accents)` : voice.accents[0]?.accent ? `(${voice.accents[0].accent})` : ''}
-                            </option>
-                          ))}
-                        </optgroup>
-                      )
-                    })}
-                    {/* Voices without gender */}
-                    {creatifyVoices.filter(v => !v.gender).length > 0 && (
-                      <optgroup label="🎙️ Other">
-                        {creatifyVoices.filter(v => !v.gender).map(voice => (
-                          <option key={voice.id} value={voice.useThisId}>
-                            {voice.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
+                    {/* Sort voices alphabetically by name */}
+                    {[...creatifyVoices]
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map(voice => (
+                        <option key={voice.id} value={voice.useThisId}>
+                          {voice.name} ({voice.gender || 'voice'}{voice.accents[0]?.accent ? `, ${voice.accents[0].accent}` : ''})
+                        </option>
+                      ))}
                   </select>
                 </div>
 
