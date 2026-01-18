@@ -777,12 +777,19 @@ export interface Avatar {
   preview_video_1_1?: string // Square preview video
 }
 
+export interface VoiceAccent {
+  id: string
+  name: string
+  accent: string
+  language?: string
+  preview_url?: string
+}
+
 export interface Voice {
   id: string
   name: string
-  gender?: string
-  language?: string
-  accents?: Array<{ id: string; name: string; accent: string }>
+  gender?: 'male' | 'female' | 'non_binary'
+  accents: VoiceAccent[] // Each voice has multiple accents - use accent ID for voiceId param
 }
 
 /**
@@ -848,8 +855,11 @@ export async function getAvatars(filters?: {
 
 /**
  * Get list of available voices
- * Use the returned voice IDs with the voiceId parameter in createShortVideo
- * Note: Each voice may have multiple accents - you can use accent IDs directly
+ * Use the returned voice IDs (or accent IDs) with the voiceId parameter in createShortVideo
+ *
+ * Note: Each voice has multiple accents. You can use either:
+ * - The voice ID directly (uses default accent)
+ * - A specific accent ID for more control over the voice style
  */
 export async function getVoices(): Promise<Voice[]> {
   const { apiId, apiKey } = await getCredentialsAsync()
@@ -871,13 +881,24 @@ export async function getVoices(): Promise<Voice[]> {
   // Handle both array response and paginated response
   const voices = Array.isArray(data) ? data : (data.results || [])
 
-  return voices.map((v: Record<string, unknown>) => ({
-    id: v.id as string,
-    name: v.name as string || v.id as string,
-    gender: v.gender as string | undefined,
-    language: v.language as string | undefined,
-    accents: v.accents as Array<{ id: string; name: string; accent: string }> | undefined,
-  }))
+  return voices.map((v: Record<string, unknown>) => {
+    // Map accents array
+    const rawAccents = v.accents as Array<Record<string, unknown>> || []
+    const accents: VoiceAccent[] = rawAccents.map(a => ({
+      id: a.id as string,
+      name: a.name as string || '',
+      accent: a.accent as string || '',
+      language: a.language as string | undefined,
+      preview_url: a.preview_url as string | undefined,
+    }))
+
+    return {
+      id: v.id as string || (accents[0]?.id || ''), // Use first accent ID as fallback
+      name: v.name as string || 'Unknown Voice',
+      gender: v.gender as 'male' | 'female' | 'non_binary' | undefined,
+      accents,
+    }
+  })
 }
 
 // Placeholder for Pictory integration (future)
