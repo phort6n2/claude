@@ -109,7 +109,15 @@ interface ClientData {
   wordpressAppPassword: string | null
   ctaText: string
   ctaUrl: string | null
+  // Creatify video settings
   creatifyTemplateId: string | null
+  creatifyAvatarId: string | null
+  creatifyVoiceId: string | null
+  creatifyVisualStyle: string | null
+  creatifyScriptStyle: string | null
+  creatifyModelVersion: string | null
+  creatifyVideoLength: number | null
+  creatifyNoCta: boolean
   preferredPublishTime: string
   timezone: string
   socialPlatforms: string[]
@@ -164,7 +172,15 @@ const defaultClientData: Omit<ClientData, 'id'> & { id: string } = {
   wordpressAppPassword: null,
   ctaText: 'Get a Free Quote',
   ctaUrl: null,
+  // Creatify video settings
   creatifyTemplateId: null,
+  creatifyAvatarId: null,
+  creatifyVoiceId: null,
+  creatifyVisualStyle: null,
+  creatifyScriptStyle: null,
+  creatifyModelVersion: null,
+  creatifyVideoLength: null,
+  creatifyNoCta: false,
   preferredPublishTime: '09:00',
   timezone: 'America/Los_Angeles',
   socialPlatforms: [],
@@ -1785,19 +1801,150 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
               />
             </div>
 
-            {/* Creatify Template */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
+            {/* Creatify Video Settings */}
+            <div className="border-t pt-6">
+              <div className="flex items-center gap-2 mb-4">
                 <Video className="h-4 w-4 text-purple-600" />
-                <h4 className="text-sm font-medium text-gray-700">Creatify Template ID</h4>
+                <h4 className="text-sm font-medium text-gray-900">Creatify Video Settings</h4>
               </div>
-              <input
-                type="text"
-                value={formData.creatifyTemplateId || ''}
-                onChange={(e) => updateField('creatifyTemplateId', e.target.value)}
-                className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                placeholder="Template UUID for branded short videos"
-              />
+              <p className="text-sm text-gray-500 mb-4">
+                Configure video generation settings. Get avatar and voice IDs from{' '}
+                <a href="/api/creatify/avatars-voices" target="_blank" className="text-blue-600 hover:underline">
+                  /api/creatify/avatars-voices
+                </a>
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Avatar ID */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Avatar ID</label>
+                  <input
+                    type="text"
+                    value={formData.creatifyAvatarId || ''}
+                    onChange={(e) => updateField('creatifyAvatarId', e.target.value || null)}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., avatar-uuid-here"
+                  />
+                </div>
+
+                {/* Voice ID */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Voice ID</label>
+                  <input
+                    type="text"
+                    value={formData.creatifyVoiceId || ''}
+                    onChange={(e) => updateField('creatifyVoiceId', e.target.value || null)}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., voice-uuid-here"
+                  />
+                </div>
+
+                {/* Video Length */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Video Length</label>
+                  <select
+                    value={formData.creatifyVideoLength || ''}
+                    onChange={(e) => updateField('creatifyVideoLength', e.target.value ? parseInt(e.target.value) : null)}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Default (30 seconds)</option>
+                    <option value="15">15 seconds</option>
+                    <option value="30">30 seconds</option>
+                    <option value="45">45 seconds</option>
+                    <option value="60">60 seconds</option>
+                  </select>
+                </div>
+
+                {/* Model Version */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Model Version</label>
+                  <select
+                    value={formData.creatifyModelVersion || ''}
+                    onChange={(e) => updateField('creatifyModelVersion', e.target.value || null)}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Default (Standard)</option>
+                    <option value="standard">Standard (cheapest)</option>
+                    <option value="aurora_v1">Aurora v1 (best quality)</option>
+                    <option value="aurora_v1_fast">Aurora v1 Fast</option>
+                  </select>
+                </div>
+
+                {/* Visual Style */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Visual Style</label>
+                  <select
+                    value={formData.creatifyVisualStyle || ''}
+                    onChange={(e) => updateField('creatifyVisualStyle', e.target.value || null)}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Default (Avatar Bubble)</option>
+                    <option value="AvatarBubbleTemplate">Avatar Bubble</option>
+                    <option value="DynamicProductTemplate">Product</option>
+                    <option value="FullScreenTemplate">Full Screen</option>
+                    <option value="FullScreenV2Template">Full Screen V2</option>
+                    <option value="VanillaTemplate">Vanilla</option>
+                    <option value="EnhancedVanillaTemplate">Dynamic Vanilla</option>
+                    <option value="DramaticTemplate">Dramatic</option>
+                    <option value="VlogTemplate">Vlog</option>
+                    <option value="SideBySideTemplate">Side by Side</option>
+                    <option value="MotionCardsTemplate">Motion Cards</option>
+                    <option value="SimpleAvatarOverlayTemplate">Product Presenter</option>
+                  </select>
+                </div>
+
+                {/* Script Style */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Script Style</label>
+                  <select
+                    value={formData.creatifyScriptStyle || ''}
+                    onChange={(e) => updateField('creatifyScriptStyle', e.target.value || null)}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Default (Discovery)</option>
+                    <option value="DiscoveryWriter">Discovery</option>
+                    <option value="HowToV2">How To</option>
+                    <option value="ProblemSolutionV2">Problem Solution</option>
+                    <option value="BenefitsV2">Benefits</option>
+                    <option value="CallToActionV2">Call To Action</option>
+                    <option value="ThreeReasonsWriter">3 Reasons Why</option>
+                    <option value="BrandStoryV2">Brand Story</option>
+                    <option value="EmotionalWriter">Emotional</option>
+                    <option value="MotivationalWriter">Motivational</option>
+                    <option value="ProductHighlightsV2">Product Highlights</option>
+                    <option value="DIY">DIY</option>
+                  </select>
+                </div>
+
+                {/* Template ID (advanced) */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Custom Template ID (optional)</label>
+                  <input
+                    type="text"
+                    value={formData.creatifyTemplateId || ''}
+                    onChange={(e) => updateField('creatifyTemplateId', e.target.value || null)}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="Template UUID for custom branded videos"
+                  />
+                </div>
+
+                {/* No CTA Toggle */}
+                <div className="md:col-span-2 flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-900">Disable Default CTA</h5>
+                    <p className="text-xs text-gray-500">Hide the "Buy Now" button (use script for CTA instead)</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.creatifyNoCta ?? false}
+                      onChange={(e) => updateField('creatifyNoCta', e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
         )}

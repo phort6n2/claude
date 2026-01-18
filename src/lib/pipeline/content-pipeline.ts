@@ -1448,7 +1448,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             description: creatifyDescription,
             templateId: client.creatifyTemplateId || undefined,
             aspectRatio: '9:16',
-            duration: 30,
+            duration: client.creatifyVideoLength || 30, // 15, 30, 45, or 60 seconds
             targetPlatform: 'tiktok',
             targetAudience: `car owners in ${client.city}, ${client.state} looking for auto glass services`,
             // Client-configurable Creatify settings

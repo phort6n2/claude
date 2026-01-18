@@ -865,7 +865,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           templateId: client.creatifyTemplateId || undefined,
           autoPopulateFromBlog: false,
           aspectRatio: '9:16',
-          duration: 30, // This maps to video_length: 30 in the URL-to-Video API
+          duration: client.creatifyVideoLength || 30, // 15, 30, 45, or 60 seconds
           targetPlatform: 'tiktok',
           targetAudience: `car owners in ${contentCity}, ${contentState} looking for auto glass services`,
           // Client-configurable Creatify settings

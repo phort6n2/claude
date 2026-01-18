@@ -85,6 +85,7 @@ model Client {
   creatifyVisualStyle  String? // Visual style: AvatarBubbleTemplate, DynamicProductTemplate, etc.
   creatifyScriptStyle  String? // Script style: HowToV2, DiscoveryWriter, CallToActionV2, etc.
   creatifyModelVersion String? // Model: standard (cheapest), aurora_v1, aurora_v1_fast
+  creatifyVideoLength  Int?    // Video length in seconds: 15, 30, 45, or 60 (default: 30)
   creatifyNoCta        Boolean @default(false) // Disable default CTA button (use script CTA instead)
 
   // Publishing Preferences (Tue/Thu schedule)
