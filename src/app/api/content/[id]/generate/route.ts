@@ -819,7 +819,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         //
         // Flow:
         // 1. Create link from blog URL (scrapes content)
-        // 2. Optionally update link with logo/images
+        // 2. Update link with logo/images AND rich description for better script generation
         // 3. Create video with video_length: 30
         //
         // Fallback to lipsync if no blog URL available (script limited to ~500 chars)
@@ -829,12 +829,30 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           .trim()
           .substring(0, 500)       // Limit to ~30 seconds of speech (fallback only)
 
+        // Build rich description for Creatify to use when generating the video script
+        // This provides context beyond what auto-scraping captures from the blog URL
+        const creatifyDescription = [
+          `Question: ${contentItem.paaQuestion}`,
+          ``,
+          `${contentItem.client.businessName} in ${contentCity}, ${contentState} answers this common auto glass question.`,
+          ``,
+          `Key points from the article:`,
+          `- Professional auto glass repair and replacement services`,
+          `- Serving ${contentCity} and surrounding areas`,
+          `- Expert technicians with quality materials`,
+          contentItem.client.serviceAreas?.length ? `- Service areas include: ${contentItem.client.serviceAreas.slice(0, 5).join(', ')}` : '',
+          ``,
+          `Call ${contentItem.client.businessName} today for a free quote!`,
+        ].filter(Boolean).join('\n')
+
         const videoJob = await createShortVideo({
           blogUrl: blogUrl || undefined,
           script: cleanScript, // Fallback if blogUrl fails
           title: contentItem.blogPost.title,
           imageUrls,
           logoUrl: contentItem.client.logoUrl || undefined,
+          // Rich description to enhance video script generation
+          description: creatifyDescription,
           // DISABLED: Custom templates don't support video_length parameter
           // Using URL-to-Video API instead which properly supports video_length: 30
           templateId: undefined,

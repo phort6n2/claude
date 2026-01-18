@@ -66,6 +66,10 @@ interface VideoGenerationParams {
   visualStyle?: VisualStyle
   webhookUrl?: string
   modelVersion?: ModelVersion
+  // Rich description to enhance video script generation
+  // This is passed to Creatify's updateLink API to provide context beyond auto-scraped content
+  // Should include: PAA question, key services, location, call-to-action, business highlights
+  description?: string
 }
 
 interface VideoResult {
@@ -519,13 +523,20 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
         hasLogo: !!link.logoUrl,
       })
 
-      // If we have a logo or custom images, update the link metadata
-      if (params.logoUrl || (params.imageUrls && params.imageUrls.length > 0)) {
-        console.log('📝 Updating link with custom logo/images...')
+      // Update link metadata if we have custom logo, images, or description
+      // The description is KEY - it provides rich context for better video script generation
+      if (params.logoUrl || (params.imageUrls && params.imageUrls.length > 0) || params.description) {
+        const updateFields: string[] = []
+        if (params.logoUrl) updateFields.push('logo')
+        if (params.imageUrls?.length) updateFields.push(`${params.imageUrls.length} images`)
+        if (params.description) updateFields.push('description')
+        console.log(`📝 Updating link with: ${updateFields.join(', ')}`)
+
         await updateLink({
           linkId: link.linkId,
           logoUrl: params.logoUrl,
           imageUrls: params.imageUrls,
+          description: params.description,
         })
       }
 

@@ -1414,15 +1414,38 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         const blogPostForVideo = await prisma.blogPost.findUnique({ where: { contentItemId } })
         const blogUrlForVideo = blogPostForVideo?.wordpressUrl || null
 
+        // Build rich description for Creatify to use when generating the video script
+        // This provides context beyond what auto-scraping captures from the blog URL
+        const creatifyDescription = [
+          `Question: ${contentItem.paaQuestion}`,
+          ``,
+          `${contentItem.client.businessName} in ${contentItem.client.city}, ${contentItem.client.state} answers this common auto glass question.`,
+          ``,
+          `Key points from the article:`,
+          `- Professional auto glass repair and replacement services`,
+          `- Serving ${contentItem.client.city} and surrounding areas`,
+          `- Expert technicians with quality materials`,
+          contentItem.client.serviceAreas?.length ? `- Service areas include: ${contentItem.client.serviceAreas.slice(0, 5).join(', ')}` : '',
+          ``,
+          `Call ${contentItem.client.businessName} today for a free quote!`,
+        ].filter(Boolean).join('\n')
+
         log(ctx, 'Creating short video job...', { blogUrl: blogUrlForVideo })
         const videoJob = await withTimeout(
           createShortVideo({
             title: blogResult!.title,
             blogUrl: blogUrlForVideo || undefined,
             imageUrls: imageUrls.map((i: { gcsUrl: string }) => i.gcsUrl),
+            logoUrl: contentItem.client.logoUrl || undefined,
+            // Rich description to enhance video script generation
+            description: creatifyDescription,
             aspectRatio: '9:16',
             duration: 30,
+            targetPlatform: 'tiktok',
+            targetAudience: `car owners in ${contentItem.client.city}, ${contentItem.client.state} looking for auto glass services`,
             scriptStyle: 'HowToV2',
+            visualStyle: 'AvatarBubbleTemplate',
+            modelVersion: 'standard',
           }),
           TIMEOUTS.VIDEO_CREATE,
           'Video job creation'
