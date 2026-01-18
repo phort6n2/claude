@@ -1893,9 +1893,11 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                 {/* Voice Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Voice
+                    Voice & Accent
                     {creatifyVoices.length > 0 && (
-                      <span className="ml-2 text-xs text-gray-500">({creatifyVoices.length} available)</span>
+                      <span className="ml-2 text-xs text-gray-500">
+                        ({creatifyVoices.reduce((count, v) => count + v.accents.length, 0)} options)
+                      </span>
                     )}
                   </label>
                   <select
@@ -1905,15 +1907,41 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                     disabled={loadingCreatify}
                   >
                     <option value="">Default (Creatify chooses)</option>
-                    {/* Sort voices alphabetically by name */}
+                    {/* Flatten voices to show each accent as a separate option */}
                     {[...creatifyVoices]
                       .sort((a, b) => a.name.localeCompare(b.name))
-                      .map(voice => (
-                        <option key={voice.id} value={voice.useThisId}>
-                          {voice.name} ({voice.gender || 'voice'}{voice.accents[0]?.accent ? `, ${voice.accents[0].accent}` : ''})
+                      .flatMap(voice =>
+                        voice.accents.length > 0
+                          ? voice.accents.map(accent => ({
+                              id: accent.id,
+                              name: voice.name,
+                              gender: voice.gender,
+                              accent: accent.accent || accent.name,
+                              useThisId: accent.useThisId,
+                            }))
+                          : [{
+                              id: voice.id,
+                              name: voice.name,
+                              gender: voice.gender,
+                              accent: '',
+                              useThisId: voice.useThisId,
+                            }]
+                      )
+                      .sort((a, b) => {
+                        // Sort by name first, then by accent
+                        const nameCompare = a.name.localeCompare(b.name)
+                        if (nameCompare !== 0) return nameCompare
+                        return a.accent.localeCompare(b.accent)
+                      })
+                      .map(option => (
+                        <option key={option.id} value={option.useThisId}>
+                          {option.name}{option.accent ? ` - ${option.accent}` : ''} ({option.gender || 'voice'})
                         </option>
                       ))}
                   </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Each voice has multiple accents (American, British, etc.)
+                  </p>
                 </div>
 
                 {/* Video Length */}
