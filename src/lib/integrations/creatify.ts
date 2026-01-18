@@ -10,8 +10,29 @@
 // Types for Link to Videos API
 type AspectRatio = '16x9' | '9x16' | '1x1'
 type VideoLength = 15 | 30 | 45 | 60
-type ScriptStyle = 'DiscoveryWriter' | 'HowToV2' | 'ProblemSolutionV2' | 'BenefitsV2' | 'CallToActionV2' | 'ThreeReasonsWriter'
-type VisualStyle = 'AvatarBubbleTemplate' | 'DynamicProductTemplate' | 'FullScreenTemplate' | 'VanillaTemplate' | 'EnhancedVanillaTemplate'
+
+// Script styles - see https://docs.creatify.ai for full list
+type ScriptStyle =
+  | 'DiscoveryWriter' | 'HowToV2' | 'ProblemSolutionV2' | 'BenefitsV2' | 'CallToActionV2'
+  | 'ThreeReasonsWriter' | 'BrandStoryV2' | 'DontWorryWriter' | 'EmotionalWriter'
+  | 'GenzWriter' | 'LetMeShowYouWriter' | 'MotivationalWriter' | 'ProblemSolutionWriter'
+  | 'ProductHighlightsV2' | 'ProductLifestyleV2' | 'ResponseBubbleWriter'
+  | 'SpecialOffersV2' | 'StoryTimeWriter' | 'TrendingTopicsV2' | 'DIY'
+  // Hook styles
+  | 'NegativeHook' | 'NumberOneHook' | 'EverWonderHook' | 'SecretHook'
+  | 'WhatHappensHook' | 'AnyoneElseHook' | 'AmazedHook' | '2025Hook' | 'HateMeHook'
+
+// Visual styles - see https://docs.creatify.ai for full list
+type VisualStyle =
+  | 'AvatarBubbleTemplate' | 'DynamicProductTemplate' | 'FullScreenTemplate'
+  | 'VanillaTemplate' | 'EnhancedVanillaTemplate' | 'DramaticTemplate'
+  | 'DynamicGreenScreenEffect' | 'DynamicResponseBubbleTemplate'
+  | 'FeatureHighlightTemplate' | 'FullScreenV2Template' | 'GreenScreenEffectTemplate'
+  | 'MotionCardsTemplate' | 'OverCardsTemplate' | 'QuickFrameTemplate'
+  | 'QuickTransitionTemplate' | 'ScribbleTemplate' | 'SideBySideTemplate'
+  | 'SimpleAvatarOverlayTemplate' | 'TopBottomTemplate' | 'TwitterFrameTemplate'
+  | 'VlogTemplate' | 'LegoVisualEmotional' | 'LegoVisualAvatarFocusIntro'
+
 type ModelVersion = 'standard' | 'aurora_v1' | 'aurora_v1_fast'
 
 // Types for Custom Template API
@@ -46,6 +67,9 @@ interface LinkToVideoParams {
   visualStyle?: VisualStyle
   webhookUrl?: string
   overrideScript?: string
+  overrideAvatar?: string // Avatar ID from Get Avatars API
+  overrideVoice?: string // Voice ID from Get Voices API
+  noCta?: boolean // Disable default CTA button
   modelVersion?: ModelVersion // 'standard' is cheapest, aurora models cost more
 }
 
@@ -70,6 +94,10 @@ interface VideoGenerationParams {
   // This is passed to Creatify's updateLink API to provide context beyond auto-scraped content
   // Should include: PAA question, key services, location, call-to-action, business highlights
   description?: string
+  // Avatar and voice customization
+  avatarId?: string // Override avatar - get IDs from getAvatars()
+  voiceId?: string // Override voice - get IDs from getVoices()
+  noCta?: boolean // Disable default CTA button (rely on script for CTA instead)
 }
 
 interface VideoResult {
@@ -368,12 +396,29 @@ export async function createVideoFromLink(params: LinkToVideoParams): Promise<Vi
     requestBody.model_version = params.modelVersion
   }
 
+  // Avatar and voice overrides
+  if (params.overrideAvatar) {
+    requestBody.override_avatar = params.overrideAvatar
+  }
+
+  if (params.overrideVoice) {
+    requestBody.override_voice = params.overrideVoice
+  }
+
+  // Disable default CTA if specified
+  if (params.noCta) {
+    requestBody.no_cta = true
+  }
+
   console.log('📹 Creating video via URL-to-Video API:', {
     linkId: params.linkId,
     video_length: requestBody.video_length,
     visual_style: requestBody.visual_style,
     script_style: requestBody.script_style,
     model_version: requestBody.model_version,
+    override_avatar: requestBody.override_avatar || 'default',
+    override_voice: requestBody.override_voice || 'default',
+    no_cta: requestBody.no_cta || false,
   })
 
   const response = await fetch('https://api.creatify.ai/api/link_to_videos/', {
@@ -561,6 +606,9 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
         visualStyle: params.visualStyle || 'AvatarBubbleTemplate', // API default
         webhookUrl: params.webhookUrl,
         overrideScript: params.script, // Use provided script as override if any
+        overrideAvatar: params.avatarId, // Custom avatar
+        overrideVoice: params.voiceId, // Custom voice
+        noCta: params.noCta, // Disable default CTA button
         modelVersion: params.modelVersion || 'standard', // Cheapest option
       })
     } catch (error) {
@@ -709,6 +757,93 @@ export async function waitForVideo(jobId: string, maxAttempts = 60): Promise<Vid
   }
 
   throw new Error('Video generation timed out')
+}
+
+// ============================================
+// AVATAR AND VOICE MANAGEMENT
+// ============================================
+
+export interface Avatar {
+  id: string
+  name: string
+  thumbnail_url?: string
+  gender?: string
+  style?: string
+}
+
+export interface Voice {
+  id: string
+  name: string
+  gender?: string
+  language?: string
+  accents?: Array<{ id: string; name: string; accent: string }>
+}
+
+/**
+ * Get list of available avatars
+ * Use the returned avatar IDs with the avatarId parameter in createShortVideo
+ */
+export async function getAvatars(): Promise<Avatar[]> {
+  const { apiId, apiKey } = await getCredentialsAsync()
+
+  const response = await fetch('https://api.creatify.ai/api/avatars/', {
+    headers: {
+      'X-API-ID': apiId,
+      'X-API-KEY': apiKey,
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Creatify API error fetching avatars: ${error}`)
+  }
+
+  const data = await response.json()
+
+  // Handle both array response and paginated response
+  const avatars = Array.isArray(data) ? data : (data.results || [])
+
+  return avatars.map((a: Record<string, unknown>) => ({
+    id: a.id as string,
+    name: a.name as string || a.id as string,
+    thumbnail_url: a.thumbnail_url as string | undefined,
+    gender: a.gender as string | undefined,
+    style: a.style as string | undefined,
+  }))
+}
+
+/**
+ * Get list of available voices
+ * Use the returned voice IDs with the voiceId parameter in createShortVideo
+ * Note: Each voice may have multiple accents - you can use accent IDs directly
+ */
+export async function getVoices(): Promise<Voice[]> {
+  const { apiId, apiKey } = await getCredentialsAsync()
+
+  const response = await fetch('https://api.creatify.ai/api/voices/', {
+    headers: {
+      'X-API-ID': apiId,
+      'X-API-KEY': apiKey,
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Creatify API error fetching voices: ${error}`)
+  }
+
+  const data = await response.json()
+
+  // Handle both array response and paginated response
+  const voices = Array.isArray(data) ? data : (data.results || [])
+
+  return voices.map((v: Record<string, unknown>) => ({
+    id: v.id as string,
+    name: v.name as string || v.id as string,
+    gender: v.gender as string | undefined,
+    language: v.language as string | undefined,
+    accents: v.accents as Array<{ id: string; name: string; accent: string }> | undefined,
+  }))
 }
 
 // Placeholder for Pictory integration (future)
