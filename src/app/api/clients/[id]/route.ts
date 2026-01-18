@@ -119,6 +119,14 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         wrhqYoutubePlaylistId: data.wrhqYoutubePlaylistId || null,
         wrhqYoutubePlaylistTitle: data.wrhqYoutubePlaylistTitle || null,
         status: data.status || existing.status,
+        // Creatify video settings
+        creatifyAvatarId: data.creatifyAvatarId || null,
+        creatifyVoiceId: data.creatifyVoiceId || null,
+        creatifyVisualStyle: data.creatifyVisualStyle || null,
+        creatifyScriptStyle: data.creatifyScriptStyle || null,
+        creatifyModelVersion: data.creatifyModelVersion || null,
+        creatifyVideoLength: data.creatifyVideoLength || null,
+        creatifyNoCta: data.creatifyNoCta ?? existing.creatifyNoCta ?? false,
         // Automation settings
         autoScheduleEnabled: data.autoScheduleEnabled ?? existing.autoScheduleEnabled,
         autoScheduleFrequency: data.autoScheduleFrequency ?? existing.autoScheduleFrequency,
