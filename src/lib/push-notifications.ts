@@ -6,8 +6,15 @@ const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || ''
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || ''
 const VAPID_SUBJECT = 'mailto:' + (process.env.ADMIN_EMAIL || 'admin@glassleads.app')
 
+// Only set VAPID details if keys are configured and valid
+// Wrapped in try-catch to prevent build failures with example/invalid keys
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY)
+  try {
+    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY)
+  } catch (error) {
+    console.warn('[Push] Failed to configure VAPID keys - push notifications disabled:',
+      error instanceof Error ? error.message : 'Invalid key format')
+  }
 }
 
 export interface PushPayload {
