@@ -7,6 +7,32 @@ export async function register() {
   // Only run on the server (Node.js runtime)
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     await setupCreatifyFields()
+    await cleanupTestUsers()
+  }
+}
+
+/**
+ * Remove test/demo user accounts that shouldn't exist in production
+ */
+async function cleanupTestUsers() {
+  try {
+    const { prisma } = await import('@/lib/db')
+
+    // Delete the admin@example.com test account if it exists
+    const result = await prisma.user.deleteMany({
+      where: {
+        email: {
+          in: ['admin@example.com', 'Admin@example.com']
+        }
+      }
+    })
+
+    if (result.count > 0) {
+      console.log(`🧹 Removed ${result.count} test user account(s)`)
+    }
+  } catch (error) {
+    // Don't crash if this fails
+    console.log('⚠️ User cleanup skipped:', error instanceof Error ? error.message : 'Unknown error')
   }
 }
 
