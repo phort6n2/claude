@@ -6,6 +6,7 @@ import { generateBothImages } from '@/lib/integrations/nano-banana'
 import { uploadFromUrl } from '@/lib/integrations/gcs'
 import { getSetting, WRHQ_SETTINGS_KEYS } from '@/lib/settings'
 import { ImageType, SocialPlatform } from '@prisma/client'
+import type { ScriptStyle, VisualStyle, ModelVersion } from '@/lib/integrations/creatify'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -849,25 +850,31 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           `Call ${contentItem.client.businessName} now at ${contentItem.client.phone} for a free quote!`,
         ].filter(Boolean).join('\n')
 
+        // Use client-specific Creatify settings if configured, otherwise use defaults
+        const client = contentItem.client
         const videoJob = await createShortVideo({
           blogUrl: blogUrl || undefined,
           script: cleanScript, // Fallback if blogUrl fails
           title: contentItem.blogPost.title,
           imageUrls,
-          logoUrl: contentItem.client.logoUrl || undefined,
+          logoUrl: client.logoUrl || undefined,
           // Rich description to enhance video script generation
           description: creatifyDescription,
           // DISABLED: Custom templates don't support video_length parameter
           // Using URL-to-Video API instead which properly supports video_length: 30
-          templateId: undefined,
+          templateId: client.creatifyTemplateId || undefined,
           autoPopulateFromBlog: false,
           aspectRatio: '9:16',
           duration: 30, // This maps to video_length: 30 in the URL-to-Video API
           targetPlatform: 'tiktok',
           targetAudience: `car owners in ${contentCity}, ${contentState} looking for auto glass services`,
-          scriptStyle: 'DiscoveryWriter', // API default
-          visualStyle: 'AvatarBubbleTemplate', // API default - avatar bubble style
-          modelVersion: 'standard', // Cheapest option (aurora models cost more)
+          // Client-configurable Creatify settings
+          scriptStyle: (client.creatifyScriptStyle as ScriptStyle) || 'DiscoveryWriter',
+          visualStyle: (client.creatifyVisualStyle as VisualStyle) || 'AvatarBubbleTemplate',
+          modelVersion: (client.creatifyModelVersion as ModelVersion) || 'standard',
+          avatarId: client.creatifyAvatarId || undefined,
+          voiceId: client.creatifyVoiceId || undefined,
+          noCta: client.creatifyNoCta || false,
         })
 
         // Generate video description

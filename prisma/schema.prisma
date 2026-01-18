@@ -78,8 +78,14 @@ model Client {
   ctaText String  @default("Get a Free Quote")
   ctaUrl  String?
 
-  // Video Generation Settings
-  creatifyTemplateId String? // Custom Creatify template UUID for branded videos
+  // Video Generation Settings (Creatify)
+  creatifyTemplateId   String? // Custom Creatify template UUID for branded videos
+  creatifyAvatarId     String? // Override avatar ID (get from /api/creatify/avatars-voices)
+  creatifyVoiceId      String? // Override voice ID (get from /api/creatify/avatars-voices)
+  creatifyVisualStyle  String? // Visual style: AvatarBubbleTemplate, DynamicProductTemplate, etc.
+  creatifyScriptStyle  String? // Script style: HowToV2, DiscoveryWriter, CallToActionV2, etc.
+  creatifyModelVersion String? // Model: standard (cheapest), aurora_v1, aurora_v1_fast
+  creatifyNoCta        Boolean @default(false) // Disable default CTA button (use script CTA instead)
 
   // Publishing Preferences (Tue/Thu schedule)
   preferredPublishTime String @default("09:00")

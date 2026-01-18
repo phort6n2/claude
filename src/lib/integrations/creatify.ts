@@ -7,12 +7,12 @@
 // 2. Link to Videos - Generate from a blog URL (automatic, good quality)
 // 3. Lipsync - Generate from script text (fallback)
 
-// Types for Link to Videos API
-type AspectRatio = '16x9' | '9x16' | '1x1'
-type VideoLength = 15 | 30 | 45 | 60
+// Types for Link to Videos API (exported for use in other modules)
+export type AspectRatio = '16x9' | '9x16' | '1x1'
+export type VideoLength = 15 | 30 | 45 | 60
 
 // Script styles - see https://docs.creatify.ai for full list
-type ScriptStyle =
+export type ScriptStyle =
   | 'DiscoveryWriter' | 'HowToV2' | 'ProblemSolutionV2' | 'BenefitsV2' | 'CallToActionV2'
   | 'ThreeReasonsWriter' | 'BrandStoryV2' | 'DontWorryWriter' | 'EmotionalWriter'
   | 'GenzWriter' | 'LetMeShowYouWriter' | 'MotivationalWriter' | 'ProblemSolutionWriter'
@@ -23,7 +23,7 @@ type ScriptStyle =
   | 'WhatHappensHook' | 'AnyoneElseHook' | 'AmazedHook' | '2025Hook' | 'HateMeHook'
 
 // Visual styles - see https://docs.creatify.ai for full list
-type VisualStyle =
+export type VisualStyle =
   | 'AvatarBubbleTemplate' | 'DynamicProductTemplate' | 'FullScreenTemplate'
   | 'VanillaTemplate' | 'EnhancedVanillaTemplate' | 'DramaticTemplate'
   | 'DynamicGreenScreenEffect' | 'DynamicResponseBubbleTemplate'
@@ -33,7 +33,7 @@ type VisualStyle =
   | 'SimpleAvatarOverlayTemplate' | 'TopBottomTemplate' | 'TwitterFrameTemplate'
   | 'VlogTemplate' | 'LegoVisualEmotional' | 'LegoVisualAvatarFocusIntro'
 
-type ModelVersion = 'standard' | 'aurora_v1' | 'aurora_v1_fast'
+export type ModelVersion = 'standard' | 'aurora_v1' | 'aurora_v1_fast'
 
 // Types for Custom Template API
 type VariableType = 'image' | 'video' | 'audio' | 'text' | 'avatar' | 'voiceover'

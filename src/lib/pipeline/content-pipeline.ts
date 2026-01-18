@@ -3,6 +3,7 @@ import { generateBlogPost, generateSocialCaption, generatePodcastScript, generat
 import { generateBothImages } from '../integrations/nano-banana'
 import { createPodcast, waitForPodcast } from '../integrations/autocontent'
 import { createShortVideo, waitForVideo } from '../integrations/creatify'
+import type { ScriptStyle, VisualStyle, ModelVersion } from '../integrations/creatify'
 import { postNowAndCheckStatus } from '../integrations/getlate'
 import { createPost, uploadMedia, updatePost, getPost } from '../integrations/wordpress'
 import { uploadFromUrl } from '../integrations/gcs'
@@ -1434,22 +1435,29 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           `Call ${contentItem.client.businessName} now at ${contentItem.client.phone} for a free quote!`,
         ].filter(Boolean).join('\n')
 
+        // Use client-specific Creatify settings if configured, otherwise use defaults
+        const client = contentItem.client
         log(ctx, 'Creating short video job...', { blogUrl: blogUrlForVideo })
         const videoJob = await withTimeout(
           createShortVideo({
             title: blogResult!.title,
             blogUrl: blogUrlForVideo || undefined,
             imageUrls: imageUrls.map((i: { gcsUrl: string }) => i.gcsUrl),
-            logoUrl: contentItem.client.logoUrl || undefined,
+            logoUrl: client.logoUrl || undefined,
             // Rich description to enhance video script generation
             description: creatifyDescription,
+            templateId: client.creatifyTemplateId || undefined,
             aspectRatio: '9:16',
             duration: 30,
             targetPlatform: 'tiktok',
-            targetAudience: `car owners in ${contentItem.client.city}, ${contentItem.client.state} looking for auto glass services`,
-            scriptStyle: 'HowToV2',
-            visualStyle: 'AvatarBubbleTemplate',
-            modelVersion: 'standard',
+            targetAudience: `car owners in ${client.city}, ${client.state} looking for auto glass services`,
+            // Client-configurable Creatify settings
+            scriptStyle: (client.creatifyScriptStyle as ScriptStyle) || 'HowToV2',
+            visualStyle: (client.creatifyVisualStyle as VisualStyle) || 'AvatarBubbleTemplate',
+            modelVersion: (client.creatifyModelVersion as ModelVersion) || 'standard',
+            avatarId: client.creatifyAvatarId || undefined,
+            voiceId: client.creatifyVoiceId || undefined,
+            noCta: client.creatifyNoCta || false,
           }),
           TIMEOUTS.VIDEO_CREATE,
           'Video job creation'
