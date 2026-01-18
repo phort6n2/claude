@@ -940,7 +940,6 @@ Return ONLY valid JSON. No explanation.`
 - Content Summary: ${params.blogExcerpt}
 - Blog URL: ${params.blogUrl}
 ${params.googleMapsUrl ? `- Google Maps: ${params.googleMapsUrl}` : ''}
-${params.servicePageUrl ? `- Service Page: ${params.servicePageUrl}` : ''}
 
 **CRITICAL: Facebook Reels 2026 Best Practices**
 
