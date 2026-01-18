@@ -1907,41 +1907,23 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                     disabled={loadingCreatify}
                   >
                     <option value="">Default (Creatify chooses)</option>
-                    {/* Flatten voices to show each accent as a separate option */}
+                    {/* Show only the first/default accent for each voice (typically American) */}
                     {[...creatifyVoices]
                       .sort((a, b) => a.name.localeCompare(b.name))
-                      .flatMap(voice =>
-                        voice.accents.length > 0
-                          ? voice.accents.map((accent, index) => ({
-                              id: accent.id,
-                              name: voice.name,
-                              gender: voice.gender,
-                              // Use accent name, accent field, or fallback to numbered variant
-                              accent: accent.name || accent.accent || `Variant ${index + 1}`,
-                              useThisId: accent.useThisId,
-                            }))
-                          : [{
-                              id: voice.id,
-                              name: voice.name,
-                              gender: voice.gender,
-                              accent: '',
-                              useThisId: voice.useThisId,
-                            }]
-                      )
-                      .sort((a, b) => {
-                        // Sort by name first, then by accent
-                        const nameCompare = a.name.localeCompare(b.name)
-                        if (nameCompare !== 0) return nameCompare
-                        return a.accent.localeCompare(b.accent)
-                      })
+                      .map(voice => ({
+                        id: voice.accents[0]?.id || voice.id,
+                        name: voice.name,
+                        gender: voice.gender,
+                        useThisId: voice.accents[0]?.useThisId || voice.useThisId,
+                      }))
                       .map(option => (
                         <option key={option.id} value={option.useThisId}>
-                          {option.name} - {option.accent} ({option.gender || 'voice'})
+                          {option.name} ({option.gender || 'voice'})
                         </option>
                       ))}
                   </select>
                   <p className="mt-1 text-xs text-gray-500">
-                    Try different variants to find the best accent for your videos
+                    Uses the default American accent for each voice
                   </p>
                 </div>
 
