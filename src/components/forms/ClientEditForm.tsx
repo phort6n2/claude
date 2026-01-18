@@ -1807,35 +1807,89 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                 <Video className="h-4 w-4 text-purple-600" />
                 <h4 className="text-sm font-medium text-gray-900">Creatify Video Settings</h4>
               </div>
-              <p className="text-sm text-gray-500 mb-4">
-                Configure video generation settings. Get avatar and voice IDs from{' '}
-                <a href="/api/creatify/avatars-voices" target="_blank" className="text-blue-600 hover:underline">
-                  /api/creatify/avatars-voices
-                </a>
-              </p>
+
+              {/* Instructions Box */}
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-purple-800 font-medium mb-2">How to find Avatar & Voice IDs:</p>
+                <ol className="text-sm text-purple-700 list-decimal list-inside space-y-1 mb-3">
+                  <li>Click a search link below to find your preferred avatar or voice</li>
+                  <li>Copy the <code className="bg-purple-100 px-1 rounded">useThisId</code> value from the results</li>
+                  <li>Paste it into the corresponding field below</li>
+                </ol>
+                <div className="flex flex-wrap gap-2">
+                  <a
+                    href="/api/creatify/avatars-voices?avatarOnly=true"
+                    target="_blank"
+                    className="inline-flex items-center gap-1 text-xs bg-purple-600 text-white px-3 py-1.5 rounded-full hover:bg-purple-700"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Browse All Avatars
+                  </a>
+                  <a
+                    href="/api/creatify/avatars-voices?voiceOnly=true"
+                    target="_blank"
+                    className="inline-flex items-center gap-1 text-xs bg-purple-600 text-white px-3 py-1.5 rounded-full hover:bg-purple-700"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Browse All Voices
+                  </a>
+                  <a
+                    href="/api/creatify/avatars-voices?search=benjamin"
+                    target="_blank"
+                    className="inline-flex items-center gap-1 text-xs bg-white text-purple-700 border border-purple-300 px-3 py-1.5 rounded-full hover:bg-purple-50"
+                  >
+                    Search: benjamin
+                  </a>
+                  <a
+                    href="/api/creatify/avatars-voices?search=miles"
+                    target="_blank"
+                    className="inline-flex items-center gap-1 text-xs bg-white text-purple-700 border border-purple-300 px-3 py-1.5 rounded-full hover:bg-purple-50"
+                  >
+                    Search: miles
+                  </a>
+                </div>
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Avatar ID */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Avatar ID</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Avatar ID
+                    <a
+                      href="/api/creatify/avatars-voices?avatarOnly=true"
+                      target="_blank"
+                      className="ml-2 text-xs text-purple-600 hover:underline"
+                    >
+                      (find IDs)
+                    </a>
+                  </label>
                   <input
                     type="text"
                     value={formData.creatifyAvatarId || ''}
                     onChange={(e) => updateField('creatifyAvatarId', e.target.value || null)}
                     className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                    placeholder="e.g., avatar-uuid-here"
+                    placeholder="Paste avatar UUID here"
                   />
                 </div>
 
                 {/* Voice ID */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Voice ID</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Voice ID
+                    <a
+                      href="/api/creatify/avatars-voices?voiceOnly=true"
+                      target="_blank"
+                      className="ml-2 text-xs text-purple-600 hover:underline"
+                    >
+                      (find IDs)
+                    </a>
+                  </label>
                   <input
                     type="text"
                     value={formData.creatifyVoiceId || ''}
                     onChange={(e) => updateField('creatifyVoiceId', e.target.value || null)}
                     className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                    placeholder="e.g., voice-uuid-here"
+                    placeholder="Paste voice/accent UUID here"
                   />
                 </div>
 
