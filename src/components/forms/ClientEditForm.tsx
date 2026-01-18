@@ -73,6 +73,31 @@ interface PlacePrediction {
   secondaryText: string
 }
 
+interface CreatifyAvatar {
+  id: string
+  name: string
+  gender?: string
+  style?: string
+  location?: string
+  thumbnail?: string
+  useThisId: string
+}
+
+interface CreatifyVoiceAccent {
+  id: string
+  name: string
+  accent: string
+  useThisId: string
+}
+
+interface CreatifyVoice {
+  id: string
+  name: string
+  gender?: string
+  accents: CreatifyVoiceAccent[]
+  useThisId: string
+}
+
 interface ClientData {
   id: string
   slug?: string
@@ -258,6 +283,12 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   const [youtubeConnected, setYoutubeConnected] = useState(false)
   const [loadingYoutube, setLoadingYoutube] = useState(false)
 
+  // Creatify avatars/voices state
+  const [creatifyAvatars, setCreatifyAvatars] = useState<CreatifyAvatar[]>([])
+  const [creatifyVoices, setCreatifyVoices] = useState<CreatifyVoice[]>([])
+  const [loadingCreatify, setLoadingCreatify] = useState(false)
+  const [creatifyConnected, setCreatifyConnected] = useState(false)
+
   // Service locations state
   const [serviceLocations, setServiceLocations] = useState<ServiceLocation[]>([])
   const [loadingLocations, setLoadingLocations] = useState(false)
@@ -357,6 +388,22 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       })
       .catch(() => {})
       .finally(() => setLoadingYoutube(false))
+  }, [])
+
+  // Load Creatify avatars and voices
+  useEffect(() => {
+    setLoadingCreatify(true)
+    fetch('/api/creatify/avatars-voices')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.avatars && data.voices) {
+          setCreatifyConnected(true)
+          setCreatifyAvatars(data.avatars)
+          setCreatifyVoices(data.voices)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingCreatify(false))
   }, [])
 
   // Load service locations (only for existing clients)
@@ -1806,91 +1853,102 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
               <div className="flex items-center gap-2 mb-4">
                 <Video className="h-4 w-4 text-purple-600" />
                 <h4 className="text-sm font-medium text-gray-900">Creatify Video Settings</h4>
-              </div>
-
-              {/* Instructions Box */}
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
-                <p className="text-sm text-purple-800 font-medium mb-2">How to find Avatar & Voice IDs:</p>
-                <ol className="text-sm text-purple-700 list-decimal list-inside space-y-1 mb-3">
-                  <li>Click a search link below to find your preferred avatar or voice</li>
-                  <li>Copy the <code className="bg-purple-100 px-1 rounded">useThisId</code> value from the results</li>
-                  <li>Paste it into the corresponding field below</li>
-                </ol>
-                <div className="flex flex-wrap gap-2">
-                  <a
-                    href="/api/creatify/avatars-voices?avatarOnly=true"
-                    target="_blank"
-                    className="inline-flex items-center gap-1 text-xs bg-purple-600 text-white px-3 py-1.5 rounded-full hover:bg-purple-700"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    Browse All Avatars
-                  </a>
-                  <a
-                    href="/api/creatify/avatars-voices?voiceOnly=true"
-                    target="_blank"
-                    className="inline-flex items-center gap-1 text-xs bg-purple-600 text-white px-3 py-1.5 rounded-full hover:bg-purple-700"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    Browse All Voices
-                  </a>
-                  <a
-                    href="/api/creatify/avatars-voices?search=benjamin"
-                    target="_blank"
-                    className="inline-flex items-center gap-1 text-xs bg-white text-purple-700 border border-purple-300 px-3 py-1.5 rounded-full hover:bg-purple-50"
-                  >
-                    Search: benjamin
-                  </a>
-                  <a
-                    href="/api/creatify/avatars-voices?search=miles"
-                    target="_blank"
-                    className="inline-flex items-center gap-1 text-xs bg-white text-purple-700 border border-purple-300 px-3 py-1.5 rounded-full hover:bg-purple-50"
-                  >
-                    Search: miles
-                  </a>
-                </div>
+                {loadingCreatify && (
+                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                )}
+                {creatifyConnected && !loadingCreatify && (
+                  <span className="text-xs text-green-600 flex items-center gap-1">
+                    <Check className="h-3 w-3" /> Connected
+                  </span>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Avatar ID */}
+                {/* Avatar Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Avatar ID
-                    <a
-                      href="/api/creatify/avatars-voices?avatarOnly=true"
-                      target="_blank"
-                      className="ml-2 text-xs text-purple-600 hover:underline"
-                    >
-                      (find IDs)
-                    </a>
+                    Avatar
+                    {creatifyAvatars.length > 0 && (
+                      <span className="ml-2 text-xs text-gray-500">({creatifyAvatars.length} available)</span>
+                    )}
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={formData.creatifyAvatarId || ''}
                     onChange={(e) => updateField('creatifyAvatarId', e.target.value || null)}
                     className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                    placeholder="Paste avatar UUID here"
-                  />
+                    disabled={loadingCreatify}
+                  >
+                    <option value="">Default (Creatify chooses)</option>
+                    {/* Group avatars by location */}
+                    {['indoor', 'outdoor', 'fantasy', 'other'].map(location => {
+                      const locationAvatars = creatifyAvatars.filter(a =>
+                        (a.location || 'other').toLowerCase() === location
+                      )
+                      if (locationAvatars.length === 0) return null
+                      return (
+                        <optgroup key={location} label={`📍 ${location.charAt(0).toUpperCase() + location.slice(1)}`}>
+                          {locationAvatars.map(avatar => (
+                            <option key={avatar.id} value={avatar.useThisId}>
+                              {avatar.name} {avatar.gender === 'm' ? '👨' : avatar.gender === 'f' ? '👩' : ''} {avatar.style ? `(${avatar.style})` : ''}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )
+                    })}
+                    {/* Avatars without location */}
+                    {creatifyAvatars.filter(a => !a.location).length > 0 && (
+                      <optgroup label="📍 Other">
+                        {creatifyAvatars.filter(a => !a.location).map(avatar => (
+                          <option key={avatar.id} value={avatar.useThisId}>
+                            {avatar.name} {avatar.gender === 'm' ? '👨' : avatar.gender === 'f' ? '👩' : ''}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
                 </div>
 
-                {/* Voice ID */}
+                {/* Voice Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Voice ID
-                    <a
-                      href="/api/creatify/avatars-voices?voiceOnly=true"
-                      target="_blank"
-                      className="ml-2 text-xs text-purple-600 hover:underline"
-                    >
-                      (find IDs)
-                    </a>
+                    Voice
+                    {creatifyVoices.length > 0 && (
+                      <span className="ml-2 text-xs text-gray-500">({creatifyVoices.length} available)</span>
+                    )}
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={formData.creatifyVoiceId || ''}
                     onChange={(e) => updateField('creatifyVoiceId', e.target.value || null)}
                     className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                    placeholder="Paste voice/accent UUID here"
-                  />
+                    disabled={loadingCreatify}
+                  >
+                    <option value="">Default (Creatify chooses)</option>
+                    {/* Group voices by gender */}
+                    {['male', 'female', 'non_binary'].map(gender => {
+                      const genderVoices = creatifyVoices.filter(v => v.gender === gender)
+                      if (genderVoices.length === 0) return null
+                      const genderLabel = gender === 'male' ? '👨 Male' : gender === 'female' ? '👩 Female' : '🧑 Non-Binary'
+                      return (
+                        <optgroup key={gender} label={genderLabel}>
+                          {genderVoices.map(voice => (
+                            <option key={voice.id} value={voice.useThisId}>
+                              {voice.name} {voice.accents.length > 1 ? `(${voice.accents.length} accents)` : voice.accents[0]?.accent ? `(${voice.accents[0].accent})` : ''}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )
+                    })}
+                    {/* Voices without gender */}
+                    {creatifyVoices.filter(v => !v.gender).length > 0 && (
+                      <optgroup label="🎙️ Other">
+                        {creatifyVoices.filter(v => !v.gender).map(voice => (
+                          <option key={voice.id} value={voice.useThisId}>
+                            {voice.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
                 </div>
 
                 {/* Video Length */}
