@@ -1416,6 +1416,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
 
         // Build rich description for Creatify to use when generating the video script
         // This provides context beyond what auto-scraping captures from the blog URL
+        // IMPORTANT: Emphasize "Call Now" CTA with phone number (not "Buy Now")
         const creatifyDescription = [
           `Question: ${contentItem.paaQuestion}`,
           ``,
@@ -1427,7 +1428,10 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           `- Expert technicians with quality materials`,
           contentItem.client.serviceAreas?.length ? `- Service areas include: ${contentItem.client.serviceAreas.slice(0, 5).join(', ')}` : '',
           ``,
-          `Call ${contentItem.client.businessName} today for a free quote!`,
+          `CALL TO ACTION: "Call Now" - NOT "Buy Now" or "Shop Now"`,
+          `Phone: ${contentItem.client.phone}`,
+          ``,
+          `Call ${contentItem.client.businessName} now at ${contentItem.client.phone} for a free quote!`,
         ].filter(Boolean).join('\n')
 
         log(ctx, 'Creating short video job...', { blogUrl: blogUrlForVideo })
