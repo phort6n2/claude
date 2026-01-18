@@ -462,6 +462,7 @@ export function generateVideoDescription(params: {
   googleMapsUrl?: string
   wrhqDirectoryUrl?: string
   podbeanUrl?: string
+  servicePageUrl?: string
   businessName: string
   city: string
   state: string
@@ -476,6 +477,10 @@ export function generateVideoDescription(params: {
   lines.push('')
   lines.push(`📝 Read the full article: ${params.clientBlogUrl}`)
   lines.push(`🌐 WRHQ Directory: ${params.wrhqBlogUrl}`)
+
+  if (params.servicePageUrl) {
+    lines.push(`🔧 Get Service: ${params.servicePageUrl}`)
+  }
 
   if (params.googleMapsUrl) {
     lines.push(`📍 Find us on Google Maps: ${params.googleMapsUrl}`)

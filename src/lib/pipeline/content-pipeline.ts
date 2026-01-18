@@ -1565,6 +1565,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
                   googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
                   wrhqDirectoryUrl: contentItem.client.wrhqDirectoryUrl || undefined,
                   podbeanUrl: podcast?.podbeanUrl || undefined,
+                  servicePageUrl: contentItem.client.ctaUrl || undefined,
                   businessName: contentItem.client.businessName,
                   city: contentItem.client.city,
                   state: contentItem.client.state,

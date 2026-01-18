@@ -838,7 +838,52 @@ ${params.googleMapsUrl ? `   - Include Google Maps link: ${params.googleMapsUrl}
 }
 
 Return ONLY valid JSON. No explanation.`
+  } else if (params.platform === 'tiktok') {
+    // TikTok specific prompt following 2026 best practices
+    prompt = `Write a TikTok caption for this auto glass video following 2026 TikTok SEO best practices.
+
+**Context:**
+- Business: ${params.businessName}
+- Location: ${params.location}
+- Video Topic: ${params.blogTitle}
+- Content Summary: ${params.blogExcerpt}
+- Blog URL: ${params.blogUrl}
+${params.googleMapsUrl ? `- Google Maps: ${params.googleMapsUrl}` : ''}
+
+**CRITICAL: TikTok 2026 Best Practices**
+
+Only the first 65-70 characters are visible before truncation - this is crucial!
+
+**Required Structure:**
+
+1. **SEO HOOK (First 65 chars - MOST IMPORTANT)**
+   - Front-load primary keyword (auto glass, windshield, etc.) in FIRST sentence
+   - Use bold claim or question to stop scrolling
+   - NO fluff like "In this video..." - get straight to value
+   - This is ALL users see before clicking "more"!
+
+2. **CONVERSATIONAL SUMMARY (100-300 chars)**
+   - Natural 2-3 sentence summary with keyword variations
+   - Help TikTok's AI categorize content for search
+   - Use line breaks and emojis for scannability
+   - Specific CTA: "Save this for later" or "Tag a friend who needs this"
+
+3. **HASHTAGS (3-5 only)**
+   - Keep to 3-5 highly relevant hashtags (more triggers spam filters)
+   - Mix: 1-2 broad niche tags + 2-3 specific keyword tags
+   - AVOID generic tags like #fyp or #viral - they provide no context
+   - Include location-specific tag
+
+**Format your response as JSON:**
+{
+  "caption": "SEO hook in first 65 chars, then summary with line breaks and emojis. NO hashtags in caption. Links go in firstComment.",
+  "hashtags": ["AutoGlass", "WindshieldRepair", "${params.location.replace(/[,\s]+/g, '')}", "CarTips"],
+  "firstComment": "Link in bio for full article! 📝 ${params.blogUrl}${params.googleMapsUrl ? ` | Find us: ${params.googleMapsUrl}` : ''}"
+}
+
+Return ONLY valid JSON. No explanation.`
   } else {
+    // Instagram Reels, Facebook Reels
     prompt = `Write a ${platformName} caption for this auto glass video.
 
 **Context:**
@@ -988,7 +1033,52 @@ ${params.googleMapsUrl ? `   - Include Google Maps link: ${params.googleMapsUrl}
 }
 
 Return ONLY valid JSON. No explanation.`
+  } else if (params.platform === 'tiktok') {
+    // TikTok specific prompt following 2026 best practices
+    prompt = `Write a TikTok caption for WRHQ (Windshield Repair HeadQuarters) featuring a local auto glass partner, following 2026 TikTok SEO best practices.
+
+**Context:**
+- WRHQ is a directory/network featuring trusted auto glass shops
+- Featured Partner: ${params.clientBusinessName}
+- Location: ${location}
+- Topic: ${params.paaQuestion}
+- Primary URL: ${primaryUrl}
+- Partner Google Maps: ${params.googleMapsUrl || 'Not available'}
+
+**CRITICAL: TikTok 2026 Best Practices**
+
+Only the first 65-70 characters are visible before truncation - this is crucial!
+
+**Required Structure:**
+
+1. **SEO HOOK (First 65 chars - MOST IMPORTANT)**
+   - Front-load primary keyword (auto glass, windshield, etc.) in FIRST sentence
+   - Use bold claim or question to stop scrolling
+   - NO fluff like "In this video..." - get straight to value
+   - This is ALL users see before clicking "more"!
+
+2. **CONVERSATIONAL SUMMARY (100-300 chars)**
+   - Natural 2-3 sentence summary mentioning ${params.clientBusinessName} as trusted WRHQ partner
+   - Help TikTok's AI categorize content for search
+   - Use line breaks and emojis for scannability
+   - Specific CTA: "Save this for later" or "Tag a friend who needs this"
+
+3. **HASHTAGS (3-5 only)**
+   - Keep to 3-5 highly relevant hashtags (more triggers spam filters)
+   - Mix: 1-2 broad niche tags + 2-3 specific keyword tags
+   - AVOID generic tags like #fyp or #viral - they provide no context
+   - Include #WRHQ and location-specific tag
+
+**Format your response as JSON:**
+{
+  "caption": "SEO hook in first 65 chars, then summary with line breaks and emojis. NO hashtags in caption. Links go in firstComment.",
+  "hashtags": ["WRHQ", "AutoGlass", "${location.replace(/[,\s]+/g, '')}", "WindshieldRepair"],
+  "firstComment": "Link in bio for full article! 📝 ${primaryUrl}${params.googleMapsUrl ? ` | Find them: ${params.googleMapsUrl}` : ''}"
+}
+
+Return ONLY valid JSON. No explanation.`
   } else {
+    // Instagram Reels, Facebook Reels
     prompt = `Write a ${platformName} caption for WRHQ (Windshield Repair HeadQuarters) featuring a local auto glass partner.
 
 **Context:**

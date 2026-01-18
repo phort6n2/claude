@@ -886,6 +886,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             state: contentState,
             paaQuestion: contentItem.paaQuestion,
             blogPostUrl: blogUrl,
+            servicePageUrl: contentItem.client.ctaUrl || undefined,
             googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
           })
         } catch (descError) {
@@ -953,6 +954,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           state: contentState,
           paaQuestion: contentItem.paaQuestion,
           blogPostUrl: blogUrl,
+          servicePageUrl: contentItem.client.ctaUrl || undefined,
           googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
         })
 
