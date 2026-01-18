@@ -60,10 +60,12 @@ export async function GET(request: NextRequest) {
         id: v.id,
         name: v.name,
         gender: v.gender,
-        accents: v.accents.map(a => ({
+        accents: v.accents.map((a, index) => ({
           id: a.id,
-          name: a.name,
-          accent: a.accent,
+          // Use name, accent, language, or fallback to variant number
+          name: a.name || a.accent || a.language || `Variant ${index + 1}`,
+          accent: a.accent || a.name || a.language || '',
+          language: a.language,
           // Show the accent ID prominently for copy/paste
           useThisId: a.id,
         })),

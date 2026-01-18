@@ -1912,11 +1912,12 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                       .sort((a, b) => a.name.localeCompare(b.name))
                       .flatMap(voice =>
                         voice.accents.length > 0
-                          ? voice.accents.map(accent => ({
+                          ? voice.accents.map((accent, index) => ({
                               id: accent.id,
                               name: voice.name,
                               gender: voice.gender,
-                              accent: accent.accent || accent.name,
+                              // Use accent name, accent field, or fallback to numbered variant
+                              accent: accent.name || accent.accent || `Variant ${index + 1}`,
                               useThisId: accent.useThisId,
                             }))
                           : [{
@@ -1935,12 +1936,12 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                       })
                       .map(option => (
                         <option key={option.id} value={option.useThisId}>
-                          {option.name}{option.accent ? ` - ${option.accent}` : ''} ({option.gender || 'voice'})
+                          {option.name} - {option.accent} ({option.gender || 'voice'})
                         </option>
                       ))}
                   </select>
                   <p className="mt-1 text-xs text-gray-500">
-                    Each voice has multiple accents (American, British, etc.)
+                    Try different variants to find the best accent for your videos
                   </p>
                 </div>
 
