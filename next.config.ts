@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '500mb',
     },
   },
+  // Enable instrumentation hook for automatic database setup on startup
+  instrumentationHook: true,
 };
 
 export default nextConfig;

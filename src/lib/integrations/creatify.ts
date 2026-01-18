@@ -767,8 +767,14 @@ export interface Avatar {
   id: string
   name: string
   thumbnail_url?: string
-  gender?: string
-  style?: string
+  gender?: 'm' | 'f' | 'nb' // Male, Female, Non-Binary
+  style?: 'selfie' | 'presenter' | 'other'
+  age_range?: 'child' | 'teen' | 'adult' | 'senior'
+  location?: 'outdoor' | 'fantasy' | 'indoor' | 'other'
+  suitable_industries?: string
+  preview_video_9_16?: string // Portrait preview video
+  preview_video_16_9?: string // Landscape preview video
+  preview_video_1_1?: string // Square preview video
 }
 
 export interface Voice {
@@ -780,13 +786,32 @@ export interface Voice {
 }
 
 /**
- * Get list of available avatars
+ * Get list of available avatars (personas)
  * Use the returned avatar IDs with the avatarId parameter in createShortVideo
+ *
+ * @param filters - Optional filters for age_range, gender, location, style, suitable_industries
  */
-export async function getAvatars(): Promise<Avatar[]> {
+export async function getAvatars(filters?: {
+  age_range?: 'child' | 'teen' | 'adult' | 'senior'
+  gender?: 'm' | 'f' | 'nb'
+  location?: 'outdoor' | 'fantasy' | 'indoor' | 'other'
+  style?: 'selfie' | 'presenter' | 'other'
+  suitable_industries?: string
+}): Promise<Avatar[]> {
   const { apiId, apiKey } = await getCredentialsAsync()
 
-  const response = await fetch('https://api.creatify.ai/api/avatars/', {
+  // Build query string from filters
+  const params = new URLSearchParams()
+  if (filters?.age_range) params.append('age_range', filters.age_range)
+  if (filters?.gender) params.append('gender', filters.gender)
+  if (filters?.location) params.append('location', filters.location)
+  if (filters?.style) params.append('style', filters.style)
+  if (filters?.suitable_industries) params.append('suitable_industries', filters.suitable_industries)
+
+  const queryString = params.toString()
+  const url = `https://api.creatify.ai/api/personas/${queryString ? `?${queryString}` : ''}`
+
+  const response = await fetch(url, {
     headers: {
       'X-API-ID': apiId,
       'X-API-KEY': apiKey,
@@ -803,13 +828,22 @@ export async function getAvatars(): Promise<Avatar[]> {
   // Handle both array response and paginated response
   const avatars = Array.isArray(data) ? data : (data.results || [])
 
-  return avatars.map((a: Record<string, unknown>) => ({
-    id: a.id as string,
-    name: a.name as string || a.id as string,
-    thumbnail_url: a.thumbnail_url as string | undefined,
-    gender: a.gender as string | undefined,
-    style: a.style as string | undefined,
-  }))
+  // Only return active avatars
+  return avatars
+    .filter((a: Record<string, unknown>) => a.is_active !== false)
+    .map((a: Record<string, unknown>) => ({
+      id: a.id as string,
+      name: (a.creator_name as string) || (a.id as string),
+      thumbnail_url: (a.preview_image_9_16 as string) || (a.preview_image_1_1 as string) || undefined,
+      gender: a.gender as 'm' | 'f' | 'nb' | undefined,
+      style: a.style as 'selfie' | 'presenter' | 'other' | undefined,
+      age_range: a.age_range as 'child' | 'teen' | 'adult' | 'senior' | undefined,
+      location: a.location as 'outdoor' | 'fantasy' | 'indoor' | 'other' | undefined,
+      suitable_industries: a.suitable_industries as string | undefined,
+      preview_video_9_16: a.preview_video_9_16 as string || a.portrait_preview_video as string || undefined,
+      preview_video_16_9: a.preview_video_16_9 as string || a.landscape_preview_video as string || undefined,
+      preview_video_1_1: a.preview_video_1_1 as string || a.squared_preview_video as string || undefined,
+    }))
 }
 
 /**
