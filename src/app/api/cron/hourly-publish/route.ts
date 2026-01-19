@@ -111,6 +111,35 @@ export async function GET(request: NextRequest) {
       console.log(`[HourlyPublish] Processing client: ${client.businessName}`)
 
       try {
+        // RACE CONDITION FIX: Check if content already exists for this client today
+        // This prevents duplicate content if cron runs twice in the same hour
+        const todayStart = new Date(now)
+        todayStart.setUTCHours(0, 0, 0, 0)
+        const todayEnd = new Date(now)
+        todayEnd.setUTCHours(23, 59, 59, 999)
+
+        const existingContent = await prisma.contentItem.findFirst({
+          where: {
+            clientId: client.id,
+            scheduledDate: {
+              gte: todayStart,
+              lte: todayEnd,
+            },
+          },
+        })
+
+        if (existingContent) {
+          console.log(`[HourlyPublish] Content already exists for ${client.businessName} today (${existingContent.id}), skipping`)
+          results.push({
+            clientId: client.id,
+            clientName: client.businessName,
+            success: true,
+            contentItemId: existingContent.id,
+            error: 'Content already exists for today',
+          })
+          continue
+        }
+
         // Select next PAA + Location combination
         // This ensures all combinations are used before any repeat
         const combination = await selectNextPAACombination(client.id)
@@ -137,6 +166,7 @@ export async function GET(request: NextRequest) {
             serviceLocationId: location.id,
             paaQuestion: renderedQuestion,
             scheduledDate: now,
+            scheduledTime: currentTimeSlot, // FIX: Add the scheduled time
             status: 'GENERATING',
             priority: 1,
           },

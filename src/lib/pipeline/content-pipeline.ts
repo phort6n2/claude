@@ -1353,6 +1353,18 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           log(ctx, '✅ Podcast published to Podbean', { playerUrl: podbeanResult.playerUrl })
         } catch (podbeanError) {
           logError(ctx, 'Failed to publish podcast to Podbean after 3 attempts', podbeanError)
+          // FIX: Mark podcast as FAILED so we know Podbean publishing failed
+          // The podcast audio is READY (in GCS) but Podbean rejected it
+          // Recovery jobs can retry by checking for podcasts with audioUrl but no podbeanUrl
+          await prisma.podcast.update({
+            where: { id: podcastRecord.id },
+            data: {
+              status: 'FAILED',
+            },
+          })
+          await logAction(ctx, 'podcast_podbean_publish', 'FAILED', {
+            errorMessage: podbeanError instanceof Error ? podbeanError.message : 'Unknown error',
+          })
         }
 
         await prisma.contentItem.update({
