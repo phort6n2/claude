@@ -454,17 +454,57 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       })
     }
 
+    // Build comprehensive diagnostic info
+    const shortVideoSkipReason = !shortVideoUrl
+      ? (() => {
+          const youtubeClientPosts = contentItem.socialPosts.filter(p => p.platform === 'YOUTUBE')
+          const youtubeWrhqPosts = contentItem.wrhqSocialPosts.filter(p => p.platform === 'YOUTUBE')
+          if (youtubeClientPosts.length === 0 && youtubeWrhqPosts.length === 0) {
+            return 'No YouTube social posts found. Generate video social posts first.'
+          }
+          const allYoutubePosts = [...youtubeClientPosts, ...youtubeWrhqPosts]
+          const statuses = allYoutubePosts.map(p => `${p.platform}: status=${p.status}, publishedUrl=${p.publishedUrl || 'none'}`).join('; ')
+          return `YouTube posts exist but none have publishedUrl yet. Publish videos to YouTube first. (${statuses})`
+        })()
+      : null
+
+    // Check image status
+    const blogFeaturedImage = contentItem.images.find(img => img.imageType === 'BLOG_FEATURED')
+    const imageStatus = {
+      hasBlogFeaturedImage: !!blogFeaturedImage,
+      imageUrl: blogFeaturedImage?.gcsUrl || null,
+      imageCount: contentItem.images.length,
+      imageTypes: contentItem.images.map(img => img.imageType),
+    }
+
     return NextResponse.json({
       success: true,
       embedded,
       message: embedded.length > 0
         ? `Embedded: ${embedded.join(', ')}`
         : 'No new media to embed',
-      podcastSkipReason: podcastSkipReason || undefined,
+      skipped: {
+        shortVideo: shortVideoSkipReason,
+        podcast: podcastSkipReason,
+      },
       debug: {
         hasPodcast: !!contentItem.podcast,
         podcastStatus: contentItem.podcast?.status,
         hasPodbeanPlayerUrl: !!contentItem.podcast?.podbeanPlayerUrl,
+        podbeanUrl: contentItem.podcast?.podbeanUrl || null,
+        hasShortFormVideos: contentItem.shortFormVideos?.length > 0,
+        shortFormVideoCount: contentItem.shortFormVideos?.length || 0,
+        youtubeClientPosts: contentItem.socialPosts.filter(p => p.platform === 'YOUTUBE').map(p => ({
+          status: p.status,
+          publishedUrl: p.publishedUrl,
+          mediaType: p.mediaType,
+        })),
+        youtubeWrhqPosts: contentItem.wrhqSocialPosts.filter(p => p.platform === 'YOUTUBE').map(p => ({
+          status: p.status,
+          publishedUrl: p.publishedUrl,
+          mediaType: p.mediaType,
+        })),
+        imageStatus,
       },
     })
   } catch (error) {

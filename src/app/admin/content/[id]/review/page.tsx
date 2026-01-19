@@ -485,6 +485,10 @@ function ReviewTab({
   } | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [embedResult, setEmbedResult] = useState<{
+    embedded: string[]
+    skipped: { shortVideo?: string | null; podcast?: string | null }
+  } | null>(null)
 
   // Collapsed state for sections - auto-collapse completed sections
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
@@ -748,6 +752,7 @@ function ReviewTab({
   async function embedAllMedia() {
     setEmbedding(true)
     setError(null)
+    setEmbedResult(null)
     try {
       const response = await fetch(`/api/content/${content.id}/embed-all-media`, {
         method: 'POST',
@@ -765,6 +770,14 @@ function ReviewTab({
           errorMessage = `${errorMessage} (${detailsStr})`
         }
         throw new Error(errorMessage)
+      }
+
+      // Store the embed result to show what was embedded/skipped
+      if (data.embedded || data.skipped) {
+        setEmbedResult({
+          embedded: data.embedded || [],
+          skipped: data.skipped || {},
+        })
       }
 
       // Refresh the page data
@@ -2389,6 +2402,35 @@ function ReviewTab({
                   <Layers className={`h-5 w-5 ${embedding ? 'animate-pulse' : ''}`} />
                   {embedding ? 'Embedding Media...' : 'Embed All Media'}
                 </button>
+
+                {/* Show embed result */}
+                {embedResult && (
+                  <div className="mt-4 space-y-3">
+                    {embedResult.embedded.length > 0 && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <h5 className="font-medium text-green-900 text-sm">Successfully embedded:</h5>
+                        <ul className="text-sm text-green-700 mt-1">
+                          {embedResult.embedded.map((item, i) => (
+                            <li key={i}>• {item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {(embedResult.skipped.shortVideo || embedResult.skipped.podcast) && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        <h5 className="font-medium text-amber-900 text-sm">Skipped (not ready):</h5>
+                        <ul className="text-sm text-amber-700 mt-1 space-y-1">
+                          {embedResult.skipped.shortVideo && (
+                            <li>• Short Video: {embedResult.skipped.shortVideo}</li>
+                          )}
+                          {embedResult.skipped.podcast && (
+                            <li>• Podcast: {embedResult.skipped.podcast}</li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
