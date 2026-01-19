@@ -157,6 +157,7 @@ export async function GET(request: NextRequest) {
       try {
         // RACE CONDITION FIX: Check if content already exists for this client today
         // This prevents duplicate content if cron runs twice in the same hour
+        // Only consider active content (not FAILED) as blocking
         const todayStart = new Date(now)
         todayStart.setUTCHours(0, 0, 0, 0)
         const todayEnd = new Date(now)
@@ -169,17 +170,21 @@ export async function GET(request: NextRequest) {
               gte: todayStart,
               lte: todayEnd,
             },
+            // Only block if there's active content - FAILED content shouldn't block new creation
+            status: {
+              in: ['GENERATING', 'SCHEDULED', 'PUBLISHED', 'REVIEW'],
+            },
           },
         })
 
         if (existingContent) {
-          console.log(`[HourlyPublish] Content already exists for ${client.businessName} today (${existingContent.id}), skipping`)
+          console.log(`[HourlyPublish] Active content already exists for ${client.businessName} today (${existingContent.id}, status: ${existingContent.status}), skipping`)
           results.push({
             clientId: client.id,
             clientName: client.businessName,
             success: true,
             contentItemId: existingContent.id,
-            error: 'Content already exists for today',
+            error: `Skipped - content already exists (${existingContent.status})`,
           })
           continue
         }
@@ -274,9 +279,11 @@ export async function GET(request: NextRequest) {
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
 
-    // Log the run
-    const successCount = results.filter(r => r.success).length
+    // Log the run - distinguish between actually processed vs skipped
+    const skippedCount = results.filter(r => r.success && r.error?.includes('Skipped')).length
+    const actuallyProcessed = results.filter(r => r.success && !r.error?.includes('Skipped')).length
     const failCount = results.filter(r => !r.success).length
+    const successCount = results.filter(r => r.success).length
 
     // Always log when we processed clients
     if (results.length > 0) {
@@ -290,7 +297,8 @@ export async function GET(request: NextRequest) {
               utcTime: now.toISOString(),
               timezoneAware: true,
               processed: results.length,
-              successful: successCount,
+              actuallyGenerated: actuallyProcessed,
+              skipped: skippedCount,
               failed: failCount,
               results,
             }),
@@ -299,7 +307,7 @@ export async function GET(request: NextRequest) {
             durationMs: Date.now() - startTime,
           },
         })
-        console.log(`[HourlyPublish] Logged cron run: ${successCount} success, ${failCount} failed`)
+        console.log(`[HourlyPublish] Logged cron run: ${actuallyProcessed} generated, ${skippedCount} skipped, ${failCount} failed`)
       } catch (logError) {
         console.error('[HourlyPublish] Failed to log cron run:', logError)
       }
@@ -310,7 +318,8 @@ export async function GET(request: NextRequest) {
       utcTime: now.toISOString(),
       timezoneAware: true,
       processed: results.length,
-      successful: successCount,
+      actuallyGenerated: actuallyProcessed,
+      skipped: skippedCount,
       failed: failCount,
       results,
       durationMs: Date.now() - startTime,
