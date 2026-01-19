@@ -323,9 +323,9 @@ export default function PortalLeadsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 overflow-x-hidden">
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-40">
+      <header className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-40 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -335,13 +335,13 @@ export default function PortalLeadsPage() {
                 primaryColor={session.user?.primaryColor}
               />
               <div>
-                <h1 className="text-lg font-bold text-gray-900">{session.user?.businessName}</h1>
-                <p className="text-xs text-gray-600">Lead Portal</p>
+                <h1 className="text-lg font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">{session.user?.businessName}</h1>
+                <p className="text-xs text-gray-500 font-medium">Lead Portal</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <NotificationToggle />
-              <Button variant="outline" size="sm" onClick={handleLogout}>
+              <Button variant="outline" size="sm" onClick={handleLogout} className="rounded-xl border-gray-200 hover:border-gray-300 hover:bg-gray-50">
                 <LogOut className="h-4 w-4" />
                 <span className="hidden sm:inline ml-2">Logout</span>
               </Button>
@@ -351,54 +351,53 @@ export default function PortalLeadsPage() {
       </header>
 
       {/* Date Navigation */}
-      <div className="bg-white border-b sticky top-[57px] z-30">
+      <div className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 sticky top-[57px] z-30">
         <div className="max-w-6xl mx-auto px-4 py-3">
           <div className="flex items-center justify-center gap-2">
             <button
               onClick={() => changeDate(-1)}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
+              className="p-2.5 hover:bg-gray-100 rounded-xl transition-all text-gray-600 hover:text-gray-900 hover:scale-105"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
 
             <button
               onClick={() => setShowCalendar(!showCalendar)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors min-w-[160px] justify-center text-gray-900"
+              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-xl transition-all min-w-[180px] justify-center text-gray-900 border border-blue-100"
             >
-              <Calendar className="h-4 w-4" />
-              <span className="font-medium">{formatDateDisplay(selectedDate)}</span>
-              <ChevronDown className={`h-4 w-4 transition-transform ${showCalendar ? 'rotate-180' : ''}`} />
+              <Calendar className="h-4 w-4 text-blue-600" />
+              <span className="font-semibold">{formatDateDisplay(selectedDate)}</span>
+              <ChevronDown className={`h-4 w-4 text-blue-600 transition-transform ${showCalendar ? 'rotate-180' : ''}`} />
             </button>
 
             <button
               onClick={() => changeDate(1)}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
+              className="p-2.5 hover:bg-gray-100 rounded-xl transition-all text-gray-600 hover:text-gray-900 hover:scale-105"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
           </div>
-
         </div>
       </div>
 
       {/* Sales Stats */}
       {sales && (
-        <div className="max-w-6xl mx-auto px-4 py-3">
-          <div className="grid grid-cols-3 gap-2">
-            <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-              <p className="text-xs text-gray-500 mb-1">Today</p>
-              <p className="text-lg font-bold text-emerald-600">${sales.today.total.toLocaleString()}</p>
-              <p className="text-xs text-gray-500">{sales.today.count} sale{sales.today.count !== 1 ? 's' : ''}</p>
+        <div className="max-w-6xl mx-auto px-4 py-4">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl p-4 text-center border border-emerald-100 shadow-sm">
+              <p className="text-xs text-emerald-600 font-medium mb-1">Today</p>
+              <p className="text-xl font-bold text-emerald-700">${sales.today.total.toLocaleString()}</p>
+              <p className="text-xs text-emerald-600/70">{sales.today.count} sale{sales.today.count !== 1 ? 's' : ''}</p>
             </div>
-            <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-              <p className="text-xs text-gray-500 mb-1">This Week</p>
-              <p className="text-lg font-bold text-emerald-600">${sales.week.total.toLocaleString()}</p>
-              <p className="text-xs text-gray-500">{sales.week.count} sale{sales.week.count !== 1 ? 's' : ''}</p>
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-4 text-center border border-blue-100 shadow-sm">
+              <p className="text-xs text-blue-600 font-medium mb-1">This Week</p>
+              <p className="text-xl font-bold text-blue-700">${sales.week.total.toLocaleString()}</p>
+              <p className="text-xs text-blue-600/70">{sales.week.count} sale{sales.week.count !== 1 ? 's' : ''}</p>
             </div>
-            <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-              <p className="text-xs text-gray-500 mb-1">This Month</p>
-              <p className="text-lg font-bold text-emerald-600">${sales.month.total.toLocaleString()}</p>
-              <p className="text-xs text-gray-500">{sales.month.count} sale{sales.month.count !== 1 ? 's' : ''}</p>
+            <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl p-4 text-center border border-violet-100 shadow-sm">
+              <p className="text-xs text-violet-600 font-medium mb-1">This Month</p>
+              <p className="text-xl font-bold text-violet-700">${sales.month.total.toLocaleString()}</p>
+              <p className="text-xs text-violet-600/70">{sales.month.count} sale{sales.month.count !== 1 ? 's' : ''}</p>
             </div>
           </div>
         </div>
@@ -415,19 +414,25 @@ export default function PortalLeadsPage() {
       <div className="max-w-6xl mx-auto px-4 pb-6">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+              <p className="text-sm text-gray-500">Loading leads...</p>
+            </div>
           </div>
         ) : leads.length === 0 ? (
-          <div className="bg-white rounded-xl p-8 text-center">
-            <User className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p className="text-gray-500">No leads on this date</p>
+          <div className="bg-white rounded-2xl p-10 text-center shadow-sm border border-gray-100">
+            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-gray-100 to-gray-50 rounded-2xl flex items-center justify-center">
+              <User className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">No leads on this date</h3>
+            <p className="text-gray-500 text-sm mb-4">Try selecting a different date</p>
             <button
               onClick={() => {
                 const today = new Date()
                 const localDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
                 setSelectedDate(localDate)
               }}
-              className="mt-3 text-blue-600 hover:underline text-sm"
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-sm font-medium hover:from-blue-700 hover:to-indigo-700 transition-all shadow-sm"
             >
               Go to today
             </button>
@@ -972,26 +977,26 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className={`bg-white rounded-xl p-4 text-left shadow-sm hover:shadow-md transition-shadow w-full border-2 ${
-        isPhoneLead ? 'border-orange-400' : 'border-transparent'
+      className={`bg-white rounded-2xl p-4 text-left shadow-sm hover:shadow-lg transition-all duration-200 w-full border-2 hover:scale-[1.02] ${
+        isPhoneLead ? 'border-orange-300 bg-gradient-to-br from-orange-50/50 to-white' : 'border-gray-100 hover:border-blue-200'
       }`}
     >
       {/* Source & Status Badge */}
       <div className="flex items-center gap-2 mb-2">
         {isPhoneLead && (
-          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 border border-orange-200">
             <Phone className="h-3 w-3" />
             Call
           </div>
         )}
-        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}>
+        <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold ${statusConfig.bgColor} ${statusConfig.color}`}>
           <StatusIcon className="h-3 w-3" />
           {statusConfig.label}
         </div>
       </div>
 
       {/* Name */}
-      <h3 className="font-medium text-gray-900 truncate mb-1">{fullName}</h3>
+      <h3 className="font-semibold text-gray-900 truncate mb-1">{fullName}</h3>
 
       {/* Service/Vehicle Details */}
       {(details.service || details.vehicle) && (
@@ -1000,7 +1005,7 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
             <p className="text-sm text-blue-700 font-medium truncate">{details.service}</p>
           )}
           {details.vehicle && (
-            <p className="text-xs text-gray-600 truncate">{details.vehicle}</p>
+            <p className="text-xs text-gray-500 truncate">{details.vehicle}</p>
           )}
         </div>
       )}
@@ -1009,25 +1014,25 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
       {(details.zipCode || details.insuranceHelp) && (
         <div className="flex flex-wrap gap-1 mb-2">
           {details.zipCode && (
-            <span className="text-xs text-gray-500">ZIP: {details.zipCode}</span>
+            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">ZIP: {details.zipCode}</span>
           )}
           {details.insuranceHelp && details.insuranceHelp.toLowerCase() === 'yes' && (
-            <span className="text-xs bg-green-50 text-green-700 px-1.5 py-0.5 rounded">Ins</span>
+            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-md font-medium">Insurance</span>
           )}
         </div>
       )}
 
       {/* Contact */}
-      <div className="space-y-1 text-xs text-gray-700">
+      <div className="space-y-1 text-xs text-gray-600">
         {lead.phone && (
-          <p className="flex items-center gap-1 truncate">
-            <Phone className="h-3 w-3 flex-shrink-0" />
+          <p className="flex items-center gap-1.5 truncate">
+            <Phone className="h-3 w-3 text-gray-400 flex-shrink-0" />
             {lead.phone}
           </p>
         )}
         {lead.email && (
-          <p className="flex items-center gap-1 truncate">
-            <Mail className="h-3 w-3 flex-shrink-0" />
+          <p className="flex items-center gap-1.5 truncate">
+            <Mail className="h-3 w-3 text-gray-400 flex-shrink-0" />
             {lead.email}
           </p>
         )}
@@ -1035,20 +1040,20 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
 
       {/* Missing info indicator for phone leads */}
       {isPhoneLead && (!lead.firstName || !lead.email) && (
-        <div className="mt-2 text-orange-600 text-xs">+ Add missing info</div>
+        <div className="mt-2 text-orange-600 text-xs font-medium">+ Add missing info</div>
       )}
 
       {/* Sale Value */}
       {lead.saleValue ? (
-        <div className="mt-2 text-emerald-600 font-semibold">
-          ${lead.saleValue.toLocaleString()}
+        <div className="mt-3 pt-2 border-t border-gray-100">
+          <span className="text-lg font-bold text-emerald-600">${lead.saleValue.toLocaleString()}</span>
         </div>
       ) : lead.status === 'SOLD' ? (
-        <div className="mt-2 text-amber-600 text-xs">+ Add sale value</div>
+        <div className="mt-2 text-amber-600 text-xs font-medium">+ Add sale value</div>
       ) : null}
 
       {/* Time */}
-      <p className="text-xs text-gray-600 mt-2">
+      <p className="text-xs text-gray-400 mt-2 font-medium">
         {new Date(lead.createdAt).toLocaleTimeString('en-US', {
           hour: 'numeric',
           minute: '2-digit',
