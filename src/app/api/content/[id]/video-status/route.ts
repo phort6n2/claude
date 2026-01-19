@@ -145,6 +145,7 @@ async function completeRemainingPipeline(contentItemId: string, videoUrl: string
       include: {
         client: true,
         blogPost: true,
+        wrhqBlogPost: true,
         podcast: true,
         images: true,
       },
@@ -207,15 +208,34 @@ async function completeRemainingPipeline(contentItemId: string, videoUrl: string
         if (youtubeConfigured) {
           console.log('[VideoStatus] Uploading video to YouTube...')
           try {
+            // Wait for podcast Podbean URL if podcast exists but URL not ready yet
+            // This ensures the YouTube description includes the podcast link
+            let podcast = contentItem.podcast
+            if (podcast && !podcast.podbeanUrl && podcast.status !== 'FAILED') {
+              console.log('[VideoStatus] Waiting for podcast Podbean URL before YouTube upload...')
+              const podcastWaitStart = Date.now()
+              const PODCAST_WAIT_TIMEOUT = 120000 // 2 minutes max wait
+              while (podcast && !podcast.podbeanUrl && Date.now() - podcastWaitStart < PODCAST_WAIT_TIMEOUT) {
+                await new Promise(resolve => setTimeout(resolve, 5000)) // Check every 5 seconds
+                podcast = await prisma.podcast.findFirst({ where: { contentItemId } })
+                if (!podcast || podcast.status === 'FAILED') break
+              }
+              if (podcast?.podbeanUrl) {
+                console.log('[VideoStatus] Podcast Podbean URL now available')
+              } else {
+                console.log('[VideoStatus] Podcast Podbean URL not available after waiting, proceeding without it')
+              }
+            }
+
             const youtubeResult = await uploadVideoFromUrl(gcsUrl || videoUrl, {
               title: contentItem.blogPost?.title || contentItem.paaQuestion,
               description: generateVideoDescription({
                 paaQuestion: contentItem.paaQuestion,
                 clientBlogUrl: contentItem.blogPost?.wordpressUrl || '',
-                wrhqBlogUrl: '',
+                wrhqBlogUrl: contentItem.wrhqBlogPost?.wordpressUrl || '',
                 googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
                 wrhqDirectoryUrl: contentItem.client.wrhqDirectoryUrl || undefined,
-                podbeanUrl: contentItem.podcast?.podbeanUrl || undefined,
+                podbeanUrl: podcast?.podbeanUrl || undefined,
                 businessName: contentItem.client.businessName,
                 city: contentItem.client.city,
                 state: contentItem.client.state,
