@@ -636,6 +636,28 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
 
   console.log(`Creating lipsync video with script length: ${limitedScript.length} chars (target: ~${params.duration || 30}s)`)
 
+  // Build lipsync request body - respect avatarId if provided, otherwise let Creatify choose
+  const lipsyncBody: Record<string, unknown> = {
+    script: limitedScript,
+    aspect_ratio: params.aspectRatio || '9:16',
+    style: 'video_editing',
+    caption: true,
+    caption_style: 'default',
+  }
+
+  // Only set creator if avatarId is specified, otherwise Creatify picks
+  if (params.avatarId) {
+    lipsyncBody.creator = params.avatarId
+    console.log(`📹 Lipsync using avatar: ${params.avatarId}`)
+  } else {
+    console.log(`📹 Lipsync using default avatar (Creatify chooses)`)
+  }
+
+  // Add b-roll media if provided
+  if (params.imageUrls && params.imageUrls.length > 0) {
+    lipsyncBody.b_roll_media = params.imageUrls.map(url => ({ url, type: 'image' }))
+  }
+
   const response = await fetch('https://api.creatify.ai/api/lipsyncs_v2/', {
     method: 'POST',
     headers: {
@@ -643,17 +665,7 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
       'X-API-KEY': apiKey,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      script: limitedScript,
-      aspect_ratio: params.aspectRatio || '9:16',
-      creator: 'maya',
-      style: 'video_editing',
-      caption: true,
-      caption_style: 'default',
-      ...(params.imageUrls && params.imageUrls.length > 0 && {
-        b_roll_media: params.imageUrls.map(url => ({ url, type: 'image' })),
-      }),
-    }),
+    body: JSON.stringify(lipsyncBody),
   })
 
   if (!response.ok) {
