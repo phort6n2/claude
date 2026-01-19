@@ -360,6 +360,10 @@ async function getGlobalPodbeanCredentials(): Promise<PodbeanCredentials> {
 }
 
 export async function publishToPodbean(params: PublishToPodbeanParams): Promise<PodbeanPublishResult> {
+  // Debug: Log which podcast we're publishing to
+  console.log(`[Podbean] Publishing to podcast: ${params.podcastId || 'DEFAULT (no podcast_id specified)'}`)
+  console.log(`[Podbean] Title: ${params.title}`)
+
   const credentials = await getGlobalPodbeanCredentials()
 
   const episode = await createEpisode(credentials, {

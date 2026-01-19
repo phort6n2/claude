@@ -8,6 +8,7 @@ import {
   Settings,
   Shield,
   Zap,
+  Podcast,
 } from 'lucide-react'
 import {
   PageContainer,
@@ -44,6 +45,13 @@ const settingsSections = [
     icon: TrendingUp,
     color: 'green',
   },
+  {
+    title: 'Podbean Podcasts',
+    description: 'Assign clients to their correct Podbean podcasts for publishing',
+    href: '/admin/podbean',
+    icon: Podcast,
+    color: 'orange',
+  },
 ]
 
 const colorStyles: Record<string, { bg: string; iconBg: string; iconColor: string; hover: string }> = {
@@ -70,6 +78,12 @@ const colorStyles: Record<string, { bg: string; iconBg: string; iconColor: strin
     iconBg: 'bg-green-100',
     iconColor: 'text-green-600',
     hover: 'hover:border-green-200 hover:shadow-green-100',
+  },
+  orange: {
+    bg: 'bg-gradient-to-br from-orange-50 to-white',
+    iconBg: 'bg-orange-100',
+    iconColor: 'text-orange-600',
+    hover: 'hover:border-orange-200 hover:shadow-orange-100',
   },
 }
 
