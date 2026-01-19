@@ -20,6 +20,7 @@ import {
   User,
   Building2,
   ShieldX,
+  MousePointerClick,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 
@@ -37,6 +38,7 @@ interface Lead {
   createdAt: string
   formName: string | null
   formData: Record<string, unknown> | null
+  gclid: string | null // Google Ads Click ID
 }
 
 interface Client {
@@ -644,13 +646,21 @@ export default function StandaloneMasterLeadsPage() {
 
             {/* Modal Content */}
             <div className="p-4 space-y-4">
-              {/* Source indicator for phone leads */}
-              {selectedLead.source === 'PHONE' && (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-orange-600" />
-                  <span className="text-sm text-orange-800 font-medium">Phone Call Lead</span>
-                </div>
-              )}
+              {/* Source indicators */}
+              <div className="flex flex-wrap gap-2">
+                {selectedLead.gclid && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
+                    <MousePointerClick className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm text-blue-800 font-medium">Google Ads Lead</span>
+                  </div>
+                )}
+                {selectedLead.source === 'PHONE' && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-orange-600" />
+                    <span className="text-sm text-orange-800 font-medium">Phone Call Lead</span>
+                  </div>
+                )}
+              </div>
 
               {/* Contact Info - Editable */}
               <div className="bg-gray-50 rounded-lg p-4 space-y-3">
@@ -1059,6 +1069,7 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
   const StatusIcon = statusConfig.icon
   const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'
   const isPhoneLead = lead.source === 'PHONE'
+  const isGoogleAdsLead = !!lead.gclid
   const details = getLeadDetails(lead)
 
   return (
@@ -1069,7 +1080,13 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
       }`}
     >
       {/* Source & Status Badge */}
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
+        {isGoogleAdsLead && (
+          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-100 to-sky-100 text-blue-700 border border-blue-200">
+            <MousePointerClick className="h-3 w-3" />
+            Google Ads
+          </div>
+        )}
         {isPhoneLead && (
           <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 border border-orange-200">
             <Phone className="h-3 w-3" />
