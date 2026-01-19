@@ -33,7 +33,10 @@ async function getClients() {
         },
       },
       contentItems: {
-        where: { status: { in: ['SCHEDULED', 'GENERATING'] } },
+        where: {
+          status: { in: ['SCHEDULED', 'GENERATING'] },
+          scheduledDate: { gte: new Date() },
+        },
         orderBy: { scheduledDate: 'asc' },
         take: 1,
         select: { scheduledDate: true, status: true },
