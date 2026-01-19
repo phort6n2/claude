@@ -31,6 +31,8 @@ export async function POST(request: NextRequest) {
   const results = {
     stuckGenerating: [] as string[],
     stuckPodcasts: [] as string[],
+    stuckVideos: [] as string[],
+    failedPodbeanRetries: [] as string[],
     missingEmbeds: [] as string[],
     errors: [] as string[],
   }
@@ -159,7 +161,122 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 3. Find published content that says podcast is embedded but missing podbeanPlayerUrl
+    // 3. Find videos stuck in PROCESSING for more than 2 hours
+    const stuckVideos = await prisma.video.findMany({
+      where: {
+        status: 'PROCESSING',
+        updatedAt: { lt: twoHoursAgo },
+      },
+      include: {
+        contentItem: true,
+      },
+      take: 10,
+    })
+
+    console.log(`[Recovery] Found ${stuckVideos.length} videos stuck in PROCESSING`)
+
+    for (const video of stuckVideos) {
+      try {
+        // Mark as FAILED so user can retry
+        await prisma.video.update({
+          where: { id: video.id },
+          data: {
+            status: 'FAILED',
+          },
+        })
+
+        // Update content item status
+        if (video.contentItem) {
+          await prisma.contentItem.update({
+            where: { id: video.contentItem.id },
+            data: {
+              shortVideoGenerated: false,
+              lastError: 'Video generation timed out after 2+ hours',
+            },
+          })
+        }
+
+        console.log(`[Recovery] Video ${video.id} marked as FAILED`)
+        results.stuckVideos.push(video.id)
+      } catch (err) {
+        const error = `Error recovering video ${video.id}: ${err}`
+        console.error(`[Recovery] ${error}`)
+        results.errors.push(error)
+      }
+    }
+
+    // 4. Find podcasts that have audio but failed to publish to Podbean
+    // (status is FAILED but audioUrl exists - these can be retried)
+    const failedPodbeanPodcasts = await prisma.podcast.findMany({
+      where: {
+        status: 'FAILED',
+        audioUrl: { not: '' },
+        podbeanPlayerUrl: null,
+      },
+      include: {
+        contentItem: {
+          include: {
+            blogPost: true,
+          },
+        },
+      },
+      take: 5,
+    })
+
+    console.log(`[Recovery] Found ${failedPodbeanPodcasts.length} podcasts with audio that failed to publish to Podbean`)
+
+    for (const podcast of failedPodbeanPodcasts) {
+      try {
+        if (!podcast.contentItem?.blogPost) {
+          console.log(`[Recovery] Podcast ${podcast.id} has no associated blog post, skipping`)
+          continue
+        }
+
+        console.log(`[Recovery] Attempting to re-publish podcast ${podcast.id} to Podbean`)
+
+        // Import and call publishToPodbean
+        const { publishToPodbean } = await import('@/lib/integrations/podbean')
+
+        const podbeanResult = await publishToPodbean({
+          title: podcast.contentItem.blogPost.title,
+          description: podcast.description || podcast.contentItem.blogPost.excerpt || '',
+          audioUrl: podcast.audioUrl,
+        })
+
+        await prisma.podcast.update({
+          where: { id: podcast.id },
+          data: {
+            podbeanEpisodeId: podbeanResult.episodeId,
+            podbeanUrl: podbeanResult.url,
+            podbeanPlayerUrl: podbeanResult.playerUrl,
+            status: 'PUBLISHED',
+          },
+        })
+
+        console.log(`[Recovery] Podcast ${podcast.id} published to Podbean successfully`)
+        results.failedPodbeanRetries.push(`${podcast.id}: published to Podbean`)
+
+        // Also re-run pipeline to embed podcast in blog
+        if (podcast.contentItem.status === 'PUBLISHED' && !podcast.contentItem.podcastAddedToPost) {
+          await prisma.contentItem.update({
+            where: { id: podcast.contentItem.id },
+            data: {
+              status: 'GENERATING',
+              pipelineStep: 'schema',
+            },
+          })
+          runContentPipeline(podcast.contentItem.id).catch(err => {
+            console.error(`[Recovery] Embed retry failed for ${podcast.contentItem!.id}:`, err)
+          })
+        }
+      } catch (err) {
+        const error = `Error retrying Podbean publish for podcast ${podcast.id}: ${err}`
+        console.error(`[Recovery] ${error}`)
+        results.errors.push(error)
+      }
+    }
+
+    // 6. Find published content that says podcast is embedded but missing podbeanPlayerUrl
     const missingPodcastUrl = await prisma.contentItem.findMany({
       where: {
         status: 'PUBLISHED',
@@ -215,7 +332,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 4. Find content published more than 1 hour ago that should have podcast but doesn't
+    // 7. Find content published more than 1 hour ago that should have podcast but doesn't
     const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1000)
     const needsPodcastEmbed = await prisma.contentItem.findMany({
       where: {
@@ -268,6 +385,8 @@ export async function POST(request: NextRequest) {
       summary: {
         stuckGeneratingRecovered: results.stuckGenerating.length,
         stuckPodcastsFixed: results.stuckPodcasts.length,
+        stuckVideosFixed: results.stuckVideos.length,
+        failedPodbeanRetried: results.failedPodbeanRetries.length,
         missingEmbedsFound: results.missingEmbeds.length,
         errors: results.errors.length,
       },

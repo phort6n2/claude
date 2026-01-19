@@ -152,13 +152,29 @@ export async function GET(request: NextRequest) {
     }> = []
 
     for (const client of clientsForToday) {
-      console.log(`[HourlyPublish] Processing client: ${client.businessName}`)
+      const clientTimezone = client.timezone || 'America/Los_Angeles'
+      console.log(`[HourlyPublish] Processing client: ${client.businessName} (timezone: ${clientTimezone})`)
 
       try {
+        // Validation: Check if client has service locations
+        if (!client.serviceLocations || client.serviceLocations.length === 0) {
+          results.push({
+            clientId: client.id,
+            clientName: client.businessName,
+            success: false,
+            error: 'No active service locations configured',
+          })
+          continue
+        }
+
+        // Validation: Check if WordPress is connected (optional but recommended)
+        if (!client.wordpressConnected) {
+          console.warn(`[HourlyPublish] Client ${client.businessName} has no WordPress connection - content will be marked REVIEW`)
+        }
+
         // Select next PAA + Location combination
-        // The selector automatically excludes combinations that have content TODAY
-        // This ensures we never duplicate content on the same day, but always try to create new content
-        const combination = await selectNextPAACombination(client.id)
+        // Pass timezone so "today" check matches client's local day
+        const combination = await selectNextPAACombination(client.id, clientTimezone)
         if (!combination) {
           // This means either: no PAAs/locations configured, OR all combinations already have content today
           results.push({

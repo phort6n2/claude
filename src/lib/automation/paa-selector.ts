@@ -5,6 +5,75 @@ import { prisma } from '@/lib/db'
 // 1000+: Standard PAAs (synced from global templates)
 const STANDARD_PAA_PRIORITY_START = 1000
 
+/**
+ * Get the start and end of "today" in a specific timezone.
+ * This ensures the PAA selector's "today" matches the client's local day,
+ * not just UTC day.
+ */
+function getTodayBounds(timezone?: string): { todayStart: Date; todayEnd: Date } {
+  const now = new Date()
+
+  if (!timezone) {
+    // Fall back to UTC
+    const todayStart = new Date(now)
+    todayStart.setUTCHours(0, 0, 0, 0)
+    const todayEnd = new Date(now)
+    todayEnd.setUTCHours(23, 59, 59, 999)
+    return { todayStart, todayEnd }
+  }
+
+  try {
+    // Get the current date in the client's timezone
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+    const localDateStr = formatter.format(now) // YYYY-MM-DD format
+
+    // Parse the local date and create UTC bounds
+    // We need to find when "today" in that timezone starts/ends in UTC
+    const [year, month, day] = localDateStr.split('-').map(Number)
+
+    // Create a date at midnight in the client's timezone
+    // This is tricky - we need to work backwards from the local time
+    const localMidnight = new Date(`${localDateStr}T00:00:00`)
+
+    // Get the offset for this timezone at midnight
+    const offsetFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      timeZoneName: 'shortOffset',
+    })
+    const parts = offsetFormatter.formatToParts(localMidnight)
+    const offsetPart = parts.find(p => p.type === 'timeZoneName')?.value || 'UTC'
+
+    // Parse offset like "GMT-7" or "GMT+5:30"
+    let offsetHours = 0
+    let offsetMinutes = 0
+    const offsetMatch = offsetPart.match(/GMT([+-])(\d+)(?::(\d+))?/)
+    if (offsetMatch) {
+      const sign = offsetMatch[1] === '+' ? 1 : -1
+      offsetHours = sign * parseInt(offsetMatch[2], 10)
+      offsetMinutes = sign * (parseInt(offsetMatch[3] || '0', 10))
+    }
+
+    // Calculate UTC time for local midnight
+    const todayStart = new Date(Date.UTC(year, month - 1, day, -offsetHours, -offsetMinutes, 0, 0))
+    const todayEnd = new Date(Date.UTC(year, month - 1, day, 23 - offsetHours, 59 - offsetMinutes, 59, 999))
+
+    return { todayStart, todayEnd }
+  } catch (err) {
+    // Fallback to UTC if timezone is invalid
+    console.warn(`[PAA Selector] Invalid timezone "${timezone}", falling back to UTC`)
+    const todayStart = new Date(now)
+    todayStart.setUTCHours(0, 0, 0, 0)
+    const todayEnd = new Date(now)
+    todayEnd.setUTCHours(23, 59, 59, 999)
+    return { todayStart, todayEnd }
+  }
+}
+
 interface SelectedPAA {
   id: string
   question: string
@@ -336,9 +405,13 @@ interface SelectedCombination {
  * This ensures: 10 PAAs × 4 locations = 40 unique posts before any repeat
  *
  * @param clientId - The client to select for
+ * @param timezone - Optional timezone for "today" calculation (defaults to UTC)
  * @returns The selected PAA + Location combination, or null if none available
  */
-export async function selectNextPAACombination(clientId: string): Promise<SelectedCombination | null> {
+export async function selectNextPAACombination(
+  clientId: string,
+  timezone?: string
+): Promise<SelectedCombination | null> {
   // First, ensure standard PAAs are synced to this client
   // This is important for new clients that may not have any PAAs yet
   await syncStandardPAAsToClient(clientId)
@@ -398,10 +471,8 @@ export async function selectNextPAACombination(clientId: string): Promise<Select
   })
 
   // Get combinations used TODAY (these are blocked - never duplicate same day)
-  const todayStart = new Date()
-  todayStart.setUTCHours(0, 0, 0, 0)
-  const todayEnd = new Date()
-  todayEnd.setUTCHours(23, 59, 59, 999)
+  // Use timezone if provided to ensure "today" matches client's local day
+  const { todayStart, todayEnd } = getTodayBounds(timezone)
 
   const todayCombinations = await prisma.contentItem.findMany({
     where: {
