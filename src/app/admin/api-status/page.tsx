@@ -223,7 +223,7 @@ export default function ApiStatusPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-white rounded-lg border p-4">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Configured</p>
@@ -236,7 +236,7 @@ export default function ApiStatusPage() {
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg border p-4">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Connected</p>
@@ -247,7 +247,7 @@ export default function ApiStatusPage() {
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg border p-4">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Errors</p>
@@ -265,7 +265,7 @@ export default function ApiStatusPage() {
         {integrations.map((integration) => (
           <div
             key={integration.key}
-            className={`bg-white rounded-lg border p-5 ${
+            className={`bg-white rounded-2xl border shadow-sm p-5 ${
               integration.status === 'error' ? 'border-red-200' :
               integration.status === 'connected' ? 'border-green-200' :
               'border-gray-200'
@@ -329,7 +329,7 @@ export default function ApiStatusPage() {
       </div>
 
       {/* Help Section */}
-      <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="mt-8 bg-blue-50 border border-blue-200 rounded-2xl shadow-sm p-4">
         <h3 className="font-medium text-blue-900 flex items-center gap-2">
           <AlertCircle className="h-5 w-5" />
           Need to configure an API?

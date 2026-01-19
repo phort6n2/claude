@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { after } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { publishToWordPress } from '@/lib/integrations/wordpress'
@@ -927,14 +928,66 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       (r: unknown) => (r as { success: boolean }).success !== false
     )
 
+    // FIX: Set PUBLISHED when blog is published (not SCHEDULED)
+    // This makes manual workflow consistent with automated workflow
+    // SCHEDULED should only be used for content waiting to be published
     await prisma.contentItem.update({
       where: { id },
       data: {
-        status: allSuccessful ? 'SCHEDULED' : 'FAILED',
-        pipelineStep: allSuccessful ? 'scheduled' : 'failed',
+        status: allSuccessful ? 'PUBLISHED' : 'FAILED',
+        pipelineStep: allSuccessful ? null : 'failed',
+        publishedAt: allSuccessful ? new Date() : undefined,
         lastError: allSuccessful ? null : JSON.stringify(results),
       },
     })
+
+    // Auto-generate video and embed media in background after blog is published
+    // Video needs blog URLs to be live for the YouTube description
+    if (allSuccessful && (publishClientBlog || publishWrhqBlog)) {
+      after(async () => {
+        // 1. Auto-generate video if not already generated
+        try {
+          const freshContent = await prisma.contentItem.findUnique({
+            where: { id },
+            include: { videos: true, blogPost: true },
+          })
+
+          const hasVideo = freshContent?.videos.some(v =>
+            v.videoType === 'SHORT' && (v.status === 'READY' || v.status === 'PROCESSING' || v.status === 'PUBLISHED')
+          )
+
+          if (!hasVideo && freshContent?.blogPost) {
+            console.log('[Publish] Auto-triggering video generation for content', id)
+            // Trigger video generation via the generate endpoint
+            const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+            const videoGenResponse = await fetch(`${baseUrl}/api/content/${id}/generate`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ generateShortVideo: true }),
+            })
+
+            if (videoGenResponse.ok) {
+              console.log('[Publish] Video generation started successfully')
+            } else {
+              console.error('[Publish] Video generation failed:', await videoGenResponse.text())
+            }
+          } else if (hasVideo) {
+            console.log('[Publish] Video already exists, skipping auto-generation')
+          }
+        } catch (videoError) {
+          console.error('[Publish] Auto video generation failed:', videoError)
+        }
+
+        // 2. Auto-embed media (schema, existing video/podcast)
+        try {
+          console.log('[Publish] Triggering auto-embed for content', id)
+          const { runEmbedAllMedia } = await import('@/lib/pipeline/embed-media')
+          await runEmbedAllMedia(id)
+        } catch (embedError) {
+          console.error('[Publish] Auto-embed failed:', embedError)
+        }
+      })
+    }
 
     return NextResponse.json({
       success: allSuccessful,

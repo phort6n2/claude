@@ -3,6 +3,7 @@ import { generateBlogPost, generateSocialCaption, generatePodcastScript, generat
 import { generateBothImages } from '../integrations/nano-banana'
 import { createPodcast, waitForPodcast } from '../integrations/autocontent'
 import { createShortVideo, waitForVideo } from '../integrations/creatify'
+import type { ScriptStyle, VisualStyle, ModelVersion } from '../integrations/creatify'
 import { postNowAndCheckStatus } from '../integrations/getlate'
 import { createPost, uploadMedia, updatePost, getPost } from '../integrations/wordpress'
 import { uploadFromUrl } from '../integrations/gcs'
@@ -1352,6 +1353,18 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           log(ctx, '✅ Podcast published to Podbean', { playerUrl: podbeanResult.playerUrl })
         } catch (podbeanError) {
           logError(ctx, 'Failed to publish podcast to Podbean after 3 attempts', podbeanError)
+          // FIX: Mark podcast as FAILED so we know Podbean publishing failed
+          // The podcast audio is READY (in GCS) but Podbean rejected it
+          // Recovery jobs can retry by checking for podcasts with audioUrl but no podbeanUrl
+          await prisma.podcast.update({
+            where: { id: podcastRecord.id },
+            data: {
+              status: 'FAILED',
+            },
+          })
+          await logAction(ctx, 'podcast_podbean_publish', 'FAILED', {
+            errorMessage: podbeanError instanceof Error ? podbeanError.message : 'Unknown error',
+          })
         }
 
         await prisma.contentItem.update({
@@ -1414,15 +1427,49 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         const blogPostForVideo = await prisma.blogPost.findUnique({ where: { contentItemId } })
         const blogUrlForVideo = blogPostForVideo?.wordpressUrl || null
 
+        // Build rich description for Creatify to use when generating the video script
+        // This provides context beyond what auto-scraping captures from the blog URL
+        // IMPORTANT: Emphasize "Call Now" CTA with phone number (not "Buy Now")
+        const creatifyDescription = [
+          `Question: ${contentItem.paaQuestion}`,
+          ``,
+          `${contentItem.client.businessName} in ${contentItem.client.city}, ${contentItem.client.state} answers this common auto glass question.`,
+          ``,
+          `Key points from the article:`,
+          `- Professional auto glass repair and replacement services`,
+          `- Serving ${contentItem.client.city} and surrounding areas`,
+          `- Expert technicians with quality materials`,
+          contentItem.client.serviceAreas?.length ? `- Service areas include: ${contentItem.client.serviceAreas.slice(0, 5).join(', ')}` : '',
+          ``,
+          `CALL TO ACTION: "Call Now" - NOT "Buy Now" or "Shop Now"`,
+          `Phone: ${contentItem.client.phone}`,
+          ``,
+          `Call ${contentItem.client.businessName} now at ${contentItem.client.phone} for a free quote!`,
+        ].filter(Boolean).join('\n')
+
+        // Use client-specific Creatify settings if configured, otherwise use defaults
+        const client = contentItem.client
         log(ctx, 'Creating short video job...', { blogUrl: blogUrlForVideo })
         const videoJob = await withTimeout(
           createShortVideo({
             title: blogResult!.title,
             blogUrl: blogUrlForVideo || undefined,
             imageUrls: imageUrls.map((i: { gcsUrl: string }) => i.gcsUrl),
+            logoUrl: client.logoUrl || undefined,
+            // Rich description to enhance video script generation
+            description: creatifyDescription,
+            templateId: client.creatifyTemplateId || undefined,
             aspectRatio: '9:16',
-            duration: 30,
-            scriptStyle: 'HowToV2',
+            duration: client.creatifyVideoLength || 30, // 15, 30, 45, or 60 seconds
+            targetPlatform: 'tiktok',
+            targetAudience: `car owners in ${client.city}, ${client.state} looking for auto glass services`,
+            // Client-configurable Creatify settings
+            scriptStyle: (client.creatifyScriptStyle as ScriptStyle) || 'HowToV2',
+            visualStyle: (client.creatifyVisualStyle as VisualStyle) || 'AvatarBubbleTemplate',
+            modelVersion: (client.creatifyModelVersion as ModelVersion) || 'standard',
+            avatarId: client.creatifyAvatarId || undefined,
+            voiceId: client.creatifyVoiceId || undefined,
+            noCta: client.creatifyNoCta || false,
           }),
           TIMEOUTS.VIDEO_CREATE,
           'Video job creation'
@@ -1518,7 +1565,25 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           })
           try {
             const clientBlogPost = await prisma.blogPost.findUnique({ where: { contentItemId } })
-            const podcast = await prisma.podcast.findFirst({ where: { contentItemId } })
+
+            // Wait for podcast to have Podbean URL (runs in parallel, may not be done yet)
+            // This ensures the YouTube description includes the podcast link
+            let podcast = await prisma.podcast.findFirst({ where: { contentItemId } })
+            if (podcast && !podcast.podbeanUrl && podcast.status !== 'FAILED') {
+              log(ctx, 'Waiting for podcast Podbean URL before YouTube upload...')
+              const podcastWaitStart = Date.now()
+              const PODCAST_WAIT_TIMEOUT = 120000 // 2 minutes max wait
+              while (podcast && !podcast.podbeanUrl && Date.now() - podcastWaitStart < PODCAST_WAIT_TIMEOUT) {
+                await new Promise(resolve => setTimeout(resolve, 5000)) // Check every 5 seconds
+                podcast = await prisma.podcast.findFirst({ where: { contentItemId } })
+                if (!podcast || podcast.status === 'FAILED') break
+              }
+              if (podcast?.podbeanUrl) {
+                log(ctx, 'Podcast Podbean URL now available')
+              } else {
+                log(ctx, 'Podcast Podbean URL not available after waiting, proceeding without it')
+              }
+            }
 
             const youtubeResult = await withTimeout(
               uploadVideoFromUrl(gcsResult.url, {
@@ -1530,6 +1595,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
                   googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
                   wrhqDirectoryUrl: contentItem.client.wrhqDirectoryUrl || undefined,
                   podbeanUrl: podcast?.podbeanUrl || undefined,
+                  servicePageUrl: contentItem.client.ctaUrl || undefined,
                   businessName: contentItem.client.businessName,
                   city: contentItem.client.city,
                   state: contentItem.client.state,
@@ -1576,9 +1642,9 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           }
         }
 
-        // Post to WRHQ TikTok and Instagram via Late
+        // Post to WRHQ TikTok, Instagram, and Facebook via Late
         const wrhqVideoAccountIds = await getWRHQLateAccountIds()
-        const VIDEO_SOCIAL_PLATFORMS = ['tiktok', 'instagram'] as const
+        const VIDEO_SOCIAL_PLATFORMS = ['tiktok', 'instagram', 'facebook'] as const
 
         for (const platform of VIDEO_SOCIAL_PLATFORMS) {
           const accountId = wrhqVideoAccountIds[platform]
@@ -1603,7 +1669,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             await prisma.wRHQSocialPost.create({
               data: {
                 contentItemId,
-                platform: platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM',
+                platform: platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM' | 'FACEBOOK',
                 caption: videoCaption,
                 hashtags: ['AutoGlass', 'WindshieldRepair', contentItem.client.city.replace(/\s+/g, ''), 'CarCare'],
                 mediaType: 'video',
@@ -1624,7 +1690,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
               await prisma.wRHQSocialPost.create({
                 data: {
                   contentItemId,
-                  platform: platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM',
+                  platform: platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM' | 'FACEBOOK',
                   caption: videoCaption,
                   hashtags: [],
                   mediaType: 'video',

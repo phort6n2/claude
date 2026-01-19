@@ -311,7 +311,7 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
   const totalRequired = 5
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
       {/* Header */}
       <div className="bg-white border-b px-6 py-4">
         <div className="flex items-center gap-4 mb-4">
@@ -441,7 +441,7 @@ export default function ContentReviewPage({ params }: { params: Promise<{ id: st
             >
               Close (ESC)
             </button>
-            <div className="bg-white rounded-lg overflow-hidden shadow-2xl">
+            <div className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-2xl">
               <img
                 src={lightboxImage.url}
                 alt={lightboxImage.alt}
@@ -485,6 +485,10 @@ function ReviewTab({
   } | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [embedResult, setEmbedResult] = useState<{
+    embedded: string[]
+    skipped: { shortVideo?: string | null; podcast?: string | null }
+  } | null>(null)
 
   // Collapsed state for sections - auto-collapse completed sections
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
@@ -748,6 +752,7 @@ function ReviewTab({
   async function embedAllMedia() {
     setEmbedding(true)
     setError(null)
+    setEmbedResult(null)
     try {
       const response = await fetch(`/api/content/${content.id}/embed-all-media`, {
         method: 'POST',
@@ -756,7 +761,23 @@ function ReviewTab({
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to embed media')
+        // Include details in error message if available
+        let errorMessage = data.error || 'Failed to embed media'
+        if (data.details) {
+          const detailsStr = Object.entries(data.details)
+            .map(([k, v]) => `${k}: ${v}`)
+            .join(', ')
+          errorMessage = `${errorMessage} (${detailsStr})`
+        }
+        throw new Error(errorMessage)
+      }
+
+      // Store the embed result to show what was embedded/skipped
+      if (data.embedded || data.skipped) {
+        setEmbedResult({
+          embedded: data.embedded || [],
+          skipped: data.skipped || {},
+        })
       }
 
       // Refresh the page data
@@ -811,7 +832,7 @@ function ReviewTab({
       )}
 
       {/* Summary Header - Progress Overview */}
-      <div className="bg-white rounded-lg shadow-sm border p-4">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-gray-800">Progress Overview</h3>
           <span className="text-sm text-gray-500">
@@ -980,7 +1001,7 @@ function ReviewTab({
       {/* ============================================ */}
       {/* STEP 1: Client Blog - Review & Publish */}
       {/* ============================================ */}
-      <section className="bg-white rounded-lg shadow-sm border overflow-hidden">
+      <section className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
         <div
           className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep1Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
           onClick={() => toggleSection('step1')}
@@ -1162,7 +1183,7 @@ function ReviewTab({
       {/* ============================================ */}
       {/* STEP 2: WRHQ Blog - Generate & Publish */}
       {/* ============================================ */}
-      <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
+      <section className={`bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
         <div
           className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep2Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
           onClick={() => toggleSection('step2')}
@@ -1250,7 +1271,7 @@ function ReviewTab({
       {/* ============================================ */}
       {/* STEP 3: Social Media - Generate & Publish */}
       {/* ============================================ */}
-      <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
+      <section className={`bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
         <div
           className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep3Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
           onClick={() => toggleSection('step3')}
@@ -1409,7 +1430,7 @@ function ReviewTab({
       {/* ============================================ */}
       {/* STEP 4: Podcast - Generate, Publish & Embed */}
       {/* ============================================ */}
-      <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
+      <section className={`bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
         <div
           className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep4Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
           onClick={() => toggleSection('step4')}
@@ -1561,7 +1582,7 @@ function ReviewTab({
       {/* ============================================ */}
       {/* STEP 5: Short Video - Generate & Publish to Video Platforms */}
       {/* ============================================ */}
-      <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
+      <section className={`bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
         <div
           className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep5Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
           onClick={() => toggleSection('step5')}
@@ -1623,7 +1644,7 @@ function ReviewTab({
                   )}
                   {content.shortVideoGenerated ? 'Regenerate' : 'Generate'}
                 </button>
-                {content.shortVideo?.status === 'READY' && content.videoSocialPosts.length === 0 && (
+                {content.shortVideo?.status === 'READY' && content.videoSocialPosts.length === 0 && content.wrhqVideoSocialPosts.length === 0 && (
                   <button
                     onClick={(e) => { e.stopPropagation(); regenerateContent('videoSocial'); }}
                     disabled={generating === 'videoSocial'}
@@ -1774,6 +1795,22 @@ function ReviewTab({
                     __html: content.shortVideoDescription
                   }}
                 />
+              </div>
+            )}
+
+            {/* WRHQ Video Platform Info - show when video is ready but no posts generated yet */}
+            {content.shortVideo?.status === 'READY' && content.videoSocialPosts.length === 0 && content.wrhqVideoSocialPosts.length === 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-medium text-blue-900 mb-2">Video Social Posts</h4>
+                <p className="text-sm text-blue-700 mb-3">
+                  Videos will be posted to <strong>WRHQ social accounts</strong> (YouTube, TikTok, Instagram, Facebook).
+                </p>
+                <p className="text-sm text-blue-600">
+                  Click <strong>&quot;Generate Posts&quot;</strong> to create video captions for each platform, then <strong>&quot;Publish WRHQ&quot;</strong> to post them.
+                </p>
+                <p className="text-xs text-blue-500 mt-2">
+                  Make sure WRHQ Late account IDs are configured in Settings → WRHQ.
+                </p>
               </div>
             )}
 
@@ -1928,7 +1965,7 @@ function ReviewTab({
       {/* ============================================ */}
       {/* STEP 6: Long-form Video - Upload to WRHQ YouTube */}
       {/* ============================================ */}
-      <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
+      <section className={`bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
         <div className={`px-6 py-4 flex items-center justify-between ${content.longVideoUploaded ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}>
           <div className="flex items-center gap-4">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${content.longVideoUploaded ? 'bg-green-500 text-white' : 'bg-red-100 text-red-700'}`}>
@@ -2014,7 +2051,7 @@ function ReviewTab({
       {/* ============================================ */}
       {/* STEP 7: Schema Markup - Generate JSON-LD structured data */}
       {/* ============================================ */}
-      <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
+      <section className={`bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
         <div
           className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep7Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
           onClick={() => toggleSection('step7')}
@@ -2271,7 +2308,7 @@ function ReviewTab({
       {/* ============================================ */}
       {/* STEP 8: Embed All Media - Add embeds to blog */}
       {/* ============================================ */}
-      <section className={`bg-white rounded-lg shadow-sm border overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
+      <section className={`bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden ${!isStep1Complete ? 'opacity-60' : ''}`}>
         <div
           className={`px-6 py-4 flex items-center justify-between cursor-pointer ${isStep8Complete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b'}`}
           onClick={() => toggleSection('step8')}
@@ -2381,6 +2418,35 @@ function ReviewTab({
                   <Layers className={`h-5 w-5 ${embedding ? 'animate-pulse' : ''}`} />
                   {embedding ? 'Embedding Media...' : 'Embed All Media'}
                 </button>
+
+                {/* Show embed result */}
+                {embedResult && (
+                  <div className="mt-4 space-y-3">
+                    {embedResult.embedded.length > 0 && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <h5 className="font-medium text-green-900 text-sm">Successfully embedded:</h5>
+                        <ul className="text-sm text-green-700 mt-1">
+                          {embedResult.embedded.map((item, i) => (
+                            <li key={i}>• {item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {(embedResult.skipped.shortVideo || embedResult.skipped.podcast) && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        <h5 className="font-medium text-amber-900 text-sm">Skipped (not ready):</h5>
+                        <ul className="text-sm text-amber-700 mt-1 space-y-1">
+                          {embedResult.skipped.shortVideo && (
+                            <li>• Short Video: {embedResult.skipped.shortVideo}</li>
+                          )}
+                          {embedResult.skipped.podcast && (
+                            <li>• Podcast: {embedResult.skipped.podcast}</li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -2704,7 +2770,7 @@ function PublishedTab({ content, onUpdate }: { content: ContentItem; onUpdate: (
   return (
     <div className="space-y-6 max-w-3xl">
       {/* Client Blog */}
-      <section className="bg-white rounded-lg shadow-sm border p-6">
+      <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold mb-4">Client Blog Post</h2>
         {content.clientBlogUrl ? (
           <a
@@ -2723,7 +2789,7 @@ function PublishedTab({ content, onUpdate }: { content: ContentItem; onUpdate: (
 
       {/* WRHQ Blog */}
       {content.wrhqBlogPublished && (
-        <section className="bg-white rounded-lg shadow-sm border p-6">
+        <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold mb-4">WRHQ Blog Post</h2>
           {content.wrhqBlogUrl ? (
             <a
@@ -2743,7 +2809,7 @@ function PublishedTab({ content, onUpdate }: { content: ContentItem; onUpdate: (
 
       {/* Client Social Posts Status */}
       {content.socialPosts.length > 0 && (
-        <section className="bg-white rounded-lg shadow-sm border p-6">
+        <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold mb-4">Client Social Posts</h2>
           <div className="space-y-2">
             {content.socialPosts.map((post) => (
@@ -2780,7 +2846,7 @@ function PublishedTab({ content, onUpdate }: { content: ContentItem; onUpdate: (
 
       {/* WRHQ Social Posts Status */}
       {content.wrhqSocialPosts.length > 0 && (
-        <section className="bg-white rounded-lg shadow-sm border p-6">
+        <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <span className="text-xs bg-purple-500 text-white px-2 py-0.5 rounded">WRHQ</span>
             Social Posts
@@ -2820,7 +2886,7 @@ function PublishedTab({ content, onUpdate }: { content: ContentItem; onUpdate: (
 
       {/* Client Video Social Posts Status */}
       {content.videoSocialPosts.length > 0 && (
-        <section className="bg-white rounded-lg shadow-sm border p-6">
+        <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Video className="h-5 w-5 text-purple-500" />
             Client Video Posts
@@ -2861,7 +2927,7 @@ function PublishedTab({ content, onUpdate }: { content: ContentItem; onUpdate: (
 
       {/* WRHQ Video Social Posts Status */}
       {content.wrhqVideoSocialPosts.length > 0 && (
-        <section className="bg-white rounded-lg shadow-sm border p-6">
+        <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Video className="h-5 w-5 text-purple-500" />
             <span className="text-xs bg-purple-500 text-white px-2 py-0.5 rounded">WRHQ</span>
@@ -2903,7 +2969,7 @@ function PublishedTab({ content, onUpdate }: { content: ContentItem; onUpdate: (
 
       {/* Long-form Video */}
       {content.longformVideoUrl && (
-        <section className="bg-white rounded-lg shadow-sm border p-6">
+        <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Play className="h-5 w-5 text-red-500" />
             Long-form Video (YouTube)
@@ -2937,7 +3003,7 @@ function PublishedTab({ content, onUpdate }: { content: ContentItem; onUpdate: (
 
       {/* Podcast */}
       {content.podcast?.status === 'PUBLISHED' && content.podcast.podbeanUrl && (
-        <section className="bg-white rounded-lg shadow-sm border p-6">
+        <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Mic className="h-5 w-5 text-orange-500" />
             Podcast Episode
@@ -3029,7 +3095,7 @@ function SocialPostPreview({
   // Facebook-style card
   if (post.platform === 'FACEBOOK') {
     return (
-      <div className={`rounded-lg overflow-hidden border shadow-sm bg-white ${isWRHQ ? 'ring-2 ring-purple-300' : ''}`}>
+      <div className={`rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white ${isWRHQ ? 'ring-2 ring-purple-300' : ''}`}>
         {/* Facebook Header */}
         <div className="px-4 py-3 flex items-center justify-between border-b">
           <div className="flex items-center gap-3">
@@ -3072,7 +3138,7 @@ function SocialPostPreview({
   // Instagram-style card
   if (post.platform === 'INSTAGRAM') {
     return (
-      <div className={`rounded-lg overflow-hidden border shadow-sm bg-white ${isWRHQ ? 'ring-2 ring-purple-300' : ''}`}>
+      <div className={`rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white ${isWRHQ ? 'ring-2 ring-purple-300' : ''}`}>
         {/* Instagram Header */}
         <div className="px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -3119,7 +3185,7 @@ function SocialPostPreview({
   // LinkedIn-style card
   if (post.platform === 'LINKEDIN') {
     return (
-      <div className={`rounded-lg overflow-hidden border shadow-sm bg-white ${isWRHQ ? 'ring-2 ring-purple-300' : ''}`}>
+      <div className={`rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white ${isWRHQ ? 'ring-2 ring-purple-300' : ''}`}>
         {/* LinkedIn Header */}
         <div className="px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -3208,7 +3274,7 @@ function SocialPostPreview({
   // Google Business Profile-style card
   if (post.platform === 'GBP') {
     return (
-      <div className={`rounded-lg overflow-hidden border shadow-sm bg-white ${isWRHQ ? 'ring-2 ring-purple-300' : ''}`}>
+      <div className={`rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white ${isWRHQ ? 'ring-2 ring-purple-300' : ''}`}>
         {/* GBP Header */}
         <div className="px-4 py-3 flex items-center gap-3 bg-white border-b">
           <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-white font-bold">
@@ -3254,7 +3320,7 @@ function SocialPostPreview({
   const isDark = post.platform === 'TIKTOK'
 
   return (
-    <div className={`rounded-lg overflow-hidden border shadow-sm ${isDark ? 'bg-gray-900' : 'bg-white'} ${isWRHQ ? 'ring-2 ring-purple-300' : ''}`}>
+    <div className={`rounded-2xl overflow-hidden border border-gray-200 shadow-sm ${isDark ? 'bg-gray-900' : 'bg-white'} ${isWRHQ ? 'ring-2 ring-purple-300' : ''}`}>
       <div className={`px-4 py-3 flex items-center justify-between ${config.bg}`}>
         <div className="flex items-center gap-2">
           <span className="text-xl">{PLATFORM_ICONS[post.platform] || '📱'}</span>

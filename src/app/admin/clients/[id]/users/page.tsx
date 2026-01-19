@@ -197,7 +197,7 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
       </div>
     )
@@ -205,7 +205,7 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
           <p className="text-red-600">{error}</p>
@@ -218,13 +218,13 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
       <div className="max-w-4xl mx-auto p-6">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <Link
             href={`/admin/clients/${id}`}
-            className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-200 rounded-full transition-colors"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
@@ -235,14 +235,14 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
         </div>
 
         {/* Info banner */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6">
           <p className="text-sm text-blue-800">
             Portal users can log in at <strong>glassleads.app/portal/login</strong> to view and manage leads for this client.
           </p>
         </div>
 
         {/* Add User Button/Form */}
-        <div className="bg-white rounded-lg border p-6 mb-6">
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
           {showAddForm ? (
             <form onSubmit={handleAddUser}>
               <h3 className="font-semibold text-gray-900 mb-4">Add Portal User</h3>
@@ -333,7 +333,7 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
         </div>
 
         {/* Users List */}
-        <div className="bg-white rounded-lg border overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
           {users.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
               <User className="h-12 w-12 mx-auto mb-4 text-gray-300" />

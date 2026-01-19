@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/db'
+import { prisma, withRetry } from '@/lib/db'
 import { encrypt, decrypt } from '@/lib/encryption'
 
 // API keys that should be stored encrypted
@@ -41,9 +41,11 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const settings = await prisma.setting.findMany({
-    where: { key: { in: ALL_KEYS } },
-  })
+  const settings = await withRetry(() =>
+    prisma.setting.findMany({
+      where: { key: { in: ALL_KEYS } },
+    })
+  )
 
   // Build response with masked values for sensitive keys
   const result: Record<string, { value: string; masked: string; hasValue: boolean }> = {}

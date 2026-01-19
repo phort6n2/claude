@@ -121,7 +121,7 @@ const defaultData: ClientFormData = {
   ctaUrl: '',
   creatifyTemplateId: '',
   preferredPublishTime: '09:00',
-  timezone: 'America/Los_Angeles',
+  timezone: 'America/Denver',
   socialPlatforms: [],
   socialAccountIds: {},
   podbeanPodcastId: '',
@@ -147,8 +147,8 @@ const socialPlatformOptions = [
 ]
 
 const timezones = [
-  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
   { value: 'America/Denver', label: 'Mountain Time (MT)' },
+  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
   { value: 'America/Chicago', label: 'Central Time (CT)' },
   { value: 'America/New_York', label: 'Eastern Time (ET)' },
 ]

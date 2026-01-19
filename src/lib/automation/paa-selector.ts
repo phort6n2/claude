@@ -5,6 +5,75 @@ import { prisma } from '@/lib/db'
 // 1000+: Standard PAAs (synced from global templates)
 const STANDARD_PAA_PRIORITY_START = 1000
 
+/**
+ * Get the start and end of "today" in a specific timezone.
+ * This ensures the PAA selector's "today" matches the client's local day,
+ * not just UTC day.
+ */
+function getTodayBounds(timezone?: string): { todayStart: Date; todayEnd: Date } {
+  const now = new Date()
+
+  if (!timezone) {
+    // Fall back to UTC
+    const todayStart = new Date(now)
+    todayStart.setUTCHours(0, 0, 0, 0)
+    const todayEnd = new Date(now)
+    todayEnd.setUTCHours(23, 59, 59, 999)
+    return { todayStart, todayEnd }
+  }
+
+  try {
+    // Get the current date in the client's timezone
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+    const localDateStr = formatter.format(now) // YYYY-MM-DD format
+
+    // Parse the local date and create UTC bounds
+    // We need to find when "today" in that timezone starts/ends in UTC
+    const [year, month, day] = localDateStr.split('-').map(Number)
+
+    // Create a date at midnight in the client's timezone
+    // This is tricky - we need to work backwards from the local time
+    const localMidnight = new Date(`${localDateStr}T00:00:00`)
+
+    // Get the offset for this timezone at midnight
+    const offsetFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      timeZoneName: 'shortOffset',
+    })
+    const parts = offsetFormatter.formatToParts(localMidnight)
+    const offsetPart = parts.find(p => p.type === 'timeZoneName')?.value || 'UTC'
+
+    // Parse offset like "GMT-7" or "GMT+5:30"
+    let offsetHours = 0
+    let offsetMinutes = 0
+    const offsetMatch = offsetPart.match(/GMT([+-])(\d+)(?::(\d+))?/)
+    if (offsetMatch) {
+      const sign = offsetMatch[1] === '+' ? 1 : -1
+      offsetHours = sign * parseInt(offsetMatch[2], 10)
+      offsetMinutes = sign * (parseInt(offsetMatch[3] || '0', 10))
+    }
+
+    // Calculate UTC time for local midnight
+    const todayStart = new Date(Date.UTC(year, month - 1, day, -offsetHours, -offsetMinutes, 0, 0))
+    const todayEnd = new Date(Date.UTC(year, month - 1, day, 23 - offsetHours, 59 - offsetMinutes, 59, 999))
+
+    return { todayStart, todayEnd }
+  } catch (err) {
+    // Fallback to UTC if timezone is invalid
+    console.warn(`[PAA Selector] Invalid timezone "${timezone}", falling back to UTC`)
+    const todayStart = new Date(now)
+    todayStart.setUTCHours(0, 0, 0, 0)
+    const todayEnd = new Date(now)
+    todayEnd.setUTCHours(23, 59, 59, 999)
+    return { todayStart, todayEnd }
+  }
+}
+
 interface SelectedPAA {
   id: string
   question: string
@@ -280,6 +349,17 @@ export async function getPAAQueueStatus(clientId: string): Promise<{
 }
 
 /**
+ * Properly capitalize a string (e.g., "OREGON" -> "Oregon", "new york" -> "New York")
+ */
+function toTitleCase(str: string): string {
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+/**
  * Render a PAA question template with location placeholders.
  *
  * @param questionTemplate - The PAA question with placeholders like {location}, {city}, {state}
@@ -290,15 +370,20 @@ export function renderPAAQuestion(
   questionTemplate: string,
   location: { city: string; state: string; neighborhood?: string | null }
 ): string {
-  const locationString = location.neighborhood
-    ? `${location.neighborhood}, ${location.city}, ${location.state}`
-    : `${location.city}, ${location.state}`
+  // Normalize city and state to Title Case
+  const city = toTitleCase(location.city)
+  const state = toTitleCase(location.state)
+  const neighborhood = location.neighborhood ? toTitleCase(location.neighborhood) : null
+
+  const locationString = neighborhood
+    ? `${neighborhood}, ${city}, ${state}`
+    : `${city}, ${state}`
 
   return questionTemplate
     .replace(/\{location\}/gi, locationString)
-    .replace(/\{city\}/gi, location.city)
-    .replace(/\{state\}/gi, location.state)
-    .replace(/\{neighborhood\}/gi, location.neighborhood || location.city)
+    .replace(/\{city\}/gi, city)
+    .replace(/\{state\}/gi, state)
+    .replace(/\{neighborhood\}/gi, neighborhood || city)
 }
 
 // ============================================
@@ -336,9 +421,17 @@ interface SelectedCombination {
  * This ensures: 10 PAAs × 4 locations = 40 unique posts before any repeat
  *
  * @param clientId - The client to select for
+ * @param timezone - Optional timezone for "today" calculation (defaults to UTC)
  * @returns The selected PAA + Location combination, or null if none available
  */
-export async function selectNextPAACombination(clientId: string): Promise<SelectedCombination | null> {
+export async function selectNextPAACombination(
+  clientId: string,
+  timezone?: string
+): Promise<SelectedCombination | null> {
+  // First, ensure standard PAAs are synced to this client
+  // This is important for new clients that may not have any PAAs yet
+  await syncStandardPAAsToClient(clientId)
+
   // Get all active PAAs for this client (custom first by priority, then standard)
   const allPaas = await prisma.clientPAA.findMany({
     where: {
@@ -393,7 +486,35 @@ export async function selectNextPAACombination(clientId: string): Promise<Select
     },
   })
 
-  // Get all used combinations (PAA + Location pairs that have content)
+  // Get combinations used TODAY (these are blocked - never duplicate same day)
+  // Use timezone if provided to ensure "today" matches client's local day
+  const { todayStart, todayEnd } = getTodayBounds(timezone)
+
+  const todayCombinations = await prisma.contentItem.findMany({
+    where: {
+      clientId,
+      clientPAAId: { not: null },
+      serviceLocationId: { not: null },
+      scheduledDate: {
+        gte: todayStart,
+        lte: todayEnd,
+      },
+      // Only block on active content, not FAILED
+      status: {
+        in: ['GENERATING', 'SCHEDULED', 'PUBLISHED', 'REVIEW'],
+      },
+    },
+    select: {
+      clientPAAId: true,
+      serviceLocationId: true,
+    },
+  })
+
+  const todaySet = new Set(
+    todayCombinations.map(c => `${c.clientPAAId}:${c.serviceLocationId}`)
+  )
+
+  // Get all used combinations (PAA + Location pairs that have content - all time)
   const usedCombinations = await prisma.contentItem.findMany({
     where: {
       clientId,
@@ -429,14 +550,22 @@ export async function selectNextPAACombination(clientId: string): Promise<Select
     }
   }
 
-  // Find unused combinations
-  let unusedCombinations = allCombinations.filter(c => !usedSet.has(c.key))
+  // First: exclude combinations used TODAY (never duplicate same day)
+  const availableToday = allCombinations.filter(c => !todaySet.has(c.key))
 
-  // If all combinations used, reset by treating all as available
+  if (availableToday.length === 0) {
+    console.log(`[PAA Selector] All ${allCombinations.length} combinations already have content today - nothing available`)
+    return null
+  }
+
+  // From today's available, find ones not used all-time
+  let unusedCombinations = availableToday.filter(c => !usedSet.has(c.key))
+
+  // If all available-today combinations have been used historically, recycle
   const isRecycling = unusedCombinations.length === 0
   if (isRecycling) {
-    console.log(`[PAA Selector] All ${allCombinations.length} combinations used, starting new cycle`)
-    unusedCombinations = allCombinations
+    console.log(`[PAA Selector] All historically unused combinations have content today, recycling from ${availableToday.length} available`)
+    unusedCombinations = availableToday
   }
 
   // Sort unused combinations to maximize variety:

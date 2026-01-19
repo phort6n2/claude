@@ -6,6 +6,7 @@ import { generateBothImages } from '@/lib/integrations/nano-banana'
 import { uploadFromUrl } from '@/lib/integrations/gcs'
 import { getSetting, WRHQ_SETTINGS_KEYS } from '@/lib/settings'
 import { ImageType, SocialPlatform } from '@prisma/client'
+import type { ScriptStyle, VisualStyle, ModelVersion } from '@/lib/integrations/creatify'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -91,7 +92,17 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       })
     }
 
-    const results: Record<string, { success: boolean; error?: string; title?: string; count?: number; status?: string; jobId?: string }> = {}
+    const results: Record<string, {
+      success: boolean
+      error?: string
+      title?: string
+      count?: number
+      status?: string
+      jobId?: string
+      clientPlatforms?: string[]
+      wrhqPlatforms?: string[]
+      checkedWrhqSettings?: string[]
+    }> = {}
 
     // Generate client blog post
     if (generateBlog) {
@@ -819,7 +830,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         //
         // Flow:
         // 1. Create link from blog URL (scrapes content)
-        // 2. Optionally update link with logo/images
+        // 2. Update link with logo/images AND rich description for better script generation
         // 3. Create video with video_length: 30
         //
         // Fallback to lipsync if no blog URL available (script limited to ~500 chars)
@@ -829,23 +840,51 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           .trim()
           .substring(0, 500)       // Limit to ~30 seconds of speech (fallback only)
 
+        // Build rich description for Creatify to use when generating the video script
+        // This provides context beyond what auto-scraping captures from the blog URL
+        // IMPORTANT: Emphasize "Call Now" CTA with phone number (not "Buy Now")
+        const creatifyDescription = [
+          `Question: ${contentItem.paaQuestion}`,
+          ``,
+          `${contentItem.client.businessName} in ${contentCity}, ${contentState} answers this common auto glass question.`,
+          ``,
+          `Key points from the article:`,
+          `- Professional auto glass repair and replacement services`,
+          `- Serving ${contentCity} and surrounding areas`,
+          `- Expert technicians with quality materials`,
+          contentItem.client.serviceAreas?.length ? `- Service areas include: ${contentItem.client.serviceAreas.slice(0, 5).join(', ')}` : '',
+          ``,
+          `CALL TO ACTION: "Call Now" - NOT "Buy Now" or "Shop Now"`,
+          `Phone: ${contentItem.client.phone}`,
+          ``,
+          `Call ${contentItem.client.businessName} now at ${contentItem.client.phone} for a free quote!`,
+        ].filter(Boolean).join('\n')
+
+        // Use client-specific Creatify settings if configured, otherwise use defaults
+        const client = contentItem.client
         const videoJob = await createShortVideo({
           blogUrl: blogUrl || undefined,
           script: cleanScript, // Fallback if blogUrl fails
           title: contentItem.blogPost.title,
           imageUrls,
-          logoUrl: contentItem.client.logoUrl || undefined,
+          logoUrl: client.logoUrl || undefined,
+          // Rich description to enhance video script generation
+          description: creatifyDescription,
           // DISABLED: Custom templates don't support video_length parameter
           // Using URL-to-Video API instead which properly supports video_length: 30
-          templateId: undefined,
+          templateId: client.creatifyTemplateId || undefined,
           autoPopulateFromBlog: false,
           aspectRatio: '9:16',
-          duration: 30, // This maps to video_length: 30 in the URL-to-Video API
+          duration: client.creatifyVideoLength || 30, // 15, 30, 45, or 60 seconds
           targetPlatform: 'tiktok',
           targetAudience: `car owners in ${contentCity}, ${contentState} looking for auto glass services`,
-          scriptStyle: 'DiscoveryWriter', // API default
-          visualStyle: 'AvatarBubbleTemplate', // API default - avatar bubble style
-          modelVersion: 'standard', // Cheapest option (aurora models cost more)
+          // Client-configurable Creatify settings
+          scriptStyle: (client.creatifyScriptStyle as ScriptStyle) || 'DiscoveryWriter',
+          visualStyle: (client.creatifyVisualStyle as VisualStyle) || 'AvatarBubbleTemplate',
+          modelVersion: (client.creatifyModelVersion as ModelVersion) || 'standard',
+          avatarId: client.creatifyAvatarId || undefined,
+          voiceId: client.creatifyVoiceId || undefined,
+          noCta: client.creatifyNoCta || false,
         })
 
         // Generate video description
@@ -857,6 +896,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             state: contentState,
             paaQuestion: contentItem.paaQuestion,
             blogPostUrl: blogUrl,
+            servicePageUrl: contentItem.client.ctaUrl || undefined,
             googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
           })
         } catch (descError) {
@@ -924,6 +964,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           state: contentState,
           paaQuestion: contentItem.paaQuestion,
           blogPostUrl: blogUrl,
+          servicePageUrl: contentItem.client.ctaUrl || undefined,
           googleMapsUrl: contentItem.client.googleMapsUrl || undefined,
         })
 
@@ -1158,9 +1199,28 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             totalPostsCreated += wrhqVideoPostsData.length
           }
 
-          results.videoSocial = { success: true, count: totalPostsCreated }
+          results.videoSocial = {
+            success: true,
+            count: totalPostsCreated,
+            clientPlatforms: clientVideoPlatforms,
+            wrhqPlatforms: wrhqVideoPlatforms,
+          }
         } else {
-          results.videoSocial = { success: false, error: shortVideo?.videoUrl ? 'No video platforms configured for client or WRHQ' : 'Video not ready yet' }
+          // Provide detailed feedback about what's missing
+          const missingInfo: string[] = []
+          if (!shortVideo?.videoUrl) {
+            missingInfo.push('Video not ready yet (no videoUrl)')
+          }
+          if (clientVideoPlatforms.length === 0 && wrhqVideoPlatforms.length === 0) {
+            missingInfo.push('No video platforms configured. Check Settings > WRHQ for YouTube, TikTok, Instagram, and Facebook Late account IDs.')
+          }
+          results.videoSocial = {
+            success: false,
+            error: missingInfo.join('. '),
+            clientPlatforms: clientVideoPlatforms,
+            wrhqPlatforms: wrhqVideoPlatforms,
+            checkedWrhqSettings: ['WRHQ_LATE_YOUTUBE_ID', 'WRHQ_LATE_TIKTOK_ID', 'WRHQ_LATE_INSTAGRAM_ID', 'WRHQ_LATE_FACEBOOK_ID'],
+          }
         }
       } catch (error) {
         console.error('Video social generation error:', error)

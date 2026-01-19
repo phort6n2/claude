@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { runContentPipeline } from '@/lib/pipeline/content-pipeline'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
@@ -96,7 +97,13 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Content generation is now manual - user clicks "Generate" button on review page
+    // If triggerGeneration is true, start the content pipeline immediately
+    if (data.triggerGeneration && contentItem.id) {
+      // Run pipeline in background (don't await)
+      runContentPipeline(contentItem.id).catch((err) => {
+        console.error(`[Content API] Pipeline failed for ${contentItem.id}:`, err)
+      })
+    }
 
     return NextResponse.json(contentItem, { status: 201 })
   } catch (error) {

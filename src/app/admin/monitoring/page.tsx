@@ -20,6 +20,11 @@ import {
   List,
   CalendarDays,
   Timer,
+  Zap,
+  Eye,
+  ExternalLink,
+  PlayCircle,
+  PauseCircle,
 } from 'lucide-react'
 
 interface CronRun {
@@ -167,12 +172,263 @@ function getActionLabel(action: string): string {
   return labels[action] || action.replace('cron_', '').replace(/_/g, ' ')
 }
 
+// Loading skeleton components
+function StatCardSkeleton() {
+  return (
+    <div className="rounded-2xl p-5 bg-gradient-to-br from-gray-100 to-gray-50 animate-pulse">
+      <div className="h-4 w-24 bg-gray-200 rounded mb-3" />
+      <div className="h-8 w-16 bg-gray-200 rounded mb-2" />
+      <div className="h-3 w-20 bg-gray-200 rounded" />
+    </div>
+  )
+}
+
+function TableRowSkeleton() {
+  return (
+    <div className="p-4 flex items-center gap-4 animate-pulse">
+      <div className="w-8 h-8 bg-gray-200 rounded-full" />
+      <div className="flex-1">
+        <div className="h-4 w-32 bg-gray-200 rounded mb-2" />
+        <div className="h-3 w-48 bg-gray-200 rounded" />
+      </div>
+      <div className="h-4 w-16 bg-gray-200 rounded" />
+    </div>
+  )
+}
+
+// Success rate ring component
+function SuccessRateRing({
+  rate,
+  size = 120,
+  strokeWidth = 8,
+  label,
+  details
+}: {
+  rate: number | null
+  size?: number
+  strokeWidth?: number
+  label: string
+  details: { success: number; failed: number; total: number }
+}) {
+  const radius = (size - strokeWidth) / 2
+  const circumference = radius * 2 * Math.PI
+  const offset = rate !== null ? circumference - (rate / 100) * circumference : circumference
+
+  const getColor = (r: number | null) => {
+    if (r === null) return { stroke: '#e5e7eb', text: 'text-gray-400', bg: 'from-gray-50 to-white' }
+    if (r >= 90) return { stroke: '#22c55e', text: 'text-green-600', bg: 'from-green-50 to-white' }
+    if (r >= 70) return { stroke: '#eab308', text: 'text-yellow-600', bg: 'from-yellow-50 to-white' }
+    return { stroke: '#ef4444', text: 'text-red-600', bg: 'from-red-50 to-white' }
+  }
+
+  const colors = getColor(rate)
+
+  return (
+    <div className={`bg-gradient-to-br ${colors.bg} rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300`}>
+      <div className="flex items-center gap-6">
+        <div className="relative" style={{ width: size, height: size }}>
+          <svg width={size} height={size} className="transform -rotate-90">
+            {/* Background circle */}
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="none"
+              stroke="#e5e7eb"
+              strokeWidth={strokeWidth}
+            />
+            {/* Progress circle */}
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="none"
+              stroke={colors.stroke}
+              strokeWidth={strokeWidth}
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={offset}
+              className="transition-all duration-1000 ease-out"
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className={`text-2xl font-bold ${colors.text}`}>
+              {rate !== null ? `${rate}%` : '--'}
+            </span>
+            <span className="text-xs text-gray-500">success</span>
+          </div>
+        </div>
+        <div className="flex-1">
+          <h3 className="font-semibold text-gray-900 mb-3">{label}</h3>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500">Succeeded</span>
+              <span className="font-medium text-green-600">{details.success}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500">Failed</span>
+              <span className="font-medium text-red-600">{details.failed}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-200">
+              <span className="text-gray-500">Total</span>
+              <span className="font-medium text-gray-900">{details.total}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Activity bar chart component
+function ActivityChart({ data }: { data: Record<string, number> }) {
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const maxCount = Math.max(...Object.values(data), 1)
+  const todayIndex = new Date().getDay()
+  const todayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][todayIndex]
+
+  return (
+    <div className="bg-gradient-to-br from-indigo-50 to-white rounded-2xl p-6 border border-indigo-100 shadow-sm">
+      <div className="flex items-center gap-2 mb-6">
+        <div className="p-2 bg-indigo-100 rounded-lg">
+          <CalendarDays className="h-5 w-5 text-indigo-600" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-gray-900">Weekly Activity</h3>
+          <p className="text-xs text-gray-500">Published content by day</p>
+        </div>
+      </div>
+
+      <div className="flex items-end justify-between gap-2 h-32">
+        {days.map(day => {
+          const count = data[day] || 0
+          const height = count > 0 ? Math.max((count / maxCount) * 100, 15) : 5
+          const isToday = todayName === day
+
+          return (
+            <div key={day} className="flex-1 flex flex-col items-center group">
+              <div className="relative w-full flex justify-center mb-1">
+                {count > 0 && (
+                  <span className="absolute -top-5 text-xs font-semibold text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {count}
+                  </span>
+                )}
+              </div>
+              <div className="w-full flex justify-center flex-1 items-end">
+                <div
+                  className={`w-full max-w-10 rounded-t-lg transition-all duration-300 group-hover:scale-105 ${
+                    count > 0
+                      ? isToday
+                        ? 'bg-gradient-to-t from-indigo-600 to-indigo-400'
+                        : 'bg-gradient-to-t from-emerald-500 to-emerald-400'
+                      : 'bg-gray-200'
+                  }`}
+                  style={{ height: `${height}%` }}
+                />
+              </div>
+              <span className={`text-xs mt-2 font-medium ${
+                isToday ? 'text-indigo-600' : 'text-gray-500'
+              }`}>
+                {day}
+              </span>
+              {isToday && (
+                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1" />
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// Upcoming runs timeline component
+function UpcomingRunsTimeline({ runs }: { runs: UpcomingRun[] }) {
+  if (runs.length === 0) return null
+
+  return (
+    <div className="bg-gradient-to-br from-amber-50 to-white rounded-2xl p-6 border border-amber-100 shadow-sm">
+      <div className="flex items-center gap-2 mb-5">
+        <div className="p-2 bg-amber-100 rounded-lg">
+          <Timer className="h-5 w-5 text-amber-600" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-gray-900">Upcoming Runs</h3>
+          <p className="text-xs text-gray-500">Next 24 hours</p>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {runs.slice(0, 6).map((run, idx) => (
+          <div
+            key={`${run.clientId}-${idx}`}
+            className="flex items-center gap-4 p-3 rounded-xl bg-white/50 hover:bg-white transition-colors border border-amber-50 hover:border-amber-200 group"
+          >
+            <div className="relative">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                run.hoursUntil === 0
+                  ? 'bg-green-100 text-green-600'
+                  : run.hoursUntil <= 2
+                    ? 'bg-yellow-100 text-yellow-600'
+                    : 'bg-blue-100 text-blue-600'
+              }`}>
+                {run.hoursUntil === 0 ? (
+                  <PlayCircle className="h-5 w-5" />
+                ) : (
+                  <Clock className="h-5 w-5" />
+                )}
+              </div>
+              {run.hoursUntil === 0 && (
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-ping" />
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <Link
+                href={`/admin/clients/${run.clientId}`}
+                className="font-medium text-gray-900 hover:text-blue-600 transition-colors truncate block"
+              >
+                {run.clientName}
+              </Link>
+              <p className="text-xs text-gray-500">
+                {run.dayName} @ {run.displayTime} MT
+              </p>
+            </div>
+
+            <div className="text-right">
+              {run.hoursUntil === 0 ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                  Running
+                </span>
+              ) : run.hoursUntil === 1 ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium">
+                  1 hour
+                </span>
+              ) : (
+                <span className="text-sm text-gray-500">{run.hoursUntil}h</span>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {runs.length > 6 && (
+          <div className="text-center pt-2">
+            <span className="text-xs text-amber-600 font-medium">+{runs.length - 6} more scheduled</span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function MonitoringPage() {
   const [data, setData] = useState<MonitoringData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const [activeTab, setActiveTab] = useState<'cron' | 'content' | 'clients'>('cron')
 
   const fetchData = async () => {
     try {
@@ -202,22 +458,58 @@ export default function MonitoringPage() {
 
   if (loading) {
     return (
-      <div className="p-8 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+        <div className="p-6 max-w-7xl mx-auto">
+          {/* Header skeleton */}
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse" />
+              <div>
+                <div className="h-7 w-48 bg-gray-200 rounded animate-pulse mb-2" />
+                <div className="h-4 w-64 bg-gray-200 rounded animate-pulse" />
+              </div>
+            </div>
+          </div>
+
+          {/* Stats skeleton */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            {[...Array(4)].map((_, i) => (
+              <StatCardSkeleton key={i} />
+            ))}
+          </div>
+
+          {/* Content skeleton */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-2xl p-6 border">
+              {[...Array(4)].map((_, i) => (
+                <TableRowSkeleton key={i} />
+              ))}
+            </div>
+            <div className="bg-white rounded-2xl p-6 border">
+              {[...Array(4)].map((_, i) => (
+                <TableRowSkeleton key={i} />
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
 
   if (error || !data) {
     return (
-      <div className="p-8">
-        <div className="bg-red-50 text-red-700 p-4 rounded-lg">
-          <p className="font-medium">Failed to load monitoring data</p>
-          <p className="text-sm mt-1">{error}</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center p-6">
+        <div className="bg-white rounded-2xl border border-red-200 shadow-lg p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="h-8 w-8 text-red-500" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Failed to Load</h2>
+          <p className="text-gray-500 mb-6">{error || 'Unable to fetch monitoring data'}</p>
           <button
             onClick={fetchData}
-            className="mt-3 px-4 py-2 bg-red-100 hover:bg-red-200 rounded-md text-sm"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-medium transition-colors"
           >
+            <RefreshCw className="h-4 w-4" />
             Try Again
           </button>
         </div>
@@ -226,514 +518,590 @@ export default function MonitoringPage() {
   }
 
   const successRate24h = data.stats.last24Hours.total > 0
-    ? ((data.stats.last24Hours.success / data.stats.last24Hours.total) * 100).toFixed(0)
-    : null  // No data = null, not 100%
+    ? Math.round((data.stats.last24Hours.success / data.stats.last24Hours.total) * 100)
+    : null
 
   const successRate7d = data.stats.last7Days.total > 0
-    ? ((data.stats.last7Days.success / data.stats.last7Days.total) * 100).toFixed(0)
-    : null  // No data = null, not 100%
+    ? Math.round((data.stats.last7Days.success / data.stats.last7Days.total) * 100)
+    : null
+
+  const weeklyChange = data.weeklyComparison.thisWeek.published - data.weeklyComparison.lastWeek.published
+  const weeklyChangePercent = data.weeklyComparison.lastWeek.published > 0
+    ? Math.round((weeklyChange / data.weeklyComparison.lastWeek.published) * 100)
+    : data.weeklyComparison.thisWeek.published > 0 ? 100 : 0
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Link href="/admin" className="text-gray-500 hover:text-gray-700">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Monitoring Dashboard</h1>
-            <p className="text-sm text-gray-500">Cron jobs, publishing status, and system health</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 text-sm text-gray-600">
-            <input
-              type="checkbox"
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.target.checked)}
-              className="rounded"
-            />
-            Auto-refresh
-          </label>
-          <button
-            onClick={fetchData}
-            className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </button>
-          <span className="text-xs text-gray-400">
-            Updated {formatTimeAgo(lastRefresh.toISOString())}
-          </span>
-        </div>
-      </div>
-
-      {/* Overview Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg border p-4">
-          <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
-            <FileText className="h-4 w-4" />
-            Created Today
-          </div>
-          <div className="text-2xl font-bold text-gray-900">
-            {data.overview.contentCreatedToday}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg border p-4">
-          <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
-            <CheckCircle className="h-4 w-4" />
-            Published Today
-          </div>
-          <div className="text-2xl font-bold text-green-600">
-            {data.overview.contentPublishedToday}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg border p-4">
-          <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
-            <Users className="h-4 w-4" />
-            Active Clients
-          </div>
-          <div className="text-2xl font-bold text-blue-600">
-            {data.overview.activeClientsWithSchedule}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg border p-4">
-          <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
-            <AlertTriangle className="h-4 w-4" />
-            Failed (7d)
-          </div>
-          <div className={`text-2xl font-bold ${data.overview.failedContentLast7Days > 0 ? 'text-red-600' : 'text-gray-400'}`}>
-            {data.overview.failedContentLast7Days}
-          </div>
-        </div>
-      </div>
-
-      {/* Weekly Comparison & Activity */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        {/* This Week vs Last Week */}
-        <div className="bg-white rounded-lg border p-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Weekly Comparison
-          </h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-blue-50 rounded-lg p-3">
-              <div className="text-xs text-blue-600 font-medium mb-1">This Week</div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-blue-700">{data.weeklyComparison.thisWeek.published}</span>
-                <span className="text-sm text-blue-600">published</span>
-              </div>
-              <div className="text-xs text-blue-500 mt-1">
-                {data.weeklyComparison.thisWeek.created} created
-              </div>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-3">
-              <div className="text-xs text-gray-600 font-medium mb-1">Last Week</div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-gray-700">{data.weeklyComparison.lastWeek.published}</span>
-                <span className="text-sm text-gray-600">published</span>
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {data.weeklyComparison.lastWeek.created} created
-              </div>
-            </div>
-          </div>
-          {data.weeklyComparison.thisWeek.published !== data.weeklyComparison.lastWeek.published && (
-            <div className="mt-3 flex items-center gap-1 text-sm">
-              {data.weeklyComparison.thisWeek.published > data.weeklyComparison.lastWeek.published ? (
-                <>
-                  <TrendingUp className="h-4 w-4 text-green-500" />
-                  <span className="text-green-600">
-                    +{data.weeklyComparison.thisWeek.published - data.weeklyComparison.lastWeek.published} from last week
-                  </span>
-                </>
-              ) : (
-                <>
-                  <TrendingDown className="h-4 w-4 text-orange-500" />
-                  <span className="text-orange-600">
-                    {data.weeklyComparison.thisWeek.published - data.weeklyComparison.lastWeek.published} from last week
-                  </span>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Activity by Day */}
-        <div className="bg-white rounded-lg border p-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-            <CalendarDays className="h-4 w-4" />
-            This Week&apos;s Activity
-          </h3>
-          <div className="flex items-end justify-between gap-1 h-24">
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => {
-              const count = data.activityByDay[day] || 0
-              const maxCount = Math.max(...Object.values(data.activityByDay), 1)
-              const height = count > 0 ? Math.max((count / maxCount) * 100, 10) : 0
-              const isToday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()] === day
-
-              return (
-                <div key={day} className="flex-1 flex flex-col items-center">
-                  <div className="flex-1 w-full flex items-end justify-center">
-                    <div
-                      className={`w-full max-w-8 rounded-t ${
-                        count > 0 ? (isToday ? 'bg-blue-500' : 'bg-green-500') : 'bg-gray-200'
-                      }`}
-                      style={{ height: `${height}%` }}
-                      title={`${day}: ${count} published`}
-                    />
-                  </div>
-                  {count > 0 && (
-                    <div className="text-xs font-medium text-gray-700 mt-1">{count}</div>
-                  )}
-                  <div className={`text-xs mt-1 ${isToday ? 'font-bold text-blue-600' : 'text-gray-500'}`}>
-                    {day}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Upcoming Runs (Next 24 Hours) */}
-      {data.upcomingRuns.length > 0 && (
-        <div className="bg-white rounded-lg border p-4 mb-6">
-          <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-            <Timer className="h-4 w-4" />
-            Upcoming Runs (Next 24 Hours)
-          </h3>
-          <div className="space-y-2">
-            {data.upcomingRuns.map((run, idx) => (
-              <div key={`${run.clientId}-${idx}`} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${run.hoursUntil === 0 ? 'bg-green-500 animate-pulse' : run.hoursUntil <= 2 ? 'bg-yellow-500' : 'bg-blue-500'}`} />
-                  <Link
-                    href={`/admin/clients/${run.clientId}`}
-                    className="font-medium text-sm text-blue-600 hover:underline"
-                  >
-                    {run.clientName}
-                  </Link>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-medium text-gray-700">
-                    {run.dayName} @ {run.displayTime} MT
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {run.hoursUntil === 0 ? (
-                      <span className="text-green-600 font-medium">Running now</span>
-                    ) : run.hoursUntil === 1 ? (
-                      <span className="text-yellow-600">In 1 hour</span>
-                    ) : (
-                      <span>In {run.hoursUntil} hours</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Success Rate Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded-lg border p-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-3">Last 24 Hours</h3>
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+      <div className="p-6 max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <Link
+              href="/admin"
+              className="p-2.5 bg-white rounded-xl border border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-all shadow-sm"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
             <div>
-              {successRate24h !== null ? (
-                <>
-                  <span className="text-3xl font-bold text-gray-900">{successRate24h}%</span>
-                  <span className="text-sm text-gray-500 ml-2">success rate</span>
-                </>
-              ) : (
-                <span className="text-2xl font-bold text-gray-400">No cron runs</span>
-              )}
-            </div>
-            <div className="text-right text-sm">
-              <div className="text-green-600">{data.stats.last24Hours.success} succeeded</div>
-              <div className="text-red-600">{data.stats.last24Hours.failed} failed</div>
-              <div className="text-gray-400">{data.stats.last24Hours.total} total</div>
+              <h1 className="text-2xl font-bold text-gray-900">Monitoring Dashboard</h1>
+              <p className="text-sm text-gray-500">System health, cron jobs, and publishing status</p>
             </div>
           </div>
-          {successRate24h !== null && (
-            <div className="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-green-500"
-                style={{ width: `${successRate24h}%` }}
-              />
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all ${
+                autoRefresh
+                  ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {autoRefresh ? (
+                <PlayCircle className="h-4 w-4" />
+              ) : (
+                <PauseCircle className="h-4 w-4" />
+              )}
+              Auto-refresh {autoRefresh ? 'on' : 'off'}
+            </button>
+
+            <button
+              onClick={fetchData}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl text-sm font-medium text-gray-700 transition-all shadow-sm"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </button>
+
+            <div className="text-xs text-gray-400 bg-white/50 px-3 py-2 rounded-lg border border-gray-100">
+              Updated {formatTimeAgo(lastRefresh.toISOString())}
             </div>
-          )}
+          </div>
         </div>
 
-        <div className="bg-white rounded-lg border p-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-3">Last 7 Days</h3>
-          <div className="flex items-center justify-between">
-            <div>
-              {successRate7d !== null ? (
-                <>
-                  <span className="text-3xl font-bold text-gray-900">{successRate7d}%</span>
-                  <span className="text-sm text-gray-500 ml-2">success rate</span>
-                </>
-              ) : (
-                <span className="text-2xl font-bold text-gray-400">No cron runs</span>
-              )}
-            </div>
-            <div className="text-right text-sm">
-              <div className="text-green-600">{data.stats.last7Days.success} succeeded</div>
-              <div className="text-red-600">{data.stats.last7Days.failed} failed</div>
-              <div className="text-gray-400">{data.stats.last7Days.total} total</div>
-            </div>
-          </div>
-          {successRate7d !== null && (
-            <div className="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-green-500"
-                style={{ width: `${successRate7d}%` }}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Cron Runs */}
-        <div className="bg-white rounded-lg border">
-          <div className="p-4 border-b">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              Recent Cron Runs
-            </h2>
-          </div>
-          <div className="divide-y max-h-96 overflow-y-auto">
-            {data.recentCronRuns.length === 0 ? (
-              <div className="p-4 text-gray-500 text-sm text-center">
-                No cron runs recorded yet
+        {/* Overview Stats - Gradient Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8" />
+            <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full -ml-6 -mb-6" />
+            <div className="relative">
+              <div className="flex items-center gap-2 text-blue-100 text-sm mb-2">
+                <FileText className="h-4 w-4" />
+                Created Today
               </div>
-            ) : (
-              data.recentCronRuns.map((run) => (
-                <div key={run.id} className="p-3 hover:bg-gray-50">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
-                      {run.status === 'SUCCESS' ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                      ) : run.status === 'FAILED' ? (
-                        <XCircle className="h-4 w-4 text-red-500" />
-                      ) : (
-                        <Clock className="h-4 w-4 text-yellow-500" />
-                      )}
-                      <span className="font-medium text-sm">{getActionLabel(run.action)}</span>
-                    </div>
-                    <span className="text-xs text-gray-400">
-                      {formatTimeAgo(run.startedAt)}
-                    </span>
-                  </div>
-                  <div className="mt-1 ml-6 text-xs text-gray-500">
-                    {run.clientName !== 'System' && run.clientId ? (
-                      <Link
-                        href={`/admin/clients/${run.clientId}`}
-                        className="mr-3 text-blue-600 hover:underline"
-                      >
-                        {run.clientName}
-                      </Link>
-                    ) : run.clientName !== 'System' ? (
-                      <span className="mr-3">{run.clientName}</span>
-                    ) : null}
-                    <span className="text-gray-400">{formatDuration(run.durationMs)}</span>
-                    {run.responseData?.processed !== undefined && (
-                      <span className="ml-3">
-                        Processed: {run.responseData.processed}
-                        {run.responseData.successful !== undefined && (
-                          <span className="text-green-600 ml-1">
-                            ({run.responseData.successful} ok)
-                          </span>
-                        )}
-                      </span>
-                    )}
-                  </div>
-                  {run.errorMessage && (
-                    <div className="mt-1 ml-6 text-xs text-red-600 truncate">
-                      {run.errorMessage}
-                    </div>
-                  )}
-                </div>
-              ))
+              <div className="text-4xl font-bold mb-1">
+                {data.overview.contentCreatedToday}
+              </div>
+              <div className="text-blue-200 text-xs">Content items</div>
+            </div>
+          </div>
+
+          <div className="relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8" />
+            <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full -ml-6 -mb-6" />
+            <div className="relative">
+              <div className="flex items-center gap-2 text-emerald-100 text-sm mb-2">
+                <CheckCircle className="h-4 w-4" />
+                Published Today
+              </div>
+              <div className="text-4xl font-bold mb-1">
+                {data.overview.contentPublishedToday}
+              </div>
+              <div className="text-emerald-200 text-xs">Successfully published</div>
+            </div>
+          </div>
+
+          <div className="relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br from-violet-500 to-violet-600 text-white shadow-lg shadow-violet-500/20">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8" />
+            <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full -ml-6 -mb-6" />
+            <div className="relative">
+              <div className="flex items-center gap-2 text-violet-100 text-sm mb-2">
+                <Users className="h-4 w-4" />
+                Active Clients
+              </div>
+              <div className="text-4xl font-bold mb-1">
+                {data.overview.activeClientsWithSchedule}
+              </div>
+              <div className="text-violet-200 text-xs">With auto-schedule</div>
+            </div>
+          </div>
+
+          <div className={`relative overflow-hidden rounded-2xl p-5 shadow-lg ${
+            data.overview.failedContentLast7Days > 0
+              ? 'bg-gradient-to-br from-red-500 to-red-600 text-white shadow-red-500/20'
+              : 'bg-gradient-to-br from-gray-100 to-gray-50 text-gray-900 shadow-gray-200/50'
+          }`}>
+            <div className={`absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 ${
+              data.overview.failedContentLast7Days > 0 ? 'bg-white/10' : 'bg-gray-200/50'
+            }`} />
+            <div className="relative">
+              <div className={`flex items-center gap-2 text-sm mb-2 ${
+                data.overview.failedContentLast7Days > 0 ? 'text-red-100' : 'text-gray-500'
+              }`}>
+                <AlertTriangle className="h-4 w-4" />
+                Failed (7 Days)
+              </div>
+              <div className="text-4xl font-bold mb-1">
+                {data.overview.failedContentLast7Days}
+              </div>
+              <div className={`text-xs ${
+                data.overview.failedContentLast7Days > 0 ? 'text-red-200' : 'text-gray-400'
+              }`}>
+                {data.overview.failedContentLast7Days === 0 ? 'All systems healthy' : 'Need attention'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Weekly Comparison & Activity Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Weekly Comparison Card */}
+          <div className="bg-gradient-to-br from-cyan-50 to-white rounded-2xl p-6 border border-cyan-100 shadow-sm">
+            <div className="flex items-center gap-2 mb-5">
+              <div className="p-2 bg-cyan-100 rounded-lg">
+                <BarChart3 className="h-5 w-5 text-cyan-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Weekly Comparison</h3>
+                <p className="text-xs text-gray-500">Published content</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="bg-white rounded-xl p-4 border border-cyan-100">
+                <div className="text-xs font-medium text-cyan-600 mb-1">This Week</div>
+                <div className="text-3xl font-bold text-gray-900">{data.weeklyComparison.thisWeek.published}</div>
+                <div className="text-xs text-gray-500 mt-1">{data.weeklyComparison.thisWeek.created} created</div>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <div className="text-xs font-medium text-gray-500 mb-1">Last Week</div>
+                <div className="text-3xl font-bold text-gray-600">{data.weeklyComparison.lastWeek.published}</div>
+                <div className="text-xs text-gray-400 mt-1">{data.weeklyComparison.lastWeek.created} created</div>
+              </div>
+            </div>
+
+            {weeklyChange !== 0 && (
+              <div className={`flex items-center gap-2 p-3 rounded-xl ${
+                weeklyChange > 0 ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'
+              }`}>
+                {weeklyChange > 0 ? (
+                  <TrendingUp className="h-4 w-4" />
+                ) : (
+                  <TrendingDown className="h-4 w-4" />
+                )}
+                <span className="text-sm font-medium">
+                  {weeklyChange > 0 ? '+' : ''}{weeklyChange} ({weeklyChange > 0 ? '+' : ''}{weeklyChangePercent}%)
+                </span>
+                <span className="text-xs opacity-75">vs last week</span>
+              </div>
             )}
           </div>
+
+          {/* Activity Chart - Takes 2 columns */}
+          <div className="lg:col-span-2">
+            <ActivityChart data={data.activityByDay} />
+          </div>
         </div>
 
-        {/* Client Status */}
-        <div className="bg-white rounded-lg border">
-          <div className="p-4 border-b">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
+        {/* Success Rates & Upcoming Runs */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <SuccessRateRing
+            rate={successRate24h}
+            label="Last 24 Hours"
+            details={data.stats.last24Hours}
+          />
+          <SuccessRateRing
+            rate={successRate7d}
+            label="Last 7 Days"
+            details={data.stats.last7Days}
+          />
+          <UpcomingRunsTimeline runs={data.upcomingRuns} />
+        </div>
+
+        {/* Tabbed Content Section */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          {/* Tab Header */}
+          <div className="flex items-center gap-1 p-2 bg-gray-50 border-b border-gray-200">
+            <button
+              onClick={() => setActiveTab('cron')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all ${
+                activeTab === 'cron'
+                  ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
+              }`}
+            >
+              <Activity className="h-4 w-4" />
+              Cron Runs
+              <span className={`px-2 py-0.5 rounded-full text-xs ${
+                activeTab === 'cron' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'
+              }`}>
+                {data.recentCronRuns.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('content')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all ${
+                activeTab === 'content'
+                  ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
+              }`}
+            >
+              <List className="h-4 w-4" />
+              Recent Content
+              <span className={`px-2 py-0.5 rounded-full text-xs ${
+                activeTab === 'content' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'
+              }`}>
+                {data.recentContent.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('clients')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all ${
+                activeTab === 'clients'
+                  ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
+              }`}
+            >
+              <Calendar className="h-4 w-4" />
               Client Schedules
-            </h2>
-          </div>
-          <div className="divide-y max-h-96 overflow-y-auto">
-            {data.clientStatus.length === 0 ? (
-              <div className="p-4 text-gray-500 text-sm text-center">
-                No clients with auto-schedule enabled
+              <span className={`px-2 py-0.5 rounded-full text-xs ${
+                activeTab === 'clients' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'
+              }`}>
+                {data.clientStatus.length}
+              </span>
+            </button>
+
+            {data.failedContent.length > 0 && (
+              <div className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-700 rounded-lg text-sm font-medium">
+                <AlertTriangle className="h-4 w-4" />
+                {data.failedContent.length} failed
               </div>
-            ) : (
-              data.clientStatus.map((client) => (
-                <div key={client.id} className="p-3 hover:bg-gray-50">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <Link
-                        href={`/admin/clients/${client.id}`}
-                        className="font-medium text-sm text-blue-600 hover:underline"
-                      >
-                        {client.businessName}
-                      </Link>
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        {client.scheduleDayPair && DAY_PAIR_LABELS[client.scheduleDayPair]}
-                        {client.scheduleTimeSlot !== null && (
-                          <span className="ml-2">
-                            @ {SLOT_TO_MOUNTAIN_TIME[client.scheduleTimeSlot]} MT
-                          </span>
-                        )}
+            )}
+          </div>
+
+          {/* Tab Content */}
+          <div className="max-h-[500px] overflow-y-auto">
+            {/* Cron Runs Tab */}
+            {activeTab === 'cron' && (
+              <div className="divide-y divide-gray-100">
+                {data.recentCronRuns.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Activity className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <p className="text-gray-500 font-medium">No cron runs recorded yet</p>
+                    <p className="text-sm text-gray-400 mt-1">Jobs will appear here when they run</p>
+                  </div>
+                ) : (
+                  data.recentCronRuns.map((run) => (
+                    <div key={run.id} className="p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            run.status === 'SUCCESS'
+                              ? 'bg-green-100'
+                              : run.status === 'FAILED'
+                                ? 'bg-red-100'
+                                : 'bg-yellow-100'
+                          }`}>
+                            {run.status === 'SUCCESS' ? (
+                              <CheckCircle className="h-5 w-5 text-green-600" />
+                            ) : run.status === 'FAILED' ? (
+                              <XCircle className="h-5 w-5 text-red-600" />
+                            ) : (
+                              <Clock className="h-5 w-5 text-yellow-600" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-gray-900">{getActionLabel(run.action)}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                run.status === 'SUCCESS'
+                                  ? 'bg-green-100 text-green-700'
+                                  : run.status === 'FAILED'
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-yellow-100 text-yellow-700'
+                              }`}>
+                                {run.status}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                              {run.clientName !== 'System' && run.clientId ? (
+                                <Link
+                                  href={`/admin/clients/${run.clientId}`}
+                                  className="text-blue-600 hover:underline font-medium"
+                                >
+                                  {run.clientName}
+                                </Link>
+                              ) : run.clientName !== 'System' ? (
+                                <span>{run.clientName}</span>
+                              ) : null}
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {formatDuration(run.durationMs)}
+                              </span>
+                              {run.responseData?.processed !== undefined && (
+                                <span className="flex items-center gap-1">
+                                  <Zap className="h-3 w-3" />
+                                  {run.responseData.successful || 0}/{run.responseData.processed} processed
+                                </span>
+                              )}
+                            </div>
+                            {run.errorMessage && (
+                              <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded-lg">
+                                {run.errorMessage}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-xs text-gray-400 whitespace-nowrap">
+                          {formatTimeAgo(run.startedAt)}
+                        </span>
                       </div>
-                      {client.nextPublish && (
-                        <div className="text-xs mt-1">
-                          {client.nextPublish.daysUntil === 0 ? (
-                            <span className="text-green-600 font-medium">Publishing today</span>
-                          ) : client.nextPublish.daysUntil === 1 ? (
-                            <span className="text-blue-600">Next: Tomorrow ({client.nextPublish.day})</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Content Tab */}
+            {activeTab === 'content' && (
+              <div className="divide-y divide-gray-100">
+                {data.recentContent.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <List className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <p className="text-gray-500 font-medium">No content created recently</p>
+                    <p className="text-sm text-gray-400 mt-1">Content from the last 7 days will appear here</p>
+                  </div>
+                ) : (
+                  data.recentContent.map((item) => (
+                    <div key={item.id} className="p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            item.status === 'PUBLISHED'
+                              ? 'bg-green-100'
+                              : item.status === 'GENERATING'
+                                ? 'bg-yellow-100'
+                                : item.status === 'FAILED'
+                                  ? 'bg-red-100'
+                                  : 'bg-gray-100'
+                          }`}>
+                            {item.status === 'PUBLISHED' ? (
+                              <CheckCircle className="h-5 w-5 text-green-600" />
+                            ) : item.status === 'GENERATING' ? (
+                              <Loader2 className="h-5 w-5 text-yellow-600 animate-spin" />
+                            ) : item.status === 'FAILED' ? (
+                              <XCircle className="h-5 w-5 text-red-600" />
+                            ) : (
+                              <FileText className="h-5 w-5 text-gray-500" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <Link
+                                href={`/admin/clients/${item.clientId}`}
+                                className="font-semibold text-gray-900 hover:text-blue-600 transition-colors"
+                              >
+                                {item.clientName}
+                              </Link>
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                item.status === 'PUBLISHED'
+                                  ? 'bg-green-100 text-green-700'
+                                  : item.status === 'GENERATING'
+                                    ? 'bg-yellow-100 text-yellow-700'
+                                    : item.status === 'FAILED'
+                                      ? 'bg-red-100 text-red-700'
+                                      : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {item.status}
+                              </span>
+                            </div>
+                            <Link
+                              href={`/admin/content/${item.id}/review`}
+                              className="text-sm text-gray-600 mt-1 truncate block hover:text-blue-600 transition-colors group"
+                            >
+                              <span className="truncate">{item.paaQuestion}</span>
+                              <ExternalLink className="h-3 w-3 inline ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </Link>
+                          </div>
+                        </div>
+                        <div className="text-right text-sm whitespace-nowrap">
+                          {item.publishedAt ? (
+                            <div className="text-green-600 font-medium">
+                              Published {formatTimeAgo(item.publishedAt)}
+                            </div>
                           ) : (
-                            <span className="text-gray-500">Next: {client.nextPublish.day} ({client.nextPublish.daysUntil} days)</span>
+                            <div className="text-gray-400">
+                              Created {formatTimeAgo(item.createdAt)}
+                            </div>
                           )}
                         </div>
-                      )}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      {client.lastContent ? (
-                        <Link href={`/admin/content/${client.lastContent.id}/review`} className="block hover:opacity-80">
-                          <span className={`text-xs px-1.5 py-0.5 rounded ${
-                            client.lastContent.status === 'PUBLISHED'
-                              ? 'bg-green-100 text-green-700'
-                              : client.lastContent.status === 'GENERATING'
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : 'bg-gray-100 text-gray-600'
-                          }`}>
-                            {client.lastContent.status}
-                          </span>
-                          <div className="text-xs text-gray-400 mt-0.5 hover:text-blue-600">
-                            {formatTimeAgo(client.lastContent.createdAt)} →
-                          </div>
-                        </Link>
-                      ) : (
-                        <span className="text-xs text-gray-400">No content yet</span>
-                      )}
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Clients Tab */}
+            {activeTab === 'clients' && (
+              <div className="divide-y divide-gray-100">
+                {data.clientStatus.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Users className="h-8 w-8 text-gray-400" />
                     </div>
+                    <p className="text-gray-500 font-medium">No clients with auto-schedule</p>
+                    <p className="text-sm text-gray-400 mt-1">Enable auto-scheduling for clients to see them here</p>
                   </div>
-                </div>
-              ))
+                ) : (
+                  data.clientStatus.map((client) => (
+                    <div key={client.id} className="p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            client.nextPublish?.daysUntil === 0
+                              ? 'bg-green-100'
+                              : client.nextPublish?.daysUntil === 1
+                                ? 'bg-blue-100'
+                                : 'bg-gray-100'
+                          }`}>
+                            {client.nextPublish?.daysUntil === 0 ? (
+                              <Zap className="h-5 w-5 text-green-600" />
+                            ) : (
+                              <Calendar className="h-5 w-5 text-gray-500" />
+                            )}
+                          </div>
+                          <div>
+                            <Link
+                              href={`/admin/clients/${client.id}`}
+                              className="font-semibold text-gray-900 hover:text-blue-600 transition-colors"
+                            >
+                              {client.businessName}
+                            </Link>
+                            <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
+                              {client.scheduleDayPair && (
+                                <span className="flex items-center gap-1">
+                                  <CalendarDays className="h-3 w-3" />
+                                  {DAY_PAIR_LABELS[client.scheduleDayPair]}
+                                </span>
+                              )}
+                              {client.scheduleTimeSlot !== null && (
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {SLOT_TO_MOUNTAIN_TIME[client.scheduleTimeSlot]} MT
+                                </span>
+                              )}
+                            </div>
+                            {client.nextPublish && (
+                              <div className="mt-2">
+                                {client.nextPublish.daysUntil === 0 ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-medium">
+                                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                                    Publishing today
+                                  </span>
+                                ) : client.nextPublish.daysUntil === 1 ? (
+                                  <span className="text-sm text-blue-600">
+                                    Next: Tomorrow ({client.nextPublish.day})
+                                  </span>
+                                ) : (
+                                  <span className="text-sm text-gray-500">
+                                    Next: {client.nextPublish.day} ({client.nextPublish.daysUntil} days)
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          {client.lastContent ? (
+                            <Link
+                              href={`/admin/content/${client.lastContent.id}/review`}
+                              className="group"
+                            >
+                              <span className={`inline-block px-2.5 py-1 rounded-lg text-xs font-medium ${
+                                client.lastContent.status === 'PUBLISHED'
+                                  ? 'bg-green-100 text-green-700'
+                                  : client.lastContent.status === 'GENERATING'
+                                    ? 'bg-yellow-100 text-yellow-700'
+                                    : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {client.lastContent.status}
+                              </span>
+                              <div className="text-xs text-gray-400 mt-1 group-hover:text-blue-600 transition-colors flex items-center justify-end gap-1">
+                                {formatTimeAgo(client.lastContent.createdAt)}
+                                <Eye className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </div>
+                            </Link>
+                          ) : (
+                            <span className="text-xs text-gray-400">No content yet</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             )}
           </div>
         </div>
-      </div>
 
-      {/* Recent Content */}
-      <div className="bg-white rounded-lg border mt-6 mb-6">
-        <div className="p-4 border-b">
-          <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-            <List className="h-5 w-5" />
-            Recent Content (Last 7 Days)
-          </h2>
-        </div>
-        <div className="divide-y max-h-96 overflow-y-auto">
-          {data.recentContent.length === 0 ? (
-            <div className="p-4 text-gray-500 text-sm text-center">
-              No content created in the last 7 days
+        {/* Failed Content Alert Section */}
+        {data.failedContent.length > 0 && (
+          <div className="mt-8 bg-gradient-to-br from-red-50 to-white rounded-2xl border border-red-200 shadow-sm overflow-hidden">
+            <div className="p-4 bg-red-100 border-b border-red-200 flex items-center gap-3">
+              <div className="p-2 bg-red-200 rounded-lg">
+                <AlertTriangle className="h-5 w-5 text-red-700" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-red-900">Failed Content</h3>
+                <p className="text-sm text-red-700">{data.failedContent.length} items need attention from the last 7 days</p>
+              </div>
             </div>
-          ) : (
-            data.recentContent.map((item) => (
-              <div key={item.id} className="p-3 hover:bg-gray-50">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/admin/clients/${item.clientId}`}
-                        className="font-medium text-sm text-blue-600 hover:underline"
-                      >
-                        {item.clientName}
-                      </Link>
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${
-                        item.status === 'PUBLISHED'
-                          ? 'bg-green-100 text-green-700'
-                          : item.status === 'GENERATING'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : item.status === 'FAILED'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {item.status}
-                      </span>
+            <div className="divide-y divide-red-100">
+              {data.failedContent.map((item) => (
+                <div key={item.id} className="p-4 hover:bg-red-50/50 transition-colors">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                        <XCircle className="h-5 w-5 text-red-600" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/admin/clients/${item.clientId}`}
+                            className="font-semibold text-gray-900 hover:text-blue-600 transition-colors"
+                          >
+                            {item.clientName}
+                          </Link>
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                            FAILED
+                          </span>
+                        </div>
+                        <Link
+                          href={`/admin/content/${item.id}/review`}
+                          className="text-sm text-gray-600 mt-1 truncate block hover:text-blue-600 transition-colors group"
+                        >
+                          <span className="truncate">{item.paaQuestion}</span>
+                          <ExternalLink className="h-3 w-3 inline ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </Link>
+                      </div>
                     </div>
-                    <Link
-                      href={`/admin/content/${item.id}/review`}
-                      className="text-xs text-gray-600 mt-0.5 truncate block hover:text-blue-600 hover:underline"
-                    >
-                      {item.paaQuestion}
-                    </Link>
-                  </div>
-                  <div className="text-right text-xs text-gray-400 whitespace-nowrap">
-                    {item.publishedAt ? (
-                      <div className="text-green-600">Published {formatTimeAgo(item.publishedAt)}</div>
-                    ) : (
-                      <div>Created {formatTimeAgo(item.createdAt)}</div>
-                    )}
+                    <div className="text-right text-sm text-gray-400 whitespace-nowrap">
+                      {formatTimeAgo(item.createdAt)}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
-          )}
-        </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-
-      {/* Failed Content */}
-      {data.failedContent.length > 0 && (
-        <div className="mt-6 bg-white rounded-lg border">
-          <div className="p-4 border-b bg-red-50">
-            <h2 className="font-semibold text-red-900 flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
-              Failed Content (Last 7 Days)
-            </h2>
-          </div>
-          <div className="divide-y">
-            {data.failedContent.map((item) => (
-              <div key={item.id} className="p-3 hover:bg-gray-50">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/admin/clients/${item.clientId}`}
-                        className="font-medium text-sm text-blue-600 hover:underline"
-                      >
-                        {item.clientName}
-                      </Link>
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-700">
-                        FAILED
-                      </span>
-                    </div>
-                    <Link
-                      href={`/admin/content/${item.id}/review`}
-                      className="text-xs text-gray-600 mt-0.5 truncate block hover:text-blue-600 hover:underline"
-                    >
-                      {item.paaQuestion}
-                    </Link>
-                  </div>
-                  <div className="text-right text-xs text-gray-400 whitespace-nowrap">
-                    {formatTimeAgo(item.createdAt)}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

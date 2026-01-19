@@ -7,12 +7,33 @@
 // 2. Link to Videos - Generate from a blog URL (automatic, good quality)
 // 3. Lipsync - Generate from script text (fallback)
 
-// Types for Link to Videos API
-type AspectRatio = '16x9' | '9x16' | '1x1'
-type VideoLength = 15 | 30 | 45 | 60
-type ScriptStyle = 'DiscoveryWriter' | 'HowToV2' | 'ProblemSolutionV2' | 'BenefitsV2' | 'CallToActionV2' | 'ThreeReasonsWriter'
-type VisualStyle = 'AvatarBubbleTemplate' | 'DynamicProductTemplate' | 'FullScreenTemplate' | 'VanillaTemplate' | 'EnhancedVanillaTemplate'
-type ModelVersion = 'standard' | 'aurora_v1' | 'aurora_v1_fast'
+// Types for Link to Videos API (exported for use in other modules)
+export type AspectRatio = '16x9' | '9x16' | '1x1'
+export type VideoLength = 15 | 30 | 45 | 60
+
+// Script styles - see https://docs.creatify.ai for full list
+export type ScriptStyle =
+  | 'DiscoveryWriter' | 'HowToV2' | 'ProblemSolutionV2' | 'BenefitsV2' | 'CallToActionV2'
+  | 'ThreeReasonsWriter' | 'BrandStoryV2' | 'DontWorryWriter' | 'EmotionalWriter'
+  | 'GenzWriter' | 'LetMeShowYouWriter' | 'MotivationalWriter' | 'ProblemSolutionWriter'
+  | 'ProductHighlightsV2' | 'ProductLifestyleV2' | 'ResponseBubbleWriter'
+  | 'SpecialOffersV2' | 'StoryTimeWriter' | 'TrendingTopicsV2' | 'DIY'
+  // Hook styles
+  | 'NegativeHook' | 'NumberOneHook' | 'EverWonderHook' | 'SecretHook'
+  | 'WhatHappensHook' | 'AnyoneElseHook' | 'AmazedHook' | '2025Hook' | 'HateMeHook'
+
+// Visual styles - see https://docs.creatify.ai for full list
+export type VisualStyle =
+  | 'AvatarBubbleTemplate' | 'DynamicProductTemplate' | 'FullScreenTemplate'
+  | 'VanillaTemplate' | 'EnhancedVanillaTemplate' | 'DramaticTemplate'
+  | 'DynamicGreenScreenEffect' | 'DynamicResponseBubbleTemplate'
+  | 'FeatureHighlightTemplate' | 'FullScreenV2Template' | 'GreenScreenEffectTemplate'
+  | 'MotionCardsTemplate' | 'OverCardsTemplate' | 'QuickFrameTemplate'
+  | 'QuickTransitionTemplate' | 'ScribbleTemplate' | 'SideBySideTemplate'
+  | 'SimpleAvatarOverlayTemplate' | 'TopBottomTemplate' | 'TwitterFrameTemplate'
+  | 'VlogTemplate' | 'LegoVisualEmotional' | 'LegoVisualAvatarFocusIntro'
+
+export type ModelVersion = 'standard' | 'aurora_v1' | 'aurora_v1_fast'
 
 // Types for Custom Template API
 type VariableType = 'image' | 'video' | 'audio' | 'text' | 'avatar' | 'voiceover'
@@ -46,6 +67,9 @@ interface LinkToVideoParams {
   visualStyle?: VisualStyle
   webhookUrl?: string
   overrideScript?: string
+  overrideAvatar?: string // Avatar ID from Get Avatars API
+  overrideVoice?: string // Voice ID from Get Voices API
+  noCta?: boolean // Disable default CTA button
   modelVersion?: ModelVersion // 'standard' is cheapest, aurora models cost more
 }
 
@@ -66,6 +90,14 @@ interface VideoGenerationParams {
   visualStyle?: VisualStyle
   webhookUrl?: string
   modelVersion?: ModelVersion
+  // Rich description to enhance video script generation
+  // This is passed to Creatify's updateLink API to provide context beyond auto-scraped content
+  // Should include: PAA question, key services, location, call-to-action, business highlights
+  description?: string
+  // Avatar and voice customization
+  avatarId?: string // Override avatar - get IDs from getAvatars()
+  voiceId?: string // Override voice - get IDs from getVoices()
+  noCta?: boolean // Disable default CTA button (rely on script for CTA instead)
 }
 
 interface VideoResult {
@@ -364,12 +396,29 @@ export async function createVideoFromLink(params: LinkToVideoParams): Promise<Vi
     requestBody.model_version = params.modelVersion
   }
 
+  // Avatar and voice overrides
+  if (params.overrideAvatar) {
+    requestBody.override_avatar = params.overrideAvatar
+  }
+
+  if (params.overrideVoice) {
+    requestBody.override_voice = params.overrideVoice
+  }
+
+  // Disable default CTA if specified
+  if (params.noCta) {
+    requestBody.no_cta = true
+  }
+
   console.log('📹 Creating video via URL-to-Video API:', {
     linkId: params.linkId,
     video_length: requestBody.video_length,
     visual_style: requestBody.visual_style,
     script_style: requestBody.script_style,
     model_version: requestBody.model_version,
+    override_avatar: requestBody.override_avatar || 'default',
+    override_voice: requestBody.override_voice || 'default',
+    no_cta: requestBody.no_cta || false,
   })
 
   const response = await fetch('https://api.creatify.ai/api/link_to_videos/', {
@@ -519,13 +568,20 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
         hasLogo: !!link.logoUrl,
       })
 
-      // If we have a logo or custom images, update the link metadata
-      if (params.logoUrl || (params.imageUrls && params.imageUrls.length > 0)) {
-        console.log('📝 Updating link with custom logo/images...')
+      // Update link metadata if we have custom logo, images, or description
+      // The description is KEY - it provides rich context for better video script generation
+      if (params.logoUrl || (params.imageUrls && params.imageUrls.length > 0) || params.description) {
+        const updateFields: string[] = []
+        if (params.logoUrl) updateFields.push('logo')
+        if (params.imageUrls?.length) updateFields.push(`${params.imageUrls.length} images`)
+        if (params.description) updateFields.push('description')
+        console.log(`📝 Updating link with: ${updateFields.join(', ')}`)
+
         await updateLink({
           linkId: link.linkId,
           logoUrl: params.logoUrl,
           imageUrls: params.imageUrls,
+          description: params.description,
         })
       }
 
@@ -550,6 +606,9 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
         visualStyle: params.visualStyle || 'AvatarBubbleTemplate', // API default
         webhookUrl: params.webhookUrl,
         overrideScript: params.script, // Use provided script as override if any
+        overrideAvatar: params.avatarId, // Custom avatar
+        overrideVoice: params.voiceId, // Custom voice
+        noCta: params.noCta, // Disable default CTA button
         modelVersion: params.modelVersion || 'standard', // Cheapest option
       })
     } catch (error) {
@@ -698,6 +757,149 @@ export async function waitForVideo(jobId: string, maxAttempts = 60): Promise<Vid
   }
 
   throw new Error('Video generation timed out')
+}
+
+// ============================================
+// AVATAR AND VOICE MANAGEMENT
+// ============================================
+
+export interface Avatar {
+  id: string
+  name: string
+  thumbnail_url?: string
+  gender?: 'm' | 'f' | 'nb' // Male, Female, Non-Binary
+  style?: 'selfie' | 'presenter' | 'other'
+  age_range?: 'child' | 'teen' | 'adult' | 'senior'
+  location?: 'outdoor' | 'fantasy' | 'indoor' | 'other'
+  suitable_industries?: string
+  preview_video_9_16?: string // Portrait preview video
+  preview_video_16_9?: string // Landscape preview video
+  preview_video_1_1?: string // Square preview video
+}
+
+export interface VoiceAccent {
+  id: string
+  name: string
+  accent: string
+  language?: string
+  preview_url?: string
+}
+
+export interface Voice {
+  id: string
+  name: string
+  gender?: 'male' | 'female' | 'non_binary'
+  accents: VoiceAccent[] // Each voice has multiple accents - use accent ID for voiceId param
+}
+
+/**
+ * Get list of available avatars (personas)
+ * Use the returned avatar IDs with the avatarId parameter in createShortVideo
+ *
+ * @param filters - Optional filters for age_range, gender, location, style, suitable_industries
+ */
+export async function getAvatars(filters?: {
+  age_range?: 'child' | 'teen' | 'adult' | 'senior'
+  gender?: 'm' | 'f' | 'nb'
+  location?: 'outdoor' | 'fantasy' | 'indoor' | 'other'
+  style?: 'selfie' | 'presenter' | 'other'
+  suitable_industries?: string
+}): Promise<Avatar[]> {
+  const { apiId, apiKey } = await getCredentialsAsync()
+
+  // Build query string from filters
+  const params = new URLSearchParams()
+  if (filters?.age_range) params.append('age_range', filters.age_range)
+  if (filters?.gender) params.append('gender', filters.gender)
+  if (filters?.location) params.append('location', filters.location)
+  if (filters?.style) params.append('style', filters.style)
+  if (filters?.suitable_industries) params.append('suitable_industries', filters.suitable_industries)
+
+  const queryString = params.toString()
+  const url = `https://api.creatify.ai/api/personas/${queryString ? `?${queryString}` : ''}`
+
+  const response = await fetch(url, {
+    headers: {
+      'X-API-ID': apiId,
+      'X-API-KEY': apiKey,
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Creatify API error fetching avatars: ${error}`)
+  }
+
+  const data = await response.json()
+
+  // Handle both array response and paginated response
+  const avatars = Array.isArray(data) ? data : (data.results || [])
+
+  // Only return active avatars
+  return avatars
+    .filter((a: Record<string, unknown>) => a.is_active !== false)
+    .map((a: Record<string, unknown>) => ({
+      id: a.id as string,
+      name: (a.creator_name as string) || (a.id as string),
+      thumbnail_url: (a.preview_image_9_16 as string) || (a.preview_image_1_1 as string) || undefined,
+      gender: a.gender as 'm' | 'f' | 'nb' | undefined,
+      style: a.style as 'selfie' | 'presenter' | 'other' | undefined,
+      age_range: a.age_range as 'child' | 'teen' | 'adult' | 'senior' | undefined,
+      location: a.location as 'outdoor' | 'fantasy' | 'indoor' | 'other' | undefined,
+      suitable_industries: a.suitable_industries as string | undefined,
+      preview_video_9_16: a.preview_video_9_16 as string || a.portrait_preview_video as string || undefined,
+      preview_video_16_9: a.preview_video_16_9 as string || a.landscape_preview_video as string || undefined,
+      preview_video_1_1: a.preview_video_1_1 as string || a.squared_preview_video as string || undefined,
+    }))
+}
+
+/**
+ * Get list of available voices
+ * Use the returned voice IDs (or accent IDs) with the voiceId parameter in createShortVideo
+ *
+ * Note: Each voice has multiple accents. You can use either:
+ * - The voice ID directly (uses default accent)
+ * - A specific accent ID for more control over the voice style
+ */
+export async function getVoices(): Promise<Voice[]> {
+  const { apiId, apiKey } = await getCredentialsAsync()
+
+  const response = await fetch('https://api.creatify.ai/api/voices/', {
+    headers: {
+      'X-API-ID': apiId,
+      'X-API-KEY': apiKey,
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Creatify API error fetching voices: ${error}`)
+  }
+
+  const data = await response.json()
+
+  // Handle both array response and paginated response
+  const voices = Array.isArray(data) ? data : (data.results || [])
+
+  return voices.map((v: Record<string, unknown>) => {
+    // Map accents array - capture all available fields
+    const rawAccents = v.accents as Array<Record<string, unknown>> || []
+    const accents: VoiceAccent[] = rawAccents.map(a => ({
+      id: a.id as string,
+      // Try multiple fields for the accent name/description
+      name: (a.name as string) || (a.display_name as string) || (a.label as string) || '',
+      accent: (a.accent as string) || (a.accent_name as string) || (a.locale as string) || '',
+      language: (a.language as string) || (a.lang as string) || (a.locale as string) || undefined,
+      preview_url: (a.preview_url as string) || (a.sample_url as string) || (a.audio_url as string) || undefined,
+    }))
+
+    return {
+      id: v.id as string || (accents[0]?.id || ''), // Use first accent ID as fallback
+      name: v.name as string || 'Unknown Voice',
+      gender: v.gender as 'male' | 'female' | 'non_binary' | undefined,
+      accents,
+    }
+  })
 }
 
 // Placeholder for Pictory integration (future)

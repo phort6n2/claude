@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { prisma, withRetry } from '@/lib/db'
 import { auth } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
@@ -43,32 +43,36 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fetch leads with client info
-    const [leads, total] = await Promise.all([
-      prisma.lead.findMany({
-        where,
-        include: {
-          client: {
-            select: {
-              id: true,
-              businessName: true,
-              slug: true,
+    // Fetch leads with client info (with retry for connection issues)
+    const [leads, total] = await withRetry(() =>
+      Promise.all([
+        prisma.lead.findMany({
+          where,
+          include: {
+            client: {
+              select: {
+                id: true,
+                businessName: true,
+                slug: true,
+              },
             },
           },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-        skip: offset,
-      }),
-      prisma.lead.count({ where }),
-    ])
+          orderBy: { createdAt: 'desc' },
+          take: limit,
+          skip: offset,
+        }),
+        prisma.lead.count({ where }),
+      ])
+    )
 
     // Get summary stats
-    const stats = await prisma.lead.groupBy({
-      by: ['status'],
-      where: clientId ? { clientId } : undefined,
-      _count: true,
-    })
+    const stats = await withRetry(() =>
+      prisma.lead.groupBy({
+        by: ['status'],
+        where: clientId ? { clientId } : undefined,
+        _count: true,
+      })
+    )
 
     const statusCounts = stats.reduce((acc, s) => {
       acc[s.status] = s._count

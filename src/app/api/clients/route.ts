@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { prisma, withRetry } from '@/lib/db'
 import { generateSlug } from '@/lib/utils'
 import { encrypt } from '@/lib/encryption'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    const clients = await prisma.client.findMany({
-      orderBy: { createdAt: 'desc' },
-    })
+    const clients = await withRetry(() =>
+      prisma.client.findMany({
+        orderBy: { createdAt: 'desc' },
+      })
+    )
     return NextResponse.json(clients)
   } catch (error) {
     console.error('Failed to fetch clients:', error)
@@ -81,7 +83,7 @@ export async function POST(request: NextRequest) {
         ctaUrl: data.ctaUrl || null,
         creatifyTemplateId: data.creatifyTemplateId || null,
         preferredPublishTime: data.preferredPublishTime || '09:00',
-        timezone: data.timezone || 'America/Los_Angeles',
+        timezone: data.timezone || 'America/Denver',
         socialPlatforms: data.socialPlatforms || [],
         socialAccountIds: data.socialAccountIds || null,
         podbeanPodcastId: data.podbeanPodcastId || null,

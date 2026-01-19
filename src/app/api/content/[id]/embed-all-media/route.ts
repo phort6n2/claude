@@ -200,26 +200,74 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
 
     if (!contentItem.blogPost) {
-      return NextResponse.json({ error: 'No blog post found' }, { status: 400 })
+      return NextResponse.json({
+        error: 'No blog post found. Please generate a blog post first.',
+        details: {
+          contentId: id,
+          clientName: contentItem.client.businessName,
+          blogGenerated: contentItem.blogGenerated,
+        }
+      }, { status: 400 })
     }
 
     if (!contentItem.blogPost.wordpressPostId) {
-      return NextResponse.json({ error: 'Blog has not been published yet' }, { status: 400 })
+      return NextResponse.json({
+        error: 'Blog has not been published to WordPress yet. Please publish the blog first, then use Embed Media.',
+        details: {
+          contentId: id,
+          clientName: contentItem.client.businessName,
+          blogTitle: contentItem.blogPost.title,
+          wordpressUrl: contentItem.client.wordpressUrl || 'NOT CONFIGURED',
+          hasWordpressCredentials: !!(contentItem.client.wordpressUrl && contentItem.client.wordpressUsername && contentItem.client.wordpressAppPassword),
+        }
+      }, { status: 400 })
     }
 
     if (!contentItem.client.wordpressUrl) {
-      return NextResponse.json({ error: 'WordPress not configured for client' }, { status: 400 })
+      return NextResponse.json({
+        error: 'WordPress not configured for this client. Please go to Edit Client and add WordPress URL, Username, and App Password.',
+        details: {
+          contentId: id,
+          clientName: contentItem.client.businessName,
+        }
+      }, { status: 400 })
     }
 
+    if (!contentItem.client.wordpressUsername || !contentItem.client.wordpressAppPassword) {
+      return NextResponse.json({
+        error: 'WordPress credentials incomplete. Please go to Edit Client and add WordPress Username and App Password.',
+        details: {
+          contentId: id,
+          clientName: contentItem.client.businessName,
+          wordpressUrl: contentItem.client.wordpressUrl,
+          hasUsername: !!contentItem.client.wordpressUsername,
+          hasPassword: !!contentItem.client.wordpressAppPassword,
+        }
+      }, { status: 400 })
+    }
 
     // Fetch current content from WordPress (already has featured image + Google Maps)
     const wpCredentials = {
       url: contentItem.client.wordpressUrl,
-      username: contentItem.client.wordpressUsername || '',
-      password: contentItem.client.wordpressAppPassword || '',
+      username: contentItem.client.wordpressUsername,
+      password: contentItem.client.wordpressAppPassword,
     }
 
-    const currentPost = await getPost(wpCredentials, contentItem.blogPost.wordpressPostId)
+    let currentPost
+    try {
+      currentPost = await getPost(wpCredentials, contentItem.blogPost.wordpressPostId)
+    } catch (wpError) {
+      return NextResponse.json({
+        error: `Failed to fetch post from WordPress: ${wpError instanceof Error ? wpError.message : String(wpError)}`,
+        details: {
+          contentId: id,
+          clientName: contentItem.client.businessName,
+          wordpressUrl: contentItem.client.wordpressUrl,
+          wordpressPostId: contentItem.blogPost.wordpressPostId,
+          hint: 'Check that the WordPress URL is correct and credentials are valid. The post may have been deleted from WordPress.',
+        }
+      }, { status: 500 })
+    }
     let fullContent = currentPost.content
 
     // Track what we're embedding
@@ -295,30 +343,53 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
     // 1. Add short-form video (floated right)
     // YouTube URL is in socialPosts.publishedUrl after publishing via Late
+    // IMPORTANT: Look for VIDEO posts specifically (mediaType === 'video'), not image posts
     let shortVideoUrl: string | null = null
 
     // Debug: log all sources
     console.log('=== SHORT VIDEO DEBUG ===')
-    console.log('socialPosts:', contentItem.socialPosts.map(p => ({ platform: p.platform, mediaType: p.mediaType, publishedUrl: p.publishedUrl })))
-    console.log('wrhqSocialPosts:', contentItem.wrhqSocialPosts.map(p => ({ platform: p.platform, mediaType: p.mediaType, publishedUrl: p.publishedUrl })))
+    console.log('socialPosts:', contentItem.socialPosts.map(p => ({ platform: p.platform, mediaType: p.mediaType, publishedUrl: p.publishedUrl, status: p.status })))
+    console.log('wrhqSocialPosts:', contentItem.wrhqSocialPosts.map(p => ({ platform: p.platform, mediaType: p.mediaType, publishedUrl: p.publishedUrl, status: p.status })))
 
-    // Check client socialPosts for YouTube published URL
-    const youtubePost = contentItem.socialPosts.find(
-      p => p.platform === 'YOUTUBE' && p.publishedUrl
+    // Check client socialPosts for YouTube VIDEO post with published URL
+    const youtubeVideoPost = contentItem.socialPosts.find(
+      p => p.platform === 'YOUTUBE' && p.mediaType === 'video' && p.publishedUrl
     )
-    if (youtubePost?.publishedUrl) {
-      shortVideoUrl = youtubePost.publishedUrl
-      console.log('Found in client socialPosts:', shortVideoUrl)
+    if (youtubeVideoPost?.publishedUrl) {
+      shortVideoUrl = youtubeVideoPost.publishedUrl
+      console.log('Found VIDEO in client socialPosts:', shortVideoUrl)
     }
 
-    // Check WRHQ socialPosts for YouTube published URL
+    // Fallback: Check for any YouTube post with publishedUrl (backwards compatibility)
     if (!shortVideoUrl) {
-      const wrhqYoutubePost = contentItem.wrhqSocialPosts.find(
+      const youtubeAnyPost = contentItem.socialPosts.find(
         p => p.platform === 'YOUTUBE' && p.publishedUrl
       )
-      if (wrhqYoutubePost?.publishedUrl) {
-        shortVideoUrl = wrhqYoutubePost.publishedUrl
-        console.log('Found in wrhqSocialPosts:', shortVideoUrl)
+      if (youtubeAnyPost?.publishedUrl) {
+        shortVideoUrl = youtubeAnyPost.publishedUrl
+        console.log('Found ANY YouTube in client socialPosts:', shortVideoUrl)
+      }
+    }
+
+    // Check WRHQ socialPosts for YouTube VIDEO post
+    if (!shortVideoUrl) {
+      const wrhqYoutubeVideoPost = contentItem.wrhqSocialPosts.find(
+        p => p.platform === 'YOUTUBE' && p.mediaType === 'video' && p.publishedUrl
+      )
+      if (wrhqYoutubeVideoPost?.publishedUrl) {
+        shortVideoUrl = wrhqYoutubeVideoPost.publishedUrl
+        console.log('Found VIDEO in wrhqSocialPosts:', shortVideoUrl)
+      }
+    }
+
+    // Fallback: any WRHQ YouTube post
+    if (!shortVideoUrl) {
+      const wrhqYoutubeAnyPost = contentItem.wrhqSocialPosts.find(
+        p => p.platform === 'YOUTUBE' && p.publishedUrl
+      )
+      if (wrhqYoutubeAnyPost?.publishedUrl) {
+        shortVideoUrl = wrhqYoutubeAnyPost.publishedUrl
+        console.log('Found ANY YouTube in wrhqSocialPosts:', shortVideoUrl)
       }
     }
 
@@ -406,17 +477,72 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       })
     }
 
+    // Build comprehensive diagnostic info
+    const shortVideoSkipReason = !shortVideoUrl
+      ? (() => {
+          const youtubeClientPosts = contentItem.socialPosts.filter(p => p.platform === 'YOUTUBE')
+          const youtubeWrhqPosts = contentItem.wrhqSocialPosts.filter(p => p.platform === 'YOUTUBE')
+          const allYoutubePosts = [...youtubeClientPosts, ...youtubeWrhqPosts]
+
+          if (allYoutubePosts.length === 0) {
+            return 'No YouTube social posts found. Generate video social posts first.'
+          }
+
+          // Check for video posts specifically
+          const videoPosts = allYoutubePosts.filter(p => p.mediaType === 'video')
+          const videoWithUrl = videoPosts.filter(p => p.publishedUrl)
+          const anyWithUrl = allYoutubePosts.filter(p => p.publishedUrl)
+
+          if (videoPosts.length === 0) {
+            return `Found ${allYoutubePosts.length} YouTube post(s) but none are video type. Generate video social posts (mediaType=video).`
+          }
+
+          if (videoWithUrl.length === 0 && anyWithUrl.length === 0) {
+            const statuses = videoPosts.map(p => `mediaType=${p.mediaType}, status=${p.status}, publishedUrl=${p.publishedUrl || 'MISSING'}`).join('; ')
+            return `Found ${videoPosts.length} YouTube video post(s) but none have publishedUrl yet. Publish videos to YouTube first. (${statuses})`
+          }
+
+          return null
+        })()
+      : null
+
+    // Check image status
+    const blogFeaturedImage = contentItem.images.find(img => img.imageType === 'BLOG_FEATURED')
+    const imageStatus = {
+      hasBlogFeaturedImage: !!blogFeaturedImage,
+      imageUrl: blogFeaturedImage?.gcsUrl || null,
+      imageCount: contentItem.images.length,
+      imageTypes: contentItem.images.map(img => img.imageType),
+    }
+
     return NextResponse.json({
       success: true,
       embedded,
       message: embedded.length > 0
         ? `Embedded: ${embedded.join(', ')}`
         : 'No new media to embed',
-      podcastSkipReason: podcastSkipReason || undefined,
+      skipped: {
+        shortVideo: shortVideoSkipReason,
+        podcast: podcastSkipReason,
+      },
       debug: {
         hasPodcast: !!contentItem.podcast,
         podcastStatus: contentItem.podcast?.status,
         hasPodbeanPlayerUrl: !!contentItem.podcast?.podbeanPlayerUrl,
+        podbeanUrl: contentItem.podcast?.podbeanUrl || null,
+        hasShortFormVideos: contentItem.shortFormVideos?.length > 0,
+        shortFormVideoCount: contentItem.shortFormVideos?.length || 0,
+        youtubeClientPosts: contentItem.socialPosts.filter(p => p.platform === 'YOUTUBE').map(p => ({
+          status: p.status,
+          publishedUrl: p.publishedUrl,
+          mediaType: p.mediaType,
+        })),
+        youtubeWrhqPosts: contentItem.wrhqSocialPosts.filter(p => p.platform === 'YOUTUBE').map(p => ({
+          status: p.status,
+          publishedUrl: p.publishedUrl,
+          mediaType: p.mediaType,
+        })),
+        imageStatus,
       },
     })
   } catch (error) {

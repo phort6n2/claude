@@ -231,7 +231,7 @@ export async function getWRHQConfig(): Promise<WRHQConfig> {
     },
     publishing: {
       preferredTime: settings[WRHQ_SETTINGS_KEYS.WRHQ_PUBLISH_TIME] || '10:00',
-      timezone: settings[WRHQ_SETTINGS_KEYS.WRHQ_TIMEZONE] || 'America/Los_Angeles',
+      timezone: settings[WRHQ_SETTINGS_KEYS.WRHQ_TIMEZONE] || 'America/Denver',
     },
     youtubeApi: {
       clientId: youtubeClientId,

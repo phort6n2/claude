@@ -14,7 +14,19 @@ import {
   X,
   Check,
   AlertCircle,
+  HelpCircle,
+  Sparkles,
 } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import {
+  PageContainer,
+  PageHeader,
+  GradientStatCard,
+  StatCardGrid,
+  ContentCard,
+  EmptyState,
+  ListPageSkeleton,
+} from '@/components/ui/theme'
 
 interface PAAQuestion {
   id: string
@@ -191,78 +203,111 @@ export default function PAALibraryPage() {
   const getPriorityBadge = (priority: number) => {
     if (priority <= 10) {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded">
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded-lg">
           <Star size={12} className="fill-current" />
           High ({priority})
         </span>
       )
     }
     return (
-      <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded">
+      <span className="px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-lg">
         {priority}
       </span>
     )
   }
 
+  // Calculate stats
+  const highPriorityCount = questions.filter(q => q.priority <= 10).length
+  const activeCount = questions.filter(q => q.isActive).length
+
+  if (loading && questions.length === 0) {
+    return <ListPageSkeleton />
+  }
+
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">PAA Question Library</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {pagination.total} questions across {filters.services.length} services
-          </p>
-        </div>
-        <button
-          onClick={openCreateModal}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          <Plus size={18} />
-          Add Question
-        </button>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title="PAA Question Library"
+        subtitle={`${pagination.total} questions across ${filters.services.length} services`}
+        backHref="/admin/settings"
+        actions={
+          <Button onClick={openCreateModal} className="shadow-lg shadow-blue-500/25">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Question
+          </Button>
+        }
+      />
+
+      {/* Stats Cards */}
+      <StatCardGrid cols={4}>
+        <GradientStatCard
+          title="Total Questions"
+          value={pagination.total}
+          subtitle="In library"
+          icon={<HelpCircle />}
+          variant="blue"
+        />
+        <GradientStatCard
+          title="Services"
+          value={filters.services.length}
+          subtitle="Categories"
+          icon={<FileText />}
+          variant="violet"
+        />
+        <GradientStatCard
+          title="High Priority"
+          value={highPriorityCount}
+          subtitle="Priority 1-10"
+          icon={<Star />}
+          variant="amber"
+        />
+        <GradientStatCard
+          title="Active"
+          value={activeCount}
+          subtitle="Available for use"
+          icon={<Sparkles />}
+          variant="green"
+        />
+      </StatCardGrid>
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
-        <form onSubmit={handleSearch} className="flex items-center gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+      <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-6 shadow-sm">
+        <form onSubmit={handleSearch} className="flex flex-wrap items-center gap-4">
+          <div className="flex-1 min-w-[250px] relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search questions..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
             />
           </div>
           <button
             type="button"
             onClick={() => setShowFilters(!showFilters)}
-            className={`inline-flex items-center gap-2 px-4 py-2 border rounded-lg ${
-              showFilters ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+            className={`inline-flex items-center gap-2 px-4 py-2.5 border rounded-xl text-sm font-medium transition-all ${
+              showFilters ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
             }`}
           >
-            <Filter size={18} />
+            <Filter className="h-4 w-4" />
             Filters
           </button>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800"
-          >
+          <Button type="submit" className="rounded-xl">
             Search
-          </button>
+          </Button>
         </form>
 
         {showFilters && (
-          <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-200">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-200">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Service
               </label>
               <select
                 value={selectedService}
                 onChange={(e) => setSelectedService(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               >
                 <option value="">All Services</option>
                 {filters.services.map((service) => (
@@ -273,13 +318,13 @@ export default function PAALibraryPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Category
               </label>
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               >
                 <option value="">All Categories</option>
                 {filters.categories.map((category) => (
@@ -290,13 +335,13 @@ export default function PAALibraryPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Priority
               </label>
               <select
                 value={selectedPriority}
                 onChange={(e) => setSelectedPriority(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               >
                 <option value="">All Priorities</option>
                 <option value="high">High Priority (1-10)</option>
@@ -309,111 +354,122 @@ export default function PAALibraryPage() {
 
       {/* Error message */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
-          <AlertCircle size={18} />
-          {error}
-          <button onClick={() => setError(null)} className="ml-auto">
-            <X size={18} />
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3 text-red-700">
+          <AlertCircle className="h-5 w-5 flex-shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button onClick={() => setError(null)} className="p-1 hover:bg-red-100 rounded-lg transition-colors">
+            <X className="h-4 w-4" />
           </button>
         </div>
       )}
 
       {/* Questions Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Question
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Service
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Category
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Priority
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Status
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {loading ? (
+      <ContentCard padding="none">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                  Loading...
-                </td>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Question
+                </th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Service
+                </th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">
+                  Category
+                </th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Priority
+                </th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden sm:table-cell">
+                  Status
+                </th>
+                <th className="px-4 py-3.5 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
-            ) : questions.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                  No questions found
-                </td>
-              </tr>
-            ) : (
-              questions.map((question) => (
-                <tr key={question.id} className={!question.isActive ? 'bg-gray-50' : ''}>
-                  <td className="px-4 py-3">
-                    <span className={`text-sm ${!question.isActive ? 'text-gray-400' : 'text-gray-900'}`}>
-                      {question.question}
-                    </span>
-                    {question._count && question._count.contentItems > 0 && (
-                      <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
-                        <FileText size={12} />
-                        {question._count.contentItems} content items
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-sm text-gray-600">{question.service}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-sm text-gray-600">{question.category || '-'}</span>
-                  </td>
-                  <td className="px-4 py-3">{getPriorityBadge(question.priority)}</td>
-                  <td className="px-4 py-3">
-                    {question.isActive ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded">
-                        <Check size={12} />
-                        Active
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 rounded">
-                        Inactive
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => openEditModal(question)}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(question)}
-                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                      Loading...
                     </div>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : questions.length === 0 ? (
+                <tr>
+                  <td colSpan={6}>
+                    <EmptyState
+                      icon={<HelpCircle />}
+                      title="No questions found"
+                      description="Try adjusting your filters or add a new question"
+                    />
+                  </td>
+                </tr>
+              ) : (
+                questions.map((question) => (
+                  <tr key={question.id} className={`group hover:bg-gray-50 transition-colors ${!question.isActive ? 'bg-gray-50/50' : ''}`}>
+                    <td className="px-4 py-3.5">
+                      <span className={`text-sm ${!question.isActive ? 'text-gray-400' : 'text-gray-900'}`}>
+                        {question.question}
+                      </span>
+                      {question._count && question._count.contentItems > 0 && (
+                        <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
+                          <FileText size={12} />
+                          {question._count.contentItems} content items
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded-lg">
+                        {question.service}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 hidden md:table-cell">
+                      <span className="text-sm text-gray-600">{question.category || '—'}</span>
+                    </td>
+                    <td className="px-4 py-3.5">{getPriorityBadge(question.priority)}</td>
+                    <td className="px-4 py-3.5 hidden sm:table-cell">
+                      {question.isActive ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-lg">
+                          <Check size={12} />
+                          Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-500 rounded-lg">
+                          Inactive
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => openEditModal(question)}
+                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(question)}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* Pagination */}
         {pagination.totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+          <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between bg-gray-50">
             <div className="text-sm text-gray-500">
               Showing {(pagination.page - 1) * pagination.limit + 1} to{' '}
               {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
@@ -423,36 +479,36 @@ export default function PAALibraryPage() {
               <button
                 onClick={() => fetchQuestions(pagination.page - 1)}
                 disabled={pagination.page <= 1}
-                className="p-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                className="p-2 border border-gray-200 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white transition-colors"
               >
                 <ChevronLeft size={18} />
               </button>
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-gray-600 px-2">
                 Page {pagination.page} of {pagination.totalPages}
               </span>
               <button
                 onClick={() => fetchQuestions(pagination.page + 1)}
                 disabled={pagination.page >= pagination.totalPages}
-                className="p-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                className="p-2 border border-gray-200 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white transition-colors"
               >
                 <ChevronRight size={18} />
               </button>
             </div>
           </div>
         )}
-      </div>
+      </ContentCard>
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">
                 {editingQuestion ? 'Edit Question' : 'Add New Question'}
               </h2>
               <button
                 onClick={() => setShowModal(false)}
-                className="p-1 text-gray-400 hover:text-gray-600"
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <X size={20} />
               </button>
@@ -460,7 +516,7 @@ export default function PAALibraryPage() {
 
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Question Template
                 </label>
                 <textarea
@@ -468,22 +524,22 @@ export default function PAALibraryPage() {
                   onChange={(e) => setModalForm({ ...modalForm, question: e.target.value })}
                   rows={3}
                   placeholder="How much does {service} cost in {location}?"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 mt-1.5">
                   Use {'{location}'} as a placeholder for client location
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Service
                   </label>
                   <select
                     value={modalForm.service}
                     onChange={(e) => setModalForm({ ...modalForm, service: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   >
                     {filters.services.length > 0 ? (
                       filters.services.map((service) => (
@@ -503,7 +559,7 @@ export default function PAALibraryPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Category
                   </label>
                   <input
@@ -511,14 +567,14 @@ export default function PAALibraryPage() {
                     value={modalForm.category}
                     onChange={(e) => setModalForm({ ...modalForm, category: e.target.value })}
                     placeholder="e.g., cost, process, safety"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Priority (1-200)
                   </label>
                   <input
@@ -527,20 +583,20 @@ export default function PAALibraryPage() {
                     max={200}
                     value={modalForm.priority}
                     onChange={(e) => setModalForm({ ...modalForm, priority: parseInt(e.target.value) || 100 })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   />
                   <p className="text-xs text-gray-500 mt-1">1-10 = High priority</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Status
                   </label>
-                  <label className="inline-flex items-center gap-2 mt-2">
+                  <label className="inline-flex items-center gap-2 mt-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={modalForm.isActive}
                       onChange={(e) => setModalForm({ ...modalForm, isActive: e.target.checked })}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     />
                     <span className="text-sm text-gray-700">Active</span>
                   </label>
@@ -548,24 +604,25 @@ export default function PAALibraryPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
-              <button
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+              <Button
+                variant="outline"
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="rounded-xl"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleSave}
                 disabled={saving || !modalForm.question || !modalForm.service}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-xl"
               >
                 {saving ? 'Saving...' : editingQuestion ? 'Update' : 'Create'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </PageContainer>
   )
 }

@@ -73,6 +73,31 @@ interface PlacePrediction {
   secondaryText: string
 }
 
+interface CreatifyAvatar {
+  id: string
+  name: string
+  gender?: string
+  style?: string
+  location?: string
+  thumbnail?: string
+  useThisId: string
+}
+
+interface CreatifyVoiceAccent {
+  id: string
+  name: string
+  accent: string
+  useThisId: string
+}
+
+interface CreatifyVoice {
+  id: string
+  name: string
+  gender?: string
+  accents: CreatifyVoiceAccent[]
+  useThisId: string
+}
+
 interface ClientData {
   id: string
   slug?: string
@@ -109,7 +134,15 @@ interface ClientData {
   wordpressAppPassword: string | null
   ctaText: string
   ctaUrl: string | null
+  // Creatify video settings
   creatifyTemplateId: string | null
+  creatifyAvatarId: string | null
+  creatifyVoiceId: string | null
+  creatifyVisualStyle: string | null
+  creatifyScriptStyle: string | null
+  creatifyModelVersion: string | null
+  creatifyVideoLength: number | null
+  creatifyNoCta: boolean
   preferredPublishTime: string
   timezone: string
   socialPlatforms: string[]
@@ -164,9 +197,17 @@ const defaultClientData: Omit<ClientData, 'id'> & { id: string } = {
   wordpressAppPassword: null,
   ctaText: 'Get a Free Quote',
   ctaUrl: null,
+  // Creatify video settings
   creatifyTemplateId: null,
+  creatifyAvatarId: null,
+  creatifyVoiceId: null,
+  creatifyVisualStyle: null,
+  creatifyScriptStyle: null,
+  creatifyModelVersion: null,
+  creatifyVideoLength: null,
+  creatifyNoCta: false,
   preferredPublishTime: '09:00',
-  timezone: 'America/Los_Angeles',
+  timezone: 'America/Denver',
   socialPlatforms: [],
   socialAccountIds: null,
   podbeanPodcastId: null,
@@ -241,6 +282,12 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   const [youtubePlaylists, setYoutubePlaylists] = useState<YouTubePlaylist[]>([])
   const [youtubeConnected, setYoutubeConnected] = useState(false)
   const [loadingYoutube, setLoadingYoutube] = useState(false)
+
+  // Creatify avatars/voices state
+  const [creatifyAvatars, setCreatifyAvatars] = useState<CreatifyAvatar[]>([])
+  const [creatifyVoices, setCreatifyVoices] = useState<CreatifyVoice[]>([])
+  const [loadingCreatify, setLoadingCreatify] = useState(false)
+  const [creatifyConnected, setCreatifyConnected] = useState(false)
 
   // Service locations state
   const [serviceLocations, setServiceLocations] = useState<ServiceLocation[]>([])
@@ -341,6 +388,22 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       })
       .catch(() => {})
       .finally(() => setLoadingYoutube(false))
+  }, [])
+
+  // Load Creatify avatars and voices
+  useEffect(() => {
+    setLoadingCreatify(true)
+    fetch('/api/creatify/avatars-voices')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.avatars && data.voices) {
+          setCreatifyConnected(true)
+          setCreatifyAvatars(data.avatars)
+          setCreatifyVoices(data.voices)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingCreatify(false))
   }, [])
 
   // Load service locations (only for existing clients)
@@ -938,10 +1001,12 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
     return (
       <button
         onClick={() => toggleSection(section)}
-        className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded-t-lg border-b"
+        className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-white hover:from-gray-100 hover:to-gray-50 transition-all border-b border-gray-100"
       >
         <div className="flex items-center gap-3">
-          <Icon className="h-5 w-5 text-gray-600" />
+          <div className="p-2 bg-white rounded-lg shadow-sm border border-gray-100">
+            <Icon className="h-5 w-5 text-blue-600" />
+          </div>
           <div className="text-left">
             <h3 className="font-semibold text-gray-900">{title}</h3>
             <p className="text-sm text-gray-500">{subtitle}</p>
@@ -959,22 +1024,27 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   return (
     <div className="space-y-4">
       {/* Sticky Save Bar */}
-      <div className="sticky top-0 z-10 bg-white border-b shadow-sm -mx-6 -mt-6 px-6 py-3 mb-6">
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border border-gray-200 shadow-lg rounded-2xl -mx-2 px-6 py-4 mb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-lg font-semibold">
-              {isNewClient ? 'New Client' : formData.businessName || 'Edit Client'}
-            </h1>
-            {saveSuccess && (
-              <span className="flex items-center gap-1 text-sm text-green-600">
-                <Check className="h-4 w-4" /> Saved
-              </span>
-            )}
-            {error && (
-              <span className="flex items-center gap-1 text-sm text-red-600">
-                <AlertCircle className="h-4 w-4" /> {error}
-              </span>
-            )}
+            <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-sm">
+              <Building2 className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">
+                {isNewClient ? 'New Client' : formData.businessName || 'Edit Client'}
+              </h1>
+              {saveSuccess && (
+                <span className="flex items-center gap-1 text-sm text-green-600">
+                  <Check className="h-4 w-4" /> Changes saved successfully
+                </span>
+              )}
+              {error && (
+                <span className="flex items-center gap-1 text-sm text-red-600">
+                  <AlertCircle className="h-4 w-4" /> {error}
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="outline" onClick={() => router.push('/admin/clients')}>
@@ -997,31 +1067,31 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
         </div>
         {/* Quick Links - only show for existing clients */}
         {!isNewClient && (
-          <div className="flex items-center gap-4 mt-2 pt-2 border-t border-gray-100">
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 flex-wrap">
             <Link
               href={`/admin/clients/${client!.id}/calendar`}
-              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
             >
               <Calendar className="h-4 w-4" />
-              Content Calendar
+              Calendar
             </Link>
             <Link
               href={`/admin/clients/${client!.id}/gbp`}
-              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
             >
               <Store className="h-4 w-4" />
               GBP Posts
             </Link>
             <Link
               href={`/admin/clients/${client!.id}/users`}
-              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-colors"
             >
               <Users className="h-4 w-4" />
-              Portal Users
+              Users
             </Link>
             <Link
               href={`/admin/clients/${client!.id}/google-ads`}
-              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
             >
               <TrendingUp className="h-4 w-4" />
               Google Ads
@@ -1033,9 +1103,9 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
         {!isNewClient && client?.slug && (
           <div className="mt-3 pt-3 border-t border-gray-100">
             <div className="flex items-center gap-2 text-sm">
-              <Webhook className="h-4 w-4 text-gray-400" />
-              <span className="text-gray-500">Webhook URL:</span>
-              <code className="px-2 py-1 bg-gray-100 rounded text-xs font-mono text-gray-700 flex-1 truncate">
+              <Webhook className="h-4 w-4 text-cyan-500" />
+              <span className="text-gray-500 font-medium">Webhook:</span>
+              <code className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-mono text-gray-700 flex-1 truncate">
                 https://glassleads.app/api/webhooks/highlevel/lead?client={client.slug}
               </code>
               <button
@@ -1045,7 +1115,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                     `https://glassleads.app/api/webhooks/highlevel/lead?client=${client.slug}`
                   )
                 }}
-                className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
                 title="Copy webhook URL"
               >
                 <Copy className="h-4 w-4 text-gray-500" />
@@ -1056,7 +1126,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       </div>
 
       {/* Business Information */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <SectionHeader
           section="business"
           icon={Building2}
@@ -1245,7 +1315,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       </div>
 
       {/* Location */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <SectionHeader
           section="location"
           icon={MapPin}
@@ -1330,7 +1400,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       </div>
 
       {/* Service Locations */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <SectionHeader
           section="serviceLocations"
           icon={MapPin}
@@ -1445,7 +1515,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       </div>
 
       {/* Branding */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <SectionHeader
           section="branding"
           icon={Palette}
@@ -1532,7 +1602,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       </div>
 
       {/* WordPress */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <SectionHeader
           section="wordpress"
           icon={Globe}
@@ -1637,7 +1707,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       </div>
 
       {/* Social Media */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <SectionHeader
           section="social"
           icon={Share2}
@@ -1695,7 +1765,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       </div>
 
       {/* Integrations */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <SectionHeader
           section="integrations"
           icon={Podcast}
@@ -1785,26 +1855,213 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
               />
             </div>
 
-            {/* Creatify Template */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
+            {/* Creatify Video Settings */}
+            <div className="border-t pt-6">
+              <div className="flex items-center gap-2 mb-4">
                 <Video className="h-4 w-4 text-purple-600" />
-                <h4 className="text-sm font-medium text-gray-700">Creatify Template ID</h4>
+                <h4 className="text-sm font-medium text-gray-900">Creatify Video Settings</h4>
+                {loadingCreatify && (
+                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                )}
+                {creatifyConnected && !loadingCreatify && (
+                  <span className="text-xs text-green-600 flex items-center gap-1">
+                    <Check className="h-3 w-3" /> Connected
+                  </span>
+                )}
               </div>
-              <input
-                type="text"
-                value={formData.creatifyTemplateId || ''}
-                onChange={(e) => updateField('creatifyTemplateId', e.target.value)}
-                className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                placeholder="Template UUID for branded short videos"
-              />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Avatar Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Avatar
+                    {creatifyAvatars.length > 0 && (
+                      <span className="ml-2 text-xs text-gray-500">({creatifyAvatars.length} available)</span>
+                    )}
+                  </label>
+                  <select
+                    value={formData.creatifyAvatarId || ''}
+                    onChange={(e) => updateField('creatifyAvatarId', e.target.value || null)}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                    disabled={loadingCreatify}
+                  >
+                    <option value="">Default (Creatify chooses)</option>
+                    {/* Sort avatars alphabetically by name */}
+                    {[...creatifyAvatars]
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map(avatar => (
+                        <option key={avatar.id} value={avatar.useThisId}>
+                          {avatar.name} ({avatar.location || 'studio'}{avatar.gender === 'm' ? ', male' : avatar.gender === 'f' ? ', female' : ''})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                {/* Voice Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Voice & Accent
+                    {creatifyVoices.length > 0 && (
+                      <span className="ml-2 text-xs text-gray-500">
+                        ({creatifyVoices.reduce((count, v) => count + v.accents.length, 0)} options)
+                      </span>
+                    )}
+                  </label>
+                  <select
+                    value={formData.creatifyVoiceId || ''}
+                    onChange={(e) => updateField('creatifyVoiceId', e.target.value || null)}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                    disabled={loadingCreatify}
+                  >
+                    <option value="">Default (Creatify chooses)</option>
+                    {/* Filter for American accents only */}
+                    {[...creatifyVoices]
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map(voice => {
+                        // Helper to check if an accent is American
+                        const isAmerican = (accent: { name?: string; accent?: string; language?: string }) => {
+                          const text = `${accent.name || ''} ${accent.accent || ''} ${accent.language || ''}`.toLowerCase()
+                          return text.includes('american') ||
+                                 text.includes('en-us') ||
+                                 text.includes('en_us') ||
+                                 text.includes('us english') ||
+                                 text.includes('united states')
+                        }
+
+                        // Find American accent, or fall back to first accent
+                        const americanAccent = voice.accents.find(isAmerican) || voice.accents[0]
+
+                        return {
+                          id: americanAccent?.id || voice.id,
+                          name: voice.name,
+                          gender: voice.gender,
+                          useThisId: americanAccent?.useThisId || voice.useThisId,
+                        }
+                      })
+                      .map(option => (
+                        <option key={option.id} value={option.useThisId}>
+                          {option.name} ({option.gender || 'voice'})
+                        </option>
+                      ))}
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Filtered to American accents only
+                  </p>
+                </div>
+
+                {/* Video Length */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Video Length</label>
+                  <select
+                    value={formData.creatifyVideoLength || ''}
+                    onChange={(e) => updateField('creatifyVideoLength', e.target.value ? parseInt(e.target.value) : null)}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Default (30 seconds)</option>
+                    <option value="15">15 seconds</option>
+                    <option value="30">30 seconds</option>
+                    <option value="45">45 seconds</option>
+                    <option value="60">60 seconds</option>
+                  </select>
+                </div>
+
+                {/* Model Version */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Model Version</label>
+                  <select
+                    value={formData.creatifyModelVersion || ''}
+                    onChange={(e) => updateField('creatifyModelVersion', e.target.value || null)}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Default (Standard)</option>
+                    <option value="standard">Standard (cheapest)</option>
+                    <option value="aurora_v1">Aurora v1 (best quality)</option>
+                    <option value="aurora_v1_fast">Aurora v1 Fast</option>
+                  </select>
+                </div>
+
+                {/* Visual Style */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Visual Style</label>
+                  <select
+                    value={formData.creatifyVisualStyle || ''}
+                    onChange={(e) => updateField('creatifyVisualStyle', e.target.value || null)}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Default (Avatar Bubble)</option>
+                    <option value="AvatarBubbleTemplate">Avatar Bubble</option>
+                    <option value="DynamicProductTemplate">Product</option>
+                    <option value="FullScreenTemplate">Full Screen</option>
+                    <option value="FullScreenV2Template">Full Screen V2</option>
+                    <option value="VanillaTemplate">Vanilla</option>
+                    <option value="EnhancedVanillaTemplate">Dynamic Vanilla</option>
+                    <option value="DramaticTemplate">Dramatic</option>
+                    <option value="VlogTemplate">Vlog</option>
+                    <option value="SideBySideTemplate">Side by Side</option>
+                    <option value="MotionCardsTemplate">Motion Cards</option>
+                    <option value="SimpleAvatarOverlayTemplate">Product Presenter</option>
+                  </select>
+                </div>
+
+                {/* Script Style */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Script Style</label>
+                  <select
+                    value={formData.creatifyScriptStyle || ''}
+                    onChange={(e) => updateField('creatifyScriptStyle', e.target.value || null)}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Default (Discovery)</option>
+                    <option value="DiscoveryWriter">Discovery</option>
+                    <option value="HowToV2">How To</option>
+                    <option value="ProblemSolutionV2">Problem Solution</option>
+                    <option value="BenefitsV2">Benefits</option>
+                    <option value="CallToActionV2">Call To Action</option>
+                    <option value="ThreeReasonsWriter">3 Reasons Why</option>
+                    <option value="BrandStoryV2">Brand Story</option>
+                    <option value="EmotionalWriter">Emotional</option>
+                    <option value="MotivationalWriter">Motivational</option>
+                    <option value="ProductHighlightsV2">Product Highlights</option>
+                    <option value="DIY">DIY</option>
+                  </select>
+                </div>
+
+                {/* Template ID (advanced) */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Custom Template ID (optional)</label>
+                  <input
+                    type="text"
+                    value={formData.creatifyTemplateId || ''}
+                    onChange={(e) => updateField('creatifyTemplateId', e.target.value || null)}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="Template UUID for custom branded videos"
+                  />
+                </div>
+
+                {/* No CTA Toggle */}
+                <div className="md:col-span-2 flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-900">Disable Default CTA</h5>
+                    <p className="text-xs text-gray-500">Hide the "Buy Now" button (use script for CTA instead)</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.creatifyNoCta ?? false}
+                      onChange={(e) => updateField('creatifyNoCta', e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
         )}
       </div>
 
       {/* Automation */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <SectionHeader
           section="automation"
           icon={Zap}
@@ -2298,7 +2555,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
 
       {/* Google Ads - only show for existing clients */}
       {!isNewClient && (
-        <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <SectionHeader
             section="googleads"
             icon={TrendingUp}

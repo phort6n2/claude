@@ -774,9 +774,9 @@ export async function generateVideoSocialCaption(params: {
 }> {
   const platformLimits = {
     tiktok: { caption: 2200, hashtags: 5 },
-    youtube: { caption: 5000, hashtags: 15 },
-    instagram: { caption: 2200, hashtags: 30 },
-    facebook: { caption: 63206, hashtags: 10 },
+    youtube: { caption: 5000, hashtags: 5 }, // YouTube Shorts: 3-5 hashtags optimal
+    instagram: { caption: 2200, hashtags: 5 }, // Instagram Reels 2026: 3-5 hyper-relevant hashtags
+    facebook: { caption: 63206, hashtags: 3 }, // Facebook Reels 2026: 1-3 hashtags max, 6+ flagged as spammy
   }
 
   const limits = platformLimits[params.platform]
@@ -791,7 +791,194 @@ export async function generateVideoSocialCaption(params: {
   // For Instagram and TikTok, links go in first comment
   const includeUrlInCaption = params.platform === 'youtube' || params.platform === 'facebook'
 
-  const prompt = `Write a ${platformName} caption for this auto glass video.
+  // YouTube Shorts specific prompt following 2026 best practices
+  let prompt: string
+  if (params.platform === 'youtube') {
+    prompt = `Write a YouTube Shorts description following 2026 best practices for maximum visibility and engagement.
+
+**Context:**
+- Business: ${params.businessName}
+- Location: ${params.location}
+- Video Topic: ${params.blogTitle}
+- Content Summary: ${params.blogExcerpt}
+- Blog URL: ${params.blogUrl}
+${params.googleMapsUrl ? `- Google Maps: ${params.googleMapsUrl}` : ''}
+
+**CRITICAL: YouTube Shorts 2026 Best Practices**
+
+The first 100-150 characters are the ONLY text visible without clicking "more" - this is crucial!
+
+**Required Structure:**
+
+1. **HOOK (First 100-150 chars - MOST IMPORTANT)**
+   - Lead with compelling "what's in it for me" value
+   - Include primary keyword naturally (auto glass, windshield, etc.)
+   - Must grab attention immediately - this is all viewers see!
+
+2. **VIDEO SUMMARY (100-150 words)**
+   - Concise overview of what viewers will learn
+   - Short paragraphs, conversational tone
+   - Include the blog URL: ${params.blogUrl}
+${params.googleMapsUrl ? `   - Include Google Maps link: ${params.googleMapsUrl}` : ''}
+
+3. **CALL-TO-ACTION**
+   - Specific CTA: "Subscribe for more auto glass tips" or similar
+   - Encourage engagement (like, comment, share)
+
+4. **HASHTAGS (placed at the very end)**
+   - 3-5 relevant hashtags
+   - MUST include #Shorts
+   - Include location hashtag
+
+**Format your response as JSON:**
+{
+  "caption": "Full description following the structure above. Hook first (under 150 chars), then summary with links, then CTA. NO hashtags in caption.",
+  "hashtags": ["Shorts", "AutoGlass", "WindshieldRepair", "${params.location.replace(/[,\s]+/g, '')}", "CarTips"],
+  "firstComment": "Pinned comment with additional engagement prompt"
+}
+
+Return ONLY valid JSON. No explanation.`
+  } else if (params.platform === 'tiktok') {
+    // TikTok specific prompt following 2026 best practices
+    prompt = `Write a TikTok caption for this auto glass video following 2026 TikTok SEO best practices.
+
+**Context:**
+- Business: ${params.businessName}
+- Location: ${params.location}
+- Video Topic: ${params.blogTitle}
+- Content Summary: ${params.blogExcerpt}
+- Blog URL: ${params.blogUrl}
+${params.googleMapsUrl ? `- Google Maps: ${params.googleMapsUrl}` : ''}
+
+**CRITICAL: TikTok 2026 Best Practices**
+
+Only the first 65-70 characters are visible before truncation - this is crucial!
+
+**Required Structure:**
+
+1. **SEO HOOK (First 65 chars - MOST IMPORTANT)**
+   - Front-load primary keyword (auto glass, windshield, etc.) in FIRST sentence
+   - Use bold claim or question to stop scrolling
+   - NO fluff like "In this video..." - get straight to value
+   - This is ALL users see before clicking "more"!
+
+2. **CONVERSATIONAL SUMMARY (100-300 chars)**
+   - Natural 2-3 sentence summary with keyword variations
+   - Help TikTok's AI categorize content for search
+   - Use line breaks and emojis for scannability
+   - Specific CTA: "Save this for later" or "Tag a friend who needs this"
+
+3. **HASHTAGS (3-5 only)**
+   - Keep to 3-5 highly relevant hashtags (more triggers spam filters)
+   - Mix: 1-2 broad niche tags + 2-3 specific keyword tags
+   - AVOID generic tags like #fyp or #viral - they provide no context
+   - Include location-specific tag
+
+**Format your response as JSON:**
+{
+  "caption": "SEO hook in first 65 chars, then summary with line breaks and emojis. NO hashtags in caption. Links go in firstComment.",
+  "hashtags": ["AutoGlass", "WindshieldRepair", "${params.location.replace(/[,\s]+/g, '')}", "CarTips"],
+  "firstComment": "Link in bio for full article! 📝 ${params.blogUrl}${params.googleMapsUrl ? ` | Find us: ${params.googleMapsUrl}` : ''}"
+}
+
+Return ONLY valid JSON. No explanation.`
+  } else if (params.platform === 'instagram') {
+    // Instagram Reels specific prompt following 2026 best practices
+    prompt = `Write an Instagram Reels caption for this auto glass video following 2026 Instagram SEO best practices.
+
+**Context:**
+- Business: ${params.businessName}
+- Location: ${params.location}
+- Video Topic: ${params.blogTitle}
+- Content Summary: ${params.blogExcerpt}
+- Blog URL: ${params.blogUrl}
+${params.googleMapsUrl ? `- Google Maps: ${params.googleMapsUrl}` : ''}
+
+**CRITICAL: Instagram Reels 2026 Best Practices**
+
+Only the first 125 characters are visible before truncation - this is crucial for both engagement AND search indexing!
+
+**Required Structure:**
+
+1. **ABOVE-THE-FOLD HOOK (First 125 chars - MOST IMPORTANT)**
+   - High-impact statement, question, or benefit-driven hook (e.g., "3 secrets to...")
+   - Primary keyword (auto glass, windshield, etc.) in FIRST sentence
+   - This affects both user engagement AND Google/Instagram search indexing!
+
+2. **CONTEXTUAL SUMMARY & SEO BODY (1-3 short paragraphs)**
+   - Explain the value of the video conversationally
+   - Naturally weave in 2-3 secondary keywords (car repair, glass replacement, etc.)
+   - Mention if there are subtitles (many watch with sound off)
+
+3. **CLEAR CALL-TO-ACTION**
+   - Direct instruction: "Read the full guide in bio" or "Save this for later"
+   - Engagement prompt: Ask a specific question to encourage comments (major ranking signal!)
+   - Example: "Have you ever dealt with a cracked windshield? 👇"
+
+4. **HASHTAGS (3-5 only, placed at bottom)**
+   - 1 broad niche tag (e.g., #AutoGlass)
+   - 2-3 specific/micro-niche tags (e.g., #WindshieldRepair${params.location.replace(/[,\s]+/g, '')})
+   - 1 branded tag if applicable
+   - AVOID generic tags like #viral, #explore - Instagram views these as "noise"
+
+**Format your response as JSON:**
+{
+  "caption": "Hook in first 125 chars with primary keyword, then 1-3 short paragraphs, then CTA with engagement question. NO hashtags in caption. Links go in firstComment.",
+  "hashtags": ["AutoGlass", "WindshieldRepair", "${params.location.replace(/[,\s]+/g, '')}", "CarCare", "AutoRepair"],
+  "firstComment": "📝 Full guide in bio! ${params.blogUrl}${params.googleMapsUrl ? ` | 📍 Find us: ${params.googleMapsUrl}` : ''}"
+}
+
+Return ONLY valid JSON. No explanation.`
+  } else if (params.platform === 'facebook') {
+    // Facebook Reels specific prompt following 2026 best practices
+    prompt = `Write a Facebook Reels caption for this auto glass video following 2026 Facebook SEO best practices.
+
+**Context:**
+- Business: ${params.businessName}
+- Location: ${params.location}
+- Video Topic: ${params.blogTitle}
+- Content Summary: ${params.blogExcerpt}
+- Blog URL: ${params.blogUrl}
+${params.googleMapsUrl ? `- Google Maps: ${params.googleMapsUrl}` : ''}
+
+**CRITICAL: Facebook Reels 2026 Best Practices**
+
+Facebook truncates descriptions after the first 40-80 characters on mobile - this is your make-or-break moment!
+
+**Required Structure:**
+
+1. **INSTANT HOOK (First 40-80 chars - MOST IMPORTANT)**
+   - Bold statement, surprising fact, or question to stop the scroll
+   - Primary keyword (auto glass, windshield, etc.) in FIRST sentence
+   - This helps Facebook's AI categorize your content immediately
+
+2. **CONTEXTUAL SUMMARY (100-150 words)**
+   - Explain what the viewer will learn/experience
+   - Use 5-7 secondary keywords throughout (car repair, glass replacement, mobile service, etc.)
+   - In 2026, keywords have replaced hashtags as the primary discovery driver
+   - Use short paragraphs and line breaks for mobile readability
+   - Links ARE clickable on Facebook - include the blog URL!
+
+3. **CLEAR CALL-TO-ACTION**
+   - High-performing 2026 CTAs: "Save for later", "Comment GLASS for details", "Follow for more auto tips"
+   - Encourage specific interactions (likes, shares, meaningful comments) for algorithm signals
+
+4. **HASHTAGS (1-3 ONLY at the end)**
+   - Using 6+ hashtags in 2026 is flagged as "spammy" and reduces reach!
+   - Use only for broad categorization or branded campaigns
+   - Example: #AutoGlass #WindshieldRepair
+
+**Format your response as JSON:**
+{
+  "caption": "Hook in first 40-80 chars with primary keyword. Then 100-150 word summary with 5-7 secondary keywords and the blog URL (${params.blogUrl}). End with strong CTA. NO hashtags in caption body.",
+  "hashtags": ["AutoGlass", "WindshieldRepair", "${params.location.replace(/[,\s]+/g, '')}"],
+  "firstComment": "📍 Find us: ${params.googleMapsUrl || params.blogUrl}"
+}
+
+Return ONLY valid JSON. No explanation.`
+  } else {
+    // Generic fallback for any other platform
+    prompt = `Write a social media caption for this auto glass video.
 
 **Context:**
 - Business: ${params.businessName}
@@ -818,6 +1005,7 @@ ${includeUrlInCaption ? `- IMPORTANT: Include the blog URL (${params.blogUrl}) d
 }
 
 Return ONLY valid JSON. No explanation.`
+  }
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
@@ -870,9 +1058,9 @@ export async function generateWRHQVideoSocialCaption(params: {
 }> {
   const platformLimits = {
     tiktok: { caption: 2200, hashtags: 5 },
-    youtube: { caption: 5000, hashtags: 15 },
-    instagram: { caption: 2200, hashtags: 30 },
-    facebook: { caption: 63206, hashtags: 10 },
+    youtube: { caption: 5000, hashtags: 5 }, // YouTube Shorts: 3-5 hashtags optimal
+    instagram: { caption: 2200, hashtags: 5 }, // Instagram Reels 2026: 3-5 hyper-relevant hashtags
+    facebook: { caption: 63206, hashtags: 3 }, // Facebook Reels 2026: 1-3 hashtags max, 6+ flagged as spammy
   }
 
   const limits = platformLimits[params.platform]
@@ -887,17 +1075,208 @@ export async function generateWRHQVideoSocialCaption(params: {
   // For Instagram and TikTok, links go in first comment
   const includeUrlInCaption = params.platform === 'youtube' || params.platform === 'facebook'
   const primaryUrl = params.wrhqBlogUrl || params.clientBlogUrl || params.wrhqDirectoryUrl
+  const location = `${params.clientCity}, ${params.clientState}`
 
-  const prompt = `Write a ${platformName} caption for WRHQ (Windshield Repair HeadQuarters) featuring a local auto glass partner.
+  // YouTube Shorts specific prompt following 2026 best practices
+  let prompt: string
+  if (params.platform === 'youtube') {
+    prompt = `Write a YouTube Shorts description for WRHQ (Windshield Repair HeadQuarters) featuring a local auto glass partner, following 2026 best practices.
+
+**Context:**
+- WRHQ is a directory/network featuring trusted auto glass shops
+- Featured Partner: ${params.clientBusinessName}
+- Location: ${location}
+- Topic: ${params.paaQuestion}
+- WRHQ Blog: ${params.wrhqBlogUrl || 'Not available'}
+- Partner Blog: ${params.clientBlogUrl || 'Not available'}
+- WRHQ Directory: ${params.wrhqDirectoryUrl || 'Not available'}
+- Partner Google Maps: ${params.googleMapsUrl || 'Not available'}
+
+**CRITICAL: YouTube Shorts 2026 Best Practices**
+
+The first 100-150 characters are the ONLY text visible without clicking "more" - this is crucial!
+
+**Required Structure:**
+
+1. **HOOK (First 100-150 chars - MOST IMPORTANT)**
+   - Lead with compelling "what's in it for me" value about the topic
+   - Include primary keyword naturally (auto glass, windshield, etc.)
+   - Must grab attention immediately - this is all viewers see!
+
+2. **VIDEO SUMMARY (100-150 words)**
+   - Concise overview of what viewers will learn
+   - Mention ${params.clientBusinessName} as a trusted WRHQ partner in ${location}
+   - Short paragraphs, conversational tone
+   - Include the primary URL: ${primaryUrl}
+${params.googleMapsUrl ? `   - Include Google Maps link: ${params.googleMapsUrl}` : ''}
+
+3. **CALL-TO-ACTION**
+   - Specific CTA: "Subscribe for more auto glass tips from WRHQ" or similar
+   - Encourage engagement (like, comment, share)
+
+4. **HASHTAGS (placed at the very end)**
+   - 3-5 relevant hashtags
+   - MUST include #Shorts
+   - Include #WRHQ and location hashtag
+
+**Format your response as JSON:**
+{
+  "caption": "Full description following the structure above. Hook first (under 150 chars), then summary with links, then CTA. NO hashtags in caption.",
+  "hashtags": ["Shorts", "WRHQ", "AutoGlass", "${location.replace(/[,\s]+/g, '')}", "WindshieldRepair"],
+  "firstComment": "Pinned comment with additional engagement prompt and partner info"
+}
+
+Return ONLY valid JSON. No explanation.`
+  } else if (params.platform === 'tiktok') {
+    // TikTok specific prompt following 2026 best practices
+    prompt = `Write a TikTok caption for WRHQ (Windshield Repair HeadQuarters) featuring a local auto glass partner, following 2026 TikTok SEO best practices.
+
+**Context:**
+- WRHQ is a directory/network featuring trusted auto glass shops
+- Featured Partner: ${params.clientBusinessName}
+- Location: ${location}
+- Topic: ${params.paaQuestion}
+- Primary URL: ${primaryUrl}
+- Partner Google Maps: ${params.googleMapsUrl || 'Not available'}
+
+**CRITICAL: TikTok 2026 Best Practices**
+
+Only the first 65-70 characters are visible before truncation - this is crucial!
+
+**Required Structure:**
+
+1. **SEO HOOK (First 65 chars - MOST IMPORTANT)**
+   - Front-load primary keyword (auto glass, windshield, etc.) in FIRST sentence
+   - Use bold claim or question to stop scrolling
+   - NO fluff like "In this video..." - get straight to value
+   - This is ALL users see before clicking "more"!
+
+2. **CONVERSATIONAL SUMMARY (100-300 chars)**
+   - Natural 2-3 sentence summary mentioning ${params.clientBusinessName} as trusted WRHQ partner
+   - Help TikTok's AI categorize content for search
+   - Use line breaks and emojis for scannability
+   - Specific CTA: "Save this for later" or "Tag a friend who needs this"
+
+3. **HASHTAGS (3-5 only)**
+   - Keep to 3-5 highly relevant hashtags (more triggers spam filters)
+   - Mix: 1-2 broad niche tags + 2-3 specific keyword tags
+   - AVOID generic tags like #fyp or #viral - they provide no context
+   - Include #WRHQ and location-specific tag
+
+**Format your response as JSON:**
+{
+  "caption": "SEO hook in first 65 chars, then summary with line breaks and emojis. NO hashtags in caption. Links go in firstComment.",
+  "hashtags": ["WRHQ", "AutoGlass", "${location.replace(/[,\s]+/g, '')}", "WindshieldRepair"],
+  "firstComment": "Link in bio for full article! 📝 ${primaryUrl}${params.googleMapsUrl ? ` | Find them: ${params.googleMapsUrl}` : ''}"
+}
+
+Return ONLY valid JSON. No explanation.`
+  } else if (params.platform === 'instagram') {
+    // Instagram Reels specific prompt following 2026 best practices
+    prompt = `Write an Instagram Reels caption for WRHQ (Windshield Repair HeadQuarters) featuring a local auto glass partner, following 2026 Instagram SEO best practices.
+
+**Context:**
+- WRHQ is a directory/network featuring trusted auto glass shops
+- Featured Partner: ${params.clientBusinessName}
+- Location: ${location}
+- Topic: ${params.paaQuestion}
+- Primary URL: ${primaryUrl}
+- Partner Google Maps: ${params.googleMapsUrl || 'Not available'}
+
+**CRITICAL: Instagram Reels 2026 Best Practices**
+
+Only the first 125 characters are visible before truncation - this is crucial for both engagement AND search indexing!
+
+**Required Structure:**
+
+1. **ABOVE-THE-FOLD HOOK (First 125 chars - MOST IMPORTANT)**
+   - High-impact statement, question, or benefit-driven hook (e.g., "3 secrets to...")
+   - Primary keyword (auto glass, windshield, etc.) in FIRST sentence
+   - This affects both user engagement AND Google/Instagram search indexing!
+
+2. **CONTEXTUAL SUMMARY & SEO BODY (1-3 short paragraphs)**
+   - Explain the value of the video conversationally
+   - Mention ${params.clientBusinessName} as a trusted WRHQ partner in ${location}
+   - Naturally weave in 2-3 secondary keywords (car repair, glass replacement, etc.)
+   - Mention if there are subtitles (many watch with sound off)
+
+3. **CLEAR CALL-TO-ACTION**
+   - Direct instruction: "Read the full guide in bio" or "Save this for later"
+   - Engagement prompt: Ask a specific question to encourage comments (major ranking signal!)
+   - Example: "Have you ever dealt with a cracked windshield? 👇"
+
+4. **HASHTAGS (3-5 only, placed at bottom)**
+   - 1 broad niche tag (e.g., #AutoGlass)
+   - 2-3 specific/micro-niche tags (e.g., #WindshieldRepair${location.replace(/[,\s]+/g, '')})
+   - Include #WRHQ as branded tag
+   - AVOID generic tags like #viral, #explore - Instagram views these as "noise"
+
+**Format your response as JSON:**
+{
+  "caption": "Hook in first 125 chars with primary keyword, then 1-3 short paragraphs mentioning partner, then CTA with engagement question. NO hashtags in caption. Links go in firstComment.",
+  "hashtags": ["WRHQ", "AutoGlass", "WindshieldRepair", "${location.replace(/[,\s]+/g, '')}", "CarCare"],
+  "firstComment": "📝 Full guide in bio! ${primaryUrl}${params.googleMapsUrl ? ` | 📍 Find them: ${params.googleMapsUrl}` : ''}"
+}
+
+Return ONLY valid JSON. No explanation.`
+  } else if (params.platform === 'facebook') {
+    // Facebook Reels specific prompt following 2026 best practices
+    prompt = `Write a Facebook Reels caption for WRHQ (Windshield Repair HeadQuarters) featuring a local auto glass partner, following 2026 Facebook SEO best practices.
+
+**Context:**
+- WRHQ is a directory/network featuring trusted auto glass shops
+- Featured Partner: ${params.clientBusinessName}
+- Location: ${location}
+- Topic: ${params.paaQuestion}
+- Primary URL: ${primaryUrl}
+- Partner Google Maps: ${params.googleMapsUrl || 'Not available'}
+
+**CRITICAL: Facebook Reels 2026 Best Practices**
+
+Facebook truncates descriptions after the first 40-80 characters on mobile - this is your make-or-break moment!
+
+**Required Structure:**
+
+1. **INSTANT HOOK (First 40-80 chars - MOST IMPORTANT)**
+   - Bold statement, surprising fact, or question to stop the scroll
+   - Primary keyword (auto glass, windshield, etc.) in FIRST sentence
+   - This helps Facebook's AI categorize your content immediately
+
+2. **CONTEXTUAL SUMMARY (100-150 words)**
+   - Explain what the viewer will learn/experience
+   - Mention ${params.clientBusinessName} as a trusted WRHQ partner in ${location}
+   - Use 5-7 secondary keywords throughout (car repair, glass replacement, mobile service, etc.)
+   - In 2026, keywords have replaced hashtags as the primary discovery driver
+   - Use short paragraphs and line breaks for mobile readability
+   - Links ARE clickable on Facebook - include the primary URL!
+
+3. **CLEAR CALL-TO-ACTION**
+   - High-performing 2026 CTAs: "Save for later", "Comment GLASS for details", "Follow for more auto tips"
+   - Encourage specific interactions (likes, shares, meaningful comments) for algorithm signals
+
+4. **HASHTAGS (1-3 ONLY at the end)**
+   - Using 6+ hashtags in 2026 is flagged as "spammy" and reduces reach!
+   - Include #WRHQ as branded tag
+   - Use only for broad categorization
+
+**Format your response as JSON:**
+{
+  "caption": "Hook in first 40-80 chars with primary keyword. Then 100-150 word summary with 5-7 secondary keywords, mention partner, and include ${primaryUrl}. End with strong CTA. NO hashtags in caption body.",
+  "hashtags": ["WRHQ", "AutoGlass", "${location.replace(/[,\s]+/g, '')}"],
+  "firstComment": "📍 Find ${params.clientBusinessName}: ${params.googleMapsUrl || primaryUrl}"
+}
+
+Return ONLY valid JSON. No explanation.`
+  } else {
+    // Generic fallback for any other platform
+    prompt = `Write a social media caption for WRHQ (Windshield Repair HeadQuarters) featuring a local auto glass partner.
 
 **Context:**
 - WRHQ is a directory/network featuring trusted auto glass shops
 - Featured Partner: ${params.clientBusinessName}
 - Location: ${params.clientCity}, ${params.clientState}
 - Topic: ${params.paaQuestion}
-- WRHQ Blog: ${params.wrhqBlogUrl || 'Not available'}
-- Partner Blog: ${params.clientBlogUrl || 'Not available'}
-- WRHQ Directory: ${params.wrhqDirectoryUrl || 'Not available'}
+- Primary URL: ${primaryUrl}
 - Partner Google Maps: ${params.googleMapsUrl || 'Not available'}
 
 **Requirements:**
@@ -918,6 +1297,7 @@ ${includeUrlInCaption && primaryUrl ? `- IMPORTANT: Include the blog URL (${prim
 }
 
 Return ONLY valid JSON. No explanation.`
+  }
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',

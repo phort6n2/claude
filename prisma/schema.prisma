@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ============================================
@@ -78,12 +79,19 @@ model Client {
   ctaText String  @default("Get a Free Quote")
   ctaUrl  String?
 
-  // Video Generation Settings
-  creatifyTemplateId String? // Custom Creatify template UUID for branded videos
+  // Video Generation Settings (Creatify)
+  creatifyTemplateId   String? // Custom Creatify template UUID for branded videos
+  creatifyAvatarId     String? // Override avatar ID (get from /api/creatify/avatars-voices)
+  creatifyVoiceId      String? // Override voice ID (get from /api/creatify/avatars-voices)
+  creatifyVisualStyle  String? // Visual style: AvatarBubbleTemplate, DynamicProductTemplate, etc.
+  creatifyScriptStyle  String? // Script style: HowToV2, DiscoveryWriter, CallToActionV2, etc.
+  creatifyModelVersion String? // Model: standard (cheapest), aurora_v1, aurora_v1_fast
+  creatifyVideoLength  Int?    // Video length in seconds: 15, 30, 45, or 60 (default: 30)
+  creatifyNoCta        Boolean @default(false) // Disable default CTA button (use script CTA instead)
 
   // Publishing Preferences (Tue/Thu schedule)
   preferredPublishTime String @default("09:00")
-  timezone             String @default("America/Los_Angeles")
+  timezone             String @default("America/Denver")
 
   // Social Media
   socialPlatforms      String[] // facebook, instagram, linkedin, twitter, tiktok, gbp
@@ -138,7 +146,7 @@ model Client {
 
   // Smart Scheduling (to avoid Late.dev 5-post-per-account limit)
   scheduleDayPair  String? // e.g., "MON_WED", "TUE_THU", "WED_FRI" - auto-assigned
-  scheduleTimeSlot Int? // 0-4 representing staggered times (6AM, 7AM, 8AM, 9AM, 10AM)
+  scheduleTimeSlot Int? // 0-9: morning slots 0-4 (7-11 AM local), afternoon slots 5-9 (1-5 PM local)
 
   // Relations
   contentItems     ContentItem[]

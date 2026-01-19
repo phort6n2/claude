@@ -21,13 +21,13 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Get client's timezone (default to America/Los_Angeles)
+    // Get client's timezone (default to America/Denver - Mountain Time)
     const client = await prisma.client.findUnique({
       where: { id: clientId },
       select: { timezone: true },
     })
 
-    const timezone = client?.timezone || 'America/Los_Angeles'
+    const timezone = client?.timezone || 'America/Denver'
 
     // Get current date in client's timezone
     const nowInTz = new Date().toLocaleString('en-US', { timeZone: timezone })

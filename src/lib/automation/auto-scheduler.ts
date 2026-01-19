@@ -41,6 +41,8 @@ interface AutoScheduleResult {
   success: boolean
   contentItemId?: string
   error?: string
+  generationSuccess?: boolean  // True if content generation also succeeded
+  generationError?: string     // Error message if generation failed
   details: {
     clientId: string
     clientName: string
@@ -412,19 +414,45 @@ export async function autoScheduleForClient(
     })
 
     // Trigger generation if requested
+    let generationSuccess = true
+    let generationError: string | undefined
     if (triggerGeneration) {
       try {
         await triggerContentGeneration(contentItem.id)
         console.log(`✅ Content generation completed for ${contentItem.id}`)
       } catch (err) {
+        generationSuccess = false
+        generationError = err instanceof Error ? err.message : 'Unknown error'
         console.error(`❌ Content generation failed for ${contentItem.id}:`, err)
-        // Don't throw - we want to continue with other scheduled items
+
+        // FIX: Update content status to FAILED if generation fails
+        // This prevents orphaned content in SCHEDULED/GENERATING status
+        try {
+          const currentItem = await prisma.contentItem.findUnique({
+            where: { id: contentItem.id },
+            select: { status: true },
+          })
+          // Only mark FAILED if still in SCHEDULED/GENERATING (pipeline didn't update it)
+          if (currentItem && (currentItem.status === 'SCHEDULED' || currentItem.status === 'GENERATING')) {
+            await prisma.contentItem.update({
+              where: { id: contentItem.id },
+              data: {
+                status: 'FAILED',
+                lastError: `Auto-schedule generation failed: ${generationError}`,
+              },
+            })
+          }
+        } catch (updateErr) {
+          console.error(`Failed to update content status for ${contentItem.id}:`, updateErr)
+        }
       }
     }
 
     return {
-      success: true,
+      success: true, // Content was created successfully
       contentItemId: contentItem.id,
+      generationSuccess, // Track if generation also succeeded
+      generationError,
       details: {
         clientId,
         clientName: client.businessName,
