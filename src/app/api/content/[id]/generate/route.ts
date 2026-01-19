@@ -92,7 +92,17 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       })
     }
 
-    const results: Record<string, { success: boolean; error?: string; title?: string; count?: number; status?: string; jobId?: string }> = {}
+    const results: Record<string, {
+      success: boolean
+      error?: string
+      title?: string
+      count?: number
+      status?: string
+      jobId?: string
+      clientPlatforms?: string[]
+      wrhqPlatforms?: string[]
+      checkedWrhqSettings?: string[]
+    }> = {}
 
     // Generate client blog post
     if (generateBlog) {
@@ -1189,9 +1199,28 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             totalPostsCreated += wrhqVideoPostsData.length
           }
 
-          results.videoSocial = { success: true, count: totalPostsCreated }
+          results.videoSocial = {
+            success: true,
+            count: totalPostsCreated,
+            clientPlatforms: clientVideoPlatforms,
+            wrhqPlatforms: wrhqVideoPlatforms,
+          }
         } else {
-          results.videoSocial = { success: false, error: shortVideo?.videoUrl ? 'No video platforms configured for client or WRHQ' : 'Video not ready yet' }
+          // Provide detailed feedback about what's missing
+          const missingInfo: string[] = []
+          if (!shortVideo?.videoUrl) {
+            missingInfo.push('Video not ready yet (no videoUrl)')
+          }
+          if (clientVideoPlatforms.length === 0 && wrhqVideoPlatforms.length === 0) {
+            missingInfo.push('No video platforms configured. Check Settings > WRHQ for YouTube, TikTok, Instagram, and Facebook Late account IDs.')
+          }
+          results.videoSocial = {
+            success: false,
+            error: missingInfo.join('. '),
+            clientPlatforms: clientVideoPlatforms,
+            wrhqPlatforms: wrhqVideoPlatforms,
+            checkedWrhqSettings: ['WRHQ_LATE_YOUTUBE_ID', 'WRHQ_LATE_TIKTOK_ID', 'WRHQ_LATE_INSTAGRAM_ID', 'WRHQ_LATE_FACEBOOK_ID'],
+          }
         }
       } catch (error) {
         console.error('Video social generation error:', error)

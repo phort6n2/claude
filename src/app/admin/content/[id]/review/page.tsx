@@ -1644,7 +1644,7 @@ function ReviewTab({
                   )}
                   {content.shortVideoGenerated ? 'Regenerate' : 'Generate'}
                 </button>
-                {content.shortVideo?.status === 'READY' && content.videoSocialPosts.length === 0 && (
+                {content.shortVideo?.status === 'READY' && content.videoSocialPosts.length === 0 && content.wrhqVideoSocialPosts.length === 0 && (
                   <button
                     onClick={(e) => { e.stopPropagation(); regenerateContent('videoSocial'); }}
                     disabled={generating === 'videoSocial'}
@@ -1795,6 +1795,22 @@ function ReviewTab({
                     __html: content.shortVideoDescription
                   }}
                 />
+              </div>
+            )}
+
+            {/* WRHQ Video Platform Info - show when video is ready but no posts generated yet */}
+            {content.shortVideo?.status === 'READY' && content.videoSocialPosts.length === 0 && content.wrhqVideoSocialPosts.length === 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-medium text-blue-900 mb-2">Video Social Posts</h4>
+                <p className="text-sm text-blue-700 mb-3">
+                  Videos will be posted to <strong>WRHQ social accounts</strong> (YouTube, TikTok, Instagram, Facebook).
+                </p>
+                <p className="text-sm text-blue-600">
+                  Click <strong>&quot;Generate Posts&quot;</strong> to create video captions for each platform, then <strong>&quot;Publish WRHQ&quot;</strong> to post them.
+                </p>
+                <p className="text-xs text-blue-500 mt-2">
+                  Make sure WRHQ Late account IDs are configured in Settings → WRHQ.
+                </p>
               </div>
             )}
 
