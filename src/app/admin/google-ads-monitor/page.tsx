@@ -155,7 +155,7 @@ export default function GoogleAdsMonitorPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center">
         <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
       </div>
     )
@@ -163,7 +163,7 @@ export default function GoogleAdsMonitorPage() {
 
   if (!data?.connected) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
         <div className="max-w-7xl mx-auto p-6">
           <div className="flex items-center gap-4 mb-6">
             <Link href="/admin" className="text-gray-500 hover:text-gray-700">
@@ -171,7 +171,7 @@ export default function GoogleAdsMonitorPage() {
             </Link>
             <h1 className="text-2xl font-bold text-gray-900">Google Ads Monitor</h1>
           </div>
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-6 text-center">
             <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
             <h2 className="text-lg font-medium text-yellow-800 mb-2">Google Ads Not Connected</h2>
             <p className="text-yellow-700 mb-4">
@@ -187,7 +187,7 @@ export default function GoogleAdsMonitorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
       <div className="max-w-7xl mx-auto p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -224,7 +224,7 @@ export default function GoogleAdsMonitorPage() {
 
         {/* Total Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
-          <div className="bg-white rounded-lg border p-4">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
             <div className="flex items-center gap-2 text-gray-600 mb-1">
               <Eye className="h-4 w-4" />
               <span className="text-sm">Impressions</span>
@@ -232,7 +232,7 @@ export default function GoogleAdsMonitorPage() {
             <div className="text-2xl font-bold">{formatNumber(data.totals.impressions)}</div>
           </div>
 
-          <div className="bg-white rounded-lg border p-4">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
             <div className="flex items-center gap-2 text-gray-600 mb-1">
               <MousePointerClick className="h-4 w-4" />
               <span className="text-sm">Clicks</span>
@@ -241,7 +241,7 @@ export default function GoogleAdsMonitorPage() {
             <div className="text-xs text-gray-500">{formatPercent(data.totals.ctr)} CTR</div>
           </div>
 
-          <div className="bg-white rounded-lg border p-4">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
             <div className="flex items-center gap-2 text-red-600 mb-1">
               <DollarSign className="h-4 w-4" />
               <span className="text-sm">Cost</span>
@@ -250,7 +250,7 @@ export default function GoogleAdsMonitorPage() {
             <div className="text-xs text-gray-500">{formatCurrency(data.totals.avgCpc)} avg CPC</div>
           </div>
 
-          <div className="bg-white rounded-lg border p-4">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
             <div className="flex items-center gap-2 text-green-600 mb-1">
               <Target className="h-4 w-4" />
               <span className="text-sm">Conversions</span>
@@ -258,7 +258,7 @@ export default function GoogleAdsMonitorPage() {
             <div className="text-2xl font-bold text-green-600">{formatNumber(data.totals.conversions)}</div>
           </div>
 
-          <div className="bg-white rounded-lg border p-4">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
             <div className="flex items-center gap-2 text-blue-600 mb-1">
               <Activity className="h-4 w-4" />
               <span className="text-sm">Cost/Conv</span>
@@ -268,7 +268,7 @@ export default function GoogleAdsMonitorPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border p-4">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
             <div className="flex items-center gap-2 text-emerald-600 mb-1">
               <TrendingUp className="h-4 w-4" />
               <span className="text-sm">Conv Value</span>
@@ -280,7 +280,7 @@ export default function GoogleAdsMonitorPage() {
         </div>
 
         {/* Accounts List */}
-        <div className="bg-white rounded-lg border overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="p-4 border-b bg-gray-50">
             <h3 className="font-medium text-gray-900">
               Account Performance ({data.accounts.length} accounts)

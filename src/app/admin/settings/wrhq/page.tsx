@@ -232,7 +232,7 @@ export default function WRHQSettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 p-8">
         <div className="max-w-4xl mx-auto">
           <p className="text-gray-500">Loading settings...</p>
         </div>
@@ -241,7 +241,7 @@ export default function WRHQSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -260,7 +260,7 @@ export default function WRHQSettingsPage() {
         </div>
 
         {/* WordPress Configuration */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">WordPress Configuration</h2>
@@ -357,7 +357,7 @@ export default function WRHQSettingsPage() {
         </div>
 
         {/* Social Media Configuration */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
           <div className="mb-4">
             <h2 className="text-xl font-semibold text-gray-900">Social Media Accounts</h2>
             <p className="text-sm text-gray-500">
@@ -425,7 +425,7 @@ export default function WRHQSettingsPage() {
         </div>
 
         {/* YouTube API Configuration */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">YouTube API (Long-form Video)</h2>
@@ -537,7 +537,7 @@ export default function WRHQSettingsPage() {
         </div>
 
         {/* Info Card */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
           <h3 className="text-lg font-semibold text-blue-900 mb-2">How Dual Publishing Works</h3>
           <ul className="text-sm text-blue-800 space-y-2">
             <li>

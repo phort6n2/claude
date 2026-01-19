@@ -102,7 +102,7 @@ export default function StandardPaasPage() {
   return (
     <div className="flex flex-col h-full">
       <Header title="Standard PAA Questions" subtitle="Default questions used by all clients" />
-      <div className="flex-1 p-6 overflow-auto">
+      <div className="flex-1 p-6 overflow-auto bg-gradient-to-br from-slate-50 via-white to-slate-50">
         <div className="max-w-4xl">
           {/* Back Button */}
           <Button variant="outline" onClick={() => router.back()} className="mb-6">
@@ -110,7 +110,7 @@ export default function StandardPaasPage() {
             Back to Settings
           </Button>
 
-          <Card>
+          <Card className="rounded-2xl border border-gray-200 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileQuestion className="h-5 w-5 text-blue-600" />
@@ -118,7 +118,7 @@ export default function StandardPaasPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-sm text-blue-800">
                 <strong>How Standard PAAs work:</strong>
                 <ul className="mt-2 space-y-1 list-disc list-inside">
                   <li>These are default questions available to ALL clients</li>
@@ -177,7 +177,7 @@ export default function StandardPaasPage() {
 
               {/* Error List */}
               {validation.errors.length > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3">
                   <p className="text-sm font-medium text-amber-800 mb-2">Issues to fix:</p>
                   <ul className="text-sm text-amber-700 space-y-1">
                     {validation.errors.slice(0, 5).map((error, i) => (
@@ -194,7 +194,7 @@ export default function StandardPaasPage() {
 
               {/* Message */}
               {message && (
-                <div className={`p-4 rounded-lg flex items-center gap-2 ${
+                <div className={`p-4 rounded-2xl flex items-center gap-2 ${
                   message.type === 'success'
                     ? 'bg-green-50 text-green-800 border border-green-200'
                     : 'bg-red-50 text-red-800 border border-red-200'

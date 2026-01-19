@@ -118,9 +118,9 @@ export default function DailyReportPage() {
   return (
     <div className="flex flex-col h-full">
       <Header title="Daily Content Report" subtitle="View content posted on any day" />
-      <div className="flex-1 p-6 overflow-auto">
+      <div className="flex-1 p-6 overflow-auto bg-gradient-to-br from-slate-50 via-white to-slate-50">
         {/* Date Navigation */}
-        <Card className="mb-6">
+        <Card className="mb-6 rounded-2xl border border-gray-200">
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -160,13 +160,13 @@ export default function DailyReportPage() {
           <>
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <Card>
+              <Card className="rounded-2xl border border-gray-200">
                 <CardContent className="py-4">
                   <div className="text-sm text-gray-500">Total Items</div>
                   <div className="text-2xl font-bold">{report.summary.total}</div>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="rounded-2xl border border-gray-200">
                 <CardContent className="py-4">
                   <div className="text-sm text-gray-500">Published</div>
                   <div className="text-2xl font-bold text-green-600">
@@ -174,7 +174,7 @@ export default function DailyReportPage() {
                   </div>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="rounded-2xl border border-gray-200">
                 <CardContent className="py-4">
                   <div className="text-sm text-gray-500">In Review</div>
                   <div className="text-2xl font-bold text-yellow-600">
@@ -182,7 +182,7 @@ export default function DailyReportPage() {
                   </div>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="rounded-2xl border border-gray-200">
                 <CardContent className="py-4">
                   <div className="text-sm text-gray-500">Fully Complete</div>
                   <div className="text-2xl font-bold text-blue-600">
@@ -194,7 +194,7 @@ export default function DailyReportPage() {
 
             {/* Content Items */}
             {report.items.length === 0 ? (
-              <Card>
+              <Card className="rounded-2xl border border-gray-200">
                 <CardContent className="py-12 text-center text-gray-500">
                   No content scheduled for this day
                 </CardContent>
@@ -202,7 +202,7 @@ export default function DailyReportPage() {
             ) : (
               <div className="space-y-4">
                 {report.items.map((item) => (
-                  <Card key={item.id}>
+                  <Card key={item.id} className="rounded-2xl border border-gray-200">
                     <CardContent className="py-4">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">

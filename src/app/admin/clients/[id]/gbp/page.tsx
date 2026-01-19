@@ -310,9 +310,9 @@ export default function ClientGBPPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 p-6">
         <div className="max-w-6xl mx-auto">
-          <div className="animate-pulse bg-white rounded-lg shadow p-6">
+          <div className="animate-pulse bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
             <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
             <div className="h-4 bg-gray-200 rounded w-2/3"></div>
           </div>
@@ -322,20 +322,28 @@ export default function ClientGBPPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div>
-            <Link href={`/admin/clients/${clientId}`} className="text-blue-600 hover:underline text-sm">
-              &larr; Back to Client
+          <div className="flex items-center gap-4">
+            <Link
+              href={`/admin/clients/${clientId}`}
+              className="p-2 rounded-xl bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300 transition-all duration-200"
+            >
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
             </Link>
-            <h1 className="text-2xl font-bold text-gray-900 mt-2">GBP Posting Settings</h1>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">GBP Posting Settings</h1>
+              <p className="text-sm text-gray-500">Configure automated Google Business Profile posting</p>
+            </div>
           </div>
           <button
             onClick={saveConfig}
             disabled={saving}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 font-medium shadow-sm transition-all duration-200"
           >
             {saving ? 'Saving...' : 'Save Settings'}
           </button>
@@ -343,7 +351,7 @@ export default function ClientGBPPage() {
 
         {/* Message */}
         {message && (
-          <div className={`p-4 rounded-lg ${message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+          <div className={`p-4 rounded-2xl border ${message.type === 'success' ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200'}`}>
             {message.text}
           </div>
         )}
@@ -352,7 +360,7 @@ export default function ClientGBPPage() {
           {/* Left Column - Configuration */}
           <div className="space-y-6">
             {/* Enable/Schedule Card */}
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
               <h2 className="text-lg font-semibold mb-4">Posting Schedule</h2>
 
               <label className="flex items-center gap-2 mb-4">
@@ -415,7 +423,7 @@ export default function ClientGBPPage() {
             </div>
 
             {/* Content Settings Card */}
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
               <h2 className="text-lg font-semibold mb-4">Content Settings</h2>
 
               <div className="space-y-4">
@@ -479,7 +487,7 @@ export default function ClientGBPPage() {
             </div>
 
             {/* Link Rotation Card */}
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
               <h2 className="text-lg font-semibold mb-4">Link Rotation</h2>
               <p className="text-sm text-gray-600 mb-4">Add links to rotate through for the CTA button.</p>
 
@@ -545,7 +553,7 @@ export default function ClientGBPPage() {
           {/* Right Column - Google Connection & Posts */}
           <div className="space-y-6">
             {/* Google Connection Card */}
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
               <h2 className="text-lg font-semibold mb-4">Google Business Profile Photos</h2>
 
               {config?.isGoogleConnected ? (
@@ -608,7 +616,7 @@ export default function ClientGBPPage() {
             </div>
 
             {/* Generate Post Card */}
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
               <h2 className="text-lg font-semibold mb-4">Create Post</h2>
 
               <button
@@ -625,7 +633,7 @@ export default function ClientGBPPage() {
             </div>
 
             {/* Recent Posts Card */}
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
               <h2 className="text-lg font-semibold mb-4">Recent Posts</h2>
 
               {posts.length === 0 ? (

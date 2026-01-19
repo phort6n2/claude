@@ -89,56 +89,56 @@ export default function HelpPage() {
               </p>
 
               <div className="grid gap-3">
-                <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="p-3 bg-gray-50 rounded-xl">
                   <strong className="text-sm">Step 1: Business Info</strong>
                   <p className="text-sm text-gray-600 mt-1">
                     Enter business name, contact details, and address. You can search Google Places to auto-fill.
                   </p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="p-3 bg-gray-50 rounded-xl">
                   <strong className="text-sm">Step 2: Service Options</strong>
                   <p className="text-sm text-gray-600 mt-1">
                     Indicate if they have a shop location, offer mobile service, or ADAS calibration.
                   </p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="p-3 bg-gray-50 rounded-xl">
                   <strong className="text-sm">Step 3: Service Locations</strong>
                   <p className="text-sm text-gray-600 mt-1">
                     Add cities/areas where the client provides service. Each location creates unique content.
                   </p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="p-3 bg-gray-50 rounded-xl">
                   <strong className="text-sm">Step 4: Branding</strong>
                   <p className="text-sm text-gray-600 mt-1">
                     Upload logo and set brand colors for consistent content styling.
                   </p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="p-3 bg-gray-50 rounded-xl">
                   <strong className="text-sm">Step 5: PAA Questions</strong>
                   <p className="text-sm text-gray-600 mt-1">
                     Add questions like &quot;How much does windshield replacement cost in &#123;location&#125;?&quot;
                     Use &#123;location&#125; placeholder for location-specific content.
                   </p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="p-3 bg-gray-50 rounded-xl">
                   <strong className="text-sm">Step 6: Integrations</strong>
                   <p className="text-sm text-gray-600 mt-1">
                     Connect WordPress for blog publishing and Podbean for podcasts.
                   </p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="p-3 bg-gray-50 rounded-xl">
                   <strong className="text-sm">Step 7: CTA & Publishing</strong>
                   <p className="text-sm text-gray-600 mt-1">
                     Set call-to-action text and preferred publishing time.
                   </p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="p-3 bg-gray-50 rounded-xl">
                   <strong className="text-sm">Step 8: Social Media</strong>
                   <p className="text-sm text-gray-600 mt-1">
                     Select which social platforms to create content for.
                   </p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="p-3 bg-gray-50 rounded-xl">
                   <strong className="text-sm">Step 9: Review</strong>
                   <p className="text-sm text-gray-600 mt-1">
                     Review all settings before saving the client.
@@ -173,7 +173,7 @@ export default function HelpPage() {
                 Content is scheduled for <strong>Tuesdays and Thursdays</strong> only.
               </p>
 
-              <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="bg-blue-50 p-4 rounded-2xl">
                 <h4 className="font-medium text-blue-900 mb-2">How it works:</h4>
                 <ul className="space-y-2 text-sm text-blue-800">
                   <li className="flex items-start gap-2">
@@ -313,7 +313,7 @@ export default function HelpPage() {
                 </div>
               </div>
 
-              <div className="bg-yellow-50 p-4 rounded-lg">
+              <div className="bg-yellow-50 p-4 rounded-2xl">
                 <h4 className="font-medium text-yellow-900 mb-2">Deleting Content</h4>
                 <p className="text-sm text-yellow-800">
                   Click the <Trash2 className="h-4 w-4 inline text-red-500" /> trash icon on any
@@ -381,7 +381,7 @@ export default function HelpPage() {
                     Uses Google AI Studio (Gemini) to generate blog featured images and social media graphics.
                     The model creates professional automotive imagery customized for each client&apos;s brand.
                   </p>
-                  <div className="bg-green-50 p-3 rounded-lg mt-2">
+                  <div className="bg-green-50 p-3 rounded-xl mt-2">
                     <h5 className="font-medium text-green-900 mb-2">Setup Steps:</h5>
                     <ol className="space-y-1 text-green-800">
                       <li>1. Go to Google AI Studio</li>
@@ -419,7 +419,7 @@ export default function HelpPage() {
                     Uses AutoContent service to convert blog posts into audio podcasts with
                     AI-generated voice narration.
                   </p>
-                  <div className="bg-purple-50 p-3 rounded-lg mt-2">
+                  <div className="bg-purple-50 p-3 rounded-xl mt-2">
                     <p className="text-purple-800 text-xs">
                       Contact your administrator for AutoContent API access.
                     </p>
@@ -427,7 +427,7 @@ export default function HelpPage() {
                 </div>
               </div>
 
-              <div className="bg-yellow-50 p-4 rounded-lg">
+              <div className="bg-yellow-50 p-4 rounded-2xl">
                 <h4 className="font-medium text-yellow-900 mb-2">Generation Order</h4>
                 <p className="text-sm text-yellow-800">
                   When content is generated, the pipeline runs in order:

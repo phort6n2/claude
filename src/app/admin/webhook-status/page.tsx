@@ -86,7 +86,7 @@ export default function WebhookStatusPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center">
         <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
       </div>
     )
@@ -94,14 +94,14 @@ export default function WebhookStatusPage() {
 
   if (!stats) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center">
         <p className="text-gray-500">Failed to load stats</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
       <div className="max-w-7xl mx-auto p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -125,7 +125,7 @@ export default function WebhookStatusPage() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-6">
-          <div className="bg-white rounded-lg border p-4">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
             <div className="flex items-center gap-2 text-gray-600 mb-1">
               <Users className="h-4 w-4" />
               <span className="text-sm">Total Leads</span>
@@ -133,7 +133,7 @@ export default function WebhookStatusPage() {
             <div className="text-2xl font-bold">{stats.summary.totalLeads}</div>
           </div>
 
-          <div className="bg-white rounded-lg border p-4">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
             <div className="flex items-center gap-2 text-gray-600 mb-1">
               <Clock className="h-4 w-4" />
               <span className="text-sm">Today</span>
@@ -141,7 +141,7 @@ export default function WebhookStatusPage() {
             <div className="text-2xl font-bold">{stats.summary.leadsToday}</div>
           </div>
 
-          <div className="bg-white rounded-lg border p-4">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
             <div className="flex items-center gap-2 text-green-600 mb-1">
               <Zap className="h-4 w-4" />
               <span className="text-sm">GCLID Captured</span>
@@ -150,7 +150,7 @@ export default function WebhookStatusPage() {
             <div className="text-xs text-gray-500">{stats.summary.gclidCaptureRate} of leads</div>
           </div>
 
-          <div className="bg-white rounded-lg border p-4">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
             <div className="flex items-center gap-2 text-blue-600 mb-1">
               <CheckCircle2 className="h-4 w-4" />
               <span className="text-sm">Enhanced Sent</span>
@@ -159,7 +159,7 @@ export default function WebhookStatusPage() {
             <div className="text-xs text-gray-500">{stats.summary.enhancedConversionRate} success</div>
           </div>
 
-          <div className="bg-white rounded-lg border p-4">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
             <div className="flex items-center gap-2 text-emerald-600 mb-1">
               <TrendingUp className="h-4 w-4" />
               <span className="text-sm">Offline Sent</span>
@@ -170,7 +170,7 @@ export default function WebhookStatusPage() {
 
         {/* Error Alert */}
         {stats.summary.leadsWithSyncErrors > 0 && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-start gap-3">
+          <div className="bg-red-50 border border-red-200 rounded-2xl shadow-sm p-4 mb-6 flex items-start gap-3">
             <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
             <div>
               <h3 className="font-medium text-red-800">
@@ -185,7 +185,7 @@ export default function WebhookStatusPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* By Source */}
-          <div className="bg-white rounded-lg border p-4">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
             <h3 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
               <FileText className="h-4 w-4 text-gray-500" />
               Leads by Source
@@ -208,7 +208,7 @@ export default function WebhookStatusPage() {
           </div>
 
           {/* By Client */}
-          <div className="bg-white rounded-lg border p-4">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
             <h3 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
               <Users className="h-4 w-4 text-gray-500" />
               Leads by Client (Top 10)
@@ -226,7 +226,7 @@ export default function WebhookStatusPage() {
 
         {/* Failed Conversions */}
         {stats.failedConversions.length > 0 && (
-          <div className="bg-white rounded-lg border overflow-hidden mb-6">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-6">
             <div className="p-4 border-b bg-red-50">
               <h3 className="font-medium text-red-800 flex items-center gap-2">
                 <XCircle className="h-4 w-4" />
@@ -259,7 +259,7 @@ export default function WebhookStatusPage() {
         )}
 
         {/* Recent Leads */}
-        <div className="bg-white rounded-lg border overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="p-4 border-b">
             <h3 className="font-medium text-gray-900 flex items-center gap-2">
               <Clock className="h-4 w-4 text-gray-500" />

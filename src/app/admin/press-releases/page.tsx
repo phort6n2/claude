@@ -68,7 +68,7 @@ async function PressReleaseList() {
               <h3 className="font-semibold text-lg mb-4">{pr.headline}</h3>
             )}
 
-            <div className="grid grid-cols-4 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-4 gap-4 mb-4 p-4 bg-gradient-to-br from-slate-50 via-white to-slate-50 rounded-2xl border border-gray-200 shadow-sm">
               <div>
                 <p className="text-xs text-gray-500">Blog Posts</p>
                 <p className="text-xl font-bold">{pr.blogPostsCount || 0}</p>
@@ -94,7 +94,7 @@ async function PressReleaseList() {
                 <summary className="cursor-pointer text-sm font-medium text-blue-600 hover:text-blue-800">
                   View full press release
                 </summary>
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg whitespace-pre-wrap text-sm">
+                <div className="mt-4 p-4 bg-gradient-to-br from-slate-50 via-white to-slate-50 rounded-2xl border border-gray-200 shadow-sm whitespace-pre-wrap text-sm">
                   {pr.content}
                 </div>
               </details>

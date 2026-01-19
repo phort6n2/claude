@@ -155,7 +155,7 @@ export default function GoogleAdsSettingsPage() {
 
           {/* Alerts */}
           {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-red-800">{error}</p>
@@ -164,7 +164,7 @@ export default function GoogleAdsSettingsPage() {
           )}
 
           {success && (
-            <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+            <div className="p-4 bg-green-50 border border-green-200 rounded-2xl flex items-start gap-3">
               <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-green-800">{success}</p>
@@ -233,7 +233,7 @@ export default function GoogleAdsSettingsPage() {
                 )}
               </div>
 
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-sm text-amber-800">
                 <strong>Redirect URI:</strong> Add this to your OAuth app&apos;s Authorized redirect URIs:
                 <code className="block mt-1 p-2 bg-white rounded border text-xs break-all">
                   {typeof window !== 'undefined' ? `${window.location.origin}/api/integrations/google-ads/callback` : ''}
@@ -315,7 +315,7 @@ export default function GoogleAdsSettingsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between p-4 bg-gradient-to-br from-slate-50 via-white to-slate-50 rounded-2xl border border-gray-200">
                 <div className="flex items-center gap-3">
                   {status?.connected ? (
                     <>

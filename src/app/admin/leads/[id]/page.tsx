@@ -188,7 +188,7 @@ export default function LeadDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     )
@@ -196,7 +196,7 @@ export default function LeadDetailPage() {
 
   if (!lead) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-600 mb-4">Lead not found</p>
           <Link href="/admin/leads">
@@ -237,9 +237,9 @@ export default function LeadDetailPage() {
   const hasDetails = !!(interestedIn || vehicleYear || vehicleMake || vehicleModel || vin || glassType || workDescription || insuranceHelp || postalCode)
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
       {/* Header */}
-      <div className="bg-white border-b sticky top-0 z-40">
+      <div className="bg-white/80 backdrop-blur-md border-b sticky top-0 z-40 rounded-b-2xl">
         <div className="max-w-4xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <Link
@@ -283,14 +283,14 @@ export default function LeadDetailPage() {
           <div className="lg:col-span-2 space-y-4">
             {/* Phone lead indicator */}
             {isPhoneLead && (
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-center gap-2">
+              <div className="bg-orange-50 border border-orange-200 rounded-2xl p-3 flex items-center gap-2">
                 <Phone className="h-4 w-4 text-orange-600" />
                 <span className="text-sm text-orange-800 font-medium">Phone Call Lead</span>
               </div>
             )}
 
             {/* Contact Info */}
-            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+            <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="font-medium text-gray-900">Contact Info</h4>
                 <p className="text-xs text-gray-500 flex items-center gap-1">
@@ -350,7 +350,7 @@ export default function LeadDetailPage() {
 
             {/* Lead Details */}
             {hasDetails && (
-              <div className="bg-blue-50 rounded-lg p-4">
+              <div className="bg-blue-50 rounded-2xl p-4">
                 <h4 className="font-medium text-gray-900 mb-3">Lead Details</h4>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   {interestedIn && (
@@ -412,7 +412,7 @@ export default function LeadDetailPage() {
             )}
 
             {/* Status */}
-            <div className="bg-white rounded-lg p-4 space-y-4">
+            <div className="bg-white rounded-2xl p-4 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Status
@@ -479,7 +479,7 @@ export default function LeadDetailPage() {
           {/* Sidebar */}
           <div className="space-y-4">
             {/* Client Info */}
-            <div className="bg-white rounded-lg p-4">
+            <div className="bg-white rounded-2xl p-4">
               <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-gray-500" />
                 Client
@@ -490,7 +490,7 @@ export default function LeadDetailPage() {
             </div>
 
             {/* Conversion Tracking */}
-            <div className="bg-white rounded-lg p-4">
+            <div className="bg-white rounded-2xl p-4">
               <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
                 <Zap className="h-4 w-4 text-amber-500" />
                 Conversion Tracking
@@ -625,7 +625,7 @@ export default function LeadDetailPage() {
             </div>
 
             {/* UTM Parameters (Expandable) */}
-            <div className="bg-white rounded-lg overflow-hidden">
+            <div className="bg-white rounded-2xl overflow-hidden">
               <button
                 onClick={() => setShowUtmParams(!showUtmParams)}
                 className="w-full p-4 flex items-center justify-between hover:bg-gray-50"
@@ -685,7 +685,7 @@ export default function LeadDetailPage() {
             </div>
 
             {/* Lead Source */}
-            <div className="bg-white rounded-lg p-4">
+            <div className="bg-white rounded-2xl p-4">
               <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
                 <MousePointer className="h-4 w-4 text-gray-500" />
                 Source
@@ -724,7 +724,7 @@ export default function LeadDetailPage() {
             </div>
 
             {/* Raw Webhook Data (Expandable) */}
-            <div className="bg-white rounded-lg overflow-hidden">
+            <div className="bg-white rounded-2xl overflow-hidden">
               <button
                 onClick={() => setShowRawData(!showRawData)}
                 className="w-full p-4 flex items-center justify-between hover:bg-gray-50"

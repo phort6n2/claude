@@ -55,7 +55,7 @@ export default async function GBPDashboardPage() {
   const totalPosts = allClients.reduce((sum, c) => sum + (c.gbpPostConfig?._count?.posts || 0), 0)
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -67,19 +67,19 @@ export default async function GBPDashboardPage() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-200 shadow-sm p-6">
             <div className="text-3xl font-bold text-gray-600">{allClients.length}</div>
             <div className="text-sm text-gray-600">Total Clients</div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-gradient-to-br from-blue-50 to-white rounded-2xl border border-blue-200 shadow-sm p-6">
             <div className="text-3xl font-bold text-blue-600">{enabledCount}</div>
             <div className="text-sm text-gray-600">GBP Enabled</div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-gradient-to-br from-green-50 to-white rounded-2xl border border-green-200 shadow-sm p-6">
             <div className="text-3xl font-bold text-green-600">{connectedCount}</div>
             <div className="text-sm text-gray-600">Google Connected</div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-gradient-to-br from-purple-50 to-white rounded-2xl border border-purple-200 shadow-sm p-6">
             <div className="text-3xl font-bold text-purple-600">{totalPosts}</div>
             <div className="text-sm text-gray-600">Total Posts</div>
           </div>
@@ -87,7 +87,7 @@ export default async function GBPDashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Client List */}
-          <div className="lg:col-span-2 bg-white rounded-lg shadow">
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-sm">
             <div className="p-4 border-b">
               <h2 className="text-lg font-semibold">All Clients</h2>
               <p className="text-sm text-gray-500">Click on a client to set up or manage their GBP posts</p>
@@ -158,7 +158,7 @@ export default async function GBPDashboardPage() {
           </div>
 
           {/* Recent Activity */}
-          <div className="bg-white rounded-lg shadow">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
             <div className="p-4 border-b">
               <h2 className="text-lg font-semibold">Recent Activity</h2>
             </div>
@@ -198,7 +198,7 @@ export default async function GBPDashboardPage() {
         </div>
 
         {/* Quick Setup Guide */}
-        <div className="bg-blue-50 rounded-lg p-6">
+        <div className="bg-blue-50 rounded-2xl p-6">
           <h3 className="text-lg font-semibold text-blue-900 mb-2">Quick Setup Guide</h3>
           <ol className="list-decimal list-inside text-sm text-blue-800 space-y-1">
             <li>Click on any client above to open their GBP settings</li>
