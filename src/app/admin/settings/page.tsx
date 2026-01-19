@@ -9,6 +9,7 @@ import {
   Shield,
   Zap,
   Podcast,
+  Youtube,
 } from 'lucide-react'
 import {
   PageContainer,
@@ -52,6 +53,13 @@ const settingsSections = [
     icon: Podcast,
     color: 'orange',
   },
+  {
+    title: 'YouTube Playlists',
+    description: 'Assign clients to their WRHQ YouTube playlists for video uploads',
+    href: '/admin/youtube',
+    icon: Youtube,
+    color: 'red',
+  },
 ]
 
 const colorStyles: Record<string, { bg: string; iconBg: string; iconColor: string; hover: string }> = {
@@ -84,6 +92,12 @@ const colorStyles: Record<string, { bg: string; iconBg: string; iconColor: strin
     iconBg: 'bg-orange-100',
     iconColor: 'text-orange-600',
     hover: 'hover:border-orange-200 hover:shadow-orange-100',
+  },
+  red: {
+    bg: 'bg-gradient-to-br from-red-50 to-white',
+    iconBg: 'bg-red-100',
+    iconColor: 'text-red-600',
+    hover: 'hover:border-red-200 hover:shadow-red-100',
   },
 }
 
