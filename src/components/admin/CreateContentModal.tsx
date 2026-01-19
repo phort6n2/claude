@@ -22,6 +22,8 @@ interface ClientPAA {
   id: string
   question: string
   priority: number
+  usedAt: string | null
+  usedCount: number
 }
 
 interface CreateContentModalProps {
@@ -63,9 +65,12 @@ export default function CreateContentModal({ isOpen, onClose, onSuccess }: Creat
         fetch(`/api/clients/${selectedClient}/locations`).then(res => res.json()),
         fetch(`/api/clients/${selectedClient}/paas`).then(res => res.json()),
       ])
-        .then(([locs, paas]) => {
+        .then(([locs, paasResponse]) => {
           setLocations(locs)
-          setPaaQuestions(paas)
+          // API returns { paas: [...] }, and filter to only show unused PAAs
+          const allPaas = paasResponse.paas || paasResponse || []
+          const unusedPaas = allPaas.filter((p: ClientPAA) => !p.usedAt)
+          setPaaQuestions(unusedPaas)
           setSelectedLocation('')
           setSelectedPAA('')
         })
