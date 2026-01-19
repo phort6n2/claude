@@ -343,30 +343,53 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
     // 1. Add short-form video (floated right)
     // YouTube URL is in socialPosts.publishedUrl after publishing via Late
+    // IMPORTANT: Look for VIDEO posts specifically (mediaType === 'video'), not image posts
     let shortVideoUrl: string | null = null
 
     // Debug: log all sources
     console.log('=== SHORT VIDEO DEBUG ===')
-    console.log('socialPosts:', contentItem.socialPosts.map(p => ({ platform: p.platform, mediaType: p.mediaType, publishedUrl: p.publishedUrl })))
-    console.log('wrhqSocialPosts:', contentItem.wrhqSocialPosts.map(p => ({ platform: p.platform, mediaType: p.mediaType, publishedUrl: p.publishedUrl })))
+    console.log('socialPosts:', contentItem.socialPosts.map(p => ({ platform: p.platform, mediaType: p.mediaType, publishedUrl: p.publishedUrl, status: p.status })))
+    console.log('wrhqSocialPosts:', contentItem.wrhqSocialPosts.map(p => ({ platform: p.platform, mediaType: p.mediaType, publishedUrl: p.publishedUrl, status: p.status })))
 
-    // Check client socialPosts for YouTube published URL
-    const youtubePost = contentItem.socialPosts.find(
-      p => p.platform === 'YOUTUBE' && p.publishedUrl
+    // Check client socialPosts for YouTube VIDEO post with published URL
+    const youtubeVideoPost = contentItem.socialPosts.find(
+      p => p.platform === 'YOUTUBE' && p.mediaType === 'video' && p.publishedUrl
     )
-    if (youtubePost?.publishedUrl) {
-      shortVideoUrl = youtubePost.publishedUrl
-      console.log('Found in client socialPosts:', shortVideoUrl)
+    if (youtubeVideoPost?.publishedUrl) {
+      shortVideoUrl = youtubeVideoPost.publishedUrl
+      console.log('Found VIDEO in client socialPosts:', shortVideoUrl)
     }
 
-    // Check WRHQ socialPosts for YouTube published URL
+    // Fallback: Check for any YouTube post with publishedUrl (backwards compatibility)
     if (!shortVideoUrl) {
-      const wrhqYoutubePost = contentItem.wrhqSocialPosts.find(
+      const youtubeAnyPost = contentItem.socialPosts.find(
         p => p.platform === 'YOUTUBE' && p.publishedUrl
       )
-      if (wrhqYoutubePost?.publishedUrl) {
-        shortVideoUrl = wrhqYoutubePost.publishedUrl
-        console.log('Found in wrhqSocialPosts:', shortVideoUrl)
+      if (youtubeAnyPost?.publishedUrl) {
+        shortVideoUrl = youtubeAnyPost.publishedUrl
+        console.log('Found ANY YouTube in client socialPosts:', shortVideoUrl)
+      }
+    }
+
+    // Check WRHQ socialPosts for YouTube VIDEO post
+    if (!shortVideoUrl) {
+      const wrhqYoutubeVideoPost = contentItem.wrhqSocialPosts.find(
+        p => p.platform === 'YOUTUBE' && p.mediaType === 'video' && p.publishedUrl
+      )
+      if (wrhqYoutubeVideoPost?.publishedUrl) {
+        shortVideoUrl = wrhqYoutubeVideoPost.publishedUrl
+        console.log('Found VIDEO in wrhqSocialPosts:', shortVideoUrl)
+      }
+    }
+
+    // Fallback: any WRHQ YouTube post
+    if (!shortVideoUrl) {
+      const wrhqYoutubeAnyPost = contentItem.wrhqSocialPosts.find(
+        p => p.platform === 'YOUTUBE' && p.publishedUrl
+      )
+      if (wrhqYoutubeAnyPost?.publishedUrl) {
+        shortVideoUrl = wrhqYoutubeAnyPost.publishedUrl
+        console.log('Found ANY YouTube in wrhqSocialPosts:', shortVideoUrl)
       }
     }
 
@@ -459,12 +482,27 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       ? (() => {
           const youtubeClientPosts = contentItem.socialPosts.filter(p => p.platform === 'YOUTUBE')
           const youtubeWrhqPosts = contentItem.wrhqSocialPosts.filter(p => p.platform === 'YOUTUBE')
-          if (youtubeClientPosts.length === 0 && youtubeWrhqPosts.length === 0) {
+          const allYoutubePosts = [...youtubeClientPosts, ...youtubeWrhqPosts]
+
+          if (allYoutubePosts.length === 0) {
             return 'No YouTube social posts found. Generate video social posts first.'
           }
-          const allYoutubePosts = [...youtubeClientPosts, ...youtubeWrhqPosts]
-          const statuses = allYoutubePosts.map(p => `${p.platform}: status=${p.status}, publishedUrl=${p.publishedUrl || 'none'}`).join('; ')
-          return `YouTube posts exist but none have publishedUrl yet. Publish videos to YouTube first. (${statuses})`
+
+          // Check for video posts specifically
+          const videoPosts = allYoutubePosts.filter(p => p.mediaType === 'video')
+          const videoWithUrl = videoPosts.filter(p => p.publishedUrl)
+          const anyWithUrl = allYoutubePosts.filter(p => p.publishedUrl)
+
+          if (videoPosts.length === 0) {
+            return `Found ${allYoutubePosts.length} YouTube post(s) but none are video type. Generate video social posts (mediaType=video).`
+          }
+
+          if (videoWithUrl.length === 0 && anyWithUrl.length === 0) {
+            const statuses = videoPosts.map(p => `mediaType=${p.mediaType}, status=${p.status}, publishedUrl=${p.publishedUrl || 'MISSING'}`).join('; ')
+            return `Found ${videoPosts.length} YouTube video post(s) but none have publishedUrl yet. Publish videos to YouTube first. (${statuses})`
+          }
+
+          return null
         })()
       : null
 
