@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma, withRetry } from '@/lib/db'
 import { generateSlug } from '@/lib/utils'
 import { encrypt } from '@/lib/encryption'
-import { assignSlotToClient } from '@/lib/automation/auto-scheduler'
-import { syncStandardPAAsToClient } from '@/lib/automation/paa-selector'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
@@ -97,8 +95,9 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Assign a publishing schedule slot to the new client
+    // Assign a publishing schedule slot to the new client (use dynamic import to avoid circular deps)
     try {
+      const { assignSlotToClient } = await import('@/lib/automation/auto-scheduler')
       await assignSlotToClient(client.id)
       console.log(`[Client API] Assigned schedule slot to client ${client.id}`)
     } catch (scheduleError) {
@@ -106,8 +105,9 @@ export async function POST(request: NextRequest) {
       // Non-fatal - client is still created
     }
 
-    // Sync standard PAAs to the new client
+    // Sync standard PAAs to the new client (use dynamic import to avoid circular deps)
     try {
+      const { syncStandardPAAsToClient } = await import('@/lib/automation/paa-selector')
       const syncedCount = await syncStandardPAAsToClient(client.id)
       console.log(`[Client API] Synced ${syncedCount} standard PAAs to client ${client.id}`)
     } catch (paaError) {
