@@ -1001,10 +1001,12 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
     return (
       <button
         onClick={() => toggleSection(section)}
-        className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded-t-lg border-b"
+        className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-white hover:from-gray-100 hover:to-gray-50 transition-all border-b border-gray-100"
       >
         <div className="flex items-center gap-3">
-          <Icon className="h-5 w-5 text-gray-600" />
+          <div className="p-2 bg-white rounded-lg shadow-sm border border-gray-100">
+            <Icon className="h-5 w-5 text-blue-600" />
+          </div>
           <div className="text-left">
             <h3 className="font-semibold text-gray-900">{title}</h3>
             <p className="text-sm text-gray-500">{subtitle}</p>
@@ -1022,22 +1024,27 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   return (
     <div className="space-y-4">
       {/* Sticky Save Bar */}
-      <div className="sticky top-0 z-10 bg-white border-b shadow-sm -mx-6 -mt-6 px-6 py-3 mb-6">
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border border-gray-200 shadow-lg rounded-2xl -mx-2 px-6 py-4 mb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-lg font-semibold">
-              {isNewClient ? 'New Client' : formData.businessName || 'Edit Client'}
-            </h1>
-            {saveSuccess && (
-              <span className="flex items-center gap-1 text-sm text-green-600">
-                <Check className="h-4 w-4" /> Saved
-              </span>
-            )}
-            {error && (
-              <span className="flex items-center gap-1 text-sm text-red-600">
-                <AlertCircle className="h-4 w-4" /> {error}
-              </span>
-            )}
+            <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-sm">
+              <Building2 className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">
+                {isNewClient ? 'New Client' : formData.businessName || 'Edit Client'}
+              </h1>
+              {saveSuccess && (
+                <span className="flex items-center gap-1 text-sm text-green-600">
+                  <Check className="h-4 w-4" /> Changes saved successfully
+                </span>
+              )}
+              {error && (
+                <span className="flex items-center gap-1 text-sm text-red-600">
+                  <AlertCircle className="h-4 w-4" /> {error}
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="outline" onClick={() => router.push('/admin/clients')}>
@@ -1060,31 +1067,31 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
         </div>
         {/* Quick Links - only show for existing clients */}
         {!isNewClient && (
-          <div className="flex items-center gap-4 mt-2 pt-2 border-t border-gray-100">
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 flex-wrap">
             <Link
               href={`/admin/clients/${client!.id}/calendar`}
-              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
             >
               <Calendar className="h-4 w-4" />
-              Content Calendar
+              Calendar
             </Link>
             <Link
               href={`/admin/clients/${client!.id}/gbp`}
-              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
             >
               <Store className="h-4 w-4" />
               GBP Posts
             </Link>
             <Link
               href={`/admin/clients/${client!.id}/users`}
-              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-colors"
             >
               <Users className="h-4 w-4" />
-              Portal Users
+              Users
             </Link>
             <Link
               href={`/admin/clients/${client!.id}/google-ads`}
-              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
             >
               <TrendingUp className="h-4 w-4" />
               Google Ads
@@ -1096,9 +1103,9 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
         {!isNewClient && client?.slug && (
           <div className="mt-3 pt-3 border-t border-gray-100">
             <div className="flex items-center gap-2 text-sm">
-              <Webhook className="h-4 w-4 text-gray-400" />
-              <span className="text-gray-500">Webhook URL:</span>
-              <code className="px-2 py-1 bg-gray-100 rounded text-xs font-mono text-gray-700 flex-1 truncate">
+              <Webhook className="h-4 w-4 text-cyan-500" />
+              <span className="text-gray-500 font-medium">Webhook:</span>
+              <code className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-mono text-gray-700 flex-1 truncate">
                 https://glassleads.app/api/webhooks/highlevel/lead?client={client.slug}
               </code>
               <button
@@ -1108,7 +1115,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                     `https://glassleads.app/api/webhooks/highlevel/lead?client=${client.slug}`
                   )
                 }}
-                className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
                 title="Copy webhook URL"
               >
                 <Copy className="h-4 w-4 text-gray-500" />
@@ -1119,7 +1126,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       </div>
 
       {/* Business Information */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <SectionHeader
           section="business"
           icon={Building2}
@@ -1308,7 +1315,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       </div>
 
       {/* Location */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <SectionHeader
           section="location"
           icon={MapPin}
@@ -1393,7 +1400,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       </div>
 
       {/* Service Locations */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <SectionHeader
           section="serviceLocations"
           icon={MapPin}
@@ -1508,7 +1515,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       </div>
 
       {/* Branding */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <SectionHeader
           section="branding"
           icon={Palette}
@@ -1595,7 +1602,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       </div>
 
       {/* WordPress */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <SectionHeader
           section="wordpress"
           icon={Globe}
@@ -1700,7 +1707,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       </div>
 
       {/* Social Media */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <SectionHeader
           section="social"
           icon={Share2}
@@ -1758,7 +1765,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       </div>
 
       {/* Integrations */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <SectionHeader
           section="integrations"
           icon={Podcast}
@@ -2054,7 +2061,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       </div>
 
       {/* Automation */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <SectionHeader
           section="automation"
           icon={Zap}
@@ -2548,7 +2555,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
 
       {/* Google Ads - only show for existing clients */}
       {!isNewClient && (
-        <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <SectionHeader
             section="googleads"
             icon={TrendingUp}
