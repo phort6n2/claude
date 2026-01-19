@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Phone,
@@ -69,6 +69,9 @@ interface SalesStats {
   month: { count: number; total: number }
 }
 
+const STORAGE_KEY = 'masterLeads_selectedClientId'
+const REFRESH_INTERVAL = 30000 // 30 seconds
+
 export default function StandaloneMasterLeadsPage() {
   const router = useRouter()
   const [authenticated, setAuthenticated] = useState(false)
@@ -87,6 +90,7 @@ export default function StandaloneMasterLeadsPage() {
   const [showCalendar, setShowCalendar] = useState(false)
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [mobilePageIndex, setMobilePageIndex] = useState(0)
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   // Lead detail form state
@@ -131,7 +135,7 @@ export default function StandaloneMasterLeadsPage() {
       .finally(() => setAuthChecking(false))
   }, [router])
 
-  // Load clients on mount
+  // Load clients on mount and restore selected client from localStorage
   useEffect(() => {
     if (!authenticated) return
     fetch('/api/clients')
@@ -139,11 +143,23 @@ export default function StandaloneMasterLeadsPage() {
       .then((data) => {
         if (Array.isArray(data)) {
           setClients(data)
+          // Restore selected client from localStorage
+          const savedClientId = localStorage.getItem(STORAGE_KEY)
+          if (savedClientId && data.some((c: Client) => c.id === savedClientId)) {
+            setSelectedClientId(savedClientId)
+          }
         }
       })
       .catch(console.error)
       .finally(() => setClientsLoading(false))
   }, [authenticated])
+
+  // Save selected client to localStorage when it changes
+  useEffect(() => {
+    if (selectedClientId) {
+      localStorage.setItem(STORAGE_KEY, selectedClientId)
+    }
+  }, [selectedClientId])
 
   // Update selected client when ID changes
   useEffect(() => {
@@ -155,40 +171,65 @@ export default function StandaloneMasterLeadsPage() {
     }
   }, [selectedClientId, clients])
 
-  // Load leads for selected client and date
-  useEffect(() => {
+  // Fetch leads function (reusable for initial load and polling)
+  const fetchLeads = useCallback(async (showLoadingSpinner = true) => {
     if (!selectedClientId || !authenticated) {
       setLeads([])
       setSales(null)
       return
     }
 
-    setLoading(true)
-    setMobilePageIndex(0)
+    if (showLoadingSpinner) {
+      setLoading(true)
+      setMobilePageIndex(0)
+    }
 
     // Fetch leads for the selected date (full day range in user's timezone)
     const [year, month, day] = selectedDate.split('-').map(Number)
     const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
     const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
 
-    fetch(`/api/leads?clientId=${selectedClientId}&startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setLeads(data.leads || [])
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+    try {
+      const [leadsRes, statsRes] = await Promise.all([
+        fetch(`/api/leads?clientId=${selectedClientId}&startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`),
+        fetch(`/api/admin/master-leads/stats?clientId=${selectedClientId}`)
+      ])
 
-    // Fetch sales stats
-    fetch(`/api/admin/master-leads/stats?clientId=${selectedClientId}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.sales) {
-          setSales(data.sales)
-        }
-      })
-      .catch(console.error)
+      const leadsData = await leadsRes.json()
+      const statsData = await statsRes.json()
+
+      setLeads(leadsData.leads || [])
+      if (statsData.sales) {
+        setSales(statsData.sales)
+      }
+      setLastRefresh(new Date())
+    } catch (error) {
+      console.error('Failed to fetch leads:', error)
+    } finally {
+      if (showLoadingSpinner) {
+        setLoading(false)
+      }
+    }
   }, [selectedClientId, selectedDate, authenticated])
+
+  // Initial load when client/date changes
+  useEffect(() => {
+    fetchLeads(true)
+  }, [fetchLeads])
+
+  // Auto-refresh polling (every 30 seconds)
+  useEffect(() => {
+    if (!selectedClientId || !authenticated) return
+
+    const interval = setInterval(() => {
+      // Only auto-refresh if user is not editing a lead
+      if (!selectedLead) {
+        fetchLeads(false) // Don't show loading spinner for background refresh
+      }
+    }, REFRESH_INTERVAL)
+
+    return () => clearInterval(interval)
+  }, [selectedClientId, authenticated, selectedLead, fetchLeads])
 
   // When lead is selected, populate form
   useEffect(() => {
@@ -484,11 +525,27 @@ export default function StandaloneMasterLeadsPage() {
             </div>
           )}
 
-          {/* Lead Count */}
-          <div className="max-w-6xl mx-auto px-4 py-2">
+          {/* Lead Count & Auto-refresh indicator */}
+          <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
             <p className="text-sm text-gray-700">
               {loading ? 'Loading...' : `${leads.length} lead${leads.length !== 1 ? 's' : ''} on ${formatDateDisplay(selectedDate)}`}
             </p>
+            <div className="flex items-center gap-2">
+              {lastRefresh && (
+                <span className="text-xs text-gray-400">
+                  Updated {lastRefresh.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                </span>
+              )}
+              <button
+                onClick={() => fetchLeads(false)}
+                className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                title="Refresh leads"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* Leads Grid */}
