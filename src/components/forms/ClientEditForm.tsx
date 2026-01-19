@@ -207,7 +207,7 @@ const defaultClientData: Omit<ClientData, 'id'> & { id: string } = {
   creatifyVideoLength: null,
   creatifyNoCta: false,
   preferredPublishTime: '09:00',
-  timezone: 'America/Los_Angeles',
+  timezone: 'America/Denver',
   socialPlatforms: [],
   socialAccountIds: null,
   podbeanPodcastId: null,

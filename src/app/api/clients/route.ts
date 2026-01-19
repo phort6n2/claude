@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
         ctaUrl: data.ctaUrl || null,
         creatifyTemplateId: data.creatifyTemplateId || null,
         preferredPublishTime: data.preferredPublishTime || '09:00',
-        timezone: data.timezone || 'America/Los_Angeles',
+        timezone: data.timezone || 'America/Denver',
         socialPlatforms: data.socialPlatforms || [],
         socialAccountIds: data.socialAccountIds || null,
         podbeanPodcastId: data.podbeanPodcastId || null,

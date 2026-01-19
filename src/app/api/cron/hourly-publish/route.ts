@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
 
     // Filter to clients who should publish NOW based on their local time
     const clientsForNow = allClients.filter(client => {
-      const timezone = client.timezone || 'America/Los_Angeles'
+      const timezone = client.timezone || 'America/Denver'
       const slotIndex = client.scheduleTimeSlot as number
       const dayPair = client.scheduleDayPair as DayPairKey
 
@@ -152,7 +152,7 @@ export async function GET(request: NextRequest) {
     }> = []
 
     for (const client of clientsForToday) {
-      const clientTimezone = client.timezone || 'America/Los_Angeles'
+      const clientTimezone = client.timezone || 'America/Denver'
       console.log(`[HourlyPublish] Processing client: ${client.businessName} (timezone: ${clientTimezone})`)
 
       try {

@@ -53,7 +53,7 @@ async function main() {
       brandVoice: 'Professional, helpful, and knowledgeable. We emphasize our ADAS expertise and mobile service convenience.',
       ctaText: 'Get a Free Quote',
       preferredPublishTime: '09:00',
-      timezone: 'America/Los_Angeles',
+      timezone: 'America/Denver',
       socialPlatforms: ['facebook', 'instagram', 'linkedin'],
       status: 'ACTIVE',
     },

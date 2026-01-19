@@ -91,7 +91,7 @@ model Client {
 
   // Publishing Preferences (Tue/Thu schedule)
   preferredPublishTime String @default("09:00")
-  timezone             String @default("America/Los_Angeles")
+  timezone             String @default("America/Denver")
 
   // Social Media
   socialPlatforms      String[] // facebook, instagram, linkedin, twitter, tiktok, gbp
