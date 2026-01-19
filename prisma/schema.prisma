@@ -146,7 +146,7 @@ model Client {
 
   // Smart Scheduling (to avoid Late.dev 5-post-per-account limit)
   scheduleDayPair  String? // e.g., "MON_WED", "TUE_THU", "WED_FRI" - auto-assigned
-  scheduleTimeSlot Int? // 0-4 representing staggered times (6AM, 7AM, 8AM, 9AM, 10AM)
+  scheduleTimeSlot Int? // 0-9: morning slots 0-4 (7-11 AM local), afternoon slots 5-9 (1-5 PM local)
 
   // Relations
   contentItems     ContentItem[]

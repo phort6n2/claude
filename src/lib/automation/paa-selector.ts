@@ -339,6 +339,10 @@ interface SelectedCombination {
  * @returns The selected PAA + Location combination, or null if none available
  */
 export async function selectNextPAACombination(clientId: string): Promise<SelectedCombination | null> {
+  // First, ensure standard PAAs are synced to this client
+  // This is important for new clients that may not have any PAAs yet
+  await syncStandardPAAsToClient(clientId)
+
   // Get all active PAAs for this client (custom first by priority, then standard)
   const allPaas = await prisma.clientPAA.findMany({
     where: {
