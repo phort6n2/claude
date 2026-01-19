@@ -1914,38 +1914,26 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                     disabled={loadingCreatify}
                   >
                     <option value="">Default (Creatify chooses)</option>
-                    {/* Filter for American accents only */}
+                    {/* Show all voices with all accents */}
                     {[...creatifyVoices]
                       .sort((a, b) => a.name.localeCompare(b.name))
-                      .map(voice => {
-                        // Helper to check if an accent is American
-                        const isAmerican = (accent: { name?: string; accent?: string; language?: string }) => {
-                          const text = `${accent.name || ''} ${accent.accent || ''} ${accent.language || ''}`.toLowerCase()
-                          return text.includes('american') ||
-                                 text.includes('en-us') ||
-                                 text.includes('en_us') ||
-                                 text.includes('us english') ||
-                                 text.includes('united states')
-                        }
-
-                        // Find American accent, or fall back to first accent
-                        const americanAccent = voice.accents.find(isAmerican) || voice.accents[0]
-
-                        return {
-                          id: americanAccent?.id || voice.id,
-                          name: voice.name,
+                      .flatMap(voice =>
+                        voice.accents.map(accent => ({
+                          id: accent.id,
+                          voiceName: voice.name,
+                          accentName: accent.name || accent.accent || '',
                           gender: voice.gender,
-                          useThisId: americanAccent?.useThisId || voice.useThisId,
-                        }
-                      })
+                          useThisId: accent.useThisId || accent.id,
+                        }))
+                      )
                       .map(option => (
                         <option key={option.id} value={option.useThisId}>
-                          {option.name} ({option.gender || 'voice'})
+                          {option.voiceName} - {option.accentName || 'Default'} ({option.gender || 'voice'})
                         </option>
                       ))}
                   </select>
                   <p className="mt-1 text-xs text-gray-500">
-                    Filtered to American accents only
+                    Leave blank to let Creatify choose the best voice
                   </p>
                 </div>
 
