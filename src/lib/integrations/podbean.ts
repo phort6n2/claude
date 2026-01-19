@@ -38,20 +38,40 @@ interface CreateEpisodeParams {
   transcriptUrl?: string
 }
 
-// Cache token to avoid repeated auth requests
-let cachedToken: { token: string; expiresAt: number } | null = null
+// Cache tokens per podcast to avoid repeated auth requests
+// Key is podcast_id or 'default' for the default podcast
+const tokenCache: Map<string, { token: string; expiresAt: number }> = new Map()
 
 /**
  * Get OAuth2 access token from Podbean
+ *
+ * IMPORTANT: For multi-podcast accounts, you MUST pass the podcastId to get a token
+ * scoped to that specific podcast. If no podcastId is provided, the token will be
+ * scoped to the default podcast only.
+ *
+ * See: https://developers.podbean.com/ section 5. Client Credentials
  */
-async function getAccessToken(credentials: PodbeanCredentials): Promise<string> {
-  // Check cached token
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 60000) {
-    return cachedToken.token
+async function getAccessToken(credentials: PodbeanCredentials, podcastId?: string): Promise<string> {
+  const cacheKey = podcastId || 'default'
+
+  // Check cached token for this podcast
+  const cached = tokenCache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now() + 60000) {
+    return cached.token
   }
 
   // Credentials are already decrypted by getGlobalPodbeanCredentials
   const basicAuth = Buffer.from(`${credentials.clientId}:${credentials.clientSecret}`).toString('base64')
+
+  // Build request body - include podcast_id if specified
+  const bodyParams = new URLSearchParams({
+    grant_type: 'client_credentials',
+  })
+
+  // CRITICAL: Pass podcast_id to get a token scoped to that specific podcast
+  if (podcastId) {
+    bodyParams.append('podcast_id', podcastId)
+  }
 
   const response = await fetch('https://api.podbean.com/v1/oauth/token', {
     method: 'POST',
@@ -60,7 +80,7 @@ async function getAccessToken(credentials: PodbeanCredentials): Promise<string> 
       'Content-Type': 'application/x-www-form-urlencoded',
       'User-Agent': 'AutoGlassContentPlatform/1.0',
     },
-    body: 'grant_type=client_credentials',
+    body: bodyParams.toString(),
   })
 
   if (!response.ok) {
@@ -70,10 +90,13 @@ async function getAccessToken(credentials: PodbeanCredentials): Promise<string> 
 
   const data: PodbeanTokenResponse = await response.json()
 
-  cachedToken = {
+  // Cache the token for this podcast
+  tokenCache.set(cacheKey, {
     token: data.access_token,
     expiresAt: Date.now() + (data.expires_in * 1000),
-  }
+  })
+
+  console.log(`[Podbean] Got access token for podcast: ${podcastId || 'DEFAULT'}`)
 
   return data.access_token
 }
@@ -154,14 +177,20 @@ async function uploadAudioFile(
 /**
  * Create a new podcast episode
  * Uses remote_media_url to let Podbean fetch the audio directly (simpler than uploading)
+ *
+ * IMPORTANT: The Podbean API does NOT accept podcast_id in the episode creation endpoint.
+ * To publish to a specific podcast, you must get a token scoped to that podcast.
+ * This is done by passing podcast_id when calling getAccessToken.
  */
 export async function createEpisode(
   credentials: PodbeanCredentials,
   params: CreateEpisodeParams
 ): Promise<PodbeanEpisode> {
-  const token = await getAccessToken(credentials)
+  // Get a token scoped to the specific podcast (or default if not specified)
+  const token = await getAccessToken(credentials, params.podcastId)
 
   // Create the episode using remote_media_url (Podbean will fetch the audio)
+  // NOTE: podcast_id is NOT a valid parameter here - the token is already scoped to the podcast
   const formData = new URLSearchParams({
     access_token: token,
     title: params.title,
@@ -170,11 +199,6 @@ export async function createEpisode(
     type: params.type || 'public',
     remote_media_url: params.audioFileUrl,
   })
-
-  // CRITICAL: Specify which podcast to publish to (for multi-podcast accounts)
-  if (params.podcastId) {
-    formData.append('podcast_id', params.podcastId)
-  }
 
   if (params.logo) {
     formData.append('remote_logo_url', params.logo)
