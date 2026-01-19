@@ -73,31 +73,6 @@ interface PlacePrediction {
   secondaryText: string
 }
 
-interface CreatifyAvatar {
-  id: string
-  name: string
-  gender?: string
-  style?: string
-  location?: string
-  thumbnail?: string
-  useThisId: string
-}
-
-interface CreatifyVoiceAccent {
-  id: string
-  name: string
-  accent: string
-  useThisId: string
-}
-
-interface CreatifyVoice {
-  id: string
-  name: string
-  gender?: string
-  accents: CreatifyVoiceAccent[]
-  useThisId: string
-}
-
 interface ClientData {
   id: string
   slug?: string
@@ -283,12 +258,6 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
   const [youtubeConnected, setYoutubeConnected] = useState(false)
   const [loadingYoutube, setLoadingYoutube] = useState(false)
 
-  // Creatify avatars/voices state
-  const [creatifyAvatars, setCreatifyAvatars] = useState<CreatifyAvatar[]>([])
-  const [creatifyVoices, setCreatifyVoices] = useState<CreatifyVoice[]>([])
-  const [loadingCreatify, setLoadingCreatify] = useState(false)
-  const [creatifyConnected, setCreatifyConnected] = useState(false)
-
   // Service locations state
   const [serviceLocations, setServiceLocations] = useState<ServiceLocation[]>([])
   const [loadingLocations, setLoadingLocations] = useState(false)
@@ -388,22 +357,6 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
       })
       .catch(() => {})
       .finally(() => setLoadingYoutube(false))
-  }, [])
-
-  // Load Creatify avatars and voices
-  useEffect(() => {
-    setLoadingCreatify(true)
-    fetch('/api/creatify/avatars-voices')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.avatars && data.voices) {
-          setCreatifyConnected(true)
-          setCreatifyAvatars(data.avatars)
-          setCreatifyVoices(data.voices)
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoadingCreatify(false))
   }, [])
 
   // Load service locations (only for existing clients)
@@ -1860,83 +1813,9 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
               <div className="flex items-center gap-2 mb-4">
                 <Video className="h-4 w-4 text-purple-600" />
                 <h4 className="text-sm font-medium text-gray-900">Creatify Video Settings</h4>
-                {loadingCreatify && (
-                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                )}
-                {creatifyConnected && !loadingCreatify && (
-                  <span className="text-xs text-green-600 flex items-center gap-1">
-                    <Check className="h-3 w-3" /> Connected
-                  </span>
-                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Avatar Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Avatar
-                    {creatifyAvatars.length > 0 && (
-                      <span className="ml-2 text-xs text-gray-500">({creatifyAvatars.length} available)</span>
-                    )}
-                  </label>
-                  <select
-                    value={formData.creatifyAvatarId || ''}
-                    onChange={(e) => updateField('creatifyAvatarId', e.target.value || null)}
-                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                    disabled={loadingCreatify}
-                  >
-                    <option value="">Default (Creatify chooses)</option>
-                    {/* Sort avatars alphabetically by name */}
-                    {[...creatifyAvatars]
-                      .sort((a, b) => a.name.localeCompare(b.name))
-                      .map(avatar => (
-                        <option key={avatar.id} value={avatar.useThisId}>
-                          {avatar.name} ({avatar.location || 'studio'}{avatar.gender === 'm' ? ', male' : avatar.gender === 'f' ? ', female' : ''})
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                {/* Voice Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Voice & Accent
-                    {creatifyVoices.length > 0 && (
-                      <span className="ml-2 text-xs text-gray-500">
-                        ({creatifyVoices.reduce((count, v) => count + v.accents.length, 0)} options)
-                      </span>
-                    )}
-                  </label>
-                  <select
-                    value={formData.creatifyVoiceId || ''}
-                    onChange={(e) => updateField('creatifyVoiceId', e.target.value || null)}
-                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                    disabled={loadingCreatify}
-                  >
-                    <option value="">Default (Creatify chooses)</option>
-                    {/* Show all voices with all accents */}
-                    {[...creatifyVoices]
-                      .sort((a, b) => a.name.localeCompare(b.name))
-                      .flatMap(voice =>
-                        voice.accents.map(accent => ({
-                          id: accent.id,
-                          voiceName: voice.name,
-                          accentName: accent.name || accent.accent || '',
-                          gender: voice.gender,
-                          useThisId: accent.useThisId || accent.id,
-                        }))
-                      )
-                      .map(option => (
-                        <option key={option.id} value={option.useThisId}>
-                          {option.voiceName} - {option.accentName || 'Default'} ({option.gender || 'voice'})
-                        </option>
-                      ))}
-                  </select>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Leave blank to let Creatify choose the best voice
-                  </p>
-                </div>
-
                 {/* Video Length */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Video Length</label>
