@@ -126,7 +126,6 @@ export default function PortalLeadsPage() {
     if (!session?.authenticated) return
 
     setLoading(true)
-    setMobilePageIndex(0)
     fetch(`/api/portal/leads?date=${selectedDate}`)
       .then((res) => res.json())
       .then((data) => {
