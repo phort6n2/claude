@@ -376,17 +376,17 @@ async function ClientCards() {
                 </div>
 
                 {/* Quick Links */}
-                <div className="flex items-center gap-1 flex-wrap mb-4 pb-4 border-b border-gray-100 overflow-hidden">
+                <div className="flex items-center gap-1.5 flex-wrap mb-4 pb-4 border-b border-gray-100">
                   {client.wordpressUrl && (
                     <a
                       href={client.wordpressUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
                     >
-                      <Globe className="h-3.5 w-3.5 flex-shrink-0" />
-                      <span className="truncate">Website</span>
-                      <ArrowUpRight className="h-3 w-3 opacity-50 flex-shrink-0" />
+                      <Globe className="h-3 w-3" />
+                      Web
+                      <ArrowUpRight className="h-2.5 w-2.5 opacity-60" />
                     </a>
                   )}
                   {client.googleMapsUrl && (
@@ -394,11 +394,11 @@ async function ClientCards() {
                       href={client.googleMapsUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
                     >
-                      <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                      <span className="truncate">Map</span>
-                      <ArrowUpRight className="h-3 w-3 opacity-50 flex-shrink-0" />
+                      <MapPin className="h-3 w-3" />
+                      Map
+                      <ArrowUpRight className="h-2.5 w-2.5 opacity-60" />
                     </a>
                   )}
                   {client.podbeanPodcastUrl && (
@@ -406,11 +406,11 @@ async function ClientCards() {
                       href={client.podbeanPodcastUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium text-purple-600 hover:bg-purple-50 transition-colors"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 transition-colors"
                     >
-                      <Podcast className="h-3.5 w-3.5 flex-shrink-0" />
-                      <span className="truncate">Podcast</span>
-                      <ArrowUpRight className="h-3 w-3 opacity-50 flex-shrink-0" />
+                      <Podcast className="h-3 w-3" />
+                      Pod
+                      <ArrowUpRight className="h-2.5 w-2.5 opacity-60" />
                     </a>
                   )}
                   {client.wrhqDirectoryUrl && (
@@ -418,11 +418,11 @@ async function ClientCards() {
                       href={client.wrhqDirectoryUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium text-orange-600 hover:bg-orange-50 transition-colors"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 transition-colors"
                     >
-                      <Building2 className="h-3.5 w-3.5 flex-shrink-0" />
-                      <span className="truncate">WRHQ</span>
-                      <ArrowUpRight className="h-3 w-3 opacity-50 flex-shrink-0" />
+                      <Building2 className="h-3 w-3" />
+                      WRHQ
+                      <ArrowUpRight className="h-2.5 w-2.5 opacity-60" />
                     </a>
                   )}
                 </div>
