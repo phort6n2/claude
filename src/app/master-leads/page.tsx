@@ -89,9 +89,7 @@ export default function StandaloneMasterLeadsPage() {
   })
   const [showCalendar, setShowCalendar] = useState(false)
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
-  const [mobilePageIndex, setMobilePageIndex] = useState(0)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   // Lead detail form state
   const [editFirstName, setEditFirstName] = useState('')
@@ -181,7 +179,6 @@ export default function StandaloneMasterLeadsPage() {
 
     if (showLoadingSpinner) {
       setLoading(true)
-      setMobilePageIndex(0)
     }
 
     // Fetch leads for the selected date (full day range in user's timezone)
@@ -328,38 +325,6 @@ export default function StandaloneMasterLeadsPage() {
     } finally {
       setSaving(false)
     }
-  }
-
-  // Mobile pagination
-  const cardsPerPage = 6
-  const totalPages = Math.ceil(leads.length / cardsPerPage)
-  const mobileLeads = leads.slice(
-    mobilePageIndex * cardsPerPage,
-    (mobilePageIndex + 1) * cardsPerPage
-  )
-
-  // Handle swipe
-  function handleSwipe(direction: 'left' | 'right') {
-    if (direction === 'left' && mobilePageIndex < totalPages - 1) {
-      setMobilePageIndex(mobilePageIndex + 1)
-    } else if (direction === 'right' && mobilePageIndex > 0) {
-      setMobilePageIndex(mobilePageIndex - 1)
-    }
-  }
-
-  // Touch handling for swipe (page navigation)
-  const touchStart = useRef<number | null>(null)
-  function handleTouchStart(e: React.TouchEvent) {
-    touchStart.current = e.touches[0].clientX
-  }
-  function handleTouchEnd(e: React.TouchEvent) {
-    if (touchStart.current === null) return
-    const touchEnd = e.changedTouches[0].clientX
-    const diff = touchStart.current - touchEnd
-    if (Math.abs(diff) > 50) {
-      handleSwipe(diff > 0 ? 'left' : 'right')
-    }
-    touchStart.current = null
   }
 
   // Modal swipe navigation between leads with animation
@@ -576,58 +541,15 @@ export default function StandaloneMasterLeadsPage() {
                 </button>
               </div>
             ) : (
-              <>
-                {/* Mobile View - Swipeable Cards */}
-                <div
-                  className="md:hidden"
-                  ref={scrollContainerRef}
-                  onTouchStart={handleTouchStart}
-                  onTouchEnd={handleTouchEnd}
-                >
-                  <div className="grid grid-cols-2 gap-3">
-                    {mobileLeads.map((lead) => (
-                      <LeadCard
-                        key={lead.id}
-                        lead={lead}
-                        onClick={() => setSelectedLead(lead)}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Pagination Dots */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-center gap-2 mt-4">
-                      {Array.from({ length: totalPages }).map((_, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setMobilePageIndex(i)}
-                          className={`w-2 h-2 rounded-full transition-colors ${
-                            i === mobilePageIndex ? 'bg-blue-600' : 'bg-gray-300'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Swipe hint */}
-                  {totalPages > 1 && (
-                    <p className="text-center text-xs text-gray-600 mt-2">
-                      Swipe or tap dots to see more
-                    </p>
-                  )}
-                </div>
-
-                {/* Desktop View - All Cards */}
-                <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {leads.map((lead) => (
-                    <LeadCard
-                      key={lead.id}
-                      lead={lead}
-                      onClick={() => setSelectedLead(lead)}
-                    />
-                  ))}
-                </div>
-              </>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+                {leads.map((lead) => (
+                  <LeadCard
+                    key={lead.id}
+                    lead={lead}
+                    onClick={() => setSelectedLead(lead)}
+                  />
+                ))}
+              </div>
             )}
           </div>
         </>
