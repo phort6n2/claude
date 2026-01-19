@@ -155,49 +155,17 @@ export async function GET(request: NextRequest) {
       console.log(`[HourlyPublish] Processing client: ${client.businessName}`)
 
       try {
-        // RACE CONDITION FIX: Check if content already exists for this client today
-        // This prevents duplicate content if cron runs twice in the same hour
-        // Only consider active content (not FAILED) as blocking
-        const todayStart = new Date(now)
-        todayStart.setUTCHours(0, 0, 0, 0)
-        const todayEnd = new Date(now)
-        todayEnd.setUTCHours(23, 59, 59, 999)
-
-        const existingContent = await prisma.contentItem.findFirst({
-          where: {
-            clientId: client.id,
-            scheduledDate: {
-              gte: todayStart,
-              lte: todayEnd,
-            },
-            // Only block if there's active content - FAILED content shouldn't block new creation
-            status: {
-              in: ['GENERATING', 'SCHEDULED', 'PUBLISHED', 'REVIEW'],
-            },
-          },
-        })
-
-        if (existingContent) {
-          console.log(`[HourlyPublish] Active content already exists for ${client.businessName} today (${existingContent.id}, status: ${existingContent.status}), skipping`)
-          results.push({
-            clientId: client.id,
-            clientName: client.businessName,
-            success: true,
-            contentItemId: existingContent.id,
-            error: `Skipped - content already exists (${existingContent.status})`,
-          })
-          continue
-        }
-
         // Select next PAA + Location combination
-        // This ensures all combinations are used before any repeat
+        // The selector automatically excludes combinations that have content TODAY
+        // This ensures we never duplicate content on the same day, but always try to create new content
         const combination = await selectNextPAACombination(client.id)
         if (!combination) {
+          // This means either: no PAAs/locations configured, OR all combinations already have content today
           results.push({
             clientId: client.id,
             clientName: client.businessName,
             success: false,
-            error: 'No PAA questions or locations available',
+            error: 'No available PAA/location combinations (all may have content today, or none configured)',
           })
           continue
         }
@@ -279,11 +247,9 @@ export async function GET(request: NextRequest) {
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
 
-    // Log the run - distinguish between actually processed vs skipped
-    const skippedCount = results.filter(r => r.success && r.error?.includes('Skipped')).length
-    const actuallyProcessed = results.filter(r => r.success && !r.error?.includes('Skipped')).length
-    const failCount = results.filter(r => !r.success).length
+    // Log the run
     const successCount = results.filter(r => r.success).length
+    const failCount = results.filter(r => !r.success).length
 
     // Always log when we processed clients
     if (results.length > 0) {
@@ -297,8 +263,7 @@ export async function GET(request: NextRequest) {
               utcTime: now.toISOString(),
               timezoneAware: true,
               processed: results.length,
-              actuallyGenerated: actuallyProcessed,
-              skipped: skippedCount,
+              successful: successCount,
               failed: failCount,
               results,
             }),
@@ -307,7 +272,7 @@ export async function GET(request: NextRequest) {
             durationMs: Date.now() - startTime,
           },
         })
-        console.log(`[HourlyPublish] Logged cron run: ${actuallyProcessed} generated, ${skippedCount} skipped, ${failCount} failed`)
+        console.log(`[HourlyPublish] Logged cron run: ${successCount} successful, ${failCount} failed`)
       } catch (logError) {
         console.error('[HourlyPublish] Failed to log cron run:', logError)
       }
@@ -318,8 +283,7 @@ export async function GET(request: NextRequest) {
       utcTime: now.toISOString(),
       timezoneAware: true,
       processed: results.length,
-      actuallyGenerated: actuallyProcessed,
-      skipped: skippedCount,
+      successful: successCount,
       failed: failCount,
       results,
       durationMs: Date.now() - startTime,

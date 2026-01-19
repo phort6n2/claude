@@ -397,7 +397,37 @@ export async function selectNextPAACombination(clientId: string): Promise<Select
     },
   })
 
-  // Get all used combinations (PAA + Location pairs that have content)
+  // Get combinations used TODAY (these are blocked - never duplicate same day)
+  const todayStart = new Date()
+  todayStart.setUTCHours(0, 0, 0, 0)
+  const todayEnd = new Date()
+  todayEnd.setUTCHours(23, 59, 59, 999)
+
+  const todayCombinations = await prisma.contentItem.findMany({
+    where: {
+      clientId,
+      clientPAAId: { not: null },
+      serviceLocationId: { not: null },
+      scheduledDate: {
+        gte: todayStart,
+        lte: todayEnd,
+      },
+      // Only block on active content, not FAILED
+      status: {
+        in: ['GENERATING', 'SCHEDULED', 'PUBLISHED', 'REVIEW'],
+      },
+    },
+    select: {
+      clientPAAId: true,
+      serviceLocationId: true,
+    },
+  })
+
+  const todaySet = new Set(
+    todayCombinations.map(c => `${c.clientPAAId}:${c.serviceLocationId}`)
+  )
+
+  // Get all used combinations (PAA + Location pairs that have content - all time)
   const usedCombinations = await prisma.contentItem.findMany({
     where: {
       clientId,
@@ -433,14 +463,22 @@ export async function selectNextPAACombination(clientId: string): Promise<Select
     }
   }
 
-  // Find unused combinations
-  let unusedCombinations = allCombinations.filter(c => !usedSet.has(c.key))
+  // First: exclude combinations used TODAY (never duplicate same day)
+  const availableToday = allCombinations.filter(c => !todaySet.has(c.key))
 
-  // If all combinations used, reset by treating all as available
+  if (availableToday.length === 0) {
+    console.log(`[PAA Selector] All ${allCombinations.length} combinations already have content today - nothing available`)
+    return null
+  }
+
+  // From today's available, find ones not used all-time
+  let unusedCombinations = availableToday.filter(c => !usedSet.has(c.key))
+
+  // If all available-today combinations have been used historically, recycle
   const isRecycling = unusedCombinations.length === 0
   if (isRecycling) {
-    console.log(`[PAA Selector] All ${allCombinations.length} combinations used, starting new cycle`)
-    unusedCombinations = allCombinations
+    console.log(`[PAA Selector] All historically unused combinations have content today, recycling from ${availableToday.length} available`)
+    unusedCombinations = availableToday
   }
 
   // Sort unused combinations to maximize variety:
