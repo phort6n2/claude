@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 
 interface Podcast {
   id: string
@@ -90,7 +92,12 @@ export default function PodbeanAdminPage() {
     return (
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Podbean Podcast Assignments</h1>
+          <div className="flex items-center gap-4 mb-6">
+            <Link href="/admin/settings" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <ArrowLeft className="h-5 w-5 text-gray-600" />
+            </Link>
+            <h1 className="text-2xl font-bold text-gray-900">Podbean Podcast Assignments</h1>
+          </div>
           <div className="bg-white rounded-lg shadow p-8 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-4 text-gray-600">Loading podcasts and clients...</p>
@@ -104,7 +111,12 @@ export default function PodbeanAdminPage() {
     return (
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Podbean Podcast Assignments</h1>
+          <div className="flex items-center gap-4 mb-6">
+            <Link href="/admin/settings" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <ArrowLeft className="h-5 w-5 text-gray-600" />
+            </Link>
+            <h1 className="text-2xl font-bold text-gray-900">Podbean Podcast Assignments</h1>
+          </div>
           <div className="bg-red-50 border border-red-200 rounded-lg p-6">
             <p className="text-red-800">{error}</p>
             <button
@@ -124,8 +136,13 @@ export default function PodbeanAdminPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Podbean Podcast Assignments</h1>
-        <p className="text-gray-600 mb-6">
+        <div className="flex items-center gap-4 mb-2">
+          <Link href="/admin/settings" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <ArrowLeft className="h-5 w-5 text-gray-600" />
+          </Link>
+          <h1 className="text-2xl font-bold text-gray-900">Podbean Podcast Assignments</h1>
+        </div>
+        <p className="text-gray-600 mb-6 ml-12">
           Assign each client to their correct Podbean podcast to ensure episodes publish to the right show.
         </p>
 
