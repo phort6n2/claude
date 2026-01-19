@@ -1470,8 +1470,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             scriptStyle: (client.creatifyScriptStyle as ScriptStyle) || 'HowToV2',
             visualStyle: (client.creatifyVisualStyle as VisualStyle) || 'AvatarBubbleTemplate',
             modelVersion: (client.creatifyModelVersion as ModelVersion) || 'standard',
-            avatarId: client.creatifyAvatarId || undefined,
-            voiceId: client.creatifyVoiceId || undefined,
+            // Note: avatarId and voiceId intentionally not passed - let Creatify choose for variety
             noCta: client.creatifyNoCta || false,
           }),
           TIMEOUTS.VIDEO_CREATE,
