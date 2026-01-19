@@ -106,6 +106,7 @@ export default function ContentCalendarPage() {
   const [contentItems, setContentItems] = useState<ContentItem[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [selectedClient, setSelectedClient] = useState<string>('all')
 
   const fetchContent = useCallback(async (showLoading = true) => {
@@ -122,6 +123,23 @@ export default function ContentCalendarPage() {
       console.error('Failed to fetch content:', error)
     } finally {
       if (showLoading) setLoading(false)
+    }
+  }, [selectedClient])
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      const params = new URLSearchParams()
+      if (selectedClient !== 'all') params.append('clientId', selectedClient)
+
+      const response = await fetch(`/api/content?${params}`)
+      const data = await response.json()
+
+      setContentItems(data)
+    } catch (error) {
+      console.error('Failed to fetch content:', error)
+    } finally {
+      setRefreshing(false)
     }
   }, [selectedClient])
 
@@ -395,7 +413,7 @@ export default function ContentCalendarPage() {
                     <td className="px-4 py-3.5 whitespace-nowrap hidden lg:table-cell">
                       <StepProgress item={item} />
                     </td>
-                    <td className="px-4 py-3.5 whitespace-nowrap">
+                    <td className="px-4 py-3.5 whitespace-nowrap w-[140px]">
                       <div className="flex items-center justify-end gap-2">
                         <Link href={`/admin/content/${item.id}/review`}>
                           <Button
@@ -407,17 +425,19 @@ export default function ContentCalendarPage() {
                             {item.status === 'GENERATING' ? 'View' : 'Review'}
                           </Button>
                         </Link>
-                        {(item.status === 'DRAFT' || item.status === 'SCHEDULED' || item.status === 'GENERATING' || item.status === 'FAILED') && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteContent(item.id, item.paaQuestion)}
-                            className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
-                            title={item.status === 'GENERATING' ? 'Cancel & Delete' : 'Delete'}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
+                        <div className="w-8">
+                          {(item.status === 'DRAFT' || item.status === 'SCHEDULED' || item.status === 'GENERATING' || item.status === 'FAILED') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteContent(item.id, item.paaQuestion)}
+                              className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                              title={item.status === 'GENERATING' ? 'Cancel & Delete' : 'Delete'}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -517,7 +537,8 @@ export default function ContentCalendarPage() {
       <PageHeader
         title="Content Calendar"
         subtitle="Manage your content pipeline"
-        onRefresh={() => fetchContent()}
+        onRefresh={handleRefresh}
+        isRefreshing={refreshing}
         actions={
           <Link href="/admin/content/new">
             <Button className="shadow-lg shadow-blue-500/25">
