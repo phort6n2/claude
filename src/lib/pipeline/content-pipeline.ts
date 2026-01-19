@@ -1553,7 +1553,25 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           })
           try {
             const clientBlogPost = await prisma.blogPost.findUnique({ where: { contentItemId } })
-            const podcast = await prisma.podcast.findFirst({ where: { contentItemId } })
+
+            // Wait for podcast to have Podbean URL (runs in parallel, may not be done yet)
+            // This ensures the YouTube description includes the podcast link
+            let podcast = await prisma.podcast.findFirst({ where: { contentItemId } })
+            if (podcast && !podcast.podbeanUrl && podcast.status !== 'FAILED') {
+              log(ctx, 'Waiting for podcast Podbean URL before YouTube upload...')
+              const podcastWaitStart = Date.now()
+              const PODCAST_WAIT_TIMEOUT = 120000 // 2 minutes max wait
+              while (podcast && !podcast.podbeanUrl && Date.now() - podcastWaitStart < PODCAST_WAIT_TIMEOUT) {
+                await new Promise(resolve => setTimeout(resolve, 5000)) // Check every 5 seconds
+                podcast = await prisma.podcast.findFirst({ where: { contentItemId } })
+                if (!podcast || podcast.status === 'FAILED') break
+              }
+              if (podcast?.podbeanUrl) {
+                log(ctx, 'Podcast Podbean URL now available')
+              } else {
+                log(ctx, 'Podcast Podbean URL not available after waiting, proceeding without it')
+              }
+            }
 
             const youtubeResult = await withTimeout(
               uploadVideoFromUrl(gcsResult.url, {
