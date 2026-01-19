@@ -349,6 +349,17 @@ export async function getPAAQueueStatus(clientId: string): Promise<{
 }
 
 /**
+ * Properly capitalize a string (e.g., "OREGON" -> "Oregon", "new york" -> "New York")
+ */
+function toTitleCase(str: string): string {
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+/**
  * Render a PAA question template with location placeholders.
  *
  * @param questionTemplate - The PAA question with placeholders like {location}, {city}, {state}
@@ -359,15 +370,20 @@ export function renderPAAQuestion(
   questionTemplate: string,
   location: { city: string; state: string; neighborhood?: string | null }
 ): string {
-  const locationString = location.neighborhood
-    ? `${location.neighborhood}, ${location.city}, ${location.state}`
-    : `${location.city}, ${location.state}`
+  // Normalize city and state to Title Case
+  const city = toTitleCase(location.city)
+  const state = toTitleCase(location.state)
+  const neighborhood = location.neighborhood ? toTitleCase(location.neighborhood) : null
+
+  const locationString = neighborhood
+    ? `${neighborhood}, ${city}, ${state}`
+    : `${city}, ${state}`
 
   return questionTemplate
     .replace(/\{location\}/gi, locationString)
-    .replace(/\{city\}/gi, location.city)
-    .replace(/\{state\}/gi, location.state)
-    .replace(/\{neighborhood\}/gi, location.neighborhood || location.city)
+    .replace(/\{city\}/gi, city)
+    .replace(/\{state\}/gi, state)
+    .replace(/\{neighborhood\}/gi, neighborhood || city)
 }
 
 // ============================================
