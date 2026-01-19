@@ -928,11 +928,15 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       (r: unknown) => (r as { success: boolean }).success !== false
     )
 
+    // FIX: Set PUBLISHED when blog is published (not SCHEDULED)
+    // This makes manual workflow consistent with automated workflow
+    // SCHEDULED should only be used for content waiting to be published
     await prisma.contentItem.update({
       where: { id },
       data: {
-        status: allSuccessful ? 'SCHEDULED' : 'FAILED',
-        pipelineStep: allSuccessful ? 'scheduled' : 'failed',
+        status: allSuccessful ? 'PUBLISHED' : 'FAILED',
+        pipelineStep: allSuccessful ? null : 'failed',
+        publishedAt: allSuccessful ? new Date() : undefined,
         lastError: allSuccessful ? null : JSON.stringify(results),
       },
     })
