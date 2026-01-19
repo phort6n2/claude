@@ -882,14 +882,15 @@ export async function getVoices(): Promise<Voice[]> {
   const voices = Array.isArray(data) ? data : (data.results || [])
 
   return voices.map((v: Record<string, unknown>) => {
-    // Map accents array
+    // Map accents array - capture all available fields
     const rawAccents = v.accents as Array<Record<string, unknown>> || []
     const accents: VoiceAccent[] = rawAccents.map(a => ({
       id: a.id as string,
-      name: a.name as string || '',
-      accent: a.accent as string || '',
-      language: a.language as string | undefined,
-      preview_url: a.preview_url as string | undefined,
+      // Try multiple fields for the accent name/description
+      name: (a.name as string) || (a.display_name as string) || (a.label as string) || '',
+      accent: (a.accent as string) || (a.accent_name as string) || (a.locale as string) || '',
+      language: (a.language as string) || (a.lang as string) || (a.locale as string) || undefined,
+      preview_url: (a.preview_url as string) || (a.sample_url as string) || (a.audio_url as string) || undefined,
     }))
 
     return {

@@ -1907,15 +1907,30 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                     disabled={loadingCreatify}
                   >
                     <option value="">Default (Creatify chooses)</option>
-                    {/* Show only the first/default accent for each voice (typically American) */}
+                    {/* Filter for American accents only */}
                     {[...creatifyVoices]
                       .sort((a, b) => a.name.localeCompare(b.name))
-                      .map(voice => ({
-                        id: voice.accents[0]?.id || voice.id,
-                        name: voice.name,
-                        gender: voice.gender,
-                        useThisId: voice.accents[0]?.useThisId || voice.useThisId,
-                      }))
+                      .map(voice => {
+                        // Helper to check if an accent is American
+                        const isAmerican = (accent: { name?: string; accent?: string; language?: string }) => {
+                          const text = `${accent.name || ''} ${accent.accent || ''} ${accent.language || ''}`.toLowerCase()
+                          return text.includes('american') ||
+                                 text.includes('en-us') ||
+                                 text.includes('en_us') ||
+                                 text.includes('us english') ||
+                                 text.includes('united states')
+                        }
+
+                        // Find American accent, or fall back to first accent
+                        const americanAccent = voice.accents.find(isAmerican) || voice.accents[0]
+
+                        return {
+                          id: americanAccent?.id || voice.id,
+                          name: voice.name,
+                          gender: voice.gender,
+                          useThisId: americanAccent?.useThisId || voice.useThisId,
+                        }
+                      })
                       .map(option => (
                         <option key={option.id} value={option.useThisId}>
                           {option.name} ({option.gender || 'voice'})
@@ -1923,7 +1938,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                       ))}
                   </select>
                   <p className="mt-1 text-xs text-gray-500">
-                    Uses the default American accent for each voice
+                    Filtered to American accents only
                   </p>
                 </div>
 
