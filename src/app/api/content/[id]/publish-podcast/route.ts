@@ -42,11 +42,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Podcast is not ready for publishing' }, { status: 400 })
     }
 
-    // Publish to Podbean
+    // Publish to Podbean (use client's specific podcast)
     const podbeanResult = await publishToPodbean({
       title: contentItem.blogPost?.title || contentItem.paaQuestion,
       description: contentItem.podcast.description || contentItem.podcastDescription || '',
       audioUrl: contentItem.podcast.audioUrl,
+      podcastId: contentItem.client.podbeanPodcastId || undefined,
     })
 
     // Update podcast record

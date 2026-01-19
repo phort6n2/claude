@@ -220,6 +220,7 @@ export async function GET(request: NextRequest) {
             title: item.blogPost?.title || item.paaQuestion,
             description: item.podcastDescription || item.paaQuestion,
             audioUrl: item.podcast.audioUrl,
+            podcastId: item.client.podbeanPodcastId || undefined,
           })
 
           await prisma.podcast.update({

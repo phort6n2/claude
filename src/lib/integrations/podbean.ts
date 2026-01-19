@@ -31,6 +31,7 @@ interface CreateEpisodeParams {
   title: string
   content: string
   audioFileUrl: string
+  podcastId?: string // Specify which podcast to publish to (for multi-podcast accounts)
   status?: 'draft' | 'publish'
   type?: 'public' | 'premium' | 'private'
   logo?: string
@@ -169,6 +170,11 @@ export async function createEpisode(
     type: params.type || 'public',
     remote_media_url: params.audioFileUrl,
   })
+
+  // CRITICAL: Specify which podcast to publish to (for multi-podcast accounts)
+  if (params.podcastId) {
+    formData.append('podcast_id', params.podcastId)
+  }
 
   if (params.logo) {
     formData.append('remote_logo_url', params.logo)
@@ -316,6 +322,7 @@ export interface PublishToPodbeanParams {
   title: string
   description: string
   audioUrl: string
+  podcastId?: string // Specific podcast to publish to (for multi-podcast accounts)
   logoUrl?: string
   transcriptUrl?: string
 }
@@ -359,6 +366,7 @@ export async function publishToPodbean(params: PublishToPodbeanParams): Promise<
     title: params.title,
     content: params.description,
     audioFileUrl: params.audioUrl,
+    podcastId: params.podcastId, // Publish to specific podcast
     status: 'publish',
     type: 'public',
     logo: params.logoUrl,

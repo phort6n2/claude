@@ -217,6 +217,11 @@ export async function POST(request: NextRequest) {
         contentItem: {
           include: {
             blogPost: true,
+            client: {
+              select: {
+                podbeanPodcastId: true,
+              },
+            },
           },
         },
       },
@@ -241,6 +246,7 @@ export async function POST(request: NextRequest) {
           title: podcast.contentItem.blogPost.title,
           description: podcast.description || podcast.contentItem.blogPost.excerpt || '',
           audioUrl: podcast.audioUrl,
+          podcastId: podcast.contentItem.client?.podbeanPodcastId || undefined,
         })
 
         await prisma.podcast.update({

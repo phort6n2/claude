@@ -1118,6 +1118,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
                     title: blogResult!.title,
                     description: contentItem.podcast!.description || blogResult!.excerpt || '',
                     audioUrl: contentItem.podcast!.audioUrl,
+                    podcastId: contentItem.client.podbeanPodcastId || undefined,
                   }),
                   TIMEOUTS.PODBEAN_PUBLISH,
                   'Podbean publishing'
@@ -1182,6 +1183,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
                       title: blogResult!.title,
                       description: contentItem.podcast!.description || blogResult!.excerpt || '',
                       audioUrl: gcsResult.url,
+                      podcastId: contentItem.client.podbeanPodcastId || undefined,
                     }),
                     TIMEOUTS.PODBEAN_PUBLISH,
                     'Podbean publishing'
@@ -1331,6 +1333,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
                   title: blogResult!.title,
                   description: descriptionHtml,
                   audioUrl: gcsResult.url,
+                  podcastId: contentItem.client.podbeanPodcastId || undefined,
                 }),
                 TIMEOUTS.PODBEAN_PUBLISH,
                 'Podbean publishing'
@@ -1847,6 +1850,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
                     title: blogPostForEmbed.title,
                     description: podcast.description || blogPostForEmbed.excerpt || '',
                     audioUrl: podcast.audioUrl,
+                    podcastId: contentItem.client.podbeanPodcastId || undefined,
                   }),
                   TIMEOUTS.PODBEAN_PUBLISH,
                   'Podbean publishing (retry during embed)'

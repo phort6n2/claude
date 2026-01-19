@@ -889,11 +889,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       try {
         const { publishToPodbean } = await import('@/lib/integrations/podbean')
 
-        // Publish to Podbean
+        // Publish to Podbean (use client's specific podcast)
         const podbeanResult = await publishToPodbean({
           title: contentItem.blogPost?.title || contentItem.paaQuestion,
           description: contentItem.podcast.description || contentItem.podcastDescription || '',
           audioUrl: contentItem.podcast.audioUrl,
+          podcastId: contentItem.client.podbeanPodcastId || undefined,
         })
 
         // Update podcast record with Podbean URLs
