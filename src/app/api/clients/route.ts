@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma, withRetry } from '@/lib/db'
 import { generateSlug } from '@/lib/utils'
 import { encrypt } from '@/lib/encryption'
+import { assignSlotToClient } from '@/lib/automation/auto-scheduler'
+import { syncStandardPAAsToClient } from '@/lib/automation/paa-selector'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
@@ -95,7 +97,30 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(client, { status: 201 })
+    // Assign a publishing schedule slot to the new client
+    try {
+      await assignSlotToClient(client.id)
+      console.log(`[Client API] Assigned schedule slot to client ${client.id}`)
+    } catch (scheduleError) {
+      console.error(`[Client API] Failed to assign schedule slot:`, scheduleError)
+      // Non-fatal - client is still created
+    }
+
+    // Sync standard PAAs to the new client
+    try {
+      const syncedCount = await syncStandardPAAsToClient(client.id)
+      console.log(`[Client API] Synced ${syncedCount} standard PAAs to client ${client.id}`)
+    } catch (paaError) {
+      console.error(`[Client API] Failed to sync standard PAAs:`, paaError)
+      // Non-fatal - client is still created
+    }
+
+    // Fetch the updated client with schedule info
+    const updatedClient = await prisma.client.findUnique({
+      where: { id: client.id },
+    })
+
+    return NextResponse.json(updatedClient, { status: 201 })
   } catch (error) {
     console.error('Failed to create client:', error)
     return NextResponse.json(
