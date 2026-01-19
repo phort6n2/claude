@@ -1612,9 +1612,9 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
           }
         }
 
-        // Post to WRHQ TikTok and Instagram via Late
+        // Post to WRHQ TikTok, Instagram, and Facebook via Late
         const wrhqVideoAccountIds = await getWRHQLateAccountIds()
-        const VIDEO_SOCIAL_PLATFORMS = ['tiktok', 'instagram'] as const
+        const VIDEO_SOCIAL_PLATFORMS = ['tiktok', 'instagram', 'facebook'] as const
 
         for (const platform of VIDEO_SOCIAL_PLATFORMS) {
           const accountId = wrhqVideoAccountIds[platform]
@@ -1639,7 +1639,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             await prisma.wRHQSocialPost.create({
               data: {
                 contentItemId,
-                platform: platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM',
+                platform: platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM' | 'FACEBOOK',
                 caption: videoCaption,
                 hashtags: ['AutoGlass', 'WindshieldRepair', contentItem.client.city.replace(/\s+/g, ''), 'CarCare'],
                 mediaType: 'video',
@@ -1660,7 +1660,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
               await prisma.wRHQSocialPost.create({
                 data: {
                   contentItemId,
-                  platform: platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM',
+                  platform: platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM' | 'FACEBOOK',
                   caption: videoCaption,
                   hashtags: [],
                   mediaType: 'video',
