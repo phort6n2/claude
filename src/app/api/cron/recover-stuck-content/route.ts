@@ -61,18 +61,40 @@ export async function POST(request: NextRequest) {
         if (item.retryCount < 3) {
           // Retry the pipeline - it will skip already-completed steps
           console.log(`[Recovery] Retrying content ${item.id} (attempt ${item.retryCount + 1})`)
+
+          // FIX: Keep status as GENERATING (not SCHEDULED) so if pipeline fails,
+          // recovery can pick it up again. Increment retryCount to track attempts.
           await prisma.contentItem.update({
             where: { id: item.id },
             data: {
-              status: 'SCHEDULED',
+              // Stay in GENERATING - pipeline will update to PUBLISHED or FAILED
+              status: 'GENERATING',
               retryCount: item.retryCount + 1,
-              lastError: 'Recovered from stuck state - retrying',
+              lastError: `Recovery attempt ${item.retryCount + 1} started at ${new Date().toISOString()}`,
+              updatedAt: new Date(), // Reset updatedAt so we don't immediately retry
             },
           })
-          // Trigger pipeline in background
-          runContentPipeline(item.id).catch(err => {
-            console.error(`[Recovery] Pipeline retry failed for ${item.id}:`, err)
-          })
+
+          // Run pipeline - properly handle success/failure
+          runContentPipeline(item.id)
+            .then(() => {
+              console.log(`[Recovery] Pipeline retry succeeded for ${item.id}`)
+            })
+            .catch(async (err) => {
+              console.error(`[Recovery] Pipeline retry failed for ${item.id}:`, err)
+              // Mark as FAILED if this was our last attempt (retryCount was already incremented)
+              const currentItem = await prisma.contentItem.findUnique({ where: { id: item.id } })
+              if (currentItem && currentItem.retryCount >= 3) {
+                await prisma.contentItem.update({
+                  where: { id: item.id },
+                  data: {
+                    status: 'FAILED',
+                    lastError: `Pipeline failed after ${currentItem.retryCount} attempts: ${err instanceof Error ? err.message : 'Unknown error'}`,
+                  },
+                })
+              }
+            })
+
           results.stuckGenerating.push(`${item.id}: retrying (attempt ${item.retryCount + 1})`)
         } else {
           // Max retries reached - mark as failed

@@ -1,10 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { headers } from 'next/headers'
-import { TIME_SLOTS, DAY_PAIRS, DayPairKey } from '@/lib/automation/auto-scheduler'
+import { DAY_PAIRS, DayPairKey } from '@/lib/automation/auto-scheduler'
 import { selectNextPAACombination, markPAAAsUsed, renderPAAQuestion } from '@/lib/automation/paa-selector'
 import { markLocationAsUsed } from '@/lib/automation/location-rotator'
 import { runContentPipeline } from '@/lib/pipeline/content-pipeline'
+
+// Local time slots - these represent the client's LOCAL preferred publish time
+// Slot index maps to these hours in the client's timezone
+const LOCAL_TIME_HOURS = [7, 8, 9, 10, 11, 13, 14, 15, 16, 17] as const // 7-11 AM, 1-5 PM local
+
+/**
+ * Get the current hour in a specific timezone
+ */
+function getCurrentHourInTimezone(timezone: string): number {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      hour: 'numeric',
+      hour12: false,
+    })
+    const hourStr = formatter.format(new Date())
+    return parseInt(hourStr, 10)
+  } catch {
+    // Fallback to UTC if timezone is invalid
+    console.warn(`[HourlyPublish] Invalid timezone: ${timezone}, falling back to UTC`)
+    return new Date().getUTCHours()
+  }
+}
+
+/**
+ * Get the current day (0-6) in a specific timezone
+ */
+function getCurrentDayInTimezone(timezone: string): number {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      weekday: 'short',
+    })
+    const dayStr = formatter.format(new Date())
+    const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+    return dayMap[dayStr] ?? new Date().getUTCDay()
+  } catch {
+    return new Date().getUTCDay()
+  }
+}
 
 // Allow up to 12 minutes for the full content pipeline
 // Podcast generation can take 5-10 minutes on slower plans
@@ -34,33 +74,23 @@ export async function GET(request: NextRequest) {
 
   const startTime = Date.now()
   const now = new Date()
-  const currentHour = now.getUTCHours()
-  const currentDay = now.getUTCDay() // 0=Sun, 1=Mon, 2=Tue, etc.
-  const currentTimeSlot = `${currentHour.toString().padStart(2, '0')}:00`
 
   console.log(`[HourlyPublish] Running at ${now.toISOString()}`)
-  console.log(`[HourlyPublish] Current: Day=${currentDay}, Hour=${currentHour}, TimeSlot=${currentTimeSlot}`)
-
-  // Check if current time matches any of our time slots
-  const slotIndex = TIME_SLOTS.indexOf(currentTimeSlot as typeof TIME_SLOTS[number])
-  if (slotIndex === -1) {
-    return NextResponse.json({
-      success: true,
-      message: `No time slot at ${currentTimeSlot} UTC`,
-      processed: 0,
-    })
-  }
-
-  console.log(`[HourlyPublish] Matched time slot index: ${slotIndex}`)
 
   try {
-    // Find all clients scheduled for this exact time slot AND day
-    const clients = await prisma.client.findMany({
+    // TIMEZONE-AWARE SCHEDULING:
+    // Instead of matching UTC hour to a global slot, we check each client's
+    // local time against their preferred slot. This ensures clients publish
+    // at their expected local time regardless of timezone.
+
+    // Find ALL auto-schedule enabled clients
+    const allClients = await prisma.client.findMany({
       where: {
         status: 'ACTIVE',
         autoScheduleEnabled: true,
-        scheduleTimeSlot: slotIndex,
         subscriptionStatus: { in: ['TRIAL', 'ACTIVE'] },
+        scheduleTimeSlot: { not: null },
+        scheduleDayPair: { not: null },
       },
       include: {
         serviceLocations: {
@@ -69,32 +99,46 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    console.log(`[HourlyPublish] Found ${clients.length} clients with time slot ${slotIndex}`)
+    console.log(`[HourlyPublish] Found ${allClients.length} auto-schedule enabled clients`)
 
-    // Filter to clients whose day pair includes today
-    const clientsForToday = clients.filter(client => {
-      const dayPair = client.scheduleDayPair as DayPairKey | null
-      if (!dayPair || !DAY_PAIRS[dayPair]) return false
+    // Filter to clients who should publish NOW based on their local time
+    const clientsForNow = allClients.filter(client => {
+      const timezone = client.timezone || 'America/Los_Angeles'
+      const slotIndex = client.scheduleTimeSlot as number
+      const dayPair = client.scheduleDayPair as DayPairKey
 
+      // Get current time in client's timezone
+      const clientLocalHour = getCurrentHourInTimezone(timezone)
+      const clientLocalDay = getCurrentDayInTimezone(timezone)
+
+      // Check if current local hour matches client's preferred slot
+      const preferredHour = LOCAL_TIME_HOURS[slotIndex]
+      const hourMatches = clientLocalHour === preferredHour
+
+      // Check if today is one of client's scheduled days
       const { day1, day2 } = DAY_PAIRS[dayPair]
-      const isScheduledToday = currentDay === day1 || currentDay === day2
+      const dayMatches = clientLocalDay === day1 || clientLocalDay === day2
 
-      console.log(`[HourlyPublish] Client ${client.businessName}: dayPair=${dayPair}, day1=${day1}, day2=${day2}, today=${currentDay}, scheduled=${isScheduledToday}`)
+      const shouldPublish = hourMatches && dayMatches
 
-      return isScheduledToday
+      if (shouldPublish) {
+        console.log(`[HourlyPublish] Client ${client.businessName}: timezone=${timezone}, localHour=${clientLocalHour}, localDay=${clientLocalDay}, preferredHour=${preferredHour}, days=[${day1},${day2}] → PUBLISH NOW`)
+      }
+
+      return shouldPublish
     })
 
-    console.log(`[HourlyPublish] ${clientsForToday.length} clients scheduled for today`)
+    console.log(`[HourlyPublish] ${clientsForNow.length} clients scheduled for now`)
+    const clientsForToday = clientsForNow // Rename for compatibility with rest of code
 
     if (clientsForToday.length === 0) {
       // Note: Can't log to publishingLog without a clientId
       // The cron health is visible in Vercel cron logs
       return NextResponse.json({
         success: true,
-        message: `No clients scheduled for day ${currentDay} at slot ${slotIndex}`,
-        timeSlot: currentTimeSlot,
-        slotIndex,
-        day: currentDay,
+        message: 'No clients scheduled for this hour (timezone-aware check)',
+        utcTime: now.toISOString(),
+        checkedClients: allClients.length,
         processed: 0,
       })
     }
@@ -158,6 +202,11 @@ export async function GET(request: NextRequest) {
         // Render the PAA question with location
         const renderedQuestion = renderPAAQuestion(paa.question, location)
 
+        // Get client's preferred local time for scheduledTime field
+        const clientSlotIndex = client.scheduleTimeSlot as number
+        const clientPreferredHour = LOCAL_TIME_HOURS[clientSlotIndex] || 9
+        const clientTimeSlot = `${clientPreferredHour.toString().padStart(2, '0')}:00`
+
         // Create the content item with current time as scheduled date
         const contentItem = await prisma.contentItem.create({
           data: {
@@ -166,7 +215,7 @@ export async function GET(request: NextRequest) {
             serviceLocationId: location.id,
             paaQuestion: renderedQuestion,
             scheduledDate: now,
-            scheduledTime: currentTimeSlot, // FIX: Add the scheduled time
+            scheduledTime: clientTimeSlot, // Client's local preferred time
             status: 'GENERATING',
             priority: 1,
           },
@@ -238,9 +287,8 @@ export async function GET(request: NextRequest) {
             action: 'cron_hourly_publish',
             status: failCount === 0 ? 'SUCCESS' : 'FAILED',
             responseData: JSON.stringify({
-              timeSlot: currentTimeSlot,
-              slotIndex,
-              day: currentDay,
+              utcTime: now.toISOString(),
+              timezoneAware: true,
               processed: results.length,
               successful: successCount,
               failed: failCount,
@@ -259,9 +307,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      timeSlot: currentTimeSlot,
-      slotIndex,
-      day: currentDay,
+      utcTime: now.toISOString(),
+      timezoneAware: true,
       processed: results.length,
       successful: successCount,
       failed: failCount,
@@ -287,9 +334,8 @@ export async function GET(request: NextRequest) {
             status: 'FAILED',
             errorMessage: error instanceof Error ? error.message : 'Unknown error',
             responseData: JSON.stringify({
-              timeSlot: currentTimeSlot,
-              slotIndex,
-              day: currentDay,
+              utcTime: now.toISOString(),
+              timezoneAware: true,
               error: error instanceof Error ? error.message : 'Unknown error',
             }),
             startedAt: new Date(startTime),
