@@ -756,7 +756,15 @@ function ReviewTab({
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to embed media')
+        // Include details in error message if available
+        let errorMessage = data.error || 'Failed to embed media'
+        if (data.details) {
+          const detailsStr = Object.entries(data.details)
+            .map(([k, v]) => `${k}: ${v}`)
+            .join(', ')
+          errorMessage = `${errorMessage} (${detailsStr})`
+        }
+        throw new Error(errorMessage)
       }
 
       // Refresh the page data

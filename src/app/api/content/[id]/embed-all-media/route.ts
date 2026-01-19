@@ -200,26 +200,74 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
 
     if (!contentItem.blogPost) {
-      return NextResponse.json({ error: 'No blog post found' }, { status: 400 })
+      return NextResponse.json({
+        error: 'No blog post found. Please generate a blog post first.',
+        details: {
+          contentId: id,
+          clientName: contentItem.client.businessName,
+          blogGenerated: contentItem.blogGenerated,
+        }
+      }, { status: 400 })
     }
 
     if (!contentItem.blogPost.wordpressPostId) {
-      return NextResponse.json({ error: 'Blog has not been published yet' }, { status: 400 })
+      return NextResponse.json({
+        error: 'Blog has not been published to WordPress yet. Please publish the blog first, then use Embed Media.',
+        details: {
+          contentId: id,
+          clientName: contentItem.client.businessName,
+          blogTitle: contentItem.blogPost.title,
+          wordpressUrl: contentItem.client.wordpressUrl || 'NOT CONFIGURED',
+          hasWordpressCredentials: !!(contentItem.client.wordpressUrl && contentItem.client.wordpressUsername && contentItem.client.wordpressAppPassword),
+        }
+      }, { status: 400 })
     }
 
     if (!contentItem.client.wordpressUrl) {
-      return NextResponse.json({ error: 'WordPress not configured for client' }, { status: 400 })
+      return NextResponse.json({
+        error: 'WordPress not configured for this client. Please go to Edit Client and add WordPress URL, Username, and App Password.',
+        details: {
+          contentId: id,
+          clientName: contentItem.client.businessName,
+        }
+      }, { status: 400 })
     }
 
+    if (!contentItem.client.wordpressUsername || !contentItem.client.wordpressAppPassword) {
+      return NextResponse.json({
+        error: 'WordPress credentials incomplete. Please go to Edit Client and add WordPress Username and App Password.',
+        details: {
+          contentId: id,
+          clientName: contentItem.client.businessName,
+          wordpressUrl: contentItem.client.wordpressUrl,
+          hasUsername: !!contentItem.client.wordpressUsername,
+          hasPassword: !!contentItem.client.wordpressAppPassword,
+        }
+      }, { status: 400 })
+    }
 
     // Fetch current content from WordPress (already has featured image + Google Maps)
     const wpCredentials = {
       url: contentItem.client.wordpressUrl,
-      username: contentItem.client.wordpressUsername || '',
-      password: contentItem.client.wordpressAppPassword || '',
+      username: contentItem.client.wordpressUsername,
+      password: contentItem.client.wordpressAppPassword,
     }
 
-    const currentPost = await getPost(wpCredentials, contentItem.blogPost.wordpressPostId)
+    let currentPost
+    try {
+      currentPost = await getPost(wpCredentials, contentItem.blogPost.wordpressPostId)
+    } catch (wpError) {
+      return NextResponse.json({
+        error: `Failed to fetch post from WordPress: ${wpError instanceof Error ? wpError.message : String(wpError)}`,
+        details: {
+          contentId: id,
+          clientName: contentItem.client.businessName,
+          wordpressUrl: contentItem.client.wordpressUrl,
+          wordpressPostId: contentItem.blogPost.wordpressPostId,
+          hint: 'Check that the WordPress URL is correct and credentials are valid. The post may have been deleted from WordPress.',
+        }
+      }, { status: 500 })
+    }
     let fullContent = currentPost.content
 
     // Track what we're embedding
