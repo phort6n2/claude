@@ -118,9 +118,16 @@ export default function ContentCalendarPage() {
       const response = await fetch(`/api/content?${params}`)
       const data = await response.json()
 
-      setContentItems(data)
+      // Only set content items if response is OK and data is an array
+      if (response.ok && Array.isArray(data)) {
+        setContentItems(data)
+      } else {
+        console.error('Failed to fetch content:', data?.error || 'Invalid response')
+        setContentItems([])
+      }
     } catch (error) {
       console.error('Failed to fetch content:', error)
+      setContentItems([])
     } finally {
       if (showLoading) setLoading(false)
     }
@@ -135,7 +142,12 @@ export default function ContentCalendarPage() {
       const response = await fetch(`/api/content?${params}`)
       const data = await response.json()
 
-      setContentItems(data)
+      // Only set content items if response is OK and data is an array
+      if (response.ok && Array.isArray(data)) {
+        setContentItems(data)
+      } else {
+        console.error('Failed to refresh content:', data?.error || 'Invalid response')
+      }
     } catch (error) {
       console.error('Failed to fetch content:', error)
     } finally {

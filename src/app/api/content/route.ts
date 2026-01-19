@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Failed to fetch content:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch content' },
+      { error: 'Failed to fetch content', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
