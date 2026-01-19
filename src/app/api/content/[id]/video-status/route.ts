@@ -265,12 +265,12 @@ async function completeRemainingPipeline(contentItemId: string, videoUrl: string
         youtubeVideoUrl = existingYoutubePost.publishedUrl
       }
 
-      // Step 3: Post to WRHQ TikTok and Instagram via Late
+      // Step 3: Post to WRHQ TikTok, Instagram, and Facebook via Late
       const wrhqVideoAccountIds = await getWRHQLateAccountIds()
-      const VIDEO_PLATFORMS = ['tiktok', 'instagram'] as const
+      const VIDEO_PLATFORMS = ['tiktok', 'instagram', 'facebook'] as const
 
       for (const platform of VIDEO_PLATFORMS) {
-        const platformUpper = platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM'
+        const platformUpper = platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM' | 'FACEBOOK'
         const existingPost = await prisma.wRHQSocialPost.findFirst({
           where: {
             contentItemId,
@@ -302,7 +302,7 @@ async function completeRemainingPipeline(contentItemId: string, videoUrl: string
           await prisma.wRHQSocialPost.create({
             data: {
               contentItemId,
-              platform: platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM',
+              platform: platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM' | 'FACEBOOK',
               caption: videoCaption,
               hashtags: ['AutoGlass', 'WindshieldRepair', contentItem.client.city.replace(/\s+/g, ''), 'CarCare'],
               mediaType: 'video',
@@ -325,7 +325,7 @@ async function completeRemainingPipeline(contentItemId: string, videoUrl: string
             await prisma.wRHQSocialPost.create({
               data: {
                 contentItemId,
-                platform: platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM',
+                platform: platform.toUpperCase() as 'TIKTOK' | 'INSTAGRAM' | 'FACEBOOK',
                 caption: videoCaption,
                 hashtags: ['AutoGlass', 'WindshieldRepair', contentItem.client.city.replace(/\s+/g, ''), 'CarCare'],
                 mediaType: 'video',

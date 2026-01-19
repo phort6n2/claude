@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { after } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { publishToWordPress } from '@/lib/integrations/wordpress'
@@ -935,6 +936,21 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         lastError: allSuccessful ? null : JSON.stringify(results),
       },
     })
+
+    // Auto-embed media in background after blog is published to WordPress
+    // This handles schema generation, video/podcast embedding automatically
+    if (allSuccessful && (publishClientBlog || publishWrhqBlog)) {
+      after(async () => {
+        try {
+          console.log('[Publish] Triggering auto-embed for content', id)
+          // Import and run embed logic directly (avoid HTTP call)
+          const { runEmbedAllMedia } = await import('@/lib/pipeline/embed-media')
+          await runEmbedAllMedia(id)
+        } catch (embedError) {
+          console.error('[Publish] Auto-embed failed:', embedError)
+        }
+      })
+    }
 
     return NextResponse.json({
       success: allSuccessful,
