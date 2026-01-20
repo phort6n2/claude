@@ -1430,25 +1430,12 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         const blogPostForVideo = await prisma.blogPost.findUnique({ where: { contentItemId } })
         const blogUrlForVideo = blogPostForVideo?.wordpressUrl || null
 
-        // Build rich description for Creatify to use when generating the video script
-        // This provides context beyond what auto-scraping captures from the blog URL
-        // IMPORTANT: Emphasize "Call Now" CTA with phone number (not "Buy Now")
+        // CTA instruction for Creatify - tell it to use "Call Now" with phone number
         const creatifyDescription = [
-          `Question: ${contentItem.paaQuestion}`,
-          ``,
-          `${contentItem.client.businessName} in ${contentItem.client.city}, ${contentItem.client.state} answers this common auto glass question.`,
-          ``,
-          `Key points from the article:`,
-          `- Professional auto glass repair and replacement services`,
-          `- Serving ${contentItem.client.city} and surrounding areas`,
-          `- Expert technicians with quality materials`,
-          contentItem.client.serviceAreas?.length ? `- Service areas include: ${contentItem.client.serviceAreas.slice(0, 5).join(', ')}` : '',
-          ``,
-          `CALL TO ACTION: "Call Now" - NOT "Buy Now" or "Shop Now"`,
+          `CALL TO ACTION: Use "Call Now" - NOT "Buy Now" or "Shop Now"`,
           `Phone: ${contentItem.client.phone}`,
-          ``,
-          `Call ${contentItem.client.businessName} now at ${contentItem.client.phone} for a free quote!`,
-        ].filter(Boolean).join('\n')
+          `End the video with: "Call ${contentItem.client.businessName} at ${contentItem.client.phone} for a free quote!"`,
+        ].join('\n')
 
         // Use client-specific Creatify settings if configured, otherwise use defaults
         const client = contentItem.client
