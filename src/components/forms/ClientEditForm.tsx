@@ -110,14 +110,10 @@ interface ClientData {
   ctaText: string
   ctaUrl: string | null
   // Creatify video settings
-  creatifyTemplateId: string | null
-  creatifyAvatarId: string | null
-  creatifyVoiceId: string | null
   creatifyVisualStyle: string | null
   creatifyScriptStyle: string | null
   creatifyModelVersion: string | null
   creatifyVideoLength: number | null
-  creatifyNoCta: boolean
   preferredPublishTime: string
   timezone: string
   socialPlatforms: string[]
@@ -173,14 +169,10 @@ const defaultClientData: Omit<ClientData, 'id'> & { id: string } = {
   ctaText: 'Get a Free Quote',
   ctaUrl: null,
   // Creatify video settings
-  creatifyTemplateId: null,
-  creatifyAvatarId: null,
-  creatifyVoiceId: null,
   creatifyVisualStyle: null,
   creatifyScriptStyle: null,
   creatifyModelVersion: null,
   creatifyVideoLength: null,
-  creatifyNoCta: false,
   preferredPublishTime: '09:00',
   timezone: 'America/Denver',
   socialPlatforms: [],
@@ -1891,35 +1883,6 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                     <option value="ProductHighlightsV2">Product Highlights</option>
                     <option value="DIY">DIY</option>
                   </select>
-                </div>
-
-                {/* Template ID (advanced) */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Custom Template ID (optional)</label>
-                  <input
-                    type="text"
-                    value={formData.creatifyTemplateId || ''}
-                    onChange={(e) => updateField('creatifyTemplateId', e.target.value || null)}
-                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                    placeholder="Template UUID for custom branded videos"
-                  />
-                </div>
-
-                {/* No CTA Toggle */}
-                <div className="md:col-span-2 flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <h5 className="text-sm font-medium text-gray-900">Disable Default CTA</h5>
-                    <p className="text-xs text-gray-500">Hide the "Buy Now" button (use script for CTA instead)</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.creatifyNoCta ?? false}
-                      onChange={(e) => updateField('creatifyNoCta', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
                 </div>
               </div>
             </div>
