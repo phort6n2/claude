@@ -1471,7 +1471,7 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
             visualStyle: (client.creatifyVisualStyle as VisualStyle) || 'AvatarBubbleTemplate',
             modelVersion: (client.creatifyModelVersion as ModelVersion) || 'standard',
             // Note: avatarId and voiceId intentionally not passed - let Creatify choose for variety
-            noCta: client.creatifyNoCta || false,
+            // Note: noCta not passed - testing if description instruction alone changes CTA to "Call Now"
           }),
           TIMEOUTS.VIDEO_CREATE,
           'Video job creation'
