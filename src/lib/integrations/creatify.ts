@@ -606,8 +606,7 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
         visualStyle: params.visualStyle || 'AvatarBubbleTemplate', // API default
         webhookUrl: params.webhookUrl,
         overrideScript: params.script, // Use provided script as override if any
-        overrideAvatar: params.avatarId, // Custom avatar
-        overrideVoice: params.voiceId, // Custom voice
+        // Note: NOT passing overrideAvatar/overrideVoice - let Creatify choose for variety
         noCta: params.noCta, // Disable default CTA button
         modelVersion: params.modelVersion || 'standard', // Cheapest option
       })
@@ -636,22 +635,17 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
 
   console.log(`Creating lipsync video with script length: ${limitedScript.length} chars (target: ~${params.duration || 30}s)`)
 
-  // Build lipsync request body - respect avatarId if provided, otherwise let Creatify choose
+  // Build lipsync request body - let Creatify choose avatar for variety
   const lipsyncBody: Record<string, unknown> = {
     script: limitedScript,
     aspect_ratio: params.aspectRatio || '9:16',
     style: 'video_editing',
     caption: true,
     caption_style: 'default',
+    // Note: NOT setting creator - let Creatify choose for variety
   }
 
-  // Only set creator if avatarId is specified, otherwise Creatify picks
-  if (params.avatarId) {
-    lipsyncBody.creator = params.avatarId
-    console.log(`📹 Lipsync using avatar: ${params.avatarId}`)
-  } else {
-    console.log(`📹 Lipsync using default avatar (Creatify chooses)`)
-  }
+  console.log(`📹 Lipsync using default avatar (Creatify chooses)`)
 
   // Add b-roll media if provided
   if (params.imageUrls && params.imageUrls.length > 0) {
