@@ -67,8 +67,6 @@ interface LinkToVideoParams {
   visualStyle?: VisualStyle
   webhookUrl?: string
   overrideScript?: string
-  overrideAvatar?: string // Avatar ID from Get Avatars API
-  overrideVoice?: string // Voice ID from Get Voices API
   noCta?: boolean // Disable default CTA button
   modelVersion?: ModelVersion // 'standard' is cheapest, aurora models cost more
 }
@@ -94,9 +92,6 @@ interface VideoGenerationParams {
   // This is passed to Creatify's updateLink API to provide context beyond auto-scraped content
   // Should include: PAA question, key services, location, call-to-action, business highlights
   description?: string
-  // Avatar and voice customization
-  avatarId?: string // Override avatar - get IDs from getAvatars()
-  voiceId?: string // Override voice - get IDs from getVoices()
   noCta?: boolean // Disable default CTA button (rely on script for CTA instead)
 }
 
@@ -585,20 +580,18 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
         : 30
 
       // Create video from the link with explicit video_length
-      // NOTE: Not passing override_avatar/override_voice - Creatify should randomly select
       return await createVideoFromLink({
         linkId: link.linkId,
         aspectRatio,
-        videoLength, // This is the key parameter - 15, 30, 45, or 60 seconds
+        videoLength,
         targetPlatform: params.targetPlatform || 'tiktok',
         targetAudience: params.targetAudience || 'adults interested in auto services',
-        scriptStyle: params.scriptStyle || 'DiscoveryWriter', // API default
-        visualStyle: params.visualStyle || 'AvatarBubbleTemplate', // API default
+        scriptStyle: params.scriptStyle || 'DiscoveryWriter',
+        visualStyle: params.visualStyle || 'AvatarBubbleTemplate',
         webhookUrl: params.webhookUrl,
-        overrideScript: params.script, // Use provided script as override if any
-        // NOTE: Not passing overrideAvatar/overrideVoice - let Creatify randomly choose
-        noCta: params.noCta, // Disable default CTA button
-        modelVersion: params.modelVersion || 'standard', // Cheapest option
+        overrideScript: params.script,
+        noCta: params.noCta,
+        modelVersion: params.modelVersion || 'standard',
       })
     } catch (error) {
       console.error('Link to Videos API failed, falling back to lipsync:', error)
@@ -625,17 +618,13 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
 
   console.log(`Creating lipsync video with script length: ${limitedScript.length} chars (target: ~${params.duration || 30}s)`)
 
-  // Build lipsync request body - don't set creator, let Creatify randomly choose
   const lipsyncBody: Record<string, unknown> = {
     script: limitedScript,
     aspect_ratio: params.aspectRatio || '9:16',
     style: 'video_editing',
     caption: true,
     caption_style: 'default',
-    // NOTE: Not setting creator - let Creatify randomly choose avatar
   }
-
-  console.log(`📹 Lipsync - letting Creatify randomly choose avatar`)
 
   // Add b-roll media if provided
   if (params.imageUrls && params.imageUrls.length > 0) {
@@ -753,149 +742,6 @@ export async function waitForVideo(jobId: string, maxAttempts = 60): Promise<Vid
   }
 
   throw new Error('Video generation timed out')
-}
-
-// ============================================
-// AVATAR AND VOICE MANAGEMENT
-// ============================================
-
-export interface Avatar {
-  id: string
-  name: string
-  thumbnail_url?: string
-  gender?: 'm' | 'f' | 'nb' // Male, Female, Non-Binary
-  style?: 'selfie' | 'presenter' | 'other'
-  age_range?: 'child' | 'teen' | 'adult' | 'senior'
-  location?: 'outdoor' | 'fantasy' | 'indoor' | 'other'
-  suitable_industries?: string
-  preview_video_9_16?: string // Portrait preview video
-  preview_video_16_9?: string // Landscape preview video
-  preview_video_1_1?: string // Square preview video
-}
-
-export interface VoiceAccent {
-  id: string
-  name: string
-  accent: string
-  language?: string
-  preview_url?: string
-}
-
-export interface Voice {
-  id: string
-  name: string
-  gender?: 'male' | 'female' | 'non_binary'
-  accents: VoiceAccent[] // Each voice has multiple accents - use accent ID for voiceId param
-}
-
-/**
- * Get list of available avatars (personas)
- * Use the returned avatar IDs with the avatarId parameter in createShortVideo
- *
- * @param filters - Optional filters for age_range, gender, location, style, suitable_industries
- */
-export async function getAvatars(filters?: {
-  age_range?: 'child' | 'teen' | 'adult' | 'senior'
-  gender?: 'm' | 'f' | 'nb'
-  location?: 'outdoor' | 'fantasy' | 'indoor' | 'other'
-  style?: 'selfie' | 'presenter' | 'other'
-  suitable_industries?: string
-}): Promise<Avatar[]> {
-  const { apiId, apiKey } = await getCredentialsAsync()
-
-  // Build query string from filters
-  const params = new URLSearchParams()
-  if (filters?.age_range) params.append('age_range', filters.age_range)
-  if (filters?.gender) params.append('gender', filters.gender)
-  if (filters?.location) params.append('location', filters.location)
-  if (filters?.style) params.append('style', filters.style)
-  if (filters?.suitable_industries) params.append('suitable_industries', filters.suitable_industries)
-
-  const queryString = params.toString()
-  const url = `https://api.creatify.ai/api/personas/${queryString ? `?${queryString}` : ''}`
-
-  const response = await fetch(url, {
-    headers: {
-      'X-API-ID': apiId,
-      'X-API-KEY': apiKey,
-    },
-  })
-
-  if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`Creatify API error fetching avatars: ${error}`)
-  }
-
-  const data = await response.json()
-
-  // Handle both array response and paginated response
-  const avatars = Array.isArray(data) ? data : (data.results || [])
-
-  // Only return active avatars
-  return avatars
-    .filter((a: Record<string, unknown>) => a.is_active !== false)
-    .map((a: Record<string, unknown>) => ({
-      id: a.id as string,
-      name: (a.creator_name as string) || (a.id as string),
-      thumbnail_url: (a.preview_image_9_16 as string) || (a.preview_image_1_1 as string) || undefined,
-      gender: a.gender as 'm' | 'f' | 'nb' | undefined,
-      style: a.style as 'selfie' | 'presenter' | 'other' | undefined,
-      age_range: a.age_range as 'child' | 'teen' | 'adult' | 'senior' | undefined,
-      location: a.location as 'outdoor' | 'fantasy' | 'indoor' | 'other' | undefined,
-      suitable_industries: a.suitable_industries as string | undefined,
-      preview_video_9_16: a.preview_video_9_16 as string || a.portrait_preview_video as string || undefined,
-      preview_video_16_9: a.preview_video_16_9 as string || a.landscape_preview_video as string || undefined,
-      preview_video_1_1: a.preview_video_1_1 as string || a.squared_preview_video as string || undefined,
-    }))
-}
-
-/**
- * Get list of available voices
- * Use the returned voice IDs (or accent IDs) with the voiceId parameter in createShortVideo
- *
- * Note: Each voice has multiple accents. You can use either:
- * - The voice ID directly (uses default accent)
- * - A specific accent ID for more control over the voice style
- */
-export async function getVoices(): Promise<Voice[]> {
-  const { apiId, apiKey } = await getCredentialsAsync()
-
-  const response = await fetch('https://api.creatify.ai/api/voices/', {
-    headers: {
-      'X-API-ID': apiId,
-      'X-API-KEY': apiKey,
-    },
-  })
-
-  if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`Creatify API error fetching voices: ${error}`)
-  }
-
-  const data = await response.json()
-
-  // Handle both array response and paginated response
-  const voices = Array.isArray(data) ? data : (data.results || [])
-
-  return voices.map((v: Record<string, unknown>) => {
-    // Map accents array - capture all available fields
-    const rawAccents = v.accents as Array<Record<string, unknown>> || []
-    const accents: VoiceAccent[] = rawAccents.map(a => ({
-      id: a.id as string,
-      // Try multiple fields for the accent name/description
-      name: (a.name as string) || (a.display_name as string) || (a.label as string) || '',
-      accent: (a.accent as string) || (a.accent_name as string) || (a.locale as string) || '',
-      language: (a.language as string) || (a.lang as string) || (a.locale as string) || undefined,
-      preview_url: (a.preview_url as string) || (a.sample_url as string) || (a.audio_url as string) || undefined,
-    }))
-
-    return {
-      id: v.id as string || (accents[0]?.id || ''), // Use first accent ID as fallback
-      name: v.name as string || 'Unknown Voice',
-      gender: v.gender as 'male' | 'female' | 'non_binary' | undefined,
-      accents,
-    }
-  })
 }
 
 // Placeholder for Pictory integration (future)
