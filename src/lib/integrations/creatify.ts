@@ -396,15 +396,6 @@ export async function createVideoFromLink(params: LinkToVideoParams): Promise<Vi
     requestBody.model_version = params.modelVersion
   }
 
-  // Avatar and voice overrides
-  if (params.overrideAvatar) {
-    requestBody.override_avatar = params.overrideAvatar
-  }
-
-  if (params.overrideVoice) {
-    requestBody.override_voice = params.overrideVoice
-  }
-
   // Disable default CTA if specified
   if (params.noCta) {
     requestBody.no_cta = true
@@ -416,8 +407,6 @@ export async function createVideoFromLink(params: LinkToVideoParams): Promise<Vi
     visual_style: requestBody.visual_style,
     script_style: requestBody.script_style,
     model_version: requestBody.model_version,
-    override_avatar: requestBody.override_avatar || 'default',
-    override_voice: requestBody.override_voice || 'default',
     no_cta: requestBody.no_cta || false,
   })
 
@@ -596,6 +585,7 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
         : 30
 
       // Create video from the link with explicit video_length
+      // NOTE: Not passing override_avatar/override_voice - Creatify should randomly select
       return await createVideoFromLink({
         linkId: link.linkId,
         aspectRatio,
@@ -606,7 +596,7 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
         visualStyle: params.visualStyle || 'AvatarBubbleTemplate', // API default
         webhookUrl: params.webhookUrl,
         overrideScript: params.script, // Use provided script as override if any
-        // Note: NOT passing overrideAvatar/overrideVoice - let Creatify choose for variety
+        // NOTE: Not passing overrideAvatar/overrideVoice - let Creatify randomly choose
         noCta: params.noCta, // Disable default CTA button
         modelVersion: params.modelVersion || 'standard', // Cheapest option
       })
@@ -635,17 +625,17 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
 
   console.log(`Creating lipsync video with script length: ${limitedScript.length} chars (target: ~${params.duration || 30}s)`)
 
-  // Build lipsync request body - let Creatify choose avatar for variety
+  // Build lipsync request body - don't set creator, let Creatify randomly choose
   const lipsyncBody: Record<string, unknown> = {
     script: limitedScript,
     aspect_ratio: params.aspectRatio || '9:16',
     style: 'video_editing',
     caption: true,
     caption_style: 'default',
-    // Note: NOT setting creator - let Creatify choose for variety
+    // NOTE: Not setting creator - let Creatify randomly choose avatar
   }
 
-  console.log(`📹 Lipsync using default avatar (Creatify chooses)`)
+  console.log(`📹 Lipsync - letting Creatify randomly choose avatar`)
 
   // Add b-roll media if provided
   if (params.imageUrls && params.imageUrls.length > 0) {
