@@ -96,13 +96,26 @@ export async function GET(request: NextRequest) {
     }, {} as Record<string, number>)
 
     // Calculate sales stats (today, this week, this month) in client's timezone
-    // Get current date in client's timezone
-    const nowInTz = new Date().toLocaleString('en-US', { timeZone: session.timezone })
-    const clientNow = new Date(nowInTz)
-    const clientYear = clientNow.getFullYear()
-    const clientMonth = clientNow.getMonth()
-    const clientDate = clientNow.getDate()
-    const clientDay = clientNow.getDay()
+    // Use the selected date if provided, otherwise use current date in client's timezone
+    let clientYear: number, clientMonth: number, clientDate: number, clientDay: number
+
+    if (dateStr) {
+      // Use the selected date as the reference point
+      const [year, month, day] = dateStr.split('-').map(Number)
+      const selectedDate = new Date(year, month - 1, day)
+      clientYear = year
+      clientMonth = month - 1
+      clientDate = day
+      clientDay = selectedDate.getDay()
+    } else {
+      // Use current date in client's timezone
+      const nowInTz = new Date().toLocaleString('en-US', { timeZone: session.timezone })
+      const clientNow = new Date(nowInTz)
+      clientYear = clientNow.getFullYear()
+      clientMonth = clientNow.getMonth()
+      clientDate = clientNow.getDate()
+      clientDay = clientNow.getDay()
+    }
 
     // For saleDate comparisons, we need to use midnight UTC because saleDate is stored
     // as a date string (e.g., "2025-01-22") which becomes "2025-01-22T00:00:00.000Z" in DB.
