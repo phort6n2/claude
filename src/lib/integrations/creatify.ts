@@ -580,6 +580,7 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
         : 30
 
       // Create video from the link with explicit video_length
+      // Note: We intentionally don't pass overrideScript - let Creatify generate from the URL content
       return await createVideoFromLink({
         linkId: link.linkId,
         aspectRatio,
@@ -589,7 +590,6 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
         scriptStyle: params.scriptStyle || 'DiscoveryWriter',
         visualStyle: params.visualStyle || 'AvatarBubbleTemplate',
         webhookUrl: params.webhookUrl,
-        overrideScript: params.script,
         noCta: params.noCta,
         modelVersion: params.modelVersion || 'standard',
       })

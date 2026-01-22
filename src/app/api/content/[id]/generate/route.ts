@@ -833,13 +833,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         // 2. Update link with logo/images AND rich description for better script generation
         // 3. Create video with video_length: 30
         //
-        // Fallback to lipsync if no blog URL available (script limited to ~500 chars)
-        const cleanScript = contentItem.blogPost.content
-          .replace(/<[^>]*>/g, '') // Remove HTML tags
-          .replace(/\s+/g, ' ')    // Normalize whitespace
-          .trim()
-          .substring(0, 500)       // Limit to ~30 seconds of speech (fallback only)
-
         // CTA instruction for Creatify - tell it to use "Call Now" with phone number
         const creatifyDescription = [
           `CALL TO ACTION: Use "Call Now" - NOT "Buy Now" or "Shop Now"`,
@@ -851,7 +844,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         const client = contentItem.client
         const videoJob = await createShortVideo({
           blogUrl: blogUrl || undefined,
-          script: cleanScript, // Fallback if blogUrl fails
           title: contentItem.blogPost.title,
           imageUrls,
           logoUrl: client.logoUrl || undefined,
