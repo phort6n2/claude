@@ -69,11 +69,16 @@ interface SlotAssignment {
 /**
  * Count how many clients are assigned to each day pair and time slot.
  * Returns a map of usage counts to find least loaded slots.
+ *
+ * IMPORTANT: dayTimeSlotCounts tracks individual day+time combinations to prevent
+ * conflicts across different day pairs that share a day (e.g., MON_WED and WED_FRI
+ * both include Wednesday).
  */
 async function getSlotUsage(): Promise<{
   dayPairCounts: Record<DayPairKey, number>
   slotCounts: Record<string, number> // "DAY_PAIR:SLOT" -> count
   dayUsage: Record<number, number> // day of week -> count
+  dayTimeSlotCounts: Record<string, number> // "DAY:SLOT" -> count (e.g., "3:0" = Wednesday slot 0)
 }> {
   const clients = await prisma.client.findMany({
     where: {
@@ -90,6 +95,7 @@ async function getSlotUsage(): Promise<{
   const dayPairCounts: Record<string, number> = {}
   const slotCounts: Record<string, number> = {}
   const dayUsage: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+  const dayTimeSlotCounts: Record<string, number> = {} // Track individual day+time conflicts
 
   for (const client of clients) {
     const dayPair = client.scheduleDayPair as DayPairKey
@@ -106,6 +112,13 @@ async function getSlotUsage(): Promise<{
     if (DAY_PAIRS[dayPair]) {
       dayUsage[DAY_PAIRS[dayPair].day1] = (dayUsage[DAY_PAIRS[dayPair].day1] || 0) + 1
       dayUsage[DAY_PAIRS[dayPair].day2] = (dayUsage[DAY_PAIRS[dayPair].day2] || 0) + 1
+
+      // Track individual day+time slot usage to detect cross-pair conflicts
+      // e.g., MON_WED slot 0 occupies "1:0" (Monday) and "3:0" (Wednesday)
+      const daySlot1 = `${DAY_PAIRS[dayPair].day1}:${slot}`
+      const daySlot2 = `${DAY_PAIRS[dayPair].day2}:${slot}`
+      dayTimeSlotCounts[daySlot1] = (dayTimeSlotCounts[daySlot1] || 0) + 1
+      dayTimeSlotCounts[daySlot2] = (dayTimeSlotCounts[daySlot2] || 0) + 1
     }
   }
 
@@ -113,6 +126,7 @@ async function getSlotUsage(): Promise<{
     dayPairCounts: dayPairCounts as Record<DayPairKey, number>,
     slotCounts,
     dayUsage,
+    dayTimeSlotCounts,
   }
 }
 
@@ -139,9 +153,13 @@ function getAllowedSlotRange(dayPair: DayPairKey): { min: TimeSlotIndex; max: Ti
  * Find the best available slot for a new client.
  * Prioritizes day pairs where both days have capacity.
  * Assigns to morning or evening shift based on day pair to avoid 24h conflicts.
+ *
+ * IMPORTANT: This function now checks for day+time conflicts across different day pairs.
+ * For example, if a client has MON_WED at slot 0, we won't assign another client to
+ * WED_FRI at slot 0 because both would post on Wednesday at the same time.
  */
 export async function findBestSlot(): Promise<SlotAssignment> {
-  const { dayPairCounts, slotCounts, dayUsage } = await getSlotUsage()
+  const { slotCounts, dayUsage, dayTimeSlotCounts } = await getSlotUsage()
 
   // Find day pairs where both days have capacity
   const availablePairs: { pair: DayPairKey; totalUsage: number }[] = []
@@ -162,26 +180,67 @@ export async function findBestSlot(): Promise<SlotAssignment> {
   // Sort by least used
   availablePairs.sort((a, b) => a.totalUsage - b.totalUsage)
 
-  // Default to TUE_THU if nothing available
-  const selectedPair = availablePairs[0]?.pair || 'TUE_THU'
+  // Try each available pair, looking for a slot with no day+time conflicts
+  for (const { pair: selectedPair } of availablePairs) {
+    const { min: minSlot, max: maxSlot } = getAllowedSlotRange(selectedPair)
+    const pairDays = DAY_PAIRS[selectedPair]
 
-  // Get allowed slot range for this day pair (morning or evening)
-  const { min: minSlot, max: maxSlot } = getAllowedSlotRange(selectedPair)
+    // Find a time slot where NEITHER day has a conflict
+    // A conflict occurs when another client (with a different day pair) already
+    // occupies the same day+time slot
+    let bestSlot: TimeSlotIndex | null = null
+    let minUsage = Infinity
 
-  // Find least used time slot within the allowed range
-  let bestSlot: TimeSlotIndex = minSlot as TimeSlotIndex
-  let minUsage = Infinity
+    for (let slot = minSlot; slot <= maxSlot; slot++) {
+      // Check if either day in this pair already has a client at this time slot
+      const day1SlotKey = `${pairDays.day1}:${slot}`
+      const day2SlotKey = `${pairDays.day2}:${slot}`
+      const day1Conflicts = dayTimeSlotCounts[day1SlotKey] || 0
+      const day2Conflicts = dayTimeSlotCounts[day2SlotKey] || 0
 
-  for (let slot = minSlot; slot <= maxSlot; slot++) {
-    const slotKey = `${selectedPair}:${slot}`
-    const usage = slotCounts[slotKey] || 0
-    if (usage < minUsage) {
-      minUsage = usage
-      bestSlot = slot as TimeSlotIndex
+      // Only consider slots where both days are conflict-free
+      if (day1Conflicts === 0 && day2Conflicts === 0) {
+        const slotKey = `${selectedPair}:${slot}`
+        const usage = slotCounts[slotKey] || 0
+        if (usage < minUsage) {
+          minUsage = usage
+          bestSlot = slot as TimeSlotIndex
+        }
+      }
+    }
+
+    // Found a conflict-free slot in this day pair
+    if (bestSlot !== null) {
+      return { dayPair: selectedPair, timeSlot: bestSlot }
     }
   }
 
-  return { dayPair: selectedPair, timeSlot: bestSlot }
+  // Fallback: no completely conflict-free slot found
+  // Pick the slot with the minimum combined conflicts
+  console.warn('[AutoScheduler] No conflict-free slots available, falling back to least-conflicting slot')
+
+  let bestPair: DayPairKey = 'TUE_THU'
+  let bestSlot: TimeSlotIndex = 0
+  let minConflicts = Infinity
+
+  for (const { pair: selectedPair } of availablePairs.length > 0 ? availablePairs : [{ pair: 'TUE_THU' as DayPairKey }]) {
+    const { min: minSlot, max: maxSlot } = getAllowedSlotRange(selectedPair)
+    const pairDays = DAY_PAIRS[selectedPair]
+
+    for (let slot = minSlot; slot <= maxSlot; slot++) {
+      const day1SlotKey = `${pairDays.day1}:${slot}`
+      const day2SlotKey = `${pairDays.day2}:${slot}`
+      const totalConflicts = (dayTimeSlotCounts[day1SlotKey] || 0) + (dayTimeSlotCounts[day2SlotKey] || 0)
+
+      if (totalConflicts < minConflicts) {
+        minConflicts = totalConflicts
+        bestPair = selectedPair
+        bestSlot = slot as TimeSlotIndex
+      }
+    }
+  }
+
+  return { dayPair: bestPair, timeSlot: bestSlot }
 }
 
 /**
@@ -627,5 +686,190 @@ export async function getSchedulingCapacity(): Promise<{
     dayUsage: Object.fromEntries(
       Object.entries(dayUsage).map(([k, v]) => [dayNames[Number(k)] || k, v])
     ),
+  }
+}
+
+// ============================================
+// CONFLICT DETECTION & RESOLUTION
+// ============================================
+
+interface ScheduleConflict {
+  day: number
+  dayName: string
+  timeSlot: number
+  timeLabel: string
+  clients: {
+    id: string
+    businessName: string
+    dayPair: DayPairKey
+    dayPairLabel: string
+  }[]
+}
+
+/**
+ * Detect scheduling conflicts where multiple clients would post at the same day+time.
+ * This can happen when different day pairs share a day (e.g., MON_WED and WED_FRI both have Wednesday).
+ */
+export async function detectScheduleConflicts(): Promise<ScheduleConflict[]> {
+  const clients = await prisma.client.findMany({
+    where: {
+      status: 'ACTIVE',
+      autoScheduleEnabled: true,
+      scheduleDayPair: { not: null },
+    },
+    select: {
+      id: true,
+      businessName: true,
+      scheduleDayPair: true,
+      scheduleTimeSlot: true,
+    },
+  })
+
+  const dayNames: Record<number, string> = {
+    1: 'Monday',
+    2: 'Tuesday',
+    3: 'Wednesday',
+    4: 'Thursday',
+    5: 'Friday',
+  }
+
+  // Group clients by day+timeSlot
+  const dayTimeMap: Record<string, typeof clients> = {}
+
+  for (const client of clients) {
+    const dayPair = client.scheduleDayPair as DayPairKey
+    const slot = client.scheduleTimeSlot ?? 0
+    const pairDays = DAY_PAIRS[dayPair]
+
+    if (pairDays) {
+      // Add client to both days in their pair
+      const key1 = `${pairDays.day1}:${slot}`
+      const key2 = `${pairDays.day2}:${slot}`
+
+      dayTimeMap[key1] = dayTimeMap[key1] || []
+      dayTimeMap[key1].push(client)
+
+      dayTimeMap[key2] = dayTimeMap[key2] || []
+      dayTimeMap[key2].push(client)
+    }
+  }
+
+  // Find conflicts (more than 1 client at same day+time)
+  const conflicts: ScheduleConflict[] = []
+
+  for (const [key, conflictingClients] of Object.entries(dayTimeMap)) {
+    if (conflictingClients.length > 1) {
+      const [dayStr, slotStr] = key.split(':')
+      const day = parseInt(dayStr, 10)
+      const slot = parseInt(slotStr, 10)
+
+      conflicts.push({
+        day,
+        dayName: dayNames[day] || `Day ${day}`,
+        timeSlot: slot,
+        timeLabel: TIME_SLOTS[slot as TimeSlotIndex] || `Slot ${slot}`,
+        clients: conflictingClients.map(c => ({
+          id: c.id,
+          businessName: c.businessName,
+          dayPair: c.scheduleDayPair as DayPairKey,
+          dayPairLabel: DAY_PAIRS[c.scheduleDayPair as DayPairKey]?.label || c.scheduleDayPair || '',
+        })),
+      })
+    }
+  }
+
+  return conflicts
+}
+
+/**
+ * Reassign a client to a new conflict-free slot.
+ * Useful for fixing existing conflicts.
+ */
+export async function reassignClientSlot(clientId: string): Promise<SlotAssignment> {
+  // First, temporarily clear the client's current slot so it's not counted in usage
+  const currentClient = await prisma.client.findUnique({
+    where: { id: clientId },
+    select: { scheduleDayPair: true, scheduleTimeSlot: true, businessName: true },
+  })
+
+  if (!currentClient) {
+    throw new Error('Client not found')
+  }
+
+  // Clear current assignment
+  await prisma.client.update({
+    where: { id: clientId },
+    data: {
+      scheduleDayPair: null,
+      scheduleTimeSlot: null,
+    },
+  })
+
+  // Find a new conflict-free slot
+  const newSlot = await findBestSlot()
+
+  // Assign the new slot
+  await prisma.client.update({
+    where: { id: clientId },
+    data: {
+      scheduleDayPair: newSlot.dayPair,
+      scheduleTimeSlot: newSlot.timeSlot,
+    },
+  })
+
+  console.log(`[AutoScheduler] Reassigned ${currentClient.businessName} from ${currentClient.scheduleDayPair}:${currentClient.scheduleTimeSlot} to ${newSlot.dayPair}:${newSlot.timeSlot}`)
+
+  return newSlot
+}
+
+/**
+ * Fix all detected conflicts by reassigning clients to conflict-free slots.
+ * Returns a summary of changes made.
+ */
+export async function fixAllConflicts(): Promise<{
+  conflictsFound: number
+  clientsReassigned: number
+  reassignments: { clientId: string; clientName: string; oldSlot: string; newSlot: string }[]
+}> {
+  const conflicts = await detectScheduleConflicts()
+
+  if (conflicts.length === 0) {
+    return { conflictsFound: 0, clientsReassigned: 0, reassignments: [] }
+  }
+
+  console.log(`[AutoScheduler] Found ${conflicts.length} scheduling conflicts, fixing...`)
+
+  const reassignments: { clientId: string; clientName: string; oldSlot: string; newSlot: string }[] = []
+  const processedClientIds = new Set<string>()
+
+  for (const conflict of conflicts) {
+    // For each conflict, keep the first client and reassign the rest
+    const clientsToReassign = conflict.clients.slice(1)
+
+    for (const client of clientsToReassign) {
+      // Skip if already processed (same client can appear in multiple conflicts)
+      if (processedClientIds.has(client.id)) {
+        continue
+      }
+
+      try {
+        const newSlot = await reassignClientSlot(client.id)
+        reassignments.push({
+          clientId: client.id,
+          clientName: client.businessName,
+          oldSlot: `${client.dayPairLabel} @ ${TIME_SLOTS[conflict.timeSlot as TimeSlotIndex]}`,
+          newSlot: `${DAY_PAIRS[newSlot.dayPair].label} @ ${TIME_SLOTS[newSlot.timeSlot]}`,
+        })
+        processedClientIds.add(client.id)
+      } catch (err) {
+        console.error(`Failed to reassign client ${client.businessName}:`, err)
+      }
+    }
+  }
+
+  return {
+    conflictsFound: conflicts.length,
+    clientsReassigned: reassignments.length,
+    reassignments,
   }
 }
