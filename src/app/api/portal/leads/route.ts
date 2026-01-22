@@ -104,26 +104,19 @@ export async function GET(request: NextRequest) {
     const clientDate = clientNow.getDate()
     const clientDay = clientNow.getDay()
 
-    // Get timezone offset
-    const tzOffset = new Date().toLocaleString('en-US', { timeZone: session.timezone, timeZoneName: 'shortOffset' })
-    const offsetMatch = tzOffset.match(/GMT([+-]\d+)/)
-    const offsetHours = offsetMatch ? parseInt(offsetMatch[1]) : 0
-
-    // Start of today in client's timezone (converted to UTC)
-    const startOfToday = new Date(Date.UTC(clientYear, clientMonth, clientDate, -offsetHours, 0, 0))
-
-    // Start of week (Sunday) in client's timezone
-    const startOfWeek = new Date(Date.UTC(clientYear, clientMonth, clientDate - clientDay, -offsetHours, 0, 0))
-
-    // Start of month in client's timezone
-    const startOfMonth = new Date(Date.UTC(clientYear, clientMonth, 1, -offsetHours, 0, 0))
+    // For saleDate comparisons, we need to use midnight UTC because saleDate is stored
+    // as a date string (e.g., "2025-01-22") which becomes "2025-01-22T00:00:00.000Z" in DB.
+    // We compare against the date portion only, not timezone-adjusted times.
+    const startOfTodayUTC = new Date(Date.UTC(clientYear, clientMonth, clientDate, 0, 0, 0))
+    const startOfWeekUTC = new Date(Date.UTC(clientYear, clientMonth, clientDate - clientDay, 0, 0, 0))
+    const startOfMonthUTC = new Date(Date.UTC(clientYear, clientMonth, 1, 0, 0, 0))
 
     const [salesToday, salesWeek, salesMonth] = await Promise.all([
       prisma.lead.aggregate({
         where: {
           clientId: session.clientId,
           status: 'SOLD',
-          saleDate: { gte: startOfToday },
+          saleDate: { gte: startOfTodayUTC },
         },
         _sum: { saleValue: true },
         _count: true,
@@ -132,7 +125,7 @@ export async function GET(request: NextRequest) {
         where: {
           clientId: session.clientId,
           status: 'SOLD',
-          saleDate: { gte: startOfWeek },
+          saleDate: { gte: startOfWeekUTC },
         },
         _sum: { saleValue: true },
         _count: true,
@@ -141,7 +134,7 @@ export async function GET(request: NextRequest) {
         where: {
           clientId: session.clientId,
           status: 'SOLD',
-          saleDate: { gte: startOfMonth },
+          saleDate: { gte: startOfMonthUTC },
         },
         _sum: { saleValue: true },
         _count: true,
