@@ -2,10 +2,9 @@
 // Docs: https://docs.creatify.ai/api-reference/introduction
 // API uses X-API-ID and X-API-KEY headers
 //
-// Three methods available:
-// 1. Custom Template - Use pre-built templates with variable substitution (most control)
-// 2. Link to Videos - Generate from a blog URL (automatic, good quality)
-// 3. Lipsync - Generate from script text (fallback)
+// Uses URL-to-Video API (Link to Videos) to generate videos from blog URLs
+// Supports video_length parameter (15, 30, 45, 60 seconds)
+// Costs 4 credits per 30s video
 
 // Types for Link to Videos API (exported for use in other modules)
 export type AspectRatio = '16x9' | '9x16' | '1x1'
@@ -35,27 +34,6 @@ export type VisualStyle =
 
 export type ModelVersion = 'standard' | 'aurora_v1' | 'aurora_v1_fast'
 
-// Types for Custom Template API
-type VariableType = 'image' | 'video' | 'audio' | 'text' | 'avatar' | 'voiceover'
-
-interface TemplateVariable {
-  type: VariableType
-  properties: {
-    url?: string       // For image, video, audio
-    content?: string   // For text
-    avatar_id?: string // For avatar
-    voice_id?: string  // For voiceover
-  }
-}
-
-interface CustomTemplateParams {
-  templateId: string  // UUID of the custom template
-  variables: Record<string, TemplateVariable>
-  name?: string
-  webhookUrl?: string
-  modelVersion?: ModelVersion
-}
-
 interface LinkToVideoParams {
   linkId: string // UUID of the link object
   targetPlatform?: string
@@ -66,18 +44,12 @@ interface LinkToVideoParams {
   scriptStyle?: ScriptStyle
   visualStyle?: VisualStyle
   webhookUrl?: string
-  overrideScript?: string
-  noCta?: boolean // Disable default CTA button
   modelVersion?: ModelVersion // 'standard' is cheapest, aurora models cost more
 }
 
 interface VideoGenerationParams {
-  script?: string
   title: string
-  blogUrl?: string // URL to create video from
-  templateId?: string // Custom template UUID
-  templateVariables?: Record<string, TemplateVariable> // Explicit variables for custom template
-  autoPopulateFromBlog?: boolean // If true and both templateId + blogUrl provided, scrape blog for template variables
+  blogUrl: string // URL to create video from (required)
   imageUrls?: string[]
   logoUrl?: string // Logo URL for branding in video CTA
   aspectRatio?: '16:9' | '9:16' | '1:1'
@@ -92,7 +64,6 @@ interface VideoGenerationParams {
   // This is passed to Creatify's updateLink API to provide context beyond auto-scraped content
   // Should include: PAA question, key services, location, call-to-action, business highlights
   description?: string
-  noCta?: boolean // Disable default CTA button (rely on script for CTA instead)
 }
 
 interface VideoResult {
@@ -180,36 +151,6 @@ async function getCredentialsAsync(): Promise<{ apiId: string; apiKey: string }>
   return result
 }
 
-// Synchronous version for backwards compatibility - uses cached value or env vars
-function getCredentials(): { apiId: string; apiKey: string } {
-  // Return cached credentials if available
-  if (credentialsCache && Date.now() - credentialsCacheTime < CACHE_TTL) {
-    return credentialsCache
-  }
-
-  // Fall back to environment variables for sync calls
-  const separateApiId = process.env.CREATIFY_API_ID
-  const apiKeyRaw = process.env.CREATIFY_API_KEY
-
-  if (!apiKeyRaw) {
-    throw new Error('CREATIFY_API_KEY is not configured. Call getCredentialsAsync() first or set env vars.')
-  }
-
-  if (separateApiId) {
-    return { apiId: separateApiId, apiKey: apiKeyRaw }
-  }
-
-  if (apiKeyRaw.includes(':')) {
-    const [apiId, apiKey] = apiKeyRaw.split(':')
-    return { apiId, apiKey }
-  }
-
-  throw new Error(
-    'Creatify credentials not configured correctly. Either:\n' +
-    '1. Set both CREATIFY_API_ID and CREATIFY_API_KEY separately, or\n' +
-    '2. Set CREATIFY_API_KEY in format "api_id:api_key"'
-  )
-}
 
 /**
  * Create a link object in Creatify from a URL
@@ -298,69 +239,6 @@ export async function updateLink(params: UpdateLinkParams): Promise<LinkResult> 
 }
 
 /**
- * Create a video from a custom template
- * Templates are created in the Creatify dashboard and have variable placeholders
- *
- * IMPORTANT: The custom_template_jobs API does NOT accept a video_length parameter.
- * The video duration is determined by the template configuration in Creatify.
- * Make sure your template is configured for 30 seconds in the Creatify dashboard.
- */
-export async function createVideoFromTemplate(params: CustomTemplateParams): Promise<VideoResult> {
-  const { apiId, apiKey } = await getCredentialsAsync()
-
-  // Note: template_id is the correct field name per API docs
-  // video_length is NOT supported for custom templates - duration is set in the template
-  const requestBody: Record<string, unknown> = {
-    template_id: params.templateId,
-    variables: params.variables,
-  }
-
-  if (params.name) {
-    requestBody.name = params.name
-  }
-
-  if (params.webhookUrl) {
-    requestBody.webhook_url = params.webhookUrl
-  }
-
-  if (params.modelVersion) {
-    requestBody.model_version = params.modelVersion
-  }
-
-  console.log('Creating custom template video with:', {
-    template_id: params.templateId,
-    variableKeys: Object.keys(params.variables || {}),
-  })
-
-  const response = await fetch('https://api.creatify.ai/api/custom_template_jobs/', {
-    method: 'POST',
-    headers: {
-      'X-API-ID': apiId,
-      'X-API-KEY': apiKey,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(requestBody),
-  })
-
-  if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`Creatify Custom Template API error: ${error}`)
-  }
-
-  const data = await response.json()
-
-  // Log duration warning if video is longer than expected
-  if (data.duration && data.duration > 45) {
-    console.warn(`WARNING: Custom template video duration is ${data.duration} seconds. Expected ~30 seconds. Check template configuration in Creatify dashboard.`)
-  }
-
-  return {
-    jobId: data.id,
-    status: 'pending',
-  }
-}
-
-/**
  * Create a video from a link using the Link to Videos API
  * This is the PREFERRED method for short videos because it supports video_length parameter
  * Costs 4 credits per 30s video
@@ -383,17 +261,8 @@ export async function createVideoFromLink(params: LinkToVideoParams): Promise<Vi
     requestBody.webhook_url = params.webhookUrl
   }
 
-  if (params.overrideScript) {
-    requestBody.override_script = params.overrideScript
-  }
-
   if (params.modelVersion) {
     requestBody.model_version = params.modelVersion
-  }
-
-  // Disable default CTA if specified
-  if (params.noCta) {
-    requestBody.no_cta = true
   }
 
   console.log('📹 Creating video via URL-to-Video API:', {
@@ -402,7 +271,6 @@ export async function createVideoFromLink(params: LinkToVideoParams): Promise<Vi
     visual_style: requestBody.visual_style,
     script_style: requestBody.script_style,
     model_version: requestBody.model_version,
-    no_cta: requestBody.no_cta || false,
   })
 
   const response = await fetch('https://api.creatify.ai/api/link_to_videos/', {
@@ -431,263 +299,76 @@ export async function createVideoFromLink(params: LinkToVideoParams): Promise<Vi
 }
 
 /**
- * Create a short video - main entry point
- *
- * RECOMMENDED: Use URL-to-Video API (Link to Videos) for reliable video_length control
- *
- * Priority order:
- * 1. Custom Template + Blog URL (hybrid) - DISABLED: doesn't support video_length
- * 2. Custom Template with explicit variables - DISABLED: doesn't support video_length
- * 3. Link to Videos (if blogUrl provided) - PREFERRED: supports video_length (15, 30, 45, 60)
- * 4. Lipsync (if script provided) - fallback with script length limit
+ * Create a short video using URL-to-Video API
+ * This scrapes the blog URL and generates a video from its content
+ * Supports video_length parameter (15, 30, 45, 60 seconds)
+ * Costs 4 credits per 30s video
  */
 export async function createShortVideo(params: VideoGenerationParams): Promise<VideoResult> {
-  const { apiId, apiKey } = await getCredentialsAsync()
+  console.log(`🔗 Creating link from blog URL: ${params.blogUrl}`)
 
-  // Priority 1: Hybrid approach - Custom Template with blog content
-  // Use this when you want custom CTA (like "Call Now") but content from blog
-  if (params.templateId && params.blogUrl && params.autoPopulateFromBlog) {
-    try {
-      // Scrape blog URL to get content
-      const blogContent = await createLink(params.blogUrl)
+  // First create a link from the URL (auto-scrapes content)
+  const link = await createLink(params.blogUrl)
 
-      // Build template variables from blog content
-      // These are common variable names - adjust based on your template
-      const autoVariables: Record<string, TemplateVariable> = {}
-
-      // Add title as text variable
-      if (blogContent.title) {
-        autoVariables['title'] = {
-          type: 'text',
-          properties: { content: blogContent.title }
-        }
-        autoVariables['headline'] = {
-          type: 'text',
-          properties: { content: blogContent.title }
-        }
-      }
-
-      // Add description/summary as text variable
-      if (blogContent.aiSummary || blogContent.description) {
-        autoVariables['description'] = {
-          type: 'text',
-          properties: { content: blogContent.aiSummary || blogContent.description }
-        }
-        autoVariables['script'] = {
-          type: 'text',
-          properties: { content: blogContent.aiSummary || blogContent.description }
-        }
-      }
-
-      // Add first image as image variable
-      if (blogContent.imageUrls && blogContent.imageUrls.length > 0) {
-        autoVariables['image'] = {
-          type: 'image',
-          properties: { url: blogContent.imageUrls[0] }
-        }
-        autoVariables['product_image'] = {
-          type: 'image',
-          properties: { url: blogContent.imageUrls[0] }
-        }
-        autoVariables['background'] = {
-          type: 'image',
-          properties: { url: blogContent.imageUrls[0] }
-        }
-      }
-
-      // Add logo if provided
-      if (params.logoUrl) {
-        autoVariables['logo'] = {
-          type: 'image',
-          properties: { url: params.logoUrl }
-        }
-      }
-
-      // Merge auto-populated variables with any explicit overrides
-      const finalVariables = {
-        ...autoVariables,
-        ...(params.templateVariables || {}),
-      }
-
-      return await createVideoFromTemplate({
-        templateId: params.templateId,
-        variables: finalVariables,
-        name: params.title,
-        webhookUrl: params.webhookUrl,
-        modelVersion: params.modelVersion,
-      })
-    } catch (error) {
-      console.error('Hybrid Template+Blog approach failed, falling back to Link to Videos:', error)
-      // Fall through to blog URL method
-    }
-  }
-
-  // Priority 2: Custom Template with explicit variables
-  if (params.templateId && params.templateVariables) {
-    try {
-      return await createVideoFromTemplate({
-        templateId: params.templateId,
-        variables: params.templateVariables,
-        name: params.title,
-        webhookUrl: params.webhookUrl,
-        modelVersion: params.modelVersion,
-      })
-    } catch (error) {
-      console.error('Custom Template API failed, falling back to Link to Videos:', error)
-      // Fall through to blog URL method
-    }
-  }
-
-  // Priority 3 (PREFERRED): Use the URL-to-Video API with video_length parameter
-  if (params.blogUrl) {
-    try {
-      console.log(`🔗 Creating link from blog URL: ${params.blogUrl}`)
-
-      // First create a link from the URL (auto-scrapes content)
-      const link = await createLink(params.blogUrl)
-
-      console.log(`✅ Link created: ${link.linkId}`, {
-        title: link.title,
-        imageCount: link.imageUrls?.length || 0,
-        hasLogo: !!link.logoUrl,
-      })
-
-      // Update link metadata if we have custom logo, images, or description
-      // The description is KEY - it provides rich context for better video script generation
-      if (params.logoUrl || (params.imageUrls && params.imageUrls.length > 0) || params.description) {
-        const updateFields: string[] = []
-        if (params.logoUrl) updateFields.push('logo')
-        if (params.imageUrls?.length) updateFields.push(`${params.imageUrls.length} images`)
-        if (params.description) updateFields.push('description')
-        console.log(`📝 Updating link with: ${updateFields.join(', ')}`)
-
-        await updateLink({
-          linkId: link.linkId,
-          logoUrl: params.logoUrl,
-          imageUrls: params.imageUrls,
-          description: params.description,
-        })
-      }
-
-      // Map aspect ratio format
-      const aspectRatio = params.aspectRatio === '9:16' ? '9x16' :
-                          params.aspectRatio === '16:9' ? '16x9' :
-                          params.aspectRatio === '1:1' ? '1x1' : '9x16'
-
-      // Map duration to valid video length
-      const videoLength = (params.duration && [15, 30, 45, 60].includes(params.duration))
-        ? params.duration as VideoLength
-        : 30
-
-      // Create video from the link with explicit video_length
-      // Note: We intentionally don't pass overrideScript - let Creatify generate from the URL content
-      return await createVideoFromLink({
-        linkId: link.linkId,
-        aspectRatio,
-        videoLength,
-        targetPlatform: params.targetPlatform || 'tiktok',
-        targetAudience: params.targetAudience || 'adults interested in auto services',
-        scriptStyle: params.scriptStyle || 'DiscoveryWriter',
-        visualStyle: params.visualStyle || 'AvatarBubbleTemplate',
-        webhookUrl: params.webhookUrl,
-        noCta: params.noCta,
-        modelVersion: params.modelVersion || 'standard',
-      })
-    } catch (error) {
-      console.error('Link to Videos API failed, falling back to lipsync:', error)
-      // Fall through to lipsync method
-    }
-  }
-
-  // Priority 4 (Fallback): Use lipsync v2 endpoint with script
-  // WARNING: Lipsync does NOT have a video_length parameter!
-  // The script length determines the video duration.
-  // ~500 characters = ~75 words = ~30 seconds at 150 words per minute
-  if (!params.script) {
-    throw new Error('Either blogUrl or script is required for video generation')
-  }
-
-  // SAFEGUARD: Limit script to ~500 chars to ensure ~30 second videos
-  // This prevents accidentally creating 3+ minute videos that waste credits
-  const maxScriptLength = params.duration ? params.duration * 17 : 500 // ~17 chars per second
-  const limitedScript = params.script.substring(0, maxScriptLength)
-
-  if (params.script.length > maxScriptLength) {
-    console.warn(`⚠️ LIPSYNC SCRIPT TRUNCATED: Original ${params.script.length} chars, limited to ${maxScriptLength} chars for ~${params.duration || 30}s video`)
-  }
-
-  console.log(`Creating lipsync video with script length: ${limitedScript.length} chars (target: ~${params.duration || 30}s)`)
-
-  const lipsyncBody: Record<string, unknown> = {
-    script: limitedScript,
-    aspect_ratio: params.aspectRatio || '9:16',
-    style: 'video_editing',
-    caption: true,
-    caption_style: 'default',
-  }
-
-  // Add b-roll media if provided
-  if (params.imageUrls && params.imageUrls.length > 0) {
-    lipsyncBody.b_roll_media = params.imageUrls.map(url => ({ url, type: 'image' }))
-  }
-
-  const response = await fetch('https://api.creatify.ai/api/lipsyncs_v2/', {
-    method: 'POST',
-    headers: {
-      'X-API-ID': apiId,
-      'X-API-KEY': apiKey,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(lipsyncBody),
+  console.log(`✅ Link created: ${link.linkId}`, {
+    title: link.title,
+    imageCount: link.imageUrls?.length || 0,
+    hasLogo: !!link.logoUrl,
   })
 
-  if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`Creatify API error: ${error}`)
+  // Update link metadata if we have custom logo, images, or description
+  // The description is KEY - it provides rich context for better video script generation
+  if (params.logoUrl || (params.imageUrls && params.imageUrls.length > 0) || params.description) {
+    const updateFields: string[] = []
+    if (params.logoUrl) updateFields.push('logo')
+    if (params.imageUrls?.length) updateFields.push(`${params.imageUrls.length} images`)
+    if (params.description) updateFields.push('description')
+    console.log(`📝 Updating link with: ${updateFields.join(', ')}`)
+
+    await updateLink({
+      linkId: link.linkId,
+      logoUrl: params.logoUrl,
+      imageUrls: params.imageUrls,
+      description: params.description,
+    })
   }
 
-  const data = await response.json()
+  // Map aspect ratio format
+  const aspectRatio = params.aspectRatio === '9:16' ? '9x16' :
+                      params.aspectRatio === '16:9' ? '16x9' :
+                      params.aspectRatio === '1:1' ? '1x1' : '9x16'
 
-  return {
-    jobId: data.id || data.task_id,
-    status: 'pending',
-  }
+  // Map duration to valid video length
+  const videoLength = (params.duration && [15, 30, 45, 60].includes(params.duration))
+    ? params.duration as VideoLength
+    : 30
+
+  // Create video from the link with explicit video_length
+  return await createVideoFromLink({
+    linkId: link.linkId,
+    aspectRatio,
+    videoLength,
+    targetPlatform: params.targetPlatform || 'tiktok',
+    targetAudience: params.targetAudience || 'adults interested in auto services',
+    scriptStyle: params.scriptStyle || 'DiscoveryWriter',
+    visualStyle: params.visualStyle || 'AvatarBubbleTemplate',
+    webhookUrl: params.webhookUrl,
+    modelVersion: params.modelVersion || 'standard',
+  })
 }
 
 /**
  * Check status of a video job
- * Works for custom_template_jobs, link_to_videos, and lipsyncs endpoints
  */
 export async function checkVideoStatus(jobId: string): Promise<VideoResult> {
   const { apiId, apiKey } = await getCredentialsAsync()
 
-  // Try custom_template_jobs endpoint first
-  let response = await fetch(`https://api.creatify.ai/api/custom_template_jobs/${jobId}/`, {
+  const response = await fetch(`https://api.creatify.ai/api/link_to_videos/${jobId}/`, {
     headers: {
       'X-API-ID': apiId,
       'X-API-KEY': apiKey,
     },
   })
-
-  // If not found, try link_to_videos endpoint
-  if (response.status === 404) {
-    response = await fetch(`https://api.creatify.ai/api/link_to_videos/${jobId}/`, {
-      headers: {
-        'X-API-ID': apiId,
-        'X-API-KEY': apiKey,
-      },
-    })
-  }
-
-  // If not found, try lipsyncs endpoint
-  if (response.status === 404) {
-    response = await fetch(`https://api.creatify.ai/api/lipsyncs_v2/${jobId}/`, {
-      headers: {
-        'X-API-ID': apiId,
-        'X-API-KEY': apiKey,
-      },
-    })
-  }
 
   if (!response.ok) {
     const error = await response.text()

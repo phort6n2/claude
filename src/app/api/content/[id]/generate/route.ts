@@ -843,26 +843,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         // Use client-specific Creatify settings if configured, otherwise use defaults
         const client = contentItem.client
         const videoJob = await createShortVideo({
-          blogUrl: blogUrl || undefined,
+          blogUrl: blogUrl,
           title: contentItem.blogPost.title,
           imageUrls,
           logoUrl: client.logoUrl || undefined,
-          // Rich description to enhance video script generation
           description: creatifyDescription,
-          // DISABLED: Custom templates don't support video_length parameter
-          // Using URL-to-Video API instead which properly supports video_length: 30
-          templateId: client.creatifyTemplateId || undefined,
-          autoPopulateFromBlog: false,
           aspectRatio: '9:16',
-          duration: client.creatifyVideoLength || 30, // 15, 30, 45, or 60 seconds
+          duration: client.creatifyVideoLength || 30,
           targetPlatform: 'tiktok',
           targetAudience: `car owners in ${contentCity}, ${contentState} looking for auto glass services`,
-          // Client-configurable Creatify settings
           scriptStyle: (client.creatifyScriptStyle as ScriptStyle) || 'DiscoveryWriter',
           visualStyle: (client.creatifyVisualStyle as VisualStyle) || 'AvatarBubbleTemplate',
           modelVersion: (client.creatifyModelVersion as ModelVersion) || 'standard',
-          // Note: avatarId and voiceId intentionally not passed - let Creatify choose for variety
-          // Note: noCta not passed - testing if description instruction alone changes CTA to "Call Now"
         })
 
         // Generate video description

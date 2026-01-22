@@ -1443,22 +1443,17 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
         const videoJob = await withTimeout(
           createShortVideo({
             title: blogResult!.title,
-            blogUrl: blogUrlForVideo || undefined,
+            blogUrl: blogUrlForVideo!,
             imageUrls: imageUrls.map((i: { gcsUrl: string }) => i.gcsUrl),
             logoUrl: client.logoUrl || undefined,
-            // Rich description to enhance video script generation
             description: creatifyDescription,
-            templateId: client.creatifyTemplateId || undefined,
             aspectRatio: '9:16',
-            duration: client.creatifyVideoLength || 30, // 15, 30, 45, or 60 seconds
+            duration: client.creatifyVideoLength || 30,
             targetPlatform: 'tiktok',
             targetAudience: `car owners in ${client.city}, ${client.state} looking for auto glass services`,
-            // Client-configurable Creatify settings
             scriptStyle: (client.creatifyScriptStyle as ScriptStyle) || 'HowToV2',
             visualStyle: (client.creatifyVisualStyle as VisualStyle) || 'AvatarBubbleTemplate',
             modelVersion: (client.creatifyModelVersion as ModelVersion) || 'standard',
-            // Note: avatarId and voiceId intentionally not passed - let Creatify choose for variety
-            // Note: noCta not passed - testing if description instruction alone changes CTA to "Call Now"
           }),
           TIMEOUTS.VIDEO_CREATE,
           'Video job creation'
