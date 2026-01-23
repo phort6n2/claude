@@ -64,11 +64,18 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   try {
     const existing = await prisma.lead.findUnique({
       where: { id },
+      include: {
+        client: {
+          select: { timezone: true },
+        },
+      },
     })
 
     if (!existing) {
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
     }
+
+    const clientTimezone = existing.client?.timezone || 'America/Denver'
 
     // Build update data
     const updateData: Record<string, unknown> = {}
@@ -111,7 +118,37 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       updateData.saleValue = data.saleValue
     }
     if (data.saleDate !== undefined) {
-      updateData.saleDate = data.saleDate ? new Date(data.saleDate) : null
+      if (data.saleDate) {
+        // Check if it's a date-only string (YYYY-MM-DD format)
+        // Date-only strings are interpreted as UTC by JavaScript, which causes timezone issues
+        // Instead, parse as noon in the client's timezone to ensure the date is correct
+        const dateOnlyMatch = data.saleDate.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+        if (dateOnlyMatch) {
+          const [, year, month, day] = dateOnlyMatch
+          // Get timezone offset for the client's timezone
+          const tzOffset = new Date().toLocaleString('en-US', {
+            timeZone: clientTimezone,
+            timeZoneName: 'shortOffset'
+          })
+          const offsetMatch = tzOffset.match(/GMT([+-]\d+)/)
+          const offsetHours = offsetMatch ? parseInt(offsetMatch[1]) : 0
+          // Create date at noon in the client's timezone (converted to UTC)
+          // Using noon avoids any date boundary issues
+          updateData.saleDate = new Date(Date.UTC(
+            parseInt(year),
+            parseInt(month) - 1,
+            parseInt(day),
+            12 - offsetHours,
+            0,
+            0
+          ))
+        } else {
+          // Full ISO timestamp - parse directly
+          updateData.saleDate = new Date(data.saleDate)
+        }
+      } else {
+        updateData.saleDate = null
+      }
     }
     if (data.saleNotes !== undefined) {
       updateData.saleNotes = data.saleNotes
