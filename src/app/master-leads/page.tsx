@@ -189,7 +189,7 @@ export default function StandaloneMasterLeadsPage() {
     try {
       const [leadsRes, statsRes] = await Promise.all([
         fetch(`/api/leads?clientId=${selectedClientId}&startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`),
-        fetch(`/api/admin/master-leads/stats?clientId=${selectedClientId}`)
+        fetch(`/api/admin/master-leads/stats?clientId=${selectedClientId}&date=${selectedDate}`)
       ])
 
       const leadsData = await leadsRes.json()
@@ -311,7 +311,7 @@ export default function StandaloneMasterLeadsPage() {
 
       // Refresh sales stats after save
       if (selectedClientId) {
-        fetch(`/api/admin/master-leads/stats?clientId=${selectedClientId}`)
+        fetch(`/api/admin/master-leads/stats?clientId=${selectedClientId}&date=${selectedDate}`)
           .then((res) => res.json())
           .then((data) => {
             if (data.sales) {

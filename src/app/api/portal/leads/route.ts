@@ -121,15 +121,19 @@ export async function GET(request: NextRequest) {
     // as a date string (e.g., "2025-01-22") which becomes "2025-01-22T00:00:00.000Z" in DB.
     // We compare against the date portion only, not timezone-adjusted times.
     const startOfTodayUTC = new Date(Date.UTC(clientYear, clientMonth, clientDate, 0, 0, 0))
+    const endOfTodayUTC = new Date(Date.UTC(clientYear, clientMonth, clientDate, 23, 59, 59, 999))
     const startOfWeekUTC = new Date(Date.UTC(clientYear, clientMonth, clientDate - clientDay, 0, 0, 0))
+    const endOfWeekUTC = new Date(Date.UTC(clientYear, clientMonth, clientDate - clientDay + 6, 23, 59, 59, 999))
     const startOfMonthUTC = new Date(Date.UTC(clientYear, clientMonth, 1, 0, 0, 0))
+    // Get the last day of the month by going to the next month and subtracting 1 day
+    const endOfMonthUTC = new Date(Date.UTC(clientYear, clientMonth + 1, 0, 23, 59, 59, 999))
 
     const [salesToday, salesWeek, salesMonth] = await Promise.all([
       prisma.lead.aggregate({
         where: {
           clientId: session.clientId,
           status: 'SOLD',
-          saleDate: { gte: startOfTodayUTC },
+          saleDate: { gte: startOfTodayUTC, lte: endOfTodayUTC },
         },
         _sum: { saleValue: true },
         _count: true,
@@ -138,7 +142,7 @@ export async function GET(request: NextRequest) {
         where: {
           clientId: session.clientId,
           status: 'SOLD',
-          saleDate: { gte: startOfWeekUTC },
+          saleDate: { gte: startOfWeekUTC, lte: endOfWeekUTC },
         },
         _sum: { saleValue: true },
         _count: true,
@@ -147,7 +151,7 @@ export async function GET(request: NextRequest) {
         where: {
           clientId: session.clientId,
           status: 'SOLD',
-          saleDate: { gte: startOfMonthUTC },
+          saleDate: { gte: startOfMonthUTC, lte: endOfMonthUTC },
         },
         _sum: { saleValue: true },
         _count: true,

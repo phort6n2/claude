@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url)
   const clientId = searchParams.get('clientId')
+  const dateStr = searchParams.get('date') // Format: YYYY-MM-DD
 
   if (!clientId) {
     return NextResponse.json({ error: 'clientId is required' }, { status: 400 })
@@ -29,34 +30,42 @@ export async function GET(request: NextRequest) {
 
     const timezone = client?.timezone || 'America/Denver'
 
-    // Get current date in client's timezone
-    const nowInTz = new Date().toLocaleString('en-US', { timeZone: timezone })
-    const clientNow = new Date(nowInTz)
-    const clientYear = clientNow.getFullYear()
-    const clientMonth = clientNow.getMonth()
-    const clientDate = clientNow.getDate()
-    const clientDay = clientNow.getDay()
+    // Calculate reference date - use provided date or current date in client's timezone
+    let clientYear: number, clientMonth: number, clientDate: number, clientDay: number
 
-    // Get timezone offset
-    const tzOffset = new Date().toLocaleString('en-US', { timeZone: timezone, timeZoneName: 'shortOffset' })
-    const offsetMatch = tzOffset.match(/GMT([+-]\d+)/)
-    const offsetHours = offsetMatch ? parseInt(offsetMatch[1]) : 0
+    if (dateStr) {
+      // Use the selected date as the reference point
+      const [year, month, day] = dateStr.split('-').map(Number)
+      const selectedDate = new Date(year, month - 1, day)
+      clientYear = year
+      clientMonth = month - 1
+      clientDate = day
+      clientDay = selectedDate.getDay()
+    } else {
+      // Use current date in client's timezone
+      const nowInTz = new Date().toLocaleString('en-US', { timeZone: timezone })
+      const clientNow = new Date(nowInTz)
+      clientYear = clientNow.getFullYear()
+      clientMonth = clientNow.getMonth()
+      clientDate = clientNow.getDate()
+      clientDay = clientNow.getDay()
+    }
 
-    // Start of today in client's timezone (converted to UTC)
-    const startOfToday = new Date(Date.UTC(clientYear, clientMonth, clientDate, -offsetHours, 0, 0))
-
-    // Start of week (Sunday) in client's timezone
-    const startOfWeek = new Date(Date.UTC(clientYear, clientMonth, clientDate - clientDay, -offsetHours, 0, 0))
-
-    // Start of month in client's timezone
-    const startOfMonth = new Date(Date.UTC(clientYear, clientMonth, 1, -offsetHours, 0, 0))
+    // For saleDate comparisons, we use midnight UTC because saleDate is stored
+    // as a date string (e.g., "2025-01-22") which becomes "2025-01-22T00:00:00.000Z" in DB.
+    const startOfTodayUTC = new Date(Date.UTC(clientYear, clientMonth, clientDate, 0, 0, 0))
+    const endOfTodayUTC = new Date(Date.UTC(clientYear, clientMonth, clientDate, 23, 59, 59, 999))
+    const startOfWeekUTC = new Date(Date.UTC(clientYear, clientMonth, clientDate - clientDay, 0, 0, 0))
+    const endOfWeekUTC = new Date(Date.UTC(clientYear, clientMonth, clientDate - clientDay + 6, 23, 59, 59, 999))
+    const startOfMonthUTC = new Date(Date.UTC(clientYear, clientMonth, 1, 0, 0, 0))
+    const endOfMonthUTC = new Date(Date.UTC(clientYear, clientMonth + 1, 0, 23, 59, 59, 999))
 
     const [salesToday, salesWeek, salesMonth] = await Promise.all([
       prisma.lead.aggregate({
         where: {
           clientId,
           status: 'SOLD',
-          saleDate: { gte: startOfToday },
+          saleDate: { gte: startOfTodayUTC, lte: endOfTodayUTC },
         },
         _sum: { saleValue: true },
         _count: true,
@@ -65,7 +74,7 @@ export async function GET(request: NextRequest) {
         where: {
           clientId,
           status: 'SOLD',
-          saleDate: { gte: startOfWeek },
+          saleDate: { gte: startOfWeekUTC, lte: endOfWeekUTC },
         },
         _sum: { saleValue: true },
         _count: true,
@@ -74,7 +83,7 @@ export async function GET(request: NextRequest) {
         where: {
           clientId,
           status: 'SOLD',
-          saleDate: { gte: startOfMonth },
+          saleDate: { gte: startOfMonthUTC, lte: endOfMonthUTC },
         },
         _sum: { saleValue: true },
         _count: true,
