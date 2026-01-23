@@ -117,23 +117,30 @@ export async function GET(request: NextRequest) {
       clientDay = clientNow.getDay()
     }
 
-    // For saleDate comparisons, we need to use midnight UTC because saleDate is stored
-    // as a date string (e.g., "2025-01-22") which becomes "2025-01-22T00:00:00.000Z" in DB.
-    // We compare against the date portion only, not timezone-adjusted times.
-    const startOfTodayUTC = new Date(Date.UTC(clientYear, clientMonth, clientDate, 0, 0, 0))
-    const endOfTodayUTC = new Date(Date.UTC(clientYear, clientMonth, clientDate, 23, 59, 59, 999))
-    const startOfWeekUTC = new Date(Date.UTC(clientYear, clientMonth, clientDate - clientDay, 0, 0, 0))
-    const endOfWeekUTC = new Date(Date.UTC(clientYear, clientMonth, clientDate - clientDay + 6, 23, 59, 59, 999))
-    const startOfMonthUTC = new Date(Date.UTC(clientYear, clientMonth, 1, 0, 0, 0))
-    // Get the last day of the month by going to the next month and subtracting 1 day
-    const endOfMonthUTC = new Date(Date.UTC(clientYear, clientMonth + 1, 0, 23, 59, 59, 999))
+    // Get timezone offset for proper date comparisons
+    // saleDate stores full timestamps (e.g., 2025-01-22T22:45:00.000Z for 3:45 PM MST)
+    // so we need to use timezone-adjusted bounds
+    const tzOffset = new Date().toLocaleString('en-US', { timeZone: session.timezone, timeZoneName: 'shortOffset' })
+    const offsetMatch = tzOffset.match(/GMT([+-]\d+)/)
+    const offsetHours = offsetMatch ? parseInt(offsetMatch[1]) : 0
+
+    // Start/end of selected day in client's timezone converted to UTC
+    const startOfToday = new Date(Date.UTC(clientYear, clientMonth, clientDate, -offsetHours, 0, 0))
+    const endOfToday = new Date(Date.UTC(clientYear, clientMonth, clientDate, -offsetHours + 23, 59, 59, 999))
+    // Start/end of week (Sunday to Saturday) in client's timezone
+    const startOfWeek = new Date(Date.UTC(clientYear, clientMonth, clientDate - clientDay, -offsetHours, 0, 0))
+    const endOfWeek = new Date(Date.UTC(clientYear, clientMonth, clientDate - clientDay + 6, -offsetHours + 23, 59, 59, 999))
+    // Start/end of month in client's timezone
+    const startOfMonth = new Date(Date.UTC(clientYear, clientMonth, 1, -offsetHours, 0, 0))
+    const lastDayOfMonth = new Date(clientYear, clientMonth + 1, 0).getDate()
+    const endOfMonth = new Date(Date.UTC(clientYear, clientMonth, lastDayOfMonth, -offsetHours + 23, 59, 59, 999))
 
     const [salesToday, salesWeek, salesMonth] = await Promise.all([
       prisma.lead.aggregate({
         where: {
           clientId: session.clientId,
           status: 'SOLD',
-          saleDate: { gte: startOfTodayUTC, lte: endOfTodayUTC },
+          saleDate: { gte: startOfToday, lte: endOfToday },
         },
         _sum: { saleValue: true },
         _count: true,
@@ -142,7 +149,7 @@ export async function GET(request: NextRequest) {
         where: {
           clientId: session.clientId,
           status: 'SOLD',
-          saleDate: { gte: startOfWeekUTC, lte: endOfWeekUTC },
+          saleDate: { gte: startOfWeek, lte: endOfWeek },
         },
         _sum: { saleValue: true },
         _count: true,
@@ -151,7 +158,7 @@ export async function GET(request: NextRequest) {
         where: {
           clientId: session.clientId,
           status: 'SOLD',
-          saleDate: { gte: startOfMonthUTC, lte: endOfMonthUTC },
+          saleDate: { gte: startOfMonth, lte: endOfMonth },
         },
         _sum: { saleValue: true },
         _count: true,
