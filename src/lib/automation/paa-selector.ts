@@ -5,42 +5,35 @@ import { prisma } from '@/lib/db'
 // 1000+: Standard PAAs (synced from global templates)
 const STANDARD_PAA_PRIORITY_START = 1000
 
-/**
- * Get the start and end of "today" in a specific timezone.
- * This ensures the PAA selector's "today" matches the client's local day,
- * not just UTC day.
- *
- * For example, if timezone is America/Denver (MST, UTC-7):
- * - Local midnight (00:00 MST) = 07:00 UTC
- * - Local end of day (23:59 MST) = 06:59 UTC next day
- */
-function getTodayBounds(timezone?: string): { todayStart: Date; todayEnd: Date } {
-  const now = new Date()
+// All scheduling runs on Mountain Time
+const MOUNTAIN_TIMEZONE = 'America/Denver'
 
-  if (!timezone) {
-    // Fall back to UTC
-    const todayStart = new Date(now)
-    todayStart.setUTCHours(0, 0, 0, 0)
-    const todayEnd = new Date(now)
-    todayEnd.setUTCHours(23, 59, 59, 999)
-    return { todayStart, todayEnd }
-  }
+/**
+ * Get the start and end of "today" in Mountain Time.
+ * All scheduling uses Mountain Time for consistency.
+ *
+ * For Mountain Time (MST, UTC-7 / MDT, UTC-6):
+ * - Local midnight (00:00 MT) = 07:00 UTC (MST) or 06:00 UTC (MDT)
+ * - Local end of day (23:59 MT) = 06:59 UTC next day (MST) or 05:59 UTC (MDT)
+ */
+function getTodayBounds(timezone: string = MOUNTAIN_TIMEZONE): { todayStart: Date; todayEnd: Date } {
+  const now = new Date()
+  const tz = timezone || MOUNTAIN_TIMEZONE
 
   try {
-    // Get the current date in the client's timezone using Intl.DateTimeFormat
+    // Get the current date in Mountain Time using Intl.DateTimeFormat
     // en-CA locale gives us YYYY-MM-DD format which is easy to parse
     const dateFormatter = new Intl.DateTimeFormat('en-CA', {
-      timeZone: timezone,
+      timeZone: tz,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
     })
     const localDateStr = dateFormatter.format(now) // YYYY-MM-DD format
 
-    // Get the offset in minutes for this timezone
-    // We do this by comparing the formatted time to UTC
+    // Get the offset in minutes for Mountain Time
     const fullFormatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
+      timeZone: tz,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -84,12 +77,13 @@ function getTodayBounds(timezone?: string): { todayStart: Date; todayEnd: Date }
       todayEnd: new Date(todayEndMs),
     }
   } catch (err) {
-    // Fallback to UTC if timezone is invalid
-    console.warn(`[PAA Selector] Invalid timezone "${timezone}", falling back to UTC:`, err)
+    // Fallback to Mountain Time calculation using offset
+    console.warn(`[PAA Selector] Error calculating timezone bounds, using fallback:`, err)
+    // Mountain Time is UTC-7 (MST) or UTC-6 (MDT)
+    // Use a conservative UTC-7 offset
     const todayStart = new Date(now)
-    todayStart.setUTCHours(0, 0, 0, 0)
-    const todayEnd = new Date(now)
-    todayEnd.setUTCHours(23, 59, 59, 999)
+    todayStart.setUTCHours(7, 0, 0, 0) // 00:00 MT = 07:00 UTC (MST)
+    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1)
     return { todayStart, todayEnd }
   }
 }

@@ -6,44 +6,41 @@ import { selectNextPAACombination, markPAAAsUsed, renderPAAQuestion } from '@/li
 import { markLocationAsUsed } from '@/lib/automation/location-rotator'
 import { runContentPipeline } from '@/lib/pipeline/content-pipeline'
 
-// Local time slots - these represent the client's LOCAL preferred publish time
-// Slot index maps to these hours in the client's timezone
-const LOCAL_TIME_HOURS = [7, 8, 9, 10, 11, 13, 14, 15, 16, 17] as const // 7-11 AM, 1-5 PM local
+// ============================================
+// MOUNTAIN TIME CONFIGURATION
+// ============================================
+// All scheduling runs on Mountain Time (America/Denver)
+// This simplifies the system - no per-client timezone handling
+const MOUNTAIN_TIMEZONE = 'America/Denver'
+
+// Time slots in Mountain Time
+// Morning: 7-11 AM MT, Afternoon: 1-5 PM MT
+const MOUNTAIN_TIME_HOURS = [7, 8, 9, 10, 11, 13, 14, 15, 16, 17] as const // 7-11 AM, 1-5 PM MT
 
 /**
- * Get the current hour in a specific timezone
+ * Get the current hour in Mountain Time
  */
-function getCurrentHourInTimezone(timezone: string): number {
-  try {
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      hour: 'numeric',
-      hour12: false,
-    })
-    const hourStr = formatter.format(new Date())
-    return parseInt(hourStr, 10)
-  } catch {
-    // Fallback to UTC if timezone is invalid
-    console.warn(`[HourlyPublish] Invalid timezone: ${timezone}, falling back to UTC`)
-    return new Date().getUTCHours()
-  }
+function getCurrentMountainHour(): number {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: MOUNTAIN_TIMEZONE,
+    hour: 'numeric',
+    hour12: false,
+  })
+  const hourStr = formatter.format(new Date())
+  return parseInt(hourStr, 10)
 }
 
 /**
- * Get the current day (0-6) in a specific timezone
+ * Get the current day (0-6) in Mountain Time
  */
-function getCurrentDayInTimezone(timezone: string): number {
-  try {
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      weekday: 'short',
-    })
-    const dayStr = formatter.format(new Date())
-    const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
-    return dayMap[dayStr] ?? new Date().getUTCDay()
-  } catch {
-    return new Date().getUTCDay()
-  }
+function getCurrentMountainDay(): number {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: MOUNTAIN_TIMEZONE,
+    weekday: 'short',
+  })
+  const dayStr = formatter.format(new Date())
+  const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+  return dayMap[dayStr] ?? new Date().getUTCDay()
 }
 
 // Allow up to 12 minutes for the full content pipeline
@@ -109,7 +106,14 @@ export async function GET(request: NextRequest) {
 
     console.log(`[HourlyPublish] Found ${allClients.length} auto-schedule enabled clients`)
 
-    // Filter to clients who should publish NOW based on their local time
+    // Get current Mountain Time hour and day (all clients use Mountain Time)
+    const currentMtHour = getCurrentMountainHour()
+    const currentMtDay = getCurrentMountainDay()
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+    console.log(`[HourlyPublish] Current Mountain Time: ${dayNames[currentMtDay]} ${currentMtHour}:00`)
+
+    // Filter to clients who should publish NOW based on Mountain Time
     const skippedClients: Array<{
       name: string
       reason: string
@@ -117,40 +121,34 @@ export async function GET(request: NextRequest) {
     }> = []
 
     const clientsForNow = allClients.filter(client => {
-      const timezone = client.timezone || 'America/Denver'
       const slotIndex = client.scheduleTimeSlot as number
       const dayPair = client.scheduleDayPair as DayPairKey
 
-      // Get current time in client's timezone
-      const clientLocalHour = getCurrentHourInTimezone(timezone)
-      const clientLocalDay = getCurrentDayInTimezone(timezone)
+      // Check if current Mountain Time hour matches client's slot
+      const preferredHour = MOUNTAIN_TIME_HOURS[slotIndex]
+      const hourMatches = currentMtHour === preferredHour
 
-      // Check if current local hour matches client's preferred slot
-      const preferredHour = LOCAL_TIME_HOURS[slotIndex]
-      const hourMatches = clientLocalHour === preferredHour
-
-      // Check if today is one of client's scheduled days
+      // Check if today (in Mountain Time) is one of client's scheduled days
       const { day1, day2 } = DAY_PAIRS[dayPair]
-      const dayMatches = clientLocalDay === day1 || clientLocalDay === day2
+      const dayMatches = currentMtDay === day1 || currentMtDay === day2
 
       const shouldPublish = hourMatches && dayMatches
 
       if (shouldPublish) {
-        console.log(`[HourlyPublish] Client ${client.businessName}: timezone=${timezone}, localHour=${clientLocalHour}, localDay=${clientLocalDay}, preferredHour=${preferredHour}, days=[${day1},${day2}] → PUBLISH NOW`)
+        console.log(`[HourlyPublish] Client ${client.businessName}: slot=${slotIndex}(${preferredHour}:00 MT), pair=${dayPair}, days=[${dayNames[day1]},${dayNames[day2]}] → PUBLISH NOW`)
       } else {
         // Log why this client was skipped for debugging
         const reasons: string[] = []
         if (!hourMatches) {
-          reasons.push(`hour mismatch (local=${clientLocalHour}, expected=${preferredHour})`)
+          reasons.push(`hour mismatch (now=${currentMtHour}:00, slot=${preferredHour}:00)`)
         }
         if (!dayMatches) {
-          const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-          reasons.push(`day mismatch (today=${dayNames[clientLocalDay]}, expected=${dayNames[day1]}/${dayNames[day2]})`)
+          reasons.push(`day mismatch (today=${dayNames[currentMtDay]}, expected=${dayNames[day1]}/${dayNames[day2]})`)
         }
         skippedClients.push({
           name: client.businessName,
           reason: reasons.join(', '),
-          details: `tz=${timezone}, slot=${slotIndex}(${preferredHour}:00), pair=${dayPair}`,
+          details: `slot=${slotIndex}(${preferredHour}:00 MT), pair=${dayPair}`,
         })
       }
 
@@ -168,7 +166,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log(`[HourlyPublish] ${clientsForNow.length} clients scheduled for now`)
+    console.log(`[HourlyPublish] ${clientsForNow.length} clients scheduled for now (Mountain Time)`)
     const clientsForToday = clientsForNow // Rename for compatibility with rest of code
 
     if (clientsForToday.length === 0) {
@@ -176,8 +174,9 @@ export async function GET(request: NextRequest) {
       // The cron health is visible in Vercel cron logs
       return NextResponse.json({
         success: true,
-        message: 'No clients scheduled for this hour (timezone-aware check)',
+        message: `No clients scheduled for ${dayNames[currentMtDay]} ${currentMtHour}:00 MT`,
         utcTime: now.toISOString(),
+        mountainTime: `${dayNames[currentMtDay]} ${currentMtHour}:00`,
         checkedClients: allClients.length,
         processed: 0,
       })
@@ -192,8 +191,7 @@ export async function GET(request: NextRequest) {
     }> = []
 
     for (const client of clientsForToday) {
-      const clientTimezone = client.timezone || 'America/Denver'
-      console.log(`[HourlyPublish] Processing client: ${client.businessName} (timezone: ${clientTimezone})`)
+      console.log(`[HourlyPublish] Processing client: ${client.businessName}`)
 
       try {
         // Validation: Check if client has service locations
@@ -212,9 +210,8 @@ export async function GET(request: NextRequest) {
           console.warn(`[HourlyPublish] Client ${client.businessName} has no WordPress connection - content will be marked REVIEW`)
         }
 
-        // Select next PAA + Location combination
-        // Pass timezone so "today" check matches client's local day
-        const combination = await selectNextPAACombination(client.id, clientTimezone)
+        // Select next PAA + Location combination (uses Mountain Time for "today" check)
+        const combination = await selectNextPAACombination(client.id, MOUNTAIN_TIMEZONE)
         if (!combination) {
           // This means either: no PAAs/locations configured, OR all combinations already have content today
           // Let's check why to provide better error messaging
@@ -258,10 +255,10 @@ export async function GET(request: NextRequest) {
         // Render the PAA question with location
         const renderedQuestion = renderPAAQuestion(paa.question, location)
 
-        // Get client's preferred local time for scheduledTime field
+        // Get client's scheduled time slot (in Mountain Time)
         const clientSlotIndex = client.scheduleTimeSlot as number
-        const clientPreferredHour = LOCAL_TIME_HOURS[clientSlotIndex] || 9
-        const clientTimeSlot = `${clientPreferredHour.toString().padStart(2, '0')}:00`
+        const slotHour = MOUNTAIN_TIME_HOURS[clientSlotIndex] || 9
+        const scheduledTimeMT = `${slotHour.toString().padStart(2, '0')}:00`
 
         // RACE CONDITION FIX: Use a transaction with a final check to prevent
         // duplicate content creation if two cron runs happen simultaneously
@@ -294,7 +291,7 @@ export async function GET(request: NextRequest) {
               serviceLocationId: location.id,
               paaQuestion: renderedQuestion,
               scheduledDate: now,
-              scheduledTime: clientTimeSlot, // Client's local preferred time
+              scheduledTime: scheduledTimeMT, // Mountain Time
               status: 'GENERATING',
               priority: 1,
             },

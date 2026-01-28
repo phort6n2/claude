@@ -2,8 +2,12 @@ import { prisma } from '@/lib/db'
 import { selectNextPAACombination, renderPAAQuestion } from './paa-selector'
 
 // ============================================
-// SMART SCHEDULING CONFIGURATION
+// MOUNTAIN TIME SCHEDULING CONFIGURATION
 // ============================================
+// All scheduling runs on Mountain Time (America/Denver)
+// This simplifies the system - no per-client timezone handling
+
+export const MOUNTAIN_TIMEZONE = 'America/Denver'
 
 // Day pairs (non-consecutive days) - maps to JavaScript getDay() values
 // Sunday=0, Monday=1, Tuesday=2, Wednesday=3, Thursday=4, Friday=5, Saturday=6
@@ -18,13 +22,13 @@ export const DAY_PAIRS = {
 
 export type DayPairKey = keyof typeof DAY_PAIRS
 
-// Time slots (UTC) - Mountain Time based
-// Morning shift: 7-11 AM Mountain = 14:00-18:00 UTC (MST) / 13:00-17:00 UTC (MDT)
-// Using MST (UTC-7) as baseline since it's more conservative
-// Afternoon shift: 1-5 PM Mountain = 20:00-00:00 UTC (MST)
+// Time slots in Mountain Time
+// Morning shift: 7-11 AM MT (slots 0-4)
+// Afternoon shift: 1-5 PM MT (slots 5-9)
+// These are the LOCAL hours that get checked by the hourly cron
 export const TIME_SLOTS = [
-  '14:00', '15:00', '16:00', '17:00', '18:00',  // Morning MT (slots 0-4): 7-11 AM MST
-  '20:00', '21:00', '22:00', '23:00', '00:00',  // Afternoon MT (slots 5-9): 1-5 PM MST
+  '07:00', '08:00', '09:00', '10:00', '11:00',  // Morning MT (slots 0-4)
+  '13:00', '14:00', '15:00', '16:00', '17:00',  // Afternoon MT (slots 5-9)
 ] as const
 export type TimeSlotIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
 
