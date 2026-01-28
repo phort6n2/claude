@@ -490,6 +490,9 @@ export async function selectNextPAACombination(
   // Use timezone if provided to ensure "today" matches client's local day
   const { todayStart, todayEnd } = getTodayBounds(timezone)
 
+  // Threshold for "stuck" GENERATING content - if older than 2 hours, don't let it block
+  const stuckThreshold = new Date(Date.now() - 2 * 60 * 60 * 1000)
+
   const todayCombinations = await prisma.contentItem.findMany({
     where: {
       clientId,
@@ -500,9 +503,20 @@ export async function selectNextPAACombination(
         lte: todayEnd,
       },
       // Only block on active content, not FAILED
-      status: {
-        in: ['GENERATING', 'SCHEDULED', 'PUBLISHED', 'REVIEW'],
-      },
+      // For GENERATING status, only block if recent (not stuck)
+      OR: [
+        {
+          status: {
+            in: ['SCHEDULED', 'PUBLISHED', 'REVIEW', 'APPROVED'],
+          },
+        },
+        {
+          status: 'GENERATING',
+          createdAt: {
+            gte: stuckThreshold, // Only block if GENERATING content is recent
+          },
+        },
+      ],
     },
     select: {
       clientPAAId: true,

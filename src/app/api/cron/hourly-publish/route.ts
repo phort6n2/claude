@@ -102,6 +102,12 @@ export async function GET(request: NextRequest) {
     console.log(`[HourlyPublish] Found ${allClients.length} auto-schedule enabled clients`)
 
     // Filter to clients who should publish NOW based on their local time
+    const skippedClients: Array<{
+      name: string
+      reason: string
+      details: string
+    }> = []
+
     const clientsForNow = allClients.filter(client => {
       const timezone = client.timezone || 'America/Denver'
       const slotIndex = client.scheduleTimeSlot as number
@@ -123,10 +129,36 @@ export async function GET(request: NextRequest) {
 
       if (shouldPublish) {
         console.log(`[HourlyPublish] Client ${client.businessName}: timezone=${timezone}, localHour=${clientLocalHour}, localDay=${clientLocalDay}, preferredHour=${preferredHour}, days=[${day1},${day2}] → PUBLISH NOW`)
+      } else {
+        // Log why this client was skipped for debugging
+        const reasons: string[] = []
+        if (!hourMatches) {
+          reasons.push(`hour mismatch (local=${clientLocalHour}, expected=${preferredHour})`)
+        }
+        if (!dayMatches) {
+          const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+          reasons.push(`day mismatch (today=${dayNames[clientLocalDay]}, expected=${dayNames[day1]}/${dayNames[day2]})`)
+        }
+        skippedClients.push({
+          name: client.businessName,
+          reason: reasons.join(', '),
+          details: `tz=${timezone}, slot=${slotIndex}(${preferredHour}:00), pair=${dayPair}`,
+        })
       }
 
       return shouldPublish
     })
+
+    // Log a summary of skipped clients (limit to first 10 to avoid log spam)
+    if (skippedClients.length > 0) {
+      console.log(`[HourlyPublish] Skipped ${skippedClients.length} clients:`)
+      skippedClients.slice(0, 10).forEach(c => {
+        console.log(`  - ${c.name}: ${c.reason} (${c.details})`)
+      })
+      if (skippedClients.length > 10) {
+        console.log(`  ... and ${skippedClients.length - 10} more`)
+      }
+    }
 
     console.log(`[HourlyPublish] ${clientsForNow.length} clients scheduled for now`)
     const clientsForToday = clientsForNow // Rename for compatibility with rest of code
@@ -177,11 +209,38 @@ export async function GET(request: NextRequest) {
         const combination = await selectNextPAACombination(client.id, clientTimezone)
         if (!combination) {
           // This means either: no PAAs/locations configured, OR all combinations already have content today
+          // Let's check why to provide better error messaging
+          const [paaCount, locationCount, todayContent] = await Promise.all([
+            prisma.clientPAA.count({ where: { clientId: client.id, isActive: true } }),
+            prisma.serviceLocation.count({ where: { clientId: client.id, isActive: true } }),
+            prisma.contentItem.count({
+              where: {
+                clientId: client.id,
+                scheduledDate: {
+                  gte: new Date(new Date().setHours(0, 0, 0, 0)),
+                  lte: new Date(new Date().setHours(23, 59, 59, 999)),
+                },
+                status: { notIn: ['FAILED'] },
+              },
+            }),
+          ])
+
+          let errorDetail = 'No available PAA/location combinations'
+          if (paaCount === 0) {
+            errorDetail = 'No active PAA questions configured'
+          } else if (locationCount === 0) {
+            errorDetail = 'No active service locations configured'
+          } else if (todayContent > 0) {
+            errorDetail = `Content already exists for today (${todayContent} items) - all combinations used`
+          }
+
+          console.warn(`[HourlyPublish] ${client.businessName}: ${errorDetail} (PAAs: ${paaCount}, Locations: ${locationCount}, Today: ${todayContent})`)
+
           results.push({
             clientId: client.id,
             clientName: client.businessName,
             success: false,
-            error: 'No available PAA/location combinations (all may have content today, or none configured)',
+            error: errorDetail,
           })
           continue
         }
