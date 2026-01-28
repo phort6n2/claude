@@ -2,6 +2,62 @@
 
 import { getSetting } from '@/lib/settings'
 
+// Rate limit tracking - track when we've hit limits per platform
+const rateLimitTracker: Record<string, { until: number; backoffMs: number }> = {}
+
+/**
+ * Check if we're currently rate limited for a platform
+ */
+function isRateLimited(platform: string): boolean {
+  const tracker = rateLimitTracker[platform]
+  if (!tracker) return false
+  if (Date.now() < tracker.until) {
+    return true
+  }
+  // Rate limit expired, clear it
+  delete rateLimitTracker[platform]
+  return false
+}
+
+/**
+ * Mark a platform as rate limited with exponential backoff
+ */
+function markRateLimited(platform: string, retryAfterSecs?: number): void {
+  const existing = rateLimitTracker[platform]
+  const baseBackoff = retryAfterSecs ? retryAfterSecs * 1000 : 60000 // Default 60s
+  const backoffMs = existing ? Math.min(existing.backoffMs * 2, 3600000) : baseBackoff // Max 1 hour
+
+  rateLimitTracker[platform] = {
+    until: Date.now() + backoffMs,
+    backoffMs,
+  }
+
+  console.log(`[Late] Rate limited for ${platform}, backing off for ${backoffMs / 1000}s`)
+}
+
+/**
+ * Check if an error indicates a rate limit
+ */
+function isRateLimitError(response: Response, errorText: string): boolean {
+  if (response.status === 429) return true
+  const errorLower = errorText.toLowerCase()
+  return errorLower.includes('rate') ||
+    errorLower.includes('limit') ||
+    errorLower.includes('too many') ||
+    errorLower.includes('quota') ||
+    errorLower.includes('throttle')
+}
+
+/**
+ * Extract retry-after header value in seconds
+ */
+function getRetryAfter(response: Response): number | undefined {
+  const retryAfter = response.headers.get('retry-after')
+  if (!retryAfter) return undefined
+  const secs = parseInt(retryAfter, 10)
+  return isNaN(secs) ? undefined : secs
+}
+
 type Platform = 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'gbp' | 'youtube' | 'bluesky' | 'threads' | 'reddit' | 'pinterest' | 'telegram'
 
 // Helper to get Late API key from environment or settings
@@ -68,6 +124,13 @@ export async function schedulePost(params: SchedulePostParams): Promise<Schedule
   const apiKey = await getLateApiKey()
   if (!apiKey) {
     throw new Error('GETLATE_API_KEY is not configured. Add it to Settings > API Keys.')
+  }
+
+  // Check if we're rate limited for this platform
+  if (isRateLimited(params.platform)) {
+    const tracker = rateLimitTracker[params.platform]
+    const waitSecs = Math.ceil((tracker.until - Date.now()) / 1000)
+    throw new Error(`Rate limited for ${params.platform}. Try again in ${waitSecs} seconds.`)
   }
 
   // Format caption with hashtags for platforms that use them
@@ -145,8 +208,16 @@ export async function schedulePost(params: SchedulePostParams): Promise<Schedule
   })
 
   if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`getlate API error: ${error}`)
+    const errorText = await response.text()
+
+    // Check for rate limiting
+    if (isRateLimitError(response, errorText)) {
+      const retryAfter = getRetryAfter(response)
+      markRateLimited(params.platform, retryAfter)
+      throw new Error(`Rate limit reached for ${params.platform}. ${errorText}`)
+    }
+
+    throw new Error(`getlate API error: ${errorText}`)
   }
 
   const data = await response.json()
@@ -192,8 +263,16 @@ export async function checkPostStatus(postId: string): Promise<ScheduledPostResu
   })
 
   if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`getlate API error: ${error}`)
+    const errorText = await response.text()
+
+    // Check for rate limiting - use 'api' as generic platform for status checks
+    if (isRateLimitError(response, errorText)) {
+      const retryAfter = getRetryAfter(response)
+      markRateLimited('api', retryAfter)
+      throw new Error(`Rate limit reached for Late API. ${errorText}`)
+    }
+
+    throw new Error(`getlate API error: ${errorText}`)
   }
 
   const data = await response.json()

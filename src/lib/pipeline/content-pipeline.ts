@@ -29,6 +29,9 @@ const TIMEOUTS = {
   SOCIAL_CAPTION: 30_000,       // 30 seconds for caption generation
   SOCIAL_SCHEDULE: 60_000,      // 60 seconds for scheduling
   GCS_UPLOAD: 60_000,           // 60 seconds for GCS upload
+  // Master pipeline timeout - prevents indefinite hangs
+  // Set slightly below Vercel's maxDuration (720s) to allow cleanup
+  PIPELINE_MASTER: 660_000,     // 11 minutes master timeout
 }
 
 // ============ Embed Helper Functions (matching embed-all-media route) ============
@@ -252,6 +255,34 @@ async function updatePipelineStep(contentItemId: string, step: PipelineStep) {
 }
 
 export async function runContentPipeline(contentItemId: string): Promise<void> {
+  // Wrap entire pipeline in master timeout to prevent indefinite hangs
+  // This catches cases where individual timeouts don't fire (e.g., network issues)
+  const pipelinePromise = runContentPipelineInternal(contentItemId)
+
+  try {
+    await withTimeout(pipelinePromise, TIMEOUTS.PIPELINE_MASTER, 'Content pipeline')
+  } catch (error) {
+    // If master timeout fires, ensure content is marked as failed
+    if (error instanceof TimeoutError) {
+      console.error(`[Pipeline] Master timeout for content ${contentItemId} - marking as FAILED`)
+      try {
+        await prisma.contentItem.update({
+          where: { id: contentItemId },
+          data: {
+            status: 'FAILED',
+            lastError: `Pipeline timed out after ${TIMEOUTS.PIPELINE_MASTER / 1000}s - may need manual recovery`,
+            retryCount: { increment: 1 },
+          },
+        })
+      } catch (updateError) {
+        console.error(`[Pipeline] Failed to update status after timeout:`, updateError)
+      }
+    }
+    throw error
+  }
+}
+
+async function runContentPipelineInternal(contentItemId: string): Promise<void> {
   const contentItem = await prisma.contentItem.findUnique({
     where: { id: contentItemId },
     include: {
@@ -2018,19 +2049,71 @@ export async function runContentPipeline(contentItemId: string): Promise<void> {
       },
     })
 
+    // Log comprehensive success entry to publishingLog for visibility
+    try {
+      await prisma.publishingLog.create({
+        data: {
+          contentItemId,
+          clientId: contentItem.clientId,
+          action: 'pipeline_complete',
+          status: 'SUCCESS',
+          responseData: JSON.stringify({
+            finalStatus,
+            results: {
+              blog: results.blog.success,
+              images: results.images.success,
+              wordpress: results.wordpress.skipped ? 'skipped' : results.wordpress.success,
+              wrhq: results.wrhq.skipped ? 'skipped' : results.wrhq.success,
+              podcast: results.podcast.success,
+              videos: results.videos.success,
+              social: results.social.skipped ? 'skipped' : results.social.success,
+              schema: results.schema.skipped ? 'skipped' : results.schema.success,
+            },
+            errors: Object.entries(results)
+              .filter(([, r]) => r.error)
+              .map(([step, r]) => ({ step, error: r.error })),
+          }),
+          startedAt: new Date(),
+        },
+      })
+    } catch (logErr) {
+      console.error('[Pipeline] Failed to log completion:', logErr)
+    }
+
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const isTimeout = error instanceof TimeoutError
     logError(ctx, '💥 Pipeline failed critically', error)
-    await logAction(ctx, `${ctx.step}_error`, 'FAILED', { errorMessage })
 
-    await prisma.contentItem.update({
-      where: { id: contentItemId },
-      data: {
-        status: 'FAILED',
-        lastError: errorMessage,
-        retryCount: { increment: 1 },
-      },
-    })
+    // Log comprehensive failure entry with step info
+    try {
+      await logAction(ctx, `pipeline_critical_failure`, 'FAILED', {
+        errorMessage: `[${ctx.step}] ${errorMessage}${isTimeout ? ' (TIMEOUT)' : ''}`,
+        responseData: JSON.stringify({
+          failedStep: ctx.step,
+          isTimeout,
+          results,
+          contentItemId,
+        }),
+      })
+    } catch (logErr) {
+      console.error('[Pipeline] Failed to log critical failure:', logErr)
+    }
+
+    // Update content item status with detailed error
+    try {
+      await prisma.contentItem.update({
+        where: { id: contentItemId },
+        data: {
+          status: 'FAILED',
+          lastError: `[${ctx.step}] ${errorMessage}${isTimeout ? ' (timeout)' : ''}`,
+          pipelineStep: ctx.step, // Preserve which step failed for debugging
+          retryCount: { increment: 1 },
+        },
+      })
+    } catch (updateErr) {
+      console.error('[Pipeline] Failed to update content status:', updateErr)
+    }
 
     throw error
   }

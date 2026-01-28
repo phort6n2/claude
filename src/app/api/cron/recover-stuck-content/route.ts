@@ -432,6 +432,98 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 8. Fix inconsistent states - PUBLISHED content missing publishedAt
+    const inconsistentPublished = await prisma.contentItem.findMany({
+      where: {
+        status: 'PUBLISHED',
+        publishedAt: null,
+      },
+      take: 20,
+    })
+
+    console.log(`[Recovery] Found ${inconsistentPublished.length} PUBLISHED items without publishedAt`)
+
+    for (const item of inconsistentPublished) {
+      try {
+        // Set publishedAt to updatedAt or createdAt as fallback
+        await prisma.contentItem.update({
+          where: { id: item.id },
+          data: {
+            publishedAt: item.updatedAt || item.createdAt,
+          },
+        })
+        console.log(`[Recovery] Fixed publishedAt for content ${item.id}`)
+      } catch (err) {
+        const error = `Error fixing publishedAt for ${item.id}: ${err}`
+        console.error(`[Recovery] ${error}`)
+        results.errors.push(error)
+      }
+    }
+
+    // 9. Find content stuck in SCHEDULED for more than 6 hours (should have been picked up by cron)
+    const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000)
+    const stuckScheduled = await prisma.contentItem.findMany({
+      where: {
+        status: 'SCHEDULED',
+        scheduledDate: { lt: sixHoursAgo },
+      },
+      take: 10,
+    })
+
+    console.log(`[Recovery] Found ${stuckScheduled.length} content items stuck in SCHEDULED`)
+
+    for (const item of stuckScheduled) {
+      try {
+        // Check if this was supposed to run but missed
+        console.log(`[Recovery] Content ${item.id} was scheduled for ${item.scheduledDate} but never ran`)
+
+        if (item.retryCount < 3) {
+          // Update status to GENERATING and trigger pipeline
+          await prisma.contentItem.update({
+            where: { id: item.id },
+            data: {
+              status: 'GENERATING',
+              retryCount: item.retryCount + 1,
+              lastError: `Recovery: Missed scheduled time ${item.scheduledDate?.toISOString()}`,
+              updatedAt: new Date(),
+            },
+          })
+
+          runContentPipeline(item.id)
+            .then(() => console.log(`[Recovery] Pipeline succeeded for missed scheduled content ${item.id}`))
+            .catch(async (err) => {
+              console.error(`[Recovery] Pipeline failed for missed content ${item.id}:`, err)
+              try {
+                await prisma.contentItem.updateMany({
+                  where: { id: item.id, status: 'GENERATING' },
+                  data: {
+                    status: 'FAILED',
+                    lastError: `Pipeline failed: ${err instanceof Error ? err.message : String(err)}`,
+                  },
+                })
+              } catch (updateErr) {
+                console.error(`[Recovery] Failed to update status:`, updateErr)
+              }
+            })
+
+          results.stuckGenerating.push(`${item.id}: missed schedule, retrying`)
+        } else {
+          await prisma.contentItem.update({
+            where: { id: item.id },
+            data: {
+              status: 'FAILED',
+              lastError: 'Missed scheduled time and max retries exceeded',
+            },
+          })
+          results.stuckGenerating.push(`${item.id}: missed schedule, marked FAILED (max retries)`)
+        }
+      } catch (err) {
+        const error = `Error recovering scheduled ${item.id}: ${err}`
+        console.error(`[Recovery] ${error}`)
+        results.errors.push(error)
+      }
+    }
+
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
@@ -442,6 +534,8 @@ export async function POST(request: NextRequest) {
         stuckVideosFixed: results.stuckVideos.length,
         failedPodbeanRetried: results.failedPodbeanRetries.length,
         missingEmbedsFound: results.missingEmbeds.length,
+        inconsistentStatesFixed: inconsistentPublished.length,
+        missedScheduledRecovered: stuckScheduled.length,
         errors: results.errors.length,
       },
     })
