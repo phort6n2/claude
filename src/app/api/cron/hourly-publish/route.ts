@@ -63,10 +63,18 @@ export const maxDuration = 720
  */
 
 export async function GET(request: NextRequest) {
-  // Verify cron secret
+  // Verify cron secret - require auth in production
   const headersList = await headers()
   const authHeader = headersList.get('authorization')
   const cronSecret = process.env.CRON_SECRET
+  const isProduction = process.env.NODE_ENV === 'production'
+
+  // In production, CRON_SECRET must be set and must match
+  // In development, allow requests without secret for testing
+  if (isProduction && !cronSecret) {
+    console.error('[HourlyPublish] CRON_SECRET not configured in production')
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
+  }
 
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -255,19 +263,54 @@ export async function GET(request: NextRequest) {
         const clientPreferredHour = LOCAL_TIME_HOURS[clientSlotIndex] || 9
         const clientTimeSlot = `${clientPreferredHour.toString().padStart(2, '0')}:00`
 
-        // Create the content item with current time as scheduled date
-        const contentItem = await prisma.contentItem.create({
-          data: {
-            clientId: client.id,
-            clientPAAId: paa.id,
-            serviceLocationId: location.id,
-            paaQuestion: renderedQuestion,
-            scheduledDate: now,
-            scheduledTime: clientTimeSlot, // Client's local preferred time
-            status: 'GENERATING',
-            priority: 1,
-          },
+        // RACE CONDITION FIX: Use a transaction with a final check to prevent
+        // duplicate content creation if two cron runs happen simultaneously
+        const todayStart = new Date(now)
+        todayStart.setHours(0, 0, 0, 0)
+        const todayEnd = new Date(now)
+        todayEnd.setHours(23, 59, 59, 999)
+
+        const contentItem = await prisma.$transaction(async (tx) => {
+          // Final check: Ensure no content was created since we selected the combination
+          const existingToday = await tx.contentItem.findFirst({
+            where: {
+              clientId: client.id,
+              scheduledDate: { gte: todayStart, lte: todayEnd },
+              status: { notIn: ['FAILED'] },
+            },
+            select: { id: true },
+          })
+
+          if (existingToday) {
+            console.log(`[HourlyPublish] Content already exists for ${client.businessName} today (${existingToday.id}) - skipping to prevent duplicate`)
+            return null
+          }
+
+          // Create the content item with current time as scheduled date
+          return await tx.contentItem.create({
+            data: {
+              clientId: client.id,
+              clientPAAId: paa.id,
+              serviceLocationId: location.id,
+              paaQuestion: renderedQuestion,
+              scheduledDate: now,
+              scheduledTime: clientTimeSlot, // Client's local preferred time
+              status: 'GENERATING',
+              priority: 1,
+            },
+          })
         })
+
+        // Skip if content was already created by another process
+        if (!contentItem) {
+          results.push({
+            clientId: client.id,
+            clientName: client.businessName,
+            success: false,
+            error: 'Content already exists for today (concurrent run detected)',
+          })
+          continue
+        }
 
         console.log(`[HourlyPublish] Created content item ${contentItem.id} for ${client.businessName}`)
 

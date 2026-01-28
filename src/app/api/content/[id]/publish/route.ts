@@ -109,6 +109,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
     const results: Record<string, unknown> = {}
 
+    // Helper function to escape HTML special characters (prevents XSS)
+    function escapeHtml(unsafe: string): string {
+      return unsafe
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+    }
+
     // Helper function to generate Google Maps embed HTML
     function generateGoogleMapsEmbed(client: {
       googleMapsUrl: string | null
@@ -121,11 +131,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       // Build the address for the embed
       const fullAddress = `${client.streetAddress}, ${client.city}, ${client.state} ${client.postalCode}`
       const encodedAddress = encodeURIComponent(fullAddress)
+      // Escape business name for safe HTML embedding
+      const safeName = escapeHtml(client.businessName)
 
       return `
 <!-- Google Maps Location -->
 <div class="google-maps-embed" style="margin: 30px 0; clear: both;">
-  <h3 style="margin-bottom: 15px;">📍 Find ${client.businessName}</h3>
+  <h3 style="margin-bottom: 15px;">📍 Find ${safeName}</h3>
   <div style="position: relative; width: 100%; height: 300px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
     <iframe
       src="https://maps.google.com/maps?q=${encodedAddress}&output=embed"
@@ -135,7 +147,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       allowfullscreen=""
       loading="lazy"
       referrerpolicy="no-referrer-when-downgrade"
-      title="Map showing location of ${client.businessName}">
+      title="Map showing location of ${safeName}">
     </iframe>
   </div>
   <p style="margin-top: 10px; text-align: center;">
@@ -149,13 +161,15 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     // Helper function to generate in-content featured image HTML
     function generateFeaturedImageEmbed(imageUrl: string | null, altText: string): string {
       if (!imageUrl) return ''
+      // Escape altText for safe HTML embedding
+      const safeAlt = escapeHtml(altText)
 
       return `
 <!-- Featured Image -->
 <div class="featured-image-embed" style="margin: 30px 0 40px 0; clear: both;">
   <img
     src="${imageUrl}"
-    alt="${altText}"
+    alt="${safeAlt}"
     style="width: 100%; max-width: 1200px; height: auto; display: block; margin: 0 auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"
     loading="lazy"
   />
@@ -945,6 +959,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     // Video needs blog URLs to be live for the YouTube description
     if (allSuccessful && (publishClientBlog || publishWrhqBlog)) {
       after(async () => {
+        const backgroundErrors: string[] = []
+
         // 1. Auto-generate video if not already generated
         try {
           const freshContent = await prisma.contentItem.findUnique({
@@ -969,13 +985,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             if (videoGenResponse.ok) {
               console.log('[Publish] Video generation started successfully')
             } else {
-              console.error('[Publish] Video generation failed:', await videoGenResponse.text())
+              const errorText = await videoGenResponse.text()
+              console.error('[Publish] Video generation failed:', errorText)
+              backgroundErrors.push(`Video generation failed: ${errorText}`)
             }
           } else if (hasVideo) {
             console.log('[Publish] Video already exists, skipping auto-generation')
           }
         } catch (videoError) {
           console.error('[Publish] Auto video generation failed:', videoError)
+          backgroundErrors.push(`Video generation error: ${videoError instanceof Error ? videoError.message : String(videoError)}`)
         }
 
         // 2. Auto-embed media (schema, existing video/podcast)
@@ -985,6 +1004,21 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           await runEmbedAllMedia(id)
         } catch (embedError) {
           console.error('[Publish] Auto-embed failed:', embedError)
+          backgroundErrors.push(`Auto-embed error: ${embedError instanceof Error ? embedError.message : String(embedError)}`)
+        }
+
+        // Track any background errors in the content item so they're visible
+        if (backgroundErrors.length > 0) {
+          try {
+            await prisma.contentItem.update({
+              where: { id },
+              data: {
+                lastError: `Background tasks had errors: ${backgroundErrors.join('; ')}`,
+              },
+            })
+          } catch (updateErr) {
+            console.error('[Publish] Failed to track background errors:', updateErr)
+          }
         }
       })
     }

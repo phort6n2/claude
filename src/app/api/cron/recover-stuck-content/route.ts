@@ -20,9 +20,16 @@ export const maxDuration = 300 // 5 minutes
  * - Content marked as published but missing embeds
  */
 export async function POST(request: NextRequest) {
-  // Verify cron secret
+  // Verify cron secret - require auth in production
   const authHeader = request.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET
+  const isProduction = process.env.NODE_ENV === 'production'
+
+  // In production, CRON_SECRET must be set and must match
+  if (isProduction && !cronSecret) {
+    console.error('[Recovery] CRON_SECRET not configured in production')
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
+  }
 
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -77,23 +84,33 @@ export async function POST(request: NextRequest) {
             },
           })
 
-          // Run pipeline - properly handle success/failure
+          // Run pipeline - properly handle success/failure with atomic status updates
           runContentPipeline(item.id)
             .then(() => {
               console.log(`[Recovery] Pipeline retry succeeded for ${item.id}`)
             })
             .catch(async (err) => {
               console.error(`[Recovery] Pipeline retry failed for ${item.id}:`, err)
-              // Mark as FAILED if this was our last attempt (retryCount was already incremented)
-              const currentItem = await prisma.contentItem.findUnique({ where: { id: item.id } })
-              if (currentItem && currentItem.retryCount >= 3) {
-                await prisma.contentItem.update({
-                  where: { id: item.id },
+              // Mark as FAILED if this was our last attempt
+              // Use updateMany with conditional where to avoid race conditions
+              try {
+                const updated = await prisma.contentItem.updateMany({
+                  where: {
+                    id: item.id,
+                    retryCount: { gte: 3 },
+                    // Only update if still in a recoverable state
+                    status: { in: ['GENERATING', 'SCHEDULED'] },
+                  },
                   data: {
                     status: 'FAILED',
-                    lastError: `Pipeline failed after ${currentItem.retryCount} attempts: ${err instanceof Error ? err.message : 'Unknown error'}`,
+                    lastError: `Pipeline failed after max attempts: ${err instanceof Error ? err.message : String(err)}`,
                   },
                 })
+                if (updated.count > 0) {
+                  console.log(`[Recovery] Marked ${item.id} as FAILED after max retries`)
+                }
+              } catch (updateErr) {
+                console.error(`[Recovery] Failed to update status for ${item.id}:`, updateErr)
               }
             })
 
@@ -258,15 +275,28 @@ export async function POST(request: NextRequest) {
 
         // Also re-run pipeline to embed podcast in blog
         if (podcast.contentItem.status === 'PUBLISHED' && !podcast.contentItem.podcastAddedToPost) {
+          const contentId = podcast.contentItem.id
           await prisma.contentItem.update({
-            where: { id: podcast.contentItem.id },
+            where: { id: contentId },
             data: {
               status: 'GENERATING',
               pipelineStep: 'schema',
             },
           })
-          runContentPipeline(podcast.contentItem.id).catch(err => {
-            console.error(`[Recovery] Embed retry failed for ${podcast.contentItem!.id}:`, err)
+          runContentPipeline(contentId).catch(async (err) => {
+            console.error(`[Recovery] Embed retry failed for ${contentId}:`, err)
+            // Mark as FAILED so it doesn't stay stuck in GENERATING
+            try {
+              await prisma.contentItem.updateMany({
+                where: { id: contentId, status: 'GENERATING' },
+                data: {
+                  status: 'FAILED',
+                  lastError: `Embed retry failed: ${err instanceof Error ? err.message : String(err)}`,
+                },
+              })
+            } catch (updateErr) {
+              console.error(`[Recovery] Failed to update status for ${contentId}:`, updateErr)
+            }
           })
         }
       } catch (err) {
@@ -310,8 +340,20 @@ export async function POST(request: NextRequest) {
             },
           })
           // Re-run pipeline to publish to Podbean and embed
-          runContentPipeline(item.id).catch(err => {
+          runContentPipeline(item.id).catch(async (err) => {
             console.error(`[Recovery] Pipeline failed for ${item.id}:`, err)
+            // Mark as FAILED so it doesn't stay stuck in GENERATING
+            try {
+              await prisma.contentItem.updateMany({
+                where: { id: item.id, status: 'GENERATING' },
+                data: {
+                  status: 'FAILED',
+                  lastError: `Pipeline failed during podcast recovery: ${err instanceof Error ? err.message : String(err)}`,
+                },
+              })
+            } catch (updateErr) {
+              console.error(`[Recovery] Failed to update status for ${item.id}:`, updateErr)
+            }
           })
           results.missingEmbeds.push(`${item.id}: re-running pipeline to publish podcast to Podbean`)
         } else {
@@ -366,9 +408,21 @@ export async function POST(request: NextRequest) {
             pipelineStep: 'schema',
           },
         })
-        // Trigger pipeline in background
-        runContentPipeline(item.id).catch(err => {
+        // Trigger pipeline in background with proper error handling
+        runContentPipeline(item.id).catch(async (err) => {
           console.error(`[Recovery] Pipeline embed retry failed for ${item.id}:`, err)
+          // Mark as FAILED so it doesn't stay stuck in GENERATING
+          try {
+            await prisma.contentItem.updateMany({
+              where: { id: item.id, status: 'GENERATING' },
+              data: {
+                status: 'FAILED',
+                lastError: `Podcast embed retry failed: ${err instanceof Error ? err.message : String(err)}`,
+              },
+            })
+          } catch (updateErr) {
+            console.error(`[Recovery] Failed to update status for ${item.id}:`, updateErr)
+          }
         })
         results.missingEmbeds.push(`${item.id}: re-running pipeline for podcast embed`)
       } catch (err) {

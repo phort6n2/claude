@@ -18,10 +18,17 @@ import { runWeeklyAutoSchedule } from '@/lib/automation'
  */
 
 export async function GET(request: NextRequest) {
-  // Verify cron secret
+  // Verify cron secret - require auth in production
   const headersList = await headers()
   const authHeader = headersList.get('authorization')
   const cronSecret = process.env.CRON_SECRET
+  const isProduction = process.env.NODE_ENV === 'production'
+
+  // In production, CRON_SECRET must be set and must match
+  if (isProduction && !cronSecret) {
+    console.error('[AutoScheduleWeekly] CRON_SECRET not configured in production')
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
+  }
 
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -94,15 +101,6 @@ export async function GET(request: NextRequest) {
  * POST endpoint for manual trigger
  */
 export async function POST(request: NextRequest) {
-  // Verify authorization
-  const headersList = await headers()
-  const authHeader = headersList.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
-
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  // Forward to GET handler
+  // Forward to GET handler (which handles auth)
   return GET(request)
 }

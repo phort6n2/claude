@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/db'
-import { selectNextPAACombination, markPAAAsUsed, renderPAAQuestion } from './paa-selector'
-import { markLocationAsUsed } from './location-rotator'
+import { selectNextPAACombination, renderPAAQuestion } from './paa-selector'
 
 // ============================================
 // SMART SCHEDULING CONFIGURATION
@@ -187,35 +186,62 @@ export async function findBestSlot(): Promise<SlotAssignment> {
 /**
  * Assign a slot to a client if they don't have one.
  * Called when auto-schedule is enabled for a client.
+ * Uses a transaction with conditional update to prevent race conditions.
  */
 export async function assignSlotToClient(clientId: string): Promise<SlotAssignment> {
-  const client = await prisma.client.findUnique({
-    where: { id: clientId },
-    select: { scheduleDayPair: true, scheduleTimeSlot: true },
-  })
+  // Use a transaction to prevent race conditions where multiple requests
+  // could both see "no slot assigned" and assign different slots
+  return await prisma.$transaction(async (tx) => {
+    const client = await tx.client.findUnique({
+      where: { id: clientId },
+      select: { scheduleDayPair: true, scheduleTimeSlot: true },
+    })
 
-  // Already has assignment
-  if (client?.scheduleDayPair && client.scheduleTimeSlot !== null) {
-    return {
-      dayPair: client.scheduleDayPair as DayPairKey,
-      timeSlot: client.scheduleTimeSlot as TimeSlotIndex,
+    // Already has assignment
+    if (client?.scheduleDayPair && client.scheduleTimeSlot !== null) {
+      return {
+        dayPair: client.scheduleDayPair as DayPairKey,
+        timeSlot: client.scheduleTimeSlot as TimeSlotIndex,
+      }
     }
-  }
 
-  // Find and assign best slot
-  const slot = await findBestSlot()
+    // Find best slot (done inside transaction to ensure consistency)
+    const slot = await findBestSlot()
 
-  await prisma.client.update({
-    where: { id: clientId },
-    data: {
-      scheduleDayPair: slot.dayPair,
-      scheduleTimeSlot: slot.timeSlot,
-    },
+    // Conditional update - only update if slot is still null
+    // This prevents overwriting if another request just assigned a slot
+    const updated = await tx.client.updateMany({
+      where: {
+        id: clientId,
+        OR: [
+          { scheduleDayPair: null },
+          { scheduleTimeSlot: null },
+        ],
+      },
+      data: {
+        scheduleDayPair: slot.dayPair,
+        scheduleTimeSlot: slot.timeSlot,
+      },
+    })
+
+    if (updated.count === 0) {
+      // Another request already assigned a slot, fetch current assignment
+      const current = await tx.client.findUnique({
+        where: { id: clientId },
+        select: { scheduleDayPair: true, scheduleTimeSlot: true },
+      })
+      if (current?.scheduleDayPair && current.scheduleTimeSlot !== null) {
+        return {
+          dayPair: current.scheduleDayPair as DayPairKey,
+          timeSlot: current.scheduleTimeSlot as TimeSlotIndex,
+        }
+      }
+    }
+
+    console.log(`[AutoScheduler] Assigned client ${clientId} to ${slot.dayPair} slot ${slot.timeSlot} (${TIME_SLOTS[slot.timeSlot]})`)
+
+    return slot
   })
-
-  console.log(`[AutoScheduler] Assigned client ${clientId} to ${slot.dayPair} slot ${slot.timeSlot} (${TIME_SLOTS[slot.timeSlot]})`)
-
-  return slot
 }
 
 // ============================================
@@ -390,27 +416,46 @@ export async function autoScheduleForClient(
       ? TIME_SLOTS[client.scheduleTimeSlot as TimeSlotIndex]
       : client.preferredPublishTime
 
-    // Create the content item
-    const contentItem = await prisma.contentItem.create({
-      data: {
-        clientId,
-        clientPAAId: paa.id,
-        serviceLocationId: location.id,
-        paaQuestion: renderedQuestion,
-        scheduledDate,
-        scheduledTime: timeSlot,
-        status: 'SCHEDULED',
-      },
-    })
+    // Use a transaction to ensure atomicity of content creation and related updates
+    // This prevents inconsistent state if any operation fails partway through
+    const contentItem = await prisma.$transaction(async (tx) => {
+      // Create the content item
+      const content = await tx.contentItem.create({
+        data: {
+          clientId,
+          clientPAAId: paa.id,
+          serviceLocationId: location.id,
+          paaQuestion: renderedQuestion,
+          scheduledDate,
+          scheduledTime: timeSlot,
+          status: 'SCHEDULED',
+        },
+      })
 
-    // Mark PAA and location as used (for legacy tracking)
-    await markPAAAsUsed(paa.id)
-    await markLocationAsUsed(location.id)
+      // Mark PAA as used (inline to use transaction)
+      await tx.clientPAA.update({
+        where: { id: paa.id },
+        data: {
+          usedAt: new Date(),
+          usedCount: { increment: 1 },
+        },
+      })
 
-    // Update client's last auto-scheduled timestamp
-    await prisma.client.update({
-      where: { id: clientId },
-      data: { lastAutoScheduledAt: new Date() },
+      // Mark location as used (inline to use transaction)
+      await tx.serviceLocation.update({
+        where: { id: location.id },
+        data: {
+          lastUsedAt: new Date(),
+        },
+      })
+
+      // Update client's last auto-scheduled timestamp
+      await tx.client.update({
+        where: { id: clientId },
+        data: { lastAutoScheduledAt: new Date() },
+      })
+
+      return content
     })
 
     // Trigger generation if requested
@@ -427,20 +472,23 @@ export async function autoScheduleForClient(
 
         // FIX: Update content status to FAILED if generation fails
         // This prevents orphaned content in SCHEDULED/GENERATING status
+        // Use conditional updateMany to avoid race condition with pipeline status updates
         try {
-          const currentItem = await prisma.contentItem.findUnique({
-            where: { id: contentItem.id },
-            select: { status: true },
+          const updated = await prisma.contentItem.updateMany({
+            where: {
+              id: contentItem.id,
+              // Only mark FAILED if still in SCHEDULED/GENERATING (pipeline didn't update it)
+              status: { in: ['SCHEDULED', 'GENERATING'] },
+            },
+            data: {
+              status: 'FAILED',
+              lastError: `Auto-schedule generation failed: ${generationError}`,
+            },
           })
-          // Only mark FAILED if still in SCHEDULED/GENERATING (pipeline didn't update it)
-          if (currentItem && (currentItem.status === 'SCHEDULED' || currentItem.status === 'GENERATING')) {
-            await prisma.contentItem.update({
-              where: { id: contentItem.id },
-              data: {
-                status: 'FAILED',
-                lastError: `Auto-schedule generation failed: ${generationError}`,
-              },
-            })
+          if (updated.count > 0) {
+            console.log(`[AutoScheduler] Marked content ${contentItem.id} as FAILED`)
+          } else {
+            console.log(`[AutoScheduler] Content ${contentItem.id} status already updated by pipeline`)
           }
         } catch (updateErr) {
           console.error(`Failed to update content status for ${contentItem.id}:`, updateErr)
