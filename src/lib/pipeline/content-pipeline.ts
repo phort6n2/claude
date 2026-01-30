@@ -2016,21 +2016,16 @@ async function runContentPipelineInternal(contentItemId: string): Promise<void> 
     }
 
     // ============ FINALIZE ============
-    const criticalSuccess = results.blog.success && results.images.success
-    const hasWordPress = results.wordpress.success || results.wordpress.skipped
-
-    // Determine final status
-    let finalStatus: 'PUBLISHED' | 'REVIEW' = 'PUBLISHED'
-    if (!hasWordPress) {
-      finalStatus = 'REVIEW' // Needs manual WordPress publishing
-    }
+    // Always set to PUBLISHED if we got this far (critical steps succeeded)
+    // No review process - content is automatically published
+    const finalStatus = 'PUBLISHED'
 
     await prisma.contentItem.update({
       where: { id: contentItemId },
       data: {
         status: finalStatus,
         pipelineStep: null,
-        publishedAt: finalStatus === 'PUBLISHED' ? new Date() : undefined,
+        publishedAt: new Date(),
       },
     })
 

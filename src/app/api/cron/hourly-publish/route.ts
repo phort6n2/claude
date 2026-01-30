@@ -83,12 +83,35 @@ export async function GET(request: NextRequest) {
   console.log(`[HourlyPublish] Running at ${now.toISOString()}`)
 
   try {
-    // TIMEZONE-AWARE SCHEDULING:
-    // Instead of matching UTC hour to a global slot, we check each client's
-    // local time against their preferred slot. This ensures clients publish
-    // at their expected local time regardless of timezone.
+    // STEP 1: Auto-assign slots to clients that have auto-scheduling enabled but no slots assigned
+    const clientsNeedingSlots = await prisma.client.findMany({
+      where: {
+        status: 'ACTIVE',
+        autoScheduleEnabled: true,
+        subscriptionStatus: { in: ['TRIAL', 'ACTIVE'] },
+        OR: [
+          { scheduleTimeSlot: null },
+          { scheduleDayPair: null },
+        ],
+      },
+      select: { id: true, businessName: true },
+    })
 
-    // Find ALL auto-schedule enabled clients
+    if (clientsNeedingSlots.length > 0) {
+      console.log(`[HourlyPublish] Auto-assigning slots to ${clientsNeedingSlots.length} clients...`)
+      const { assignSlotToClient } = await import('@/lib/automation/auto-scheduler')
+
+      for (const client of clientsNeedingSlots) {
+        try {
+          const slot = await assignSlotToClient(client.id)
+          console.log(`[HourlyPublish] Assigned ${client.businessName}: ${slot.dayPair} at slot ${slot.timeSlot}`)
+        } catch (slotErr) {
+          console.error(`[HourlyPublish] Failed to assign slot to ${client.businessName}:`, slotErr)
+        }
+      }
+    }
+
+    // STEP 2: Find ALL auto-schedule enabled clients (now including newly assigned ones)
     const allClients = await prisma.client.findMany({
       where: {
         status: 'ACTIVE',
