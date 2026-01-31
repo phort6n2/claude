@@ -250,13 +250,25 @@ export async function sendEnhancedConversion(params: {
   // Format customer ID (remove dashes)
   const customerId = params.customerId.replace(/-/g, '')
 
+  // Format datetime as yyyy-mm-dd hh:mm:ss+|-hh:mm (Google Ads required format)
+  const formatGoogleAdsDateTime = (date: Date): string => {
+    const pad = (n: number) => n.toString().padStart(2, '0')
+    const year = date.getUTCFullYear()
+    const month = pad(date.getUTCMonth() + 1)
+    const day = pad(date.getUTCDate())
+    const hours = pad(date.getUTCHours())
+    const minutes = pad(date.getUTCMinutes())
+    const seconds = pad(date.getUTCSeconds())
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}+00:00`
+  }
+
   // Build the conversion adjustment
   const conversionAdjustment = {
     adjustmentType: 'ENHANCEMENT',
     conversionAction: `customers/${customerId}/conversionActions/${params.conversionAction}`,
     gclidDateTimePair: {
       gclid: params.gclid,
-      conversionDateTime: params.conversionDateTime.toISOString().replace('Z', '+00:00'),
+      conversionDateTime: formatGoogleAdsDateTime(params.conversionDateTime),
     },
     userIdentifiers: userIdentifiers.map((id) => {
       if (id.hashedEmail) {
@@ -368,11 +380,23 @@ export async function sendOfflineConversion(params: {
   // Format customer ID (remove dashes)
   const customerId = params.customerId.replace(/-/g, '')
 
+  // Format datetime as yyyy-mm-dd hh:mm:ss+|-hh:mm (Google Ads required format)
+  const formatGoogleAdsDateTime = (date: Date): string => {
+    const pad = (n: number) => n.toString().padStart(2, '0')
+    const year = date.getUTCFullYear()
+    const month = pad(date.getUTCMonth() + 1)
+    const day = pad(date.getUTCDate())
+    const hours = pad(date.getUTCHours())
+    const minutes = pad(date.getUTCMinutes())
+    const seconds = pad(date.getUTCSeconds())
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}+00:00`
+  }
+
   // Build the click conversion
   const clickConversion = {
     gclid: params.gclid,
     conversionAction: `customers/${customerId}/conversionActions/${params.conversionAction}`,
-    conversionDateTime: params.conversionDateTime.toISOString().replace('Z', '+00:00'),
+    conversionDateTime: formatGoogleAdsDateTime(params.conversionDateTime),
     conversionValue: params.conversionValue,
     currencyCode: params.currencyCode || 'USD',
   }
