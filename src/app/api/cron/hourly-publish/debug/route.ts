@@ -64,6 +64,7 @@ export async function GET(request: NextRequest) {
     const issues: string[] = []
     let wouldRunNow = false
     let nextRunTime = 'N/A'
+    const clientId = client.id
 
     // Check subscription
     if (!['TRIAL', 'ACTIVE'].includes(client.subscriptionStatus || '')) {
@@ -111,6 +112,7 @@ export async function GET(request: NextRequest) {
     }
 
     return {
+      id: clientId,
       name: client.businessName,
       subscriptionStatus: client.subscriptionStatus,
       scheduleDayPair: client.scheduleDayPair,
