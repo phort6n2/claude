@@ -7,13 +7,75 @@ interface RouteContext {
 }
 
 /**
- * POST - Reassign a client's schedule slot
- * Clears current slot and assigns a new non-conflicting one
+ * GET - Show current slot OR reassign if ?action=reassign
  */
-export async function POST(request: NextRequest, { params }: RouteContext) {
+export async function GET(request: NextRequest, { params }: RouteContext) {
   try {
     const { id: clientId } = await params
+    const url = new URL(request.url)
+    const action = url.searchParams.get('action')
 
+    // If action=reassign, do the reassignment
+    if (action === 'reassign') {
+      return reassignSlot(clientId)
+    }
+
+    // Otherwise just show current assignment
+    const client = await prisma.client.findUnique({
+      where: { id: clientId },
+      select: {
+        id: true,
+        businessName: true,
+        scheduleDayPair: true,
+        scheduleTimeSlot: true,
+        autoScheduleEnabled: true,
+        subscriptionStatus: true,
+      },
+    })
+
+    if (!client) {
+      return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+    }
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const days = client.scheduleDayPair
+      ? DAY_PAIRS[client.scheduleDayPair as keyof typeof DAY_PAIRS]
+      : null
+
+    return NextResponse.json({
+      client: client.businessName,
+      autoScheduleEnabled: client.autoScheduleEnabled,
+      subscriptionStatus: client.subscriptionStatus,
+      schedule: client.scheduleDayPair ? {
+        dayPair: client.scheduleDayPair,
+        days: days ? `${dayNames[days.day1]} & ${dayNames[days.day2]}` : null,
+        timeSlot: client.scheduleTimeSlot,
+        time: client.scheduleTimeSlot !== null ? TIME_SLOTS[client.scheduleTimeSlot] : null,
+      } : null,
+      hint: 'Add ?action=reassign to this URL to reassign the slot',
+    })
+  } catch (error) {
+    console.error('Get slot error:', error)
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }, { status: 500 })
+  }
+}
+
+/**
+ * POST - Reassign a client's schedule slot
+ */
+export async function POST(request: NextRequest, { params }: RouteContext) {
+  const { id: clientId } = await params
+  return reassignSlot(clientId)
+}
+
+/**
+ * Shared logic to reassign a slot
+ */
+async function reassignSlot(clientId: string) {
+  try {
     // Get client
     const client = await prisma.client.findUnique({
       where: { id: clientId },
@@ -76,54 +138,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     })
   } catch (error) {
     console.error('Reassign slot error:', error)
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }, { status: 500 })
-  }
-}
-
-/**
- * GET - Show current slot assignment for a client
- */
-export async function GET(request: NextRequest, { params }: RouteContext) {
-  try {
-    const { id: clientId } = await params
-
-    const client = await prisma.client.findUnique({
-      where: { id: clientId },
-      select: {
-        id: true,
-        businessName: true,
-        scheduleDayPair: true,
-        scheduleTimeSlot: true,
-        autoScheduleEnabled: true,
-        subscriptionStatus: true,
-      },
-    })
-
-    if (!client) {
-      return NextResponse.json({ error: 'Client not found' }, { status: 404 })
-    }
-
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-    const days = client.scheduleDayPair
-      ? DAY_PAIRS[client.scheduleDayPair as keyof typeof DAY_PAIRS]
-      : null
-
-    return NextResponse.json({
-      client: client.businessName,
-      autoScheduleEnabled: client.autoScheduleEnabled,
-      subscriptionStatus: client.subscriptionStatus,
-      schedule: client.scheduleDayPair ? {
-        dayPair: client.scheduleDayPair,
-        days: days ? `${dayNames[days.day1]} & ${dayNames[days.day2]}` : null,
-        timeSlot: client.scheduleTimeSlot,
-        time: client.scheduleTimeSlot !== null ? TIME_SLOTS[client.scheduleTimeSlot] : null,
-      } : null,
-    })
-  } catch (error) {
-    console.error('Get slot error:', error)
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
