@@ -267,30 +267,71 @@ export async function sendEnhancedConversion(params: {
   }
 
   try {
-    const response = await fetch(
-      `${GOOGLE_ADS_API_BASE}/customers/${customerId}/conversionAdjustments:upload`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'developer-token': creds.developerToken,
-          'login-customer-id': creds.mccCustomerId.replace(/-/g, ''),
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          conversionAdjustments: [conversionAdjustment],
-          partialFailure: true,
-        }),
-      }
-    )
-
-    if (!response.ok) {
-      const error = await response.text()
-      console.error('Enhanced conversion upload failed:', error)
-      return { success: false, error: `API error: ${response.status}` }
+    const url = `${GOOGLE_ADS_API_BASE}/customers/${customerId}/conversionAdjustments:upload`
+    const requestBody = {
+      conversionAdjustments: [conversionAdjustment],
+      partialFailure: true,
     }
 
-    const result = await response.json()
+    console.log('[Enhanced Conversion] Sending request:', {
+      url,
+      customerId,
+      conversionAction: params.conversionAction,
+      hasEmail: !!params.email,
+      hasPhone: !!params.phone,
+      gclid: params.gclid?.substring(0, 20) + '...',
+    })
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'developer-token': creds.developerToken,
+        'login-customer-id': creds.mccCustomerId.replace(/-/g, ''),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    })
+
+    const responseText = await response.text()
+
+    if (!response.ok) {
+      console.error('[Enhanced Conversion] Upload failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        response: responseText.substring(0, 1000),
+        url,
+        customerId,
+        conversionAction: params.conversionAction,
+      })
+
+      // Try to parse error for more details
+      let errorDetail = `API error: ${response.status}`
+      try {
+        const errorJson = JSON.parse(responseText)
+        if (errorJson.error?.message) {
+          errorDetail = errorJson.error.message
+        } else if (errorJson.error?.details) {
+          errorDetail = JSON.stringify(errorJson.error.details)
+        }
+      } catch {
+        // Response wasn't JSON, might be HTML error page
+        if (responseText.includes('<!DOCTYPE')) {
+          errorDetail = `API error: ${response.status} - HTML error page returned (API endpoint may not be available)`
+        }
+      }
+
+      return { success: false, error: errorDetail }
+    }
+
+    // Parse successful response
+    let result
+    try {
+      result = responseText ? JSON.parse(responseText) : {}
+    } catch {
+      console.log('[Enhanced Conversion] Empty or non-JSON response, treating as success')
+      result = {}
+    }
 
     // Check for partial failures
     if (result.partialFailureError) {
