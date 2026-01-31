@@ -390,20 +390,39 @@ export async function listAccessibleCustomers(): Promise<{
     return { success: false, error: 'Google Ads not configured' }
   }
 
+  const url = `${GOOGLE_ADS_API_BASE}/customers:listAccessibleCustomers`
+
+  console.log('[Google Ads] listAccessibleCustomers request:', {
+    url,
+    hasAccessToken: !!accessToken,
+    accessTokenLength: accessToken?.length,
+    developerTokenFirstChars: creds.developerToken?.substring(0, 4) + '...',
+    developerTokenLength: creds.developerToken?.length,
+  })
+
   try {
-    const response = await fetch(
-      `${GOOGLE_ADS_API_BASE}/customers:listAccessibleCustomers`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'developer-token': creds.developerToken,
-        },
-      }
-    )
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'developer-token': creds.developerToken,
+      },
+    })
+
+    console.log('[Google Ads] listAccessibleCustomers response:', {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries()),
+    })
 
     if (!response.ok) {
       const error = await response.text()
+      const isHtmlError = error.includes('<!DOCTYPE') || error.includes('<html')
+      console.error('[Google Ads] listAccessibleCustomers error:', {
+        status: response.status,
+        isHtmlError,
+        errorPreview: error.substring(0, 300),
+      })
       return { success: false, error: `API error: ${response.status} - ${error}` }
     }
 
