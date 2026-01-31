@@ -212,7 +212,8 @@ export function formatPhoneE164(phone: string, countryCode = '1'): string {
 
 /**
  * Send Enhanced Conversion for a lead
- * This sends hashed email/phone to Google Ads when a lead is captured
+ * This sends hashed email/phone to Google Ads via uploadClickConversions
+ * (Enhanced Conversions for Leads - uses click conversions with user identifiers)
  */
 export async function sendEnhancedConversion(params: {
   customerId: string
@@ -232,16 +233,22 @@ export async function sendEnhancedConversion(params: {
     return { success: false, error: 'Google Ads not configured' }
   }
 
-  // Build user identifiers
-  const userIdentifiers: Array<{ hashedEmail?: string; hashedPhoneNumber?: string }> = []
+  // Build user identifiers (hashed email/phone for enhanced matching)
+  const userIdentifiers: Array<Record<string, string>> = []
 
   if (params.email) {
-    userIdentifiers.push({ hashedEmail: hashUserData(params.email) })
+    userIdentifiers.push({
+      userIdentifierSource: 'FIRST_PARTY',
+      hashedEmail: hashUserData(params.email),
+    })
   }
 
   if (params.phone) {
     const e164Phone = formatPhoneE164(params.phone)
-    userIdentifiers.push({ hashedPhoneNumber: hashUserData(e164Phone) })
+    userIdentifiers.push({
+      userIdentifierSource: 'FIRST_PARTY',
+      hashedPhoneNumber: hashUserData(e164Phone),
+    })
   }
 
   if (userIdentifiers.length === 0) {
@@ -263,27 +270,19 @@ export async function sendEnhancedConversion(params: {
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}+00:00`
   }
 
-  // Build the conversion adjustment
-  const conversionAdjustment = {
-    adjustmentType: 'ENHANCEMENT',
+  // Build the click conversion with user identifiers (Enhanced Conversions for Leads)
+  const clickConversion = {
+    gclid: params.gclid,
     conversionAction: `customers/${customerId}/conversionActions/${params.conversionAction}`,
+    conversionDateTime: formatGoogleAdsDateTime(params.conversionDateTime),
     orderId: params.orderId,
-    gclidDateTimePair: {
-      gclid: params.gclid,
-      conversionDateTime: formatGoogleAdsDateTime(params.conversionDateTime),
-    },
-    userIdentifiers: userIdentifiers.map((id) => {
-      if (id.hashedEmail) {
-        return { userIdentifierSource: 'FIRST_PARTY', hashedEmail: id.hashedEmail }
-      }
-      return { userIdentifierSource: 'FIRST_PARTY', hashedPhoneNumber: id.hashedPhoneNumber }
-    }),
+    userIdentifiers,
   }
 
   try {
-    const url = `${GOOGLE_ADS_API_BASE}/customers/${customerId}:uploadConversionAdjustments`
+    const url = `${GOOGLE_ADS_API_BASE}/customers/${customerId}:uploadClickConversions`
     const requestBody = {
-      conversionAdjustments: [conversionAdjustment],
+      conversions: [clickConversion],
       partialFailure: true,
     }
 
