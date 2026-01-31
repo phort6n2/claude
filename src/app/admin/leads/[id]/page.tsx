@@ -107,6 +107,9 @@ export default function LeadDetailPage() {
   const [showRawData, setShowRawData] = useState(false)
   const [showUtmParams, setShowUtmParams] = useState(false)
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [retrying, setRetrying] = useState(false)
+  const [retryError, setRetryError] = useState<string | null>(null)
+  const [retrySuccess, setRetrySuccess] = useState(false)
 
   // Copy to clipboard helper
   const copyToClipboard = async (text: string, field: string) => {
@@ -183,6 +186,36 @@ export default function LeadDetailPage() {
       console.error('Failed to delete:', error)
     } finally {
       setDeleting(false)
+    }
+  }
+
+  async function handleRetryConversion() {
+    setRetrying(true)
+    setRetryError(null)
+    setRetrySuccess(false)
+
+    try {
+      const response = await fetch(`/api/leads/${leadId}/retry-conversion`, {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        setRetrySuccess(true)
+        // Update local state
+        setLead((prev) => prev ? {
+          ...prev,
+          enhancedConversionSent: true,
+        } : null)
+        setTimeout(() => setRetrySuccess(false), 3000)
+      } else {
+        setRetryError(data.error || 'Failed to send conversion')
+      }
+    } catch (error) {
+      setRetryError(error instanceof Error ? error.message : 'Network error')
+    } finally {
+      setRetrying(false)
     }
   }
 
@@ -592,6 +625,20 @@ export default function LeadDetailPage() {
                 {/* Conversion Status */}
                 <div className="border-t pt-3 mt-3 space-y-2">
                   <p className="text-xs font-medium text-gray-500 mb-2">Sync Status</p>
+
+                  {/* Retry error/success messages */}
+                  {retryError && (
+                    <div className="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700 mb-2">
+                      {retryError}
+                    </div>
+                  )}
+                  {retrySuccess && (
+                    <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700 mb-2 flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Enhanced conversion sent successfully!
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-500">Enhanced (Email/Phone):</span>
                     {lead.enhancedConversionSent ? (
@@ -600,10 +647,26 @@ export default function LeadDetailPage() {
                         Sent
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
-                        <Clock className="h-3 w-3" />
-                        Pending
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                          <Clock className="h-3 w-3" />
+                          Pending
+                        </span>
+                        {lead.gclid && (lead.email || lead.phone) && (
+                          <button
+                            onClick={handleRetryConversion}
+                            disabled={retrying}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 disabled:opacity-50"
+                          >
+                            {retrying ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Zap className="h-3 w-3" />
+                            )}
+                            Retry
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                   <div className="flex items-center justify-between">
