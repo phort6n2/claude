@@ -410,7 +410,7 @@ export async function createVideoFromLink(params: LinkToVideoParams): Promise<Vi
     target_platform: params.targetPlatform || 'tiktok',
     target_audience: params.targetAudience || 'adults interested in auto services',
     language: params.language || 'en',
-    video_length: params.videoLength || 30,
+    video_length: params.videoLength || 15,
     aspect_ratio: params.aspectRatio || '9x16',
     script_style: params.scriptStyle || 'DiscoveryWriter',
     visual_style: params.visualStyle || 'AvatarBubbleTemplate',
@@ -626,7 +626,7 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
       // Map duration to valid video length
       const videoLength = (params.duration && [15, 30, 45, 60].includes(params.duration))
         ? params.duration as VideoLength
-        : 30
+        : 15
 
       // Create video from the link with explicit video_length
       return await createVideoFromLink({
@@ -664,10 +664,10 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
   const limitedScript = params.script.substring(0, maxScriptLength)
 
   if (params.script.length > maxScriptLength) {
-    console.warn(`⚠️ LIPSYNC SCRIPT TRUNCATED: Original ${params.script.length} chars, limited to ${maxScriptLength} chars for ~${params.duration || 30}s video`)
+    console.warn(`⚠️ LIPSYNC SCRIPT TRUNCATED: Original ${params.script.length} chars, limited to ${maxScriptLength} chars for ~${params.duration || 15}s video`)
   }
 
-  console.log(`Creating lipsync video with script length: ${limitedScript.length} chars (target: ~${params.duration || 30}s)`)
+  console.log(`Creating lipsync video with script length: ${limitedScript.length} chars (target: ~${params.duration || 15}s)`)
 
   const response = await fetch('https://api.creatify.ai/api/lipsyncs_v2/', {
     method: 'POST',
