@@ -20,6 +20,7 @@ import {
   User,
   Building2,
   ShieldX,
+  CheckCircle2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 
@@ -31,12 +32,15 @@ interface Lead {
   lastName: string | null
   status: string
   source: string
+  gclid: string | null
   saleValue: number | null
   saleDate: string | null
   saleNotes: string | null
   createdAt: string
   formName: string | null
   formData: Record<string, unknown> | null
+  enhancedConversionSent: boolean
+  offlineConversionSent: boolean
 }
 
 interface Client {
@@ -1061,7 +1065,7 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
       }`}
     >
       {/* Source & Status Badge */}
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex flex-wrap items-center gap-1.5 mb-2">
         {isPhoneLead && (
           <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
             <Phone className="h-3 w-3" />
@@ -1072,6 +1076,22 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
           <StatusIcon className="h-3 w-3" />
           {statusConfig.label}
         </div>
+        {lead.gclid && (
+          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
+            Google Ads
+          </div>
+        )}
+        {lead.enhancedConversionSent && (
+          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700" title="Lead synced to Google Ads">
+            <CheckCircle2 className="h-3 w-3" />
+          </div>
+        )}
+        {lead.offlineConversionSent && (
+          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700" title="Sale synced to Google Ads">
+            <DollarSign className="h-3 w-3" />
+            <CheckCircle2 className="h-3 w-3" />
+          </div>
+        )}
       </div>
 
       {/* Name */}
