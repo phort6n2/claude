@@ -352,16 +352,22 @@ export default function LeadsPage() {
                               Google Ads
                             </span>
                           )}
-                          {lead.gclid && lead.enhancedConversionSent && (
-                            <span className="text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded-lg flex items-center gap-1 font-medium">
+                          {lead.enhancedConversionSent && (
+                            <span className="text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg flex items-center gap-1 font-medium" title="Enhanced conversion sent to Google Ads">
                               <CheckCircle2 className="h-3 w-3" />
-                              Email Sent
+                              Lead Synced
                             </span>
                           )}
-                          {lead.gclid && lead.offlineConversionSent && (
-                            <span className="text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg flex items-center gap-1 font-medium">
+                          {lead.offlineConversionSent && (
+                            <span className="text-xs text-green-700 bg-green-50 px-2 py-1 rounded-lg flex items-center gap-1 font-medium" title="Sale conversion sent to Google Ads">
                               <CheckCircle2 className="h-3 w-3" />
-                              Sale Sent
+                              Sale Synced
+                            </span>
+                          )}
+                          {lead.saleValue && (
+                            <span className="text-xs text-violet-700 bg-violet-50 px-2 py-1 rounded-lg flex items-center gap-1 font-medium">
+                              <DollarSign className="h-3 w-3" />
+                              ${lead.saleValue.toLocaleString()}
                             </span>
                           )}
                         </div>
