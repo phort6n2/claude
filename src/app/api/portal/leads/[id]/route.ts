@@ -215,6 +215,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
                 conversionAction: googleAdsConfig.saleConversionActionId,
                 conversionDateTime: new Date(conversionDate),
                 conversionValue,
+                orderId: `${id}-sale`, // Unique identifier for this sale conversion
               })
 
               if (enhancedResult.success) {

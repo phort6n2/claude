@@ -95,6 +95,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       phone: lead.phone || undefined,
       conversionAction: conversionActionId,
       conversionDateTime: lead.createdAt, // Use original lead creation time
+      orderId: lead.id, // Unique identifier for this conversion
     })
 
     if (result.success) {

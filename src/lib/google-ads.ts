@@ -223,6 +223,7 @@ export async function sendEnhancedConversion(params: {
   conversionDateTime: Date
   conversionValue?: number
   currencyCode?: string
+  orderId: string // Required unique identifier (e.g., lead ID)
 }): Promise<{ success: boolean; error?: string }> {
   const accessToken = await getValidAccessToken()
   const creds = await getGoogleAdsCredentials()
@@ -266,6 +267,7 @@ export async function sendEnhancedConversion(params: {
   const conversionAdjustment = {
     adjustmentType: 'ENHANCEMENT',
     conversionAction: `customers/${customerId}/conversionActions/${params.conversionAction}`,
+    orderId: params.orderId,
     gclidDateTimePair: {
       gclid: params.gclid,
       conversionDateTime: formatGoogleAdsDateTime(params.conversionDateTime),

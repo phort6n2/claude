@@ -337,6 +337,7 @@ export async function POST(request: NextRequest) {
             phone: phone || undefined,
             conversionAction: conversionActionId,
             conversionDateTime: new Date(),
+            orderId: lead.id, // Unique identifier for this conversion
           })
 
           if (result.success) {
