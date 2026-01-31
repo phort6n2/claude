@@ -900,11 +900,8 @@ export async function getRandomAvatar(): Promise<AvatarBase | null> {
       return avatarsCache[randomIndex]
     }
 
-    // Fetch adult avatars suitable for professional content
-    const avatars = await getAvatars({
-      age_range: 'adult',
-      style: 'presenter',
-    })
+    // Fetch all available avatars for maximum variety
+    const avatars = await getAvatars()
 
     // Update cache
     avatarsCache = avatars
