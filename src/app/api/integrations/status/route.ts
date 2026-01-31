@@ -243,6 +243,7 @@ async function testGoogleAds(): Promise<{ success: boolean; message: string }> {
     const clientId = decrypt(config.oauthClientId)
     const clientSecret = decrypt(config.oauthClientSecret)
     const refreshToken = decrypt(config.refreshToken)
+    const developerToken = decrypt(config.developerToken)
 
     if (!clientId || !clientSecret || !refreshToken) {
       return { success: false, message: 'Failed to decrypt credentials' }
@@ -259,20 +260,43 @@ async function testGoogleAds(): Promise<{ success: boolean; message: string }> {
       }),
     })
 
-    if (tokenResponse.ok) {
+    if (!tokenResponse.ok) {
+      if (tokenResponse.status === 401 || tokenResponse.status === 400) {
+        return { success: false, message: 'Token expired - reconnect required' }
+      }
+      return { success: false, message: `OAuth error: ${tokenResponse.status}` }
+    }
+
+    const tokenData = await tokenResponse.json()
+    const accessToken = tokenData.access_token
+
+    // Now test the actual Google Ads API
+    const apiTestResponse = await fetch('https://googleads.googleapis.com/v19/customers:listAccessibleCustomers', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'developer-token': developerToken || '',
+      },
+    })
+
+    if (apiTestResponse.ok) {
+      const data = await apiTestResponse.json()
+      const customerCount = data.resourceNames?.length || 0
       return {
         success: true,
         message: config.mccCustomerId
-          ? `Connected - MCC ${config.mccCustomerId}`
-          : 'Connected',
+          ? `Connected - MCC ${config.mccCustomerId} (${customerCount} accounts)`
+          : `Connected (${customerCount} accounts)`,
       }
     }
 
-    if (tokenResponse.status === 401 || tokenResponse.status === 400) {
-      return { success: false, message: 'Token expired - reconnect required' }
+    // Check if we got HTML (API version issue)
+    const errorText = await apiTestResponse.text()
+    if (errorText.includes('<!DOCTYPE') || errorText.includes('<html')) {
+      return { success: false, message: `API error: ${apiTestResponse.status} - API version may be deprecated` }
     }
 
-    return { success: false, message: `Error: ${tokenResponse.status}` }
+    return { success: false, message: `API error: ${apiTestResponse.status}` }
   } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : 'Connection failed' }
   }
@@ -454,7 +478,7 @@ export async function POST(request: Request) {
   const { key } = await request.json()
 
   const apiKey = await getApiKey(key)
-  if (!apiKey && key !== 'PODBEAN_CLIENT_SECRET' && key !== 'DATAFORSEO_PASSWORD') {
+  if (!apiKey && key !== 'PODBEAN_CLIENT_SECRET' && key !== 'DATAFORSEO_PASSWORD' && key !== 'GOOGLE_ADS') {
     return NextResponse.json({
       success: false,
       message: 'Not configured',
