@@ -2,7 +2,7 @@ import crypto from 'crypto'
 import { prisma } from './db'
 import { encrypt, decrypt } from './encryption'
 
-const GOOGLE_ADS_API_VERSION = 'v18'
+const GOOGLE_ADS_API_VERSION = 'v19'
 const GOOGLE_ADS_API_BASE = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}`
 
 // OAuth endpoints
