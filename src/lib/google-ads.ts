@@ -541,25 +541,51 @@ async function searchStreamQuery(
   }
 
   const cleanCustomerId = customerId.replace(/-/g, '')
+  const cleanMccId = creds.mccCustomerId.replace(/-/g, '')
+  const url = `${GOOGLE_ADS_API_BASE}/customers/${cleanCustomerId}/googleAds:searchStream`
+
+  console.log('[Google Ads] searchStreamQuery:', {
+    url,
+    customerId: cleanCustomerId,
+    mccCustomerId: cleanMccId,
+    hasDeveloperToken: !!creds.developerToken,
+    developerTokenLength: creds.developerToken?.length,
+  })
 
   try {
-    const response = await fetch(
-      `${GOOGLE_ADS_API_BASE}/customers/${cleanCustomerId}/googleAds:searchStream`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'developer-token': creds.developerToken,
-          'login-customer-id': creds.mccCustomerId.replace(/-/g, ''),
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query }),
-      }
-    )
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'developer-token': creds.developerToken,
+        'login-customer-id': cleanMccId,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query }),
+    })
 
     if (!response.ok) {
       const error = await response.text()
-      return { success: false, error: `API error: ${response.status} - ${error}` }
+      const isHtmlError = error.includes('<!DOCTYPE') || error.includes('<html')
+
+      console.error('[Google Ads] API Error:', {
+        status: response.status,
+        isHtmlError,
+        customerId: cleanCustomerId,
+        mccCustomerId: cleanMccId,
+        // Don't log full HTML, just first 200 chars
+        errorPreview: error.substring(0, 200),
+      })
+
+      // Provide more helpful error messages for common issues
+      if (response.status === 404 && isHtmlError) {
+        return {
+          success: false,
+          error: `API error: 404 - Customer ${cleanCustomerId} not accessible. Check: 1) Developer token has production access, 2) MCC ${cleanMccId} manages this customer, 3) OAuth has correct permissions.`
+        }
+      }
+
+      return { success: false, error: `API error: ${response.status} - ${error.substring(0, 500)}` }
     }
 
     const data = await response.json()
