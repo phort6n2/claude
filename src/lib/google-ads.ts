@@ -512,7 +512,24 @@ export async function listConversionActions(customerId: string): Promise<{
       return { success: false, error: `API error ${response.status}: ${errorText}` }
     }
 
-    const data = await response.json()
+    // Handle potentially empty response
+    const responseText = await response.text()
+    if (!responseText || responseText.trim() === '') {
+      console.log('[Google Ads] Empty response from API, returning empty actions list')
+      return { success: true, actions: [] }
+    }
+
+    let data
+    try {
+      data = JSON.parse(responseText)
+    } catch (parseError) {
+      console.error('[Google Ads] Failed to parse response:', {
+        responseText: responseText.substring(0, 500),
+        error: parseError,
+      })
+      return { success: false, error: 'Invalid JSON response from Google Ads API' }
+    }
+
     const actions: Array<{ id: string; name: string; category: string }> = []
 
     for (const batch of data || []) {
