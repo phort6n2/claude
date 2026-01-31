@@ -390,20 +390,23 @@ export async function createVideoFromTemplate(params: CustomTemplateParams): Pro
  * This is the PREFERRED method for short videos because it supports video_length parameter
  * Costs 4 credits per 30s video
  *
- * NOTE: If no avatar is specified, a random avatar will be selected automatically
- * to ensure variety in videos rather than always using Creatify's default
+ * NOTE: If overrideAvatar is "random", a random avatar will be selected.
+ * If overrideAvatar is undefined/null, Creatify chooses its default.
  */
 export async function createVideoFromLink(params: LinkToVideoParams): Promise<VideoResult> {
   const { apiId, apiKey } = await getCredentialsAsync()
 
-  // Select a random avatar if none specified for variety
-  let avatarToUse = params.overrideAvatar
-  if (!avatarToUse) {
+  // Handle avatar selection: "random" triggers random selection, otherwise use specified or let Creatify decide
+  let avatarToUse: string | undefined = undefined
+  if (params.overrideAvatar === 'random') {
     const randomAvatar = await getRandomAvatar()
     if (randomAvatar) {
       avatarToUse = randomAvatar.id
     }
+  } else if (params.overrideAvatar) {
+    avatarToUse = params.overrideAvatar
   }
+  // If neither, avatarToUse stays undefined and Creatify chooses
 
   const requestBody: Record<string, unknown> = {
     link: params.linkId,
@@ -449,7 +452,7 @@ export async function createVideoFromLink(params: LinkToVideoParams): Promise<Vi
     script_style: requestBody.script_style,
     model_version: requestBody.model_version,
     override_avatar: avatarToUse || 'none (Creatify default)',
-    avatar_source: params.overrideAvatar ? 'client-specified' : (avatarToUse ? 'random-selection' : 'creatify-default'),
+    avatar_source: params.overrideAvatar === 'random' ? 'random-selection' : (params.overrideAvatar ? 'client-specified' : 'creatify-default'),
     override_voice: requestBody.override_voice || 'default',
     no_cta: requestBody.no_cta || false,
   })

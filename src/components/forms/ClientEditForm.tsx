@@ -1886,6 +1886,7 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                     disabled={loadingCreatify}
                   >
                     <option value="">Default (Creatify chooses)</option>
+                    <option value="random">Random (different each video)</option>
                     {/* Sort avatars alphabetically by name */}
                     {[...creatifyAvatars]
                       .sort((a, b) => a.name.localeCompare(b.name))
