@@ -267,7 +267,7 @@ export async function sendEnhancedConversion(params: {
   }
 
   try {
-    const url = `${GOOGLE_ADS_API_BASE}/customers/${customerId}/conversionAdjustments:upload`
+    const url = `${GOOGLE_ADS_API_BASE}/customers/${customerId}:uploadConversionAdjustments`
     const requestBody = {
       conversionAdjustments: [conversionAdjustment],
       partialFailure: true,
