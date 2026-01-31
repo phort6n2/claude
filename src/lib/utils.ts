@@ -19,6 +19,7 @@ export function formatDate(date: Date | string): string {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    timeZone: 'America/Denver', // Mountain Time
   }).format(new Date(date))
 }
 
@@ -29,6 +30,7 @@ export function formatDateTime(date: Date | string): string {
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
+    timeZone: 'America/Denver', // Mountain Time
   }).format(new Date(date))
 }
 
