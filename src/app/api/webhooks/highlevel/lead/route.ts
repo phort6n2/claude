@@ -314,20 +314,28 @@ export async function POST(request: NextRequest) {
           where: { clientId: client.id },
         })
 
+        // Determine which conversion action to use based on lead source
+        const conversionActionId = leadSource === 'PHONE'
+          ? googleAdsConfig?.callConversionActionId
+          : googleAdsConfig?.formConversionActionId
+
         console.log(`[HighLevel Webhook] Google Ads config for ${client.businessName}:`, {
           hasConfig: !!googleAdsConfig,
           isActive: googleAdsConfig?.isActive,
-          hasLeadConversionActionId: !!googleAdsConfig?.leadConversionActionId,
+          leadSource,
+          conversionActionId,
+          formConversionActionId: googleAdsConfig?.formConversionActionId,
+          callConversionActionId: googleAdsConfig?.callConversionActionId,
           customerId: googleAdsConfig?.customerId,
         })
 
-        if (googleAdsConfig?.isActive && googleAdsConfig.leadConversionActionId) {
+        if (googleAdsConfig?.isActive && conversionActionId) {
           const result = await sendEnhancedConversion({
             customerId: googleAdsConfig.customerId,
             gclid,
             email: email || undefined,
             phone: phone || undefined,
-            conversionAction: googleAdsConfig.leadConversionActionId,
+            conversionAction: conversionActionId,
             conversionDateTime: new Date(),
           })
 
@@ -358,7 +366,9 @@ export async function POST(request: NextRequest) {
             ? 'No Google Ads config for client'
             : !googleAdsConfig.isActive
             ? 'Google Ads config is not active'
-            : 'No leadConversionActionId configured'
+            : leadSource === 'PHONE'
+            ? 'No callConversionActionId configured'
+            : 'No formConversionActionId configured'
           console.log(`[HighLevel Webhook] Enhanced conversion skipped for lead ${lead.id}: ${reason}`)
         }
       } catch (err) {

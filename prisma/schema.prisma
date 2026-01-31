@@ -1235,8 +1235,12 @@ model ClientGoogleAds {
   customerId String // Format: xxx-xxx-xxxx
 
   // Conversion Actions (for offline import)
-  leadConversionActionId String? // Conversion action for new leads
-  saleConversionActionId String? // Conversion action for sales
+  formConversionActionId String? // Conversion action for form submissions
+  callConversionActionId String? // Conversion action for phone calls
+  saleConversionActionId String? // Conversion action for sales (offline)
+
+  // Legacy field - migrate to formConversionActionId
+  leadConversionActionId String? // @deprecated - use formConversionActionId or callConversionActionId
 
   // Status
   isActive   Boolean   @default(true)
