@@ -72,11 +72,15 @@ interface SlotAssignment {
 /**
  * Count how many clients are assigned to each day pair and time slot.
  * Returns a map of usage counts to find least loaded slots.
+ *
+ * IMPORTANT: We track dayHourUsage to prevent conflicts where two different
+ * day pairs share the same day (e.g., MON_WED and WED_FRI both include Wednesday)
  */
 async function getSlotUsage(): Promise<{
   dayPairCounts: Record<DayPairKey, number>
   slotCounts: Record<string, number> // "DAY_PAIR:SLOT" -> count
   dayUsage: Record<number, number> // day of week -> count
+  dayHourUsage: Record<string, number> // "DAY:SLOT" -> count (prevents same-day conflicts)
 }> {
   const clients = await prisma.client.findMany({
     where: {
@@ -93,6 +97,7 @@ async function getSlotUsage(): Promise<{
   const dayPairCounts: Record<string, number> = {}
   const slotCounts: Record<string, number> = {}
   const dayUsage: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+  const dayHourUsage: Record<string, number> = {} // Track "day:slot" conflicts
 
   for (const client of clients) {
     const dayPair = client.scheduleDayPair as DayPairKey
@@ -107,8 +112,16 @@ async function getSlotUsage(): Promise<{
 
     // Count per-day usage (for checking 5-client-per-day limit)
     if (DAY_PAIRS[dayPair]) {
-      dayUsage[DAY_PAIRS[dayPair].day1] = (dayUsage[DAY_PAIRS[dayPair].day1] || 0) + 1
-      dayUsage[DAY_PAIRS[dayPair].day2] = (dayUsage[DAY_PAIRS[dayPair].day2] || 0) + 1
+      const { day1, day2 } = DAY_PAIRS[dayPair]
+      dayUsage[day1] = (dayUsage[day1] || 0) + 1
+      dayUsage[day2] = (dayUsage[day2] || 0) + 1
+
+      // Track day:slot usage to prevent conflicts across different day pairs
+      // e.g., MON_WED:slot0 and WED_FRI:slot0 both occupy Wednesday:slot0
+      const day1HourKey = `${day1}:${slot}`
+      const day2HourKey = `${day2}:${slot}`
+      dayHourUsage[day1HourKey] = (dayHourUsage[day1HourKey] || 0) + 1
+      dayHourUsage[day2HourKey] = (dayHourUsage[day2HourKey] || 0) + 1
     }
   }
 
@@ -116,6 +129,7 @@ async function getSlotUsage(): Promise<{
     dayPairCounts: dayPairCounts as Record<DayPairKey, number>,
     slotCounts,
     dayUsage,
+    dayHourUsage,
   }
 }
 
@@ -142,9 +156,12 @@ function getAllowedSlotRange(dayPair: DayPairKey): { min: TimeSlotIndex; max: Ti
  * Find the best available slot for a new client.
  * Prioritizes day pairs where both days have capacity.
  * Assigns to morning or evening shift based on day pair to avoid 24h conflicts.
+ *
+ * CRITICAL: Prevents same day+hour conflicts across different day pairs
+ * (e.g., won't assign WED_FRI:slot0 if MON_WED:slot0 already exists, since Wednesday conflicts)
  */
 export async function findBestSlot(): Promise<SlotAssignment> {
-  const { dayPairCounts, slotCounts, dayUsage } = await getSlotUsage()
+  const { dayPairCounts, slotCounts, dayUsage, dayHourUsage } = await getSlotUsage()
 
   // Find day pairs where both days have capacity
   const availablePairs: { pair: DayPairKey; totalUsage: number }[] = []
@@ -165,26 +182,47 @@ export async function findBestSlot(): Promise<SlotAssignment> {
   // Sort by least used
   availablePairs.sort((a, b) => a.totalUsage - b.totalUsage)
 
-  // Default to TUE_THU if nothing available
-  const selectedPair = availablePairs[0]?.pair || 'TUE_THU'
+  // Try each available pair and find a slot that doesn't conflict
+  for (const { pair: selectedPair } of availablePairs) {
+    const { min: minSlot, max: maxSlot } = getAllowedSlotRange(selectedPair)
+    const { day1, day2 } = DAY_PAIRS[selectedPair]
 
-  // Get allowed slot range for this day pair (morning or evening)
-  const { min: minSlot, max: maxSlot } = getAllowedSlotRange(selectedPair)
+    // Find the first slot where NEITHER day has a conflict
+    for (let slot = minSlot; slot <= maxSlot; slot++) {
+      const day1HourKey = `${day1}:${slot}`
+      const day2HourKey = `${day2}:${slot}`
+      const day1Conflicts = dayHourUsage[day1HourKey] || 0
+      const day2Conflicts = dayHourUsage[day2HourKey] || 0
 
-  // Find least used time slot within the allowed range
-  let bestSlot: TimeSlotIndex = minSlot as TimeSlotIndex
-  let minUsage = Infinity
+      // Only use this slot if BOTH days are free at this hour
+      if (day1Conflicts === 0 && day2Conflicts === 0) {
+        return { dayPair: selectedPair, timeSlot: slot as TimeSlotIndex }
+      }
+    }
 
-  for (let slot = minSlot; slot <= maxSlot; slot++) {
-    const slotKey = `${selectedPair}:${slot}`
-    const usage = slotCounts[slotKey] || 0
-    if (usage < minUsage) {
-      minUsage = usage
-      bestSlot = slot as TimeSlotIndex
+    // If no completely free slot, find the least conflicted one
+    let bestSlot: TimeSlotIndex = minSlot as TimeSlotIndex
+    let minConflicts = Infinity
+
+    for (let slot = minSlot; slot <= maxSlot; slot++) {
+      const day1HourKey = `${day1}:${slot}`
+      const day2HourKey = `${day2}:${slot}`
+      const totalConflicts = (dayHourUsage[day1HourKey] || 0) + (dayHourUsage[day2HourKey] || 0)
+
+      if (totalConflicts < minConflicts) {
+        minConflicts = totalConflicts
+        bestSlot = slot as TimeSlotIndex
+      }
+    }
+
+    // If we found something with minimal conflicts, use it
+    if (minConflicts < Infinity) {
+      return { dayPair: selectedPair, timeSlot: bestSlot }
     }
   }
 
-  return { dayPair: selectedPair, timeSlot: bestSlot }
+  // Fallback: TUE_THU at slot 5 (1 PM) - evening shift, least likely to conflict
+  return { dayPair: 'TUE_THU', timeSlot: 5 }
 }
 
 /**
