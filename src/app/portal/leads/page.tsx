@@ -594,11 +594,9 @@ function LeadRow({
 
           {/* Status & Time */}
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
-            {lead.status !== 'NEW' && (
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}>
-                {statusConfig.label}
-              </span>
-            )}
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}>
+              {statusConfig.label}
+            </span>
             <span className="text-xs text-gray-500">
               {new Date(lead.createdAt).toLocaleTimeString('en-US', {
                 hour: 'numeric',
