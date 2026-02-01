@@ -191,6 +191,37 @@ export default function StandaloneMasterLeadsPage() {
     loadLeads(true)
   }, [loadLeads])
 
+  // Auto-refresh every 30 seconds when viewing today's leads
+  useEffect(() => {
+    const today = new Date()
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
+    // Only auto-refresh if viewing today's date
+    if (selectedDate !== todayStr || !selectedClientId || !authenticated) {
+      return
+    }
+
+    const interval = setInterval(() => {
+      loadLeads(false) // Silent refresh
+    }, 30000) // 30 seconds
+
+    return () => clearInterval(interval)
+  }, [selectedDate, selectedClientId, authenticated, loadLeads])
+
+  // Listen for messages from service worker (notification clicks)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'NEW_LEAD') {
+        loadLeads(false) // Refresh leads when notification is clicked
+      }
+    }
+
+    navigator.serviceWorker?.addEventListener('message', handleMessage)
+    return () => {
+      navigator.serviceWorker?.removeEventListener('message', handleMessage)
+    }
+  }, [loadLeads])
+
   // Pull-to-refresh
   const { isRefreshing, pullDistance, threshold } = usePullToRefresh({
     onRefresh: async () => {
