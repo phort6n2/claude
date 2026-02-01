@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import {
   Phone,
   Mail,
-  Calendar,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -279,63 +278,58 @@ export default function StandaloneMasterLeadsPage() {
 
       {selectedClientId ? (
         <>
-          {/* Date Navigation */}
+          {/* Date Navigation + Sales Stats - Compact */}
           <div className="bg-white border-b sticky top-[57px] z-30">
-            <div className="max-w-3xl mx-auto px-4 py-3">
-              <div className="flex items-center justify-center gap-2">
-                <button
-                  onClick={() => changeDate(-1)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
+            <div className="max-w-3xl mx-auto px-4 py-2">
+              <div className="flex items-center justify-between">
+                {/* Date Nav */}
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => changeDate(-1)}
+                    className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setShowCalendar(!showCalendar)}
+                    className="flex items-center gap-1 px-2 py-1 hover:bg-gray-100 rounded-lg transition-colors text-gray-900"
+                  >
+                    <span className="text-sm font-medium">{formatDateDisplay(selectedDate)}</span>
+                    <ChevronDown className={`h-3 w-3 transition-transform ${showCalendar ? 'rotate-180' : ''}`} />
+                  </button>
+                  <button
+                    onClick={() => changeDate(1)}
+                    className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => setShowCalendar(!showCalendar)}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors min-w-[160px] justify-center text-gray-900"
-                >
-                  <Calendar className="h-4 w-4" />
-                  <span className="font-medium">{formatDateDisplay(selectedDate)}</span>
-                  <ChevronDown className={`h-4 w-4 transition-transform ${showCalendar ? 'rotate-180' : ''}`} />
-                </button>
-
-                <button
-                  onClick={() => changeDate(1)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
+                {/* Compact Sales Stats */}
+                {sales && (
+                  <div className="flex items-center gap-3 text-xs">
+                    <div className="text-center">
+                      <span className="text-gray-500">Today</span>
+                      <span className="ml-1 font-semibold text-emerald-600">${sales.today.total.toLocaleString()}</span>
+                    </div>
+                    <div className="text-center">
+                      <span className="text-gray-500">Week</span>
+                      <span className="ml-1 font-semibold text-emerald-600">${sales.week.total.toLocaleString()}</span>
+                    </div>
+                    <div className="text-center">
+                      <span className="text-gray-500">Month</span>
+                      <span className="ml-1 font-semibold text-emerald-600">${sales.month.total.toLocaleString()}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Sales Stats */}
-          {sales && (
-            <div className="max-w-3xl mx-auto px-4 py-3">
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-                  <p className="text-xs text-gray-500 mb-1">Today</p>
-                  <p className="text-lg font-bold text-emerald-600">${sales.today.total.toLocaleString()}</p>
-                  <p className="text-xs text-gray-500">{sales.today.count} sale{sales.today.count !== 1 ? 's' : ''}</p>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-                  <p className="text-xs text-gray-500 mb-1">This Week</p>
-                  <p className="text-lg font-bold text-emerald-600">${sales.week.total.toLocaleString()}</p>
-                  <p className="text-xs text-gray-500">{sales.week.count} sale{sales.week.count !== 1 ? 's' : ''}</p>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-                  <p className="text-xs text-gray-500 mb-1">This Month</p>
-                  <p className="text-lg font-bold text-emerald-600">${sales.month.total.toLocaleString()}</p>
-                  <p className="text-xs text-gray-500">{sales.month.count} sale{sales.month.count !== 1 ? 's' : ''}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Lead Count */}
-          <div className="max-w-3xl mx-auto px-4 py-2">
-            <p className="text-sm text-gray-700">
-              {loading ? 'Loading...' : `${leads.length} lead${leads.length !== 1 ? 's' : ''} on ${formatDateDisplay(selectedDate)}`}
+          <div className="max-w-3xl mx-auto px-4 py-1.5">
+            <p className="text-xs text-gray-600">
+              {loading ? 'Loading...' : `${leads.length} lead${leads.length !== 1 ? 's' : ''}`}
             </p>
           </div>
 
