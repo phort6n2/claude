@@ -174,26 +174,26 @@ export default function PortalLeadsPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 overflow-x-hidden">
-      {/* Header */}
+      {/* Header - Compact */}
       <header className="bg-white border-b sticky top-0 z-40">
-        <div className="max-w-3xl mx-auto px-4 py-3">
+        <div className="max-w-3xl mx-auto px-4 py-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <HeaderLogo
                 logoUrl={session.user?.logoUrl}
                 businessName={session.user?.businessName || ''}
                 primaryColor={session.user?.primaryColor}
+                size="sm"
               />
               <div>
-                <h1 className="text-lg font-bold text-gray-900">{session.user?.businessName}</h1>
-                <p className="text-xs text-gray-600">Lead Portal</p>
+                <h1 className="text-base font-bold text-gray-900 leading-tight">{session.user?.businessName}</h1>
+                <p className="text-[10px] text-gray-500">Lead Portal</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <NotificationToggle />
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline ml-2">Logout</span>
+              <Button variant="outline" size="sm" onClick={handleLogout} className="h-8 px-2">
+                <LogOut className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
@@ -201,7 +201,7 @@ export default function PortalLeadsPage() {
       </header>
 
       {/* Date Navigation + Sales Stats - Compact */}
-      <div className="bg-white border-b sticky top-[57px] z-30">
+      <div className="bg-white border-b sticky top-[49px] z-30">
         <div className="max-w-3xl mx-auto px-4 py-2">
           <div className="flex items-center justify-between">
             {/* Date Nav */}
@@ -385,18 +385,21 @@ export default function PortalLeadsPage() {
 function HeaderLogo({
   logoUrl,
   businessName,
-  primaryColor
+  primaryColor,
+  size = 'md'
 }: {
   logoUrl: string | null | undefined
   businessName: string
   primaryColor: string | null | undefined
+  size?: 'sm' | 'md'
 }) {
   const [imageError, setImageError] = useState(false)
+  const sizeClasses = size === 'sm' ? 'h-8 w-8 text-sm' : 'h-10 w-10 text-lg'
 
   if (!logoUrl || imageError) {
     return (
       <div
-        className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
+        className={`${sizeClasses} rounded-full flex items-center justify-center text-white font-bold flex-shrink-0`}
         style={{ backgroundColor: primaryColor || '#1e40af' }}
       >
         {businessName[0] || '?'}
@@ -408,7 +411,7 @@ function HeaderLogo({
     <img
       src={logoUrl}
       alt={businessName}
-      className="h-10 w-10 rounded-full object-cover flex-shrink-0"
+      className={`${sizeClasses} rounded-full object-cover flex-shrink-0`}
       onError={() => setImageError(true)}
     />
   )
