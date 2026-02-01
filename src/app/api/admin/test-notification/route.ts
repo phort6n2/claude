@@ -7,12 +7,18 @@ export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/admin/test-notification - Test push notifications
+ * Can authenticate via session or ?key=glassleads2024
  */
 export async function GET(request: NextRequest) {
+  // Allow key-based auth as fallback
+  const key = request.nextUrl.searchParams.get('key')
   const session = await auth()
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+
+  if (key !== 'glassleads2024' && !session?.user?.email) {
+    return NextResponse.json({ error: 'Not authenticated. Add ?key=glassleads2024 to URL' }, { status: 401 })
   }
+
+  const userEmail = session?.user?.email || process.env.MASTER_LEADS_EMAIL
 
   try {
     // Check if tables exist
@@ -33,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     // Get user
     const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+      where: { email: userEmail },
     })
 
     if (!user) {
