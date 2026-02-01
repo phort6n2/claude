@@ -235,7 +235,7 @@ export default function StandaloneMasterLeadsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 overflow-x-hidden">
       {/* Header with Client Selector */}
       <header className="bg-white border-b sticky top-0 z-40">
         <div className="max-w-3xl mx-auto px-4 py-3">
