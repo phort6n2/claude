@@ -1,17 +1,17 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { auth } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * GET /api/admin/add-quote-value-column
+ * GET /api/admin/add-quote-value-column?key=glassleads2024
  * Adds the quoteValue column to the Lead table if it doesn't exist
  */
-export async function GET() {
-  const session = await auth()
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+export async function GET(request: NextRequest) {
+  // Simple key check for one-time migration
+  const key = request.nextUrl.searchParams.get('key')
+  if (key !== 'glassleads2024') {
+    return NextResponse.json({ error: 'Invalid key' }, { status: 401 })
   }
 
   try {
