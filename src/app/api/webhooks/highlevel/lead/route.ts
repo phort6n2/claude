@@ -265,6 +265,29 @@ export async function POST(request: NextRequest) {
 
     const leadSource = isPhoneCall ? 'PHONE' : 'FORM'
 
+    // Enhanced logging for phone calls - look for recording URL
+    if (isPhoneCall) {
+      console.log(`[HighLevel Webhook] PHONE LEAD DETECTED - Looking for recording data:`, {
+        call: payload.call,
+        phone_call: payload.phone_call,
+        recording: payload.recording,
+        recordingUrl: payload.recordingUrl,
+        recording_url: payload.recording_url,
+        audioUrl: payload.audioUrl,
+        audio_url: payload.audio_url,
+        callRecording: payload.callRecording,
+        call_recording: payload.call_recording,
+        message: payload.message,
+        messageId: payload.messageId,
+        message_id: payload.message_id,
+        conversationId: payload.conversationId,
+        conversation_id: payload.conversation_id,
+        // Check nested objects
+        callObject: payload.call ? JSON.stringify(payload.call) : null,
+        messageObject: payload.message ? JSON.stringify(payload.message) : null,
+      })
+    }
+
     // Create the lead
     const lead = await prisma.lead.create({
       data: {
