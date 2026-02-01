@@ -495,17 +495,20 @@ function getLeadDetails(lead: Lead) {
   }
 
   const service = getField(['interested_in', 'Interested In:', 'Interested In'])
-  const year = getField(['vehicle_year', 'Vehicle Year'])
-  const make = getField(['vehicle_make', 'Vehicle Make'])
-  const model = getField(['vehicle_model', 'Vehicle Model'])
+  // Check for combined vehicle field first, then fall back to separate fields
+  let vehicle = getField(['vehicle', 'Vehicle'])
+  if (!vehicle) {
+    const year = getField(['vehicle_year', 'Vehicle Year'])
+    const make = getField(['vehicle_make', 'Vehicle Make'])
+    const model = getField(['vehicle_model', 'Vehicle Model'])
+    const vehicleParts = [year, make, model].filter(Boolean)
+    vehicle = vehicleParts.length > 0 ? vehicleParts.join(' ') : null
+  }
   const vin = getField(['vin', 'VIN', 'Vin'])
   const zipCode = getField(['postal_code', 'postalCode'])
   const insuranceHelp = getField(['insurance_help', 'Would You Like Us To Help Navigate Your Insurance Claim For You?', 'radio_3s0t'])
 
-  const vehicleParts = [year, make, model].filter(Boolean)
-  const vehicle = vehicleParts.length > 0 ? vehicleParts.join(' ') : null
-
-  return { service, vehicle, year, make, model, vin, zipCode, insuranceHelp }
+  return { service, vehicle, vin, zipCode, insuranceHelp }
 }
 
 // Helper to get all form data fields for display
@@ -577,9 +580,7 @@ function LeadRow({
   const [showEditInfo, setShowEditInfo] = useState(false)
   const [editFirstName, setEditFirstName] = useState(lead.firstName || '')
   const [editLastName, setEditLastName] = useState(lead.lastName || '')
-  const [editVehicleYear, setEditVehicleYear] = useState(details.year || '')
-  const [editVehicleMake, setEditVehicleMake] = useState(details.make || '')
-  const [editVehicleModel, setEditVehicleModel] = useState(details.model || '')
+  const [editVehicle, setEditVehicle] = useState(details.vehicle || '')
   const [editService, setEditService] = useState(details.service || '')
 
   // Reset edit state when lead changes
@@ -588,11 +589,9 @@ function LeadRow({
     setEditSaleValue(lead.saleValue?.toString() || '')
     setEditFirstName(lead.firstName || '')
     setEditLastName(lead.lastName || '')
-    setEditVehicleYear(details.year || '')
-    setEditVehicleMake(details.make || '')
-    setEditVehicleModel(details.model || '')
+    setEditVehicle(details.vehicle || '')
     setEditService(details.service || '')
-  }, [lead, details.year, details.make, details.model, details.service])
+  }, [lead, details.vehicle, details.service])
 
   async function handleQuickSave() {
     setSaving(true)
@@ -624,9 +623,7 @@ function LeadRow({
         body: JSON.stringify({
           firstName: editFirstName || null,
           lastName: editLastName || null,
-          vehicleYear: editVehicleYear || null,
-          vehicleMake: editVehicleMake || null,
-          vehicleModel: editVehicleModel || null,
+          vehicle: editVehicle || null,
           interestedIn: editService || null,
         }),
       })
@@ -647,9 +644,7 @@ function LeadRow({
   const hasInfoChanges =
     editFirstName !== (lead.firstName || '') ||
     editLastName !== (lead.lastName || '') ||
-    editVehicleYear !== (details.year || '') ||
-    editVehicleMake !== (details.make || '') ||
-    editVehicleModel !== (details.model || '') ||
+    editVehicle !== (details.vehicle || '') ||
     editService !== (details.service || '')
 
   // Border color: orange for calls, blue for forms
@@ -810,38 +805,16 @@ function LeadRow({
                       className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     />
                   </div>
-                  {/* Vehicle fields */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Year</label>
-                      <input
-                        type="text"
-                        value={editVehicleYear}
-                        onChange={(e) => setEditVehicleYear(e.target.value)}
-                        placeholder="2024"
-                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Make</label>
-                      <input
-                        type="text"
-                        value={editVehicleMake}
-                        onChange={(e) => setEditVehicleMake(e.target.value)}
-                        placeholder="Toyota"
-                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Model</label>
-                      <input
-                        type="text"
-                        value={editVehicleModel}
-                        onChange={(e) => setEditVehicleModel(e.target.value)}
-                        placeholder="Camry"
-                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      />
-                    </div>
+                  {/* Vehicle field */}
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Vehicle</label>
+                    <input
+                      type="text"
+                      value={editVehicle}
+                      onChange={(e) => setEditVehicle(e.target.value)}
+                      placeholder="2024 Toyota Camry"
+                      className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
                   </div>
                   {/* Save button */}
                   {hasInfoChanges && (
