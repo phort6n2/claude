@@ -327,8 +327,9 @@ export async function POST(request: NextRequest) {
       console.error(`[HighLevel Webhook] Failed to send push notification:`, err)
     })
 
-    // Send Enhanced Conversion to Google Ads if GCLID is present
-    if (gclid && (email || phone)) {
+    // Send Enhanced Conversion to Google Ads if we have user data (email or phone)
+    // Note: GCLID is optional - Google can match conversions via hashed user data alone
+    if (email || phone) {
       try {
         // Get client's Google Ads config
         const googleAdsConfig = await prisma.clientGoogleAds.findUnique({
@@ -348,12 +349,13 @@ export async function POST(request: NextRequest) {
           formConversionActionId: googleAdsConfig?.formConversionActionId,
           callConversionActionId: googleAdsConfig?.callConversionActionId,
           customerId: googleAdsConfig?.customerId,
+          hasGclid: !!gclid,
         })
 
         if (googleAdsConfig?.isActive && conversionActionId) {
           const result = await sendEnhancedConversion({
             customerId: googleAdsConfig.customerId,
-            gclid,
+            gclid: gclid || undefined, // Optional - will be included if present
             email: email || undefined,
             phone: phone || undefined,
             conversionAction: conversionActionId,
@@ -371,7 +373,7 @@ export async function POST(request: NextRequest) {
                 googleSyncError: null, // Clear any previous error
               },
             })
-            console.log(`[HighLevel Webhook] Enhanced conversion sent for lead ${lead.id}`)
+            console.log(`[HighLevel Webhook] Enhanced conversion sent for lead ${lead.id} (gclid: ${gclid ? 'yes' : 'no'})`)
           } else {
             // Track the failure for retry
             await prisma.lead.update({
@@ -406,7 +408,7 @@ export async function POST(request: NextRequest) {
         console.error(`[HighLevel Webhook] Enhanced conversion error:`, {
           leadId: lead.id,
           client: client.businessName,
-          gclid,
+          gclid: gclid || 'none',
           error: errorMessage,
         })
       }

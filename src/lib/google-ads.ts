@@ -214,10 +214,13 @@ export function formatPhoneE164(phone: string, countryCode = '1'): string {
  * Send Enhanced Conversion for a lead
  * This sends hashed email/phone to Google Ads via uploadClickConversions
  * (Enhanced Conversions for Leads - uses click conversions with user identifiers)
+ *
+ * Note: GCLID is optional. Google can still match conversions using hashed
+ * email/phone data even without a click ID, providing better measurement coverage.
  */
 export async function sendEnhancedConversion(params: {
   customerId: string
-  gclid: string
+  gclid?: string // Optional - conversions can be matched via user identifiers alone
   email?: string
   phone?: string
   conversionAction: string
@@ -271,12 +274,17 @@ export async function sendEnhancedConversion(params: {
   }
 
   // Build the click conversion with user identifiers (Enhanced Conversions for Leads)
-  const clickConversion = {
-    gclid: params.gclid,
+  // GCLID is optional - Google can match via user identifiers alone
+  const clickConversion: Record<string, unknown> = {
     conversionAction: `customers/${customerId}/conversionActions/${params.conversionAction}`,
     conversionDateTime: formatGoogleAdsDateTime(params.conversionDateTime),
     orderId: params.orderId,
     userIdentifiers,
+  }
+
+  // Only include gclid if present
+  if (params.gclid) {
+    clickConversion.gclid = params.gclid
   }
 
   try {
@@ -292,7 +300,8 @@ export async function sendEnhancedConversion(params: {
       conversionAction: params.conversionAction,
       hasEmail: !!params.email,
       hasPhone: !!params.phone,
-      gclid: params.gclid?.substring(0, 20) + '...',
+      hasGclid: !!params.gclid,
+      gclid: params.gclid ? params.gclid.substring(0, 20) + '...' : 'none',
     })
 
     const response = await fetch(url, {

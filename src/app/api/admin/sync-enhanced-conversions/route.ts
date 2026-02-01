@@ -11,10 +11,12 @@ export const maxDuration = 300 // 5 minutes for bulk operations
  *
  * Bulk sync enhanced conversions for leads from the last X days.
  * Only processes leads that:
- * - Have a GCLID (came from Google Ads)
- * - Have email or phone
+ * - Have email or phone (user-provided data for matching)
  * - Haven't already had enhanced conversion sent
  * - Have a client with active Google Ads config
+ *
+ * Note: GCLID is optional. Google can match conversions using hashed
+ * email/phone data even without a click ID, providing better measurement.
  */
 export async function GET(request: NextRequest) {
   const session = await auth()
@@ -44,10 +46,10 @@ export async function GET(request: NextRequest) {
 
   try {
     // Find leads that need enhanced conversion sync
+    // Note: GCLID is no longer required - we send all leads with user data
     const leads = await prisma.lead.findMany({
       where: {
         createdAt: { gte: startDate },
-        gclid: { not: null },
         enhancedConversionSent: false,
         OR: [
           { email: { not: null } },
@@ -89,6 +91,7 @@ export async function GET(request: NextRequest) {
           name: [l.firstName, l.lastName].filter(Boolean).join(' ') || 'Unknown',
           email: l.email,
           phone: l.phone,
+          hasGclid: !!l.gclid,
           client: l.client.businessName,
           source: l.source,
           createdAt: l.createdAt,
@@ -113,7 +116,7 @@ export async function GET(request: NextRequest) {
       try {
         const result = await sendEnhancedConversion({
           customerId: config.customerId,
-          gclid: lead.gclid!,
+          gclid: lead.gclid || undefined, // Optional - will be included if present
           email: lead.email || undefined,
           phone: lead.phone || undefined,
           conversionAction: conversionActionId,
