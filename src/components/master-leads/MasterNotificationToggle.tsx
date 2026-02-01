@@ -108,17 +108,20 @@ export function MasterNotificationToggle({ clients, className = '' }: MasterNoti
         throw new Error('VAPID public key not configured')
       }
 
-      // Get or create push subscription
+      // Always unsubscribe existing and create fresh subscription
+      // This ensures we use the current VAPID key
       let subscription = await registration.pushManager.getSubscription()
-
-      if (!subscription) {
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
-        })
+      if (subscription) {
+        await subscription.unsubscribe()
       }
 
-      // If no clients selected, unsubscribe
+      // Create new subscription with current VAPID key
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
+      })
+
+      // If no clients selected, just unsubscribe from server
       if (selectedClientIds.length === 0) {
         if (subscribed) {
           await fetch('/api/admin/master-leads/notifications/subscribe', {
@@ -134,16 +137,15 @@ export function MasterNotificationToggle({ clients, className = '' }: MasterNoti
         return
       }
 
-      // Save or update subscription with selected clients
-      const method = subscribed ? 'PATCH' : 'POST'
-      const body = subscribed
-        ? { endpoint: subscription.endpoint, clientIds: selectedClientIds }
-        : { subscription: subscription.toJSON(), userAgent: navigator.userAgent, clientIds: selectedClientIds }
-
+      // Always POST with fresh subscription data
       const saveResponse = await fetch('/api/admin/master-leads/notifications/subscribe', {
-        method,
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          subscription: subscription.toJSON(),
+          userAgent: navigator.userAgent,
+          clientIds: selectedClientIds,
+        }),
       })
 
       if (saveResponse.ok) {
