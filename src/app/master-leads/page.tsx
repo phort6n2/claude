@@ -367,6 +367,7 @@ export default function StandaloneMasterLeadsPage() {
                     key={lead.id}
                     lead={lead}
                     isExpanded={expandedLeadId === lead.id}
+                    isDimmed={expandedLeadId !== null && expandedLeadId !== lead.id}
                     onToggle={() => setExpandedLeadId(expandedLeadId === lead.id ? null : lead.id)}
                     onUpdate={handleLeadUpdate}
                   />
@@ -513,20 +514,58 @@ function getLeadDetails(lead: Lead) {
   return { service, vehicle, year, make, model, vin, zipCode, insuranceHelp }
 }
 
+// Helper to get all form data fields for display
+function getAllFormFields(lead: Lead): Array<{ label: string; value: string }> {
+  const fields: Array<{ label: string; value: string }> = []
+  const fd = lead.formData
+  if (!fd) return fields
+
+  // Keys to skip (internal or already shown elsewhere)
+  const skipKeys = new Set([
+    '_rawPayload', 'id', 'contactId', 'locationId', 'email', 'phone',
+    'firstName', 'lastName', 'first_name', 'last_name', 'name', 'full_name',
+    'source', 'type', 'dateAdded', 'date_added', 'timestamp'
+  ])
+
+  // Label formatting helper
+  const formatLabel = (key: string): string => {
+    return key
+      .replace(/_/g, ' ')
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/\b\w/g, c => c.toUpperCase())
+      .trim()
+  }
+
+  // Extract fields from formData
+  for (const [key, value] of Object.entries(fd)) {
+    if (skipKeys.has(key)) continue
+    if (value === null || value === undefined || value === '') continue
+    if (typeof value === 'object') continue
+
+    fields.push({
+      label: formatLabel(key),
+      value: String(value)
+    })
+  }
+
+  return fields
+}
+
 // Expandable Lead Row Component
 function LeadRow({
   lead,
   isExpanded,
+  isDimmed,
   onToggle,
   onUpdate,
 }: {
   lead: Lead
   isExpanded: boolean
+  isDimmed: boolean
   onToggle: () => void
   onUpdate: (lead: Lead) => void
 }) {
   const statusConfig = STATUS_CONFIG[lead.status] || STATUS_CONFIG.NEW
-  const StatusIcon = statusConfig.icon
   const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'
   const isPhoneLead = lead.source === 'PHONE'
   const details = getLeadDetails(lead)
@@ -604,7 +643,7 @@ function LeadRow({
 
       {/* Main row */}
       <div
-        className={`bg-white shadow-sm transition-transform ${isPhoneLead ? 'border-l-4 border-orange-400' : ''}`}
+        className={`bg-white shadow-sm transition-all duration-200 ${isPhoneLead ? 'border-l-4 border-orange-400' : ''} ${isDimmed ? 'opacity-40' : ''} ${isExpanded ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
         style={{ transform: `translateX(-${swipeOffset}px)` }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -647,10 +686,9 @@ function LeadRow({
 
           {/* Status & Time */}
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
-            <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}>
-              <StatusIcon className="h-3 w-3" />
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}>
               {statusConfig.label}
-            </div>
+            </span>
             <span className="text-xs text-gray-500">
               {new Date(lead.createdAt).toLocaleTimeString('en-US', {
                 hour: 'numeric',
@@ -713,33 +751,20 @@ function LeadRow({
               )}
             </div>
 
-            {/* Lead Details */}
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              {details.vehicle && (
-                <div>
-                  <span className="text-gray-500 text-xs">Vehicle</span>
-                  <p className="text-gray-900 font-medium">{details.vehicle}</p>
+            {/* Lead Details - All Available Info */}
+            {getAllFormFields(lead).length > 0 && (
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Lead Details</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  {getAllFormFields(lead).map((field, idx) => (
+                    <div key={idx} className={field.value.length > 30 ? 'col-span-2' : ''}>
+                      <span className="text-gray-500 text-xs">{field.label}</span>
+                      <p className="text-gray-900 font-medium break-words">{field.value}</p>
+                    </div>
+                  ))}
                 </div>
-              )}
-              {details.zipCode && (
-                <div>
-                  <span className="text-gray-500 text-xs">ZIP Code</span>
-                  <p className="text-gray-900 font-medium">{details.zipCode}</p>
-                </div>
-              )}
-              {details.insuranceHelp && (
-                <div>
-                  <span className="text-gray-500 text-xs">Insurance Help</span>
-                  <p className="text-gray-900 font-medium">{details.insuranceHelp}</p>
-                </div>
-              )}
-              {details.vin && (
-                <div className="col-span-2">
-                  <span className="text-gray-500 text-xs">VIN</span>
-                  <p className="text-gray-900 font-medium font-mono text-xs">{details.vin}</p>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Google Ads Sync Status */}
             {(lead.gclid || lead.enhancedConversionSent || lead.offlineConversionSent) && (
