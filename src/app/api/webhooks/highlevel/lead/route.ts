@@ -279,7 +279,7 @@ export async function POST(request: NextRequest) {
       null
 
     // Log phone call data for debugging
-    if (isPhoneLead) {
+    if (isPhoneCall) {
       console.log(`[HighLevel Webhook] PHONE LEAD - Recording URL: ${callRecordingUrl || 'not found'}`)
     }
 
