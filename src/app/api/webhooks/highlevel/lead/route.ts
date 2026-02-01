@@ -265,6 +265,26 @@ export async function POST(request: NextRequest) {
 
     const leadSource = isPhoneCall ? 'PHONE' : 'FORM'
 
+    // Extract call recording URL from various possible locations in the payload
+    const callRecordingUrl =
+      payload.recordingUrl ||
+      payload.recording_url ||
+      payload.customData?.recordingUrl ||
+      payload.customData?.recording_url ||
+      payload.audioUrl ||
+      payload.audio_url ||
+      payload.callRecording ||
+      payload.call_recording ||
+      payload.call?.recordingUrl ||
+      payload.call?.recording_url ||
+      payload.message?.attachments ||
+      null
+
+    // Log phone call data for debugging
+    if (isPhoneCall) {
+      console.log(`[HighLevel Webhook] PHONE LEAD - Recording URL: ${callRecordingUrl || 'not found'}`)
+    }
+
     // Create the lead
     const lead = await prisma.lead.create({
       data: {
@@ -291,6 +311,7 @@ export async function POST(request: NextRequest) {
         formData: Object.keys(formData).length > 0 ? (formData as Prisma.InputJsonValue) : undefined,
         formName: workflow.name || campaign.name || null,
         highlevelContactId,
+        callRecordingUrl,
         status: 'NEW',
       },
     })
@@ -306,29 +327,40 @@ export async function POST(request: NextRequest) {
       console.error(`[HighLevel Webhook] Failed to send push notification:`, err)
     })
 
-    // Send Enhanced Conversion to Google Ads if GCLID is present
-    if (gclid && (email || phone)) {
+    // Send Enhanced Conversion to Google Ads if we have user data (email or phone)
+    // Note: GCLID is optional - Google can match conversions via hashed user data alone
+    if (email || phone) {
       try {
         // Get client's Google Ads config
         const googleAdsConfig = await prisma.clientGoogleAds.findUnique({
           where: { clientId: client.id },
         })
 
+        // Determine which conversion action to use based on lead source
+        const conversionActionId = leadSource === 'PHONE'
+          ? googleAdsConfig?.callConversionActionId
+          : googleAdsConfig?.formConversionActionId
+
         console.log(`[HighLevel Webhook] Google Ads config for ${client.businessName}:`, {
           hasConfig: !!googleAdsConfig,
           isActive: googleAdsConfig?.isActive,
-          hasLeadConversionActionId: !!googleAdsConfig?.leadConversionActionId,
+          leadSource,
+          conversionActionId,
+          formConversionActionId: googleAdsConfig?.formConversionActionId,
+          callConversionActionId: googleAdsConfig?.callConversionActionId,
           customerId: googleAdsConfig?.customerId,
+          hasGclid: !!gclid,
         })
 
-        if (googleAdsConfig?.isActive && googleAdsConfig.leadConversionActionId) {
+        if (googleAdsConfig?.isActive && conversionActionId) {
           const result = await sendEnhancedConversion({
             customerId: googleAdsConfig.customerId,
-            gclid,
+            gclid: gclid || undefined, // Optional - will be included if present
             email: email || undefined,
             phone: phone || undefined,
-            conversionAction: googleAdsConfig.leadConversionActionId,
+            conversionAction: conversionActionId,
             conversionDateTime: new Date(),
+            orderId: lead.id, // Unique identifier for this conversion
           })
 
           if (result.success) {
@@ -341,7 +373,7 @@ export async function POST(request: NextRequest) {
                 googleSyncError: null, // Clear any previous error
               },
             })
-            console.log(`[HighLevel Webhook] Enhanced conversion sent for lead ${lead.id}`)
+            console.log(`[HighLevel Webhook] Enhanced conversion sent for lead ${lead.id} (gclid: ${gclid ? 'yes' : 'no'})`)
           } else {
             // Track the failure for retry
             await prisma.lead.update({
@@ -358,7 +390,9 @@ export async function POST(request: NextRequest) {
             ? 'No Google Ads config for client'
             : !googleAdsConfig.isActive
             ? 'Google Ads config is not active'
-            : 'No leadConversionActionId configured'
+            : leadSource === 'PHONE'
+            ? 'No callConversionActionId configured'
+            : 'No formConversionActionId configured'
           console.log(`[HighLevel Webhook] Enhanced conversion skipped for lead ${lead.id}: ${reason}`)
         }
       } catch (err) {
@@ -374,7 +408,7 @@ export async function POST(request: NextRequest) {
         console.error(`[HighLevel Webhook] Enhanced conversion error:`, {
           leadId: lead.id,
           client: client.businessName,
-          gclid,
+          gclid: gclid || 'none',
           error: errorMessage,
         })
       }

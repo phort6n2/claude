@@ -22,7 +22,8 @@ interface Client {
 interface GoogleAdsConfig {
   connected: boolean
   customerId: string | null
-  leadConversionActionId: string | null
+  formConversionActionId: string | null
+  callConversionActionId: string | null
   saleConversionActionId: string | null
   isActive: boolean
   lastSyncAt: string | null
@@ -48,7 +49,8 @@ export default function ClientGoogleAdsPage({ params }: { params: Promise<{ id: 
 
   // Form state
   const [customerId, setCustomerId] = useState('')
-  const [leadConversionActionId, setLeadConversionActionId] = useState('')
+  const [formConversionActionId, setFormConversionActionId] = useState('')
+  const [callConversionActionId, setCallConversionActionId] = useState('')
   const [saleConversionActionId, setSaleConversionActionId] = useState('')
   const [conversionActionsError, setConversionActionsError] = useState<string | null>(null)
 
@@ -70,7 +72,8 @@ export default function ClientGoogleAdsPage({ params }: { params: Promise<{ id: 
           const configData = await configRes.json()
           setConfig(configData)
           setCustomerId(configData.customerId || '')
-          setLeadConversionActionId(configData.leadConversionActionId || '')
+          setFormConversionActionId(configData.formConversionActionId || '')
+          setCallConversionActionId(configData.callConversionActionId || '')
           setSaleConversionActionId(configData.saleConversionActionId || '')
 
           // Load conversion actions if customer is set
@@ -131,7 +134,8 @@ export default function ClientGoogleAdsPage({ params }: { params: Promise<{ id: 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerId,
-          leadConversionActionId: leadConversionActionId || null,
+          formConversionActionId: formConversionActionId || null,
+          callConversionActionId: callConversionActionId || null,
           saleConversionActionId: saleConversionActionId || null,
         }),
       })
@@ -163,7 +167,8 @@ export default function ClientGoogleAdsPage({ params }: { params: Promise<{ id: 
       await fetch(`/api/clients/${id}/google-ads`, { method: 'DELETE' })
       setConfig(null)
       setCustomerId('')
-      setLeadConversionActionId('')
+      setFormConversionActionId('')
+      setCallConversionActionId('')
       setSaleConversionActionId('')
       setConversionActions([])
       setSuccess('Configuration removed')
@@ -267,46 +272,90 @@ export default function ClientGoogleAdsPage({ params }: { params: Promise<{ id: 
             </div>
           ) : conversionActions.length > 0 ? (
             <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Lead Conversion Action
-                </label>
-                <select
-                  value={leadConversionActionId}
-                  onChange={(e) => setLeadConversionActionId(e.target.value)}
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                >
-                  <option value="">Select conversion action...</option>
-                  {conversionActions.map((action) => (
-                    <option key={action.id} value={action.id}>
-                      {action.name} ({action.category})
-                    </option>
-                  ))}
-                </select>
-                <p className="text-sm text-gray-500 mt-1">
-                  For Enhanced Conversions when a lead is captured
+              {/* Lead Conversion Actions Section */}
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                  Lead Conversion Actions (Enhanced Conversions)
+                </h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Select the conversion actions for form submissions and phone calls.
+                  This sends hashed email/phone to Google for better attribution.
                 </p>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Form Submission Conversion Action
+                    </label>
+                    <select
+                      value={formConversionActionId}
+                      onChange={(e) => setFormConversionActionId(e.target.value)}
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    >
+                      <option value="">Select conversion action...</option>
+                      {conversionActions.map((action) => (
+                        <option key={action.id} value={action.id}>
+                          {action.name} ({action.category})
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-sm text-gray-500 mt-1">
+                      For leads from website form submissions (e.g., AGMP Form)
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Phone Call Conversion Action
+                    </label>
+                    <select
+                      value={callConversionActionId}
+                      onChange={(e) => setCallConversionActionId(e.target.value)}
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    >
+                      <option value="">Select conversion action...</option>
+                      {conversionActions.map((action) => (
+                        <option key={action.id} value={action.id}>
+                          {action.name} ({action.category})
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-sm text-gray-500 mt-1">
+                      For leads from phone calls via tracking number (e.g., AGMP Call)
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Sale Conversion Action
-                </label>
-                <select
-                  value={saleConversionActionId}
-                  onChange={(e) => setSaleConversionActionId(e.target.value)}
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                >
-                  <option value="">Select conversion action...</option>
-                  {conversionActions.map((action) => (
-                    <option key={action.id} value={action.id}>
-                      {action.name} ({action.category})
-                    </option>
-                  ))}
-                </select>
-                <p className="text-sm text-gray-500 mt-1">
-                  For Offline Conversion Import when a lead converts to a sale
+              {/* Sale Conversion Action Section */}
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                  Sale Conversion Action (Offline Import)
+                </h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  When a lead is marked as SOLD with a sale value, send the revenue to Google Ads.
                 </p>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Sale Conversion Action
+                  </label>
+                  <select
+                    value={saleConversionActionId}
+                    onChange={(e) => setSaleConversionActionId(e.target.value)}
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  >
+                    <option value="">Select conversion action...</option>
+                    {conversionActions.map((action) => (
+                      <option key={action.id} value={action.id}>
+                        {action.name} ({action.category})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-sm text-gray-500 mt-1">
+                    For Offline Conversion Import when a lead converts to a sale (e.g., AGMP Sale)
+                  </p>
+                </div>
               </div>
             </>
           ) : customerId.replace(/-/g, '').length === 10 && conversionActionsError ? (

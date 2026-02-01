@@ -2,7 +2,7 @@ import crypto from 'crypto'
 import { prisma } from './db'
 import { encrypt, decrypt } from './encryption'
 
-const GOOGLE_ADS_API_VERSION = 'v18'
+const GOOGLE_ADS_API_VERSION = 'v19'
 const GOOGLE_ADS_API_BASE = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}`
 
 // OAuth endpoints
@@ -212,17 +212,22 @@ export function formatPhoneE164(phone: string, countryCode = '1'): string {
 
 /**
  * Send Enhanced Conversion for a lead
- * This sends hashed email/phone to Google Ads when a lead is captured
+ * This sends hashed email/phone to Google Ads via uploadClickConversions
+ * (Enhanced Conversions for Leads - uses click conversions with user identifiers)
+ *
+ * Note: GCLID is optional. Google can still match conversions using hashed
+ * email/phone data even without a click ID, providing better measurement coverage.
  */
 export async function sendEnhancedConversion(params: {
   customerId: string
-  gclid: string
+  gclid?: string // Optional - conversions can be matched via user identifiers alone
   email?: string
   phone?: string
   conversionAction: string
   conversionDateTime: Date
   conversionValue?: number
   currencyCode?: string
+  orderId: string // Required unique identifier (e.g., lead ID)
 }): Promise<{ success: boolean; error?: string }> {
   const accessToken = await getValidAccessToken()
   const creds = await getGoogleAdsCredentials()
@@ -231,16 +236,22 @@ export async function sendEnhancedConversion(params: {
     return { success: false, error: 'Google Ads not configured' }
   }
 
-  // Build user identifiers
-  const userIdentifiers: Array<{ hashedEmail?: string; hashedPhoneNumber?: string }> = []
+  // Build user identifiers (hashed email/phone for enhanced matching)
+  const userIdentifiers: Array<Record<string, string>> = []
 
   if (params.email) {
-    userIdentifiers.push({ hashedEmail: hashUserData(params.email) })
+    userIdentifiers.push({
+      userIdentifierSource: 'FIRST_PARTY',
+      hashedEmail: hashUserData(params.email),
+    })
   }
 
   if (params.phone) {
     const e164Phone = formatPhoneE164(params.phone)
-    userIdentifiers.push({ hashedPhoneNumber: hashUserData(e164Phone) })
+    userIdentifiers.push({
+      userIdentifierSource: 'FIRST_PARTY',
+      hashedPhoneNumber: hashUserData(e164Phone),
+    })
   }
 
   if (userIdentifiers.length === 0) {
@@ -250,47 +261,99 @@ export async function sendEnhancedConversion(params: {
   // Format customer ID (remove dashes)
   const customerId = params.customerId.replace(/-/g, '')
 
-  // Build the conversion adjustment
-  const conversionAdjustment = {
-    adjustmentType: 'ENHANCEMENT',
+  // Format datetime as yyyy-mm-dd hh:mm:ss+|-hh:mm (Google Ads required format)
+  const formatGoogleAdsDateTime = (date: Date): string => {
+    const pad = (n: number) => n.toString().padStart(2, '0')
+    const year = date.getUTCFullYear()
+    const month = pad(date.getUTCMonth() + 1)
+    const day = pad(date.getUTCDate())
+    const hours = pad(date.getUTCHours())
+    const minutes = pad(date.getUTCMinutes())
+    const seconds = pad(date.getUTCSeconds())
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}+00:00`
+  }
+
+  // Build the click conversion with user identifiers (Enhanced Conversions for Leads)
+  // GCLID is optional - Google can match via user identifiers alone
+  const clickConversion: Record<string, unknown> = {
     conversionAction: `customers/${customerId}/conversionActions/${params.conversionAction}`,
-    gclidDateTimePair: {
-      gclid: params.gclid,
-      conversionDateTime: params.conversionDateTime.toISOString().replace('Z', '+00:00'),
-    },
-    userIdentifiers: userIdentifiers.map((id) => {
-      if (id.hashedEmail) {
-        return { userIdentifierSource: 'FIRST_PARTY', hashedEmail: id.hashedEmail }
-      }
-      return { userIdentifierSource: 'FIRST_PARTY', hashedPhoneNumber: id.hashedPhoneNumber }
-    }),
+    conversionDateTime: formatGoogleAdsDateTime(params.conversionDateTime),
+    orderId: params.orderId,
+    userIdentifiers,
+  }
+
+  // Only include gclid if present
+  if (params.gclid) {
+    clickConversion.gclid = params.gclid
   }
 
   try {
-    const response = await fetch(
-      `${GOOGLE_ADS_API_BASE}/customers/${customerId}/conversionAdjustments:upload`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'developer-token': creds.developerToken,
-          'login-customer-id': creds.mccCustomerId.replace(/-/g, ''),
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          conversionAdjustments: [conversionAdjustment],
-          partialFailure: true,
-        }),
-      }
-    )
-
-    if (!response.ok) {
-      const error = await response.text()
-      console.error('Enhanced conversion upload failed:', error)
-      return { success: false, error: `API error: ${response.status}` }
+    const url = `${GOOGLE_ADS_API_BASE}/customers/${customerId}:uploadClickConversions`
+    const requestBody = {
+      conversions: [clickConversion],
+      partialFailure: true,
     }
 
-    const result = await response.json()
+    console.log('[Enhanced Conversion] Sending request:', {
+      url,
+      customerId,
+      conversionAction: params.conversionAction,
+      hasEmail: !!params.email,
+      hasPhone: !!params.phone,
+      hasGclid: !!params.gclid,
+      gclid: params.gclid ? params.gclid.substring(0, 20) + '...' : 'none',
+    })
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'developer-token': creds.developerToken,
+        'login-customer-id': creds.mccCustomerId.replace(/-/g, ''),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    })
+
+    const responseText = await response.text()
+
+    if (!response.ok) {
+      console.error('[Enhanced Conversion] Upload failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        response: responseText.substring(0, 1000),
+        url,
+        customerId,
+        conversionAction: params.conversionAction,
+      })
+
+      // Try to parse error for more details
+      let errorDetail = `API error: ${response.status}`
+      try {
+        const errorJson = JSON.parse(responseText)
+        if (errorJson.error?.message) {
+          errorDetail = errorJson.error.message
+        } else if (errorJson.error?.details) {
+          errorDetail = JSON.stringify(errorJson.error.details)
+        }
+      } catch {
+        // Response wasn't JSON, might be HTML error page
+        if (responseText.includes('<!DOCTYPE')) {
+          errorDetail = `API error: ${response.status} - HTML error page returned (API endpoint may not be available)`
+        }
+      }
+
+      return { success: false, error: errorDetail }
+    }
+
+    // Parse successful response
+    let result
+    try {
+      result = responseText ? JSON.parse(responseText) : {}
+    } catch {
+      console.log('[Enhanced Conversion] Empty or non-JSON response, treating as success')
+      result = {}
+    }
 
     // Check for partial failures
     if (result.partialFailureError) {
@@ -327,11 +390,23 @@ export async function sendOfflineConversion(params: {
   // Format customer ID (remove dashes)
   const customerId = params.customerId.replace(/-/g, '')
 
+  // Format datetime as yyyy-mm-dd hh:mm:ss+|-hh:mm (Google Ads required format)
+  const formatGoogleAdsDateTime = (date: Date): string => {
+    const pad = (n: number) => n.toString().padStart(2, '0')
+    const year = date.getUTCFullYear()
+    const month = pad(date.getUTCMonth() + 1)
+    const day = pad(date.getUTCDate())
+    const hours = pad(date.getUTCHours())
+    const minutes = pad(date.getUTCMinutes())
+    const seconds = pad(date.getUTCSeconds())
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}+00:00`
+  }
+
   // Build the click conversion
   const clickConversion = {
     gclid: params.gclid,
     conversionAction: `customers/${customerId}/conversionActions/${params.conversionAction}`,
-    conversionDateTime: params.conversionDateTime.toISOString().replace('Z', '+00:00'),
+    conversionDateTime: formatGoogleAdsDateTime(params.conversionDateTime),
     conversionValue: params.conversionValue,
     currencyCode: params.currencyCode || 'USD',
   }
@@ -390,20 +465,39 @@ export async function listAccessibleCustomers(): Promise<{
     return { success: false, error: 'Google Ads not configured' }
   }
 
+  const url = `${GOOGLE_ADS_API_BASE}/customers:listAccessibleCustomers`
+
+  console.log('[Google Ads] listAccessibleCustomers request:', {
+    url,
+    hasAccessToken: !!accessToken,
+    accessTokenLength: accessToken?.length,
+    developerTokenFirstChars: creds.developerToken?.substring(0, 4) + '...',
+    developerTokenLength: creds.developerToken?.length,
+  })
+
   try {
-    const response = await fetch(
-      `${GOOGLE_ADS_API_BASE}/customers:listAccessibleCustomers`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'developer-token': creds.developerToken,
-        },
-      }
-    )
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'developer-token': creds.developerToken,
+      },
+    })
+
+    console.log('[Google Ads] listAccessibleCustomers response:', {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries()),
+    })
 
     if (!response.ok) {
       const error = await response.text()
+      const isHtmlError = error.includes('<!DOCTYPE') || error.includes('<html')
+      console.error('[Google Ads] listAccessibleCustomers error:', {
+        status: response.status,
+        isHtmlError,
+        errorPreview: error.substring(0, 300),
+      })
       return { success: false, error: `API error: ${response.status} - ${error}` }
     }
 
@@ -493,7 +587,24 @@ export async function listConversionActions(customerId: string): Promise<{
       return { success: false, error: `API error ${response.status}: ${errorText}` }
     }
 
-    const data = await response.json()
+    // Handle potentially empty response
+    const responseText = await response.text()
+    if (!responseText || responseText.trim() === '') {
+      console.log('[Google Ads] Empty response from API, returning empty actions list')
+      return { success: true, actions: [] }
+    }
+
+    let data
+    try {
+      data = JSON.parse(responseText)
+    } catch (parseError) {
+      console.error('[Google Ads] Failed to parse response:', {
+        responseText: responseText.substring(0, 500),
+        error: parseError,
+      })
+      return { success: false, error: 'Invalid JSON response from Google Ads API' }
+    }
+
     const actions: Array<{ id: string; name: string; category: string }> = []
 
     for (const batch of data || []) {
@@ -541,25 +652,51 @@ async function searchStreamQuery(
   }
 
   const cleanCustomerId = customerId.replace(/-/g, '')
+  const cleanMccId = creds.mccCustomerId.replace(/-/g, '')
+  const url = `${GOOGLE_ADS_API_BASE}/customers/${cleanCustomerId}/googleAds:searchStream`
+
+  console.log('[Google Ads] searchStreamQuery:', {
+    url,
+    customerId: cleanCustomerId,
+    mccCustomerId: cleanMccId,
+    hasDeveloperToken: !!creds.developerToken,
+    developerTokenLength: creds.developerToken?.length,
+  })
 
   try {
-    const response = await fetch(
-      `${GOOGLE_ADS_API_BASE}/customers/${cleanCustomerId}/googleAds:searchStream`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'developer-token': creds.developerToken,
-          'login-customer-id': creds.mccCustomerId.replace(/-/g, ''),
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query }),
-      }
-    )
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'developer-token': creds.developerToken,
+        'login-customer-id': cleanMccId,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query }),
+    })
 
     if (!response.ok) {
       const error = await response.text()
-      return { success: false, error: `API error: ${response.status} - ${error}` }
+      const isHtmlError = error.includes('<!DOCTYPE') || error.includes('<html')
+
+      console.error('[Google Ads] API Error:', {
+        status: response.status,
+        isHtmlError,
+        customerId: cleanCustomerId,
+        mccCustomerId: cleanMccId,
+        // Don't log full HTML, just first 200 chars
+        errorPreview: error.substring(0, 200),
+      })
+
+      // Provide more helpful error messages for common issues
+      if (response.status === 404 && isHtmlError) {
+        return {
+          success: false,
+          error: `API error: 404 - Customer ${cleanCustomerId} not accessible. Check: 1) Developer token has production access, 2) MCC ${cleanMccId} manages this customer, 3) OAuth has correct permissions.`
+        }
+      }
+
+      return { success: false, error: `API error: ${response.status} - ${error.substring(0, 500)}` }
     }
 
     const data = await response.json()

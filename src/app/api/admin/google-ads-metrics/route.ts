@@ -12,6 +12,45 @@ export const dynamic = 'force-dynamic'
 
 type DateRange = 'TODAY' | 'YESTERDAY' | 'THIS_WEEK' | 'THIS_MONTH' | 'LAST_7_DAYS' | 'LAST_30_DAYS'
 
+// Helper to get date range for database queries
+function getDateRangeFilter(dateRange: DateRange): { gte: Date; lte: Date } {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
+  switch (dateRange) {
+    case 'TODAY':
+      return { gte: today, lte: tomorrow }
+    case 'YESTERDAY': {
+      const yesterday = new Date(today)
+      yesterday.setDate(yesterday.getDate() - 1)
+      return { gte: yesterday, lte: today }
+    }
+    case 'THIS_WEEK': {
+      const startOfWeek = new Date(today)
+      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay())
+      return { gte: startOfWeek, lte: tomorrow }
+    }
+    case 'THIS_MONTH': {
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+      return { gte: startOfMonth, lte: tomorrow }
+    }
+    case 'LAST_7_DAYS': {
+      const sevenDaysAgo = new Date(today)
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+      return { gte: sevenDaysAgo, lte: tomorrow }
+    }
+    case 'LAST_30_DAYS': {
+      const thirtyDaysAgo = new Date(today)
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      return { gte: thirtyDaysAgo, lte: tomorrow }
+    }
+    default:
+      return { gte: today, lte: tomorrow }
+  }
+}
+
 /**
  * GET /api/admin/google-ads-metrics - Get Google Ads performance metrics
  */
@@ -64,14 +103,39 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // Get date range for sales queries
+    const dateFilter = getDateRangeFilter(dateRange)
+
     // Fetch metrics for each account in parallel
     const accountResults = await Promise.all(
       clientGoogleAds.map(async (config) => {
         try {
-          const [metricsResult, detailsResult] = await Promise.all([
+          const [metricsResult, detailsResult, salesData] = await Promise.all([
             getAccountMetrics(config.customerId, dateRange),
             getCustomerDetails(config.customerId),
+            // Get sales data for this client within date range
+            prisma.lead.aggregate({
+              where: {
+                clientId: config.clientId,
+                status: 'SOLD',
+                saleDate: dateFilter,
+              },
+              _sum: {
+                saleValue: true,
+              },
+              _count: {
+                id: true,
+              },
+            }),
           ])
+
+          // Also get total leads for the period
+          const leadsCount = await prisma.lead.count({
+            where: {
+              clientId: config.clientId,
+              createdAt: dateFilter,
+            },
+          })
 
           return {
             clientId: config.clientId,
@@ -82,6 +146,11 @@ export async function GET(request: NextRequest) {
               ? detailsResult.details?.descriptiveName
               : config.customerId,
             metrics: metricsResult.success ? metricsResult.metrics : null,
+            sales: {
+              count: salesData._count.id,
+              value: salesData._sum.saleValue || 0,
+            },
+            leads: leadsCount,
             error: metricsResult.success ? null : metricsResult.error,
           }
         } catch (error) {
@@ -92,6 +161,8 @@ export async function GET(request: NextRequest) {
             customerId: config.customerId,
             accountName: config.customerId,
             metrics: null,
+            sales: { count: 0, value: 0 },
+            leads: 0,
             error: error instanceof Error ? error.message : 'Unknown error',
           }
         }
@@ -108,9 +179,12 @@ export async function GET(request: NextRequest) {
           acc.conversions += account.metrics.conversions
           acc.conversionValue += account.metrics.conversionValue
         }
+        acc.salesCount += account.sales?.count || 0
+        acc.salesValue += account.sales?.value || 0
+        acc.leadsCount += account.leads || 0
         return acc
       },
-      { impressions: 0, clicks: 0, cost: 0, conversions: 0, conversionValue: 0 }
+      { impressions: 0, clicks: 0, cost: 0, conversions: 0, conversionValue: 0, salesCount: 0, salesValue: 0, leadsCount: 0 }
     )
 
     // Calculate aggregate rates
@@ -119,6 +193,8 @@ export async function GET(request: NextRequest) {
       costPerConversion: sums.conversions > 0 ? sums.cost / sums.conversions : 0,
       ctr: sums.impressions > 0 ? (sums.clicks / sums.impressions) * 100 : 0,
       avgCpc: sums.clicks > 0 ? sums.cost / sums.clicks : 0,
+      costPerLead: sums.leadsCount > 0 ? sums.cost / sums.leadsCount : 0,
+      roas: sums.cost > 0 ? sums.salesValue / sums.cost : 0,
     }
 
     return NextResponse.json({
@@ -159,7 +235,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: result.error }, { status: 500 })
     }
 
-    return NextResponse.json({ campaigns: result.campaigns })
+    // Filter to only show campaigns with spend > 0
+    const campaignsWithSpend = (result.campaigns || []).filter(c => c.cost > 0)
+
+    return NextResponse.json({ campaigns: campaignsWithSpend })
   } catch (error) {
     console.error('Failed to fetch campaign metrics:', error)
     return NextResponse.json(

@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Phone,
   Mail,
-  Calendar,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -15,11 +14,13 @@ import {
   MessageSquare,
   TrendingUp,
   X,
-  Save,
   Loader2,
   User,
   Building2,
   ShieldX,
+  CheckCircle2,
+  PlayCircle,
+  Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 
@@ -31,12 +32,16 @@ interface Lead {
   lastName: string | null
   status: string
   source: string
+  gclid: string | null
   saleValue: number | null
   saleDate: string | null
   saleNotes: string | null
+  callRecordingUrl: string | null
   createdAt: string
   formName: string | null
   formData: Record<string, unknown> | null
+  enhancedConversionSent: boolean
+  offlineConversionSent: boolean
 }
 
 interface Client {
@@ -83,30 +88,7 @@ export default function StandaloneMasterLeadsPage() {
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   })
   const [showCalendar, setShowCalendar] = useState(false)
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
-  const [mobilePageIndex, setMobilePageIndex] = useState(0)
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
-
-  // Lead detail form state
-  const [editFirstName, setEditFirstName] = useState('')
-  const [editLastName, setEditLastName] = useState('')
-  const [editEmail, setEditEmail] = useState('')
-  const [editPhone, setEditPhone] = useState('')
-  const [editStatus, setEditStatus] = useState('')
-  const [editSaleValue, setEditSaleValue] = useState('')
-  const [editSaleDate, setEditSaleDate] = useState('')
-  const [editSaleNotes, setEditSaleNotes] = useState('')
-  const [saving, setSaving] = useState(false)
-
-  // Vehicle/service info (editable for phone leads)
-  const [editVehicleYear, setEditVehicleYear] = useState('')
-  const [editVehicleMake, setEditVehicleMake] = useState('')
-  const [editVehicleModel, setEditVehicleModel] = useState('')
-  const [editInterestedIn, setEditInterestedIn] = useState('')
-
-  // Modal slide animation state
-  const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null)
-  const [isAnimating, setIsAnimating] = useState(false)
+  const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null)
 
   // Check master leads authorization
   useEffect(() => {
@@ -118,9 +100,8 @@ export default function StandaloneMasterLeadsPage() {
         } else if (data?.reason === 'not_authenticated') {
           router.push('/login')
         } else {
-          // User is logged in but not authorized
           setAuthenticated(false)
-          setClientsLoading(false) // Don't wait for clients if not authorized
+          setClientsLoading(false)
         }
       })
       .catch(() => {
@@ -162,9 +143,8 @@ export default function StandaloneMasterLeadsPage() {
     }
 
     setLoading(true)
-    setMobilePageIndex(0)
+    setExpandedLeadId(null)
 
-    // Fetch leads for the selected date (full day range in user's timezone)
     const [year, month, day] = selectedDate.split('-').map(Number)
     const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
     const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
@@ -177,7 +157,6 @@ export default function StandaloneMasterLeadsPage() {
       .catch(console.error)
       .finally(() => setLoading(false))
 
-    // Fetch sales stats
     fetch(`/api/admin/master-leads/stats?clientId=${selectedClientId}`)
       .then((res) => res.json())
       .then((data) => {
@@ -187,27 +166,6 @@ export default function StandaloneMasterLeadsPage() {
       })
       .catch(console.error)
   }, [selectedClientId, selectedDate, authenticated])
-
-  // When lead is selected, populate form
-  useEffect(() => {
-    if (selectedLead) {
-      setEditFirstName(selectedLead.firstName || '')
-      setEditLastName(selectedLead.lastName || '')
-      setEditEmail(selectedLead.email || '')
-      setEditPhone(selectedLead.phone || '')
-      setEditStatus(selectedLead.status)
-      setEditSaleValue(selectedLead.saleValue?.toString() || '')
-      setEditSaleDate(selectedLead.saleDate?.split('T')[0] || '')
-      setEditSaleNotes(selectedLead.saleNotes || '')
-
-      // Populate vehicle/service info from formData
-      const details = getLeadDetails(selectedLead)
-      setEditVehicleYear(details.year || '')
-      setEditVehicleMake(details.make || '')
-      setEditVehicleModel(details.model || '')
-      setEditInterestedIn(details.service || '')
-    }
-  }, [selectedLead])
 
   function changeDate(days: number) {
     const date = new Date(selectedDate + 'T12:00:00')
@@ -236,126 +194,19 @@ export default function StandaloneMasterLeadsPage() {
     })
   }
 
-  async function handleSaveLead() {
-    if (!selectedLead) return
-    setSaving(true)
-
-    try {
-      const response = await fetch(`/api/leads/${selectedLead.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firstName: editFirstName || null,
-          lastName: editLastName || null,
-          email: editEmail || null,
-          phone: editPhone || null,
-          status: editStatus,
-          saleValue: editSaleValue ? parseFloat(editSaleValue) : null,
-          saleDate: editSaleDate || null,
-          saleNotes: editSaleNotes || null,
-          // Vehicle/service info
-          vehicleYear: editVehicleYear || null,
-          vehicleMake: editVehicleMake || null,
-          vehicleModel: editVehicleModel || null,
-          interestedIn: editInterestedIn || null,
-        }),
-      })
-
-      if (!response.ok) throw new Error('Failed to save')
-
-      const updated = await response.json()
-      setLeads((prev) =>
-        prev.map((l) => (l.id === selectedLead.id ? { ...l, ...updated } : l))
-      )
-      setSelectedLead(null)
-
-      // Refresh sales stats after save
-      if (selectedClientId) {
-        fetch(`/api/admin/master-leads/stats?clientId=${selectedClientId}`)
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.sales) {
-              setSales(data.sales)
-            }
-          })
-          .catch(() => {})
-      }
-    } catch {
-      alert('Failed to save changes')
-    } finally {
-      setSaving(false)
+  function handleLeadUpdate(updatedLead: Lead) {
+    setLeads((prev) =>
+      prev.map((l) => (l.id === updatedLead.id ? updatedLead : l))
+    )
+    // Refresh sales stats
+    if (selectedClientId) {
+      fetch(`/api/admin/master-leads/stats?clientId=${selectedClientId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.sales) setSales(data.sales)
+        })
+        .catch(() => {})
     }
-  }
-
-  // Mobile pagination
-  const cardsPerPage = 6
-  const totalPages = Math.ceil(leads.length / cardsPerPage)
-  const mobileLeads = leads.slice(
-    mobilePageIndex * cardsPerPage,
-    (mobilePageIndex + 1) * cardsPerPage
-  )
-
-  // Handle swipe
-  function handleSwipe(direction: 'left' | 'right') {
-    if (direction === 'left' && mobilePageIndex < totalPages - 1) {
-      setMobilePageIndex(mobilePageIndex + 1)
-    } else if (direction === 'right' && mobilePageIndex > 0) {
-      setMobilePageIndex(mobilePageIndex - 1)
-    }
-  }
-
-  // Touch handling for swipe (page navigation)
-  const touchStart = useRef<number | null>(null)
-  function handleTouchStart(e: React.TouchEvent) {
-    touchStart.current = e.touches[0].clientX
-  }
-  function handleTouchEnd(e: React.TouchEvent) {
-    if (touchStart.current === null) return
-    const touchEnd = e.changedTouches[0].clientX
-    const diff = touchStart.current - touchEnd
-    if (Math.abs(diff) > 50) {
-      handleSwipe(diff > 0 ? 'left' : 'right')
-    }
-    touchStart.current = null
-  }
-
-  // Modal swipe navigation between leads with animation
-  const modalTouchStart = useRef<number | null>(null)
-  function handleModalTouchStart(e: React.TouchEvent) {
-    modalTouchStart.current = e.touches[0].clientX
-  }
-  function handleModalTouchEnd(e: React.TouchEvent) {
-    if (modalTouchStart.current === null || !selectedLead || isAnimating) return
-    const touchEnd = e.changedTouches[0].clientX
-    const diff = modalTouchStart.current - touchEnd
-    if (Math.abs(diff) > 50) {
-      const currentIndex = leads.findIndex(l => l.id === selectedLead.id)
-      if (diff > 0 && currentIndex < leads.length - 1) {
-        // Swipe left = next lead
-        navigateToLead(leads[currentIndex + 1], 'left')
-      } else if (diff < 0 && currentIndex > 0) {
-        // Swipe right = previous lead
-        navigateToLead(leads[currentIndex - 1], 'right')
-      }
-    }
-    modalTouchStart.current = null
-  }
-
-  // Animated navigation between leads
-  function navigateToLead(newLead: Lead, direction: 'left' | 'right') {
-    if (isAnimating) return
-    setIsAnimating(true)
-    setSlideDirection(direction)
-
-    // After slide-out animation, change the lead
-    setTimeout(() => {
-      setSelectedLead(newLead)
-      // Brief pause then slide in from opposite direction
-      setTimeout(() => {
-        setSlideDirection(null)
-        setIsAnimating(false)
-      }, 50)
-    }, 150)
   }
 
   if (authChecking || clientsLoading) {
@@ -387,7 +238,7 @@ export default function StandaloneMasterLeadsPage() {
     <div className="min-h-screen bg-gray-100 overflow-x-hidden">
       {/* Header with Client Selector */}
       <header className="bg-white border-b sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 py-3">
+        <div className="max-w-3xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">
               {selectedClient ? (
@@ -402,7 +253,6 @@ export default function StandaloneMasterLeadsPage() {
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                {/* Client Selector Dropdown */}
                 <div className="relative">
                   <select
                     value={selectedClientId}
@@ -419,78 +269,72 @@ export default function StandaloneMasterLeadsPage() {
                   </select>
                   <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 </div>
-                <p className="text-xs text-gray-600">Lead Portal</p>
+                <p className="text-xs text-gray-600">Master Leads</p>
               </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Show content only when client is selected */}
       {selectedClientId ? (
         <>
-          {/* Date Navigation */}
+          {/* Date Navigation + Sales Stats - Compact */}
           <div className="bg-white border-b sticky top-[57px] z-30">
-            <div className="max-w-6xl mx-auto px-4 py-3">
-              <div className="flex items-center justify-center gap-2">
-                <button
-                  onClick={() => changeDate(-1)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
+            <div className="max-w-3xl mx-auto px-4 py-2">
+              <div className="flex items-center justify-between">
+                {/* Date Nav */}
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => changeDate(-1)}
+                    className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setShowCalendar(!showCalendar)}
+                    className="flex items-center gap-1 px-2 py-1 hover:bg-gray-100 rounded-lg transition-colors text-gray-900"
+                  >
+                    <span className="text-sm font-medium">{formatDateDisplay(selectedDate)}</span>
+                    <ChevronDown className={`h-3 w-3 transition-transform ${showCalendar ? 'rotate-180' : ''}`} />
+                  </button>
+                  <button
+                    onClick={() => changeDate(1)}
+                    className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => setShowCalendar(!showCalendar)}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors min-w-[160px] justify-center text-gray-900"
-                >
-                  <Calendar className="h-4 w-4" />
-                  <span className="font-medium">{formatDateDisplay(selectedDate)}</span>
-                  <ChevronDown className={`h-4 w-4 transition-transform ${showCalendar ? 'rotate-180' : ''}`} />
-                </button>
-
-                <button
-                  onClick={() => changeDate(1)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
+                {/* Compact Sales Stats */}
+                {sales && (
+                  <div className="flex items-center gap-3 text-xs">
+                    <div className="text-center">
+                      <span className="text-gray-500">Today</span>
+                      <span className="ml-1 font-semibold text-emerald-600">${sales.today.total.toLocaleString()}</span>
+                    </div>
+                    <div className="text-center">
+                      <span className="text-gray-500">Week</span>
+                      <span className="ml-1 font-semibold text-emerald-600">${sales.week.total.toLocaleString()}</span>
+                    </div>
+                    <div className="text-center">
+                      <span className="text-gray-500">Month</span>
+                      <span className="ml-1 font-semibold text-emerald-600">${sales.month.total.toLocaleString()}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Sales Stats */}
-          {sales && (
-            <div className="max-w-6xl mx-auto px-4 py-3">
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-                  <p className="text-xs text-gray-500 mb-1">Today</p>
-                  <p className="text-lg font-bold text-emerald-600">${sales.today.total.toLocaleString()}</p>
-                  <p className="text-xs text-gray-500">{sales.today.count} sale{sales.today.count !== 1 ? 's' : ''}</p>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-                  <p className="text-xs text-gray-500 mb-1">This Week</p>
-                  <p className="text-lg font-bold text-emerald-600">${sales.week.total.toLocaleString()}</p>
-                  <p className="text-xs text-gray-500">{sales.week.count} sale{sales.week.count !== 1 ? 's' : ''}</p>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-                  <p className="text-xs text-gray-500 mb-1">This Month</p>
-                  <p className="text-lg font-bold text-emerald-600">${sales.month.total.toLocaleString()}</p>
-                  <p className="text-xs text-gray-500">{sales.month.count} sale{sales.month.count !== 1 ? 's' : ''}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Lead Count */}
-          <div className="max-w-6xl mx-auto px-4 py-2">
-            <p className="text-sm text-gray-700">
-              {loading ? 'Loading...' : `${leads.length} lead${leads.length !== 1 ? 's' : ''} on ${formatDateDisplay(selectedDate)}`}
+          <div className="max-w-3xl mx-auto px-4 py-1.5">
+            <p className="text-xs text-gray-600">
+              {loading ? 'Loading...' : `${leads.length} lead${leads.length !== 1 ? 's' : ''}`}
             </p>
           </div>
 
-          {/* Leads Grid */}
-          <div className="max-w-6xl mx-auto px-4 pb-6">
+          {/* Leads List */}
+          <div className="max-w-3xl mx-auto px-4 pb-6">
             {loading ? (
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
@@ -511,407 +355,27 @@ export default function StandaloneMasterLeadsPage() {
                 </button>
               </div>
             ) : (
-              <>
-                {/* Mobile View - Swipeable Cards */}
-                <div
-                  className="md:hidden"
-                  ref={scrollContainerRef}
-                  onTouchStart={handleTouchStart}
-                  onTouchEnd={handleTouchEnd}
-                >
-                  <div className="grid grid-cols-2 gap-3">
-                    {mobileLeads.map((lead) => (
-                      <LeadCard
-                        key={lead.id}
-                        lead={lead}
-                        onClick={() => setSelectedLead(lead)}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Pagination Dots */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-center gap-2 mt-4">
-                      {Array.from({ length: totalPages }).map((_, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setMobilePageIndex(i)}
-                          className={`w-2 h-2 rounded-full transition-colors ${
-                            i === mobilePageIndex ? 'bg-blue-600' : 'bg-gray-300'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Swipe hint */}
-                  {totalPages > 1 && (
-                    <p className="text-center text-xs text-gray-600 mt-2">
-                      Swipe or tap dots to see more
-                    </p>
-                  )}
-                </div>
-
-                {/* Desktop View - All Cards */}
-                <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {leads.map((lead) => (
-                    <LeadCard
-                      key={lead.id}
-                      lead={lead}
-                      onClick={() => setSelectedLead(lead)}
-                    />
-                  ))}
-                </div>
-              </>
+              <div className="space-y-2">
+                {leads.map((lead) => (
+                  <LeadRow
+                    key={lead.id}
+                    lead={lead}
+                    isExpanded={expandedLeadId === lead.id}
+                    isDimmed={expandedLeadId !== null && expandedLeadId !== lead.id}
+                    onToggle={() => setExpandedLeadId(expandedLeadId === lead.id ? null : lead.id)}
+                    onUpdate={handleLeadUpdate}
+                  />
+                ))}
+              </div>
             )}
           </div>
         </>
       ) : (
-        <div className="max-w-6xl mx-auto px-4 py-20">
+        <div className="max-w-3xl mx-auto px-4 py-20">
           <div className="bg-white rounded-xl p-8 text-center">
             <Building2 className="h-16 w-16 mx-auto mb-4 text-gray-300" />
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Select a Client</h2>
             <p className="text-gray-500">Choose a client from the dropdown above to view their leads</p>
-          </div>
-        </div>
-      )}
-
-      {/* Lead Detail Modal */}
-      {selectedLead && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-hidden">
-          <div
-            className={`bg-white w-full md:max-w-lg rounded-xl max-h-[85vh] overflow-y-auto overflow-x-hidden transition-all duration-150 ease-out ${
-              slideDirection === 'left'
-                ? '-translate-x-full opacity-0'
-                : slideDirection === 'right'
-                ? 'translate-x-full opacity-0'
-                : 'translate-x-0 opacity-100'
-            }`}
-            onTouchStart={handleModalTouchStart}
-            onTouchEnd={handleModalTouchEnd}
-          >
-            {/* Modal Header */}
-            <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between rounded-t-xl">
-              <div className="flex items-center gap-2">
-                {/* Previous button */}
-                <button
-                  onClick={() => {
-                    const currentIndex = leads.findIndex(l => l.id === selectedLead.id)
-                    if (currentIndex > 0) {
-                      navigateToLead(leads[currentIndex - 1], 'right')
-                    }
-                  }}
-                  disabled={leads.findIndex(l => l.id === selectedLead.id) === 0 || isAnimating}
-                  className="p-2 hover:bg-gray-100 rounded-full text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-                <div>
-                  <h2 className="font-semibold text-lg text-gray-900">Lead Details</h2>
-                  <p className="text-xs text-gray-500">
-                    {leads.findIndex(l => l.id === selectedLead.id) + 1} of {leads.length}
-                  </p>
-                </div>
-                {/* Next button */}
-                <button
-                  onClick={() => {
-                    const currentIndex = leads.findIndex(l => l.id === selectedLead.id)
-                    if (currentIndex < leads.length - 1) {
-                      navigateToLead(leads[currentIndex + 1], 'left')
-                    }
-                  }}
-                  disabled={leads.findIndex(l => l.id === selectedLead.id) === leads.length - 1 || isAnimating}
-                  className="p-2 hover:bg-gray-100 rounded-full text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
-              </div>
-              <button
-                onClick={() => setSelectedLead(null)}
-                className="p-2 hover:bg-gray-100 rounded-full text-gray-700"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-4 space-y-4">
-              {/* Source indicator for phone leads */}
-              {selectedLead.source === 'PHONE' && (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-orange-600" />
-                  <span className="text-sm text-orange-800 font-medium">Phone Call Lead</span>
-                </div>
-              )}
-
-              {/* Contact Info - Editable */}
-              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-gray-900">Contact Info</h4>
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {new Date(selectedLead.createdAt).toLocaleString()}
-                  </p>
-                </div>
-
-                {/* Name fields */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">First Name</label>
-                    <input
-                      type="text"
-                      value={editFirstName}
-                      onChange={(e) => setEditFirstName(e.target.value)}
-                      placeholder="First name"
-                      className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Last Name</label>
-                    <input
-                      type="text"
-                      value={editLastName}
-                      onChange={(e) => setEditLastName(e.target.value)}
-                      placeholder="Last name"
-                      className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
-                    />
-                  </div>
-                </div>
-
-                {/* Email */}
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={editEmail}
-                    onChange={(e) => setEditEmail(e.target.value)}
-                    placeholder="email@example.com"
-                    className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
-                  />
-                </div>
-
-                {/* Phone */}
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Phone</label>
-                  <input
-                    type="tel"
-                    value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value)}
-                    placeholder="(555) 555-5555"
-                    className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
-                  />
-                </div>
-
-                {/* Quick contact actions */}
-                {(editPhone || editEmail) && (
-                  <div className="flex gap-2 pt-2">
-                    {editPhone && (
-                      <a
-                        href={`tel:${editPhone}`}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-medium hover:bg-green-200"
-                      >
-                        <Phone className="h-4 w-4" />
-                        Call
-                      </a>
-                    )}
-                    {editPhone && (
-                      <a
-                        href={`sms:${editPhone}`}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200"
-                      >
-                        <MessageSquare className="h-4 w-4" />
-                        Text
-                      </a>
-                    )}
-                    {editEmail && (
-                      <a
-                        href={`mailto:${editEmail}`}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200"
-                      >
-                        <Mail className="h-4 w-4" />
-                        Email
-                      </a>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Vehicle & Service Info - Editable */}
-              <div className="bg-blue-50 rounded-lg p-4 space-y-3">
-                <h4 className="font-medium text-gray-900">Vehicle & Service Info</h4>
-
-                {/* Interested In / Service */}
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Interested In</label>
-                  <select
-                    value={editInterestedIn}
-                    onChange={(e) => setEditInterestedIn(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  >
-                    <option value="">Select service...</option>
-                    <option value="Windshield Replacement">Windshield Replacement</option>
-                    <option value="Windshield Repair">Windshield Repair</option>
-                    <option value="Side Window">Side Window</option>
-                    <option value="Back Glass">Back Glass</option>
-                    <option value="Other Auto Glass">Other Auto Glass</option>
-                  </select>
-                </div>
-
-                {/* Vehicle Year/Make/Model */}
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Year</label>
-                    <input
-                      type="text"
-                      value={editVehicleYear}
-                      onChange={(e) => setEditVehicleYear(e.target.value)}
-                      placeholder="2024"
-                      maxLength={4}
-                      className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Make</label>
-                    <input
-                      type="text"
-                      value={editVehicleMake}
-                      onChange={(e) => setEditVehicleMake(e.target.value)}
-                      placeholder="Toyota"
-                      className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Model</label>
-                    <input
-                      type="text"
-                      value={editVehicleModel}
-                      onChange={(e) => setEditVehicleModel(e.target.value)}
-                      placeholder="Camry"
-                      className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
-                    />
-                  </div>
-                </div>
-
-                {/* Read-only details if present */}
-                {(() => {
-                  const details = getLeadDetails(selectedLead)
-                  const hasReadOnlyDetails = details.vin || details.zipCode || details.insuranceHelp
-                  if (!hasReadOnlyDetails) return null
-                  return (
-                    <div className="pt-2 border-t border-blue-100 grid grid-cols-2 gap-3 text-sm">
-                      {details.vin && (
-                        <div>
-                          <span className="text-gray-500">VIN</span>
-                          <p className="font-medium font-mono text-gray-900 text-xs break-all">{details.vin}</p>
-                        </div>
-                      )}
-                      {details.zipCode && (
-                        <div>
-                          <span className="text-gray-500">Zip Code</span>
-                          <p className="font-medium text-gray-900">{details.zipCode}</p>
-                        </div>
-                      )}
-                      {details.insuranceHelp && (
-                        <div>
-                          <span className="text-gray-500">Insurance Help</span>
-                          <p className="font-medium text-gray-900">{details.insuranceHelp}</p>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()}
-              </div>
-
-              {/* Status */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
-                <select
-                  value={editStatus}
-                  onChange={(e) => setEditStatus(e.target.value)}
-                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base text-gray-900"
-                >
-                  {STATUS_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Sale Value */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Sale Value
-                </label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="number"
-                    value={editSaleValue}
-                    onChange={(e) => setEditSaleValue(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base text-gray-900 placeholder:text-gray-500"
-                  />
-                </div>
-              </div>
-
-              {/* Sale Date */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Sale Date
-                </label>
-                <input
-                  type="date"
-                  value={editSaleDate}
-                  onChange={(e) => setEditSaleDate(e.target.value)}
-                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base text-gray-900"
-                />
-              </div>
-
-              {/* Notes */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes
-                </label>
-                <textarea
-                  value={editSaleNotes}
-                  onChange={(e) => setEditSaleNotes(e.target.value)}
-                  placeholder="Add notes about this sale..."
-                  rows={3}
-                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-base text-gray-900 resize-none placeholder:text-gray-500"
-                />
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="sticky bottom-0 bg-white border-t px-4 py-3 flex gap-3">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setSelectedLead(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                className="flex-1"
-                onClick={handleSaveLead}
-                disabled={saving}
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save
-                  </>
-                )}
-              </Button>
-            </div>
           </div>
         </div>
       )}
@@ -975,7 +439,6 @@ export default function StandaloneMasterLeadsPage() {
                 </button>
               </div>
             </div>
-            <div className="h-safe-area-inset-bottom md:hidden" />
           </div>
         </>
       )}
@@ -1016,7 +479,7 @@ function ClientLogo({
   )
 }
 
-// Helper to extract lead details from formData with _rawPayload fallback
+// Helper to extract lead details from formData
 function getLeadDetails(lead: Lead) {
   const fd = lead.formData
   const raw = fd?._rawPayload as Record<string, unknown> | null
@@ -1045,99 +508,450 @@ function getLeadDetails(lead: Lead) {
   return { service, vehicle, year, make, model, vin, zipCode, insuranceHelp }
 }
 
-// Lead Card Component
-function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
+// Helper to get all form data fields for display
+function getAllFormFields(lead: Lead): Array<{ label: string; value: string }> {
+  const fields: Array<{ label: string; value: string }> = []
+  const fd = lead.formData
+  if (!fd) return fields
+
+  // Keys to skip (internal, already shown elsewhere, or not useful)
+  const skipKeys = new Set([
+    '_rawPayload', 'id', 'contactId', 'locationId', 'email', 'phone',
+    'firstName', 'lastName', 'first_name', 'last_name', 'name', 'full_name',
+    'source', 'type', 'dateAdded', 'date_added', 'timestamp',
+    // Skip these per user request
+    'tags', 'country', 'timezone', 'contact_type', 'contactType', 'contact_source', 'contactSource',
+    // Skip recording URL (audio player is shown separately)
+    'recordingUrl', 'recording_url', 'callRecordingUrl', 'call_recording_url', 'audioUrl', 'audio_url'
+  ])
+
+  // Label formatting helper
+  const formatLabel = (key: string): string => {
+    return key
+      .replace(/_/g, ' ')
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/\b\w/g, c => c.toUpperCase())
+      .trim()
+  }
+
+  // Extract fields from formData
+  for (const [key, value] of Object.entries(fd)) {
+    if (skipKeys.has(key)) continue
+    if (value === null || value === undefined || value === '') continue
+    if (typeof value === 'object') continue
+
+    fields.push({
+      label: formatLabel(key),
+      value: String(value)
+    })
+  }
+
+  return fields
+}
+
+// Expandable Lead Row Component
+function LeadRow({
+  lead,
+  isExpanded,
+  isDimmed,
+  onToggle,
+  onUpdate,
+}: {
+  lead: Lead
+  isExpanded: boolean
+  isDimmed: boolean
+  onToggle: () => void
+  onUpdate: (lead: Lead) => void
+}) {
   const statusConfig = STATUS_CONFIG[lead.status] || STATUS_CONFIG.NEW
-  const StatusIcon = statusConfig.icon
   const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'
   const isPhoneLead = lead.source === 'PHONE'
   const details = getLeadDetails(lead)
 
+  // Edit state
+  const [editStatus, setEditStatus] = useState(lead.status)
+  const [editSaleValue, setEditSaleValue] = useState(lead.saleValue?.toString() || '')
+  const [saving, setSaving] = useState(false)
+
+  // Editable lead info state
+  const [showEditInfo, setShowEditInfo] = useState(false)
+  const [editFirstName, setEditFirstName] = useState(lead.firstName || '')
+  const [editLastName, setEditLastName] = useState(lead.lastName || '')
+  const [editVehicleYear, setEditVehicleYear] = useState(details.year || '')
+  const [editVehicleMake, setEditVehicleMake] = useState(details.make || '')
+  const [editVehicleModel, setEditVehicleModel] = useState(details.model || '')
+  const [editService, setEditService] = useState(details.service || '')
+
+  // Reset edit state when lead changes
+  useEffect(() => {
+    setEditStatus(lead.status)
+    setEditSaleValue(lead.saleValue?.toString() || '')
+    setEditFirstName(lead.firstName || '')
+    setEditLastName(lead.lastName || '')
+    setEditVehicleYear(details.year || '')
+    setEditVehicleMake(details.make || '')
+    setEditVehicleModel(details.model || '')
+    setEditService(details.service || '')
+  }, [lead, details.year, details.make, details.model, details.service])
+
+  async function handleQuickSave() {
+    setSaving(true)
+    try {
+      const response = await fetch(`/api/leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: editStatus,
+          saleValue: editSaleValue ? parseFloat(editSaleValue) : null,
+        }),
+      })
+      if (!response.ok) throw new Error('Failed to save')
+      const updated = await response.json()
+      onUpdate({ ...lead, ...updated })
+    } catch {
+      alert('Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleSaveInfo() {
+    setSaving(true)
+    try {
+      const response = await fetch(`/api/leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: editFirstName || null,
+          lastName: editLastName || null,
+          vehicleYear: editVehicleYear || null,
+          vehicleMake: editVehicleMake || null,
+          vehicleModel: editVehicleModel || null,
+          interestedIn: editService || null,
+        }),
+      })
+      if (!response.ok) throw new Error('Failed to save')
+      const updated = await response.json()
+      onUpdate({ ...lead, ...updated })
+      setShowEditInfo(false)
+    } catch {
+      alert('Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const hasStatusChanges = editStatus !== lead.status ||
+    (editSaleValue || '') !== (lead.saleValue?.toString() || '')
+
+  const hasInfoChanges =
+    editFirstName !== (lead.firstName || '') ||
+    editLastName !== (lead.lastName || '') ||
+    editVehicleYear !== (details.year || '') ||
+    editVehicleMake !== (details.make || '') ||
+    editVehicleModel !== (details.model || '') ||
+    editService !== (details.service || '')
+
+  // Border color: orange for calls, blue for forms
+  const borderColor = isPhoneLead ? 'border-l-4 border-orange-400' : 'border-l-4 border-blue-400'
+
   return (
-    <button
-      onClick={onClick}
-      className={`bg-white rounded-xl p-4 text-left shadow-sm hover:shadow-md transition-shadow w-full border-2 ${
-        isPhoneLead ? 'border-orange-400' : 'border-transparent'
-      }`}
-    >
-      {/* Source & Status Badge */}
-      <div className="flex items-center gap-2 mb-2">
-        {isPhoneLead && (
-          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
-            <Phone className="h-3 w-3" />
-            Call
+    <div className="rounded-xl overflow-hidden">
+      {/* Main row */}
+      <div
+        className={`bg-white shadow-sm transition-all duration-200 ${borderColor} ${isDimmed ? 'opacity-40' : ''} ${isExpanded ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
+      >
+        {/* Collapsed Row */}
+        <button
+          onClick={onToggle}
+          className="w-full px-4 py-3 flex items-center gap-3 text-left"
+        >
+          {/* Expand indicator */}
+          <ChevronRight
+            className={`h-5 w-5 text-gray-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`}
+          />
+
+          {/* Main info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="font-medium text-gray-900 truncate">{fullName}</span>
+              {lead.callRecordingUrl && (
+                <PlayCircle className="h-4 w-4 text-violet-500 flex-shrink-0" />
+              )}
+              {lead.gclid && (
+                <span className="text-xs text-green-600 font-medium">Ads</span>
+              )}
+              {lead.enhancedConversionSent && (
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              {lead.phone && <span>{lead.phone}</span>}
+              {details.service && (
+                <>
+                  <span className="text-gray-300">•</span>
+                  <span className="truncate">{details.service}</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Status & Time */}
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}>
+              {statusConfig.label}
+            </span>
+            <span className="text-xs text-gray-500">
+              {new Date(lead.createdAt).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+              })}
+            </span>
+          </div>
+        </button>
+
+        {/* Expanded Content */}
+        {isExpanded && (
+          <div className="px-4 pb-4 space-y-4 border-t border-gray-100">
+            {/* Call Recording */}
+            {lead.callRecordingUrl && (
+              <div className="pt-3">
+                <div className="bg-violet-50 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <PlayCircle className="h-4 w-4 text-violet-600" />
+                    <span className="text-sm text-violet-800 font-medium">Call Recording</span>
+                  </div>
+                  <audio
+                    controls
+                    className="w-full h-10"
+                    src={lead.callRecordingUrl}
+                  >
+                    Your browser does not support audio.
+                  </audio>
+                </div>
+              </div>
+            )}
+
+            {/* Quick Actions */}
+            <div className="flex gap-2 pt-2">
+              {lead.phone && (
+                <a
+                  href={`tel:${lead.phone}`}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 active:bg-green-700"
+                >
+                  <Phone className="h-4 w-4" />
+                  Call
+                </a>
+              )}
+              {lead.phone && (
+                <a
+                  href={`sms:${lead.phone}`}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-purple-500 text-white rounded-lg text-sm font-medium hover:bg-purple-600 active:bg-purple-700"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Text
+                </a>
+              )}
+              {lead.email && (
+                <a
+                  href={`mailto:${lead.email}`}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 active:bg-blue-700"
+                >
+                  <Mail className="h-4 w-4" />
+                  Email
+                </a>
+              )}
+            </div>
+
+            {/* Edit Lead Info - Expandable */}
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setShowEditInfo(!showEditInfo)}
+                className="w-full px-3 py-2 flex items-center justify-between bg-gray-50 hover:bg-gray-100 text-sm text-gray-700"
+              >
+                <span className="font-medium">
+                  {!lead.firstName && !lead.lastName ? '+ Add Name & Info' : 'Edit Lead Info'}
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${showEditInfo ? 'rotate-180' : ''}`} />
+              </button>
+              {showEditInfo && (
+                <div className="p-3 space-y-3 bg-white">
+                  {/* Name fields */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">First Name</label>
+                      <input
+                        type="text"
+                        value={editFirstName}
+                        onChange={(e) => setEditFirstName(e.target.value)}
+                        placeholder="First"
+                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Last Name</label>
+                      <input
+                        type="text"
+                        value={editLastName}
+                        onChange={(e) => setEditLastName(e.target.value)}
+                        placeholder="Last"
+                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  {/* Service */}
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Service Needed</label>
+                    <input
+                      type="text"
+                      value={editService}
+                      onChange={(e) => setEditService(e.target.value)}
+                      placeholder="e.g., Windshield Replacement"
+                      className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  {/* Vehicle fields */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Year</label>
+                      <input
+                        type="text"
+                        value={editVehicleYear}
+                        onChange={(e) => setEditVehicleYear(e.target.value)}
+                        placeholder="2024"
+                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Make</label>
+                      <input
+                        type="text"
+                        value={editVehicleMake}
+                        onChange={(e) => setEditVehicleMake(e.target.value)}
+                        placeholder="Toyota"
+                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Model</label>
+                      <input
+                        type="text"
+                        value={editVehicleModel}
+                        onChange={(e) => setEditVehicleModel(e.target.value)}
+                        placeholder="Camry"
+                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  {/* Save button */}
+                  {hasInfoChanges && (
+                    <button
+                      onClick={handleSaveInfo}
+                      disabled={saving}
+                      className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                      Save Info
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Lead Details - All Available Info */}
+            {getAllFormFields(lead).length > 0 && (
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Lead Details</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  {getAllFormFields(lead).map((field, idx) => (
+                    <div key={idx} className={field.value.length > 30 ? 'col-span-2' : ''}>
+                      <span className="text-gray-500 text-xs">{field.label}</span>
+                      <p className="text-gray-900 font-medium break-words">{field.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Google Ads Sync Status */}
+            {(lead.gclid || lead.enhancedConversionSent || lead.offlineConversionSent) && (
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                {lead.gclid && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
+                    Google Ads Lead
+                  </span>
+                )}
+                {lead.enhancedConversionSent && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Lead Synced
+                  </span>
+                )}
+                {lead.offlineConversionSent && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                    <DollarSign className="h-3 w-3" />
+                    <CheckCircle2 className="h-3 w-3" />
+                    Sale Synced
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Status & Sale - Inline Edit */}
+            <div className="flex gap-3 items-end pt-2 border-t border-gray-100">
+              <div className="flex-1">
+                <label className="block text-xs text-gray-500 mb-1">Status</label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                >
+                  {STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs text-gray-500 mb-1">Sale Value</label>
+                <div className="relative">
+                  <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="number"
+                    value={editSaleValue}
+                    onChange={(e) => setEditSaleValue(e.target.value)}
+                    placeholder="0"
+                    className="w-full pl-7 pr-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+              {hasStatusChanges && (
+                <button
+                  onClick={handleQuickSave}
+                  disabled={saving}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
+                >
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Check className="h-4 w-4" />
+                  )}
+                  Save
+                </button>
+              )}
+            </div>
+
+            {/* Sale indicator */}
+            {lead.saleValue && (
+              <div className="flex items-center gap-2 text-emerald-600 font-semibold">
+                <TrendingUp className="h-4 w-4" />
+                Sale: ${lead.saleValue.toLocaleString()}
+              </div>
+            )}
           </div>
         )}
-        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}>
-          <StatusIcon className="h-3 w-3" />
-          {statusConfig.label}
-        </div>
       </div>
-
-      {/* Name */}
-      <h3 className="font-medium text-gray-900 truncate mb-1">{fullName}</h3>
-
-      {/* Service/Vehicle Details */}
-      {(details.service || details.vehicle) && (
-        <div className="mb-2">
-          {details.service && (
-            <p className="text-sm text-blue-700 font-medium truncate">{details.service}</p>
-          )}
-          {details.vehicle && (
-            <p className="text-xs text-gray-600 truncate">{details.vehicle}</p>
-          )}
-        </div>
-      )}
-
-      {/* Zip & Insurance */}
-      {(details.zipCode || details.insuranceHelp) && (
-        <div className="flex flex-wrap gap-1 mb-2">
-          {details.zipCode && (
-            <span className="text-xs text-gray-500">ZIP: {details.zipCode}</span>
-          )}
-          {details.insuranceHelp && details.insuranceHelp.toLowerCase() === 'yes' && (
-            <span className="text-xs bg-green-50 text-green-700 px-1.5 py-0.5 rounded">Ins</span>
-          )}
-        </div>
-      )}
-
-      {/* Contact */}
-      <div className="space-y-1 text-xs text-gray-700">
-        {lead.phone && (
-          <p className="flex items-center gap-1 truncate">
-            <Phone className="h-3 w-3 flex-shrink-0" />
-            {lead.phone}
-          </p>
-        )}
-        {lead.email && (
-          <p className="flex items-center gap-1 truncate">
-            <Mail className="h-3 w-3 flex-shrink-0" />
-            {lead.email}
-          </p>
-        )}
-      </div>
-
-      {/* Missing info indicator */}
-      {isPhoneLead && (!lead.firstName || !lead.email) && (
-        <div className="mt-2 text-orange-600 text-xs">+ Add missing info</div>
-      )}
-
-      {/* Sale Value */}
-      {lead.saleValue ? (
-        <div className="mt-2 text-emerald-600 font-semibold">
-          ${lead.saleValue.toLocaleString()}
-        </div>
-      ) : lead.status === 'SOLD' ? (
-        <div className="mt-2 text-amber-600 text-xs">+ Add sale value</div>
-      ) : null}
-
-      {/* Time */}
-      <p className="text-xs text-gray-600 mt-2">
-        {new Date(lead.createdAt).toLocaleTimeString('en-US', {
-          hour: 'numeric',
-          minute: '2-digit',
-        })}
-      </p>
-    </button>
+    </div>
   )
 }

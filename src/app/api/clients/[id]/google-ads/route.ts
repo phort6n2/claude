@@ -29,7 +29,8 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({
         connected: false,
         customerId: null,
-        leadConversionActionId: null,
+        formConversionActionId: null,
+        callConversionActionId: null,
         saleConversionActionId: null,
       })
     }
@@ -37,7 +38,8 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     return NextResponse.json({
       connected: true,
       customerId: config.customerId,
-      leadConversionActionId: config.leadConversionActionId,
+      formConversionActionId: config.formConversionActionId,
+      callConversionActionId: config.callConversionActionId,
       saleConversionActionId: config.saleConversionActionId,
       isActive: config.isActive,
       lastSyncAt: config.lastSyncAt,
@@ -96,13 +98,15 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       create: {
         clientId: id,
         customerId: data.customerId,
-        leadConversionActionId: data.leadConversionActionId || null,
+        formConversionActionId: data.formConversionActionId || null,
+        callConversionActionId: data.callConversionActionId || null,
         saleConversionActionId: data.saleConversionActionId || null,
         isActive: true,
       },
       update: {
         customerId: data.customerId,
-        leadConversionActionId: data.leadConversionActionId || null,
+        formConversionActionId: data.formConversionActionId || null,
+        callConversionActionId: data.callConversionActionId || null,
         saleConversionActionId: data.saleConversionActionId || null,
         lastError: null,
       },
@@ -111,7 +115,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     return NextResponse.json({
       success: true,
       customerId: config.customerId,
-      leadConversionActionId: config.leadConversionActionId,
+      formConversionActionId: config.formConversionActionId,
+      callConversionActionId: config.callConversionActionId,
       saleConversionActionId: config.saleConversionActionId,
     })
   } catch (error) {

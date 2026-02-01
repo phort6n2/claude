@@ -5,71 +5,85 @@ import { prisma } from '@/lib/db'
 // 1000+: Standard PAAs (synced from global templates)
 const STANDARD_PAA_PRIORITY_START = 1000
 
-/**
- * Get the start and end of "today" in a specific timezone.
- * This ensures the PAA selector's "today" matches the client's local day,
- * not just UTC day.
- */
-function getTodayBounds(timezone?: string): { todayStart: Date; todayEnd: Date } {
-  const now = new Date()
+// All scheduling runs on Mountain Time
+const MOUNTAIN_TIMEZONE = 'America/Denver'
 
-  if (!timezone) {
-    // Fall back to UTC
-    const todayStart = new Date(now)
-    todayStart.setUTCHours(0, 0, 0, 0)
-    const todayEnd = new Date(now)
-    todayEnd.setUTCHours(23, 59, 59, 999)
-    return { todayStart, todayEnd }
-  }
+/**
+ * Get the start and end of "today" in Mountain Time.
+ * All scheduling uses Mountain Time for consistency.
+ *
+ * For Mountain Time (MST, UTC-7 / MDT, UTC-6):
+ * - Local midnight (00:00 MT) = 07:00 UTC (MST) or 06:00 UTC (MDT)
+ * - Local end of day (23:59 MT) = 06:59 UTC next day (MST) or 05:59 UTC (MDT)
+ */
+function getTodayBounds(timezone: string = MOUNTAIN_TIMEZONE): { todayStart: Date; todayEnd: Date } {
+  const now = new Date()
+  const tz = timezone || MOUNTAIN_TIMEZONE
 
   try {
-    // Get the current date in the client's timezone
-    const formatter = new Intl.DateTimeFormat('en-CA', {
-      timeZone: timezone,
+    // Get the current date in Mountain Time using Intl.DateTimeFormat
+    // en-CA locale gives us YYYY-MM-DD format which is easy to parse
+    const dateFormatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
     })
-    const localDateStr = formatter.format(now) // YYYY-MM-DD format
+    const localDateStr = dateFormatter.format(now) // YYYY-MM-DD format
 
-    // Parse the local date and create UTC bounds
-    // We need to find when "today" in that timezone starts/ends in UTC
+    // Get the offset in minutes for Mountain Time
+    const fullFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    })
+
+    // Parse the date parts from the local date string
     const [year, month, day] = localDateStr.split('-').map(Number)
 
-    // Create a date at midnight in the client's timezone
-    // This is tricky - we need to work backwards from the local time
-    const localMidnight = new Date(`${localDateStr}T00:00:00`)
+    // Calculate offset: Create a reference point and see what local time it becomes
+    // Use noon UTC as reference to avoid DST edge cases at midnight
+    const refUtc = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
+    const localParts = fullFormatter.formatToParts(refUtc)
 
-    // Get the offset for this timezone at midnight
-    const offsetFormatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      timeZoneName: 'shortOffset',
-    })
-    const parts = offsetFormatter.formatToParts(localMidnight)
-    const offsetPart = parts.find(p => p.type === 'timeZoneName')?.value || 'UTC'
+    const localHourAt12Utc = parseInt(localParts.find(p => p.type === 'hour')?.value || '12', 10)
+    const localMinuteAt12Utc = parseInt(localParts.find(p => p.type === 'minute')?.value || '0', 10)
+    const localDayAt12Utc = parseInt(localParts.find(p => p.type === 'day')?.value || String(day), 10)
 
-    // Parse offset like "GMT-7" or "GMT+5:30"
-    let offsetHours = 0
-    let offsetMinutes = 0
-    const offsetMatch = offsetPart.match(/GMT([+-])(\d+)(?::(\d+))?/)
-    if (offsetMatch) {
-      const sign = offsetMatch[1] === '+' ? 1 : -1
-      offsetHours = sign * parseInt(offsetMatch[2], 10)
-      offsetMinutes = sign * (parseInt(offsetMatch[3] || '0', 10))
+    // Calculate offset in minutes: local time - UTC time
+    // If it's 12:00 UTC and shows as 05:00 local, offset is -7 hours = -420 minutes
+    let offsetMinutes = (localHourAt12Utc - 12) * 60 + localMinuteAt12Utc
+
+    // Handle day rollover (if local day is different from UTC day)
+    if (localDayAt12Utc > day) {
+      offsetMinutes += 24 * 60 // Local is ahead, so positive offset
+    } else if (localDayAt12Utc < day) {
+      offsetMinutes -= 24 * 60 // Local is behind, so negative offset
     }
 
     // Calculate UTC time for local midnight
-    const todayStart = new Date(Date.UTC(year, month - 1, day, -offsetHours, -offsetMinutes, 0, 0))
-    const todayEnd = new Date(Date.UTC(year, month - 1, day, 23 - offsetHours, 59 - offsetMinutes, 59, 999))
+    // Local midnight = 00:00 local
+    // UTC time = local time - offset
+    // So if offset is -420 (UTC-7), local midnight is at 07:00 UTC
+    const todayStartMs = Date.UTC(year, month - 1, day, 0, 0, 0, 0) - offsetMinutes * 60 * 1000
+    const todayEndMs = todayStartMs + 24 * 60 * 60 * 1000 - 1
 
-    return { todayStart, todayEnd }
+    return {
+      todayStart: new Date(todayStartMs),
+      todayEnd: new Date(todayEndMs),
+    }
   } catch (err) {
-    // Fallback to UTC if timezone is invalid
-    console.warn(`[PAA Selector] Invalid timezone "${timezone}", falling back to UTC`)
+    // Fallback to Mountain Time calculation using offset
+    console.warn(`[PAA Selector] Error calculating timezone bounds, using fallback:`, err)
+    // Mountain Time is UTC-7 (MST) or UTC-6 (MDT)
+    // Use a conservative UTC-7 offset
     const todayStart = new Date(now)
-    todayStart.setUTCHours(0, 0, 0, 0)
-    const todayEnd = new Date(now)
-    todayEnd.setUTCHours(23, 59, 59, 999)
+    todayStart.setUTCHours(7, 0, 0, 0) // 00:00 MT = 07:00 UTC (MST)
+    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1)
     return { todayStart, todayEnd }
   }
 }
@@ -490,6 +504,9 @@ export async function selectNextPAACombination(
   // Use timezone if provided to ensure "today" matches client's local day
   const { todayStart, todayEnd } = getTodayBounds(timezone)
 
+  // Threshold for "stuck" GENERATING content - if older than 2 hours, don't let it block
+  const stuckThreshold = new Date(Date.now() - 2 * 60 * 60 * 1000)
+
   const todayCombinations = await prisma.contentItem.findMany({
     where: {
       clientId,
@@ -500,9 +517,20 @@ export async function selectNextPAACombination(
         lte: todayEnd,
       },
       // Only block on active content, not FAILED
-      status: {
-        in: ['GENERATING', 'SCHEDULED', 'PUBLISHED', 'REVIEW'],
-      },
+      // For GENERATING status, only block if recent (not stuck)
+      OR: [
+        {
+          status: {
+            in: ['SCHEDULED', 'PUBLISHED', 'REVIEW', 'APPROVED'],
+          },
+        },
+        {
+          status: 'GENERATING',
+          createdAt: {
+            gte: stuckThreshold, // Only block if GENERATING content is recent
+          },
+        },
+      ],
     },
     select: {
       clientPAAId: true,

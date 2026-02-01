@@ -140,16 +140,12 @@ async function triggerFullGeneration(contentItemId: string): Promise<void> {
 
     // Note: runContentPipeline runs the full pipeline including blog, images,
     // podcast, short video, social posts, and WRHQ publishing.
-    // Long video is already skipped by default in the pipeline.
+    // The pipeline will set the final status to PUBLISHED automatically.
     console.log(`[Test] Running content pipeline...`)
     await runContentPipeline(contentItemId)
 
-    // Update status to REVIEW after successful generation
-    await prisma.contentItem.update({
-      where: { id: contentItemId },
-      data: { status: 'REVIEW' },
-    })
-
+    // Don't override the status - let the pipeline set the final status
+    // The pipeline sets PUBLISHED if WordPress succeeded, or keeps the status it set
     console.log(`[Test] Generation complete for ${contentItemId}`)
   } catch (error) {
     console.error(`[Test] Generation failed for ${contentItemId}:`, error)

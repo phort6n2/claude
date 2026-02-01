@@ -1,10 +1,13 @@
 import { prisma } from '@/lib/db'
-import { selectNextPAACombination, markPAAAsUsed, renderPAAQuestion } from './paa-selector'
-import { markLocationAsUsed } from './location-rotator'
+import { selectNextPAACombination, renderPAAQuestion } from './paa-selector'
 
 // ============================================
-// SMART SCHEDULING CONFIGURATION
+// MOUNTAIN TIME SCHEDULING CONFIGURATION
 // ============================================
+// All scheduling runs on Mountain Time (America/Denver)
+// This simplifies the system - no per-client timezone handling
+
+export const MOUNTAIN_TIMEZONE = 'America/Denver'
 
 // Day pairs (non-consecutive days) - maps to JavaScript getDay() values
 // Sunday=0, Monday=1, Tuesday=2, Wednesday=3, Thursday=4, Friday=5, Saturday=6
@@ -19,13 +22,13 @@ export const DAY_PAIRS = {
 
 export type DayPairKey = keyof typeof DAY_PAIRS
 
-// Time slots (UTC) - Mountain Time based
-// Morning shift: 7-11 AM Mountain = 14:00-18:00 UTC (MST) / 13:00-17:00 UTC (MDT)
-// Using MST (UTC-7) as baseline since it's more conservative
-// Afternoon shift: 1-5 PM Mountain = 20:00-00:00 UTC (MST)
+// Time slots in Mountain Time
+// Morning shift: 7-11 AM MT (slots 0-4)
+// Afternoon shift: 1-5 PM MT (slots 5-9)
+// These are the LOCAL hours that get checked by the hourly cron
 export const TIME_SLOTS = [
-  '14:00', '15:00', '16:00', '17:00', '18:00',  // Morning MT (slots 0-4): 7-11 AM MST
-  '20:00', '21:00', '22:00', '23:00', '00:00',  // Afternoon MT (slots 5-9): 1-5 PM MST
+  '07:00', '08:00', '09:00', '10:00', '11:00',  // Morning MT (slots 0-4)
+  '13:00', '14:00', '15:00', '16:00', '17:00',  // Afternoon MT (slots 5-9)
 ] as const
 export type TimeSlotIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
 
@@ -69,11 +72,15 @@ interface SlotAssignment {
 /**
  * Count how many clients are assigned to each day pair and time slot.
  * Returns a map of usage counts to find least loaded slots.
+ *
+ * IMPORTANT: We track dayHourUsage to prevent conflicts where two different
+ * day pairs share the same day (e.g., MON_WED and WED_FRI both include Wednesday)
  */
 async function getSlotUsage(): Promise<{
   dayPairCounts: Record<DayPairKey, number>
   slotCounts: Record<string, number> // "DAY_PAIR:SLOT" -> count
   dayUsage: Record<number, number> // day of week -> count
+  dayHourUsage: Record<string, number> // "DAY:SLOT" -> count (prevents same-day conflicts)
 }> {
   const clients = await prisma.client.findMany({
     where: {
@@ -90,6 +97,7 @@ async function getSlotUsage(): Promise<{
   const dayPairCounts: Record<string, number> = {}
   const slotCounts: Record<string, number> = {}
   const dayUsage: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+  const dayHourUsage: Record<string, number> = {} // Track "day:slot" conflicts
 
   for (const client of clients) {
     const dayPair = client.scheduleDayPair as DayPairKey
@@ -104,8 +112,16 @@ async function getSlotUsage(): Promise<{
 
     // Count per-day usage (for checking 5-client-per-day limit)
     if (DAY_PAIRS[dayPair]) {
-      dayUsage[DAY_PAIRS[dayPair].day1] = (dayUsage[DAY_PAIRS[dayPair].day1] || 0) + 1
-      dayUsage[DAY_PAIRS[dayPair].day2] = (dayUsage[DAY_PAIRS[dayPair].day2] || 0) + 1
+      const { day1, day2 } = DAY_PAIRS[dayPair]
+      dayUsage[day1] = (dayUsage[day1] || 0) + 1
+      dayUsage[day2] = (dayUsage[day2] || 0) + 1
+
+      // Track day:slot usage to prevent conflicts across different day pairs
+      // e.g., MON_WED:slot0 and WED_FRI:slot0 both occupy Wednesday:slot0
+      const day1HourKey = `${day1}:${slot}`
+      const day2HourKey = `${day2}:${slot}`
+      dayHourUsage[day1HourKey] = (dayHourUsage[day1HourKey] || 0) + 1
+      dayHourUsage[day2HourKey] = (dayHourUsage[day2HourKey] || 0) + 1
     }
   }
 
@@ -113,6 +129,7 @@ async function getSlotUsage(): Promise<{
     dayPairCounts: dayPairCounts as Record<DayPairKey, number>,
     slotCounts,
     dayUsage,
+    dayHourUsage,
   }
 }
 
@@ -139,9 +156,12 @@ function getAllowedSlotRange(dayPair: DayPairKey): { min: TimeSlotIndex; max: Ti
  * Find the best available slot for a new client.
  * Prioritizes day pairs where both days have capacity.
  * Assigns to morning or evening shift based on day pair to avoid 24h conflicts.
+ *
+ * CRITICAL: Prevents same day+hour conflicts across different day pairs
+ * (e.g., won't assign WED_FRI:slot0 if MON_WED:slot0 already exists, since Wednesday conflicts)
  */
 export async function findBestSlot(): Promise<SlotAssignment> {
-  const { dayPairCounts, slotCounts, dayUsage } = await getSlotUsage()
+  const { dayPairCounts, slotCounts, dayUsage, dayHourUsage } = await getSlotUsage()
 
   // Find day pairs where both days have capacity
   const availablePairs: { pair: DayPairKey; totalUsage: number }[] = []
@@ -162,60 +182,108 @@ export async function findBestSlot(): Promise<SlotAssignment> {
   // Sort by least used
   availablePairs.sort((a, b) => a.totalUsage - b.totalUsage)
 
-  // Default to TUE_THU if nothing available
-  const selectedPair = availablePairs[0]?.pair || 'TUE_THU'
+  // Try each available pair and find a slot that doesn't conflict
+  for (const { pair: selectedPair } of availablePairs) {
+    const { min: minSlot, max: maxSlot } = getAllowedSlotRange(selectedPair)
+    const { day1, day2 } = DAY_PAIRS[selectedPair]
 
-  // Get allowed slot range for this day pair (morning or evening)
-  const { min: minSlot, max: maxSlot } = getAllowedSlotRange(selectedPair)
+    // Find the first slot where NEITHER day has a conflict
+    for (let slot = minSlot; slot <= maxSlot; slot++) {
+      const day1HourKey = `${day1}:${slot}`
+      const day2HourKey = `${day2}:${slot}`
+      const day1Conflicts = dayHourUsage[day1HourKey] || 0
+      const day2Conflicts = dayHourUsage[day2HourKey] || 0
 
-  // Find least used time slot within the allowed range
-  let bestSlot: TimeSlotIndex = minSlot as TimeSlotIndex
-  let minUsage = Infinity
+      // Only use this slot if BOTH days are free at this hour
+      if (day1Conflicts === 0 && day2Conflicts === 0) {
+        return { dayPair: selectedPair, timeSlot: slot as TimeSlotIndex }
+      }
+    }
 
-  for (let slot = minSlot; slot <= maxSlot; slot++) {
-    const slotKey = `${selectedPair}:${slot}`
-    const usage = slotCounts[slotKey] || 0
-    if (usage < minUsage) {
-      minUsage = usage
-      bestSlot = slot as TimeSlotIndex
+    // If no completely free slot, find the least conflicted one
+    let bestSlot: TimeSlotIndex = minSlot as TimeSlotIndex
+    let minConflicts = Infinity
+
+    for (let slot = minSlot; slot <= maxSlot; slot++) {
+      const day1HourKey = `${day1}:${slot}`
+      const day2HourKey = `${day2}:${slot}`
+      const totalConflicts = (dayHourUsage[day1HourKey] || 0) + (dayHourUsage[day2HourKey] || 0)
+
+      if (totalConflicts < minConflicts) {
+        minConflicts = totalConflicts
+        bestSlot = slot as TimeSlotIndex
+      }
+    }
+
+    // If we found something with minimal conflicts, use it
+    if (minConflicts < Infinity) {
+      return { dayPair: selectedPair, timeSlot: bestSlot }
     }
   }
 
-  return { dayPair: selectedPair, timeSlot: bestSlot }
+  // Fallback: TUE_THU at slot 5 (1 PM) - evening shift, least likely to conflict
+  return { dayPair: 'TUE_THU', timeSlot: 5 }
 }
 
 /**
  * Assign a slot to a client if they don't have one.
  * Called when auto-schedule is enabled for a client.
+ * Uses a transaction with conditional update to prevent race conditions.
  */
 export async function assignSlotToClient(clientId: string): Promise<SlotAssignment> {
-  const client = await prisma.client.findUnique({
-    where: { id: clientId },
-    select: { scheduleDayPair: true, scheduleTimeSlot: true },
-  })
+  // Use a transaction to prevent race conditions where multiple requests
+  // could both see "no slot assigned" and assign different slots
+  return await prisma.$transaction(async (tx) => {
+    const client = await tx.client.findUnique({
+      where: { id: clientId },
+      select: { scheduleDayPair: true, scheduleTimeSlot: true },
+    })
 
-  // Already has assignment
-  if (client?.scheduleDayPair && client.scheduleTimeSlot !== null) {
-    return {
-      dayPair: client.scheduleDayPair as DayPairKey,
-      timeSlot: client.scheduleTimeSlot as TimeSlotIndex,
+    // Already has assignment
+    if (client?.scheduleDayPair && client.scheduleTimeSlot !== null) {
+      return {
+        dayPair: client.scheduleDayPair as DayPairKey,
+        timeSlot: client.scheduleTimeSlot as TimeSlotIndex,
+      }
     }
-  }
 
-  // Find and assign best slot
-  const slot = await findBestSlot()
+    // Find best slot (done inside transaction to ensure consistency)
+    const slot = await findBestSlot()
 
-  await prisma.client.update({
-    where: { id: clientId },
-    data: {
-      scheduleDayPair: slot.dayPair,
-      scheduleTimeSlot: slot.timeSlot,
-    },
+    // Conditional update - only update if slot is still null
+    // This prevents overwriting if another request just assigned a slot
+    const updated = await tx.client.updateMany({
+      where: {
+        id: clientId,
+        OR: [
+          { scheduleDayPair: null },
+          { scheduleTimeSlot: null },
+        ],
+      },
+      data: {
+        scheduleDayPair: slot.dayPair,
+        scheduleTimeSlot: slot.timeSlot,
+      },
+    })
+
+    if (updated.count === 0) {
+      // Another request already assigned a slot, fetch current assignment
+      const current = await tx.client.findUnique({
+        where: { id: clientId },
+        select: { scheduleDayPair: true, scheduleTimeSlot: true },
+      })
+      if (current?.scheduleDayPair && current.scheduleTimeSlot !== null) {
+        return {
+          dayPair: current.scheduleDayPair as DayPairKey,
+          timeSlot: current.scheduleTimeSlot as TimeSlotIndex,
+        }
+      }
+    }
+
+    console.log(`[AutoScheduler] Assigned client ${clientId} to ${slot.dayPair} slot ${slot.timeSlot} (${TIME_SLOTS[slot.timeSlot]})`)
+
+    return slot
   })
-
-  console.log(`[AutoScheduler] Assigned client ${clientId} to ${slot.dayPair} slot ${slot.timeSlot} (${TIME_SLOTS[slot.timeSlot]})`)
-
-  return slot
 }
 
 // ============================================
@@ -390,27 +458,46 @@ export async function autoScheduleForClient(
       ? TIME_SLOTS[client.scheduleTimeSlot as TimeSlotIndex]
       : client.preferredPublishTime
 
-    // Create the content item
-    const contentItem = await prisma.contentItem.create({
-      data: {
-        clientId,
-        clientPAAId: paa.id,
-        serviceLocationId: location.id,
-        paaQuestion: renderedQuestion,
-        scheduledDate,
-        scheduledTime: timeSlot,
-        status: 'SCHEDULED',
-      },
-    })
+    // Use a transaction to ensure atomicity of content creation and related updates
+    // This prevents inconsistent state if any operation fails partway through
+    const contentItem = await prisma.$transaction(async (tx) => {
+      // Create the content item
+      const content = await tx.contentItem.create({
+        data: {
+          clientId,
+          clientPAAId: paa.id,
+          serviceLocationId: location.id,
+          paaQuestion: renderedQuestion,
+          scheduledDate,
+          scheduledTime: timeSlot,
+          status: 'SCHEDULED',
+        },
+      })
 
-    // Mark PAA and location as used (for legacy tracking)
-    await markPAAAsUsed(paa.id)
-    await markLocationAsUsed(location.id)
+      // Mark PAA as used (inline to use transaction)
+      await tx.clientPAA.update({
+        where: { id: paa.id },
+        data: {
+          usedAt: new Date(),
+          usedCount: { increment: 1 },
+        },
+      })
 
-    // Update client's last auto-scheduled timestamp
-    await prisma.client.update({
-      where: { id: clientId },
-      data: { lastAutoScheduledAt: new Date() },
+      // Mark location as used (inline to use transaction)
+      await tx.serviceLocation.update({
+        where: { id: location.id },
+        data: {
+          lastUsedAt: new Date(),
+        },
+      })
+
+      // Update client's last auto-scheduled timestamp
+      await tx.client.update({
+        where: { id: clientId },
+        data: { lastAutoScheduledAt: new Date() },
+      })
+
+      return content
     })
 
     // Trigger generation if requested
@@ -427,20 +514,23 @@ export async function autoScheduleForClient(
 
         // FIX: Update content status to FAILED if generation fails
         // This prevents orphaned content in SCHEDULED/GENERATING status
+        // Use conditional updateMany to avoid race condition with pipeline status updates
         try {
-          const currentItem = await prisma.contentItem.findUnique({
-            where: { id: contentItem.id },
-            select: { status: true },
+          const updated = await prisma.contentItem.updateMany({
+            where: {
+              id: contentItem.id,
+              // Only mark FAILED if still in SCHEDULED/GENERATING (pipeline didn't update it)
+              status: { in: ['SCHEDULED', 'GENERATING'] },
+            },
+            data: {
+              status: 'FAILED',
+              lastError: `Auto-schedule generation failed: ${generationError}`,
+            },
           })
-          // Only mark FAILED if still in SCHEDULED/GENERATING (pipeline didn't update it)
-          if (currentItem && (currentItem.status === 'SCHEDULED' || currentItem.status === 'GENERATING')) {
-            await prisma.contentItem.update({
-              where: { id: contentItem.id },
-              data: {
-                status: 'FAILED',
-                lastError: `Auto-schedule generation failed: ${generationError}`,
-              },
-            })
+          if (updated.count > 0) {
+            console.log(`[AutoScheduler] Marked content ${contentItem.id} as FAILED`)
+          } else {
+            console.log(`[AutoScheduler] Content ${contentItem.id} status already updated by pipeline`)
           }
         } catch (updateErr) {
           console.error(`Failed to update content status for ${contentItem.id}:`, updateErr)

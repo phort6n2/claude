@@ -129,10 +129,30 @@ interface UpdateLinkParams {
   logoUrl?: string
 }
 
+// Avatar interface (declared here for cache type, full export below)
+interface AvatarBase {
+  id: string
+  name: string
+  thumbnail_url?: string
+  gender?: 'm' | 'f' | 'nb'
+  style?: 'selfie' | 'presenter' | 'other'
+  age_range?: 'child' | 'teen' | 'adult' | 'senior'
+  location?: 'outdoor' | 'fantasy' | 'indoor' | 'other'
+  suitable_industries?: string
+  preview_video_9_16?: string
+  preview_video_16_9?: string
+  preview_video_1_1?: string
+}
+
 // Cache for credentials to avoid repeated DB lookups
 let credentialsCache: { apiId: string; apiKey: string } | null = null
 let credentialsCacheTime = 0
 const CACHE_TTL = 60000 // 1 minute
+
+// Cache for avatars to avoid repeated API calls
+let avatarsCache: AvatarBase[] | null = null
+let avatarsCacheTime = 0
+const AVATARS_CACHE_TTL = 300000 // 5 minutes - avatars don't change often
 
 async function getCredentialsAsync(): Promise<{ apiId: string; apiKey: string }> {
   // Return cached credentials if still valid
@@ -369,16 +389,31 @@ export async function createVideoFromTemplate(params: CustomTemplateParams): Pro
  * Create a video from a link using the Link to Videos API
  * This is the PREFERRED method for short videos because it supports video_length parameter
  * Costs 4 credits per 30s video
+ *
+ * NOTE: If overrideAvatar is "random", a random avatar will be selected.
+ * If overrideAvatar is undefined/null, Creatify chooses its default.
  */
 export async function createVideoFromLink(params: LinkToVideoParams): Promise<VideoResult> {
   const { apiId, apiKey } = await getCredentialsAsync()
+
+  // Handle avatar selection: "random" triggers random selection, otherwise use specified or let Creatify decide
+  let avatarToUse: string | undefined = undefined
+  if (params.overrideAvatar === 'random') {
+    const randomAvatar = await getRandomAvatar()
+    if (randomAvatar) {
+      avatarToUse = randomAvatar.id
+    }
+  } else if (params.overrideAvatar) {
+    avatarToUse = params.overrideAvatar
+  }
+  // If neither, avatarToUse stays undefined and Creatify chooses
 
   const requestBody: Record<string, unknown> = {
     link: params.linkId,
     target_platform: params.targetPlatform || 'tiktok',
     target_audience: params.targetAudience || 'adults interested in auto services',
     language: params.language || 'en',
-    video_length: params.videoLength || 30,
+    video_length: params.videoLength || 15,
     aspect_ratio: params.aspectRatio || '9x16',
     script_style: params.scriptStyle || 'DiscoveryWriter',
     visual_style: params.visualStyle || 'AvatarBubbleTemplate',
@@ -396,9 +431,9 @@ export async function createVideoFromLink(params: LinkToVideoParams): Promise<Vi
     requestBody.model_version = params.modelVersion
   }
 
-  // Avatar and voice overrides
-  if (params.overrideAvatar) {
-    requestBody.override_avatar = params.overrideAvatar
+  // Avatar override - either specified or randomly selected
+  if (avatarToUse) {
+    requestBody.override_avatar = avatarToUse
   }
 
   if (params.overrideVoice) {
@@ -416,7 +451,8 @@ export async function createVideoFromLink(params: LinkToVideoParams): Promise<Vi
     visual_style: requestBody.visual_style,
     script_style: requestBody.script_style,
     model_version: requestBody.model_version,
-    override_avatar: requestBody.override_avatar || 'default',
+    override_avatar: avatarToUse || 'none (Creatify default)',
+    avatar_source: params.overrideAvatar === 'random' ? 'random-selection' : (params.overrideAvatar ? 'client-specified' : 'creatify-default'),
     override_voice: requestBody.override_voice || 'default',
     no_cta: requestBody.no_cta || false,
   })
@@ -593,7 +629,7 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
       // Map duration to valid video length
       const videoLength = (params.duration && [15, 30, 45, 60].includes(params.duration))
         ? params.duration as VideoLength
-        : 30
+        : 15
 
       // Create video from the link with explicit video_length
       return await createVideoFromLink({
@@ -631,10 +667,10 @@ export async function createShortVideo(params: VideoGenerationParams): Promise<V
   const limitedScript = params.script.substring(0, maxScriptLength)
 
   if (params.script.length > maxScriptLength) {
-    console.warn(`⚠️ LIPSYNC SCRIPT TRUNCATED: Original ${params.script.length} chars, limited to ${maxScriptLength} chars for ~${params.duration || 30}s video`)
+    console.warn(`⚠️ LIPSYNC SCRIPT TRUNCATED: Original ${params.script.length} chars, limited to ${maxScriptLength} chars for ~${params.duration || 15}s video`)
   }
 
-  console.log(`Creating lipsync video with script length: ${limitedScript.length} chars (target: ~${params.duration || 30}s)`)
+  console.log(`Creating lipsync video with script length: ${limitedScript.length} chars (target: ~${params.duration || 15}s)`)
 
   const response = await fetch('https://api.creatify.ai/api/lipsyncs_v2/', {
     method: 'POST',
@@ -851,6 +887,45 @@ export async function getAvatars(filters?: {
       preview_video_16_9: a.preview_video_16_9 as string || a.landscape_preview_video as string || undefined,
       preview_video_1_1: a.preview_video_1_1 as string || a.squared_preview_video as string || undefined,
     }))
+}
+
+/**
+ * Get a random avatar from the available avatars
+ * Filters for adult presenters suitable for professional content
+ * Uses caching to avoid repeated API calls
+ */
+export async function getRandomAvatar(): Promise<AvatarBase | null> {
+  try {
+    // Use cache if available and not expired
+    if (avatarsCache && Date.now() - avatarsCacheTime < AVATARS_CACHE_TTL) {
+      if (avatarsCache.length === 0) return null
+      const randomIndex = Math.floor(Math.random() * avatarsCache.length)
+      return avatarsCache[randomIndex]
+    }
+
+    // Fetch all available avatars for maximum variety
+    const avatars = await getAvatars()
+
+    // Update cache
+    avatarsCache = avatars
+    avatarsCacheTime = Date.now()
+
+    if (avatars.length === 0) {
+      console.warn('No avatars available from Creatify API')
+      return null
+    }
+
+    // Select a random avatar
+    const randomIndex = Math.floor(Math.random() * avatars.length)
+    const selectedAvatar = avatars[randomIndex]
+
+    console.log(`🎭 Randomly selected avatar: ${selectedAvatar.name} (${selectedAvatar.id}) from ${avatars.length} available`)
+
+    return selectedAvatar
+  } catch (error) {
+    console.error('Failed to get random avatar:', error)
+    return null
+  }
 }
 
 /**
