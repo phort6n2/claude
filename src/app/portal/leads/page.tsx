@@ -19,6 +19,7 @@ import {
   Save,
   Loader2,
   User,
+  PlayCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { NotificationToggle } from '@/components/portal/NotificationToggle'
@@ -34,6 +35,7 @@ interface Lead {
   saleValue: number | null
   saleDate: string | null
   saleNotes: string | null
+  callRecordingUrl: string | null
   createdAt: string
   formName: string | null
   formData: Record<string, unknown> | null
@@ -556,6 +558,23 @@ export default function PortalLeadsPage() {
                 </div>
               )}
 
+              {/* Call Recording Player */}
+              {selectedLead.callRecordingUrl && (
+                <div className="bg-violet-50 border border-violet-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <PlayCircle className="h-4 w-4 text-violet-600" />
+                    <span className="text-sm text-violet-800 font-medium">Call Recording</span>
+                  </div>
+                  <audio
+                    controls
+                    className="w-full h-10"
+                    src={selectedLead.callRecordingUrl}
+                  >
+                    Your browser does not support the audio element.
+                  </audio>
+                </div>
+              )}
+
               {/* Contact Info - Editable */}
               <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
@@ -977,11 +996,17 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
       }`}
     >
       {/* Source & Status Badge */}
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
         {isPhoneLead && (
           <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
             <Phone className="h-3 w-3" />
             Call
+          </div>
+        )}
+        {lead.callRecordingUrl && (
+          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
+            <PlayCircle className="h-3 w-3" />
+            Recording
           </div>
         )}
         <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}>

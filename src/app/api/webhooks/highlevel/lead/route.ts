@@ -265,27 +265,22 @@ export async function POST(request: NextRequest) {
 
     const leadSource = isPhoneCall ? 'PHONE' : 'FORM'
 
-    // Enhanced logging for phone calls - look for recording URL
+    // Extract call recording URL from various possible locations in the payload
+    const callRecordingUrl =
+      payload.recordingUrl ||
+      payload.recording_url ||
+      payload.audioUrl ||
+      payload.audio_url ||
+      payload.callRecording ||
+      payload.call_recording ||
+      payload.call?.recordingUrl ||
+      payload.call?.recording_url ||
+      payload.message?.attachments ||
+      null
+
+    // Log phone call data for debugging
     if (isPhoneCall) {
-      console.log(`[HighLevel Webhook] PHONE LEAD DETECTED - Looking for recording data:`, {
-        call: payload.call,
-        phone_call: payload.phone_call,
-        recording: payload.recording,
-        recordingUrl: payload.recordingUrl,
-        recording_url: payload.recording_url,
-        audioUrl: payload.audioUrl,
-        audio_url: payload.audio_url,
-        callRecording: payload.callRecording,
-        call_recording: payload.call_recording,
-        message: payload.message,
-        messageId: payload.messageId,
-        message_id: payload.message_id,
-        conversationId: payload.conversationId,
-        conversation_id: payload.conversation_id,
-        // Check nested objects
-        callObject: payload.call ? JSON.stringify(payload.call) : null,
-        messageObject: payload.message ? JSON.stringify(payload.message) : null,
-      })
+      console.log(`[HighLevel Webhook] PHONE LEAD - Recording URL: ${callRecordingUrl || 'not found'}`)
     }
 
     // Create the lead
@@ -314,6 +309,7 @@ export async function POST(request: NextRequest) {
         formData: Object.keys(formData).length > 0 ? (formData as Prisma.InputJsonValue) : undefined,
         formName: workflow.name || campaign.name || null,
         highlevelContactId,
+        callRecordingUrl,
         status: 'NEW',
       },
     })

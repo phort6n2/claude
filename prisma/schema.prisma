@@ -1083,6 +1083,9 @@ model Lead {
   // HighLevel Reference
   highlevelContactId String?
 
+  // Phone Call Data
+  callRecordingUrl String? // URL to call recording from HighLevel
+
   // Lead Status (updated by client)
   status          LeadStatus @default(NEW)
   statusUpdatedAt DateTime?

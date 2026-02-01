@@ -73,6 +73,7 @@ export async function GET(request: NextRequest) {
           saleValue: true,
           saleDate: true,
           saleNotes: true,
+          callRecordingUrl: true,
           createdAt: true,
           statusUpdatedAt: true,
         },
