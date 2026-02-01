@@ -265,24 +265,6 @@ export async function POST(request: NextRequest) {
 
     const leadSource = isPhoneCall ? 'PHONE' : 'FORM'
 
-    // Extract call recording URL from various possible locations in the payload
-    const callRecordingUrl =
-      payload.recordingUrl ||
-      payload.recording_url ||
-      payload.audioUrl ||
-      payload.audio_url ||
-      payload.callRecording ||
-      payload.call_recording ||
-      payload.call?.recordingUrl ||
-      payload.call?.recording_url ||
-      payload.message?.attachments ||
-      null
-
-    // Log phone call data for debugging
-    if (isPhoneCall) {
-      console.log(`[HighLevel Webhook] PHONE LEAD - Recording URL: ${callRecordingUrl || 'not found'}`)
-    }
-
     // Create the lead
     const lead = await prisma.lead.create({
       data: {
@@ -309,7 +291,6 @@ export async function POST(request: NextRequest) {
         formData: Object.keys(formData).length > 0 ? (formData as Prisma.InputJsonValue) : undefined,
         formName: workflow.name || campaign.name || null,
         highlevelContactId,
-        callRecordingUrl,
         status: 'NEW',
       },
     })
