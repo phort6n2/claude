@@ -433,20 +433,18 @@ function getLeadDetails(lead: Lead) {
   }
 
   const service = getField(['interested_in', 'Interested In:', 'Interested In'])
-  // Check for combined vehicle field first, then fall back to separate fields
-  let vehicle = getField(['vehicle', 'Vehicle'])
-  if (!vehicle) {
-    const year = getField(['vehicle_year', 'Vehicle Year'])
-    const make = getField(['vehicle_make', 'Vehicle Make'])
-    const model = getField(['vehicle_model', 'Vehicle Model'])
-    const vehicleParts = [year, make, model].filter(Boolean)
-    vehicle = vehicleParts.length > 0 ? vehicleParts.join(' ') : null
-  }
+  // Get individual vehicle fields
+  const year = getField(['vehicle_year', 'Vehicle Year'])
+  const make = getField(['vehicle_make', 'Vehicle Make'])
+  const model = getField(['vehicle_model', 'Vehicle Model'])
+  // Build combined vehicle string
+  const vehicleParts = [year, make, model].filter(Boolean)
+  const vehicle = vehicleParts.length > 0 ? vehicleParts.join(' ') : null
   const vin = getField(['vin', 'VIN', 'Vin'])
   const zipCode = getField(['postal_code', 'postalCode'])
   const insuranceHelp = getField(['insurance_help', 'Would You Like Us To Help Navigate Your Insurance Claim For You?', 'radio_3s0t'])
 
-  return { service, vehicle, vin, zipCode, insuranceHelp }
+  return { service, vehicle, year, make, model, vin, zipCode, insuranceHelp }
 }
 
 // Helper to get all form data fields for display
@@ -522,7 +520,9 @@ function LeadRow({
   const [showEditInfo, setShowEditInfo] = useState(false)
   const [editFirstName, setEditFirstName] = useState(lead.firstName || '')
   const [editLastName, setEditLastName] = useState(lead.lastName || '')
-  const [editVehicle, setEditVehicle] = useState(details.vehicle || '')
+  const [editVehicleYear, setEditVehicleYear] = useState(details.year || '')
+  const [editVehicleMake, setEditVehicleMake] = useState(details.make || '')
+  const [editVehicleModel, setEditVehicleModel] = useState(details.model || '')
   const [editService, setEditService] = useState(details.service || '')
 
   // Determine which value field to show based on status
@@ -537,9 +537,11 @@ function LeadRow({
     setEditSaleValue(lead.saleValue?.toString() || '')
     setEditFirstName(lead.firstName || '')
     setEditLastName(lead.lastName || '')
-    setEditVehicle(details.vehicle || '')
+    setEditVehicleYear(details.year || '')
+    setEditVehicleMake(details.make || '')
+    setEditVehicleModel(details.model || '')
     setEditService(details.service || '')
-  }, [lead, details.vehicle, details.service])
+  }, [lead, details.year, details.make, details.model, details.service])
 
   async function handleQuickSave() {
     setSaving(true)
@@ -579,7 +581,9 @@ function LeadRow({
         body: JSON.stringify({
           firstName: editFirstName || null,
           lastName: editLastName || null,
-          vehicle: editVehicle || null,
+          vehicleYear: editVehicleYear || null,
+          vehicleMake: editVehicleMake || null,
+          vehicleModel: editVehicleModel || null,
           interestedIn: editService || null,
         }),
       })
@@ -601,7 +605,9 @@ function LeadRow({
   const hasInfoChanges =
     editFirstName !== (lead.firstName || '') ||
     editLastName !== (lead.lastName || '') ||
-    editVehicle !== (details.vehicle || '') ||
+    editVehicleYear !== (details.year || '') ||
+    editVehicleMake !== (details.make || '') ||
+    editVehicleModel !== (details.model || '') ||
     editService !== (details.service || '')
 
   // Border color: orange for calls, blue for forms
@@ -756,16 +762,41 @@ function LeadRow({
                       className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     />
                   </div>
-                  {/* Vehicle field */}
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Vehicle</label>
-                    <input
-                      type="text"
-                      value={editVehicle}
-                      onChange={(e) => setEditVehicle(e.target.value)}
-                      placeholder="2024 Toyota Camry"
-                      className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
+                  {/* Vehicle fields */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Year</label>
+                      <select
+                        value={editVehicleYear}
+                        onChange={(e) => setEditVehicleYear(e.target.value)}
+                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      >
+                        <option value="">Year</option>
+                        {Array.from({ length: 30 }, (_, i) => new Date().getFullYear() + 1 - i).map((year) => (
+                          <option key={year} value={year.toString()}>{year}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Make</label>
+                      <input
+                        type="text"
+                        value={editVehicleMake}
+                        onChange={(e) => setEditVehicleMake(e.target.value)}
+                        placeholder="Toyota"
+                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Model</label>
+                      <input
+                        type="text"
+                        value={editVehicleModel}
+                        onChange={(e) => setEditVehicleModel(e.target.value)}
+                        placeholder="Camry"
+                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
                   </div>
                   {/* Save button */}
                   {hasInfoChanges && (
@@ -783,10 +814,22 @@ function LeadRow({
             </div>
 
             {/* Lead Details - All Available Info */}
-            {getAllFormFields(lead).length > 0 && (
+            {(details.vehicle || details.service || getAllFormFields(lead).length > 0) && (
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Lead Details</p>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  {details.service && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500 text-xs">Service</span>
+                      <p className="text-gray-900 font-medium">{details.service}</p>
+                    </div>
+                  )}
+                  {details.vehicle && (
+                    <div>
+                      <span className="text-gray-500 text-xs">Vehicle</span>
+                      <p className="text-gray-900 font-medium">{details.vehicle}</p>
+                    </div>
+                  )}
                   {getAllFormFields(lead).map((field, idx) => (
                     <div key={idx} className={field.value.length > 30 ? 'col-span-2' : ''}>
                       <span className="text-gray-500 text-xs">{field.label}</span>
