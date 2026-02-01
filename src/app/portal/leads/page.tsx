@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Phone,
@@ -484,16 +484,26 @@ function LeadRow({
   const [editSaleValue, setEditSaleValue] = useState(lead.saleValue?.toString() || '')
   const [saving, setSaving] = useState(false)
 
-  // Swipe state for quick actions
-  const rowRef = useRef<HTMLDivElement>(null)
-  const touchStartX = useRef<number | null>(null)
-  const [swipeOffset, setSwipeOffset] = useState(0)
+  // Editable lead info state
+  const [showEditInfo, setShowEditInfo] = useState(false)
+  const [editFirstName, setEditFirstName] = useState(lead.firstName || '')
+  const [editLastName, setEditLastName] = useState(lead.lastName || '')
+  const [editVehicleYear, setEditVehicleYear] = useState(details.year || '')
+  const [editVehicleMake, setEditVehicleMake] = useState(details.make || '')
+  const [editVehicleModel, setEditVehicleModel] = useState(details.model || '')
+  const [editService, setEditService] = useState(details.service || '')
 
   // Reset edit state when lead changes
   useEffect(() => {
     setEditStatus(lead.status)
     setEditSaleValue(lead.saleValue?.toString() || '')
-  }, [lead])
+    setEditFirstName(lead.firstName || '')
+    setEditLastName(lead.lastName || '')
+    setEditVehicleYear(details.year || '')
+    setEditVehicleMake(details.make || '')
+    setEditVehicleModel(details.model || '')
+    setEditService(details.service || '')
+  }, [lead, details.year, details.make, details.model, details.service])
 
   async function handleQuickSave() {
     setSaving(true)
@@ -516,52 +526,51 @@ function LeadRow({
     }
   }
 
-  // Touch handlers for swipe
-  function handleTouchStart(e: React.TouchEvent) {
-    touchStartX.current = e.touches[0].clientX
-  }
-
-  function handleTouchMove(e: React.TouchEvent) {
-    if (touchStartX.current === null) return
-    const diff = touchStartX.current - e.touches[0].clientX
-    // Only allow left swipe (positive diff) up to 100px
-    if (diff > 0 && diff < 100) {
-      setSwipeOffset(diff)
+  async function handleSaveInfo() {
+    setSaving(true)
+    try {
+      const response = await fetch(`/api/portal/leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: editFirstName || null,
+          lastName: editLastName || null,
+          vehicleYear: editVehicleYear || null,
+          vehicleMake: editVehicleMake || null,
+          vehicleModel: editVehicleModel || null,
+          interestedIn: editService || null,
+        }),
+      })
+      if (!response.ok) throw new Error('Failed to save')
+      const updated = await response.json()
+      onUpdate({ ...lead, ...updated })
+      setShowEditInfo(false)
+    } catch {
+      alert('Failed to save')
+    } finally {
+      setSaving(false)
     }
   }
 
-  function handleTouchEnd() {
-    if (swipeOffset > 50) {
-      // Trigger call action
-      if (lead.phone) {
-        window.location.href = `tel:${lead.phone}`
-      }
-    }
-    setSwipeOffset(0)
-    touchStartX.current = null
-  }
-
-  const hasChanges = editStatus !== lead.status ||
+  const hasStatusChanges = editStatus !== lead.status ||
     (editSaleValue || '') !== (lead.saleValue?.toString() || '')
 
-  return (
-    <div className="relative overflow-hidden rounded-xl">
-      {/* Swipe action background */}
-      <div
-        className="absolute inset-y-0 right-0 bg-green-500 flex items-center justify-end pr-4"
-        style={{ width: swipeOffset > 0 ? '100px' : 0 }}
-      >
-        <Phone className="h-6 w-6 text-white" />
-      </div>
+  const hasInfoChanges =
+    editFirstName !== (lead.firstName || '') ||
+    editLastName !== (lead.lastName || '') ||
+    editVehicleYear !== (details.year || '') ||
+    editVehicleMake !== (details.make || '') ||
+    editVehicleModel !== (details.model || '') ||
+    editService !== (details.service || '')
 
+  // Border color: orange for calls, blue for forms
+  const borderColor = isPhoneLead ? 'border-l-4 border-orange-400' : 'border-l-4 border-blue-400'
+
+  return (
+    <div className="rounded-xl overflow-hidden">
       {/* Main row */}
       <div
-        ref={rowRef}
-        className={`bg-white shadow-sm transition-all duration-200 ${isPhoneLead ? 'border-l-4 border-orange-400' : ''} ${isDimmed ? 'opacity-40' : ''} ${isExpanded ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
-        style={{ transform: `translateX(-${swipeOffset}px)` }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        className={`bg-white shadow-sm transition-all duration-200 ${borderColor} ${isDimmed ? 'opacity-40' : ''} ${isExpanded ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
       >
         {/* Collapsed Row */}
         <button
@@ -659,6 +668,101 @@ function LeadRow({
               )}
             </div>
 
+            {/* Edit Lead Info - Expandable */}
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setShowEditInfo(!showEditInfo)}
+                className="w-full px-3 py-2 flex items-center justify-between bg-gray-50 hover:bg-gray-100 text-sm text-gray-700"
+              >
+                <span className="font-medium">
+                  {!lead.firstName && !lead.lastName ? '+ Add Name & Info' : 'Edit Lead Info'}
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${showEditInfo ? 'rotate-180' : ''}`} />
+              </button>
+              {showEditInfo && (
+                <div className="p-3 space-y-3 bg-white">
+                  {/* Name fields */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">First Name</label>
+                      <input
+                        type="text"
+                        value={editFirstName}
+                        onChange={(e) => setEditFirstName(e.target.value)}
+                        placeholder="First"
+                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Last Name</label>
+                      <input
+                        type="text"
+                        value={editLastName}
+                        onChange={(e) => setEditLastName(e.target.value)}
+                        placeholder="Last"
+                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  {/* Service */}
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Service Needed</label>
+                    <input
+                      type="text"
+                      value={editService}
+                      onChange={(e) => setEditService(e.target.value)}
+                      placeholder="e.g., Windshield Replacement"
+                      className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  {/* Vehicle fields */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Year</label>
+                      <input
+                        type="text"
+                        value={editVehicleYear}
+                        onChange={(e) => setEditVehicleYear(e.target.value)}
+                        placeholder="2024"
+                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Make</label>
+                      <input
+                        type="text"
+                        value={editVehicleMake}
+                        onChange={(e) => setEditVehicleMake(e.target.value)}
+                        placeholder="Toyota"
+                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Model</label>
+                      <input
+                        type="text"
+                        value={editVehicleModel}
+                        onChange={(e) => setEditVehicleModel(e.target.value)}
+                        placeholder="Camry"
+                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  {/* Save button */}
+                  {hasInfoChanges && (
+                    <button
+                      onClick={handleSaveInfo}
+                      disabled={saving}
+                      className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                      Save Info
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Lead Details - All Available Info */}
             {getAllFormFields(lead).length > 0 && (
               <div className="bg-gray-50 rounded-lg p-3">
@@ -703,7 +807,7 @@ function LeadRow({
                   />
                 </div>
               </div>
-              {hasChanges && (
+              {hasStatusChanges && (
                 <button
                   onClick={handleQuickSave}
                   disabled={saving}
