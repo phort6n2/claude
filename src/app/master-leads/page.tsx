@@ -21,7 +21,9 @@ import {
   CheckCircle2,
   PlayCircle,
   Check,
+  BarChart3,
 } from 'lucide-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 
 interface Lead {
@@ -78,7 +80,12 @@ export default function StandaloneMasterLeadsPage() {
   const [authenticated, setAuthenticated] = useState(false)
   const [authChecking, setAuthChecking] = useState(true)
   const [clients, setClients] = useState<Client[]>([])
-  const [selectedClientId, setSelectedClientId] = useState<string>('')
+  const [selectedClientId, setSelectedClientId] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('masterLeadsSelectedClientId') || ''
+    }
+    return ''
+  })
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(false)
@@ -125,13 +132,15 @@ export default function StandaloneMasterLeadsPage() {
       .finally(() => setClientsLoading(false))
   }, [authenticated])
 
-  // Update selected client when ID changes
+  // Update selected client when ID changes and persist to localStorage
   useEffect(() => {
     if (selectedClientId) {
       const client = clients.find(c => c.id === selectedClientId)
       setSelectedClient(client || null)
+      localStorage.setItem('masterLeadsSelectedClientId', selectedClientId)
     } else {
       setSelectedClient(null)
+      localStorage.removeItem('masterLeadsSelectedClientId')
     }
   }, [selectedClientId, clients])
 
@@ -273,6 +282,13 @@ export default function StandaloneMasterLeadsPage() {
                 <p className="text-xs text-gray-600">Master Leads</p>
               </div>
             </div>
+            <Link
+              href="/master-leads/ads"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+              title="Google Ads Today"
+            >
+              <BarChart3 className="h-5 w-5 text-blue-600" />
+            </Link>
           </div>
         </div>
       </header>
