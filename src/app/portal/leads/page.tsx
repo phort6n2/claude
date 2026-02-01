@@ -425,11 +425,15 @@ function getAllFormFields(lead: Lead): Array<{ label: string; value: string }> {
   const fd = lead.formData
   if (!fd) return fields
 
-  // Keys to skip (internal or already shown elsewhere)
+  // Keys to skip (internal, already shown elsewhere, or not useful)
   const skipKeys = new Set([
     '_rawPayload', 'id', 'contactId', 'locationId', 'email', 'phone',
     'firstName', 'lastName', 'first_name', 'last_name', 'name', 'full_name',
-    'source', 'type', 'dateAdded', 'date_added', 'timestamp'
+    'source', 'type', 'dateAdded', 'date_added', 'timestamp',
+    // Skip these per user request
+    'tags', 'country', 'timezone', 'contact_type', 'contactType', 'contact_source', 'contactSource',
+    // Skip recording URL (audio player is shown separately)
+    'recordingUrl', 'recording_url', 'callRecordingUrl', 'call_recording_url', 'audioUrl', 'audio_url'
   ])
 
   // Label formatting helper
@@ -590,9 +594,11 @@ function LeadRow({
 
           {/* Status & Time */}
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}>
-              {statusConfig.label}
-            </span>
+            {lead.status !== 'NEW' && (
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}>
+                {statusConfig.label}
+              </span>
+            )}
             <span className="text-xs text-gray-500">
               {new Date(lead.createdAt).toLocaleTimeString('en-US', {
                 hour: 'numeric',
