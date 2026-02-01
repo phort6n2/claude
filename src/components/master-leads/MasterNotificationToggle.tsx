@@ -164,7 +164,15 @@ export function MasterNotificationToggle({ clients, className = '' }: MasterNoti
   }
 
   if (!isSupported) {
-    return null
+    return (
+      <button
+        disabled
+        className={`p-2 rounded-full text-gray-300 cursor-not-allowed ${className}`}
+        title="Push notifications not supported - add to home screen on iOS"
+      >
+        <BellOff className="h-5 w-5" />
+      </button>
+    )
   }
 
   if (isLoading) {
