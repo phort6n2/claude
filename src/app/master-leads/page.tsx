@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
+import { MasterNotificationToggle } from '@/components/master-leads/MasterNotificationToggle'
 
 interface Lead {
   id: string
@@ -282,13 +283,16 @@ export default function StandaloneMasterLeadsPage() {
                 <p className="text-xs text-gray-600">Master Leads</p>
               </div>
             </div>
-            <Link
-              href="/master-leads/ads"
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
-              title="Google Ads Today"
-            >
-              <BarChart3 className="h-5 w-5 text-blue-600" />
-            </Link>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <MasterNotificationToggle clients={clients} />
+              <Link
+                href="/master-leads/ads"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Google Ads Today"
+              >
+                <BarChart3 className="h-5 w-5 text-blue-600" />
+              </Link>
+            </div>
           </div>
         </div>
       </header>
