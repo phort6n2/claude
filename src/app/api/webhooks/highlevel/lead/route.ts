@@ -269,6 +269,8 @@ export async function POST(request: NextRequest) {
     const callRecordingUrl =
       payload.recordingUrl ||
       payload.recording_url ||
+      payload.customData?.recordingUrl ||
+      payload.customData?.recording_url ||
       payload.audioUrl ||
       payload.audio_url ||
       payload.callRecording ||
