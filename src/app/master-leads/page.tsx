@@ -526,7 +526,10 @@ function getAllFormFields(lead: Lead): Array<{ label: string; value: string }> {
     // Skip these per user request
     'tags', 'country', 'timezone', 'contact_type', 'contactType', 'contact_source', 'contactSource',
     // Skip recording URL (audio player is shown separately)
-    'recordingUrl', 'recording_url', 'callRecordingUrl', 'call_recording_url', 'audioUrl', 'audio_url'
+    'recordingUrl', 'recording_url', 'callRecordingUrl', 'call_recording_url', 'audioUrl', 'audio_url',
+    // Skip vehicle/service fields (shown in Edit Lead Info section)
+    'vehicle', 'Vehicle', 'vehicle_year', 'Vehicle Year', 'vehicle_make', 'Vehicle Make',
+    'vehicle_model', 'Vehicle Model', 'interested_in', 'Interested In', 'Interested In:'
   ])
 
   // Label formatting helper
