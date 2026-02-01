@@ -1096,6 +1096,9 @@ model Lead {
   qualifiedAt        DateTime?
   qualificationNotes String?
 
+  // Quote Info
+  quoteValue Float? // Quote amount when status is QUOTED
+
   // Sale Info (for offline conversion import)
   saleValue    Float? // Revenue amount if sold
   saleCurrency String    @default("USD")

@@ -33,6 +33,7 @@ interface Lead {
   status: string
   source: string
   gclid: string | null
+  quoteValue: number | null
   saleValue: number | null
   saleDate: string | null
   saleNotes: string | null
@@ -573,6 +574,7 @@ function LeadRow({
 
   // Edit state
   const [editStatus, setEditStatus] = useState(lead.status)
+  const [editQuoteValue, setEditQuoteValue] = useState(lead.quoteValue?.toString() || '')
   const [editSaleValue, setEditSaleValue] = useState(lead.saleValue?.toString() || '')
   const [saving, setSaving] = useState(false)
 
@@ -583,9 +585,15 @@ function LeadRow({
   const [editVehicle, setEditVehicle] = useState(details.vehicle || '')
   const [editService, setEditService] = useState(details.service || '')
 
+  // Determine which value field to show based on status
+  const isQuotedStatus = editStatus === 'QUOTED'
+  const isSoldStatus = editStatus === 'SOLD'
+  const showValueField = isQuotedStatus || isSoldStatus
+
   // Reset edit state when lead changes
   useEffect(() => {
     setEditStatus(lead.status)
+    setEditQuoteValue(lead.quoteValue?.toString() || '')
     setEditSaleValue(lead.saleValue?.toString() || '')
     setEditFirstName(lead.firstName || '')
     setEditLastName(lead.lastName || '')
@@ -596,13 +604,21 @@ function LeadRow({
   async function handleQuickSave() {
     setSaving(true)
     try {
+      const payload: Record<string, unknown> = { status: editStatus }
+
+      // Save quote value when status is QUOTED
+      if (editStatus === 'QUOTED') {
+        payload.quoteValue = editQuoteValue ? parseFloat(editQuoteValue) : null
+      }
+      // Save sale value when status is SOLD
+      if (editStatus === 'SOLD') {
+        payload.saleValue = editSaleValue ? parseFloat(editSaleValue) : null
+      }
+
       const response = await fetch(`/api/leads/${lead.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: editStatus,
-          saleValue: editSaleValue ? parseFloat(editSaleValue) : null,
-        }),
+        body: JSON.stringify(payload),
       })
       if (!response.ok) throw new Error('Failed to save')
       const updated = await response.json()
@@ -639,6 +655,7 @@ function LeadRow({
   }
 
   const hasStatusChanges = editStatus !== lead.status ||
+    (editQuoteValue || '') !== (lead.quoteValue?.toString() || '') ||
     (editSaleValue || '') !== (lead.saleValue?.toString() || '')
 
   const hasInfoChanges =
@@ -870,7 +887,7 @@ function LeadRow({
               </div>
             )}
 
-            {/* Status & Sale - Inline Edit */}
+            {/* Status & Value - Inline Edit */}
             <div className="flex gap-3 items-end pt-2 border-t border-gray-100">
               <div className="flex-1">
                 <label className="block text-xs text-gray-500 mb-1">Status</label>
@@ -886,19 +903,23 @@ function LeadRow({
                   ))}
                 </select>
               </div>
-              <div className="flex-1">
-                <label className="block text-xs text-gray-500 mb-1">Sale Value</label>
-                <div className="relative">
-                  <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="number"
-                    value={editSaleValue}
-                    onChange={(e) => setEditSaleValue(e.target.value)}
-                    placeholder="0"
-                    className="w-full pl-7 pr-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
+              {showValueField && (
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-500 mb-1">
+                    {isQuotedStatus ? 'Quote Value' : 'Sale Value'}
+                  </label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="number"
+                      value={isQuotedStatus ? editQuoteValue : editSaleValue}
+                      onChange={(e) => isQuotedStatus ? setEditQuoteValue(e.target.value) : setEditSaleValue(e.target.value)}
+                      placeholder="0"
+                      className="w-full pl-7 pr-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
               {hasStatusChanges && (
                 <button
                   onClick={handleQuickSave}
@@ -915,11 +936,21 @@ function LeadRow({
               )}
             </div>
 
-            {/* Sale indicator */}
-            {lead.saleValue && (
-              <div className="flex items-center gap-2 text-emerald-600 font-semibold">
-                <TrendingUp className="h-4 w-4" />
-                Sale: ${lead.saleValue.toLocaleString()}
+            {/* Quote & Sale indicators */}
+            {(lead.quoteValue || lead.saleValue) && (
+              <div className="flex items-center gap-4">
+                {lead.quoteValue && (
+                  <div className="flex items-center gap-2 text-purple-600 font-semibold">
+                    <DollarSign className="h-4 w-4" />
+                    Quote: ${lead.quoteValue.toLocaleString()}
+                  </div>
+                )}
+                {lead.saleValue && (
+                  <div className="flex items-center gap-2 text-emerald-600 font-semibold">
+                    <TrendingUp className="h-4 w-4" />
+                    Sale: ${lead.saleValue.toLocaleString()}
+                  </div>
+                )}
               </div>
             )}
           </div>
