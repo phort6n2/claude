@@ -335,7 +335,7 @@ export default function StandaloneMasterLeadsPage() {
           </div>
 
           {/* Leads List */}
-          <div className="max-w-3xl mx-auto px-4 pb-6">
+          <div className="max-w-3xl mx-auto px-4 pb-20">
             {loading ? (
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
@@ -443,6 +443,17 @@ export default function StandaloneMasterLeadsPage() {
           </div>
         </>
       )}
+
+      {/* Powered by Footer */}
+      <div className="fixed bottom-0 left-0 right-0 bg-gray-900 z-50">
+        <div className="max-w-3xl mx-auto px-4 py-2 flex items-center justify-center gap-2">
+          <span className="text-gray-400 text-xs">Powered by</span>
+          <a href="https://autoglassmarketingpros.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
+            <img src="/logo.png" alt="Auto Glass Marketing Pros" className="h-5 w-auto" />
+            <span className="text-white text-xs font-medium">Auto Glass Marketing Pros</span>
+          </a>
+        </div>
+      </div>
     </div>
   )
 }
