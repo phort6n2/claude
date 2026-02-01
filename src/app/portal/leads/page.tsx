@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Phone,
@@ -22,6 +22,8 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { NotificationToggle } from '@/components/portal/NotificationToggle'
+import { usePullToRefresh } from '@/hooks/usePullToRefresh'
+import { PullToRefreshIndicator } from '@/components/ui/PullToRefresh'
 
 interface Lead {
   id: string
@@ -101,23 +103,42 @@ export default function PortalLeadsPage() {
       })
   }, [router])
 
-  // Load leads for selected date
-  useEffect(() => {
+  // Function to load leads - used by useEffect and pull-to-refresh
+  const loadLeads = useCallback(async (showLoadingState = true) => {
     if (!session?.authenticated) return
 
-    setLoading(true)
-    setExpandedLeadId(null)
-    fetch(`/api/portal/leads?date=${selectedDate}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setLeads(data.leads || [])
-        if (data.sales) {
-          setSales(data.sales)
-        }
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+    if (showLoadingState) {
+      setLoading(true)
+      setExpandedLeadId(null)
+    }
+
+    try {
+      const res = await fetch(`/api/portal/leads?date=${selectedDate}`)
+      const data = await res.json()
+      setLeads(data.leads || [])
+      if (data.sales) {
+        setSales(data.sales)
+      }
+    } catch (error) {
+      console.error('Failed to load leads:', error)
+    } finally {
+      if (showLoadingState) {
+        setLoading(false)
+      }
+    }
   }, [session, selectedDate])
+
+  // Load leads for selected date
+  useEffect(() => {
+    loadLeads(true)
+  }, [loadLeads])
+
+  // Pull-to-refresh
+  const { isRefreshing, pullDistance, threshold } = usePullToRefresh({
+    onRefresh: async () => {
+      await loadLeads(false)
+    },
+  })
 
   function changeDate(days: number) {
     const date = new Date(selectedDate + 'T12:00:00')
@@ -174,6 +195,13 @@ export default function PortalLeadsPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 overflow-x-hidden">
+      {/* Pull to Refresh Indicator */}
+      <PullToRefreshIndicator
+        pullDistance={pullDistance}
+        threshold={threshold}
+        isRefreshing={isRefreshing}
+      />
+
       {/* Header - Compact */}
       <header className="bg-white border-b sticky top-0 z-40">
         <div className="max-w-3xl mx-auto px-4 py-2">

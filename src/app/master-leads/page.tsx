@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Phone,
@@ -26,6 +26,8 @@ import {
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { MasterNotificationToggle } from '@/components/master-leads/MasterNotificationToggle'
+import { usePullToRefresh } from '@/hooks/usePullToRefresh'
+import { PullToRefreshIndicator } from '@/components/ui/PullToRefresh'
 
 interface Lead {
   id: string
@@ -145,38 +147,56 @@ export default function StandaloneMasterLeadsPage() {
     }
   }, [selectedClientId, clients])
 
-  // Load leads for selected client and date
-  useEffect(() => {
+  // Function to load leads - used by useEffect and pull-to-refresh
+  const loadLeads = useCallback(async (showLoadingState = true) => {
     if (!selectedClientId || !authenticated) {
       setLeads([])
       setSales(null)
       return
     }
 
-    setLoading(true)
-    setExpandedLeadId(null)
+    if (showLoadingState) {
+      setLoading(true)
+      setExpandedLeadId(null)
+    }
 
     const [year, month, day] = selectedDate.split('-').map(Number)
     const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
     const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
 
-    fetch(`/api/leads?clientId=${selectedClientId}&startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setLeads(data.leads || [])
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+    try {
+      const [leadsRes, statsRes] = await Promise.all([
+        fetch(`/api/leads?clientId=${selectedClientId}&startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`),
+        fetch(`/api/admin/master-leads/stats?clientId=${selectedClientId}`)
+      ])
 
-    fetch(`/api/admin/master-leads/stats?clientId=${selectedClientId}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.sales) {
-          setSales(data.sales)
-        }
-      })
-      .catch(console.error)
+      const leadsData = await leadsRes.json()
+      setLeads(leadsData.leads || [])
+
+      const statsData = await statsRes.json()
+      if (statsData.sales) {
+        setSales(statsData.sales)
+      }
+    } catch (error) {
+      console.error('Failed to load leads:', error)
+    } finally {
+      if (showLoadingState) {
+        setLoading(false)
+      }
+    }
   }, [selectedClientId, selectedDate, authenticated])
+
+  // Load leads for selected client and date
+  useEffect(() => {
+    loadLeads(true)
+  }, [loadLeads])
+
+  // Pull-to-refresh
+  const { isRefreshing, pullDistance, threshold } = usePullToRefresh({
+    onRefresh: async () => {
+      await loadLeads(false)
+    },
+  })
 
   function changeDate(days: number) {
     const date = new Date(selectedDate + 'T12:00:00')
@@ -247,6 +267,13 @@ export default function StandaloneMasterLeadsPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 overflow-x-hidden">
+      {/* Pull to Refresh Indicator */}
+      <PullToRefreshIndicator
+        pullDistance={pullDistance}
+        threshold={threshold}
+        isRefreshing={isRefreshing}
+      />
+
       {/* Header with Client Selector */}
       <header className="bg-white border-b sticky top-0 z-40">
         <div className="max-w-3xl mx-auto px-4 py-3">
