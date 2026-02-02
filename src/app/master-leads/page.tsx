@@ -16,6 +16,7 @@ import {
   X,
   Loader2,
   User,
+  Users,
   Building2,
   ShieldX,
   CheckCircle2,
@@ -343,6 +344,13 @@ export default function StandaloneMasterLeadsPage() {
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
               <MasterNotificationToggle clients={clients} />
+              <Link
+                href="/master-leads/all"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="All Leads"
+              >
+                <Users className="h-5 w-5 text-purple-600" />
+              </Link>
               <Link
                 href="/master-leads/ads"
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
