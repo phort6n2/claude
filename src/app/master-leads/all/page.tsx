@@ -268,18 +268,23 @@ export default function AllLeadsPage() {
               </button>
             </div>
             <div className="flex items-center gap-3">
-              {/* Sync counter for Google Ads leads */}
-              {(() => {
+              {leads.length > 0 && (() => {
                 const adsLeads = leads.filter(l => l.gclid)
-                const syncedLeads = adsLeads.filter(l => l.offlineConversionSent || l.enhancedConversionSent)
-                if (adsLeads.length > 0) {
-                  return (
-                    <span className={`text-xs font-medium ${syncedLeads.length === adsLeads.length ? 'text-green-600' : 'text-orange-500'}`}>
-                      {syncedLeads.length}/{adsLeads.length} synced
+                const syncedLeads = leads.filter(l => l.enhancedConversionSent || l.offlineConversionSent)
+                return (
+                  <>
+                    {/* Sync status for all leads */}
+                    <span className={`text-xs font-medium ${syncedLeads.length === leads.length ? 'text-green-600' : 'text-orange-500'}`}>
+                      {syncedLeads.length}/{leads.length} synced
                     </span>
-                  )
-                }
-                return null
+                    {/* Google Ads leads count */}
+                    {adsLeads.length > 0 && (
+                      <span className="text-xs text-gray-500">
+                        ({adsLeads.length} from Ads)
+                      </span>
+                    )}
+                  </>
+                )
               })()}
               <span className="text-sm text-gray-500">
                 {leads.length} lead{leads.length !== 1 ? 's' : ''}
@@ -536,15 +541,15 @@ function LeadRow({
               {lead.callRecordingUrl && (
                 <PlayCircle className="h-4 w-4 text-violet-500 flex-shrink-0" />
               )}
+              {/* Google Ads icon for leads from ads */}
               {lead.gclid && (
-                <span className="relative flex-shrink-0" title={lead.offlineConversionSent || lead.enhancedConversionSent ? 'Synced to Google Ads' : 'Pending sync'}>
-                  <img src="/google-ads-icon.svg" alt="Google Ads" className="h-4 w-4" />
-                  {(lead.offlineConversionSent || lead.enhancedConversionSent) ? (
-                    <CheckCircle2 className="absolute -bottom-1 -right-1 h-3 w-3 text-green-600 bg-white rounded-full" />
-                  ) : (
-                    <Clock className="absolute -bottom-1 -right-1 h-3 w-3 text-orange-500 bg-white rounded-full" />
-                  )}
-                </span>
+                <img src="/google-ads-icon.svg" alt="From Google Ads" className="h-4 w-4 flex-shrink-0" title="Lead from Google Ads" />
+              )}
+              {/* Sync status indicator for all leads */}
+              {(lead.enhancedConversionSent || lead.offlineConversionSent) ? (
+                <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" title="Synced to Google" />
+              ) : (
+                <Clock className="h-4 w-4 text-orange-400 flex-shrink-0" title="Pending sync" />
               )}
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
