@@ -7,7 +7,16 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: Request) {
   // Verify cron secret
   const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const cronSecret = process.env.CRON_SECRET
+  const isProduction = process.env.NODE_ENV === 'production'
+
+  // In production, CRON_SECRET must be set
+  if (isProduction && !cronSecret) {
+    console.error('[CheckSocialPublished] CRON_SECRET not configured in production')
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
+  }
+
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
