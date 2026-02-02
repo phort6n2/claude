@@ -735,9 +735,20 @@ export async function getAccountMetrics(
   error?: string
 }> {
   // Build the date filter based on the range
+  // Use America/Denver timezone for date calculations
   let dateFilter = ''
-  const today = new Date()
-  const formatDate = (d: Date) => d.toISOString().split('T')[0].replace(/-/g, '')
+
+  // Get current date in Mountain Time
+  const now = new Date()
+  const mountainTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Denver' }))
+  const today = new Date(mountainTime.getFullYear(), mountainTime.getMonth(), mountainTime.getDate())
+
+  const formatDate = (d: Date) => {
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}${month}${day}`
+  }
 
   switch (dateRange) {
     case 'TODAY':
