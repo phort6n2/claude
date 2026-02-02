@@ -267,9 +267,24 @@ export default function AllLeadsPage() {
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
-            <span className="text-sm text-gray-500">
-              {leads.length} lead{leads.length !== 1 ? 's' : ''}
-            </span>
+            <div className="flex items-center gap-3">
+              {/* Sync counter for Google Ads leads */}
+              {(() => {
+                const adsLeads = leads.filter(l => l.gclid)
+                const syncedLeads = adsLeads.filter(l => l.offlineConversionSent || l.enhancedConversionSent)
+                if (adsLeads.length > 0) {
+                  return (
+                    <span className={`text-xs font-medium ${syncedLeads.length === adsLeads.length ? 'text-green-600' : 'text-orange-500'}`}>
+                      {syncedLeads.length}/{adsLeads.length} synced
+                    </span>
+                  )
+                }
+                return null
+              })()}
+              <span className="text-sm text-gray-500">
+                {leads.length} lead{leads.length !== 1 ? 's' : ''}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -522,7 +537,14 @@ function LeadRow({
                 <PlayCircle className="h-4 w-4 text-violet-500 flex-shrink-0" />
               )}
               {lead.gclid && (
-                <span className="text-xs text-green-600 font-medium">Ads</span>
+                <span className={`flex items-center gap-0.5 text-xs font-medium ${lead.offlineConversionSent || lead.enhancedConversionSent ? 'text-green-600' : 'text-orange-500'}`}>
+                  {lead.offlineConversionSent || lead.enhancedConversionSent ? (
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  ) : (
+                    <Clock className="h-3.5 w-3.5" />
+                  )}
+                  Ads
+                </span>
               )}
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
