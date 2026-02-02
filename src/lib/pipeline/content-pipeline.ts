@@ -853,8 +853,14 @@ async function runContentPipelineInternal(contentItemId: string): Promise<void> 
 
           const clientPostedPosts: Array<{ platform: string; postId: string; status: string; publishedUrl?: string }> = []
 
+          // Skip video platforms (TikTok) for image posts - TikTok gets short video instead
+          const CLIENT_VIDEO_ONLY_PLATFORMS = ['tiktok']
+          const filteredClientPlatforms = contentItem.client.socialPlatforms.filter(
+            (p: string) => !CLIENT_VIDEO_ONLY_PLATFORMS.includes(p)
+          )
+
           // Post to each platform immediately (not scheduled)
-          for (const platform of contentItem.client.socialPlatforms) {
+          for (const platform of filteredClientPlatforms) {
             const accountId = socialAccountIds[platform]
             if (!accountId) continue
 
@@ -1670,6 +1676,68 @@ async function runContentPipelineInternal(contentItemId: string): Promise<void> 
             })
           } catch (youtubeError) {
             logError(ctx, 'Failed to upload video to YouTube', youtubeError)
+          }
+        }
+
+        // Post short video to Client TikTok (if configured)
+        const clientSocialAccountIds = contentItem.client.socialAccountIds as Record<string, string> | null
+        const clientTikTokAccountId = clientSocialAccountIds?.tiktok
+        if (clientTikTokAccountId && contentItem.client.socialPlatforms.includes('tiktok')) {
+          const clientVideoCaption = `${blogResult!.title}\n\n${contentItem.paaQuestion}\n\n📞 Call us today!\n\n#AutoGlass #WindshieldRepair #${contentItem.client.city.replace(/\s+/g, '')} #${contentItem.client.state.replace(/\s+/g, '')}`
+
+          try {
+            log(ctx, '📤 Posting video to client TikTok...')
+            const postResult = await withTimeout(
+              postNowAndCheckStatus({
+                accountId: clientTikTokAccountId,
+                platform: 'tiktok',
+                caption: clientVideoCaption,
+                mediaUrls: [gcsResult.url],
+                mediaType: 'video',
+              }),
+              TIMEOUTS.SOCIAL_SCHEDULE,
+              'Client TikTok video posting'
+            )
+
+            await prisma.socialPost.create({
+              data: {
+                contentItemId,
+                clientId: contentItem.clientId,
+                platform: 'TIKTOK',
+                caption: clientVideoCaption,
+                hashtags: ['AutoGlass', 'WindshieldRepair', contentItem.client.city.replace(/\s+/g, ''), contentItem.client.state.replace(/\s+/g, '')],
+                mediaType: 'video',
+                mediaUrls: [gcsResult.url],
+                scheduledTime: new Date(),
+                getlatePostId: postResult.postId,
+                publishedUrl: postResult.platformPostUrl,
+                status: postResult.status === 'published' ? 'PUBLISHED' : postResult.status === 'failed' ? 'FAILED' : 'PROCESSING',
+                publishedAt: postResult.status === 'published' ? new Date() : undefined,
+              },
+            })
+            log(ctx, '✅ Video posted to client TikTok', { url: postResult.platformPostUrl })
+          } catch (clientTikTokError) {
+            const errorMsg = clientTikTokError instanceof Error ? clientTikTokError.message : String(clientTikTokError)
+            const isRateLimit = errorMsg.toLowerCase().includes('rate') || errorMsg.toLowerCase().includes('limit')
+            logError(ctx, 'Failed to post video to client TikTok', clientTikTokError)
+            try {
+              await prisma.socialPost.create({
+                data: {
+                  contentItemId,
+                  clientId: contentItem.clientId,
+                  platform: 'TIKTOK',
+                  caption: clientVideoCaption,
+                  hashtags: [],
+                  mediaType: 'video',
+                  mediaUrls: [gcsResult.url],
+                  scheduledTime: new Date(),
+                  status: 'FAILED',
+                  errorMessage: isRateLimit ? 'Rate limit reached' : errorMsg.substring(0, 500),
+                },
+              })
+            } catch (dbError) {
+              logError(ctx, 'Failed to save failed client TikTok post record', dbError)
+            }
           }
         }
 
