@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Phone,
@@ -413,7 +413,7 @@ export default function StandaloneMasterLeadsPage() {
           </div>
 
           {/* Leads List */}
-          <div className="max-w-3xl mx-auto px-4 pb-20">
+          <div className="max-w-3xl mx-auto px-4 pb-32">
             {loading ? (
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
@@ -657,10 +657,21 @@ function LeadRow({
   onToggle: () => void
   onUpdate: (lead: Lead) => void
 }) {
+  const rowRef = useRef<HTMLDivElement>(null)
   const statusConfig = STATUS_CONFIG[lead.status] || STATUS_CONFIG.NEW
   const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'
   const isPhoneLead = lead.source === 'PHONE'
   const details = getLeadDetails(lead)
+
+  // Scroll expanded lead into view
+  useEffect(() => {
+    if (isExpanded && rowRef.current) {
+      // Small delay to allow the expansion animation to start
+      setTimeout(() => {
+        rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }, 100)
+    }
+  }, [isExpanded])
 
   // Edit state
   const [editStatus, setEditStatus] = useState(lead.status)
@@ -766,7 +777,7 @@ function LeadRow({
   const borderColor = isPhoneLead ? 'border-l-4 border-orange-400' : 'border-l-4 border-blue-400'
 
   return (
-    <div className="rounded-xl overflow-hidden">
+    <div ref={rowRef} className="rounded-xl overflow-hidden">
       {/* Main row */}
       <div
         className={`bg-white shadow-sm transition-all duration-200 ${borderColor} ${isDimmed ? 'opacity-40' : ''} ${isExpanded ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
