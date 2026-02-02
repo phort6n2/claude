@@ -73,11 +73,11 @@ export async function GET() {
       // 4. Recent cron runs
       prisma.publishingLog.findMany({
         where: { action: 'cron_hourly_publish' },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { startedAt: 'desc' },
         take: 10,
         select: {
           status: true,
-          createdAt: true,
+          startedAt: true,
           durationMs: true,
           responseData: true,
         },
@@ -137,7 +137,7 @@ export async function GET() {
       } catch (e) {}
       return {
         status: c.status,
-        createdAt: c.createdAt,
+        startedAt: c.startedAt,
         durationMs: c.durationMs,
         processed,
         successful,
