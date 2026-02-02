@@ -538,7 +538,7 @@ function LeadRow({
               )}
               {lead.gclid && (
                 <span className="relative flex-shrink-0" title={lead.offlineConversionSent || lead.enhancedConversionSent ? 'Synced to Google Ads' : 'Pending sync'}>
-                  <img src="/google-ads-icon.png" alt="Google Ads" className="h-4 w-4" />
+                  <img src="/google-ads-icon.svg" alt="Google Ads" className="h-4 w-4" />
                   {(lead.offlineConversionSent || lead.enhancedConversionSent) ? (
                     <CheckCircle2 className="absolute -bottom-1 -right-1 h-3 w-3 text-green-600 bg-white rounded-full" />
                   ) : (
