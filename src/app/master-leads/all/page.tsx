@@ -13,15 +13,17 @@ import {
   Clock,
   MessageSquare,
   TrendingUp,
-  LogOut,
   X,
   Loader2,
   User,
+  ShieldX,
+  CheckCircle2,
   PlayCircle,
   Check,
+  ArrowLeft,
 } from 'lucide-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
-import { NotificationToggle } from '@/components/portal/NotificationToggle'
 import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefresh'
 
@@ -33,6 +35,7 @@ interface Lead {
   lastName: string | null
   status: string
   source: string
+  gclid: string | null
   quoteValue: number | null
   saleValue: number | null
   saleDate: string | null
@@ -41,16 +44,12 @@ interface Lead {
   createdAt: string
   formName: string | null
   formData: Record<string, unknown> | null
-}
-
-interface Session {
-  authenticated: boolean
-  user?: {
-    clientId: string
+  enhancedConversionSent: boolean
+  offlineConversionSent: boolean
+  client?: {
+    id: string
     businessName: string
-    email: string
-    name: string | null
-    logoUrl: string | null
+    slug: string
     primaryColor: string | null
   }
 }
@@ -68,18 +67,12 @@ const STATUS_OPTIONS = Object.entries(STATUS_CONFIG).map(([value, config]) => ({
   label: config.label,
 }))
 
-interface SalesStats {
-  today: { count: number; total: number }
-  week: { count: number; total: number }
-  month: { count: number; total: number }
-}
-
-export default function PortalLeadsPage() {
+export default function AllLeadsPage() {
   const router = useRouter()
-  const [session, setSession] = useState<Session | null>(null)
+  const [authenticated, setAuthenticated] = useState(false)
+  const [authChecking, setAuthChecking] = useState(true)
   const [leads, setLeads] = useState<Lead[]>([])
-  const [loading, setLoading] = useState(true)
-  const [sales, setSales] = useState<SalesStats | null>(null)
+  const [loading, setLoading] = useState(false)
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date()
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
@@ -87,38 +80,46 @@ export default function PortalLeadsPage() {
   const [showCalendar, setShowCalendar] = useState(false)
   const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null)
 
-  // Check session
+  // Check master leads authorization
   useEffect(() => {
-    fetch('/api/portal/auth/session')
+    fetch('/api/admin/master-leads/auth')
       .then((res) => res.json())
       .then((data) => {
-        if (!data.authenticated) {
-          router.push('/portal/login')
+        if (data?.authorized) {
+          setAuthenticated(true)
+        } else if (data?.reason === 'not_authenticated') {
+          router.push('/login')
         } else {
-          setSession(data)
+          setAuthenticated(false)
         }
       })
       .catch(() => {
-        router.push('/portal/login')
+        router.push('/login')
       })
+      .finally(() => setAuthChecking(false))
   }, [router])
 
-  // Function to load leads - used by useEffect and pull-to-refresh
+  // Function to load all leads
   const loadLeads = useCallback(async (showLoadingState = true) => {
-    if (!session?.authenticated) return
+    if (!authenticated) {
+      setLeads([])
+      return
+    }
 
     if (showLoadingState) {
       setLoading(true)
       setExpandedLeadId(null)
     }
 
+    const [year, month, day] = selectedDate.split('-').map(Number)
+    const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
+    const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
+
     try {
-      const res = await fetch(`/api/portal/leads?date=${selectedDate}`)
+      // Fetch leads from all clients
+      const res = await fetch(`/api/admin/master-leads/all?startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`)
       const data = await res.json()
       setLeads(data.leads || [])
-      if (data.sales) {
-        setSales(data.sales)
-      }
     } catch (error) {
       console.error('Failed to load leads:', error)
     } finally {
@@ -126,9 +127,9 @@ export default function PortalLeadsPage() {
         setLoading(false)
       }
     }
-  }, [session, selectedDate])
+  }, [selectedDate, authenticated])
 
-  // Load leads for selected date
+  // Load leads
   useEffect(() => {
     loadLeads(true)
   }, [loadLeads])
@@ -138,31 +139,16 @@ export default function PortalLeadsPage() {
     const today = new Date()
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
-    // Only auto-refresh if viewing today's date
-    if (selectedDate !== todayStr || !session?.authenticated) {
+    if (selectedDate !== todayStr || !authenticated) {
       return
     }
 
     const interval = setInterval(() => {
-      loadLeads(false) // Silent refresh
-    }, 30000) // 30 seconds
+      loadLeads(false)
+    }, 30000)
 
     return () => clearInterval(interval)
-  }, [selectedDate, session, loadLeads])
-
-  // Listen for messages from service worker (notification clicks)
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'NEW_LEAD') {
-        loadLeads(false) // Refresh leads when notification is clicked
-      }
-    }
-
-    navigator.serviceWorker?.addEventListener('message', handleMessage)
-    return () => {
-      navigator.serviceWorker?.removeEventListener('message', handleMessage)
-    }
-  }, [loadLeads])
+  }, [selectedDate, authenticated, loadLeads])
 
   // Pull-to-refresh
   const { isRefreshing, pullDistance, threshold } = usePullToRefresh({
@@ -198,28 +184,33 @@ export default function PortalLeadsPage() {
     })
   }
 
-  async function handleLogout() {
-    await fetch('/api/portal/auth/logout', { method: 'POST' })
-    router.push('/portal/login')
-  }
-
   function handleLeadUpdate(updatedLead: Lead) {
     setLeads((prev) =>
-      prev.map((l) => (l.id === updatedLead.id ? updatedLead : l))
+      prev.map((l) => (l.id === updatedLead.id ? { ...updatedLead, client: l.client } : l))
     )
-    // Refresh sales stats
-    fetch(`/api/portal/leads?date=${selectedDate}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.sales) setSales(data.sales)
-      })
-      .catch(() => {})
   }
 
-  if (!session?.authenticated) {
+  if (authChecking) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      </div>
+    )
+  }
+
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl p-8 text-center max-w-md shadow-lg">
+          <ShieldX className="h-16 w-16 mx-auto mb-4 text-red-400" />
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Access Denied</h1>
+          <p className="text-gray-600 mb-6">
+            You don&apos;t have permission to access this page.
+          </p>
+          <Button onClick={() => router.push('/admin')}>
+            Go to Admin
+          </Button>
+        </div>
       </div>
     )
   }
@@ -233,37 +224,28 @@ export default function PortalLeadsPage() {
         isRefreshing={isRefreshing}
       />
 
-      {/* Header - Compact */}
+      {/* Header */}
       <header className="bg-white border-b sticky top-0 z-40">
-        <div className="max-w-3xl mx-auto px-4 py-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <HeaderLogo
-                logoUrl={session.user?.logoUrl}
-                businessName={session.user?.businessName || ''}
-                primaryColor={session.user?.primaryColor}
-                size="sm"
-              />
-              <div>
-                <h1 className="text-base font-bold text-gray-900 leading-tight">{session.user?.businessName}</h1>
-                <p className="text-[10px] text-gray-500">Lead Portal</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1">
-              <NotificationToggle />
-              <Button variant="outline" size="sm" onClick={handleLogout} className="h-8 px-2">
-                <LogOut className="h-3.5 w-3.5" />
-              </Button>
+        <div className="max-w-3xl mx-auto px-4 py-3">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/master-leads"
+              className="p-2 -ml-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5 text-gray-600" />
+            </Link>
+            <div>
+              <h1 className="text-lg font-bold text-gray-900">All Leads</h1>
+              <p className="text-xs text-gray-600">All clients combined</p>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Date Navigation + Sales Stats - Compact */}
-      <div className="bg-white border-b sticky top-[49px] z-30">
+      {/* Date Navigation */}
+      <div className="bg-white border-b sticky top-[57px] z-30">
         <div className="max-w-3xl mx-auto px-4 py-2">
           <div className="flex items-center justify-between">
-            {/* Date Nav */}
             <div className="flex items-center gap-1">
               <button
                 onClick={() => changeDate(-1)}
@@ -285,37 +267,15 @@ export default function PortalLeadsPage() {
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
-
-            {/* Compact Sales Stats */}
-            {sales && (
-              <div className="flex items-center gap-3 text-xs">
-                <div className="text-center">
-                  <span className="text-gray-500">Today</span>
-                  <span className="ml-1 font-semibold text-emerald-600">${sales.today.total.toLocaleString()}</span>
-                </div>
-                <div className="text-center">
-                  <span className="text-gray-500">Week</span>
-                  <span className="ml-1 font-semibold text-emerald-600">${sales.week.total.toLocaleString()}</span>
-                </div>
-                <div className="text-center">
-                  <span className="text-gray-500">Month</span>
-                  <span className="ml-1 font-semibold text-emerald-600">${sales.month.total.toLocaleString()}</span>
-                </div>
-              </div>
-            )}
+            <span className="text-sm text-gray-500">
+              {leads.length} lead{leads.length !== 1 ? 's' : ''}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Lead Count */}
-      <div className="max-w-3xl mx-auto px-4 py-1.5">
-        <p className="text-xs text-gray-600">
-          {loading ? 'Loading...' : `${leads.length} lead${leads.length !== 1 ? 's' : ''}`}
-        </p>
-      </div>
-
       {/* Leads List */}
-      <div className="max-w-3xl mx-auto px-4 pb-32">
+      <div className="max-w-3xl mx-auto px-4 py-3 pb-32">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
@@ -418,61 +378,13 @@ export default function PortalLeadsPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-gray-900 z-50">
         <div className="max-w-3xl mx-auto px-4 py-2 flex items-center justify-center gap-2">
           <span className="text-gray-400 text-xs">Powered by</span>
-          <a
-            href="https://autoglassmarketingpros.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
-          >
-            <img
-              src="/logo.png"
-              alt="Auto Glass Marketing Pros"
-              className="h-5 w-auto"
-            />
+          <a href="https://autoglassmarketingpros.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
+            <img src="/logo.png" alt="Auto Glass Marketing Pros" className="h-5 w-auto" />
             <span className="text-white text-xs font-medium">Auto Glass Marketing Pros</span>
           </a>
         </div>
       </div>
-
-      {/* Spacer for fixed footer */}
-      <div className="h-10" />
     </div>
-  )
-}
-
-// Header Logo Component
-function HeaderLogo({
-  logoUrl,
-  businessName,
-  primaryColor,
-  size = 'md'
-}: {
-  logoUrl: string | null | undefined
-  businessName: string
-  primaryColor: string | null | undefined
-  size?: 'sm' | 'md'
-}) {
-  const [imageError, setImageError] = useState(false)
-  const sizeClasses = size === 'sm' ? 'h-8 w-8 text-sm' : 'h-10 w-10 text-lg'
-
-  if (!logoUrl || imageError) {
-    return (
-      <div
-        className={`${sizeClasses} rounded-full flex items-center justify-center text-white font-bold flex-shrink-0`}
-        style={{ backgroundColor: primaryColor || '#1e40af' }}
-      >
-        {businessName[0] || '?'}
-      </div>
-    )
-  }
-
-  return (
-    <img
-      src={logoUrl}
-      alt={businessName}
-      className={`${sizeClasses} rounded-full object-cover flex-shrink-0`}
-      onError={() => setImageError(true)}
-    />
   )
 }
 
@@ -492,65 +404,16 @@ function getLeadDetails(lead: Lead) {
   }
 
   const service = getField(['interested_in', 'Interested In:', 'Interested In'])
-  // Get individual vehicle fields
   const year = getField(['vehicle_year', 'Vehicle Year'])
   const make = getField(['vehicle_make', 'Vehicle Make'])
   const model = getField(['vehicle_model', 'Vehicle Model'])
-  // Build combined vehicle string
   const vehicleParts = [year, make, model].filter(Boolean)
   const vehicle = vehicleParts.length > 0 ? vehicleParts.join(' ') : null
-  const vin = getField(['vin', 'VIN', 'Vin'])
-  const zipCode = getField(['postal_code', 'postalCode'])
-  const insuranceHelp = getField(['insurance_help', 'Would You Like Us To Help Navigate Your Insurance Claim For You?', 'radio_3s0t'])
 
-  return { service, vehicle, year, make, model, vin, zipCode, insuranceHelp }
+  return { service, vehicle, year, make, model }
 }
 
-// Helper to get all form data fields for display
-function getAllFormFields(lead: Lead): Array<{ label: string; value: string }> {
-  const fields: Array<{ label: string; value: string }> = []
-  const fd = lead.formData
-  if (!fd) return fields
-
-  // Keys to skip (internal, already shown elsewhere, or not useful)
-  const skipKeys = new Set([
-    '_rawPayload', 'id', 'contactId', 'locationId', 'email', 'phone',
-    'firstName', 'lastName', 'first_name', 'last_name', 'name', 'full_name',
-    'source', 'type', 'dateAdded', 'date_added', 'timestamp',
-    // Skip these per user request
-    'tags', 'country', 'timezone', 'contact_type', 'contactType', 'contact_source', 'contactSource',
-    // Skip recording URL (audio player is shown separately)
-    'recordingUrl', 'recording_url', 'callRecordingUrl', 'call_recording_url', 'audioUrl', 'audio_url',
-    // Skip vehicle/service fields (shown in Edit Lead Info section)
-    'vehicle', 'Vehicle', 'vehicle_year', 'Vehicle Year', 'vehicle_make', 'Vehicle Make',
-    'vehicle_model', 'Vehicle Model', 'interested_in', 'Interested In', 'Interested In:'
-  ])
-
-  // Label formatting helper
-  const formatLabel = (key: string): string => {
-    return key
-      .replace(/_/g, ' ')
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/\b\w/g, c => c.toUpperCase())
-      .trim()
-  }
-
-  // Extract fields from formData
-  for (const [key, value] of Object.entries(fd)) {
-    if (skipKeys.has(key)) continue
-    if (value === null || value === undefined || value === '') continue
-    if (typeof value === 'object') continue
-
-    fields.push({
-      label: formatLabel(key),
-      value: String(value)
-    })
-  }
-
-  return fields
-}
-
-// Expandable Lead Row Component
+// Expandable Lead Row Component with Client Badge
 function LeadRow({
   lead,
   isExpanded,
@@ -573,7 +436,6 @@ function LeadRow({
   // Scroll expanded lead into view
   useEffect(() => {
     if (isExpanded && rowRef.current) {
-      // Small delay to allow the expansion animation to start
       setTimeout(() => {
         rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
       }, 100)
@@ -586,48 +448,28 @@ function LeadRow({
   const [editSaleValue, setEditSaleValue] = useState(lead.saleValue?.toString() || '')
   const [saving, setSaving] = useState(false)
 
-  // Editable lead info state
-  const [showEditInfo, setShowEditInfo] = useState(false)
-  const [editFirstName, setEditFirstName] = useState(lead.firstName || '')
-  const [editLastName, setEditLastName] = useState(lead.lastName || '')
-  const [editVehicleYear, setEditVehicleYear] = useState(details.year || '')
-  const [editVehicleMake, setEditVehicleMake] = useState(details.make || '')
-  const [editVehicleModel, setEditVehicleModel] = useState(details.model || '')
-  const [editService, setEditService] = useState(details.service || '')
-
-  // Determine which value field to show based on status
   const isQuotedStatus = editStatus === 'QUOTED'
   const isSoldStatus = editStatus === 'SOLD'
   const showValueField = isQuotedStatus || isSoldStatus
 
-  // Reset edit state when lead changes
   useEffect(() => {
     setEditStatus(lead.status)
     setEditQuoteValue(lead.quoteValue?.toString() || '')
     setEditSaleValue(lead.saleValue?.toString() || '')
-    setEditFirstName(lead.firstName || '')
-    setEditLastName(lead.lastName || '')
-    setEditVehicleYear(details.year || '')
-    setEditVehicleMake(details.make || '')
-    setEditVehicleModel(details.model || '')
-    setEditService(details.service || '')
-  }, [lead, details.year, details.make, details.model, details.service])
+  }, [lead])
 
   async function handleQuickSave() {
     setSaving(true)
     try {
       const payload: Record<string, unknown> = { status: editStatus }
-
-      // Save quote value when status is QUOTED
       if (editStatus === 'QUOTED') {
         payload.quoteValue = editQuoteValue ? parseFloat(editQuoteValue) : null
       }
-      // Save sale value when status is SOLD
       if (editStatus === 'SOLD') {
         payload.saleValue = editSaleValue ? parseFloat(editSaleValue) : null
       }
 
-      const response = await fetch(`/api/portal/leads/${lead.id}`, {
+      const response = await fetch(`/api/leads/${lead.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -642,50 +484,14 @@ function LeadRow({
     }
   }
 
-  async function handleSaveInfo() {
-    setSaving(true)
-    try {
-      const response = await fetch(`/api/portal/leads/${lead.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firstName: editFirstName || null,
-          lastName: editLastName || null,
-          vehicleYear: editVehicleYear || null,
-          vehicleMake: editVehicleMake || null,
-          vehicleModel: editVehicleModel || null,
-          interestedIn: editService || null,
-        }),
-      })
-      if (!response.ok) throw new Error('Failed to save')
-      const updated = await response.json()
-      onUpdate({ ...lead, ...updated })
-      setShowEditInfo(false)
-    } catch {
-      alert('Failed to save')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   const hasStatusChanges = editStatus !== lead.status ||
     (editQuoteValue || '') !== (lead.quoteValue?.toString() || '') ||
     (editSaleValue || '') !== (lead.saleValue?.toString() || '')
 
-  const hasInfoChanges =
-    editFirstName !== (lead.firstName || '') ||
-    editLastName !== (lead.lastName || '') ||
-    editVehicleYear !== (details.year || '') ||
-    editVehicleMake !== (details.make || '') ||
-    editVehicleModel !== (details.model || '') ||
-    editService !== (details.service || '')
-
-  // Border color: orange for calls, blue for forms
   const borderColor = isPhoneLead ? 'border-l-4 border-orange-400' : 'border-l-4 border-blue-400'
 
   return (
     <div ref={rowRef} className="rounded-xl overflow-hidden">
-      {/* Main row */}
       <div
         className={`bg-white shadow-sm transition-all duration-200 ${borderColor} ${isDimmed ? 'opacity-40' : ''} ${isExpanded ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
       >
@@ -694,17 +500,29 @@ function LeadRow({
           onClick={onToggle}
           className="w-full px-4 py-3 flex items-center gap-3 text-left"
         >
-          {/* Expand indicator */}
           <ChevronRight
             className={`h-5 w-5 text-gray-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`}
           />
 
-          {/* Main info */}
           <div className="flex-1 min-w-0">
+            {/* Client badge */}
+            {lead.client && (
+              <div className="mb-1">
+                <span
+                  className="inline-block px-2 py-0.5 rounded text-xs font-medium text-white truncate max-w-[200px]"
+                  style={{ backgroundColor: lead.client.primaryColor || '#3b82f6' }}
+                >
+                  {lead.client.businessName}
+                </span>
+              </div>
+            )}
             <div className="flex items-center gap-2 mb-0.5">
               <span className="font-medium text-gray-900 truncate">{fullName}</span>
               {lead.callRecordingUrl && (
                 <PlayCircle className="h-4 w-4 text-violet-500 flex-shrink-0" />
+              )}
+              {lead.gclid && (
+                <span className="text-xs text-green-600 font-medium">Ads</span>
               )}
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -718,7 +536,6 @@ function LeadRow({
             </div>
           </div>
 
-          {/* Status & Time */}
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}>
               {statusConfig.label}
@@ -785,106 +602,8 @@ function LeadRow({
               )}
             </div>
 
-            {/* Edit Lead Info - Expandable */}
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <button
-                onClick={() => setShowEditInfo(!showEditInfo)}
-                className="w-full px-3 py-2 flex items-center justify-between bg-gray-50 hover:bg-gray-100 text-sm text-gray-700"
-              >
-                <span className="font-medium">
-                  {!lead.firstName && !lead.lastName ? '+ Add Name & Info' : 'Edit Lead Info'}
-                </span>
-                <ChevronDown className={`h-4 w-4 transition-transform ${showEditInfo ? 'rotate-180' : ''}`} />
-              </button>
-              {showEditInfo && (
-                <div className="p-3 space-y-3 bg-white">
-                  {/* Name fields */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">First Name</label>
-                      <input
-                        type="text"
-                        value={editFirstName}
-                        onChange={(e) => setEditFirstName(e.target.value)}
-                        placeholder="First"
-                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Last Name</label>
-                      <input
-                        type="text"
-                        value={editLastName}
-                        onChange={(e) => setEditLastName(e.target.value)}
-                        placeholder="Last"
-                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                  {/* Service */}
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Service Needed</label>
-                    <input
-                      type="text"
-                      value={editService}
-                      onChange={(e) => setEditService(e.target.value)}
-                      placeholder="e.g., Windshield Replacement"
-                      className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                  </div>
-                  {/* Vehicle fields */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Year</label>
-                      <select
-                        value={editVehicleYear}
-                        onChange={(e) => setEditVehicleYear(e.target.value)}
-                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      >
-                        <option value="">Year</option>
-                        {Array.from({ length: 30 }, (_, i) => new Date().getFullYear() + 1 - i).map((year) => (
-                          <option key={year} value={year.toString()}>{year}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Make</label>
-                      <input
-                        type="text"
-                        value={editVehicleMake}
-                        onChange={(e) => setEditVehicleMake(e.target.value)}
-                        placeholder="Toyota"
-                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Model</label>
-                      <input
-                        type="text"
-                        value={editVehicleModel}
-                        onChange={(e) => setEditVehicleModel(e.target.value)}
-                        placeholder="Camry"
-                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                  {/* Save button */}
-                  {hasInfoChanges && (
-                    <button
-                      onClick={handleSaveInfo}
-                      disabled={saving}
-                      className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                      Save Info
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Lead Details - All Available Info */}
-            {(details.vehicle || details.service || getAllFormFields(lead).length > 0) && (
+            {/* Lead Details */}
+            {(details.vehicle || details.service) && (
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Lead Details</p>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -900,17 +619,11 @@ function LeadRow({
                       <p className="text-gray-900 font-medium">{details.vehicle}</p>
                     </div>
                   )}
-                  {getAllFormFields(lead).map((field, idx) => (
-                    <div key={idx} className={field.value.length > 30 ? 'col-span-2' : ''}>
-                      <span className="text-gray-500 text-xs">{field.label}</span>
-                      <p className="text-gray-900 font-medium break-words">{field.value}</p>
-                    </div>
-                  ))}
                 </div>
               </div>
             )}
 
-            {/* Status & Value - Inline Edit */}
+            {/* Status & Value */}
             <div className="flex gap-3 items-end pt-2 border-t border-gray-100">
               <div className="flex-1">
                 <label className="block text-xs text-gray-500 mb-1">Status</label>
