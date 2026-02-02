@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 interface UsePullToRefreshOptions {
   onRefresh: () => Promise<void>
@@ -10,60 +10,81 @@ interface UsePullToRefreshOptions {
 export function usePullToRefresh({ onRefresh, threshold = 80 }: UsePullToRefreshOptions) {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [pullDistance, setPullDistance] = useState(0)
-  const [isPulling, setIsPulling] = useState(false)
+
+  // Use refs for values needed in event handlers to avoid stale closures
+  const isPullingRef = useRef(false)
+  const isRefreshingRef = useRef(false)
+  const startYRef = useRef(0)
+  const pullDistanceRef = useRef(0)
+
+  // Keep refs in sync with state
+  isRefreshingRef.current = isRefreshing
+  pullDistanceRef.current = pullDistance
 
   const handleRefresh = useCallback(async () => {
-    if (isRefreshing) return
+    if (isRefreshingRef.current) return
     setIsRefreshing(true)
+    isRefreshingRef.current = true
     setPullDistance(0)
+    pullDistanceRef.current = 0
     try {
       await onRefresh()
     } finally {
       setIsRefreshing(false)
+      isRefreshingRef.current = false
     }
-  }, [onRefresh, isRefreshing])
+  }, [onRefresh])
 
   useEffect(() => {
-    let startY = 0
-    let currentY = 0
-
     const handleTouchStart = (e: TouchEvent) => {
-      // Only trigger if we're at the top of the page
-      if (window.scrollY <= 0) {
-        startY = e.touches[0].clientY
-        setIsPulling(true)
+      // Only trigger if we're at the very top of the page
+      if (window.scrollY <= 0 && !isRefreshingRef.current) {
+        startYRef.current = e.touches[0].clientY
+        isPullingRef.current = true
       }
     }
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (!isPulling || isRefreshing) return
+      if (!isPullingRef.current || isRefreshingRef.current) return
+
+      // If user has scrolled down at all, cancel pull-to-refresh
       if (window.scrollY > 0) {
-        // User scrolled down, cancel pull
-        setIsPulling(false)
+        isPullingRef.current = false
         setPullDistance(0)
+        pullDistanceRef.current = 0
         return
       }
 
-      currentY = e.touches[0].clientY
-      const distance = Math.max(0, currentY - startY)
+      const currentY = e.touches[0].clientY
+      const distance = currentY - startYRef.current
+
+      // Only activate pull-to-refresh for downward swipes (positive distance)
+      if (distance <= 0) {
+        isPullingRef.current = false
+        setPullDistance(0)
+        pullDistanceRef.current = 0
+        return
+      }
 
       // Apply resistance - the further you pull, the harder it gets
       const resistedDistance = Math.min(distance * 0.5, threshold * 1.5)
       setPullDistance(resistedDistance)
+      pullDistanceRef.current = resistedDistance
 
-      // Prevent default scroll when pulling
-      if (distance > 10) {
+      // Only prevent default scroll when actively pulling down from top
+      if (distance > 10 && window.scrollY <= 0) {
         e.preventDefault()
       }
     }
 
     const handleTouchEnd = () => {
-      if (pullDistance >= threshold && !isRefreshing) {
+      if (isPullingRef.current && pullDistanceRef.current >= threshold && !isRefreshingRef.current) {
         handleRefresh()
       } else {
         setPullDistance(0)
+        pullDistanceRef.current = 0
       }
-      setIsPulling(false)
+      isPullingRef.current = false
     }
 
     document.addEventListener('touchstart', handleTouchStart, { passive: true })
@@ -75,12 +96,12 @@ export function usePullToRefresh({ onRefresh, threshold = 80 }: UsePullToRefresh
       document.removeEventListener('touchmove', handleTouchMove)
       document.removeEventListener('touchend', handleTouchEnd)
     }
-  }, [isPulling, pullDistance, threshold, isRefreshing, handleRefresh])
+  }, [threshold, handleRefresh])
 
   return {
     isRefreshing,
     pullDistance,
-    isPulling,
+    isPulling: isPullingRef.current,
     threshold,
   }
 }
