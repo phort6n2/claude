@@ -1,6 +1,5 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { auth } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,13 +7,27 @@ export const dynamic = 'force-dynamic'
  * GET /api/admin/health-check
  *
  * Returns the current health status of the content automation system.
- * Requires admin authentication.
+ * Auth: Use CRON_SECRET as query param or Bearer token
+ *
+ * Examples:
+ *   /api/admin/health-check?secret=YOUR_CRON_SECRET
+ *   Authorization: Bearer YOUR_CRON_SECRET
  */
-export async function GET() {
-  // Check auth
-  const session = await auth()
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+export async function GET(request: NextRequest) {
+  // Check auth via query param or header (same as cron endpoints)
+  const url = new URL(request.url)
+  const secretParam = url.searchParams.get('secret')
+  const authHeader = request.headers.get('authorization')
+  const cronSecret = process.env.CRON_SECRET
+
+  const isAuthorized =
+    (cronSecret && secretParam === cronSecret) ||
+    (cronSecret && authHeader === `Bearer ${cronSecret}`)
+
+  // In production, require auth. In dev, allow without.
+  const isProduction = process.env.NODE_ENV === 'production'
+  if (isProduction && !isAuthorized) {
+    return NextResponse.json({ error: 'Unauthorized. Add ?secret=CRON_SECRET to URL' }, { status: 401 })
   }
 
   try {
