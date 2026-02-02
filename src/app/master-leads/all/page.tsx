@@ -543,13 +543,19 @@ function LeadRow({
               )}
               {/* Google Ads icon for leads from ads */}
               {lead.gclid && (
-                <img src="/google-ads-icon.svg" alt="From Google Ads" className="h-4 w-4 flex-shrink-0" title="Lead from Google Ads" />
+                <span title="Lead from Google Ads">
+                  <img src="/google-ads-icon.svg" alt="From Google Ads" className="h-4 w-4 flex-shrink-0" />
+                </span>
               )}
               {/* Sync status indicator for all leads */}
               {(lead.enhancedConversionSent || lead.offlineConversionSent) ? (
-                <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" title="Synced to Google" />
+                <span title="Synced to Google">
+                  <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
+                </span>
               ) : (
-                <Clock className="h-4 w-4 text-orange-400 flex-shrink-0" title="Pending sync" />
+                <span title="Pending sync">
+                  <Clock className="h-4 w-4 text-orange-400 flex-shrink-0" />
+                </span>
               )}
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
