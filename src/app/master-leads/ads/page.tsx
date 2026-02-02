@@ -168,6 +168,10 @@ export default function MasterLeadsAdsPage() {
     .filter(a => a.metrics && (a.metrics.conversions > 0 || a.metrics.cost > 0))
     .sort((a, b) => (b.metrics?.conversions || 0) - (a.metrics?.conversions || 0))
 
+  // Accounts with errors or no data
+  const accountsWithIssues = (data.accounts || [])
+    .filter(a => a.error || !a.metrics)
+
   return (
     <div className="min-h-screen bg-gray-100 overflow-x-hidden pb-20">
       {/* Header */}
@@ -286,6 +290,37 @@ export default function MasterLeadsAdsPage() {
             ))}
           </div>
         )}
+
+        {/* Show accounts with errors/issues */}
+        {accountsWithIssues.length > 0 && (
+          <div className="mt-4">
+            <p className="text-xs text-gray-500 mb-2 px-1">
+              {accountsWithIssues.length} account{accountsWithIssues.length !== 1 ? 's' : ''} with issues
+            </p>
+            <div className="space-y-2">
+              {accountsWithIssues.map((account) => (
+                <div
+                  key={account.customerId}
+                  className="bg-white rounded-xl shadow-sm p-4 border-l-4 border-amber-400"
+                >
+                  <h3 className="font-semibold text-gray-900 truncate mb-1">
+                    {account.clientName}
+                  </h3>
+                  <p className="text-xs text-red-500">
+                    {account.error || 'No metrics returned'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Debug info */}
+        <div className="mt-4 p-3 bg-gray-200 rounded-lg text-xs text-gray-600">
+          <p>Total accounts: {data.accounts?.length || 0}</p>
+          <p>With activity: {sortedAccounts.length}</p>
+          <p>With issues: {accountsWithIssues.length}</p>
+        </div>
       </div>
 
       {/* Powered by Footer */}
