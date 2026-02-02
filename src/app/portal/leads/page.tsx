@@ -19,6 +19,7 @@ import {
   User,
   PlayCircle,
   Check,
+  Repeat,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { NotificationToggle } from '@/components/portal/NotificationToggle'
@@ -41,6 +42,14 @@ interface Lead {
   createdAt: string
   formName: string | null
   formData: Record<string, unknown> | null
+}
+
+// Grouped lead - represents a person who may have multiple contacts
+interface GroupedLead {
+  key: string // phone or email used for grouping
+  leads: Lead[] // all leads for this person, sorted by createdAt desc
+  primaryLead: Lead // most recent lead (used for status/value)
+  contactCount: number
 }
 
 interface Session {
@@ -68,6 +77,40 @@ const STATUS_OPTIONS = Object.entries(STATUS_CONFIG).map(([value, config]) => ({
   label: config.label,
 }))
 
+// Group leads by phone number (preferred) or email
+function groupLeadsByContact(leads: Lead[]): GroupedLead[] {
+  const groups = new Map<string, Lead[]>()
+
+  for (const lead of leads) {
+    // Use phone as primary identifier, fall back to email
+    const key = lead.phone?.replace(/\D/g, '') || lead.email?.toLowerCase() || lead.id
+
+    if (!groups.has(key)) {
+      groups.set(key, [])
+    }
+    groups.get(key)!.push(lead)
+  }
+
+  // Convert to GroupedLead array, sorted by most recent contact
+  const grouped: GroupedLead[] = []
+  for (const [key, groupLeads] of groups) {
+    // Sort leads within group by createdAt desc (most recent first)
+    groupLeads.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+    grouped.push({
+      key,
+      leads: groupLeads,
+      primaryLead: groupLeads[0], // Most recent is primary
+      contactCount: groupLeads.length,
+    })
+  }
+
+  // Sort groups by most recent contact
+  grouped.sort((a, b) => new Date(b.primaryLead.createdAt).getTime() - new Date(a.primaryLead.createdAt).getTime())
+
+  return grouped
+}
+
 interface SalesStats {
   today: { count: number; total: number }
   week: { count: number; total: number }
@@ -85,7 +128,10 @@ export default function PortalLeadsPage() {
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   })
   const [showCalendar, setShowCalendar] = useState(false)
-  const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null)
+  const [expandedGroupKey, setExpandedGroupKey] = useState<string | null>(null)
+
+  // Group leads by contact (phone/email)
+  const groupedLeads = groupLeadsByContact(leads)
 
   // Check session
   useEffect(() => {
@@ -109,7 +155,7 @@ export default function PortalLeadsPage() {
 
     if (showLoadingState) {
       setLoading(true)
-      setExpandedLeadId(null)
+      setExpandedGroupKey(null)
     }
 
     try {
@@ -216,6 +262,25 @@ export default function PortalLeadsPage() {
       .catch(() => {})
   }
 
+  // Update all leads in a group (for syncing status across duplicates)
+  function handleGroupUpdate(updatedLead: Lead, groupKey: string) {
+    const group = groupedLeads.find(g => g.key === groupKey)
+    if (!group) return
+
+    // Update the primary lead
+    setLeads((prev) =>
+      prev.map((l) => (l.id === updatedLead.id ? updatedLead : l))
+    )
+
+    // Refresh sales stats
+    fetch(`/api/portal/leads?date=${selectedDate}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.sales) setSales(data.sales)
+      })
+      .catch(() => {})
+  }
+
   if (!session?.authenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -310,7 +375,11 @@ export default function PortalLeadsPage() {
       {/* Lead Count */}
       <div className="max-w-3xl mx-auto px-4 py-1.5">
         <p className="text-xs text-gray-600">
-          {loading ? 'Loading...' : `${leads.length} lead${leads.length !== 1 ? 's' : ''}`}
+          {loading ? 'Loading...' : (
+            groupedLeads.length === leads.length
+              ? `${leads.length} lead${leads.length !== 1 ? 's' : ''}`
+              : `${groupedLeads.length} contact${groupedLeads.length !== 1 ? 's' : ''} (${leads.length} total)`
+          )}
         </p>
       </div>
 
@@ -337,14 +406,14 @@ export default function PortalLeadsPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {leads.map((lead) => (
-              <LeadRow
-                key={lead.id}
-                lead={lead}
-                isExpanded={expandedLeadId === lead.id}
-                isDimmed={expandedLeadId !== null && expandedLeadId !== lead.id}
-                onToggle={() => setExpandedLeadId(expandedLeadId === lead.id ? null : lead.id)}
-                onUpdate={handleLeadUpdate}
+            {groupedLeads.map((group) => (
+              <GroupedLeadRow
+                key={group.key}
+                group={group}
+                isExpanded={expandedGroupKey === group.key}
+                isDimmed={expandedGroupKey !== null && expandedGroupKey !== group.key}
+                onToggle={() => setExpandedGroupKey(expandedGroupKey === group.key ? null : group.key)}
+                onUpdate={(lead) => handleGroupUpdate(lead, group.key)}
               />
             ))}
           </div>
@@ -550,7 +619,488 @@ function getAllFormFields(lead: Lead): Array<{ label: string; value: string }> {
   return fields
 }
 
-// Expandable Lead Row Component
+// Grouped Lead Row Component - shows multiple contacts from same person
+function GroupedLeadRow({
+  group,
+  isExpanded,
+  isDimmed,
+  onToggle,
+  onUpdate,
+}: {
+  group: GroupedLead
+  isExpanded: boolean
+  isDimmed: boolean
+  onToggle: () => void
+  onUpdate: (lead: Lead) => void
+}) {
+  const rowRef = useRef<HTMLDivElement>(null)
+  const { primaryLead, leads, contactCount } = group
+  const statusConfig = STATUS_CONFIG[primaryLead.status] || STATUS_CONFIG.NEW
+  const fullName = [primaryLead.firstName, primaryLead.lastName].filter(Boolean).join(' ') || 'Unknown'
+  const hasPhoneContact = leads.some(l => l.source === 'PHONE')
+  const hasFormContact = leads.some(l => l.source !== 'PHONE')
+  const details = getLeadDetails(primaryLead)
+
+  // Scroll expanded lead into view
+  useEffect(() => {
+    if (isExpanded && rowRef.current) {
+      setTimeout(() => {
+        rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }, 100)
+    }
+  }, [isExpanded])
+
+  // Edit state - always edits the primary (most recent) lead
+  const [editStatus, setEditStatus] = useState(primaryLead.status)
+  const [editQuoteValue, setEditQuoteValue] = useState(primaryLead.quoteValue?.toString() || '')
+  const [editSaleValue, setEditSaleValue] = useState(primaryLead.saleValue?.toString() || '')
+  const [saving, setSaving] = useState(false)
+
+  // Editable lead info state
+  const [showEditInfo, setShowEditInfo] = useState(false)
+  const [editFirstName, setEditFirstName] = useState(primaryLead.firstName || '')
+  const [editLastName, setEditLastName] = useState(primaryLead.lastName || '')
+  const [editVehicleYear, setEditVehicleYear] = useState(details.year || '')
+  const [editVehicleMake, setEditVehicleMake] = useState(details.make || '')
+  const [editVehicleModel, setEditVehicleModel] = useState(details.model || '')
+  const [editService, setEditService] = useState(details.service || '')
+
+  const isQuotedStatus = editStatus === 'QUOTED'
+  const isSoldStatus = editStatus === 'SOLD'
+  const showValueField = isQuotedStatus || isSoldStatus
+
+  // Reset edit state when lead changes
+  useEffect(() => {
+    setEditStatus(primaryLead.status)
+    setEditQuoteValue(primaryLead.quoteValue?.toString() || '')
+    setEditSaleValue(primaryLead.saleValue?.toString() || '')
+    setEditFirstName(primaryLead.firstName || '')
+    setEditLastName(primaryLead.lastName || '')
+    setEditVehicleYear(details.year || '')
+    setEditVehicleMake(details.make || '')
+    setEditVehicleModel(details.model || '')
+    setEditService(details.service || '')
+  }, [primaryLead, details.year, details.make, details.model, details.service])
+
+  async function handleQuickSave() {
+    setSaving(true)
+    try {
+      const payload: Record<string, unknown> = { status: editStatus }
+      if (editStatus === 'QUOTED') {
+        payload.quoteValue = editQuoteValue ? parseFloat(editQuoteValue) : null
+      }
+      if (editStatus === 'SOLD') {
+        payload.saleValue = editSaleValue ? parseFloat(editSaleValue) : null
+      }
+
+      const response = await fetch(`/api/portal/leads/${primaryLead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!response.ok) throw new Error('Failed to save')
+      const updated = await response.json()
+      onUpdate({ ...primaryLead, ...updated })
+    } catch {
+      alert('Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleSaveInfo() {
+    setSaving(true)
+    try {
+      const response = await fetch(`/api/portal/leads/${primaryLead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: editFirstName || null,
+          lastName: editLastName || null,
+          vehicleYear: editVehicleYear || null,
+          vehicleMake: editVehicleMake || null,
+          vehicleModel: editVehicleModel || null,
+          interestedIn: editService || null,
+        }),
+      })
+      if (!response.ok) throw new Error('Failed to save')
+      const updated = await response.json()
+      onUpdate({ ...primaryLead, ...updated })
+      setShowEditInfo(false)
+    } catch {
+      alert('Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const hasStatusChanges = editStatus !== primaryLead.status ||
+    (editQuoteValue || '') !== (primaryLead.quoteValue?.toString() || '') ||
+    (editSaleValue || '') !== (primaryLead.saleValue?.toString() || '')
+
+  const hasInfoChanges =
+    editFirstName !== (primaryLead.firstName || '') ||
+    editLastName !== (primaryLead.lastName || '') ||
+    editVehicleYear !== (details.year || '') ||
+    editVehicleMake !== (details.make || '') ||
+    editVehicleModel !== (details.model || '') ||
+    editService !== (details.service || '')
+
+  // Border color based on contact types
+  const borderColor = hasPhoneContact && !hasFormContact
+    ? 'border-l-4 border-orange-400'
+    : !hasPhoneContact && hasFormContact
+    ? 'border-l-4 border-blue-400'
+    : 'border-l-4 border-purple-400' // Both phone and form
+
+  return (
+    <div ref={rowRef} className="rounded-xl overflow-hidden">
+      <div
+        className={`bg-white shadow-sm transition-all duration-200 ${borderColor} ${isDimmed ? 'opacity-40' : ''} ${isExpanded ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
+      >
+        {/* Collapsed Row */}
+        <button
+          onClick={onToggle}
+          className="w-full px-4 py-3 flex items-center gap-3 text-left"
+        >
+          <ChevronRight
+            className={`h-5 w-5 text-gray-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`}
+          />
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="font-medium text-gray-900 truncate">{fullName}</span>
+              {/* Contact count badge */}
+              {contactCount > 1 && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                  <Repeat className="h-3 w-3" />
+                  {contactCount}
+                </span>
+              )}
+              {leads.some(l => l.callRecordingUrl) && (
+                <PlayCircle className="h-4 w-4 text-violet-500 flex-shrink-0" />
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              {primaryLead.phone && <span>{primaryLead.phone}</span>}
+              {details.service && (
+                <>
+                  <span className="text-gray-300">•</span>
+                  <span className="truncate">{details.service}</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}>
+              {statusConfig.label}
+            </span>
+            <span className="text-xs text-gray-500">
+              {new Date(primaryLead.createdAt).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+              })}
+            </span>
+          </div>
+        </button>
+
+        {/* Expanded Content */}
+        {isExpanded && (
+          <div className="px-4 pb-4 space-y-4 border-t border-gray-100">
+            {/* Contact Timeline - shows all contacts if more than one */}
+            {contactCount > 1 && (
+              <div className="pt-3">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                  Contact History ({contactCount} contacts)
+                </p>
+                <div className="space-y-2">
+                  {leads.map((lead, idx) => (
+                    <div
+                      key={lead.id}
+                      className={`flex items-center gap-3 p-2 rounded-lg ${idx === 0 ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}
+                    >
+                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${lead.source === 'PHONE' ? 'bg-orange-400' : 'bg-blue-400'}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900">
+                            {lead.source === 'PHONE' ? 'Phone Call' : 'Form Submission'}
+                          </span>
+                          {idx === 0 && (
+                            <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Latest</span>
+                          )}
+                          {lead.callRecordingUrl && (
+                            <PlayCircle className="h-3.5 w-3.5 text-violet-500" />
+                          )}
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {new Date(lead.createdAt).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Call Recordings - show all */}
+            {leads.filter(l => l.callRecordingUrl).map((lead, idx) => (
+              <div key={lead.id} className="pt-2">
+                <div className="bg-violet-50 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <PlayCircle className="h-4 w-4 text-violet-600" />
+                    <span className="text-sm text-violet-800 font-medium">
+                      {leads.filter(l => l.callRecordingUrl).length > 1
+                        ? `Call Recording ${idx + 1}`
+                        : 'Call Recording'}
+                    </span>
+                    <span className="text-xs text-violet-600">
+                      {new Date(lead.createdAt).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </div>
+                  <audio
+                    controls
+                    className="w-full h-10"
+                    src={lead.callRecordingUrl!}
+                  >
+                    Your browser does not support audio.
+                  </audio>
+                </div>
+              </div>
+            ))}
+
+            {/* Quick Actions */}
+            <div className="flex gap-2 pt-2">
+              {primaryLead.phone && (
+                <a
+                  href={`tel:${primaryLead.phone}`}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 active:bg-green-700"
+                >
+                  <Phone className="h-4 w-4" />
+                  Call
+                </a>
+              )}
+              {primaryLead.phone && (
+                <a
+                  href={`sms:${primaryLead.phone}`}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-purple-500 text-white rounded-lg text-sm font-medium hover:bg-purple-600 active:bg-purple-700"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Text
+                </a>
+              )}
+              {primaryLead.email && (
+                <a
+                  href={`mailto:${primaryLead.email}`}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 active:bg-blue-700"
+                >
+                  <Mail className="h-4 w-4" />
+                  Email
+                </a>
+              )}
+            </div>
+
+            {/* Edit Lead Info - Expandable */}
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setShowEditInfo(!showEditInfo)}
+                className="w-full px-3 py-2 flex items-center justify-between bg-gray-50 hover:bg-gray-100 text-sm text-gray-700"
+              >
+                <span className="font-medium">
+                  {!primaryLead.firstName && !primaryLead.lastName ? '+ Add Name & Info' : 'Edit Lead Info'}
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${showEditInfo ? 'rotate-180' : ''}`} />
+              </button>
+              {showEditInfo && (
+                <div className="p-3 space-y-3 bg-white">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">First Name</label>
+                      <input
+                        type="text"
+                        value={editFirstName}
+                        onChange={(e) => setEditFirstName(e.target.value)}
+                        placeholder="First"
+                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Last Name</label>
+                      <input
+                        type="text"
+                        value={editLastName}
+                        onChange={(e) => setEditLastName(e.target.value)}
+                        placeholder="Last"
+                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Service Needed</label>
+                    <input
+                      type="text"
+                      value={editService}
+                      onChange={(e) => setEditService(e.target.value)}
+                      placeholder="e.g., Windshield Replacement"
+                      className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Year</label>
+                      <select
+                        value={editVehicleYear}
+                        onChange={(e) => setEditVehicleYear(e.target.value)}
+                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      >
+                        <option value="">Year</option>
+                        {Array.from({ length: 30 }, (_, i) => new Date().getFullYear() + 1 - i).map((year) => (
+                          <option key={year} value={year.toString()}>{year}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Make</label>
+                      <input
+                        type="text"
+                        value={editVehicleMake}
+                        onChange={(e) => setEditVehicleMake(e.target.value)}
+                        placeholder="Toyota"
+                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Model</label>
+                      <input
+                        type="text"
+                        value={editVehicleModel}
+                        onChange={(e) => setEditVehicleModel(e.target.value)}
+                        placeholder="Camry"
+                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  {hasInfoChanges && (
+                    <button
+                      onClick={handleSaveInfo}
+                      disabled={saving}
+                      className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                      Save Info
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Lead Details */}
+            {(details.vehicle || details.service || getAllFormFields(primaryLead).length > 0) && (
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Lead Details</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  {details.service && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500 text-xs">Service</span>
+                      <p className="text-gray-900 font-medium">{details.service}</p>
+                    </div>
+                  )}
+                  {details.vehicle && (
+                    <div>
+                      <span className="text-gray-500 text-xs">Vehicle</span>
+                      <p className="text-gray-900 font-medium">{details.vehicle}</p>
+                    </div>
+                  )}
+                  {getAllFormFields(primaryLead).map((field, idx) => (
+                    <div key={idx} className={field.value.length > 30 ? 'col-span-2' : ''}>
+                      <span className="text-gray-500 text-xs">{field.label}</span>
+                      <p className="text-gray-900 font-medium break-words">{field.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Status & Value */}
+            <div className="flex gap-3 items-end pt-2 border-t border-gray-100">
+              <div className="flex-1">
+                <label className="block text-xs text-gray-500 mb-1">Status</label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                >
+                  {STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {showValueField && (
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-500 mb-1">
+                    {isQuotedStatus ? 'Quote Value' : 'Sale Value'}
+                  </label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="number"
+                      value={isQuotedStatus ? editQuoteValue : editSaleValue}
+                      onChange={(e) => isQuotedStatus ? setEditQuoteValue(e.target.value) : setEditSaleValue(e.target.value)}
+                      placeholder="0"
+                      className="w-full pl-7 pr-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+              {hasStatusChanges && (
+                <button
+                  onClick={handleQuickSave}
+                  disabled={saving}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
+                >
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Check className="h-4 w-4" />
+                  )}
+                  Save
+                </button>
+              )}
+            </div>
+
+            {/* Quote & Sale indicators */}
+            {(primaryLead.quoteValue || primaryLead.saleValue) && (
+              <div className="flex items-center gap-4">
+                {primaryLead.quoteValue && (
+                  <div className="flex items-center gap-2 text-purple-600 font-semibold">
+                    <DollarSign className="h-4 w-4" />
+                    Quote: ${primaryLead.quoteValue.toLocaleString()}
+                  </div>
+                )}
+                {primaryLead.saleValue && (
+                  <div className="flex items-center gap-2 text-emerald-600 font-semibold">
+                    <TrendingUp className="h-4 w-4" />
+                    Sale: ${primaryLead.saleValue.toLocaleString()}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Expandable Lead Row Component (kept for reference, now using GroupedLeadRow)
 function LeadRow({
   lead,
   isExpanded,
