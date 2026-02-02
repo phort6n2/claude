@@ -279,8 +279,9 @@ export default function AllLeadsPage() {
                     </span>
                     {/* Google Ads leads count */}
                     {adsLeads.length > 0 && (
-                      <span className="text-xs text-gray-500">
-                        ({adsLeads.length} from Ads)
+                      <span className="flex items-center gap-1 text-xs text-gray-500">
+                        {adsLeads.length}
+                        <img src="/google-ads-icon.svg" alt="from Ads" className="h-3.5 w-3.5" />
                       </span>
                     )}
                   </>
