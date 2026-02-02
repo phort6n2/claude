@@ -537,13 +537,13 @@ function LeadRow({
                 <PlayCircle className="h-4 w-4 text-violet-500 flex-shrink-0" />
               )}
               {lead.gclid && (
-                <span className={`flex items-center gap-0.5 text-xs font-medium ${lead.offlineConversionSent || lead.enhancedConversionSent ? 'text-green-600' : 'text-orange-500'}`}>
-                  {lead.offlineConversionSent || lead.enhancedConversionSent ? (
-                    <CheckCircle2 className="h-3.5 w-3.5" />
+                <span className="relative flex-shrink-0" title={lead.offlineConversionSent || lead.enhancedConversionSent ? 'Synced to Google Ads' : 'Pending sync'}>
+                  <img src="/google-ads-icon.png" alt="Google Ads" className="h-4 w-4" />
+                  {(lead.offlineConversionSent || lead.enhancedConversionSent) ? (
+                    <CheckCircle2 className="absolute -bottom-1 -right-1 h-3 w-3 text-green-600 bg-white rounded-full" />
                   ) : (
-                    <Clock className="h-3.5 w-3.5" />
+                    <Clock className="absolute -bottom-1 -right-1 h-3 w-3 text-orange-500 bg-white rounded-full" />
                   )}
-                  Ads
                 </span>
               )}
             </div>
