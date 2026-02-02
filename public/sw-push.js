@@ -65,13 +65,18 @@ self.addEventListener('notificationclick', (event) => {
 
   // Get the URL to open
   const urlToOpen = event.notification.data?.url || '/portal/leads'
+  const isMasterLeads = urlToOpen.includes('master-leads')
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
-        // Check if there's already a window open
+        // Check if there's already a matching window open
         for (const client of clientList) {
-          if (client.url.includes('/portal') && 'focus' in client) {
+          const isMatchingPage = isMasterLeads
+            ? client.url.includes('/master-leads')
+            : client.url.includes('/portal')
+
+          if (isMatchingPage && 'focus' in client) {
             client.postMessage({ type: 'NEW_LEAD', url: urlToOpen })
             return client.focus()
           }

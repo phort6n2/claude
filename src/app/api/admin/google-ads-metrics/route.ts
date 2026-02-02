@@ -13,9 +13,12 @@ export const dynamic = 'force-dynamic'
 type DateRange = 'TODAY' | 'YESTERDAY' | 'THIS_WEEK' | 'THIS_MONTH' | 'LAST_7_DAYS' | 'LAST_30_DAYS'
 
 // Helper to get date range for database queries
+// Uses America/Denver timezone for consistency
 function getDateRangeFilter(dateRange: DateRange): { gte: Date; lte: Date } {
   const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  // Get current date in Mountain Time
+  const mountainTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Denver' }))
+  const today = new Date(Date.UTC(mountainTime.getFullYear(), mountainTime.getMonth(), mountainTime.getDate()))
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
 

@@ -70,6 +70,7 @@ export async function GET(request: NextRequest) {
           source: true,
           formName: true,
           formData: true,
+          quoteValue: true,
           saleValue: true,
           saleDate: true,
           saleNotes: true,

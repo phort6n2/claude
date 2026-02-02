@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Phone,
@@ -22,6 +22,8 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { NotificationToggle } from '@/components/portal/NotificationToggle'
+import { usePullToRefresh } from '@/hooks/usePullToRefresh'
+import { PullToRefreshIndicator } from '@/components/ui/PullToRefresh'
 
 interface Lead {
   id: string
@@ -31,6 +33,7 @@ interface Lead {
   lastName: string | null
   status: string
   source: string
+  quoteValue: number | null
   saleValue: number | null
   saleDate: string | null
   saleNotes: string | null
@@ -100,23 +103,73 @@ export default function PortalLeadsPage() {
       })
   }, [router])
 
-  // Load leads for selected date
-  useEffect(() => {
+  // Function to load leads - used by useEffect and pull-to-refresh
+  const loadLeads = useCallback(async (showLoadingState = true) => {
     if (!session?.authenticated) return
 
-    setLoading(true)
-    setExpandedLeadId(null)
-    fetch(`/api/portal/leads?date=${selectedDate}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setLeads(data.leads || [])
-        if (data.sales) {
-          setSales(data.sales)
-        }
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+    if (showLoadingState) {
+      setLoading(true)
+      setExpandedLeadId(null)
+    }
+
+    try {
+      const res = await fetch(`/api/portal/leads?date=${selectedDate}`)
+      const data = await res.json()
+      setLeads(data.leads || [])
+      if (data.sales) {
+        setSales(data.sales)
+      }
+    } catch (error) {
+      console.error('Failed to load leads:', error)
+    } finally {
+      if (showLoadingState) {
+        setLoading(false)
+      }
+    }
   }, [session, selectedDate])
+
+  // Load leads for selected date
+  useEffect(() => {
+    loadLeads(true)
+  }, [loadLeads])
+
+  // Auto-refresh every 30 seconds when viewing today's leads
+  useEffect(() => {
+    const today = new Date()
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
+    // Only auto-refresh if viewing today's date
+    if (selectedDate !== todayStr || !session?.authenticated) {
+      return
+    }
+
+    const interval = setInterval(() => {
+      loadLeads(false) // Silent refresh
+    }, 30000) // 30 seconds
+
+    return () => clearInterval(interval)
+  }, [selectedDate, session, loadLeads])
+
+  // Listen for messages from service worker (notification clicks)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'NEW_LEAD') {
+        loadLeads(false) // Refresh leads when notification is clicked
+      }
+    }
+
+    navigator.serviceWorker?.addEventListener('message', handleMessage)
+    return () => {
+      navigator.serviceWorker?.removeEventListener('message', handleMessage)
+    }
+  }, [loadLeads])
+
+  // Pull-to-refresh
+  const { isRefreshing, pullDistance, threshold } = usePullToRefresh({
+    onRefresh: async () => {
+      await loadLeads(false)
+    },
+  })
 
   function changeDate(days: number) {
     const date = new Date(selectedDate + 'T12:00:00')
@@ -173,26 +226,33 @@ export default function PortalLeadsPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 overflow-x-hidden">
-      {/* Header */}
+      {/* Pull to Refresh Indicator */}
+      <PullToRefreshIndicator
+        pullDistance={pullDistance}
+        threshold={threshold}
+        isRefreshing={isRefreshing}
+      />
+
+      {/* Header - Compact */}
       <header className="bg-white border-b sticky top-0 z-40">
-        <div className="max-w-3xl mx-auto px-4 py-3">
+        <div className="max-w-3xl mx-auto px-4 py-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <HeaderLogo
                 logoUrl={session.user?.logoUrl}
                 businessName={session.user?.businessName || ''}
                 primaryColor={session.user?.primaryColor}
+                size="sm"
               />
               <div>
-                <h1 className="text-lg font-bold text-gray-900">{session.user?.businessName}</h1>
-                <p className="text-xs text-gray-600">Lead Portal</p>
+                <h1 className="text-base font-bold text-gray-900 leading-tight">{session.user?.businessName}</h1>
+                <p className="text-[10px] text-gray-500">Lead Portal</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <NotificationToggle />
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline ml-2">Logout</span>
+              <Button variant="outline" size="sm" onClick={handleLogout} className="h-8 px-2">
+                <LogOut className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
@@ -200,7 +260,7 @@ export default function PortalLeadsPage() {
       </header>
 
       {/* Date Navigation + Sales Stats - Compact */}
-      <div className="bg-white border-b sticky top-[57px] z-30">
+      <div className="bg-white border-b sticky top-[49px] z-30">
         <div className="max-w-3xl mx-auto px-4 py-2">
           <div className="flex items-center justify-between">
             {/* Date Nav */}
@@ -353,6 +413,29 @@ export default function PortalLeadsPage() {
           </div>
         </>
       )}
+
+      {/* Powered by Footer */}
+      <div className="fixed bottom-0 left-0 right-0 bg-gray-900 z-50">
+        <div className="max-w-3xl mx-auto px-4 py-2 flex items-center justify-center gap-2">
+          <span className="text-gray-400 text-xs">Powered by</span>
+          <a
+            href="https://autoglassmarketingpros.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+          >
+            <img
+              src="/logo.png"
+              alt="Auto Glass Marketing Pros"
+              className="h-5 w-auto"
+            />
+            <span className="text-white text-xs font-medium">Auto Glass Marketing Pros</span>
+          </a>
+        </div>
+      </div>
+
+      {/* Spacer for fixed footer */}
+      <div className="h-10" />
     </div>
   )
 }
@@ -361,18 +444,21 @@ export default function PortalLeadsPage() {
 function HeaderLogo({
   logoUrl,
   businessName,
-  primaryColor
+  primaryColor,
+  size = 'md'
 }: {
   logoUrl: string | null | undefined
   businessName: string
   primaryColor: string | null | undefined
+  size?: 'sm' | 'md'
 }) {
   const [imageError, setImageError] = useState(false)
+  const sizeClasses = size === 'sm' ? 'h-8 w-8 text-sm' : 'h-10 w-10 text-lg'
 
   if (!logoUrl || imageError) {
     return (
       <div
-        className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
+        className={`${sizeClasses} rounded-full flex items-center justify-center text-white font-bold flex-shrink-0`}
         style={{ backgroundColor: primaryColor || '#1e40af' }}
       >
         {businessName[0] || '?'}
@@ -384,7 +470,7 @@ function HeaderLogo({
     <img
       src={logoUrl}
       alt={businessName}
-      className="h-10 w-10 rounded-full object-cover flex-shrink-0"
+      className={`${sizeClasses} rounded-full object-cover flex-shrink-0`}
       onError={() => setImageError(true)}
     />
   )
@@ -406,15 +492,16 @@ function getLeadDetails(lead: Lead) {
   }
 
   const service = getField(['interested_in', 'Interested In:', 'Interested In'])
+  // Get individual vehicle fields
   const year = getField(['vehicle_year', 'Vehicle Year'])
   const make = getField(['vehicle_make', 'Vehicle Make'])
   const model = getField(['vehicle_model', 'Vehicle Model'])
+  // Build combined vehicle string
+  const vehicleParts = [year, make, model].filter(Boolean)
+  const vehicle = vehicleParts.length > 0 ? vehicleParts.join(' ') : null
   const vin = getField(['vin', 'VIN', 'Vin'])
   const zipCode = getField(['postal_code', 'postalCode'])
   const insuranceHelp = getField(['insurance_help', 'Would You Like Us To Help Navigate Your Insurance Claim For You?', 'radio_3s0t'])
-
-  const vehicleParts = [year, make, model].filter(Boolean)
-  const vehicle = vehicleParts.length > 0 ? vehicleParts.join(' ') : null
 
   return { service, vehicle, year, make, model, vin, zipCode, insuranceHelp }
 }
@@ -433,7 +520,10 @@ function getAllFormFields(lead: Lead): Array<{ label: string; value: string }> {
     // Skip these per user request
     'tags', 'country', 'timezone', 'contact_type', 'contactType', 'contact_source', 'contactSource',
     // Skip recording URL (audio player is shown separately)
-    'recordingUrl', 'recording_url', 'callRecordingUrl', 'call_recording_url', 'audioUrl', 'audio_url'
+    'recordingUrl', 'recording_url', 'callRecordingUrl', 'call_recording_url', 'audioUrl', 'audio_url',
+    // Skip vehicle/service fields (shown in Edit Lead Info section)
+    'vehicle', 'Vehicle', 'vehicle_year', 'Vehicle Year', 'vehicle_make', 'Vehicle Make',
+    'vehicle_model', 'Vehicle Model', 'interested_in', 'Interested In', 'Interested In:'
   ])
 
   // Label formatting helper
@@ -481,6 +571,7 @@ function LeadRow({
 
   // Edit state
   const [editStatus, setEditStatus] = useState(lead.status)
+  const [editQuoteValue, setEditQuoteValue] = useState(lead.quoteValue?.toString() || '')
   const [editSaleValue, setEditSaleValue] = useState(lead.saleValue?.toString() || '')
   const [saving, setSaving] = useState(false)
 
@@ -493,9 +584,15 @@ function LeadRow({
   const [editVehicleModel, setEditVehicleModel] = useState(details.model || '')
   const [editService, setEditService] = useState(details.service || '')
 
+  // Determine which value field to show based on status
+  const isQuotedStatus = editStatus === 'QUOTED'
+  const isSoldStatus = editStatus === 'SOLD'
+  const showValueField = isQuotedStatus || isSoldStatus
+
   // Reset edit state when lead changes
   useEffect(() => {
     setEditStatus(lead.status)
+    setEditQuoteValue(lead.quoteValue?.toString() || '')
     setEditSaleValue(lead.saleValue?.toString() || '')
     setEditFirstName(lead.firstName || '')
     setEditLastName(lead.lastName || '')
@@ -508,13 +605,21 @@ function LeadRow({
   async function handleQuickSave() {
     setSaving(true)
     try {
+      const payload: Record<string, unknown> = { status: editStatus }
+
+      // Save quote value when status is QUOTED
+      if (editStatus === 'QUOTED') {
+        payload.quoteValue = editQuoteValue ? parseFloat(editQuoteValue) : null
+      }
+      // Save sale value when status is SOLD
+      if (editStatus === 'SOLD') {
+        payload.saleValue = editSaleValue ? parseFloat(editSaleValue) : null
+      }
+
       const response = await fetch(`/api/portal/leads/${lead.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: editStatus,
-          saleValue: editSaleValue ? parseFloat(editSaleValue) : null,
-        }),
+        body: JSON.stringify(payload),
       })
       if (!response.ok) throw new Error('Failed to save')
       const updated = await response.json()
@@ -553,6 +658,7 @@ function LeadRow({
   }
 
   const hasStatusChanges = editStatus !== lead.status ||
+    (editQuoteValue || '') !== (lead.quoteValue?.toString() || '') ||
     (editSaleValue || '') !== (lead.saleValue?.toString() || '')
 
   const hasInfoChanges =
@@ -719,13 +825,16 @@ function LeadRow({
                   <div className="grid grid-cols-3 gap-2">
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Year</label>
-                      <input
-                        type="text"
+                      <select
                         value={editVehicleYear}
                         onChange={(e) => setEditVehicleYear(e.target.value)}
-                        placeholder="2024"
-                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      />
+                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      >
+                        <option value="">Year</option>
+                        {Array.from({ length: 30 }, (_, i) => new Date().getFullYear() + 1 - i).map((year) => (
+                          <option key={year} value={year.toString()}>{year}</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Make</label>
@@ -764,10 +873,22 @@ function LeadRow({
             </div>
 
             {/* Lead Details - All Available Info */}
-            {getAllFormFields(lead).length > 0 && (
+            {(details.vehicle || details.service || getAllFormFields(lead).length > 0) && (
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Lead Details</p>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  {details.service && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500 text-xs">Service</span>
+                      <p className="text-gray-900 font-medium">{details.service}</p>
+                    </div>
+                  )}
+                  {details.vehicle && (
+                    <div>
+                      <span className="text-gray-500 text-xs">Vehicle</span>
+                      <p className="text-gray-900 font-medium">{details.vehicle}</p>
+                    </div>
+                  )}
                   {getAllFormFields(lead).map((field, idx) => (
                     <div key={idx} className={field.value.length > 30 ? 'col-span-2' : ''}>
                       <span className="text-gray-500 text-xs">{field.label}</span>
@@ -778,7 +899,7 @@ function LeadRow({
               </div>
             )}
 
-            {/* Status & Sale - Inline Edit */}
+            {/* Status & Value - Inline Edit */}
             <div className="flex gap-3 items-end pt-2 border-t border-gray-100">
               <div className="flex-1">
                 <label className="block text-xs text-gray-500 mb-1">Status</label>
@@ -794,19 +915,23 @@ function LeadRow({
                   ))}
                 </select>
               </div>
-              <div className="flex-1">
-                <label className="block text-xs text-gray-500 mb-1">Sale Value</label>
-                <div className="relative">
-                  <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="number"
-                    value={editSaleValue}
-                    onChange={(e) => setEditSaleValue(e.target.value)}
-                    placeholder="0"
-                    className="w-full pl-7 pr-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
+              {showValueField && (
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-500 mb-1">
+                    {isQuotedStatus ? 'Quote Value' : 'Sale Value'}
+                  </label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="number"
+                      value={isQuotedStatus ? editQuoteValue : editSaleValue}
+                      onChange={(e) => isQuotedStatus ? setEditQuoteValue(e.target.value) : setEditSaleValue(e.target.value)}
+                      placeholder="0"
+                      className="w-full pl-7 pr-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
               {hasStatusChanges && (
                 <button
                   onClick={handleQuickSave}
@@ -823,11 +948,21 @@ function LeadRow({
               )}
             </div>
 
-            {/* Sale indicator */}
-            {lead.saleValue && (
-              <div className="flex items-center gap-2 text-emerald-600 font-semibold">
-                <TrendingUp className="h-4 w-4" />
-                Sale: ${lead.saleValue.toLocaleString()}
+            {/* Quote & Sale indicators */}
+            {(lead.quoteValue || lead.saleValue) && (
+              <div className="flex items-center gap-4">
+                {lead.quoteValue && (
+                  <div className="flex items-center gap-2 text-purple-600 font-semibold">
+                    <DollarSign className="h-4 w-4" />
+                    Quote: ${lead.quoteValue.toLocaleString()}
+                  </div>
+                )}
+                {lead.saleValue && (
+                  <div className="flex items-center gap-2 text-emerald-600 font-semibold">
+                    <TrendingUp className="h-4 w-4" />
+                    Sale: ${lead.saleValue.toLocaleString()}
+                  </div>
+                )}
               </div>
             )}
           </div>
