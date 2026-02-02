@@ -107,6 +107,11 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       updateData.statusUpdatedAt = new Date()
     }
 
+    // Quote info
+    if (data.quoteValue !== undefined) {
+      updateData.quoteValue = data.quoteValue
+    }
+
     // Sale info
     if (data.saleValue !== undefined) {
       updateData.saleValue = data.saleValue

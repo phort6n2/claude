@@ -849,18 +849,19 @@ async function runContentPipelineInternal(contentItemId: string): Promise<void> 
         // Client Social Posts
         if (contentItem.client.socialPlatforms.length > 0 && socialAccountIds && Object.keys(socialAccountIds).length > 0) {
           results.social.skipped = false
-          log(ctx, 'Posting client social posts...', { platforms: contentItem.client.socialPlatforms })
+
+          // Skip video platforms (TikTok, YouTube) for image posts - these will get video posts later
+          const VIDEO_PLATFORMS = ['tiktok', 'youtube']
+          const clientImagePlatforms = contentItem.client.socialPlatforms.filter(
+            p => !VIDEO_PLATFORMS.includes(p.toLowerCase())
+          )
+
+          log(ctx, 'Posting client social posts...', { platforms: clientImagePlatforms })
 
           const clientPostedPosts: Array<{ platform: string; postId: string; status: string; publishedUrl?: string }> = []
 
-          // Skip video platforms (TikTok) for image posts - TikTok gets short video instead
-          const CLIENT_VIDEO_ONLY_PLATFORMS = ['tiktok']
-          const filteredClientPlatforms = contentItem.client.socialPlatforms.filter(
-            (p: string) => !CLIENT_VIDEO_ONLY_PLATFORMS.includes(p)
-          )
-
           // Post to each platform immediately (not scheduled)
-          for (const platform of filteredClientPlatforms) {
+          for (const platform of clientImagePlatforms) {
             const accountId = socialAccountIds[platform]
             if (!accountId) continue
 
