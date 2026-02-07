@@ -117,7 +117,56 @@ export async function notifyClientUsers(
 }
 
 /**
- * Send new lead notification to client users
+ * Send push notification to admin users subscribed to a specific client
+ */
+export async function notifyAdminUsers(
+  clientId: string,
+  payload: PushPayload
+): Promise<{ sent: number; failed: number }> {
+  // Get all active admin push subscriptions that include this client
+  const subscriptions = await prisma.adminPushSubscription.findMany({
+    where: {
+      isActive: true,
+      clients: {
+        some: {
+          clientId: clientId,
+        },
+      },
+    },
+  })
+
+  let sent = 0
+  let failed = 0
+
+  for (const sub of subscriptions) {
+    const success = await sendPushNotification(
+      { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+      payload
+    )
+
+    if (success) {
+      sent++
+      await prisma.adminPushSubscription.update({
+        where: { id: sub.id },
+        data: { lastUsed: new Date(), failCount: 0 },
+      })
+    } else {
+      failed++
+      await prisma.adminPushSubscription.update({
+        where: { id: sub.id },
+        data: { failCount: { increment: 1 } },
+      })
+    }
+  }
+
+  if (sent > 0 || failed > 0) {
+    console.log(`[Push] Admin notifications: ${sent} sent, ${failed} failed for client ${clientId}`)
+  }
+  return { sent, failed }
+}
+
+/**
+ * Send new lead notification to client users AND admin users
  */
 export async function notifyNewLead(
   clientId: string,
@@ -126,6 +175,13 @@ export async function notifyNewLead(
   const clientName = leadInfo.firstName || 'New customer'
   const sourceLabel = leadInfo.source === 'PHONE' ? '📞 Phone Call' : '📝 Form Submission'
 
+  // Get client business name for admin notifications
+  const client = await prisma.client.findUnique({
+    where: { id: clientId },
+    select: { businessName: true },
+  })
+
+  // Notify portal users (client employees)
   await notifyClientUsers(clientId, {
     title: '🎉 New Lead!',
     body: `${clientName} - ${sourceLabel}`,
@@ -133,6 +189,18 @@ export async function notifyNewLead(
     data: {
       url: '/portal/leads',
       type: 'new-lead',
+    },
+  })
+
+  // Notify admin users subscribed to this client
+  await notifyAdminUsers(clientId, {
+    title: `🎉 New Lead - ${client?.businessName || 'Client'}`,
+    body: `${clientName} - ${sourceLabel}`,
+    tag: `new-lead-${clientId}`,
+    data: {
+      url: '/master-leads',
+      type: 'new-lead',
+      clientId,
     },
   })
 }
