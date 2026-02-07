@@ -64,6 +64,10 @@ interface Client {
   socialPlatforms: string[]
   disconnectedAccounts: unknown
   scheduledCount: number
+  googleAdsConfig: {
+    customerId: string | null
+    leadConversionActionId: string | null
+  } | null
   _count: {
     contentItems: number
   }
@@ -274,12 +278,26 @@ export default function ClientsListView({ clients }: ClientsListViewProps) {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <Link
-                              href={`/admin/clients/${client.id}`}
-                              className="font-medium text-gray-900 hover:text-blue-600 transition-colors truncate block"
-                            >
-                              {client.businessName}
-                            </Link>
+                            <div className="flex items-center gap-1.5">
+                              <Link
+                                href={`/admin/clients/${client.id}`}
+                                className="font-medium text-gray-900 hover:text-blue-600 transition-colors truncate"
+                              >
+                                {client.businessName}
+                              </Link>
+                              {client.googleAdsConfig?.customerId && (
+                                <span
+                                  className="inline-flex items-center justify-center flex-shrink-0"
+                                  title={`Google Ads Connected (${client.googleAdsConfig.customerId})`}
+                                >
+                                  <svg className="h-4 w-4" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12.214 170.73a23.03 23.03 0 0 0 39.867 0l55.629-96.36a23.03 23.03 0 0 0-39.868 0l-55.628 96.36Z" fill="#FBBC04"/>
+                                    <path d="M96.106 170.73l55.628-96.36a23.03 23.03 0 0 0-39.867 0l-55.628 96.36a23.03 23.03 0 0 0 39.867 0Z" fill="#4285F4"/>
+                                    <path d="M168.214 192c12.721 0 23.031-10.31 23.031-23.03 0-12.722-10.31-23.031-23.03-23.031-12.722 0-23.031 10.31-23.031 23.03 0 12.722 10.31 23.031 23.03 23.031Z" fill="#34A853"/>
+                                  </svg>
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-gray-500 flex items-center gap-1">
                               <MapPin className="h-3 w-3" />
                               {client.city}, {client.state}
@@ -489,9 +507,23 @@ export default function ClientsListView({ clients }: ClientsListViewProps) {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
-                        {client.businessName}
-                      </h3>
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
+                          {client.businessName}
+                        </h3>
+                        {client.googleAdsConfig?.customerId && (
+                          <span
+                            className="inline-flex items-center justify-center flex-shrink-0"
+                            title={`Google Ads Connected (${client.googleAdsConfig.customerId})`}
+                          >
+                            <svg className="h-4 w-4" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M12.214 170.73a23.03 23.03 0 0 0 39.867 0l55.629-96.36a23.03 23.03 0 0 0-39.868 0l-55.628 96.36Z" fill="#FBBC04"/>
+                              <path d="M96.106 170.73l55.628-96.36a23.03 23.03 0 0 0-39.867 0l-55.628 96.36a23.03 23.03 0 0 0 39.867 0Z" fill="#4285F4"/>
+                              <path d="M168.214 192c12.721 0 23.031-10.31 23.031-23.03 0-12.722-10.31-23.031-23.03-23.031-12.722 0-23.031 10.31-23.031 23.03 0 12.722 10.31 23.031 23.03 23.031Z" fill="#34A853"/>
+                            </svg>
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-gray-500 flex items-center gap-1">
                         <MapPin className="h-3 w-3" />
                         {client.city}, {client.state}
