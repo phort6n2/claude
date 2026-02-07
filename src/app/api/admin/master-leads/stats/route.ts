@@ -5,6 +5,32 @@ import { auth } from '@/lib/auth'
 export const dynamic = 'force-dynamic'
 
 /**
+ * Get the start of a day in a specific timezone, returned as UTC Date
+ */
+function getStartOfDayInTimezone(date: Date, timezone: string): Date {
+  // Get the date parts in the target timezone
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+  const parts = formatter.formatToParts(date)
+  const year = parseInt(parts.find(p => p.type === 'year')?.value || '0')
+  const month = parseInt(parts.find(p => p.type === 'month')?.value || '1') - 1
+  const day = parseInt(parts.find(p => p.type === 'day')?.value || '1')
+
+  // Calculate the offset by comparing UTC and local representations
+  const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }))
+  const tzDate = new Date(date.toLocaleString('en-US', { timeZone: timezone }))
+  const offsetMs = utcDate.getTime() - tzDate.getTime()
+
+  // Create midnight in that timezone and convert to UTC
+  const midnightLocal = new Date(year, month, day, 0, 0, 0, 0)
+  return new Date(midnightLocal.getTime() + offsetMs)
+}
+
+/**
  * GET /api/admin/master-leads/stats - Get sales stats for a specific client (admin only)
  */
 export async function GET(request: NextRequest) {
@@ -28,28 +54,35 @@ export async function GET(request: NextRequest) {
     })
 
     const timezone = client?.timezone || 'America/Denver'
+    const now = new Date()
 
-    // Get current date in client's timezone
-    const nowInTz = new Date().toLocaleString('en-US', { timeZone: timezone })
-    const clientNow = new Date(nowInTz)
-    const clientYear = clientNow.getFullYear()
-    const clientMonth = clientNow.getMonth()
-    const clientDate = clientNow.getDate()
-    const clientDay = clientNow.getDay()
+    // Get current date parts in client's timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      weekday: 'short',
+    })
+    const dayOfWeek = formatter.format(now)
+    const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+    const clientDay = dayMap[dayOfWeek] ?? 0
 
-    // Get timezone offset
-    const tzOffset = new Date().toLocaleString('en-US', { timeZone: timezone, timeZoneName: 'shortOffset' })
-    const offsetMatch = tzOffset.match(/GMT([+-]\d+)/)
-    const offsetHours = offsetMatch ? parseInt(offsetMatch[1]) : 0
+    // Calculate start dates in UTC
+    const startOfToday = getStartOfDayInTimezone(now, timezone)
 
-    // Start of today in client's timezone (converted to UTC)
-    const startOfToday = new Date(Date.UTC(clientYear, clientMonth, clientDate, -offsetHours, 0, 0))
+    // Start of week (Sunday)
+    const weekStart = new Date(now)
+    weekStart.setDate(weekStart.getDate() - clientDay)
+    const startOfWeek = getStartOfDayInTimezone(weekStart, timezone)
 
-    // Start of week (Sunday) in client's timezone
-    const startOfWeek = new Date(Date.UTC(clientYear, clientMonth, clientDate - clientDay, -offsetHours, 0, 0))
-
-    // Start of month in client's timezone
-    const startOfMonth = new Date(Date.UTC(clientYear, clientMonth, 1, -offsetHours, 0, 0))
+    // Start of month
+    const monthFormatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+    })
+    const monthParts = monthFormatter.formatToParts(now)
+    const year = parseInt(monthParts.find(p => p.type === 'year')?.value || '0')
+    const month = parseInt(monthParts.find(p => p.type === 'month')?.value || '1') - 1
+    const startOfMonth = getStartOfDayInTimezone(new Date(year, month, 1), timezone)
 
     const [salesToday, salesWeek, salesMonth] = await Promise.all([
       prisma.lead.aggregate({
