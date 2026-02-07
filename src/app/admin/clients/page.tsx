@@ -41,6 +41,12 @@ async function getClients() {
         take: 1,
         select: { scheduledDate: true, status: true },
       },
+      googleAdsConfig: {
+        select: {
+          customerId: true,
+          leadConversionActionId: true,
+        },
+      },
     },
   })
 
