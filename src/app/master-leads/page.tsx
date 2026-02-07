@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Phone,
@@ -16,18 +16,14 @@ import {
   X,
   Loader2,
   User,
+  Users,
   Building2,
   ShieldX,
   CheckCircle2,
   PlayCircle,
   Check,
-  BarChart3,
 } from 'lucide-react'
-import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
-import { MasterNotificationToggle } from '@/components/master-leads/MasterNotificationToggle'
-import { usePullToRefresh } from '@/hooks/usePullToRefresh'
-import { PullToRefreshIndicator } from '@/components/ui/PullToRefresh'
 
 interface Lead {
   id: string
@@ -38,7 +34,6 @@ interface Lead {
   status: string
   source: string
   gclid: string | null
-  quoteValue: number | null
   saleValue: number | null
   saleDate: string | null
   saleNotes: string | null
@@ -48,6 +43,11 @@ interface Lead {
   formData: Record<string, unknown> | null
   enhancedConversionSent: boolean
   offlineConversionSent: boolean
+  client?: {
+    id: string
+    businessName: string
+    slug: string
+  }
 }
 
 interface Client {
@@ -83,12 +83,7 @@ export default function StandaloneMasterLeadsPage() {
   const [authenticated, setAuthenticated] = useState(false)
   const [authChecking, setAuthChecking] = useState(true)
   const [clients, setClients] = useState<Client[]>([])
-  const [selectedClientId, setSelectedClientId] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('masterLeadsSelectedClientId') || ''
-    }
-    return ''
-  })
+  const [selectedClientId, setSelectedClientId] = useState<string>('all')
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(false)
@@ -135,99 +130,65 @@ export default function StandaloneMasterLeadsPage() {
       .finally(() => setClientsLoading(false))
   }, [authenticated])
 
-  // Update selected client when ID changes and persist to localStorage
+  // Update selected client when ID changes
   useEffect(() => {
     if (selectedClientId) {
       const client = clients.find(c => c.id === selectedClientId)
       setSelectedClient(client || null)
-      localStorage.setItem('masterLeadsSelectedClientId', selectedClientId)
     } else {
       setSelectedClient(null)
-      localStorage.removeItem('masterLeadsSelectedClientId')
     }
   }, [selectedClientId, clients])
 
-  // Function to load leads - used by useEffect and pull-to-refresh
-  const loadLeads = useCallback(async (showLoadingState = true) => {
-    if (!selectedClientId || !authenticated) {
+  // Load leads for selected client and date
+  useEffect(() => {
+    if (!authenticated) {
       setLeads([])
       setSales(null)
       return
     }
 
-    if (showLoadingState) {
-      setLoading(true)
-      setExpandedLeadId(null)
+    // If no client selected, show empty state (unless "all" is selected)
+    if (!selectedClientId) {
+      setLeads([])
+      setSales(null)
+      return
     }
+
+    setLoading(true)
+    setExpandedLeadId(null)
 
     const [year, month, day] = selectedDate.split('-').map(Number)
     const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
     const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
 
-    try {
-      const [leadsRes, statsRes] = await Promise.all([
-        fetch(`/api/leads?clientId=${selectedClientId}&startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`),
-        fetch(`/api/admin/master-leads/stats?clientId=${selectedClientId}`)
-      ])
+    // Build URL - if "all" is selected, don't filter by clientId
+    const leadsUrl = selectedClientId === 'all'
+      ? `/api/leads?startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`
+      : `/api/leads?clientId=${selectedClientId}&startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`
 
-      const leadsData = await leadsRes.json()
-      setLeads(leadsData.leads || [])
+    fetch(leadsUrl)
+      .then((res) => res.json())
+      .then((data) => {
+        setLeads(data.leads || [])
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false))
 
-      const statsData = await statsRes.json()
-      if (statsData.sales) {
-        setSales(statsData.sales)
-      }
-    } catch (error) {
-      console.error('Failed to load leads:', error)
-    } finally {
-      if (showLoadingState) {
-        setLoading(false)
-      }
-    }
+    // Fetch stats - for "all", don't pass clientId
+    const statsUrl = selectedClientId === 'all'
+      ? `/api/admin/master-leads/stats`
+      : `/api/admin/master-leads/stats?clientId=${selectedClientId}`
+
+    fetch(statsUrl)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.sales) {
+          setSales(data.sales)
+        }
+      })
+      .catch(console.error)
   }, [selectedClientId, selectedDate, authenticated])
-
-  // Load leads for selected client and date
-  useEffect(() => {
-    loadLeads(true)
-  }, [loadLeads])
-
-  // Auto-refresh every 30 seconds when viewing today's leads
-  useEffect(() => {
-    const today = new Date()
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-
-    // Only auto-refresh if viewing today's date
-    if (selectedDate !== todayStr || !selectedClientId || !authenticated) {
-      return
-    }
-
-    const interval = setInterval(() => {
-      loadLeads(false) // Silent refresh
-    }, 30000) // 30 seconds
-
-    return () => clearInterval(interval)
-  }, [selectedDate, selectedClientId, authenticated, loadLeads])
-
-  // Listen for messages from service worker (notification clicks)
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'NEW_LEAD') {
-        loadLeads(false) // Refresh leads when notification is clicked
-      }
-    }
-
-    navigator.serviceWorker?.addEventListener('message', handleMessage)
-    return () => {
-      navigator.serviceWorker?.removeEventListener('message', handleMessage)
-    }
-  }, [loadLeads])
-
-  // Pull-to-refresh
-  const { isRefreshing, pullDistance, threshold } = usePullToRefresh({
-    onRefresh: async () => {
-      await loadLeads(false)
-    },
-  })
 
   function changeDate(days: number) {
     const date = new Date(selectedDate + 'T12:00:00')
@@ -298,19 +259,16 @@ export default function StandaloneMasterLeadsPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 overflow-x-hidden">
-      {/* Pull to Refresh Indicator */}
-      <PullToRefreshIndicator
-        pullDistance={pullDistance}
-        threshold={threshold}
-        isRefreshing={isRefreshing}
-      />
-
       {/* Header with Client Selector */}
       <header className="bg-white border-b sticky top-0 z-40">
         <div className="max-w-3xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              {selectedClient ? (
+              {selectedClientId === 'all' ? (
+                <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                  <Users className="h-5 w-5 text-white" />
+                </div>
+              ) : selectedClient ? (
                 <ClientLogo
                   logoUrl={selectedClient.logoUrl}
                   businessName={selectedClient.businessName}
@@ -330,6 +288,7 @@ export default function StandaloneMasterLeadsPage() {
                     style={{ paddingLeft: 0 }}
                   >
                     <option value="">Select Client...</option>
+                    <option value="all">All Clients</option>
                     {clients.map((client) => (
                       <option key={client.id} value={client.id}>
                         {client.businessName}
@@ -340,16 +299,6 @@ export default function StandaloneMasterLeadsPage() {
                 </div>
                 <p className="text-xs text-gray-600">Master Leads</p>
               </div>
-            </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <MasterNotificationToggle clients={clients} />
-              <Link
-                href="/master-leads/ads"
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Google Ads Today"
-              >
-                <BarChart3 className="h-5 w-5 text-blue-600" />
-              </Link>
             </div>
           </div>
         </div>
@@ -413,7 +362,7 @@ export default function StandaloneMasterLeadsPage() {
           </div>
 
           {/* Leads List */}
-          <div className="max-w-3xl mx-auto px-4 pb-20">
+          <div className="max-w-3xl mx-auto px-4 pb-6">
             {loading ? (
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
@@ -443,6 +392,7 @@ export default function StandaloneMasterLeadsPage() {
                     isDimmed={expandedLeadId !== null && expandedLeadId !== lead.id}
                     onToggle={() => setExpandedLeadId(expandedLeadId === lead.id ? null : lead.id)}
                     onUpdate={handleLeadUpdate}
+                    showClientName={selectedClientId === 'all'}
                   />
                 ))}
               </div>
@@ -521,17 +471,6 @@ export default function StandaloneMasterLeadsPage() {
           </div>
         </>
       )}
-
-      {/* Powered by Footer */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-900 z-50">
-        <div className="max-w-3xl mx-auto px-4 py-2 flex items-center justify-center gap-2">
-          <span className="text-gray-400 text-xs">Powered by</span>
-          <a href="https://autoglassmarketingpros.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
-            <img src="/logo.png" alt="Auto Glass Marketing Pros" className="h-5 w-auto" />
-            <span className="text-white text-xs font-medium">Auto Glass Marketing Pros</span>
-          </a>
-        </div>
-      </div>
     </div>
   )
 }
@@ -585,16 +524,15 @@ function getLeadDetails(lead: Lead) {
   }
 
   const service = getField(['interested_in', 'Interested In:', 'Interested In'])
-  // Get individual vehicle fields
   const year = getField(['vehicle_year', 'Vehicle Year'])
   const make = getField(['vehicle_make', 'Vehicle Make'])
   const model = getField(['vehicle_model', 'Vehicle Model'])
-  // Build combined vehicle string
-  const vehicleParts = [year, make, model].filter(Boolean)
-  const vehicle = vehicleParts.length > 0 ? vehicleParts.join(' ') : null
   const vin = getField(['vin', 'VIN', 'Vin'])
   const zipCode = getField(['postal_code', 'postalCode'])
   const insuranceHelp = getField(['insurance_help', 'Would You Like Us To Help Navigate Your Insurance Claim For You?', 'radio_3s0t'])
+
+  const vehicleParts = [year, make, model].filter(Boolean)
+  const vehicle = vehicleParts.length > 0 ? vehicleParts.join(' ') : null
 
   return { service, vehicle, year, make, model, vin, zipCode, insuranceHelp }
 }
@@ -613,10 +551,7 @@ function getAllFormFields(lead: Lead): Array<{ label: string; value: string }> {
     // Skip these per user request
     'tags', 'country', 'timezone', 'contact_type', 'contactType', 'contact_source', 'contactSource',
     // Skip recording URL (audio player is shown separately)
-    'recordingUrl', 'recording_url', 'callRecordingUrl', 'call_recording_url', 'audioUrl', 'audio_url',
-    // Skip vehicle/service fields (shown in Edit Lead Info section)
-    'vehicle', 'Vehicle', 'vehicle_year', 'Vehicle Year', 'vehicle_make', 'Vehicle Make',
-    'vehicle_model', 'Vehicle Model', 'interested_in', 'Interested In', 'Interested In:'
+    'recordingUrl', 'recording_url', 'callRecordingUrl', 'call_recording_url', 'audioUrl', 'audio_url'
   ])
 
   // Label formatting helper
@@ -650,12 +585,14 @@ function LeadRow({
   isDimmed,
   onToggle,
   onUpdate,
+  showClientName = false,
 }: {
   lead: Lead
   isExpanded: boolean
   isDimmed: boolean
   onToggle: () => void
   onUpdate: (lead: Lead) => void
+  showClientName?: boolean
 }) {
   const statusConfig = STATUS_CONFIG[lead.status] || STATUS_CONFIG.NEW
   const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'
@@ -664,7 +601,6 @@ function LeadRow({
 
   // Edit state
   const [editStatus, setEditStatus] = useState(lead.status)
-  const [editQuoteValue, setEditQuoteValue] = useState(lead.quoteValue?.toString() || '')
   const [editSaleValue, setEditSaleValue] = useState(lead.saleValue?.toString() || '')
   const [saving, setSaving] = useState(false)
 
@@ -677,15 +613,9 @@ function LeadRow({
   const [editVehicleModel, setEditVehicleModel] = useState(details.model || '')
   const [editService, setEditService] = useState(details.service || '')
 
-  // Determine which value field to show based on status
-  const isQuotedStatus = editStatus === 'QUOTED'
-  const isSoldStatus = editStatus === 'SOLD'
-  const showValueField = isQuotedStatus || isSoldStatus
-
   // Reset edit state when lead changes
   useEffect(() => {
     setEditStatus(lead.status)
-    setEditQuoteValue(lead.quoteValue?.toString() || '')
     setEditSaleValue(lead.saleValue?.toString() || '')
     setEditFirstName(lead.firstName || '')
     setEditLastName(lead.lastName || '')
@@ -698,21 +628,13 @@ function LeadRow({
   async function handleQuickSave() {
     setSaving(true)
     try {
-      const payload: Record<string, unknown> = { status: editStatus }
-
-      // Save quote value when status is QUOTED
-      if (editStatus === 'QUOTED') {
-        payload.quoteValue = editQuoteValue ? parseFloat(editQuoteValue) : null
-      }
-      // Save sale value when status is SOLD
-      if (editStatus === 'SOLD') {
-        payload.saleValue = editSaleValue ? parseFloat(editSaleValue) : null
-      }
-
       const response = await fetch(`/api/leads/${lead.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          status: editStatus,
+          saleValue: editSaleValue ? parseFloat(editSaleValue) : null,
+        }),
       })
       if (!response.ok) throw new Error('Failed to save')
       const updated = await response.json()
@@ -751,7 +673,6 @@ function LeadRow({
   }
 
   const hasStatusChanges = editStatus !== lead.status ||
-    (editQuoteValue || '') !== (lead.quoteValue?.toString() || '') ||
     (editSaleValue || '') !== (lead.saleValue?.toString() || '')
 
   const hasInfoChanges =
@@ -797,6 +718,12 @@ function LeadRow({
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               {lead.phone && <span>{lead.phone}</span>}
+              {showClientName && lead.client && (
+                <>
+                  <span className="text-gray-300">•</span>
+                  <span className="text-blue-600 font-medium">{lead.client.businessName}</span>
+                </>
+              )}
               {details.service && (
                 <>
                   <span className="text-gray-300">•</span>
@@ -924,16 +851,13 @@ function LeadRow({
                   <div className="grid grid-cols-3 gap-2">
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Year</label>
-                      <select
+                      <input
+                        type="text"
                         value={editVehicleYear}
                         onChange={(e) => setEditVehicleYear(e.target.value)}
-                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      >
-                        <option value="">Year</option>
-                        {Array.from({ length: 30 }, (_, i) => new Date().getFullYear() + 1 - i).map((year) => (
-                          <option key={year} value={year.toString()}>{year}</option>
-                        ))}
-                      </select>
+                        placeholder="2024"
+                        className="w-full px-2 py-1.5 border rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Make</label>
@@ -972,22 +896,10 @@ function LeadRow({
             </div>
 
             {/* Lead Details - All Available Info */}
-            {(details.vehicle || details.service || getAllFormFields(lead).length > 0) && (
+            {getAllFormFields(lead).length > 0 && (
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Lead Details</p>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                  {details.service && (
-                    <div className="col-span-2">
-                      <span className="text-gray-500 text-xs">Service</span>
-                      <p className="text-gray-900 font-medium">{details.service}</p>
-                    </div>
-                  )}
-                  {details.vehicle && (
-                    <div>
-                      <span className="text-gray-500 text-xs">Vehicle</span>
-                      <p className="text-gray-900 font-medium">{details.vehicle}</p>
-                    </div>
-                  )}
                   {getAllFormFields(lead).map((field, idx) => (
                     <div key={idx} className={field.value.length > 30 ? 'col-span-2' : ''}>
                       <span className="text-gray-500 text-xs">{field.label}</span>
@@ -1022,7 +934,7 @@ function LeadRow({
               </div>
             )}
 
-            {/* Status & Value - Inline Edit */}
+            {/* Status & Sale - Inline Edit */}
             <div className="flex gap-3 items-end pt-2 border-t border-gray-100">
               <div className="flex-1">
                 <label className="block text-xs text-gray-500 mb-1">Status</label>
@@ -1038,23 +950,19 @@ function LeadRow({
                   ))}
                 </select>
               </div>
-              {showValueField && (
-                <div className="flex-1">
-                  <label className="block text-xs text-gray-500 mb-1">
-                    {isQuotedStatus ? 'Quote Value' : 'Sale Value'}
-                  </label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      type="number"
-                      value={isQuotedStatus ? editQuoteValue : editSaleValue}
-                      onChange={(e) => isQuotedStatus ? setEditQuoteValue(e.target.value) : setEditSaleValue(e.target.value)}
-                      placeholder="0"
-                      className="w-full pl-7 pr-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                  </div>
+              <div className="flex-1">
+                <label className="block text-xs text-gray-500 mb-1">Sale Value</label>
+                <div className="relative">
+                  <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="number"
+                    value={editSaleValue}
+                    onChange={(e) => setEditSaleValue(e.target.value)}
+                    placeholder="0"
+                    className="w-full pl-7 pr-3 py-2 border rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
                 </div>
-              )}
+              </div>
               {hasStatusChanges && (
                 <button
                   onClick={handleQuickSave}
@@ -1071,21 +979,11 @@ function LeadRow({
               )}
             </div>
 
-            {/* Quote & Sale indicators */}
-            {(lead.quoteValue || lead.saleValue) && (
-              <div className="flex items-center gap-4">
-                {lead.quoteValue && (
-                  <div className="flex items-center gap-2 text-purple-600 font-semibold">
-                    <DollarSign className="h-4 w-4" />
-                    Quote: ${lead.quoteValue.toLocaleString()}
-                  </div>
-                )}
-                {lead.saleValue && (
-                  <div className="flex items-center gap-2 text-emerald-600 font-semibold">
-                    <TrendingUp className="h-4 w-4" />
-                    Sale: ${lead.saleValue.toLocaleString()}
-                  </div>
-                )}
+            {/* Sale indicator */}
+            {lead.saleValue && (
+              <div className="flex items-center gap-2 text-emerald-600 font-semibold">
+                <TrendingUp className="h-4 w-4" />
+                Sale: ${lead.saleValue.toLocaleString()}
               </div>
             )}
           </div>

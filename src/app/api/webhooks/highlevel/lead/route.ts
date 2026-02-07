@@ -29,6 +29,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate webhook secret key
+    const expectedKey = process.env.HIGHLEVEL_WEBHOOK_SECRET
+    if (expectedKey && webhookKey !== expectedKey) {
+      console.error('[HighLevel Webhook] Invalid or missing webhook key')
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     // Find the client
     const client = await prisma.client.findUnique({
       where: { slug: clientSlug },
