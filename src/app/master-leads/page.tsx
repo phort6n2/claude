@@ -16,6 +16,7 @@ import {
   X,
   Loader2,
   User,
+  Users,
   Building2,
   ShieldX,
   CheckCircle2,
@@ -42,6 +43,11 @@ interface Lead {
   formData: Record<string, unknown> | null
   enhancedConversionSent: boolean
   offlineConversionSent: boolean
+  client?: {
+    id: string
+    businessName: string
+    slug: string
+  }
 }
 
 interface Client {
@@ -136,7 +142,14 @@ export default function StandaloneMasterLeadsPage() {
 
   // Load leads for selected client and date
   useEffect(() => {
-    if (!selectedClientId || !authenticated) {
+    if (!authenticated) {
+      setLeads([])
+      setSales(null)
+      return
+    }
+
+    // If no client selected, show empty state (unless "all" is selected)
+    if (!selectedClientId) {
       setLeads([])
       setSales(null)
       return
@@ -149,7 +162,12 @@ export default function StandaloneMasterLeadsPage() {
     const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
     const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
 
-    fetch(`/api/leads?clientId=${selectedClientId}&startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`)
+    // Build URL - if "all" is selected, don't filter by clientId
+    const leadsUrl = selectedClientId === 'all'
+      ? `/api/leads?startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`
+      : `/api/leads?clientId=${selectedClientId}&startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`
+
+    fetch(leadsUrl)
       .then((res) => res.json())
       .then((data) => {
         setLeads(data.leads || [])
@@ -157,7 +175,12 @@ export default function StandaloneMasterLeadsPage() {
       .catch(console.error)
       .finally(() => setLoading(false))
 
-    fetch(`/api/admin/master-leads/stats?clientId=${selectedClientId}`)
+    // Fetch stats - for "all", don't pass clientId
+    const statsUrl = selectedClientId === 'all'
+      ? `/api/admin/master-leads/stats`
+      : `/api/admin/master-leads/stats?clientId=${selectedClientId}`
+
+    fetch(statsUrl)
       .then((res) => res.json())
       .then((data) => {
         if (data.sales) {
@@ -241,7 +264,11 @@ export default function StandaloneMasterLeadsPage() {
         <div className="max-w-3xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              {selectedClient ? (
+              {selectedClientId === 'all' ? (
+                <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                  <Users className="h-5 w-5 text-white" />
+                </div>
+              ) : selectedClient ? (
                 <ClientLogo
                   logoUrl={selectedClient.logoUrl}
                   businessName={selectedClient.businessName}
@@ -261,6 +288,7 @@ export default function StandaloneMasterLeadsPage() {
                     style={{ paddingLeft: 0 }}
                   >
                     <option value="">Select Client...</option>
+                    <option value="all">All Clients</option>
                     {clients.map((client) => (
                       <option key={client.id} value={client.id}>
                         {client.businessName}
@@ -364,6 +392,7 @@ export default function StandaloneMasterLeadsPage() {
                     isDimmed={expandedLeadId !== null && expandedLeadId !== lead.id}
                     onToggle={() => setExpandedLeadId(expandedLeadId === lead.id ? null : lead.id)}
                     onUpdate={handleLeadUpdate}
+                    showClientName={selectedClientId === 'all'}
                   />
                 ))}
               </div>
@@ -556,12 +585,14 @@ function LeadRow({
   isDimmed,
   onToggle,
   onUpdate,
+  showClientName = false,
 }: {
   lead: Lead
   isExpanded: boolean
   isDimmed: boolean
   onToggle: () => void
   onUpdate: (lead: Lead) => void
+  showClientName?: boolean
 }) {
   const statusConfig = STATUS_CONFIG[lead.status] || STATUS_CONFIG.NEW
   const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'
@@ -687,6 +718,12 @@ function LeadRow({
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               {lead.phone && <span>{lead.phone}</span>}
+              {showClientName && lead.client && (
+                <>
+                  <span className="text-gray-300">•</span>
+                  <span className="text-blue-600 font-medium">{lead.client.businessName}</span>
+                </>
+              )}
               {details.service && (
                 <>
                   <span className="text-gray-300">•</span>
