@@ -1739,14 +1739,28 @@ function ReviewTab({
             {/* Failed status */}
             {content.shortVideo?.status === 'FAILED' && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex-shrink-0">
-                    <AlertTriangle className="h-5 w-5 text-red-600" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0">
+                      <AlertTriangle className="h-5 w-5 text-red-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-red-800">Video generation failed</p>
+                      <p className="text-xs text-red-600 mt-1">Click retry to generate the video again.</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-red-800">Video generation failed</p>
-                    <p className="text-xs text-red-600 mt-1">Please try regenerating the video.</p>
-                  </div>
+                  <button
+                    onClick={() => regenerateContent('video')}
+                    disabled={generating === 'video'}
+                    className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {generating === 'video' ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    Retry Video
+                  </button>
                 </div>
               </div>
             )}
