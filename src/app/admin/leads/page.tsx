@@ -202,21 +202,39 @@ export default function LeadsPage() {
   }
 
   async function handleBulkSync() {
-    const unsyncedIds = filteredLeads
-      .filter((l) => !l.enhancedConversionSent && (l.email || l.phone))
-      .map((l) => l.id)
-
-    if (unsyncedIds.length === 0) return
-
     setSyncing(true)
     setSyncError(null)
-    setSyncProgress({ done: 0, total: unsyncedIds.length, failed: 0 })
-
-    const BATCH_SIZE = 25
-    let done = 0
-    let failed = 0
+    setSyncProgress({ done: 0, total: 0, failed: 0 })
 
     try {
+      // Step 1: fetch all unsynced IDs for the current client filter
+      const idParams = new URLSearchParams({ days: '365' })
+      if (selectedClient) idParams.set('clientId', selectedClient)
+      const idsRes = await fetch(`/api/admin/unsynced-lead-ids?${idParams.toString()}`)
+      if (!idsRes.ok) {
+        const body = await idsRes.json().catch(() => ({}))
+        throw new Error(body.error || `HTTP ${idsRes.status}`)
+      }
+      const { ids: unsyncedIds, truncated, max } = await idsRes.json() as {
+        ids: string[]
+        total: number
+        truncated: boolean
+        max: number
+      }
+
+      if (unsyncedIds.length === 0) {
+        setSyncing(false)
+        setSyncProgress(null)
+        return
+      }
+
+      setSyncProgress({ done: 0, total: unsyncedIds.length, failed: 0 })
+
+      // Step 2: batch-sync
+      const BATCH_SIZE = 25
+      let done = 0
+      let failed = 0
+
       for (let i = 0; i < unsyncedIds.length; i += BATCH_SIZE) {
         const batch = unsyncedIds.slice(i, i + BATCH_SIZE)
         const res = await fetch(
@@ -234,7 +252,11 @@ export default function LeadsPage() {
         setSyncProgress({ done: done + failed, total: unsyncedIds.length, failed })
       }
 
-      // Refetch leads so the new sync status shows up
+      if (truncated) {
+        setSyncError(`Synced first ${max}. The 2-hour cron will pick up the rest.`)
+      }
+
+      // Step 3: refetch leads so the new sync status shows up
       const params = new URLSearchParams()
       if (selectedClient) params.set('clientId', selectedClient)
       if (selectedStatus) params.set('status', selectedStatus)
@@ -389,9 +411,6 @@ export default function LeadsPage() {
 
       {/* Bulk sync to Google Ads */}
       {(() => {
-        const unsyncedCount = filteredLeads.filter(
-          (l) => !l.enhancedConversionSent && (l.email || l.phone)
-        ).length
         const syncedCount = filteredLeads.filter((l) => l.enhancedConversionSent).length
         if (filteredLeads.length === 0) return null
         return (
@@ -399,33 +418,29 @@ export default function LeadsPage() {
             <div className="text-sm text-gray-700">
               <span className="font-semibold text-emerald-600">{syncedCount}</span>
               <span className="text-gray-500">/{filteredLeads.length}</span>
-              <span className="ml-1 text-gray-600">synced to Google Ads</span>
+              <span className="ml-1 text-gray-600">synced in view · auto-retries every 2h</span>
             </div>
-            {unsyncedCount > 0 && (
-              <>
-                <button
-                  onClick={handleBulkSync}
-                  disabled={syncing}
-                  className="text-sm font-medium px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-                >
-                  {syncing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      {syncProgress
-                        ? `Syncing ${syncProgress.done}/${syncProgress.total}${syncProgress.failed > 0 ? ` · ${syncProgress.failed} failed` : ''}`
-                        : 'Syncing…'}
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-4 w-4" />
-                      {`Sync ${unsyncedCount} unsynced`}
-                    </>
-                  )}
-                </button>
-                {syncError && (
-                  <span className="text-sm text-red-600">{syncError}</span>
-                )}
-              </>
+            <button
+              onClick={handleBulkSync}
+              disabled={syncing}
+              className="text-sm font-medium px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            >
+              {syncing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {syncProgress && syncProgress.total > 0
+                    ? `Syncing ${syncProgress.done}/${syncProgress.total}${syncProgress.failed > 0 ? ` · ${syncProgress.failed} failed` : ''}`
+                    : 'Finding unsynced leads…'}
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  Sync all unsynced to Google Ads
+                </>
+              )}
+            </button>
+            {syncError && (
+              <span className="text-sm text-red-600">{syncError}</span>
             )}
           </div>
         )
