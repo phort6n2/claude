@@ -98,6 +98,11 @@ export default function StandaloneMasterLeadsPage() {
   const [showCalendar, setShowCalendar] = useState(false)
   const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null)
 
+  // Bulk sync state
+  const [syncing, setSyncing] = useState(false)
+  const [syncProgress, setSyncProgress] = useState<{ done: number; total: number; failed: number } | null>(null)
+  const [syncError, setSyncError] = useState<string | null>(null)
+
   // Check master leads authorization
   useEffect(() => {
     fetch('/api/admin/master-leads/auth')
@@ -231,6 +236,55 @@ export default function StandaloneMasterLeadsPage() {
           if (data.sales) setSales(data.sales)
         })
         .catch(() => {})
+    }
+  }
+
+  async function handleBulkSync() {
+    const unsyncedIds = leads
+      .filter((l) => !l.enhancedConversionSent && (l.email || l.phone))
+      .map((l) => l.id)
+
+    if (unsyncedIds.length === 0) return
+
+    setSyncing(true)
+    setSyncError(null)
+    setSyncProgress({ done: 0, total: unsyncedIds.length, failed: 0 })
+
+    const BATCH_SIZE = 25
+    let done = 0
+    let failed = 0
+
+    try {
+      for (let i = 0; i < unsyncedIds.length; i += BATCH_SIZE) {
+        const batch = unsyncedIds.slice(i, i + BATCH_SIZE)
+        const res = await fetch(
+          `/api/admin/bulk-sync-conversions?leadIds=${batch.join(',')}`
+        )
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          throw new Error(body.error || `HTTP ${res.status}`)
+        }
+        const data = await res.json()
+        const batchSuccess = data.results?.success ?? 0
+        const batchFailed = data.results?.failed ?? batch.length - batchSuccess
+        done += batchSuccess
+        failed += batchFailed
+        setSyncProgress({ done: done + failed, total: unsyncedIds.length, failed })
+      }
+
+      // Refetch leads so the UI reflects new sync status
+      const url = selectedClientId === 'all'
+        ? `/api/admin/master-leads?date=${selectedDate}`
+        : `/api/admin/master-leads?clientId=${selectedClientId}&date=${selectedDate}`
+      const res = await fetch(url)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.leads) setLeads(data.leads)
+      }
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : 'Sync failed')
+    } finally {
+      setSyncing(false)
     }
   }
 
@@ -380,6 +434,38 @@ export default function StandaloneMasterLeadsPage() {
               )}
             </p>
 
+            {(() => {
+              const unsyncedCount = leads.filter(
+                (l) => !l.enhancedConversionSent && (l.email || l.phone)
+              ).length
+              if (loading || unsyncedCount === 0) return null
+              return (
+                <div className="mt-2 flex items-center gap-3">
+                  <button
+                    onClick={handleBulkSync}
+                    disabled={syncing}
+                    className="text-xs font-medium px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 active:bg-emerald-200 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+                  >
+                    {syncing ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        {syncProgress
+                          ? `Syncing ${syncProgress.done}/${syncProgress.total}${syncProgress.failed > 0 ? ` · ${syncProgress.failed} failed` : ''}`
+                          : 'Syncing…'}
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        {`Sync ${unsyncedCount} unsynced to Google Ads`}
+                      </>
+                    )}
+                  </button>
+                  {syncError && (
+                    <span className="text-xs text-red-600">{syncError}</span>
+                  )}
+                </div>
+              )
+            })()}
           </div>
 
           {/* Leads List */}
