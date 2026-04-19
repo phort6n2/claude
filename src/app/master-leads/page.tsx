@@ -24,6 +24,7 @@ import {
   Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 
 interface Lead {
   id: string
@@ -471,6 +472,8 @@ export default function StandaloneMasterLeadsPage() {
           </div>
         </>
       )}
+
+      <PoweredByFooter />
     </div>
   )
 }

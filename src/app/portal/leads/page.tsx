@@ -19,11 +19,13 @@ import {
   User,
   PlayCircle,
   Check,
+  CheckCircle2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { NotificationToggle } from '@/components/portal/NotificationToggle'
 import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefresh'
+import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 
 interface Lead {
   id: string
@@ -38,6 +40,9 @@ interface Lead {
   saleDate: string | null
   saleNotes: string | null
   callRecordingUrl: string | null
+  gclid: string | null
+  enhancedConversionSent: boolean
+  offlineConversionSent: boolean
   createdAt: string
   formName: string | null
   formData: Record<string, unknown> | null
@@ -414,28 +419,7 @@ export default function PortalLeadsPage() {
         </>
       )}
 
-      {/* Powered by Footer */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-900 z-50">
-        <div className="max-w-3xl mx-auto px-4 py-2 flex items-center justify-center gap-2">
-          <span className="text-gray-400 text-xs">Powered by</span>
-          <a
-            href="https://autoglassmarketingpros.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
-          >
-            <img
-              src="/logo.png"
-              alt="Auto Glass Marketing Pros"
-              className="h-5 w-auto"
-            />
-            <span className="text-white text-xs font-medium">Auto Glass Marketing Pros</span>
-          </a>
-        </div>
-      </div>
-
-      {/* Spacer for fixed footer */}
-      <div className="h-10" />
+      <PoweredByFooter />
     </div>
   )
 }
@@ -695,6 +679,12 @@ function LeadRow({
               {lead.callRecordingUrl && (
                 <PlayCircle className="h-4 w-4 text-violet-500 flex-shrink-0" />
               )}
+              {lead.gclid && (
+                <span className="text-xs text-green-600 font-medium">Ads</span>
+              )}
+              {lead.enhancedConversionSent && (
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+              )}
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               {lead.phone && <span>{lead.phone}</span>}
@@ -740,6 +730,30 @@ function LeadRow({
                     Your browser does not support audio.
                   </audio>
                 </div>
+              </div>
+            )}
+
+            {/* Google Ads Sync Status */}
+            {(lead.gclid || lead.enhancedConversionSent || lead.offlineConversionSent) && (
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                {lead.gclid && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
+                    Google Ads Lead
+                  </span>
+                )}
+                {lead.enhancedConversionSent && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Lead Synced
+                  </span>
+                )}
+                {lead.offlineConversionSent && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                    <DollarSign className="h-3 w-3" />
+                    <CheckCircle2 className="h-3 w-3" />
+                    Sale Synced
+                  </span>
+                )}
               </div>
             )}
 

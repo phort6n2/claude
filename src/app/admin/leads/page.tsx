@@ -32,6 +32,7 @@ import {
   EmptyState,
   ListPageSkeleton,
 } from '@/components/ui/theme'
+import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 
 interface Lead {
   id: string
@@ -364,6 +365,8 @@ export default function LeadsPage() {
           Showing {filteredLeads.length} of {total} leads
         </div>
       )}
+
+      <PoweredByFooter />
     </PageContainer>
   )
 }
