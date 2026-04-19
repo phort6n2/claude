@@ -550,12 +550,13 @@ function LeadRow({
                   Google Ads
                 </span>
               )}
-              {lead.enhancedConversionSent && (
-                <span className="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg flex items-center gap-1 font-medium" title="Enhanced conversion sent to Google Ads">
-                  <CheckCircle2 className="h-3 w-3" />
-                  Lead Synced
-                </span>
-              )}
+              <CheckCircle2
+                className={`h-3.5 w-3.5 flex-shrink-0 ${lead.enhancedConversionSent ? 'text-emerald-500' : 'text-gray-300'}`}
+                aria-label={lead.enhancedConversionSent ? 'Synced to Google Ads' : 'Not synced to Google Ads'}
+              />
+              <span className="sr-only">
+                {lead.enhancedConversionSent ? 'Synced to Google Ads' : 'Not synced to Google Ads'}
+              </span>
               {lead.offlineConversionSent && (
                 <span className="text-xs text-green-700 bg-green-50 px-2 py-0.5 rounded-lg flex items-center gap-1 font-medium" title="Sale conversion sent to Google Ads">
                   <CheckCircle2 className="h-3 w-3" />

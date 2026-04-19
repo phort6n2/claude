@@ -358,7 +358,25 @@ export default function StandaloneMasterLeadsPage() {
           {/* Lead Count */}
           <div className="max-w-3xl mx-auto px-4 py-1.5">
             <p className="text-xs text-gray-600">
-              {loading ? 'Loading...' : `${leads.length} lead${leads.length !== 1 ? 's' : ''}`}
+              {loading ? (
+                'Loading...'
+              ) : (
+                <>
+                  {`${leads.length} lead${leads.length !== 1 ? 's' : ''}`}
+                  {leads.length > 0 && (
+                    <>
+                      <span className="mx-1.5 text-gray-300">·</span>
+                      <span>
+                        <span className="font-semibold text-emerald-600">
+                          {leads.filter((l) => l.enhancedConversionSent).length}
+                        </span>
+                        <span className="text-gray-500">/{leads.length}</span>
+                        {' synced to Google Ads'}
+                      </span>
+                    </>
+                  )}
+                </>
+              )}
             </p>
           </div>
 
@@ -718,9 +736,13 @@ function LeadRow({
               {lead.gclid && (
                 <span className="text-xs text-green-600 font-medium">Ads</span>
               )}
-              {lead.enhancedConversionSent && (
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
-              )}
+              <CheckCircle2
+                className={`h-3.5 w-3.5 flex-shrink-0 ${lead.enhancedConversionSent ? 'text-emerald-500' : 'text-gray-300'}`}
+                aria-label={lead.enhancedConversionSent ? 'Synced to Google Ads' : 'Not synced to Google Ads'}
+              />
+              <span className="sr-only">
+                {lead.enhancedConversionSent ? 'Synced to Google Ads' : 'Not synced to Google Ads'}
+              </span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               {lead.phone && <span>{lead.phone}</span>}

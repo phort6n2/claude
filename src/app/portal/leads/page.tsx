@@ -682,9 +682,13 @@ function LeadRow({
               {lead.gclid && (
                 <span className="text-xs text-green-600 font-medium">Ads</span>
               )}
-              {lead.enhancedConversionSent && (
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
-              )}
+              <CheckCircle2
+                className={`h-3.5 w-3.5 flex-shrink-0 ${lead.enhancedConversionSent ? 'text-emerald-500' : 'text-gray-300'}`}
+                aria-label={lead.enhancedConversionSent ? 'Synced to Google Ads' : 'Not synced to Google Ads'}
+              />
+              <span className="sr-only">
+                {lead.enhancedConversionSent ? 'Synced to Google Ads' : 'Not synced to Google Ads'}
+              </span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               {lead.phone && <span>{lead.phone}</span>}
