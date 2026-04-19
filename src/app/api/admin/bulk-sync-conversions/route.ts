@@ -13,32 +13,48 @@ export const maxDuration = 300 // 5 minutes for bulk operations
  * email/phone data even without a click ID.
  *
  * Query params:
- * - days: Number of days to look back (default 30, max 90)
+ * - days: Number of days to look back (default 30, max 90) — ignored if leadIds provided
+ * - leadIds: Comma-separated lead IDs to sync (overrides days). Max 100 per call for batching.
  * - dryRun: Set to "true" to see what would be synced without actually syncing
  */
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const days = parseInt(searchParams.get('days') || '30', 10)
   const dryRun = searchParams.get('dryRun') === 'true'
+  const leadIdsParam = searchParams.get('leadIds')
 
-  if (days < 1 || days > 90) {
+  const leadIds = leadIdsParam
+    ? leadIdsParam.split(',').map((s) => s.trim()).filter(Boolean)
+    : null
+
+  if (leadIds && leadIds.length > 100) {
+    return NextResponse.json({ error: 'leadIds limited to 100 per batch' }, { status: 400 })
+  }
+
+  if (!leadIds && (days < 1 || days > 90)) {
     return NextResponse.json({ error: 'Days must be between 1 and 90' }, { status: 400 })
   }
 
-  const startDate = new Date()
-  startDate.setDate(startDate.getDate() - days)
-
   try {
-    // Find ALL leads with email or phone that haven't been synced yet
+    // Build where clause: either explicit IDs (batched mode) or date-range fallback
+    const where = leadIds
+      ? {
+          id: { in: leadIds },
+          enhancedConversionSent: false,
+          OR: [{ email: { not: null } }, { phone: { not: null } }],
+        }
+      : (() => {
+          const startDate = new Date()
+          startDate.setDate(startDate.getDate() - days)
+          return {
+            createdAt: { gte: startDate },
+            enhancedConversionSent: false,
+            OR: [{ email: { not: null } }, { phone: { not: null } }],
+          }
+        })()
+
     const leads = await prisma.lead.findMany({
-      where: {
-        createdAt: { gte: startDate },
-        enhancedConversionSent: false,
-        OR: [
-          { email: { not: null } },
-          { phone: { not: null } },
-        ],
-      },
+      where,
       include: {
         client: {
           include: {
