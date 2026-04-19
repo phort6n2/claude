@@ -33,6 +33,8 @@ import {
   ListPageSkeleton,
 } from '@/components/ui/theme'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
+import { LeadAvatar } from '@/components/leads/LeadAvatar'
+import { FileText } from 'lucide-react'
 
 interface Lead {
   id: string
@@ -538,15 +540,27 @@ function LeadRow({
             className={`h-5 w-5 text-gray-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`}
           />
 
+          {/* Avatar */}
+          <LeadAvatar
+            firstName={lead.firstName}
+            lastName={lead.lastName}
+            status={lead.status}
+          />
+
           {/* Main info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+            <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+              {isPhoneLead ? (
+                <Phone className="h-3.5 w-3.5 text-orange-500 flex-shrink-0" aria-label="Phone lead" />
+              ) : (
+                <FileText className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" aria-label="Form lead" />
+              )}
               <span className="font-medium text-gray-900">{fullName}</span>
               {lead.callRecordingUrl && (
                 <PlayCircle className="h-4 w-4 text-violet-500 flex-shrink-0" />
               )}
               {lead.gclid && (
-                <span className="text-xs text-green-700 bg-green-50 px-2 py-0.5 rounded-lg font-medium">
+                <span className="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg font-medium">
                   Google Ads
                 </span>
               )}
@@ -558,7 +572,7 @@ function LeadRow({
                 {lead.enhancedConversionSent ? 'Synced to Google Ads' : 'Not synced to Google Ads'}
               </span>
               {lead.offlineConversionSent && (
-                <span className="text-xs text-green-700 bg-green-50 px-2 py-0.5 rounded-lg flex items-center gap-1 font-medium" title="Sale conversion sent to Google Ads">
+                <span className="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg flex items-center gap-1 font-medium" title="Sale conversion sent to Google Ads">
                   <CheckCircle2 className="h-3 w-3" />
                   Sale Synced
                 </span>
@@ -580,16 +594,15 @@ function LeadRow({
                   <span className="truncate">{details.service}</span>
                 </>
               )}
+              <span className="text-gray-300">•</span>
+              <span className="text-xs text-gray-500">{formatDate(lead.createdAt)}</span>
             </div>
           </div>
 
-          {/* Status & Time */}
+          {/* Status */}
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}>
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}>
               {statusConfig.label}
-            </span>
-            <span className="text-xs text-gray-500">
-              {formatDate(lead.createdAt)}
             </span>
             {lead.saleValue && (
               <span className="text-sm font-bold text-emerald-600">

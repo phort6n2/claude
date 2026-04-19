@@ -16,16 +16,18 @@ import {
   LogOut,
   X,
   Loader2,
-  User,
   PlayCircle,
   Check,
   CheckCircle2,
+  FileText,
+  Inbox,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { NotificationToggle } from '@/components/portal/NotificationToggle'
 import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefresh'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
+import { LeadAvatar } from '@/components/leads/LeadAvatar'
 
 interface Lead {
   id: string
@@ -322,20 +324,32 @@ export default function PortalLeadsPage() {
       {/* Leads List */}
       <div className="max-w-3xl mx-auto px-4 pb-6">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+          <div className="space-y-2">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="bg-white rounded-xl border-l-4 border-gray-200 shadow-sm px-4 py-3 animate-pulse">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-gray-200 flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3.5 w-32 bg-gray-200 rounded" />
+                    <div className="h-3 w-48 bg-gray-100 rounded" />
+                  </div>
+                  <div className="h-5 w-14 bg-gray-200 rounded-full" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : leads.length === 0 ? (
-          <div className="bg-white rounded-xl p-8 text-center">
-            <User className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p className="text-gray-500">No leads on this date</p>
+          <div className="bg-white rounded-xl p-10 text-center border border-gray-100">
+            <Inbox className="h-14 w-14 mx-auto mb-3 text-gray-300" strokeWidth={1.5} />
+            <p className="text-gray-700 font-medium">No leads on this date</p>
+            <p className="text-gray-500 text-sm mt-1">You&apos;re all caught up.</p>
             <button
               onClick={() => {
                 const today = new Date()
                 const localDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
                 setSelectedDate(localDate)
               }}
-              className="mt-3 text-blue-600 hover:underline text-sm"
+              className="mt-4 text-blue-600 hover:underline text-sm font-medium"
             >
               Go to today
             </button>
@@ -672,15 +686,27 @@ function LeadRow({
             className={`h-5 w-5 text-gray-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`}
           />
 
+          {/* Avatar */}
+          <LeadAvatar
+            firstName={lead.firstName}
+            lastName={lead.lastName}
+            status={lead.status}
+          />
+
           {/* Main info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              {isPhoneLead ? (
+                <Phone className="h-3.5 w-3.5 text-orange-500 flex-shrink-0" aria-label="Phone lead" />
+              ) : (
+                <FileText className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" aria-label="Form lead" />
+              )}
               <span className="font-medium text-gray-900 truncate">{fullName}</span>
               {lead.callRecordingUrl && (
                 <PlayCircle className="h-4 w-4 text-violet-500 flex-shrink-0" />
               )}
               {lead.gclid && (
-                <span className="text-xs text-green-600 font-medium">Ads</span>
+                <span className="text-xs text-emerald-600 font-medium">Ads</span>
               )}
               <CheckCircle2
                 className={`h-3.5 w-3.5 flex-shrink-0 ${lead.enhancedConversionSent ? 'text-emerald-500' : 'text-gray-300'}`}
@@ -691,28 +717,27 @@ function LeadRow({
               </span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
-              {lead.phone && <span>{lead.phone}</span>}
+              {lead.phone && <span className="truncate">{lead.phone}</span>}
               {details.service && (
                 <>
                   <span className="text-gray-300">•</span>
                   <span className="truncate">{details.service}</span>
                 </>
               )}
+              <span className="text-gray-300">•</span>
+              <span className="text-xs text-gray-500 flex-shrink-0">
+                {new Date(lead.createdAt).toLocaleTimeString('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+              </span>
             </div>
           </div>
 
-          {/* Status & Time */}
-          <div className="flex flex-col items-end gap-1 flex-shrink-0">
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}>
-              {statusConfig.label}
-            </span>
-            <span className="text-xs text-gray-500">
-              {new Date(lead.createdAt).toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-              })}
-            </span>
-          </div>
+          {/* Status */}
+          <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${statusConfig.bgColor} ${statusConfig.color}`}>
+            {statusConfig.label}
+          </span>
         </button>
 
         {/* Expanded Content */}
