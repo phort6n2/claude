@@ -240,21 +240,40 @@ export default function StandaloneMasterLeadsPage() {
   }
 
   async function handleBulkSync() {
-    const unsyncedIds = leads
-      .filter((l) => !l.enhancedConversionSent && (l.email || l.phone))
-      .map((l) => l.id)
-
-    if (unsyncedIds.length === 0) return
-
     setSyncing(true)
     setSyncError(null)
-    setSyncProgress({ done: 0, total: unsyncedIds.length, failed: 0 })
-
-    const BATCH_SIZE = 25
-    let done = 0
-    let failed = 0
+    setSyncProgress({ done: 0, total: 0, failed: 0 })
 
     try {
+      // Step 1: fetch all unsynced IDs for the current client scope
+      const idParams = new URLSearchParams({ days: '365' })
+      if (selectedClientId !== 'all') idParams.set('clientId', selectedClientId)
+      const idsRes = await fetch(`/api/admin/unsynced-lead-ids?${idParams.toString()}`)
+      if (!idsRes.ok) {
+        const body = await idsRes.json().catch(() => ({}))
+        throw new Error(body.error || `HTTP ${idsRes.status}`)
+      }
+      const { ids: unsyncedIds, truncated, max } = await idsRes.json() as {
+        ids: string[]
+        total: number
+        truncated: boolean
+        max: number
+      }
+
+      if (unsyncedIds.length === 0) {
+        setSyncing(false)
+        setSyncProgress(null)
+        setSyncError('Nothing to sync — all leads are already synced.')
+        return
+      }
+
+      setSyncProgress({ done: 0, total: unsyncedIds.length, failed: 0 })
+
+      // Step 2: batch-sync
+      const BATCH_SIZE = 25
+      let done = 0
+      let failed = 0
+
       for (let i = 0; i < unsyncedIds.length; i += BATCH_SIZE) {
         const batch = unsyncedIds.slice(i, i + BATCH_SIZE)
         const res = await fetch(
@@ -272,7 +291,11 @@ export default function StandaloneMasterLeadsPage() {
         setSyncProgress({ done: done + failed, total: unsyncedIds.length, failed })
       }
 
-      // Refetch leads so the UI reflects new sync status
+      if (truncated) {
+        setSyncError(`Synced first ${max}. The 2-hour cron will pick up the rest.`)
+      }
+
+      // Step 3: refetch leads so the UI reflects new sync status
       const url = selectedClientId === 'all'
         ? `/api/admin/master-leads?date=${selectedDate}`
         : `/api/admin/master-leads?clientId=${selectedClientId}&date=${selectedDate}`
@@ -434,38 +457,32 @@ export default function StandaloneMasterLeadsPage() {
               )}
             </p>
 
-            {(() => {
-              const unsyncedCount = leads.filter(
-                (l) => !l.enhancedConversionSent && (l.email || l.phone)
-              ).length
-              if (loading || unsyncedCount === 0) return null
-              return (
-                <div className="mt-2 flex items-center gap-3">
-                  <button
-                    onClick={handleBulkSync}
-                    disabled={syncing}
-                    className="text-xs font-medium px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 active:bg-emerald-200 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
-                  >
-                    {syncing ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        {syncProgress
-                          ? `Syncing ${syncProgress.done}/${syncProgress.total}${syncProgress.failed > 0 ? ` · ${syncProgress.failed} failed` : ''}`
-                          : 'Syncing…'}
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        {`Sync ${unsyncedCount} unsynced to Google Ads`}
-                      </>
-                    )}
-                  </button>
-                  {syncError && (
-                    <span className="text-xs text-red-600">{syncError}</span>
+            {!loading && leads.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <button
+                  onClick={handleBulkSync}
+                  disabled={syncing}
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 active:bg-emerald-200 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+                >
+                  {syncing ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      {syncProgress && syncProgress.total > 0
+                        ? `Syncing ${syncProgress.done}/${syncProgress.total}${syncProgress.failed > 0 ? ` · ${syncProgress.failed} failed` : ''}`
+                        : 'Finding unsynced leads…'}
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Sync all unsynced to Google Ads
+                    </>
                   )}
-                </div>
-              )
-            })()}
+                </button>
+                {syncError && (
+                  <span className="text-xs text-red-600">{syncError}</span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Leads List */}
