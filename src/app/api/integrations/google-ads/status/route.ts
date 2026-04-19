@@ -77,27 +77,28 @@ export async function POST(request: NextRequest) {
     const updateData: Record<string, unknown> = {}
 
     if (data.mccCustomerId !== undefined) {
+      const trimmed = typeof data.mccCustomerId === 'string' ? data.mccCustomerId.trim() : ''
       // Validate format (xxx-xxx-xxxx or 10 digits)
-      const cleaned = data.mccCustomerId.replace(/-/g, '')
+      const cleaned = trimmed.replace(/-/g, '')
       if (cleaned && !/^\d{10}$/.test(cleaned)) {
         return NextResponse.json(
           { error: 'Invalid MCC Customer ID format. Use xxx-xxx-xxxx format.' },
           { status: 400 }
         )
       }
-      updateData.mccCustomerId = data.mccCustomerId || null
+      updateData.mccCustomerId = trimmed || null
     }
 
     if (data.developerToken !== undefined && data.developerToken) {
-      updateData.developerToken = encrypt(data.developerToken)
+      updateData.developerToken = encrypt(data.developerToken.trim())
     }
 
     if (data.oauthClientId !== undefined && data.oauthClientId) {
-      updateData.oauthClientId = encrypt(data.oauthClientId)
+      updateData.oauthClientId = encrypt(data.oauthClientId.trim())
     }
 
     if (data.oauthClientSecret !== undefined && data.oauthClientSecret) {
-      updateData.oauthClientSecret = encrypt(data.oauthClientSecret)
+      updateData.oauthClientSecret = encrypt(data.oauthClientSecret.trim())
     }
 
     const config = await prisma.googleAdsConfig.upsert({
