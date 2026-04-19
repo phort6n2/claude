@@ -554,7 +554,10 @@ function getAllFormFields(lead: Lead): Array<{ label: string; value: string }> {
     // Skip these per user request
     'tags', 'country', 'timezone', 'contact_type', 'contactType', 'contact_source', 'contactSource',
     // Skip recording URL (audio player is shown separately)
-    'recordingUrl', 'recording_url', 'callRecordingUrl', 'call_recording_url', 'audioUrl', 'audio_url'
+    'recordingUrl', 'recording_url', 'callRecordingUrl', 'call_recording_url', 'audioUrl', 'audio_url',
+    // Skip vehicle/service fields (shown combined in Lead Details section)
+    'vehicle', 'Vehicle', 'vehicle_year', 'Vehicle Year', 'vehicle_make', 'Vehicle Make',
+    'vehicle_model', 'Vehicle Model', 'interested_in', 'Interested In', 'Interested In:'
   ])
 
   // Label formatting helper
@@ -899,10 +902,22 @@ function LeadRow({
             </div>
 
             {/* Lead Details - All Available Info */}
-            {getAllFormFields(lead).length > 0 && (
+            {(details.vehicle || details.service || getAllFormFields(lead).length > 0) && (
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Lead Details</p>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  {details.service && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500 text-xs">Service</span>
+                      <p className="text-gray-900 font-medium">{details.service}</p>
+                    </div>
+                  )}
+                  {details.vehicle && (
+                    <div>
+                      <span className="text-gray-500 text-xs">Vehicle</span>
+                      <p className="text-gray-900 font-medium">{details.vehicle}</p>
+                    </div>
+                  )}
                   {getAllFormFields(lead).map((field, idx) => (
                     <div key={idx} className={field.value.length > 30 ? 'col-span-2' : ''}>
                       <span className="text-gray-500 text-xs">{field.label}</span>
