@@ -33,8 +33,7 @@ import {
   ListPageSkeleton,
 } from '@/components/ui/theme'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
-import { LeadAvatar } from '@/components/leads/LeadAvatar'
-import { FileText } from 'lucide-react'
+import { SourceIcon } from '@/components/leads/SourceIcon'
 
 interface Lead {
   id: string
@@ -533,7 +532,6 @@ function LeadRow({
 }) {
   const statusConfig = STATUS_CONFIG[lead.status] || STATUS_CONFIG.NEW
   const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'
-  const isPhoneLead = lead.source === 'PHONE'
   const details = getLeadDetails(lead)
 
   // Edit state
@@ -620,39 +618,27 @@ function LeadRow({
     editVehicleModel !== (details.model || '') ||
     editService !== (details.service || '')
 
-  // Border color: orange for calls, blue for forms
-  const borderColor = isPhoneLead ? 'border-l-4 border-orange-400' : 'border-l-4 border-blue-400'
-
   return (
     <div className="rounded-xl overflow-hidden">
       <div
-        className={`bg-white shadow-sm transition-all duration-200 ${borderColor} ${isDimmed ? 'opacity-40' : ''} ${isExpanded ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
+        className={`bg-white shadow-sm transition-all duration-200 ${isDimmed ? 'opacity-40' : ''} ${isExpanded ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
       >
         {/* Collapsed Row */}
         <button
           onClick={onToggle}
-          className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-gray-50 transition-colors"
+          className="w-full px-4 py-3 flex items-center gap-2.5 text-left hover:bg-gray-50 transition-colors"
         >
           {/* Expand indicator */}
           <ChevronRight
             className={`h-5 w-5 text-gray-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`}
           />
 
-          {/* Avatar */}
-          <LeadAvatar
-            firstName={lead.firstName}
-            lastName={lead.lastName}
-            status={lead.status}
-          />
+          {/* Source pill (orange for phone, blue for form) */}
+          <SourceIcon source={lead.source} />
 
           {/* Main info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-              {isPhoneLead ? (
-                <Phone className="h-3.5 w-3.5 text-orange-500 flex-shrink-0" aria-label="Phone lead" />
-              ) : (
-                <FileText className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" aria-label="Form lead" />
-              )}
               <span className="font-medium text-gray-900">{fullName}</span>
               {lead.callRecordingUrl && (
                 <PlayCircle className="h-4 w-4 text-violet-500 flex-shrink-0" />
@@ -676,12 +662,12 @@ function LeadRow({
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-600 flex-wrap">
+            <div className="flex items-center gap-x-2 gap-y-0.5 text-sm text-gray-600 flex-wrap">
               {lead.phone && <span>{formatPhoneDisplay(lead.phone)}</span>}
               {lead.email && (
                 <>
                   <span className="text-gray-300">•</span>
-                  <span className="truncate">{lead.email}</span>
+                  <span>{lead.email}</span>
                 </>
               )}
               <span className="text-gray-300">•</span>
@@ -689,7 +675,7 @@ function LeadRow({
               {details.service && (
                 <>
                   <span className="text-gray-300">•</span>
-                  <span className="truncate">{details.service}</span>
+                  <span>{details.service}</span>
                 </>
               )}
               <span className="text-gray-300">•</span>
