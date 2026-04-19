@@ -97,6 +97,11 @@ export default function LeadsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null)
 
+  // Bulk sync state
+  const [syncing, setSyncing] = useState(false)
+  const [syncProgress, setSyncProgress] = useState<{ done: number; total: number; failed: number } | null>(null)
+  const [syncError, setSyncError] = useState<string | null>(null)
+
   // Load clients for filter dropdown
   useEffect(() => {
     fetch('/api/clients')
@@ -195,6 +200,55 @@ export default function LeadsPage() {
     setLeads((prev) =>
       prev.map((l) => (l.id === updatedLead.id ? updatedLead : l))
     )
+  }
+
+  async function handleBulkSync() {
+    const unsyncedIds = filteredLeads
+      .filter((l) => !l.enhancedConversionSent && (l.email || l.phone))
+      .map((l) => l.id)
+
+    if (unsyncedIds.length === 0) return
+
+    setSyncing(true)
+    setSyncError(null)
+    setSyncProgress({ done: 0, total: unsyncedIds.length, failed: 0 })
+
+    const BATCH_SIZE = 25
+    let done = 0
+    let failed = 0
+
+    try {
+      for (let i = 0; i < unsyncedIds.length; i += BATCH_SIZE) {
+        const batch = unsyncedIds.slice(i, i + BATCH_SIZE)
+        const res = await fetch(
+          `/api/admin/bulk-sync-conversions?leadIds=${batch.join(',')}`
+        )
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          throw new Error(body.error || `HTTP ${res.status}`)
+        }
+        const data = await res.json()
+        const batchSuccess = data.results?.success ?? 0
+        const batchFailed = data.results?.failed ?? batch.length - batchSuccess
+        done += batchSuccess
+        failed += batchFailed
+        setSyncProgress({ done: done + failed, total: unsyncedIds.length, failed })
+      }
+
+      // Refetch leads so the new sync status shows up
+      const params = new URLSearchParams()
+      if (selectedClient) params.set('clientId', selectedClient)
+      if (selectedStatus) params.set('status', selectedStatus)
+      const res = await fetch(`/api/leads?${params.toString()}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (Array.isArray(data.leads)) setLeads(data.leads)
+      }
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : 'Sync failed')
+    } finally {
+      setSyncing(false)
+    }
   }
 
   if (loading) {
@@ -333,6 +387,50 @@ export default function LeadsPage() {
           )}
         </div>
       </div>
+
+      {/* Bulk sync to Google Ads */}
+      {(() => {
+        const unsyncedCount = filteredLeads.filter(
+          (l) => !l.enhancedConversionSent && (l.email || l.phone)
+        ).length
+        const syncedCount = filteredLeads.filter((l) => l.enhancedConversionSent).length
+        if (filteredLeads.length === 0) return null
+        return (
+          <div className="mb-4 bg-white rounded-2xl border border-gray-200 p-4 shadow-sm flex flex-wrap items-center gap-3">
+            <div className="text-sm text-gray-700">
+              <span className="font-semibold text-emerald-600">{syncedCount}</span>
+              <span className="text-gray-500">/{filteredLeads.length}</span>
+              <span className="ml-1 text-gray-600">synced to Google Ads</span>
+            </div>
+            {unsyncedCount > 0 && (
+              <>
+                <button
+                  onClick={handleBulkSync}
+                  disabled={syncing}
+                  className="text-sm font-medium px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                >
+                  {syncing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {syncProgress
+                        ? `Syncing ${syncProgress.done}/${syncProgress.total}${syncProgress.failed > 0 ? ` · ${syncProgress.failed} failed` : ''}`
+                        : 'Syncing…'}
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-4 w-4" />
+                      {`Sync ${unsyncedCount} unsynced`}
+                    </>
+                  )}
+                </button>
+                {syncError && (
+                  <span className="text-sm text-red-600">{syncError}</span>
+                )}
+              </>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Leads List - Accordion Style */}
       {filteredLeads.length === 0 ? (
