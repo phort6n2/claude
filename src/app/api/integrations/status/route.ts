@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { decrypt } from '@/lib/encryption'
+import { GOOGLE_ADS_API_BASE } from '@/lib/google-ads'
 
 export const dynamic = 'force-dynamic'
 
@@ -271,7 +272,7 @@ async function testGoogleAds(): Promise<{ success: boolean; message: string }> {
     const accessToken = tokenData.access_token
 
     // Now test the actual Google Ads API
-    const apiTestResponse = await fetch('https://googleads.googleapis.com/v19/customers:listAccessibleCustomers', {
+    const apiTestResponse = await fetch(`${GOOGLE_ADS_API_BASE}/customers:listAccessibleCustomers`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
