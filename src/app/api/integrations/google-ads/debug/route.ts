@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import {
+  GOOGLE_ADS_API_BASE,
   getGoogleAdsCredentials,
   getValidAccessToken,
   listAccessibleCustomers
@@ -65,7 +66,7 @@ export async function GET() {
 
       // If the standard test fails, try a raw fetch to see exactly what happens
       if (!result.success) {
-        const testUrl = 'https://googleads.googleapis.com/v19/customers:listAccessibleCustomers'
+        const testUrl = `${GOOGLE_ADS_API_BASE}/customers:listAccessibleCustomers`
         try {
           const rawResponse = await fetch(testUrl, {
             method: 'GET',
