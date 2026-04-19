@@ -24,8 +24,8 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
-import { LeadAvatar } from '@/components/leads/LeadAvatar'
-import { FileText, Inbox } from 'lucide-react'
+import { SourceIcon } from '@/components/leads/SourceIcon'
+import { Inbox } from 'lucide-react'
 
 interface Lead {
   id: string
@@ -473,9 +473,10 @@ export default function StandaloneMasterLeadsPage() {
             {loading ? (
               <div className="space-y-2">
                 {[0, 1, 2, 3].map((i) => (
-                  <div key={i} className="bg-white rounded-xl border-l-4 border-gray-200 shadow-sm px-4 py-3 animate-pulse">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-gray-200 flex-shrink-0" />
+                  <div key={i} className="bg-white rounded-xl shadow-sm px-4 py-3 animate-pulse">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-5 w-5 rounded bg-gray-100 flex-shrink-0" />
+                      <div className="h-7 w-7 rounded-full bg-gray-200 flex-shrink-0" />
                       <div className="flex-1 space-y-2">
                         <div className="h-3.5 w-32 bg-gray-200 rounded" />
                         <div className="h-3 w-48 bg-gray-100 rounded" />
@@ -720,7 +721,6 @@ function LeadRow({
 }) {
   const statusConfig = STATUS_CONFIG[lead.status] || STATUS_CONFIG.NEW
   const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'
-  const isPhoneLead = lead.source === 'PHONE'
   const details = getLeadDetails(lead)
 
   // Edit state
@@ -807,41 +807,29 @@ function LeadRow({
     editVehicleModel !== (details.model || '') ||
     editService !== (details.service || '')
 
-  // Border color: orange for calls, blue for forms
-  const borderColor = isPhoneLead ? 'border-l-4 border-orange-400' : 'border-l-4 border-blue-400'
-
   return (
     <div className="rounded-xl overflow-hidden">
       {/* Main row */}
       <div
-        className={`bg-white shadow-sm transition-all duration-200 ${borderColor} ${isDimmed ? 'opacity-40' : ''} ${isExpanded ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
+        className={`bg-white shadow-sm transition-all duration-200 ${isDimmed ? 'opacity-40' : ''} ${isExpanded ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
       >
         {/* Collapsed Row */}
         <button
           onClick={onToggle}
-          className="w-full px-4 py-3 flex items-center gap-3 text-left"
+          className="w-full px-4 py-3 flex items-center gap-2.5 text-left"
         >
           {/* Expand indicator */}
           <ChevronRight
             className={`h-5 w-5 text-gray-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`}
           />
 
-          {/* Avatar */}
-          <LeadAvatar
-            firstName={lead.firstName}
-            lastName={lead.lastName}
-            status={lead.status}
-          />
+          {/* Source pill (orange for phone, blue for form) */}
+          <SourceIcon source={lead.source} />
 
           {/* Main info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 mb-0.5">
-              {isPhoneLead ? (
-                <Phone className="h-3.5 w-3.5 text-orange-500 flex-shrink-0" aria-label="Phone lead" />
-              ) : (
-                <FileText className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" aria-label="Form lead" />
-              )}
-              <span className="font-medium text-gray-900 truncate">{fullName}</span>
+            <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+              <span className="font-medium text-gray-900">{fullName}</span>
               {lead.callRecordingUrl && (
                 <PlayCircle className="h-4 w-4 text-violet-500 flex-shrink-0" />
               )}
@@ -856,22 +844,22 @@ function LeadRow({
                 {lead.enhancedConversionSent ? 'Synced to Google Ads' : 'Not synced to Google Ads'}
               </span>
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              {lead.phone && <span className="truncate">{lead.phone}</span>}
+            <div className="flex items-center gap-x-2 gap-y-0.5 text-sm text-gray-600 flex-wrap">
+              {lead.phone && <span>{lead.phone}</span>}
               {showClientName && lead.client && (
                 <>
                   <span className="text-gray-300">•</span>
-                  <span className="text-blue-600 font-medium truncate">{lead.client.businessName}</span>
+                  <span className="text-blue-600 font-medium">{lead.client.businessName}</span>
                 </>
               )}
               {details.service && (
                 <>
                   <span className="text-gray-300">•</span>
-                  <span className="truncate">{details.service}</span>
+                  <span>{details.service}</span>
                 </>
               )}
               <span className="text-gray-300">•</span>
-              <span className="text-xs text-gray-500 flex-shrink-0">
+              <span className="text-xs text-gray-500">
                 {new Date(lead.createdAt).toLocaleTimeString('en-US', {
                   hour: 'numeric',
                   minute: '2-digit',
