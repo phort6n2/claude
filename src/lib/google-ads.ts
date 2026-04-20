@@ -9,6 +9,52 @@ export const GOOGLE_ADS_API_BASE = `https://googleads.googleapis.com/${GOOGLE_AD
 const GOOGLE_OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const GOOGLE_OAUTH_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 
+// Retry configuration
+const MAX_RETRIES = 3
+const INITIAL_BACKOFF_MS = 1000
+const RETRYABLE_STATUS_CODES = new Set([500, 502, 503, 504])
+
+/**
+ * Fetch with exponential backoff retry for transient server errors.
+ * Retries on 500/502/503/504 and network failures. Does NOT retry on 4xx.
+ */
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  context: string
+): Promise<Response> {
+  let lastError: Error | null = null
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetch(url, options)
+
+      if (!RETRYABLE_STATUS_CODES.has(response.status) || attempt === MAX_RETRIES) {
+        return response
+      }
+
+      console.warn(
+        `[${context}] Retryable error ${response.status}, attempt ${attempt + 1}/${MAX_RETRIES}`,
+      )
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error))
+      if (attempt === MAX_RETRIES) {
+        throw lastError
+      }
+      console.warn(
+        `[${context}] Network error, attempt ${attempt + 1}/${MAX_RETRIES}:`,
+        lastError.message,
+      )
+    }
+
+    const backoff = INITIAL_BACKOFF_MS * Math.pow(2, attempt)
+    await new Promise((resolve) => setTimeout(resolve, backoff))
+  }
+
+  // Should never reach here, but just in case
+  throw lastError || new Error('fetchWithRetry exhausted all retries')
+}
+
 // Extended type for GoogleAdsConfig with new OAuth fields
 interface GoogleAdsConfigExtended {
   id: string
@@ -304,16 +350,20 @@ export async function sendEnhancedConversion(params: {
       gclid: params.gclid ? params.gclid.substring(0, 20) + '...' : 'none',
     })
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'developer-token': creds.developerToken,
-        'login-customer-id': creds.mccCustomerId.replace(/-/g, ''),
-        'Content-Type': 'application/json',
+    const response = await fetchWithRetry(
+      url,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'developer-token': creds.developerToken,
+          'login-customer-id': creds.mccCustomerId.replace(/-/g, ''),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
       },
-      body: JSON.stringify(requestBody),
-    })
+      'Enhanced Conversion',
+    )
 
     const responseText = await response.text()
 
@@ -412,7 +462,7 @@ export async function sendOfflineConversion(params: {
   }
 
   try {
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `${GOOGLE_ADS_API_BASE}/customers/${customerId}:uploadClickConversions`,
       {
         method: 'POST',
@@ -426,13 +476,19 @@ export async function sendOfflineConversion(params: {
           conversions: [clickConversion],
           partialFailure: true,
         }),
-      }
+      },
+      'Offline Conversion',
     )
 
     if (!response.ok) {
       const error = await response.text()
-      console.error('Offline conversion upload failed:', error)
-      return { success: false, error: `API error: ${response.status}` }
+      console.error('[Offline Conversion] Upload failed:', {
+        status: response.status,
+        response: error.substring(0, 1000),
+        customerId,
+        conversionAction: params.conversionAction,
+      })
+      return { success: false, error: `API error ${response.status}: ${error.substring(0, 200)}` }
     }
 
     const result = await response.json()
