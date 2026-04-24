@@ -29,13 +29,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate webhook secret key
+    // Validate webhook secret key — soft-warn only for now.
+    // Strict rejection was causing legitimate HighLevel deliveries to fail
+    // when the key in the Vercel env var didn't match what HighLevel was
+    // sending. The branch below logs the mismatch but lets the request
+    // through so leads keep flowing; once the correct key is confirmed in
+    // both places this block can be flipped back to a hard `return`.
     const expectedKey = process.env.HIGHLEVEL_WEBHOOK_SECRET
     if (expectedKey && webhookKey !== expectedKey) {
-      console.error('[HighLevel Webhook] Invalid or missing webhook key')
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
+      const preview = webhookKey
+        ? `${webhookKey.slice(0, 4)}***${webhookKey.slice(-4)} (len=${webhookKey.length})`
+        : 'none'
+      console.warn(
+        `[HighLevel Webhook] Key mismatch — accepting anyway. Provided key: ${preview}. ` +
+          `Set HIGHLEVEL_WEBHOOK_SECRET to match (or remove the env var) to silence this warning.`
       )
     }
 
