@@ -57,6 +57,11 @@ interface CallAnalysisRow {
 interface Props {
   leadId: string
   recordingUrl: string | null
+  /** Endpoint to fetch the analysis from. Defaults to the portal-scoped one. */
+  endpoint?: string
+  /** Hide the audio player + outer card chrome. Use when a parent already
+   *  renders the recording player. */
+  embedded?: boolean
 }
 
 const OUTCOME_LABELS: Record<string, { label: string; variant: 'success' | 'info' | 'default' }> = {
@@ -88,10 +93,16 @@ function timestampToSeconds(ts: string): number {
   return m * 60 + s
 }
 
-export function CallCoachingReport({ leadId, recordingUrl }: Props) {
+export function CallCoachingReport({
+  leadId,
+  recordingUrl,
+  endpoint,
+  embedded = false,
+}: Props) {
   const [data, setData] = useState<CallAnalysisRow | null>(null)
   const [loading, setLoading] = useState(true)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const fetchUrl = endpoint ?? `/api/portal/leads/${leadId}/call-analysis`
 
   useEffect(() => {
     let cancelled = false
@@ -99,7 +110,7 @@ export function CallCoachingReport({ leadId, recordingUrl }: Props) {
 
     async function load() {
       try {
-        const res = await fetch(`/api/portal/leads/${leadId}/call-analysis`)
+        const res = await fetch(fetchUrl)
         if (!res.ok) {
           if (!cancelled) setLoading(false)
           return
@@ -124,7 +135,7 @@ export function CallCoachingReport({ leadId, recordingUrl }: Props) {
       cancelled = true
       if (timer) clearTimeout(timer)
     }
-  }, [leadId])
+  }, [fetchUrl])
 
   function jumpTo(ts: string) {
     const seconds = timestampToSeconds(ts)
@@ -136,6 +147,17 @@ export function CallCoachingReport({ leadId, recordingUrl }: Props) {
 
   // No recording at all and no analysis row — render nothing.
   if (!recordingUrl && !data) return null
+
+  // Embedded variant: caller already renders the audio player and outer card.
+  // Just render the report body, with no internal audio element. Jump-to-moment
+  // links won't seek anything in this mode (parent owns the player).
+  if (embedded) {
+    return (
+      <div className="mt-3">
+        <ReportBody data={data} loading={loading} onJump={() => {}} />
+      </div>
+    )
+  }
 
   return (
     <div className="bg-white rounded-lg border p-6 mb-6">
