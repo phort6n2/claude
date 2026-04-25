@@ -40,6 +40,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
         saleCurrency: true,
         saleDate: true,
         saleNotes: true,
+        callRecordingUrl: true,
         createdAt: true,
         updatedAt: true,
       },

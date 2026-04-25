@@ -19,6 +19,7 @@ import {
   LogOut,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { CallCoachingReport } from '@/components/portal/CallCoachingReport'
 
 interface Lead {
   id: string
@@ -34,6 +35,7 @@ interface Lead {
   saleCurrency: string
   saleDate: string | null
   saleNotes: string | null
+  callRecordingUrl: string | null
   createdAt: string
   updatedAt: string
 }
@@ -282,6 +284,14 @@ export default function PortalLeadDetailPage({ params }: { params: Promise<{ id:
             )}
           </div>
         </div>
+
+        {/* Call Recording + Coaching Report (only relevant for phone leads) */}
+        {(lead.source === 'PHONE' || lead.callRecordingUrl) && (
+          <CallCoachingReport
+            leadId={lead.id}
+            recordingUrl={lead.callRecordingUrl}
+          />
+        )}
 
         {/* Status & Sale Info Card */}
         <div className="bg-white rounded-lg border p-6">
