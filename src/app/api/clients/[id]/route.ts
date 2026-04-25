@@ -130,6 +130,8 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         // Automation settings
         autoScheduleEnabled: data.autoScheduleEnabled ?? existing.autoScheduleEnabled,
         autoScheduleFrequency: data.autoScheduleFrequency ?? existing.autoScheduleFrequency,
+        // Call coaching toggle
+        callCoachingEnabled: data.callCoachingEnabled ?? existing.callCoachingEnabled,
       },
     })
 

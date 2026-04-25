@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     // Find the client
     const client = await prisma.client.findUnique({
       where: { slug: clientSlug },
-      select: { id: true, businessName: true },
+      select: { id: true, businessName: true, callCoachingEnabled: true },
     })
 
     if (!client) {
@@ -337,9 +337,11 @@ export async function POST(request: NextRequest) {
     console.log(`[HighLevel Webhook] Created lead ${lead.id} for ${client.businessName}`)
 
     // If this is a phone lead with a recording URL, kick off call coaching
-    // analysis. Stays a fire-and-forget — the recovery cron will pick it up
-    // if the kick-off didn't reach the worker.
+    // analysis (only when the client has the feature enabled). Stays a
+    // fire-and-forget — the recovery cron will pick it up if the kick-off
+    // didn't reach the worker.
     if (
+      client.callCoachingEnabled &&
       leadSource === 'PHONE' &&
       typeof callRecordingUrl === 'string' &&
       callRecordingUrl.startsWith('http')
