@@ -27,12 +27,14 @@ async function backfill(req: NextRequest) {
   const days = Math.min(30, Math.max(1, parseInt(daysParam ?? '2', 10) || 2))
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
 
-  // Phone leads in the window with a recording URL.
+  // Phone leads in the window with a recording URL whose client has call
+  // coaching enabled. Disabled clients are excluded entirely from the backfill.
   const candidates = await prisma.lead.findMany({
     where: {
       source: 'PHONE',
       callRecordingUrl: { not: null },
       createdAt: { gte: cutoff },
+      client: { callCoachingEnabled: true },
     },
     select: {
       id: true,

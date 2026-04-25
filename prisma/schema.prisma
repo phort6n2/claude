@@ -147,6 +147,9 @@ model Client {
   autoScheduleFrequency Int       @default(2) // Posts per week (1 or 2)
   lastAutoScheduledAt   DateTime? // Track last automation run
 
+  // Call Coaching (Deepgram + Claude analysis on phone leads)
+  callCoachingEnabled Boolean @default(true)
+
   // Smart Scheduling (to avoid Late.dev 5-post-per-account limit)
   scheduleDayPair  String? // e.g., "MON_WED", "TUE_THU", "WED_FRI" - auto-assigned
   scheduleTimeSlot Int? // 0-9: morning slots 0-4 (7-11 AM local), afternoon slots 5-9 (1-5 PM local)

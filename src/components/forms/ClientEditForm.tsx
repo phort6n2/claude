@@ -32,6 +32,7 @@ import {
   TrendingUp,
   Copy,
   Webhook,
+  PhoneCall,
 } from 'lucide-react'
 
 interface PodbeanPodcast {
@@ -155,6 +156,8 @@ interface ClientData {
   // Automation fields
   autoScheduleEnabled?: boolean
   autoScheduleFrequency?: number
+  // Call Coaching feature toggle
+  callCoachingEnabled?: boolean
 }
 
 interface ClientEditFormProps {
@@ -217,6 +220,7 @@ const defaultClientData: Omit<ClientData, 'id'> & { id: string } = {
   wrhqYoutubePlaylistTitle: null,
   autoScheduleEnabled: false,
   autoScheduleFrequency: 2,
+  callCoachingEnabled: true,
 }
 
 // Convert slot index to Mountain Time display
@@ -248,7 +252,7 @@ const socialPlatformOptions = [
   { value: 'telegram', label: 'Telegram' },
 ]
 
-type SectionKey = 'business' | 'location' | 'serviceLocations' | 'branding' | 'wordpress' | 'social' | 'integrations' | 'automation' | 'googleads'
+type SectionKey = 'business' | 'location' | 'serviceLocations' | 'branding' | 'wordpress' | 'social' | 'integrations' | 'automation' | 'callCoaching' | 'googleads'
 
 export default function ClientEditForm({ client, hasWordPressPassword = false }: ClientEditFormProps) {
   const router = useRouter()
@@ -2549,6 +2553,44 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
                 <li>Long-form video is skipped (manual for now)</li>
                 <li>Runs every Sunday evening for the upcoming week</li>
               </ul>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Call Coaching */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <SectionHeader
+          section="callCoaching"
+          icon={PhoneCall}
+          title="Call Coaching"
+          subtitle={
+            (formData.callCoachingEnabled ?? true)
+              ? 'Phone calls are transcribed and scored against the sales rubric'
+              : 'Disabled — phone calls are not analyzed'
+          }
+        />
+        {expandedSections.has('callCoaching') && (
+          <div className="p-6 space-y-4">
+            <div className="flex items-start justify-between">
+              <div className="pr-4">
+                <h4 className="text-sm font-medium text-gray-900">Enable Call Coaching</h4>
+                <p className="text-sm text-gray-500 mt-1">
+                  When on, every phone lead with a recording gets a 0–100 coaching
+                  score, missed-opportunity moments, and a coaching note. Turn off
+                  to skip transcription and analysis for this client. Existing
+                  reports are not deleted.
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={formData.callCoachingEnabled ?? true}
+                  onChange={(e) => updateField('callCoachingEnabled', e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
             </div>
           </div>
         )}

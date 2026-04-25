@@ -41,13 +41,23 @@ export async function POST(request: NextRequest) {
 
     const client = await prisma.client.findUnique({
       where: { slug: clientSlug },
-      select: { id: true, businessName: true },
+      select: { id: true, businessName: true, callCoachingEnabled: true },
     })
 
     if (!client) {
       // Spec: never retry on missing client. Log and return 200.
       console.error(`[CallRecording Webhook] Client not found: ${clientSlug}`)
       return NextResponse.json({ status: 'ignored', reason: 'client_not_found' })
+    }
+
+    if (!client.callCoachingEnabled) {
+      console.log(
+        `[CallRecording Webhook] Coaching disabled for ${client.businessName}; skipping`
+      )
+      return NextResponse.json({
+        status: 'ignored',
+        reason: 'call_coaching_disabled',
+      })
     }
 
     const payload = await request.json().catch(() => ({}))
