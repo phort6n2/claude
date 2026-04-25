@@ -114,7 +114,7 @@ export async function runCallAnalysisPipeline(callAnalysisId: string): Promise<b
       return false
     }
 
-    const transcriptJson = (result ?? {}) as Prisma.InputJsonValue
+    const transcriptJson = (result ?? {}) as unknown as Prisma.InputJsonValue
     const duration =
       (result as { metadata?: { duration?: number } } | null)?.metadata?.duration ?? 0
 
