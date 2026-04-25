@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sendEnhancedConversion } from '@/lib/google-ads'
 import { notifyNewLead } from '@/lib/push-notifications'
+import { kickOffCallAnalysis } from '@/lib/call-analysis/queue'
 import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -334,6 +335,35 @@ export async function POST(request: NextRequest) {
     })
 
     console.log(`[HighLevel Webhook] Created lead ${lead.id} for ${client.businessName}`)
+
+    // If this is a phone lead with a recording URL, kick off call coaching
+    // analysis. Stays a fire-and-forget — the recovery cron will pick it up
+    // if the kick-off didn't reach the worker.
+    if (
+      leadSource === 'PHONE' &&
+      typeof callRecordingUrl === 'string' &&
+      callRecordingUrl.startsWith('http')
+    ) {
+      try {
+        const callAnalysis = await prisma.callAnalysis.create({
+          data: {
+            clientId: client.id,
+            leadId: lead.id,
+            highlevelContactId,
+            recordingUrl: callRecordingUrl,
+            callerPhone: phone,
+            callDirection: 'inbound',
+            status: 'PENDING',
+          },
+        })
+        kickOffCallAnalysis(request, callAnalysis.id)
+        console.log(
+          `[HighLevel Webhook] Started call analysis ${callAnalysis.id} for lead ${lead.id}`
+        )
+      } catch (err) {
+        console.error('[HighLevel Webhook] Failed to start call analysis:', err)
+      }
+    }
 
     // Send push notification to client users (non-blocking)
     notifyNewLead(client.id, {

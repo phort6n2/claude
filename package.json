@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
+    "@deepgram/sdk": "^3.9.0",
     "@prisma/client": "^6.19.1",
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/react-query": "^5.90.16",

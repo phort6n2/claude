@@ -175,6 +175,7 @@ model Client {
   leads           Lead[]
   clientUsers     ClientUser[]
   googleAdsConfig ClientGoogleAds?
+  callAnalyses    CallAnalysis[]
 
   // Admin Push Notification Subscriptions
   adminPushSubscriptions AdminPushSubscriptionClient[]
@@ -1091,6 +1092,7 @@ model Lead {
 
   // Phone Call Data
   callRecordingUrl String? // URL to call recording from HighLevel
+  callAnalyses     CallAnalysis[]
 
   // Lead Status (updated by client)
   status          LeadStatus @default(NEW)
@@ -1307,6 +1309,58 @@ model ClientGoogleAds {
   updatedAt DateTime @updatedAt
 
   @@index([customerId])
+}
+
+// ============================================
+// CALL ANALYSIS (Coaching reports for phone leads)
+// ============================================
+
+model CallAnalysis {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  leadId   String?
+  lead     Lead?  @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  // HighLevel references
+  highlevelCallId    String?
+  highlevelContactId String?
+
+  // Audio
+  recordingUrl     String? // Original URL from HighLevel (Deepgram pulls from this)
+  durationSeconds  Int?
+  callDirection    String? // inbound | outbound
+  callerPhone      String?
+  repPhone         String?
+
+  // Pipeline status
+  status       CallAnalysisStatus @default(PENDING)
+  errorMessage String?            @db.Text
+
+  // Results
+  transcript    Json? // Full Deepgram response
+  audioMetrics  Json? // Computed talk ratios, interruptions, gaps
+  analysis      Json? // Full Claude analysis object
+  score         Int? // Denormalized from analysis.score for sorting/filtering
+  outcome       String? // Denormalized from analysis.outcome
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  @@index([clientId, createdAt])
+  @@index([status])
+  @@index([leadId])
+  @@index([clientId, score])
+}
+
+enum CallAnalysisStatus {
+  PENDING
+  DOWNLOADING
+  TRANSCRIBING
+  ANALYZING
+  COMPLETE
+  FAILED
 }
 
 // ============================================
