@@ -102,6 +102,7 @@ export function CallCoachingReport({
   const [data, setData] = useState<CallAnalysisRow | null>(null)
   const [loading, setLoading] = useState(true)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const rootRef = useRef<HTMLDivElement | null>(null)
   const fetchUrl = endpoint ?? `/api/portal/leads/${leadId}/call-analysis`
 
   useEffect(() => {
@@ -139,22 +140,31 @@ export function CallCoachingReport({
 
   function jumpTo(ts: string) {
     const seconds = timestampToSeconds(ts)
-    const audio = audioRef.current
+    // In embedded mode the parent owns the <audio>. Walk up to the nearest
+    // ancestor and grab its first audio descendant.
+    const audio =
+      audioRef.current ??
+      (rootRef.current?.parentElement?.querySelector('audio') as
+        | HTMLAudioElement
+        | null
+        | undefined) ??
+      null
     if (!audio) return
     audio.currentTime = seconds
     audio.play().catch(() => {})
+    // Bring the player into view in case the user scrolled past it.
+    audio.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }
 
   // No recording at all and no analysis row — render nothing.
   if (!recordingUrl && !data) return null
 
   // Embedded variant: caller already renders the audio player and outer card.
-  // Just render the report body, with no internal audio element. Jump-to-moment
-  // links won't seek anything in this mode (parent owns the player).
+  // Just render the report body, with no internal audio element.
   if (embedded) {
     return (
-      <div className="mt-3">
-        <ReportBody data={data} loading={loading} onJump={() => {}} />
+      <div ref={rootRef} className="mt-3">
+        <ReportBody data={data} loading={loading} onJump={jumpTo} />
       </div>
     )
   }
