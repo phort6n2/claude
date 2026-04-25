@@ -100,6 +100,7 @@ INSTRUCTIONS:
 4. Determine the outcome: booked | quote_sent | callback_scheduled | lost | info_only
 5. Write the coaching note in plain language to the shop owner. No jargon. 2-3 sentences.
 6. The coaching note should be direct but constructive — this is visible to the client.
+7. If you apply any deductions, list each one in deductions_applied with the specific reason and the exact points subtracted (-5 each). subscores.deductions should equal the sum of points across deductions_applied. If no deductions apply, return an empty array and subscores.deductions = 0.
 
 Return ONLY valid JSON in exactly this format, no markdown, no preamble:
 {
@@ -118,6 +119,12 @@ Return ONLY valid JSON in exactly this format, no markdown, no preamble:
       "transcript_quote": "string",
       "timestamp": "MM:SS",
       "what_should_have_happened": "string"
+    }
+  ],
+  "deductions_applied": [
+    {
+      "reason": "string",
+      "points": -5
     }
   ],
   "did_well": ["string"],
