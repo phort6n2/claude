@@ -80,6 +80,16 @@ export async function GET(request: NextRequest) {
           offlineConversionSent: true,
           createdAt: true,
           statusUpdatedAt: true,
+          callAnalyses: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            select: {
+              id: true,
+              status: true,
+              score: true,
+              outcome: true,
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
         take: limit,
@@ -87,6 +97,13 @@ export async function GET(request: NextRequest) {
       }),
       prisma.lead.count({ where }),
     ])
+
+    // Flatten the most-recent CallAnalysis onto each lead so the client doesn't
+    // have to deal with the nested array.
+    const leadsWithAnalysis = leads.map((lead) => {
+      const { callAnalyses, ...rest } = lead
+      return { ...rest, callAnalysis: callAnalyses[0] ?? null }
+    })
 
     // Get summary stats for this client
     const stats = await prisma.lead.groupBy({
@@ -154,7 +171,7 @@ export async function GET(request: NextRequest) {
     ])
 
     return NextResponse.json({
-      leads,
+      leads: leadsWithAnalysis,
       total,
       limit,
       offset,
