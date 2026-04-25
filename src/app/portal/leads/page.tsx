@@ -28,6 +28,13 @@ import { PullToRefreshIndicator } from '@/components/ui/PullToRefresh'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
 
+interface CallAnalysisSummary {
+  id: string
+  status: string
+  score: number | null
+  outcome: string | null
+}
+
 interface Lead {
   id: string
   email: string | null
@@ -47,6 +54,7 @@ interface Lead {
   createdAt: string
   formName: string | null
   formData: Record<string, unknown> | null
+  callAnalysis: CallAnalysisSummary | null
 }
 
 interface Session {
@@ -549,6 +557,38 @@ function getAllFormFields(lead: Lead): Array<{ label: string; value: string }> {
 }
 
 // Expandable Lead Row Component
+function CallScoreChip({ analysis }: { analysis: CallAnalysisSummary }) {
+  if (analysis.status !== 'COMPLETE' || analysis.score == null) {
+    if (analysis.status === 'FAILED') return null
+    // Still processing.
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
+        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+        Coaching
+      </span>
+    )
+  }
+
+  const score = analysis.score
+  const tone =
+    score >= 80
+      ? 'bg-green-100 text-green-700'
+      : score >= 60
+        ? 'bg-yellow-100 text-yellow-800'
+        : score >= 40
+          ? 'bg-orange-100 text-orange-700'
+          : 'bg-red-100 text-red-700'
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${tone}`}
+      title={`Call coaching score: ${score}/100${analysis.outcome ? ' • ' + analysis.outcome.replace(/_/g, ' ') : ''}`}
+    >
+      {score}
+    </span>
+  )
+}
+
 function LeadRow({
   lead,
   isExpanded,
@@ -692,6 +732,7 @@ function LeadRow({
               {lead.callRecordingUrl && (
                 <PlayCircle className="h-4 w-4 text-violet-500 flex-shrink-0" />
               )}
+              {lead.callAnalysis && <CallScoreChip analysis={lead.callAnalysis} />}
               {lead.gclid && (
                 <span className="text-xs text-emerald-600 font-medium">Ads</span>
               )}
