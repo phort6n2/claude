@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Loader2, CheckCircle2, AlertTriangle, Play } from 'lucide-react'
+import { Loader2, CheckCircle2, AlertTriangle, Play, ChevronDown, ChevronUp } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 
 interface MissedOpportunity {
@@ -273,85 +273,139 @@ function ReportBody({
         <p className="text-gray-800 leading-relaxed">{a.coaching_note}</p>
       </Section>
 
-      {/* What went well */}
-      {a.did_well?.length > 0 && (
-        <Section title="What Went Well">
-          <ul className="space-y-2">
-            {a.did_well.map((item, i) => (
-              <li key={i} className="flex items-start gap-2 text-gray-800">
-                <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </Section>
-      )}
+      <CollapsibleDetails
+        a={a}
+        metrics={metrics}
+        durationSeconds={data.durationSeconds}
+        onJump={onJump}
+      />
+    </div>
+  )
+}
 
-      {/* Missed opportunities */}
-      {a.missed_opportunities?.length > 0 && (
-        <Section title="Missed Opportunities">
-          <ul className="space-y-4">
-            {a.missed_opportunities.map((m, i) => (
-              <li key={i} className="border-l-2 border-orange-300 pl-3">
-                <div className="flex items-start gap-2 text-gray-900 font-medium">
-                  <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
-                  <span>{m.moment}</span>
-                </div>
-                <div className="mt-1 text-sm text-gray-600 italic">
-                  [{m.timestamp}] &ldquo;{m.transcript_quote}&rdquo;
-                </div>
-                <div className="mt-1 text-sm text-gray-700">
-                  <span className="font-medium">Better approach:</span>{' '}
-                  {m.what_should_have_happened}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onJump(m.timestamp)}
-                  className="mt-2 inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
-                >
-                  <Play className="h-3 w-3" />
-                  Jump to moment
-                </button>
-              </li>
-            ))}
-          </ul>
-        </Section>
-      )}
+function CollapsibleDetails({
+  a,
+  metrics,
+  durationSeconds,
+  onJump,
+}: {
+  a: CoachingAnalysis
+  metrics: AudioMetrics | null
+  durationSeconds: number | null
+  onJump: (ts: string) => void
+}) {
+  const [open, setOpen] = useState(false)
 
-      {/* Call metrics */}
-      {metrics && (
-        <Section title="Call Metrics">
-          <div className="space-y-2 text-sm">
-            <MetricBar label="Rep talked" pct={metrics.repTalkPct} />
-            <MetricBar label="Customer" pct={metrics.customerTalkPct} />
-            <div className="text-gray-700 pt-1">
-              Interruptions: {metrics.interruptionsByRep}
-            </div>
-            {data.durationSeconds != null && (
-              <div className="text-gray-700">
-                Duration: {Math.floor(data.durationSeconds / 60)}:
-                {(data.durationSeconds % 60).toString().padStart(2, '0')}
-              </div>
-            )}
-          </div>
-        </Section>
-      )}
+  const missedCount = a.missed_opportunities?.length ?? 0
+  const didWellCount = a.did_well?.length ?? 0
 
-      {/* Score breakdown */}
-      <Section title="Score Breakdown">
-        <div className="space-y-2 text-sm">
-          <SubscoreRow label="Discovery" score={a.subscores.discovery} max={20} />
-          <SubscoreRow label="Value Building" score={a.subscores.value_building} max={20} />
-          <SubscoreRow label="Sales Mechanics" score={a.subscores.sales_mechanics} max={30} />
-          <SubscoreRow label="Communication" score={a.subscores.communication} max={20} />
-          {a.subscores.deductions !== 0 && (
-            <div className="flex items-center justify-between text-gray-700">
-              <span>Deductions</span>
-              <span className="font-medium text-red-600">{a.subscores.deductions}</span>
-            </div>
+  return (
+    <div className="border-t pt-3 mt-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between text-sm font-medium text-gray-700 hover:text-gray-900 py-1"
+      >
+        <span className="flex items-center gap-3">
+          {open ? 'Hide details' : 'Show details'}
+          {!open && (missedCount > 0 || didWellCount > 0) && (
+            <span className="text-xs text-gray-500 font-normal">
+              {didWellCount > 0 && `${didWellCount} did well`}
+              {didWellCount > 0 && missedCount > 0 && ' • '}
+              {missedCount > 0 && `${missedCount} missed`}
+            </span>
           )}
+        </span>
+        {open ? (
+          <ChevronUp className="h-4 w-4" />
+        ) : (
+          <ChevronDown className="h-4 w-4" />
+        )}
+      </button>
+
+      {open && (
+        <div className="pt-4">
+          {/* What went well */}
+          {a.did_well?.length > 0 && (
+            <Section title="What Went Well">
+              <ul className="space-y-2">
+                {a.did_well.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-gray-800">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
+
+          {/* Missed opportunities */}
+          {a.missed_opportunities?.length > 0 && (
+            <Section title="Missed Opportunities">
+              <ul className="space-y-4">
+                {a.missed_opportunities.map((m, i) => (
+                  <li key={i} className="border-l-2 border-orange-300 pl-3">
+                    <div className="flex items-start gap-2 text-gray-900 font-medium">
+                      <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
+                      <span>{m.moment}</span>
+                    </div>
+                    <div className="mt-1 text-sm text-gray-600 italic">
+                      [{m.timestamp}] &ldquo;{m.transcript_quote}&rdquo;
+                    </div>
+                    <div className="mt-1 text-sm text-gray-700">
+                      <span className="font-medium">Better approach:</span>{' '}
+                      {m.what_should_have_happened}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onJump(m.timestamp)}
+                      className="mt-2 inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+                    >
+                      <Play className="h-3 w-3" />
+                      Jump to moment
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
+
+          {/* Call metrics */}
+          {metrics && (
+            <Section title="Call Metrics">
+              <div className="space-y-2 text-sm">
+                <MetricBar label="Rep talked" pct={metrics.repTalkPct} />
+                <MetricBar label="Customer" pct={metrics.customerTalkPct} />
+                <div className="text-gray-700 pt-1">
+                  Interruptions: {metrics.interruptionsByRep}
+                </div>
+                {durationSeconds != null && (
+                  <div className="text-gray-700">
+                    Duration: {Math.floor(durationSeconds / 60)}:
+                    {(durationSeconds % 60).toString().padStart(2, '0')}
+                  </div>
+                )}
+              </div>
+            </Section>
+          )}
+
+          {/* Score breakdown */}
+          <Section title="Score Breakdown">
+            <div className="space-y-2 text-sm">
+              <SubscoreRow label="Discovery" score={a.subscores.discovery} max={20} />
+              <SubscoreRow label="Value Building" score={a.subscores.value_building} max={20} />
+              <SubscoreRow label="Sales Mechanics" score={a.subscores.sales_mechanics} max={30} />
+              <SubscoreRow label="Communication" score={a.subscores.communication} max={20} />
+              {a.subscores.deductions !== 0 && (
+                <div className="flex items-center justify-between text-gray-700">
+                  <span>Deductions</span>
+                  <span className="font-medium text-red-600">{a.subscores.deductions}</span>
+                </div>
+              )}
+            </div>
+          </Section>
         </div>
-      </Section>
+      )}
     </div>
   )
 }
