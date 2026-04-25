@@ -56,6 +56,16 @@ export async function GET(request: NextRequest) {
                 slug: true,
               },
             },
+            callAnalyses: {
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+              select: {
+                id: true,
+                status: true,
+                score: true,
+                outcome: true,
+              },
+            },
           },
           orderBy: { createdAt: 'desc' },
           take: limit,
@@ -79,8 +89,22 @@ export async function GET(request: NextRequest) {
       return acc
     }, {} as Record<string, number>)
 
+    // Flatten the most-recent CallAnalysis onto each lead so the UI doesn't
+    // have to deal with a nested array.
+    const leadsWithAnalysis = leads.map((lead) => {
+      const { callAnalyses, ...rest } = lead as typeof lead & {
+        callAnalyses: Array<{
+          id: string
+          status: string
+          score: number | null
+          outcome: string | null
+        }>
+      }
+      return { ...rest, callAnalysis: callAnalyses[0] ?? null }
+    })
+
     return NextResponse.json({
-      leads,
+      leads: leadsWithAnalysis,
       total,
       limit,
       offset,
