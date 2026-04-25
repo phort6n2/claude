@@ -11,6 +11,11 @@ interface MissedOpportunity {
   what_should_have_happened: string
 }
 
+interface DeductionApplied {
+  reason: string
+  points: number
+}
+
 interface CoachingAnalysis {
   score: number
   subscores: {
@@ -22,6 +27,8 @@ interface CoachingAnalysis {
   }
   outcome: string
   missed_opportunities: MissedOpportunity[]
+  /** Older analyses may not have this field; the UI tolerates undefined. */
+  deductions_applied?: DeductionApplied[]
   did_well: string[]
   coaching_note: string
   sentiment: {
@@ -407,9 +414,26 @@ function CollapsibleDetails({
               <SubscoreRow label="Sales Mechanics" score={a.subscores.sales_mechanics} max={30} />
               <SubscoreRow label="Communication" score={a.subscores.communication} max={20} />
               {a.subscores.deductions !== 0 && (
-                <div className="flex items-center justify-between text-gray-700">
-                  <span>Deductions</span>
-                  <span className="font-medium text-red-600">{a.subscores.deductions}</span>
+                <div className="pt-2">
+                  <div className="flex items-center justify-between text-gray-700">
+                    <span>Deductions</span>
+                    <span className="font-medium text-red-600">{a.subscores.deductions}</span>
+                  </div>
+                  {a.deductions_applied && a.deductions_applied.length > 0 && (
+                    <ul className="mt-1.5 space-y-1">
+                      {a.deductions_applied.map((d, i) => (
+                        <li
+                          key={i}
+                          className="flex items-start justify-between gap-3 text-xs text-gray-600 pl-3 border-l-2 border-red-200"
+                        >
+                          <span>{d.reason}</span>
+                          <span className="font-medium text-red-600 tabular-nums shrink-0">
+                            {d.points}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
             </div>
