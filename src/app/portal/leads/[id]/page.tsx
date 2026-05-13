@@ -290,6 +290,7 @@ export default function PortalLeadDetailPage({ params }: { params: Promise<{ id:
           <CallCoachingReport
             leadId={lead.id}
             recordingUrl={lead.callRecordingUrl}
+            defaultDetailsOpen
           />
         )}
 
