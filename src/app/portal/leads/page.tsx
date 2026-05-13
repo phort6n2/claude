@@ -793,6 +793,7 @@ function LeadRow({
                     leadId={lead.id}
                     recordingUrl={lead.callRecordingUrl}
                     embedded
+                    defaultDetailsOpen
                   />
                 </div>
               </div>

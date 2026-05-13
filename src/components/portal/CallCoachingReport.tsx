@@ -69,6 +69,11 @@ interface Props {
   /** Hide the audio player + outer card chrome. Use when a parent already
    *  renders the recording player. */
   embedded?: boolean
+  /** Start with the missed-opportunities / metrics / breakdown section open.
+   *  Default false — used by admin views that scan many leads at once.
+   *  Client portal views set true so shop owners see the full coaching
+   *  without clicking. */
+  defaultDetailsOpen?: boolean
 }
 
 const OUTCOME_LABELS: Record<string, { label: string; variant: 'success' | 'info' | 'default' }> = {
@@ -105,6 +110,7 @@ export function CallCoachingReport({
   recordingUrl,
   endpoint,
   embedded = false,
+  defaultDetailsOpen = false,
 }: Props) {
   const [data, setData] = useState<CallAnalysisRow | null>(null)
   const [loading, setLoading] = useState(true)
@@ -171,7 +177,12 @@ export function CallCoachingReport({
   if (embedded) {
     return (
       <div ref={rootRef} className="mt-3">
-        <ReportBody data={data} loading={loading} onJump={jumpTo} />
+        <ReportBody
+          data={data}
+          loading={loading}
+          onJump={jumpTo}
+          defaultDetailsOpen={defaultDetailsOpen}
+        />
       </div>
     )
   }
@@ -196,7 +207,12 @@ export function CallCoachingReport({
         </p>
       )}
 
-      <ReportBody data={data} loading={loading} onJump={jumpTo} />
+      <ReportBody
+          data={data}
+          loading={loading}
+          onJump={jumpTo}
+          defaultDetailsOpen={defaultDetailsOpen}
+        />
     </div>
   )
 }
@@ -205,10 +221,12 @@ function ReportBody({
   data,
   loading,
   onJump,
+  defaultDetailsOpen,
 }: {
   data: CallAnalysisRow | null
   loading: boolean
   onJump: (ts: string) => void
+  defaultDetailsOpen: boolean
 }) {
   if (loading) {
     return (
@@ -295,6 +313,7 @@ function ReportBody({
         metrics={metrics}
         durationSeconds={data.durationSeconds}
         onJump={onJump}
+        defaultOpen={defaultDetailsOpen}
       />
     </div>
   )
@@ -305,13 +324,15 @@ function CollapsibleDetails({
   metrics,
   durationSeconds,
   onJump,
+  defaultOpen,
 }: {
   a: CoachingAnalysis
   metrics: AudioMetrics | null
   durationSeconds: number | null
   onJump: (ts: string) => void
+  defaultOpen: boolean
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultOpen)
 
   const missedCount = a.missed_opportunities?.length ?? 0
   const didWellCount = a.did_well?.length ?? 0
