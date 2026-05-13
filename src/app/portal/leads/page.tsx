@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { NotificationToggle } from '@/components/portal/NotificationToggle'
+import { CallCoachingReport } from '@/components/portal/CallCoachingReport'
 import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefresh'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
@@ -771,21 +772,28 @@ function LeadRow({
         {/* Expanded Content */}
         {isExpanded && (
           <div className="px-4 pb-4 space-y-4 border-t border-gray-100">
-            {/* Call Recording */}
-            {lead.callRecordingUrl && (
+            {/* Call Recording + Coaching Report */}
+            {(lead.callRecordingUrl || lead.callAnalysis) && (
               <div className="pt-3">
                 <div className="bg-violet-50 rounded-lg p-3">
                   <div className="flex items-center gap-2 mb-2">
                     <PlayCircle className="h-4 w-4 text-violet-600" />
                     <span className="text-sm text-violet-800 font-medium">Call Recording</span>
                   </div>
-                  <audio
-                    controls
-                    className="w-full h-10"
-                    src={lead.callRecordingUrl}
-                  >
-                    Your browser does not support audio.
-                  </audio>
+                  {lead.callRecordingUrl && (
+                    <audio
+                      controls
+                      className="w-full h-10"
+                      src={lead.callRecordingUrl}
+                    >
+                      Your browser does not support audio.
+                    </audio>
+                  )}
+                  <CallCoachingReport
+                    leadId={lead.id}
+                    recordingUrl={lead.callRecordingUrl}
+                    embedded
+                  />
                 </div>
               </div>
             )}
