@@ -158,6 +158,10 @@ interface ClientData {
   autoScheduleFrequency?: number
   // Call Coaching feature toggle
   callCoachingEnabled?: boolean
+  // HighLevel API access for historical backfill
+  highlevelLocationId?: string | null
+  highlevelApiToken?: string | null
+  hasHighlevelApiToken?: boolean
 }
 
 interface ClientEditFormProps {
@@ -221,6 +225,9 @@ const defaultClientData: Omit<ClientData, 'id'> & { id: string } = {
   autoScheduleEnabled: false,
   autoScheduleFrequency: 2,
   callCoachingEnabled: true,
+  highlevelLocationId: null,
+  highlevelApiToken: null,
+  hasHighlevelApiToken: false,
 }
 
 // Convert slot index to Mountain Time display
@@ -252,7 +259,7 @@ const socialPlatformOptions = [
   { value: 'telegram', label: 'Telegram' },
 ]
 
-type SectionKey = 'business' | 'location' | 'serviceLocations' | 'branding' | 'wordpress' | 'social' | 'integrations' | 'automation' | 'callCoaching' | 'googleads'
+type SectionKey = 'business' | 'location' | 'serviceLocations' | 'branding' | 'wordpress' | 'social' | 'integrations' | 'automation' | 'callCoaching' | 'highlevel' | 'googleads'
 
 export default function ClientEditForm({ client, hasWordPressPassword = false }: ClientEditFormProps) {
   const router = useRouter()
@@ -2595,6 +2602,75 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
           </div>
         )}
       </div>
+
+      {/* HighLevel API (for historical backfill) */}
+      {!isNewClient && (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <SectionHeader
+            section="highlevel"
+            icon={Webhook}
+            title="HighLevel API"
+            subtitle={
+              formData.hasHighlevelApiToken
+                ? 'Configured — historical lead backfill available'
+                : 'Optional — only needed for backfilling historical leads via the API'
+            }
+          />
+          {expandedSections.has('highlevel') && (
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  HighLevel Location ID
+                </label>
+                <input
+                  type="text"
+                  value={formData.highlevelLocationId ?? ''}
+                  onChange={(e) => updateField('highlevelLocationId', e.target.value)}
+                  placeholder="e.g. ZekAZ8xjwBwZgol0hFc8"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Found in HighLevel under Settings → Business Profile.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Private Integration Token
+                </label>
+                <input
+                  type="password"
+                  value={formData.highlevelApiToken ?? ''}
+                  onChange={(e) => updateField('highlevelApiToken', e.target.value)}
+                  placeholder={
+                    formData.hasHighlevelApiToken
+                      ? '••••••••  (leave blank to keep existing)'
+                      : 'pit-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Generate at Settings → Integrations → Private Integrations.
+                  Stored encrypted; never displayed after save.
+                </p>
+              </div>
+              {formData.hasHighlevelApiToken && formData.highlevelLocationId && (
+                <div className="border-t pt-4">
+                  <p className="text-sm font-medium text-gray-900">Backfill historical leads</p>
+                  <p className="text-xs text-gray-500 mt-1 mb-2">
+                    Pull contacts created in the last N days into this app. Phone
+                    leads also get their call recordings + coaching analysis. Hit
+                    this URL in your browser:
+                  </p>
+                  <code className="block text-xs bg-gray-100 rounded p-2 break-all">
+                    /api/admin/backfill-highlevel-leads?clientId={client?.id}
+                    &days=14&secret=YOUR_CRON_SECRET
+                  </code>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Google Ads - only show for existing clients */}
       {!isNewClient && (

@@ -26,12 +26,16 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 })
     }
 
-    // Don't send encrypted password to frontend - just indicate if one exists
-    const { wordpressAppPassword, ...clientWithoutPassword } = client
+    // Don't send encrypted secrets to the frontend — just indicate whether one
+    // is set.
+    const { wordpressAppPassword, highlevelApiToken, ...clientWithoutSecrets } =
+      client
     return NextResponse.json({
-      ...clientWithoutPassword,
-      wordpressAppPassword: null, // Never send encrypted password to client
+      ...clientWithoutSecrets,
+      wordpressAppPassword: null,
       hasWordPressPassword: !!wordpressAppPassword,
+      highlevelApiToken: null,
+      hasHighlevelApiToken: !!highlevelApiToken,
     })
   } catch (error) {
     console.error('Failed to fetch client:', error)
@@ -132,6 +136,16 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         autoScheduleFrequency: data.autoScheduleFrequency ?? existing.autoScheduleFrequency,
         // Call coaching toggle
         callCoachingEnabled: data.callCoachingEnabled ?? existing.callCoachingEnabled,
+        // HighLevel API (for historical backfill). Token is encrypted; only
+        // overwrite when a fresh value is supplied.
+        highlevelLocationId:
+          data.highlevelLocationId !== undefined
+            ? data.highlevelLocationId || null
+            : existing.highlevelLocationId,
+        highlevelApiToken:
+          data.highlevelApiToken && data.highlevelApiToken !== ''
+            ? encrypt(data.highlevelApiToken)
+            : existing.highlevelApiToken,
       },
     })
 

@@ -150,6 +150,11 @@ model Client {
   // Call Coaching (Deepgram + Claude analysis on phone leads)
   callCoachingEnabled Boolean @default(true)
 
+  // HighLevel API access (for historical backfill — webhooks remain the
+  // primary live ingestion path)
+  highlevelLocationId String?
+  highlevelApiToken   String? // Encrypted
+
   // Smart Scheduling (to avoid Late.dev 5-post-per-account limit)
   scheduleDayPair  String? // e.g., "MON_WED", "TUE_THU", "WED_FRI" - auto-assigned
   scheduleTimeSlot Int? // 0-9: morning slots 0-4 (7-11 AM local), afternoon slots 5-9 (1-5 PM local)
