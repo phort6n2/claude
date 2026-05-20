@@ -128,7 +128,7 @@ export default function PortalLeadsPage() {
     }
 
     try {
-      const res = await fetch(`/api/portal/leads?date=${selectedDate}`)
+      const res = await fetch(`/api/portal/leads?date=${selectedDate}&limit=1000`)
       const data = await res.json()
       setLeads(data.leads || [])
       if (data.sales) {
@@ -223,7 +223,7 @@ export default function PortalLeadsPage() {
       prev.map((l) => (l.id === updatedLead.id ? updatedLead : l))
     )
     // Refresh sales stats
-    fetch(`/api/portal/leads?date=${selectedDate}`)
+    fetch(`/api/portal/leads?date=${selectedDate}&limit=1000`)
       .then((res) => res.json())
       .then((data) => {
         if (data.sales) setSales(data.sales)
