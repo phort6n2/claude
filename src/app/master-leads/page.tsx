@@ -178,10 +178,11 @@ export default function StandaloneMasterLeadsPage() {
     const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
     const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
 
-    // Build URL - if "all" is selected, don't filter by clientId
+    // Build URL - if "all" is selected, don't filter by clientId.
+    // Bump limit well past the default 50 so a busy day shows everything.
     const leadsUrl = selectedClientId === 'all'
-      ? `/api/leads?startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`
-      : `/api/leads?clientId=${selectedClientId}&startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`
+      ? `/api/leads?startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}&limit=1000`
+      : `/api/leads?clientId=${selectedClientId}&startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}&limit=1000`
 
     fetch(leadsUrl)
       .then((res) => res.json())
