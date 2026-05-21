@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Phone,
@@ -26,7 +26,7 @@ import {
 import { Button } from '@/components/ui/Button'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
-import { NewLeadsBanner } from '@/components/leads/NewLeadsBanner'
+import { useLeadStream } from '@/hooks/useLeadStream'
 import { CallCoachingReport } from '@/components/portal/CallCoachingReport'
 import { Inbox } from 'lucide-react'
 
@@ -99,7 +99,6 @@ export default function StandaloneMasterLeadsPage() {
   const [selectedClientId, setSelectedClientId] = useState<string>('all')
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [leads, setLeads] = useState<Lead[]>([])
-  const [pendingLeads, setPendingLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(false)
   const [clientsLoading, setClientsLoading] = useState(true)
   const [sales, setSales] = useState<SalesStats | null>(null)
@@ -162,24 +161,15 @@ export default function StandaloneMasterLeadsPage() {
     }
   }, [selectedClientId, clients])
 
-  // Keep latest fetch params in a ref so polling always uses current values.
   const fetchParamsRef = useRef({ authenticated, selectedClientId, selectedDate })
   fetchParamsRef.current = { authenticated, selectedClientId, selectedDate }
-  // Refs to displayed/pending leads so the poller can diff without re-running.
-  const leadsRef = useRef<Lead[]>([])
-  leadsRef.current = leads
-  const pendingRef = useRef<Lead[]>([])
-  pendingRef.current = pendingLeads
 
-  // Fetch leads. Modes:
-  //   'initial' — first load / date / client change: shows skeleton, clears pending
-  //   'manual'  — Refresh button: silent, clears pending, replaces list
-  //   'poll'    — background poll: queues new leads, updates existing in place
-  const fetchLeads = useCallback(async (mode: 'initial' | 'manual' | 'poll' = 'initial') => {
+  // Fetch leads from REST. 'initial' shows the skeleton, 'manual' is silent
+  // (Refresh button / catch-up after visibility change / SW notification click).
+  const fetchLeads = useCallback(async (mode: 'initial' | 'manual' = 'initial') => {
     const { authenticated, selectedClientId, selectedDate } = fetchParamsRef.current
     if (!authenticated || !selectedClientId) {
       setLeads([])
-      setPendingLeads([])
       setSales(null)
       return
     }
@@ -206,25 +196,7 @@ export default function StandaloneMasterLeadsPage() {
     try {
       const [leadsRes, statsRes] = await Promise.all([fetch(leadsUrl), fetch(statsUrl)])
       const leadsData = await leadsRes.json()
-      const incoming: Lead[] = leadsData.leads || []
-
-      if (mode === 'poll') {
-        const knownIds = new Set([
-          ...leadsRef.current.map((l) => l.id),
-          ...pendingRef.current.map((l) => l.id),
-        ])
-        const newOnes = incoming.filter((l) => !knownIds.has(l.id))
-        const incomingById = new Map(incoming.map((l) => [l.id, l]))
-        setLeads((prev) => prev.map((l) => incomingById.get(l.id) ?? l))
-        setPendingLeads((prev) => {
-          const updated = prev.map((l) => incomingById.get(l.id) ?? l)
-          return newOnes.length > 0 ? [...newOnes, ...updated] : updated
-        })
-      } else {
-        setLeads(incoming)
-        setPendingLeads([])
-      }
-
+      setLeads(leadsData.leads || [])
       if (statsRes.ok) {
         const statsData = await statsRes.json()
         if (statsData.sales) setSales(statsData.sales)
@@ -240,47 +212,53 @@ export default function StandaloneMasterLeadsPage() {
     }
   }, [])
 
-  const showPending = useCallback(() => {
-    setLeads((prev) => [...pendingRef.current, ...prev])
-    setPendingLeads([])
-  }, [])
-
   // Initial load + reload when filters change (shows skeleton).
   useEffect(() => {
     fetchLeads('initial')
   }, [selectedClientId, selectedDate, authenticated, fetchLeads])
 
-  // Auto-poll every 20s when viewing today's leads (the only date that can grow).
-  useEffect(() => {
-    if (!authenticated || !selectedClientId) return
+  // Real-time push: new leads stream in and are prepended directly. Only
+  // subscribe when viewing today — older dates can't gain new leads.
+  const todayStr = useMemo(() => {
     const today = new Date()
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-    if (selectedDate !== todayStr) return
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  }, [])
+  const streamEnabled =
+    !!authenticated && !!selectedClientId && selectedDate === todayStr
+  const streamUrl = useMemo(() => {
+    const [year, month, day] = selectedDate.split('-').map(Number)
+    const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
+    const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
+    const params = new URLSearchParams()
+    if (selectedClientId && selectedClientId !== 'all') params.set('clientId', selectedClientId)
+    params.set('startDate', startOfDay.toISOString())
+    params.set('endDate', endOfDay.toISOString())
+    return `/api/leads/stream?${params.toString()}`
+  }, [selectedClientId, selectedDate])
 
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        fetchLeads('poll')
-      }
-    }, 20000)
-    return () => clearInterval(interval)
-  }, [authenticated, selectedClientId, selectedDate, fetchLeads])
+  const handleStreamedLead = useCallback((lead: Lead) => {
+    setLeads((prev) => (prev.some((l) => l.id === lead.id) ? prev : [lead, ...prev]))
+  }, [])
 
-  // Poll immediately when the tab becomes visible again.
+  useLeadStream<Lead>({ url: streamUrl, enabled: streamEnabled, onLead: handleStreamedLead })
+
+  // Catch up when the tab becomes visible again — covers the gap where the
+  // SSE connection was dropped while backgrounded.
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
-        fetchLeads('poll')
+        fetchLeads('manual')
       }
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [fetchLeads])
 
-  // Listen for service-worker messages from push-notification clicks.
+  // Service-worker push-notification click: refresh to surface the lead immediately.
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'NEW_LEAD') {
-        fetchLeads('poll')
+        fetchLeads('manual')
       }
     }
     navigator.serviceWorker?.addEventListener('message', handleMessage)
@@ -579,11 +557,6 @@ export default function StandaloneMasterLeadsPage() {
                 )}
               </div>
             )}
-          </div>
-
-          {/* New leads banner */}
-          <div className="max-w-3xl mx-auto px-4">
-            <NewLeadsBanner count={pendingLeads.length} onClick={showPending} topOffset={96} />
           </div>
 
           {/* Leads List */}
