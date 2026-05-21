@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Phone,
@@ -26,6 +26,7 @@ import {
 import { Button } from '@/components/ui/Button'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
+import { useLeadStream } from '@/hooks/useLeadStream'
 import { CallCoachingReport } from '@/components/portal/CallCoachingReport'
 import { Inbox } from 'lucide-react'
 
@@ -160,12 +161,12 @@ export default function StandaloneMasterLeadsPage() {
     }
   }, [selectedClientId, clients])
 
-  // Keep latest fetch params in a ref so polling always uses current values.
   const fetchParamsRef = useRef({ authenticated, selectedClientId, selectedDate })
   fetchParamsRef.current = { authenticated, selectedClientId, selectedDate }
 
-  // `silent=true` skips the loading skeleton so expanded rows / in-progress edits aren't blown away.
-  const fetchLeads = useCallback(async (silent = false) => {
+  // Fetch leads from REST. 'initial' shows the skeleton, 'manual' is silent
+  // (Refresh button / catch-up after visibility change / SW notification click).
+  const fetchLeads = useCallback(async (mode: 'initial' | 'manual' = 'initial') => {
     const { authenticated, selectedClientId, selectedDate } = fetchParamsRef.current
     if (!authenticated || !selectedClientId) {
       setLeads([])
@@ -173,11 +174,11 @@ export default function StandaloneMasterLeadsPage() {
       return
     }
 
-    if (silent) {
-      setRefreshing(true)
-    } else {
+    if (mode === 'initial') {
       setLoading(true)
       setExpandedLeadId(null)
+    } else {
+      setRefreshing(true)
     }
 
     const [year, month, day] = selectedDate.split('-').map(Number)
@@ -203,50 +204,61 @@ export default function StandaloneMasterLeadsPage() {
     } catch (err) {
       console.error(err)
     } finally {
-      if (silent) {
-        setRefreshing(false)
-      } else {
+      if (mode === 'initial') {
         setLoading(false)
+      } else {
+        setRefreshing(false)
       }
     }
   }, [])
 
   // Initial load + reload when filters change (shows skeleton).
   useEffect(() => {
-    fetchLeads(false)
+    fetchLeads('initial')
   }, [selectedClientId, selectedDate, authenticated, fetchLeads])
 
-  // Auto-refresh every 20s when viewing today's leads (the only date that can grow).
-  useEffect(() => {
-    if (!authenticated || !selectedClientId) return
+  // Real-time push: new leads stream in and are prepended directly. Only
+  // subscribe when viewing today — older dates can't gain new leads.
+  const todayStr = useMemo(() => {
     const today = new Date()
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-    if (selectedDate !== todayStr) return
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  }, [])
+  const streamEnabled =
+    !!authenticated && !!selectedClientId && selectedDate === todayStr
+  const streamUrl = useMemo(() => {
+    const [year, month, day] = selectedDate.split('-').map(Number)
+    const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
+    const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
+    const params = new URLSearchParams()
+    if (selectedClientId && selectedClientId !== 'all') params.set('clientId', selectedClientId)
+    params.set('startDate', startOfDay.toISOString())
+    params.set('endDate', endOfDay.toISOString())
+    return `/api/leads/stream?${params.toString()}`
+  }, [selectedClientId, selectedDate])
 
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        fetchLeads(true)
-      }
-    }, 20000)
-    return () => clearInterval(interval)
-  }, [authenticated, selectedClientId, selectedDate, fetchLeads])
+  const handleStreamedLead = useCallback((lead: Lead) => {
+    setLeads((prev) => (prev.some((l) => l.id === lead.id) ? prev : [lead, ...prev]))
+  }, [])
 
-  // Refresh immediately when the tab becomes visible again.
+  useLeadStream<Lead>({ url: streamUrl, enabled: streamEnabled, onLead: handleStreamedLead })
+
+  // Catch up when the tab becomes visible again — covers the gap where the
+  // SSE connection was dropped while backgrounded.
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
-        fetchLeads(true)
+        fetchLeads('manual')
       }
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [fetchLeads])
 
-  // Listen for service-worker messages from push-notification clicks.
+  // Service-worker push-notification click: refresh to surface the lead immediately.
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'NEW_LEAD') {
-        fetchLeads(true)
+        fetchLeads('manual')
       }
     }
     navigator.serviceWorker?.addEventListener('message', handleMessage)
@@ -354,14 +366,7 @@ export default function StandaloneMasterLeadsPage() {
       }
 
       // Step 3: refetch leads so the UI reflects new sync status
-      const url = selectedClientId === 'all'
-        ? `/api/admin/master-leads?date=${selectedDate}`
-        : `/api/admin/master-leads?clientId=${selectedClientId}&date=${selectedDate}`
-      const res = await fetch(url)
-      if (res.ok) {
-        const data = await res.json()
-        if (data.leads) setLeads(data.leads)
-      }
+      await fetchLeads('manual')
     } catch (err) {
       setSyncError(err instanceof Error ? err.message : 'Sync failed')
     } finally {
@@ -490,7 +495,7 @@ export default function StandaloneMasterLeadsPage() {
 
                 {/* Refresh */}
                 <button
-                  onClick={() => fetchLeads(true)}
+                  onClick={() => fetchLeads('manual')}
                   disabled={refreshing || loading}
                   title="Refresh leads (auto-refreshes every 20s)"
                   className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-700 disabled:opacity-60"

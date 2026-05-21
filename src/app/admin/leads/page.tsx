@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import {
   Phone,
@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/theme'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
+import { useLeadStream } from '@/hooks/useLeadStream'
 
 interface Lead {
   id: string
@@ -102,7 +103,7 @@ export default function LeadsPage() {
   const [syncProgress, setSyncProgress] = useState<{ done: number; total: number; failed: number } | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
 
-  // Refresh state (manual button + background polling)
+  // Refresh state (manual button + visibility-change catch-up)
   const [refreshing, setRefreshing] = useState(false)
   const [lastRefreshAt, setLastRefreshAt] = useState<number>(Date.now())
   const filterRef = useRef({ selectedClient, selectedStatus })
@@ -120,18 +121,19 @@ export default function LeadsPage() {
       .catch(console.error)
   }, [])
 
-  // Fetch leads for current filters. `silent=true` skips the full-page skeleton
-  // so the list, expanded rows, and inline edits aren't disrupted.
-  const fetchLeads = useCallback(async (silent = false) => {
+  // Fetch the list from REST. `mode === 'initial'` shows the skeleton; otherwise
+  // the spinner on the Refresh button signals progress without blowing away
+  // expanded rows / in-progress edits.
+  const fetchLeads = useCallback(async (mode: 'initial' | 'manual' = 'initial') => {
     const { selectedClient, selectedStatus } = filterRef.current
     const params = new URLSearchParams()
     if (selectedClient) params.set('clientId', selectedClient)
     if (selectedStatus) params.set('status', selectedStatus)
 
-    if (silent) {
-      setRefreshing(true)
-    } else {
+    if (mode === 'initial') {
       setLoading(true)
+    } else {
+      setRefreshing(true)
     }
 
     try {
@@ -144,34 +146,47 @@ export default function LeadsPage() {
     } catch (err) {
       console.error(err)
     } finally {
-      if (silent) {
-        setRefreshing(false)
-      } else {
+      if (mode === 'initial') {
         setLoading(false)
+      } else {
+        setRefreshing(false)
       }
     }
   }, [])
 
   // Initial / filter-change load (shows skeleton)
   useEffect(() => {
-    fetchLeads(false)
+    fetchLeads('initial')
   }, [selectedClient, selectedStatus, fetchLeads])
 
-  // Auto-refresh every 20 seconds (silent, in the background).
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        fetchLeads(true)
-      }
-    }, 20000)
-    return () => clearInterval(interval)
-  }, [fetchLeads])
+  // Real-time push: new leads arrive over SSE and are prepended directly.
+  const streamUrl = useMemo(() => {
+    const params = new URLSearchParams()
+    if (selectedClient) params.set('clientId', selectedClient)
+    if (selectedStatus) params.set('status', selectedStatus)
+    return `/api/leads/stream?${params.toString()}`
+  }, [selectedClient, selectedStatus])
 
-  // Refresh immediately when the tab becomes visible again.
+  const handleStreamedLead = useCallback((lead: Lead) => {
+    setLeads((prev) => (prev.some((l) => l.id === lead.id) ? prev : [lead, ...prev]))
+    setTotal((t) => t + 1)
+    setStats((s) => ({
+      ...s,
+      byStatus: {
+        ...s.byStatus,
+        [lead.status]: (s.byStatus[lead.status] || 0) + 1,
+      },
+    }))
+  }, [])
+
+  useLeadStream<Lead>({ url: streamUrl, onLead: handleStreamedLead })
+
+  // Catch up via REST when the tab returns to the foreground — covers the small
+  // window where the SSE connection was dropped while backgrounded.
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
-        fetchLeads(true)
+        fetchLeads('manual')
       }
     }
     document.addEventListener('visibilitychange', onVisible)
@@ -304,14 +319,7 @@ export default function LeadsPage() {
       }
 
       // Step 3: refetch leads so the new sync status shows up
-      const params = new URLSearchParams()
-      if (selectedClient) params.set('clientId', selectedClient)
-      if (selectedStatus) params.set('status', selectedStatus)
-      const res = await fetch(`/api/leads?${params.toString()}`)
-      if (res.ok) {
-        const data = await res.json()
-        if (Array.isArray(data.leads)) setLeads(data.leads)
-      }
+      await fetchLeads('manual')
     } catch (err) {
       setSyncError(err instanceof Error ? err.message : 'Sync failed')
     } finally {
@@ -456,7 +464,7 @@ export default function LeadsPage() {
 
           {/* Refresh */}
           <button
-            onClick={() => fetchLeads(true)}
+            onClick={() => fetchLeads('manual')}
             disabled={refreshing}
             title={`Last refreshed ${formatRelative(lastRefreshAt)} · auto-refreshes every 20s`}
             className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-xl bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 transition-colors"

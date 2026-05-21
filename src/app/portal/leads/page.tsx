@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Phone,
@@ -29,6 +29,7 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefresh'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
+import { useLeadStream } from '@/hooks/useLeadStream'
 
 interface CallAnalysisSummary {
   id: string
@@ -120,11 +121,12 @@ export default function PortalLeadsPage() {
       })
   }, [router])
 
-  // Function to load leads - used by useEffect and pull-to-refresh
-  const loadLeads = useCallback(async (showLoadingState = true) => {
+  // Load leads from REST. 'initial' shows the skeleton; everything else is silent
+  // (Refresh button, pull-to-refresh, catch-up after visibility change, SW msg).
+  const loadLeads = useCallback(async (mode: 'initial' | 'manual' = 'initial') => {
     if (!session?.authenticated) return
 
-    if (showLoadingState) {
+    if (mode === 'initial') {
       setLoading(true)
       setExpandedLeadId(null)
     } else {
@@ -141,7 +143,7 @@ export default function PortalLeadsPage() {
     } catch (error) {
       console.error('Failed to load leads:', error)
     } finally {
-      if (showLoadingState) {
+      if (mode === 'initial') {
         setLoading(false)
       } else {
         setRefreshing(false)
@@ -151,47 +153,45 @@ export default function PortalLeadsPage() {
 
   // Load leads for selected date
   useEffect(() => {
-    loadLeads(true)
+    loadLeads('initial')
   }, [loadLeads])
 
-  // Auto-refresh every 20 seconds when viewing today's leads
-  useEffect(() => {
+  // Real-time push: new leads stream in and are prepended directly. Only
+  // subscribe when viewing today — older dates can't gain new leads.
+  const todayStr = useMemo(() => {
     const today = new Date()
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  }, [])
+  const streamUrl = useMemo(
+    () => `/api/portal/leads/stream?date=${selectedDate}`,
+    [selectedDate]
+  )
+  const streamEnabled = !!session?.authenticated && selectedDate === todayStr
 
-    // Only auto-refresh if viewing today's date
-    if (selectedDate !== todayStr || !session?.authenticated) {
-      return
-    }
+  const handleStreamedLead = useCallback((lead: Lead) => {
+    setLeads((prev) => (prev.some((l) => l.id === lead.id) ? prev : [lead, ...prev]))
+  }, [])
 
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        loadLeads(false) // Silent refresh
-      }
-    }, 20000) // 20 seconds
+  useLeadStream<Lead>({ url: streamUrl, enabled: streamEnabled, onLead: handleStreamedLead })
 
-    return () => clearInterval(interval)
-  }, [selectedDate, session, loadLeads])
-
-  // Refresh immediately when the tab becomes visible again — fixes the
-  // "I came back to the app and don't see new leads" case where the polling
-  // interval was paused while the tab was backgrounded.
+  // Catch up when the tab becomes visible again — covers the gap where the
+  // SSE connection was dropped while backgrounded.
   useEffect(() => {
     if (!session?.authenticated) return
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
-        loadLeads(false)
+        loadLeads('manual')
       }
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [session, loadLeads])
 
-  // Listen for messages from service worker (notification clicks)
+  // Service-worker push-notification click: refresh to surface the lead immediately.
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'NEW_LEAD') {
-        loadLeads(false) // Refresh leads when notification is clicked
+        loadLeads('manual')
       }
     }
 
@@ -204,7 +204,7 @@ export default function PortalLeadsPage() {
   // Pull-to-refresh
   const { isRefreshing, pullDistance, threshold } = usePullToRefresh({
     onRefresh: async () => {
-      await loadLeads(false)
+      await loadLeads('manual')
     },
   })
 
@@ -343,7 +343,7 @@ export default function PortalLeadsPage() {
 
             {/* Refresh */}
             <button
-              onClick={() => loadLeads(false)}
+              onClick={() => loadLeads('manual')}
               disabled={refreshing || loading}
               title="Refresh leads (auto-refreshes every 20s)"
               className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-700 disabled:opacity-60"
