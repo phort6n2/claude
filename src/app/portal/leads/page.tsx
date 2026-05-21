@@ -20,6 +20,7 @@ import {
   Check,
   CheckCircle2,
   Inbox,
+  RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { NotificationToggle } from '@/components/portal/NotificationToggle'
@@ -101,6 +102,7 @@ export default function PortalLeadsPage() {
   })
   const [showCalendar, setShowCalendar] = useState(false)
   const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
 
   // Check session
   useEffect(() => {
@@ -125,6 +127,8 @@ export default function PortalLeadsPage() {
     if (showLoadingState) {
       setLoading(true)
       setExpandedLeadId(null)
+    } else {
+      setRefreshing(true)
     }
 
     try {
@@ -139,6 +143,8 @@ export default function PortalLeadsPage() {
     } finally {
       if (showLoadingState) {
         setLoading(false)
+      } else {
+        setRefreshing(false)
       }
     }
   }, [session, selectedDate])
@@ -148,7 +154,7 @@ export default function PortalLeadsPage() {
     loadLeads(true)
   }, [loadLeads])
 
-  // Auto-refresh every 30 seconds when viewing today's leads
+  // Auto-refresh every 20 seconds when viewing today's leads
   useEffect(() => {
     const today = new Date()
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
@@ -159,11 +165,27 @@ export default function PortalLeadsPage() {
     }
 
     const interval = setInterval(() => {
-      loadLeads(false) // Silent refresh
-    }, 30000) // 30 seconds
+      if (document.visibilityState === 'visible') {
+        loadLeads(false) // Silent refresh
+      }
+    }, 20000) // 20 seconds
 
     return () => clearInterval(interval)
   }, [selectedDate, session, loadLeads])
+
+  // Refresh immediately when the tab becomes visible again — fixes the
+  // "I came back to the app and don't see new leads" case where the polling
+  // interval was paused while the tab was backgrounded.
+  useEffect(() => {
+    if (!session?.authenticated) return
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        loadLeads(false)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [session, loadLeads])
 
   // Listen for messages from service worker (notification clicks)
   useEffect(() => {
@@ -318,6 +340,17 @@ export default function PortalLeadsPage() {
                 </div>
               </div>
             )}
+
+            {/* Refresh */}
+            <button
+              onClick={() => loadLeads(false)}
+              disabled={refreshing || loading}
+              title="Refresh leads (auto-refreshes every 20s)"
+              className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-700 disabled:opacity-60"
+              aria-label="Refresh leads"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            </button>
           </div>
         </div>
       </div>
