@@ -1,4 +1,14 @@
 {
+  "functions": {
+    "src/app/api/leads/stream/route.ts": {
+      "memory": 512,
+      "maxDuration": 60
+    },
+    "src/app/api/portal/leads/stream/route.ts": {
+      "memory": 512,
+      "maxDuration": 60
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/hourly-publish",
