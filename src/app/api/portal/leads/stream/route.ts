@@ -7,7 +7,10 @@ export const maxDuration = 60
 
 const POLL_INTERVAL_MS = 1500
 const HEARTBEAT_INTERVAL_MS = 15000
-const CLOSE_AFTER_MS = 25000
+// Self-close just under `maxDuration` so the browser's EventSource reconnects
+// cleanly. Longer windows mean fewer reconnect cycles per hour, slightly
+// cheaper in compute overhead.
+const CLOSE_AFTER_MS = 55000
 
 /**
  * SSE endpoint for the client portal. Pushes leads created for the
@@ -126,7 +129,7 @@ export async function GET(request: NextRequest) {
               },
             },
             orderBy: { createdAt: 'desc' },
-            take: 50,
+            take: 25,
           })
           if (newLeads.length > 0) {
             lastSeen = newLeads[0].createdAt
