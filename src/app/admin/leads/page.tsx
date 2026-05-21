@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import {
   Phone,
@@ -21,6 +21,7 @@ import {
   PlayCircle,
   Check,
   Loader2,
+  RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import {
@@ -101,6 +102,12 @@ export default function LeadsPage() {
   const [syncProgress, setSyncProgress] = useState<{ done: number; total: number; failed: number } | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
 
+  // Refresh state (manual button + background polling)
+  const [refreshing, setRefreshing] = useState(false)
+  const [lastRefreshAt, setLastRefreshAt] = useState<number>(Date.now())
+  const filterRef = useRef({ selectedClient, selectedStatus })
+  filterRef.current = { selectedClient, selectedStatus }
+
   // Load clients for filter dropdown
   useEffect(() => {
     fetch('/api/clients')
@@ -113,23 +120,63 @@ export default function LeadsPage() {
       .catch(console.error)
   }, [])
 
-  // Load leads
-  useEffect(() => {
-    setLoading(true)
+  // Fetch leads for current filters. `silent=true` skips the full-page skeleton
+  // so the list, expanded rows, and inline edits aren't disrupted.
+  const fetchLeads = useCallback(async (silent = false) => {
+    const { selectedClient, selectedStatus } = filterRef.current
     const params = new URLSearchParams()
     if (selectedClient) params.set('clientId', selectedClient)
     if (selectedStatus) params.set('status', selectedStatus)
 
-    fetch(`/api/leads?${params.toString()}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setLeads(data.leads || [])
-        setTotal(data.total || 0)
-        setStats(data.stats || { byStatus: {} })
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [selectedClient, selectedStatus])
+    if (silent) {
+      setRefreshing(true)
+    } else {
+      setLoading(true)
+    }
+
+    try {
+      const res = await fetch(`/api/leads?${params.toString()}`)
+      const data = await res.json()
+      setLeads(data.leads || [])
+      setTotal(data.total || 0)
+      setStats(data.stats || { byStatus: {} })
+      setLastRefreshAt(Date.now())
+    } catch (err) {
+      console.error(err)
+    } finally {
+      if (silent) {
+        setRefreshing(false)
+      } else {
+        setLoading(false)
+      }
+    }
+  }, [])
+
+  // Initial / filter-change load (shows skeleton)
+  useEffect(() => {
+    fetchLeads(false)
+  }, [selectedClient, selectedStatus, fetchLeads])
+
+  // Auto-refresh every 20 seconds (silent, in the background).
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchLeads(true)
+      }
+    }, 20000)
+    return () => clearInterval(interval)
+  }, [fetchLeads])
+
+  // Refresh immediately when the tab becomes visible again.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        fetchLeads(true)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [fetchLeads])
 
   // Filter leads by search query (client-side)
   const filteredLeads = leads.filter((lead) => {
@@ -406,6 +453,17 @@ export default function LeadsPage() {
               Clear Filters
             </Button>
           )}
+
+          {/* Refresh */}
+          <button
+            onClick={() => fetchLeads(true)}
+            disabled={refreshing}
+            title={`Last refreshed ${formatRelative(lastRefreshAt)} · auto-refreshes every 20s`}
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-xl bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 transition-colors"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
         </div>
       </div>
 
@@ -483,6 +541,16 @@ export default function LeadsPage() {
       <PoweredByFooter />
     </PageContainer>
   )
+}
+
+function formatRelative(timestamp: number): string {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000)
+  if (seconds < 5) return 'just now'
+  if (seconds < 60) return `${seconds}s ago`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  return `${hours}h ago`
 }
 
 // Helper to get all form data fields for display

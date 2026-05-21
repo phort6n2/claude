@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Phone,
@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   PlayCircle,
   Check,
+  RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
@@ -112,6 +113,9 @@ export default function StandaloneMasterLeadsPage() {
   const [syncProgress, setSyncProgress] = useState<{ done: number; total: number; failed: number } | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
 
+  // Refresh state (manual button + background polling)
+  const [refreshing, setRefreshing] = useState(false)
+
   // Check master leads authorization
   useEffect(() => {
     fetch('/api/admin/master-leads/auth')
@@ -156,56 +160,100 @@ export default function StandaloneMasterLeadsPage() {
     }
   }, [selectedClientId, clients])
 
-  // Load leads for selected client and date
-  useEffect(() => {
-    if (!authenticated) {
+  // Keep latest fetch params in a ref so polling always uses current values.
+  const fetchParamsRef = useRef({ authenticated, selectedClientId, selectedDate })
+  fetchParamsRef.current = { authenticated, selectedClientId, selectedDate }
+
+  // `silent=true` skips the loading skeleton so expanded rows / in-progress edits aren't blown away.
+  const fetchLeads = useCallback(async (silent = false) => {
+    const { authenticated, selectedClientId, selectedDate } = fetchParamsRef.current
+    if (!authenticated || !selectedClientId) {
       setLeads([])
       setSales(null)
       return
     }
 
-    // If no client selected, show empty state (unless "all" is selected)
-    if (!selectedClientId) {
-      setLeads([])
-      setSales(null)
-      return
+    if (silent) {
+      setRefreshing(true)
+    } else {
+      setLoading(true)
+      setExpandedLeadId(null)
     }
-
-    setLoading(true)
-    setExpandedLeadId(null)
 
     const [year, month, day] = selectedDate.split('-').map(Number)
     const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
     const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
 
-    // Build URL - if "all" is selected, don't filter by clientId.
-    // Bump limit well past the default 50 so a busy day shows everything.
     const leadsUrl = selectedClientId === 'all'
       ? `/api/leads?startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}&limit=1000`
       : `/api/leads?clientId=${selectedClientId}&startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}&limit=1000`
 
-    fetch(leadsUrl)
-      .then((res) => res.json())
-      .then((data) => {
-        setLeads(data.leads || [])
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
-
-    // Fetch stats - for "all", don't pass clientId
     const statsUrl = selectedClientId === 'all'
       ? `/api/admin/master-leads/stats`
       : `/api/admin/master-leads/stats?clientId=${selectedClientId}`
 
-    fetch(statsUrl)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.sales) {
-          setSales(data.sales)
-        }
-      })
-      .catch(console.error)
-  }, [selectedClientId, selectedDate, authenticated])
+    try {
+      const [leadsRes, statsRes] = await Promise.all([fetch(leadsUrl), fetch(statsUrl)])
+      const leadsData = await leadsRes.json()
+      setLeads(leadsData.leads || [])
+      if (statsRes.ok) {
+        const statsData = await statsRes.json()
+        if (statsData.sales) setSales(statsData.sales)
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      if (silent) {
+        setRefreshing(false)
+      } else {
+        setLoading(false)
+      }
+    }
+  }, [])
+
+  // Initial load + reload when filters change (shows skeleton).
+  useEffect(() => {
+    fetchLeads(false)
+  }, [selectedClientId, selectedDate, authenticated, fetchLeads])
+
+  // Auto-refresh every 20s when viewing today's leads (the only date that can grow).
+  useEffect(() => {
+    if (!authenticated || !selectedClientId) return
+    const today = new Date()
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    if (selectedDate !== todayStr) return
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchLeads(true)
+      }
+    }, 20000)
+    return () => clearInterval(interval)
+  }, [authenticated, selectedClientId, selectedDate, fetchLeads])
+
+  // Refresh immediately when the tab becomes visible again.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        fetchLeads(true)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [fetchLeads])
+
+  // Listen for service-worker messages from push-notification clicks.
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'NEW_LEAD') {
+        fetchLeads(true)
+      }
+    }
+    navigator.serviceWorker?.addEventListener('message', handleMessage)
+    return () => {
+      navigator.serviceWorker?.removeEventListener('message', handleMessage)
+    }
+  }, [fetchLeads])
 
   function changeDate(days: number) {
     const date = new Date(selectedDate + 'T12:00:00')
@@ -439,6 +487,17 @@ export default function StandaloneMasterLeadsPage() {
                     </div>
                   </div>
                 )}
+
+                {/* Refresh */}
+                <button
+                  onClick={() => fetchLeads(true)}
+                  disabled={refreshing || loading}
+                  title="Refresh leads (auto-refreshes every 20s)"
+                  className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-700 disabled:opacity-60"
+                  aria-label="Refresh leads"
+                >
+                  <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                </button>
               </div>
             </div>
           </div>
