@@ -26,6 +26,7 @@ import {
 import { Button } from '@/components/ui/Button'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
+import { NewLeadsBanner } from '@/components/leads/NewLeadsBanner'
 import { CallCoachingReport } from '@/components/portal/CallCoachingReport'
 import { Inbox } from 'lucide-react'
 
@@ -98,6 +99,7 @@ export default function StandaloneMasterLeadsPage() {
   const [selectedClientId, setSelectedClientId] = useState<string>('all')
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [leads, setLeads] = useState<Lead[]>([])
+  const [pendingLeads, setPendingLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(false)
   const [clientsLoading, setClientsLoading] = useState(true)
   const [sales, setSales] = useState<SalesStats | null>(null)
@@ -163,21 +165,30 @@ export default function StandaloneMasterLeadsPage() {
   // Keep latest fetch params in a ref so polling always uses current values.
   const fetchParamsRef = useRef({ authenticated, selectedClientId, selectedDate })
   fetchParamsRef.current = { authenticated, selectedClientId, selectedDate }
+  // Refs to displayed/pending leads so the poller can diff without re-running.
+  const leadsRef = useRef<Lead[]>([])
+  leadsRef.current = leads
+  const pendingRef = useRef<Lead[]>([])
+  pendingRef.current = pendingLeads
 
-  // `silent=true` skips the loading skeleton so expanded rows / in-progress edits aren't blown away.
-  const fetchLeads = useCallback(async (silent = false) => {
+  // Fetch leads. Modes:
+  //   'initial' — first load / date / client change: shows skeleton, clears pending
+  //   'manual'  — Refresh button: silent, clears pending, replaces list
+  //   'poll'    — background poll: queues new leads, updates existing in place
+  const fetchLeads = useCallback(async (mode: 'initial' | 'manual' | 'poll' = 'initial') => {
     const { authenticated, selectedClientId, selectedDate } = fetchParamsRef.current
     if (!authenticated || !selectedClientId) {
       setLeads([])
+      setPendingLeads([])
       setSales(null)
       return
     }
 
-    if (silent) {
-      setRefreshing(true)
-    } else {
+    if (mode === 'initial') {
       setLoading(true)
       setExpandedLeadId(null)
+    } else {
+      setRefreshing(true)
     }
 
     const [year, month, day] = selectedDate.split('-').map(Number)
@@ -195,7 +206,25 @@ export default function StandaloneMasterLeadsPage() {
     try {
       const [leadsRes, statsRes] = await Promise.all([fetch(leadsUrl), fetch(statsUrl)])
       const leadsData = await leadsRes.json()
-      setLeads(leadsData.leads || [])
+      const incoming: Lead[] = leadsData.leads || []
+
+      if (mode === 'poll') {
+        const knownIds = new Set([
+          ...leadsRef.current.map((l) => l.id),
+          ...pendingRef.current.map((l) => l.id),
+        ])
+        const newOnes = incoming.filter((l) => !knownIds.has(l.id))
+        const incomingById = new Map(incoming.map((l) => [l.id, l]))
+        setLeads((prev) => prev.map((l) => incomingById.get(l.id) ?? l))
+        setPendingLeads((prev) => {
+          const updated = prev.map((l) => incomingById.get(l.id) ?? l)
+          return newOnes.length > 0 ? [...newOnes, ...updated] : updated
+        })
+      } else {
+        setLeads(incoming)
+        setPendingLeads([])
+      }
+
       if (statsRes.ok) {
         const statsData = await statsRes.json()
         if (statsData.sales) setSales(statsData.sales)
@@ -203,20 +232,25 @@ export default function StandaloneMasterLeadsPage() {
     } catch (err) {
       console.error(err)
     } finally {
-      if (silent) {
-        setRefreshing(false)
-      } else {
+      if (mode === 'initial') {
         setLoading(false)
+      } else {
+        setRefreshing(false)
       }
     }
   }, [])
 
+  const showPending = useCallback(() => {
+    setLeads((prev) => [...pendingRef.current, ...prev])
+    setPendingLeads([])
+  }, [])
+
   // Initial load + reload when filters change (shows skeleton).
   useEffect(() => {
-    fetchLeads(false)
+    fetchLeads('initial')
   }, [selectedClientId, selectedDate, authenticated, fetchLeads])
 
-  // Auto-refresh every 20s when viewing today's leads (the only date that can grow).
+  // Auto-poll every 20s when viewing today's leads (the only date that can grow).
   useEffect(() => {
     if (!authenticated || !selectedClientId) return
     const today = new Date()
@@ -225,17 +259,17 @@ export default function StandaloneMasterLeadsPage() {
 
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        fetchLeads(true)
+        fetchLeads('poll')
       }
     }, 20000)
     return () => clearInterval(interval)
   }, [authenticated, selectedClientId, selectedDate, fetchLeads])
 
-  // Refresh immediately when the tab becomes visible again.
+  // Poll immediately when the tab becomes visible again.
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
-        fetchLeads(true)
+        fetchLeads('poll')
       }
     }
     document.addEventListener('visibilitychange', onVisible)
@@ -246,7 +280,7 @@ export default function StandaloneMasterLeadsPage() {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'NEW_LEAD') {
-        fetchLeads(true)
+        fetchLeads('poll')
       }
     }
     navigator.serviceWorker?.addEventListener('message', handleMessage)
@@ -354,14 +388,7 @@ export default function StandaloneMasterLeadsPage() {
       }
 
       // Step 3: refetch leads so the UI reflects new sync status
-      const url = selectedClientId === 'all'
-        ? `/api/admin/master-leads?date=${selectedDate}`
-        : `/api/admin/master-leads?clientId=${selectedClientId}&date=${selectedDate}`
-      const res = await fetch(url)
-      if (res.ok) {
-        const data = await res.json()
-        if (data.leads) setLeads(data.leads)
-      }
+      await fetchLeads('manual')
     } catch (err) {
       setSyncError(err instanceof Error ? err.message : 'Sync failed')
     } finally {
@@ -490,7 +517,7 @@ export default function StandaloneMasterLeadsPage() {
 
                 {/* Refresh */}
                 <button
-                  onClick={() => fetchLeads(true)}
+                  onClick={() => fetchLeads('manual')}
                   disabled={refreshing || loading}
                   title="Refresh leads (auto-refreshes every 20s)"
                   className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-700 disabled:opacity-60"
@@ -552,6 +579,11 @@ export default function StandaloneMasterLeadsPage() {
                 )}
               </div>
             )}
+          </div>
+
+          {/* New leads banner */}
+          <div className="max-w-3xl mx-auto px-4">
+            <NewLeadsBanner count={pendingLeads.length} onClick={showPending} topOffset={96} />
           </div>
 
           {/* Leads List */}

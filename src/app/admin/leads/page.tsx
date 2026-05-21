@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/theme'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
+import { NewLeadsBanner } from '@/components/leads/NewLeadsBanner'
 
 interface Lead {
   id: string
@@ -86,6 +87,7 @@ const STATUS_OPTIONS = Object.entries(STATUS_CONFIG).map(([value, config]) => ({
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([])
+  const [pendingLeads, setPendingLeads] = useState<Lead[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
@@ -107,6 +109,12 @@ export default function LeadsPage() {
   const [lastRefreshAt, setLastRefreshAt] = useState<number>(Date.now())
   const filterRef = useRef({ selectedClient, selectedStatus })
   filterRef.current = { selectedClient, selectedStatus }
+  // Refs to latest displayed/pending IDs so the poller can diff without re-creating
+  // the callback every render.
+  const leadsRef = useRef<Lead[]>([])
+  leadsRef.current = leads
+  const pendingRef = useRef<Lead[]>([])
+  pendingRef.current = pendingLeads
 
   // Load clients for filter dropdown
   useEffect(() => {
@@ -120,58 +128,85 @@ export default function LeadsPage() {
       .catch(console.error)
   }, [])
 
-  // Fetch leads for current filters. `silent=true` skips the full-page skeleton
-  // so the list, expanded rows, and inline edits aren't disrupted.
-  const fetchLeads = useCallback(async (silent = false) => {
+  // Fetch leads. Three modes:
+  //   'initial' — full load with skeleton (mount / filter change)
+  //   'manual'  — full load without skeleton (Refresh button); clears pending queue
+  //   'poll'    — background diff: queue brand-new leads, update existing in place
+  const fetchLeads = useCallback(async (mode: 'initial' | 'manual' | 'poll' = 'initial') => {
     const { selectedClient, selectedStatus } = filterRef.current
     const params = new URLSearchParams()
     if (selectedClient) params.set('clientId', selectedClient)
     if (selectedStatus) params.set('status', selectedStatus)
 
-    if (silent) {
-      setRefreshing(true)
-    } else {
+    if (mode === 'initial') {
       setLoading(true)
+    } else {
+      setRefreshing(true)
     }
 
     try {
       const res = await fetch(`/api/leads?${params.toString()}`)
       const data = await res.json()
-      setLeads(data.leads || [])
+      const incoming: Lead[] = data.leads || []
+
+      if (mode === 'poll') {
+        const knownIds = new Set([
+          ...leadsRef.current.map((l) => l.id),
+          ...pendingRef.current.map((l) => l.id),
+        ])
+        const newOnes = incoming.filter((l) => !knownIds.has(l.id))
+        const incomingById = new Map(incoming.map((l) => [l.id, l]))
+        // Update any visible/pending leads in place (status, sale value, sync flags).
+        setLeads((prev) => prev.map((l) => incomingById.get(l.id) ?? l))
+        setPendingLeads((prev) => {
+          const updated = prev.map((l) => incomingById.get(l.id) ?? l)
+          return newOnes.length > 0 ? [...newOnes, ...updated] : updated
+        })
+      } else {
+        setLeads(incoming)
+        setPendingLeads([])
+      }
+
       setTotal(data.total || 0)
       setStats(data.stats || { byStatus: {} })
       setLastRefreshAt(Date.now())
     } catch (err) {
       console.error(err)
     } finally {
-      if (silent) {
-        setRefreshing(false)
-      } else {
+      if (mode === 'initial') {
         setLoading(false)
+      } else {
+        setRefreshing(false)
       }
     }
   }, [])
 
+  // User taps the banner: optimistically prepend pending leads to the visible list.
+  const showPending = useCallback(() => {
+    setLeads((prev) => [...pendingRef.current, ...prev])
+    setPendingLeads([])
+  }, [])
+
   // Initial / filter-change load (shows skeleton)
   useEffect(() => {
-    fetchLeads(false)
+    fetchLeads('initial')
   }, [selectedClient, selectedStatus, fetchLeads])
 
-  // Auto-refresh every 20 seconds (silent, in the background).
+  // Auto-poll every 20 seconds in the background.
   useEffect(() => {
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        fetchLeads(true)
+        fetchLeads('poll')
       }
     }, 20000)
     return () => clearInterval(interval)
   }, [fetchLeads])
 
-  // Refresh immediately when the tab becomes visible again.
+  // Poll immediately when the tab becomes visible again.
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
-        fetchLeads(true)
+        fetchLeads('poll')
       }
     }
     document.addEventListener('visibilitychange', onVisible)
@@ -304,14 +339,7 @@ export default function LeadsPage() {
       }
 
       // Step 3: refetch leads so the new sync status shows up
-      const params = new URLSearchParams()
-      if (selectedClient) params.set('clientId', selectedClient)
-      if (selectedStatus) params.set('status', selectedStatus)
-      const res = await fetch(`/api/leads?${params.toString()}`)
-      if (res.ok) {
-        const data = await res.json()
-        if (Array.isArray(data.leads)) setLeads(data.leads)
-      }
+      await fetchLeads('manual')
     } catch (err) {
       setSyncError(err instanceof Error ? err.message : 'Sync failed')
     } finally {
@@ -456,7 +484,7 @@ export default function LeadsPage() {
 
           {/* Refresh */}
           <button
-            onClick={() => fetchLeads(true)}
+            onClick={() => fetchLeads('manual')}
             disabled={refreshing}
             title={`Last refreshed ${formatRelative(lastRefreshAt)} · auto-refreshes every 20s`}
             className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-xl bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 transition-colors"
@@ -503,6 +531,9 @@ export default function LeadsPage() {
           </div>
         )
       })()}
+
+      {/* New leads banner — appears when background polling finds new leads */}
+      <NewLeadsBanner count={pendingLeads.length} onClick={showPending} />
 
       {/* Leads List - Accordion Style */}
       {filteredLeads.length === 0 ? (

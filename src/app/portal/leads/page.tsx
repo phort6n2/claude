@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Phone,
@@ -29,6 +29,7 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefresh'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
+import { NewLeadsBanner } from '@/components/leads/NewLeadsBanner'
 
 interface CallAnalysisSummary {
   id: string
@@ -94,6 +95,7 @@ export default function PortalLeadsPage() {
   const router = useRouter()
   const [session, setSession] = useState<Session | null>(null)
   const [leads, setLeads] = useState<Lead[]>([])
+  const [pendingLeads, setPendingLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [sales, setSales] = useState<SalesStats | null>(null)
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -120,11 +122,20 @@ export default function PortalLeadsPage() {
       })
   }, [router])
 
-  // Function to load leads - used by useEffect and pull-to-refresh
-  const loadLeads = useCallback(async (showLoadingState = true) => {
+  // Refs so the poller can diff against latest state without re-creating the callback.
+  const leadsRef = useRef<Lead[]>([])
+  leadsRef.current = leads
+  const pendingRef = useRef<Lead[]>([])
+  pendingRef.current = pendingLeads
+
+  // Three modes:
+  //   'initial' — first load / date change: shows skeleton, clears pending
+  //   'manual'  — Refresh button / pull-to-refresh: silent, replaces list, clears pending
+  //   'poll'    — background poll: queues new leads, updates existing in place
+  const loadLeads = useCallback(async (mode: 'initial' | 'manual' | 'poll' = 'initial') => {
     if (!session?.authenticated) return
 
-    if (showLoadingState) {
+    if (mode === 'initial') {
       setLoading(true)
       setExpandedLeadId(null)
     } else {
@@ -134,14 +145,32 @@ export default function PortalLeadsPage() {
     try {
       const res = await fetch(`/api/portal/leads?date=${selectedDate}&limit=1000`)
       const data = await res.json()
-      setLeads(data.leads || [])
+      const incoming: Lead[] = data.leads || []
+
+      if (mode === 'poll') {
+        const knownIds = new Set([
+          ...leadsRef.current.map((l) => l.id),
+          ...pendingRef.current.map((l) => l.id),
+        ])
+        const newOnes = incoming.filter((l) => !knownIds.has(l.id))
+        const incomingById = new Map(incoming.map((l) => [l.id, l]))
+        setLeads((prev) => prev.map((l) => incomingById.get(l.id) ?? l))
+        setPendingLeads((prev) => {
+          const updated = prev.map((l) => incomingById.get(l.id) ?? l)
+          return newOnes.length > 0 ? [...newOnes, ...updated] : updated
+        })
+      } else {
+        setLeads(incoming)
+        setPendingLeads([])
+      }
+
       if (data.sales) {
         setSales(data.sales)
       }
     } catch (error) {
       console.error('Failed to load leads:', error)
     } finally {
-      if (showLoadingState) {
+      if (mode === 'initial') {
         setLoading(false)
       } else {
         setRefreshing(false)
@@ -149,38 +178,42 @@ export default function PortalLeadsPage() {
     }
   }, [session, selectedDate])
 
+  const showPending = useCallback(() => {
+    setLeads((prev) => [...pendingRef.current, ...prev])
+    setPendingLeads([])
+  }, [])
+
   // Load leads for selected date
   useEffect(() => {
-    loadLeads(true)
+    loadLeads('initial')
   }, [loadLeads])
 
-  // Auto-refresh every 20 seconds when viewing today's leads
+  // Auto-poll every 20s when viewing today's leads
   useEffect(() => {
     const today = new Date()
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
-    // Only auto-refresh if viewing today's date
     if (selectedDate !== todayStr || !session?.authenticated) {
       return
     }
 
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        loadLeads(false) // Silent refresh
+        loadLeads('poll')
       }
-    }, 20000) // 20 seconds
+    }, 20000)
 
     return () => clearInterval(interval)
   }, [selectedDate, session, loadLeads])
 
-  // Refresh immediately when the tab becomes visible again — fixes the
+  // Poll immediately when the tab becomes visible again — fixes the
   // "I came back to the app and don't see new leads" case where the polling
   // interval was paused while the tab was backgrounded.
   useEffect(() => {
     if (!session?.authenticated) return
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
-        loadLeads(false)
+        loadLeads('poll')
       }
     }
     document.addEventListener('visibilitychange', onVisible)
@@ -191,7 +224,7 @@ export default function PortalLeadsPage() {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'NEW_LEAD') {
-        loadLeads(false) // Refresh leads when notification is clicked
+        loadLeads('poll')
       }
     }
 
@@ -201,10 +234,10 @@ export default function PortalLeadsPage() {
     }
   }, [loadLeads])
 
-  // Pull-to-refresh
+  // Pull-to-refresh — explicit user gesture flushes any pending queue.
   const { isRefreshing, pullDistance, threshold } = usePullToRefresh({
     onRefresh: async () => {
-      await loadLeads(false)
+      await loadLeads('manual')
     },
   })
 
@@ -343,7 +376,7 @@ export default function PortalLeadsPage() {
 
             {/* Refresh */}
             <button
-              onClick={() => loadLeads(false)}
+              onClick={() => loadLeads('manual')}
               disabled={refreshing || loading}
               title="Refresh leads (auto-refreshes every 20s)"
               className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-700 disabled:opacity-60"
@@ -360,6 +393,11 @@ export default function PortalLeadsPage() {
         <p className="text-xs text-gray-600">
           {loading ? 'Loading...' : `${leads.length} lead${leads.length !== 1 ? 's' : ''}`}
         </p>
+      </div>
+
+      {/* New leads banner */}
+      <div className="max-w-3xl mx-auto px-4">
+        <NewLeadsBanner count={pendingLeads.length} onClick={showPending} topOffset={88} />
       </div>
 
       {/* Leads List */}
