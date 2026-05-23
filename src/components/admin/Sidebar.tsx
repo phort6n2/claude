@@ -20,6 +20,7 @@ import {
   Radio,
   Smartphone,
   ExternalLink,
+  PhoneCall,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -48,6 +49,7 @@ const navigation: NavSection[] = [
       { name: 'Clients', href: '/admin/clients', icon: Users },
       { name: 'Leads', href: '/admin/leads', icon: UserCheck },
       { name: 'Master Leads', href: '/master-leads', icon: Smartphone, external: true },
+      { name: 'Call Coaching', href: '/admin/call-coaching-insights', icon: PhoneCall },
     ],
   },
   {
