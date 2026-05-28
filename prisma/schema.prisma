@@ -1123,6 +1123,16 @@ model Lead {
   offlineConversionSentAt  DateTime?
   googleSyncError          String? // Last sync error if any
 
+  // Same-day deduplication. When a customer contacts twice in one day (e.g.
+  // form submit + phone call), the second contact creates a Lead row pointing
+  // at the first via duplicateOfLeadId. Status/saleValue live on the canonical
+  // (the row whose duplicateOfLeadId is null). The list views collapse
+  // duplicates under the canonical so daily counts aren't inflated, but each
+  // contact event remains as its own row.
+  duplicateOfLeadId String?
+  duplicateOf       Lead?   @relation("LeadDuplicates", fields: [duplicateOfLeadId], references: [id], onDelete: SetNull)
+  duplicates        Lead[]  @relation("LeadDuplicates")
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1133,6 +1143,8 @@ model Lead {
   @@index([email])
   @@index([createdAt])
   @@index([offlineConversionSent])
+  @@index([duplicateOfLeadId])
+  @@index([clientId, phone, createdAt])
 }
 
 enum LeadSource {

@@ -38,7 +38,11 @@ export async function GET(request: NextRequest) {
 
   // Build the date-range filter once. New leads must be both within the page's
   // date filter (if any) AND newer than `lastSeen`.
-  const baseWhere: Record<string, unknown> = {}
+  const baseWhere: Record<string, unknown> = {
+    // Same-day duplicates are attached to their canonical via the list API's
+    // duplicates relation — don't stream them as separate top-level rows.
+    duplicateOfLeadId: null,
+  }
   if (clientId) baseWhere.clientId = clientId
   if (status) baseWhere.status = status
   const dateRange: Record<string, Date> = {}

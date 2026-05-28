@@ -101,7 +101,13 @@ export async function GET(request: NextRequest) {
         try {
           const createdAt: Record<string, Date> = { gt: lastSeen, ...dateRange }
           const newLeads = await prisma.lead.findMany({
-            where: { clientId: session.clientId, createdAt },
+            where: {
+              clientId: session.clientId,
+              createdAt,
+              // Same-day duplicates get attached to a canonical row already in
+              // the list — don't stream them as separate top-level rows.
+              duplicateOfLeadId: null,
+            },
             select: {
               id: true,
               email: true,

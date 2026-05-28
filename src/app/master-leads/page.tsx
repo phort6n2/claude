@@ -37,6 +37,15 @@ interface CallAnalysisSummary {
   outcome: string | null
 }
 
+interface LeadDuplicate {
+  id: string
+  source: string
+  createdAt: string
+  callRecordingUrl: string | null
+  formName: string | null
+  callAnalysis: CallAnalysisSummary | null
+}
+
 interface Lead {
   id: string
   email: string | null
@@ -55,6 +64,7 @@ interface Lead {
   formData: Record<string, unknown> | null
   enhancedConversionSent: boolean
   offlineConversionSent: boolean
+  duplicates: LeadDuplicate[]
   callAnalysis: CallAnalysisSummary | null
   client?: {
     id: string
@@ -767,7 +777,9 @@ function getAllFormFields(lead: Lead): Array<{ label: string; value: string }> {
     'recordingUrl', 'recording_url', 'callRecordingUrl', 'call_recording_url', 'audioUrl', 'audio_url',
     // Skip vehicle/service fields (shown combined in Lead Details section)
     'vehicle', 'Vehicle', 'vehicle_year', 'Vehicle Year', 'vehicle_make', 'Vehicle Make',
-    'vehicle_model', 'Vehicle Model', 'interested_in', 'Interested In', 'Interested In:'
+    'vehicle_model', 'Vehicle Model', 'interested_in', 'Interested In', 'Interested In:',
+    // Internal HighLevel identifier — not useful to display
+    'key', 'Key',
   ])
 
   // Label formatting helper
@@ -823,6 +835,71 @@ function CallScoreChip({ analysis }: { analysis: CallAnalysisSummary }) {
     >
       {score}
     </span>
+  )
+}
+
+function ContactHistory({ lead }: { lead: Lead }) {
+  const events = [
+    {
+      id: lead.id,
+      source: lead.source,
+      createdAt: lead.createdAt,
+      callRecordingUrl: lead.callRecordingUrl,
+      formName: lead.formName,
+      callAnalysis: lead.callAnalysis,
+    },
+    ...(lead.duplicates ?? []).map((d) => ({
+      id: d.id,
+      source: d.source,
+      createdAt: d.createdAt,
+      callRecordingUrl: d.callRecordingUrl,
+      formName: d.formName,
+      callAnalysis: d.callAnalysis,
+    })),
+  ].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  )
+
+  return (
+    <div className="pt-3">
+      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+        Contact History
+      </p>
+      <ol className="space-y-1.5">
+        {events.map((e, i) => (
+          <li
+            key={e.id}
+            className="flex items-center gap-2 text-sm bg-gray-50 rounded px-3 py-2"
+          >
+            <span className="font-mono text-xs text-gray-500 w-12">
+              {new Date(e.createdAt).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+              })}
+            </span>
+            <span
+              className={`text-xs font-medium px-1.5 py-0.5 rounded ${
+                e.source === 'PHONE'
+                  ? 'bg-violet-100 text-violet-700'
+                  : 'bg-blue-100 text-blue-700'
+              }`}
+            >
+              {e.source === 'PHONE' ? 'Call' : 'Form'}
+            </span>
+            <span className="text-gray-700">
+              {e.formName ?? (e.source === 'PHONE' ? 'Inbound call' : 'Submission')}
+            </span>
+            {e.callRecordingUrl && (
+              <PlayCircle className="h-3.5 w-3.5 text-violet-500 ml-auto" />
+            )}
+            {e.callAnalysis && <CallScoreChip analysis={e.callAnalysis} />}
+            {i === 0 && (
+              <span className="text-[10px] text-gray-400 ml-auto">First contact</span>
+            )}
+          </li>
+        ))}
+      </ol>
+    </div>
   )
 }
 
@@ -956,6 +1033,14 @@ function LeadRow({
                 <PlayCircle className="h-4 w-4 text-violet-500 flex-shrink-0" />
               )}
               {lead.callAnalysis && <CallScoreChip analysis={lead.callAnalysis} />}
+              {lead.duplicates && lead.duplicates.length > 0 && (
+                <span
+                  className="text-[10px] font-medium bg-blue-100 text-blue-700 rounded px-1.5 py-0.5"
+                  title="This person contacted multiple times today"
+                >
+                  +{lead.duplicates.length} contact{lead.duplicates.length === 1 ? '' : 's'}
+                </span>
+              )}
               {lead.gclid && (
                 <span className="text-xs text-emerald-600 font-medium">Ads</span>
               )}
@@ -1000,6 +1085,9 @@ function LeadRow({
         {/* Expanded Content */}
         {isExpanded && (
           <div className="px-4 pb-4 space-y-4 border-t border-gray-100">
+            {lead.duplicates && lead.duplicates.length > 0 && (
+              <ContactHistory lead={lead} />
+            )}
             {/* Call Recording + Coaching Report */}
             {(lead.callRecordingUrl || lead.callAnalysis) && (
               <div className="pt-3">
