@@ -39,8 +39,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Build where clause - always filter by client
+    // Only return canonical leads (not their duplicate contacts). Same-day
+    // duplicates live in the `duplicates` relation so each canonical can
+    // surface its full contact timeline.
     const where: Record<string, unknown> = {
       clientId: session.clientId,
+      duplicateOfLeadId: null,
     }
 
     if (status) {
@@ -90,6 +94,30 @@ export async function GET(request: NextRequest) {
               outcome: true,
             },
           },
+          // Same-day duplicate contacts (form submits or extra calls from the
+          // same person on the same day). Each row keeps its own recording,
+          // formData, and createdAt so the timeline view shows every contact
+          // event.
+          duplicates: {
+            orderBy: { createdAt: 'asc' },
+            select: {
+              id: true,
+              source: true,
+              createdAt: true,
+              callRecordingUrl: true,
+              formName: true,
+              callAnalyses: {
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+                select: {
+                  id: true,
+                  status: true,
+                  score: true,
+                  outcome: true,
+                },
+              },
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
         take: limit,
@@ -98,11 +126,18 @@ export async function GET(request: NextRequest) {
       prisma.lead.count({ where }),
     ])
 
-    // Flatten the most-recent CallAnalysis onto each lead so the client doesn't
-    // have to deal with the nested array.
+    // Flatten the most-recent CallAnalysis onto each lead + its duplicates so
+    // the client doesn't have to deal with the nested arrays.
     const leadsWithAnalysis = leads.map((lead) => {
-      const { callAnalyses, ...rest } = lead
-      return { ...rest, callAnalysis: callAnalyses[0] ?? null }
+      const { callAnalyses, duplicates, ...rest } = lead
+      return {
+        ...rest,
+        callAnalysis: callAnalyses[0] ?? null,
+        duplicates: duplicates.map((d) => {
+          const { callAnalyses: dca, ...dRest } = d
+          return { ...dRest, callAnalysis: dca[0] ?? null }
+        }),
+      }
     })
 
     // Get summary stats for this client

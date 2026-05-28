@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { sendEnhancedConversion } from '@/lib/google-ads'
 import { notifyNewLead } from '@/lib/push-notifications'
 import { kickOffCallAnalysis } from '@/lib/call-analysis/queue'
+import { findSameDayDuplicateCanonical } from '@/lib/lead-dedup'
 import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
     // Find the client
     const client = await prisma.client.findUnique({
       where: { slug: clientSlug },
-      select: { id: true, businessName: true, callCoachingEnabled: true },
+      select: { id: true, businessName: true, callCoachingEnabled: true, timezone: true },
     })
 
     if (!client) {
@@ -303,6 +304,29 @@ export async function POST(request: NextRequest) {
       console.log(`[HighLevel Webhook] PHONE LEAD - Recording URL: ${callRecordingUrl || 'not found'}`)
     }
 
+    // Same-day dedup: if this customer already contacted us today, the new
+    // row is created normally but linked back to the canonical so counts
+    // aren't inflated. Status/saleValue still live on the canonical.
+    let duplicateOfLeadId: string | null = null
+    try {
+      const canonical = await findSameDayDuplicateCanonical({
+        clientId: client.id,
+        phone,
+        email,
+        highlevelContactId,
+        timezone: client.timezone ?? undefined,
+      })
+      if (canonical) {
+        duplicateOfLeadId = canonical.id
+        console.log(
+          `[HighLevel Webhook] Same-day duplicate detected — linking to canonical ${canonical.id}`
+        )
+      }
+    } catch (err) {
+      // Dedup lookup is best-effort; never fail the webhook on it.
+      console.warn('[HighLevel Webhook] Dedup lookup failed:', err)
+    }
+
     // Create the lead
     const lead = await prisma.lead.create({
       data: {
@@ -331,10 +355,15 @@ export async function POST(request: NextRequest) {
         highlevelContactId,
         callRecordingUrl,
         status: 'NEW',
+        duplicateOfLeadId,
       },
     })
 
-    console.log(`[HighLevel Webhook] Created lead ${lead.id} for ${client.businessName}`)
+    console.log(
+      `[HighLevel Webhook] Created lead ${lead.id} for ${client.businessName}${
+        duplicateOfLeadId ? ` (duplicate of ${duplicateOfLeadId})` : ''
+      }`
+    )
 
     // If this is a phone lead with a recording URL, kick off call coaching
     // analysis (only when the client has the feature enabled). Stays a
