@@ -22,7 +22,9 @@ import {
   PlayCircle,
   Check,
   RefreshCw,
+  BarChart3,
 } from 'lucide-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
@@ -452,6 +454,13 @@ export default function StandaloneMasterLeadsPage() {
                 <p className="text-xs text-gray-600">Master Leads</p>
               </div>
             </div>
+            <Link
+              href="/master-leads/dashboard"
+              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 px-3 py-1.5 rounded-md border border-blue-200 hover:bg-blue-50 transition-colors"
+            >
+              <BarChart3 className="h-3.5 w-3.5" />
+              Dashboard
+            </Link>
           </div>
         </div>
       </header>
