@@ -91,7 +91,7 @@ Decide: build-new (spec's SnowSEO+n8n) vs. extend this existing platform.
     | Article/BlogPosting schema | ✅ | Rank Math auto | NO |
     | LocalBusiness + NAP schema | ✅ rich, site-wide | Rank Math Local | NO |
     | FAQPage schema | ❌ MISSING (SnowSEO's didn't transfer) | — | YES |
-    | Featured image | ✅ uploaded, generic AI | SnowSEO | YES (Renderform override) |
+    | Featured image | ✅ uploaded (SnowSEO's) | SnowSEO | NO — user keeps SnowSEO's image |
     | In-content internal links | ❌ body has none; nav/footer cover structure | theme | OPTIONAL |
     | Slug | ✅ clean | SnowSEO | NO |
   - **NAP obtained free from site schema:** Auto Glass Kings, +1-949-775-3791,
@@ -104,10 +104,13 @@ Decide: build-new (spec's SnowSEO+n8n) vs. extend this existing platform.
 
 ## CONFIRMED Phase 1 on-page node list (post-verification)
 1. **FAQPage schema** — inject (Rank Math FAQ block or JSON-LD) from SnowSEO's 8 PAA Q&As.
-2. **Renderform** branded featured-image override (PAA question + NAP) → set WP featured image.
-3. (Optional) in-content internal links to service/city pages — structural nav already strong.
-Meta, Article schema, and LocalBusiness/NAP are ALREADY handled by Rank Math → no nodes.
+   *(the one real on-page gap)*
+2. (Optional) in-content internal links to service/city pages — structural nav already strong.
+DECISION: **Renderform DROPPED** — user keeps SnowSEO's featured image. No Renderform
+credential/component; remove api.renderform.io from allowlist eventually (harmless if left).
+Meta, Article schema, LocalBusiness/NAP, featured image = ALREADY good → no nodes.
 Trigger seam = SnowSEO `publish_article` "webhook" provider → n8n Webhook node.
+NET: Phase 1 on-page completion is effectively ONE meaningful node (FAQ schema) + the seam.
 - **§3.2 (trigger)**: NATIVE WEBHOOK CONFIRMED — `publish_article` supports a `"webhook"`
   provider (alongside wordpress/shopify/webflow/ghost/framer). So the seam = configure a
   SnowSEO "webhook" publish target pointing at an n8n Webhook node; SnowSEO POSTs the article
