@@ -83,14 +83,31 @@ Decide: build-new (spec's SnowSEO+n8n) vs. extend this existing platform.
   - Publisher logo in schema is just a google favicon (low quality) — improvable.
   - PAA question for Renderform/data contract (primary prompt):
     "What is the typical cost of auto glass replacement in Orange County?"
-  - ⚠️ OPEN VERIFY (no plugin): does SnowSEO's jsonLd + meta actually land in the WP <head>?
-    WP core REST can't set Yoast/RankMath meta or head JSON-LD, so without the plugin these
-    MAY be dropped/inlined into body. Can't fetch from here (autoglasskings.com not
-    allowlisted + draft not public). Resolve by: user checks draft 1931, OR allowlist
-    autoglasskings.com + WP app-password so I query the post, OR publish public live.
-  - Confirmed n8n on-page nodes regardless of plugin: (1) Renderform featured-image override,
-    (2) internal links, (3) LocalBusiness/NAP schema. FAQ-schema + meta nodes are
-    CONDITIONAL on the verify above.
+  - ✅ VERIFIED against LIVE rendered HTML (post 1931 published live, autoglasskings.com
+    allowlisted). The site runs **Rank Math SEO**, which already covers most on-page items:
+    | Item | In live <head>? | Source | n8n node? |
+    |---|---|---|---|
+    | Meta title+desc | ✅ (matches SnowSEO) | SnowSEO→Rank Math | NO |
+    | Article/BlogPosting schema | ✅ | Rank Math auto | NO |
+    | LocalBusiness + NAP schema | ✅ rich, site-wide | Rank Math Local | NO |
+    | FAQPage schema | ❌ MISSING (SnowSEO's didn't transfer) | — | YES |
+    | Featured image | ✅ uploaded, generic AI | SnowSEO | YES (Renderform override) |
+    | In-content internal links | ❌ body has none; nav/footer cover structure | theme | OPTIONAL |
+    | Slug | ✅ clean | SnowSEO | NO |
+  - **NAP obtained free from site schema:** Auto Glass Kings, +1-949-775-3791,
+    5842 W McFadden Ave Suite P, Huntington Beach, CA 92649; geo 33.736849/-118.027157;
+    priceRange $$-$$$$; ratingValue 5.0. (Use for Renderform card + Airtable.)
+  - Note: SnowSEO writes Rank Math meta fields even WITHOUT its WP plugin (meta transferred).
+    FAQ schema needs a Rank Math FAQ block / explicit JSON-LD — didn't transfer via plain publish.
+  - Minor: duplicate og:title/og:description (theme + Rank Math); in-body images hotlink to
+    assets.snowseo.com (not uploaded). Cleanup items, not blockers.
+
+## CONFIRMED Phase 1 on-page node list (post-verification)
+1. **FAQPage schema** — inject (Rank Math FAQ block or JSON-LD) from SnowSEO's 8 PAA Q&As.
+2. **Renderform** branded featured-image override (PAA question + NAP) → set WP featured image.
+3. (Optional) in-content internal links to service/city pages — structural nav already strong.
+Meta, Article schema, and LocalBusiness/NAP are ALREADY handled by Rank Math → no nodes.
+Trigger seam = SnowSEO `publish_article` "webhook" provider → n8n Webhook node.
 - **§3.2 (trigger)**: NATIVE WEBHOOK CONFIRMED — `publish_article` supports a `"webhook"`
   provider (alongside wordpress/shopify/webflow/ghost/framer). So the seam = configure a
   SnowSEO "webhook" publish target pointing at an n8n Webhook node; SnowSEO POSTs the article
