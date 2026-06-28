@@ -76,6 +76,17 @@ Decide: build-new (spec's SnowSEO+n8n) vs. extend this existing platform.
 - **OPEN DECISION (paused here)**: install SnowSEO WP plugin before the test (recommended —
   production setup, likely removes schema+meta n8n nodes) vs. test now on plain REST.
 - **Credit-consuming SnowSEO actions require explicit user permission before each call.**
+- **DECISION: test WITHOUT the SnowSEO WP plugin** — user is already connected to WP and
+  can't add the plugin; measure plain-REST publishing, revisit plugin later if needed.
+- **Topic clusters (5, from onboarding authority map):** Auto Glass Repair / auto glass
+  replacement / mobile windshield repair / windshield repair / Windshield Replacement
+  (each 10 keywords + 10 prompts; 50 kw total). AI-visibility baseline avg 6.8
+  ("auto glass replacement" cluster already 34). 4 prompts tracked, initial audit done.
+- **Content calendar:** user created an automated content calendar in SnowSEO, but
+  `cms_articles` = 0 (no scheduled/generated/published articles surfaced via MCP yet).
+  Calendar schedule config is NOT exposed as an MCP endpoint; only resulting articles are.
+  → The first calendar-generated article is the §3.2 "Article Published" seam + the §3.1
+  inspection opportunity. Watch `cms_articles` (status scheduled/draft/published).
 
 ## Next steps
 1. ~~Run n8n REST smoke test~~ ✅ DONE — REST create/delete confirmed working.
