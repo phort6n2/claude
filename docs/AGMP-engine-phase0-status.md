@@ -70,9 +70,13 @@ Decide: build-new (spec's SnowSEO+n8n) vs. extend this existing platform.
   SHORT article (~100 credits, needs user OK), inspect via get_article WITHOUT publishing to
   the live site first (reveals schema/meta/internal-links/PAA), then optional WP publish to
   check slug/featured-image/draft-vs-live.
-- **§3.2 (trigger)**: No native publish-webhook tool visible in the MCP. Likely seam options:
-  WordPress RSS on autoglasskings.com, SnowSEO public article feed (set_article_public_feed),
-  or poll cms_articles. Native webhook existence still to confirm.
+- **§3.2 (trigger)**: NATIVE WEBHOOK CONFIRMED — `publish_article` supports a `"webhook"`
+  provider (alongside wordpress/shopify/webflow/ghost/framer). So the seam = configure a
+  SnowSEO "webhook" publish target pointing at an n8n Webhook node; SnowSEO POSTs the article
+  on publish. Preferred over RSS/poll. (Other seam options remain as fallback: WP RSS,
+  public article feed, poll cms_articles.)
+- **§3.1 (draft-vs-live) ANSWERED**: `publish_article` takes `status: "draft" | "publish"`,
+  so SnowSEO CAN publish as draft → n8n finalizes → flip live. Draft-then-finalize supported.
 - **OPEN DECISION (paused here)**: install SnowSEO WP plugin before the test (recommended —
   production setup, likely removes schema+meta n8n nodes) vs. test now on plain REST.
 - **Credit-consuming SnowSEO actions require explicit user permission before each call.**
