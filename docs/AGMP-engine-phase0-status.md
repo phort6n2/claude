@@ -66,10 +66,31 @@ Decide: build-new (spec's SnowSEO+n8n) vs. extend this existing platform.
     (SnowSEO WP plugin not installed → publishing via plain WP REST). siteUrl autoglasskings.com.
   - Google Analytics — property 541413302. Google Search Console — autoglasskings.com.
 - **Articles**: 0 (nothing generated/published yet → §3.1 needs a real test article to answer).
-- **§3.1 (what SnowSEO writes)**: UNRESOLVED — pending one test article. Plan: generate one
-  SHORT article (~100 credits, needs user OK), inspect via get_article WITHOUT publishing to
-  the live site first (reveals schema/meta/internal-links/PAA), then optional WP publish to
-  check slug/featured-image/draft-vs-live.
+- **§3.1 (what SnowSEO writes) — ANSWERED via test article** (slug
+  `auto-glass-replacement-in-orange-county-cost-process-and-what-to-expect`, articleId
+  8c4fee38..., 100 credits, ~1165 words, published to WP as DRAFT postId 1931):
+  | Item | SnowSEO does it? | n8n needed? |
+  |---|---|---|
+  | FAQPage JSON-LD | ✅ generates it (jsonLd @graph: Article+Organization+FAQPage, 8 Q&A) | only if it doesn't reach WP head w/o plugin — VERIFY |
+  | Meta title + description | ✅ good (metaTitle ~55c, metaDesc ~150c, + OG/Twitter) | only if it doesn't reach WP SEO fields w/o plugin — VERIFY |
+  | Internal links (service/city) | ❌ body has only EXTERNAL citations + 1 homepage CTA link | YES (or SnowSEO generate_internal_links once corpus grows) |
+  | Featured image | ✅ but GENERIC AI hero | YES — override w/ Renderform branded PAA+NAP card |
+  | Slug | ✅ clean, title-derived, no -2 | ok (conflict behavior untested) |
+  | Draft vs live | ✅ draft supported | n8n finalizes → flip live |
+  | LocalBusiness schema (NAP) | ❌ none (only Article+Org+FAQPage; no phone/address/geo) | YES — inject LocalBusiness w/ NAP |
+  - SnowSEO ALSO auto-adds: TL;DR, Table of Contents, in-body AI images, a relevant YouTube
+    embed, external authority citations (NHTSA/FMVSS/AGSC/CA SB-988), 8 PAA prompts, keywords.
+  - Publisher logo in schema is just a google favicon (low quality) — improvable.
+  - PAA question for Renderform/data contract (primary prompt):
+    "What is the typical cost of auto glass replacement in Orange County?"
+  - ⚠️ OPEN VERIFY (no plugin): does SnowSEO's jsonLd + meta actually land in the WP <head>?
+    WP core REST can't set Yoast/RankMath meta or head JSON-LD, so without the plugin these
+    MAY be dropped/inlined into body. Can't fetch from here (autoglasskings.com not
+    allowlisted + draft not public). Resolve by: user checks draft 1931, OR allowlist
+    autoglasskings.com + WP app-password so I query the post, OR publish public live.
+  - Confirmed n8n on-page nodes regardless of plugin: (1) Renderform featured-image override,
+    (2) internal links, (3) LocalBusiness/NAP schema. FAQ-schema + meta nodes are
+    CONDITIONAL on the verify above.
 - **§3.2 (trigger)**: NATIVE WEBHOOK CONFIRMED — `publish_article` supports a `"webhook"`
   provider (alongside wordpress/shopify/webflow/ghost/framer). So the seam = configure a
   SnowSEO "webhook" publish target pointing at an n8n Webhook node; SnowSEO POSTs the article
