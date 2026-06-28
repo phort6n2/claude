@@ -52,6 +52,31 @@ Claude (articles), Nano Banana (images), AutoContent+Podbean (podcast),
 Creatify (video), getlate.dev (social), WordPress, Google Business Profile.
 Decide: build-new (spec's SnowSEO+n8n) vs. extend this existing platform.
 
+## §3 Phase 0 Results — test client: Auto Glass Kings
+- **SnowSEO MCP**: CONNECTED (team-scoped). Team = `Auto Glass Kings`
+  (teamId `k1XobEQKchogJ5TvmV0UOX0KFWBXumaR`, website autoglasskings.com, Orange County CA,
+  mobile auto glass + in-house ADAS + lifetime warranty). The one brand-new TEST CLIENT.
+- **SnowSEO API key**: optional; user creating one to store as `SNOWSEO_API_KEY` for when
+  n8n calls SnowSEO directly (e.g. rankings for reports). Not needed for MCP-driven work.
+- **§3.3 capability map**: broad MCP surface — teams, topic clusters, article
+  create/generate/publish/schedule, AI-visibility, rank tracking, GA/GSC/PostHog analytics,
+  integrations, activity_feed, set_article_public_feed (public article feed). Mostly answered.
+- **Integrations on the team (all connected 2026-06-28):**
+  - WordPress — connected, canPublish + canSchedule, BUT `wpPluginConnected: false`
+    (SnowSEO WP plugin not installed → publishing via plain WP REST). siteUrl autoglasskings.com.
+  - Google Analytics — property 541413302. Google Search Console — autoglasskings.com.
+- **Articles**: 0 (nothing generated/published yet → §3.1 needs a real test article to answer).
+- **§3.1 (what SnowSEO writes)**: UNRESOLVED — pending one test article. Plan: generate one
+  SHORT article (~100 credits, needs user OK), inspect via get_article WITHOUT publishing to
+  the live site first (reveals schema/meta/internal-links/PAA), then optional WP publish to
+  check slug/featured-image/draft-vs-live.
+- **§3.2 (trigger)**: No native publish-webhook tool visible in the MCP. Likely seam options:
+  WordPress RSS on autoglasskings.com, SnowSEO public article feed (set_article_public_feed),
+  or poll cms_articles. Native webhook existence still to confirm.
+- **OPEN DECISION (paused here)**: install SnowSEO WP plugin before the test (recommended —
+  production setup, likely removes schema+meta n8n nodes) vs. test now on plain REST.
+- **Credit-consuming SnowSEO actions require explicit user permission before each call.**
+
 ## Next steps
 1. ~~Run n8n REST smoke test~~ ✅ DONE — REST create/delete confirmed working.
 2. ~~Resolve SnowSEO-vs-DataForSEO~~ ✅ DONE — SnowSEO replaces, for the new engine only.
