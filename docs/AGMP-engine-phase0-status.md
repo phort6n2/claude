@@ -30,9 +30,21 @@ before building the new `AGMP-Engine-v2 [TEST]` n8n workflow.
 - **Faceless Ideas Creator** — scheduled topic gen → Airtable
 
 ## Key Phase 0 finding so far
-**No SnowSEO usage exists yet.** Current front-of-funnel is **DataForSEO + Claude**,
-not SnowSEO. Open question for the user: is SnowSEO **replacing** DataForSEO/Claude, or
-sitting **alongside** them? This materially changes the §3.1/§3.2 discovery.
+**No SnowSEO usage exists yet.** Current front-of-funnel is **DataForSEO + Claude**
+(the "Merlino Magic" workflows). **DECIDED:** SnowSEO becomes the front-of-funnel for
+the NEW engine. SnowSEO connection (MCP or REST) is still PENDING — `*.snowseo.com` is
+allowlisted; awaiting API key / MCP URL from the user's SnowSEO account.
+
+## ⚠️ Build constraints (do not violate)
+- Build the new engine **isolated** as a brand-new workflow: `AGMP-Engine-v2 [TEST]`.
+- Prove it on **ONE brand-new test client** first.
+- **DO NOT touch, retire, disable, or migrate any existing workflow** (Merlino Magic
+  PAA Harvester / Content Engine, Long Form Videos, etc.). They keep running for
+  current clients.
+- "SnowSEO replaces DataForSEO+Claude" applies to the **new engine only** — not a
+  rip-out of the live workflows.
+- Other clients migrate to the new engine **later, one at a time**, only after it's
+  dialed in.
 
 ## Existing platform (this repo = `auto-glass-platform`, Next.js)
 Already implements much of the spec's pipeline with different vendors:
@@ -41,7 +53,10 @@ Creatify (video), getlate.dev (social), WordPress, Google Business Profile.
 Decide: build-new (spec's SnowSEO+n8n) vs. extend this existing platform.
 
 ## Next steps
-1. New session with REST env vars → run n8n REST smoke test (create→delete).
-2. Resolve the SnowSEO-vs-DataForSEO question with the user.
-3. Inspect the PAA Harvester + Content Engine workflow details to reuse conventions.
-4. Build §5.1 Airtable client control table.
+1. ~~Run n8n REST smoke test~~ ✅ DONE — REST create/delete confirmed working.
+2. ~~Resolve SnowSEO-vs-DataForSEO~~ ✅ DONE — SnowSEO replaces, for the new engine only.
+3. Connect SnowSEO (MCP or REST) — awaiting key/endpoint from user's SnowSEO account.
+   Determine §3.2 trigger (native publish webhook vs WP RSS) + §3.1 what it writes.
+4. Inspect existing Merlino workflows (read-only) to reuse Airtable/seam conventions.
+5. Build §5.1 Airtable client control table; add the one brand-new test client.
+6. Build isolated `AGMP-Engine-v2 [TEST]` workflow (Phase 1) for the test client.
