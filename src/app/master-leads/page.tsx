@@ -454,13 +454,22 @@ export default function StandaloneMasterLeadsPage() {
                 <p className="text-xs text-gray-600">Master Leads</p>
               </div>
             </div>
-            <Link
-              href="/master-leads/dashboard"
-              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 px-3 py-1.5 rounded-md border border-blue-200 hover:bg-blue-50 transition-colors"
-            >
-              <BarChart3 className="h-3.5 w-3.5" />
-              Dashboard
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/master-leads/ads-performance"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 px-3 py-1.5 rounded-md border border-emerald-200 hover:bg-emerald-50 transition-colors"
+              >
+                <TrendingUp className="h-3.5 w-3.5" />
+                Ads
+              </Link>
+              <Link
+                href="/master-leads/dashboard"
+                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 px-3 py-1.5 rounded-md border border-blue-200 hover:bg-blue-50 transition-colors"
+              >
+                <BarChart3 className="h-3.5 w-3.5" />
+                Dashboard
+              </Link>
+            </div>
           </div>
         </div>
       </header>
