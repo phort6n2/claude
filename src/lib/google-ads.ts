@@ -1169,3 +1169,215 @@ export async function listCustomerMatchLists(customerId: string): Promise<{
 
   return { success: true, lists }
 }
+
+/**
+ * Search-terms report (last 30 days) — the actual queries that triggered ads,
+ * with spend and conversions. Used to surface wasted spend and irrelevant
+ * traffic as negative-keyword suggestions.
+ */
+export async function getSearchTermsReport(customerId: string): Promise<{
+  success: boolean
+  terms?: Array<{
+    term: string
+    campaignId: string
+    campaignName: string
+    adGroupName: string
+    clicks: number
+    cost: number
+    conversions: number
+    conversionsValue: number
+  }>
+  error?: string
+}> {
+  const query = `
+    SELECT
+      search_term_view.search_term,
+      campaign.id,
+      campaign.name,
+      ad_group.name,
+      metrics.clicks,
+      metrics.cost_micros,
+      metrics.conversions,
+      metrics.conversions_value
+    FROM search_term_view
+    WHERE segments.date DURING LAST_30_DAYS
+    ORDER BY metrics.cost_micros DESC
+    LIMIT 500
+  `
+
+  const result = await searchStreamQuery(customerId, query)
+  if (!result.success) return { success: false, error: result.error }
+
+  // A term can appear across multiple ad groups/days; aggregate by term text.
+  const map = new Map<
+    string,
+    {
+      term: string
+      campaignId: string
+      campaignName: string
+      adGroupName: string
+      clicks: number
+      cost: number
+      conversions: number
+      conversionsValue: number
+    }
+  >()
+
+  for (const row of result.results || []) {
+    const r = row as {
+      searchTermView?: Record<string, unknown>
+      campaign?: Record<string, unknown>
+      adGroup?: Record<string, unknown>
+      metrics?: Record<string, number>
+    }
+    const term = String(r.searchTermView?.searchTerm ?? r.searchTermView?.search_term ?? '')
+    if (!term) continue
+    const m = r.metrics || {}
+    const cost = Number(m.cost_micros ?? m.costMicros ?? 0) / 1_000_000
+    const existing = map.get(term)
+    if (existing) {
+      existing.clicks += Number(m.clicks || 0)
+      existing.cost += cost
+      existing.conversions += Number(m.conversions || 0)
+      existing.conversionsValue += Number(m.conversions_value ?? m.conversionsValue ?? 0)
+    } else {
+      map.set(term, {
+        term,
+        campaignId: String(r.campaign?.id ?? ''),
+        campaignName: String(r.campaign?.name ?? 'Unknown'),
+        adGroupName: String(r.adGroup?.name ?? 'Unknown'),
+        clicks: Number(m.clicks || 0),
+        cost,
+        conversions: Number(m.conversions || 0),
+        conversionsValue: Number(m.conversions_value ?? m.conversionsValue ?? 0),
+      })
+    }
+  }
+
+  return { success: true, terms: Array.from(map.values()) }
+}
+
+/**
+ * All existing negative keyword texts (ad-group + campaign level), lowercased,
+ * so suggestions can skip terms that are already excluded.
+ */
+export async function getNegativeKeywordTexts(customerId: string): Promise<{
+  success: boolean
+  negatives?: Set<string>
+  error?: string
+}> {
+  const adGroupQuery = `
+    SELECT ad_group_criterion.keyword.text
+    FROM ad_group_criterion
+    WHERE ad_group_criterion.negative = TRUE
+      AND ad_group_criterion.type = 'KEYWORD'
+  `
+  const campaignQuery = `
+    SELECT campaign_criterion.keyword.text
+    FROM campaign_criterion
+    WHERE campaign_criterion.negative = TRUE
+      AND campaign_criterion.type = 'KEYWORD'
+  `
+
+  const [adGroupRes, campaignRes] = await Promise.all([
+    searchStreamQuery(customerId, adGroupQuery),
+    searchStreamQuery(customerId, campaignQuery),
+  ])
+
+  if (!adGroupRes.success && !campaignRes.success) {
+    return { success: false, error: adGroupRes.error || campaignRes.error }
+  }
+
+  const negatives = new Set<string>()
+  for (const row of adGroupRes.results || []) {
+    const t = (row as { adGroupCriterion?: { keyword?: { text?: string } } }).adGroupCriterion
+      ?.keyword?.text
+    if (t) negatives.add(t.toLowerCase())
+  }
+  for (const row of campaignRes.results || []) {
+    const t = (row as { campaignCriterion?: { keyword?: { text?: string } } }).campaignCriterion
+      ?.keyword?.text
+    if (t) negatives.add(t.toLowerCase())
+  }
+
+  return { success: true, negatives }
+}
+
+/**
+ * Campaign performance (last 30 days, aggregated) including bidding strategy,
+ * budget, and impression-share-lost signals. Powers the ROAS dashboard and the
+ * budget-limited-vs-rank-limited detection.
+ */
+export async function getCampaignPerformance(customerId: string): Promise<{
+  success: boolean
+  campaigns?: Array<{
+    id: string
+    name: string
+    status: string
+    biddingStrategyType: string
+    budget: number
+    cost: number
+    clicks: number
+    impressions: number
+    conversions: number
+    conversionsValue: number
+    searchImpressionShare: number
+    searchBudgetLostIS: number
+    searchRankLostIS: number
+  }>
+  error?: string
+}> {
+  const query = `
+    SELECT
+      campaign.id,
+      campaign.name,
+      campaign.status,
+      campaign.bidding_strategy_type,
+      campaign_budget.amount_micros,
+      metrics.cost_micros,
+      metrics.clicks,
+      metrics.impressions,
+      metrics.conversions,
+      metrics.conversions_value,
+      metrics.search_impression_share,
+      metrics.search_budget_lost_impression_share,
+      metrics.search_rank_lost_impression_share
+    FROM campaign
+    WHERE campaign.status = 'ENABLED'
+      AND segments.date DURING LAST_30_DAYS
+  `
+
+  const result = await searchStreamQuery(customerId, query)
+  if (!result.success) return { success: false, error: result.error }
+
+  const campaigns = (result.results || []).map((row) => {
+    const r = row as {
+      campaign?: Record<string, unknown>
+      campaignBudget?: Record<string, unknown>
+      metrics?: Record<string, number>
+    }
+    const c = r.campaign || {}
+    const m = r.metrics || {}
+    return {
+      id: String(c.id ?? ''),
+      name: String(c.name ?? 'Unknown'),
+      status: String(c.status ?? 'UNKNOWN'),
+      biddingStrategyType: String(c.biddingStrategyType ?? c.bidding_strategy_type ?? 'UNKNOWN'),
+      budget: Number(r.campaignBudget?.amountMicros ?? r.campaignBudget?.amount_micros ?? 0) / 1_000_000,
+      cost: Number(m.cost_micros ?? m.costMicros ?? 0) / 1_000_000,
+      clicks: Number(m.clicks || 0),
+      impressions: Number(m.impressions || 0),
+      conversions: Number(m.conversions || 0),
+      conversionsValue: Number(m.conversions_value ?? m.conversionsValue ?? 0),
+      searchImpressionShare: Number(m.search_impression_share ?? m.searchImpressionShare ?? 0),
+      searchBudgetLostIS: Number(
+        m.search_budget_lost_impression_share ?? m.searchBudgetLostImpressionShare ?? 0
+      ),
+      searchRankLostIS: Number(
+        m.search_rank_lost_impression_share ?? m.searchRankLostImpressionShare ?? 0
+      ),
+    }
+  })
+
+  return { success: true, campaigns }
+}

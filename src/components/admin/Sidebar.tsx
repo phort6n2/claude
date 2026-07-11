@@ -14,6 +14,8 @@ import {
   UserCheck,
   BarChart3,
   ShieldCheck,
+  Ban,
+  LineChart,
   Radio,
   Smartphone,
   ExternalLink,
@@ -54,7 +56,9 @@ const navigation: NavSection[] = [
     items: [
       { name: 'API Status', href: '/admin/api-status', icon: Activity },
       { name: 'Google Ads', href: '/admin/google-ads-monitor', icon: BarChart3 },
+      { name: 'Ads Performance', href: '/admin/ads-performance', icon: LineChart },
       { name: 'Ads Health', href: '/admin/ads-health', icon: ShieldCheck },
+      { name: 'Negative Keywords', href: '/admin/ads-negatives', icon: Ban },
       { name: 'Webhook Status', href: '/admin/webhook-status', icon: Radio },
     ],
   },
