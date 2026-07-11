@@ -14,6 +14,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { AdsNav } from '@/components/master-leads/AdsNav'
 
 interface AccountMetrics {
   clientId: string
@@ -149,6 +150,7 @@ export default function MasterLeadsAdsPage() {
             </Link>
             <h1 className="text-lg font-bold text-gray-900">Google Ads Today</h1>
           </div>
+          <AdsNav />
         </header>
         <div className="max-w-3xl mx-auto px-4 py-8">
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
@@ -194,6 +196,7 @@ export default function MasterLeadsAdsPage() {
             <RefreshCw className={`h-5 w-5 text-gray-600 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
         </div>
+        <AdsNav />
       </header>
 
       {/* Totals Summary */}
