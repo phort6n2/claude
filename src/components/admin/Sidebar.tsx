@@ -7,14 +7,10 @@ import { signOut } from 'next-auth/react'
 import {
   LayoutDashboard,
   Users,
-  Calendar,
-  FileText,
   Settings,
   LogOut,
   Activity,
   HelpCircle,
-  Monitor,
-  Store,
   UserCheck,
   BarChart3,
   Radio,
@@ -53,17 +49,8 @@ const navigation: NavSection[] = [
     ],
   },
   {
-    title: 'Content',
-    items: [
-      { name: 'Content Calendar', href: '/admin/content', icon: Calendar },
-      { name: 'GBP Posts', href: '/admin/gbp', icon: Store },
-      { name: 'Press Releases', href: '/admin/press-releases', icon: FileText },
-    ],
-  },
-  {
     title: 'System',
     items: [
-      { name: 'Monitoring', href: '/admin/monitoring', icon: Monitor },
       { name: 'API Status', href: '/admin/api-status', icon: Activity },
       { name: 'Google Ads', href: '/admin/google-ads-monitor', icon: BarChart3 },
       { name: 'Webhook Status', href: '/admin/webhook-status', icon: Radio },
