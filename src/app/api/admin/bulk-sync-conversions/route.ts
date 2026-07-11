@@ -128,6 +128,8 @@ export async function GET(request: NextRequest) {
         const result = await sendEnhancedConversion({
           customerId: config.customerId,
           gclid: lead.gclid || undefined,
+          gbraid: lead.gbraid || undefined,
+          wbraid: lead.wbraid || undefined,
           email: lead.email || undefined,
           phone: lead.phone || undefined,
           conversionAction: conversionActionId,

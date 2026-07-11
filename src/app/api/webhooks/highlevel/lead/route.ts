@@ -434,6 +434,8 @@ export async function POST(request: NextRequest) {
           const result = await sendEnhancedConversion({
             customerId: googleAdsConfig.customerId,
             gclid: gclid || undefined, // Optional - will be included if present
+            gbraid: gbraid || undefined,
+            wbraid: wbraid || undefined,
             email: email || undefined,
             phone: phone || undefined,
             conversionAction: conversionActionId,

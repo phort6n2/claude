@@ -19,6 +19,7 @@ import {
   getConversionActionSettings,
   listCustomerMatchLists,
   getAccountMetrics,
+  getCustomerConversionSettings,
 } from '@/lib/google-ads'
 
 export type CheckStatus = 'pass' | 'warn' | 'fail' | 'info' | 'unknown'
@@ -278,7 +279,7 @@ export async function auditClient(
   // ---- Google Ads API checks (best-effort; degrade to unknown) -------------
   let apiError: string | undefined
 
-  const [actionsRes, matchRes, metricsRes] = await Promise.all([
+  const [actionsRes, matchRes, metricsRes, convSettingsRes] = await Promise.all([
     getConversionActionSettings(config.customerId).catch((e) => ({
       success: false as const,
       error: e instanceof Error ? e.message : 'Unknown error',
@@ -291,7 +292,38 @@ export async function auditClient(
       success: false as const,
       error: e instanceof Error ? e.message : 'Unknown error',
     })),
+    getCustomerConversionSettings(config.customerId).catch((e) => ({
+      success: false as const,
+      error: e instanceof Error ? e.message : 'Unknown error',
+    })),
   ])
+
+  // Check: "enhanced conversions for leads" enabled at the account level. When
+  // off, Google rejects every email/phone upload — a top cause of sync errors.
+  if (convSettingsRes.success && 'settings' in convSettingsRes && convSettingsRes.settings) {
+    const s = convSettingsRes.settings
+    checks.push({
+      id: 'enhanced_conversions_for_leads_enabled',
+      label: 'Enhanced conversions for leads enabled',
+      category: 'setup',
+      status: s.enhancedConversionsForLeadsEnabled ? 'pass' : 'fail',
+      detail: s.enhancedConversionsForLeadsEnabled
+        ? 'Turned on in the account.'
+        : 'Turned OFF — Google is rejecting email/phone conversion uploads for this account.',
+      recommendation: s.enhancedConversionsForLeadsEnabled
+        ? undefined
+        : 'In Google Ads: Goals → Settings → Enhanced conversions → turn on "enhanced conversions for leads" and accept the customer-data terms.',
+    })
+  } else {
+    apiError = ('error' in convSettingsRes && convSettingsRes.error) || apiError
+    checks.push({
+      id: 'enhanced_conversions_for_leads_enabled',
+      label: 'Enhanced conversions for leads enabled',
+      category: 'setup',
+      status: 'unknown',
+      detail: 'Could not read conversion settings from Google Ads.',
+    })
+  }
 
   // Check: sale conversion action live + tracks value
   if (actionsRes.success && 'actions' in actionsRes && actionsRes.actions) {

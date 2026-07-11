@@ -117,6 +117,8 @@ export async function GET(request: NextRequest) {
         const result = await sendEnhancedConversion({
           customerId: config.customerId,
           gclid: lead.gclid || undefined, // Optional - will be included if present
+          gbraid: lead.gbraid || undefined,
+          wbraid: lead.wbraid || undefined,
           email: lead.email || undefined,
           phone: lead.phone || undefined,
           conversionAction: conversionActionId,
