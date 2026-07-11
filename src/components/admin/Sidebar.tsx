@@ -13,6 +13,7 @@ import {
   HelpCircle,
   UserCheck,
   BarChart3,
+  ShieldCheck,
   Radio,
   Smartphone,
   ExternalLink,
@@ -53,6 +54,7 @@ const navigation: NavSection[] = [
     items: [
       { name: 'API Status', href: '/admin/api-status', icon: Activity },
       { name: 'Google Ads', href: '/admin/google-ads-monitor', icon: BarChart3 },
+      { name: 'Ads Health', href: '/admin/ads-health', icon: ShieldCheck },
       { name: 'Webhook Status', href: '/admin/webhook-status', icon: Radio },
     ],
   },

@@ -1062,3 +1062,110 @@ export async function getCustomerDetails(customerId: string): Promise<{
     },
   }
 }
+
+/**
+ * Get conversion actions with their value/counting settings. Used by the
+ * account-hygiene audit to verify that a client's sale conversion action
+ * actually tracks value (a prerequisite for value-based Smart Bidding).
+ */
+export async function getConversionActionSettings(customerId: string): Promise<{
+  success: boolean
+  actions?: Array<{
+    id: string
+    name: string
+    category: string
+    status: string
+    type: string
+    countingType: string
+    includeInConversionsMetric: boolean
+    defaultValue: number
+    alwaysUseDefaultValue: boolean
+  }>
+  error?: string
+}> {
+  const query = `
+    SELECT
+      conversion_action.id,
+      conversion_action.name,
+      conversion_action.category,
+      conversion_action.status,
+      conversion_action.type,
+      conversion_action.counting_type,
+      conversion_action.include_in_conversions_metric,
+      conversion_action.value_settings.default_value,
+      conversion_action.value_settings.always_use_default_value
+    FROM conversion_action
+  `
+
+  const result = await searchStreamQuery(customerId, query)
+  if (!result.success) {
+    return { success: false, error: result.error }
+  }
+
+  const actions = (result.results || []).map((row) => {
+    const ca =
+      (row as { conversionAction?: Record<string, unknown> }).conversionAction || {}
+    const vs = (ca.valueSettings || ca.value_settings || {}) as Record<string, unknown>
+    return {
+      id: String(ca.id ?? ''),
+      name: String(ca.name ?? 'Unknown'),
+      category: String(ca.category ?? 'UNKNOWN'),
+      status: String(ca.status ?? 'UNKNOWN'),
+      type: String(ca.type ?? 'UNKNOWN'),
+      countingType: String(ca.countingType ?? ca.counting_type ?? 'UNKNOWN'),
+      includeInConversionsMetric: Boolean(
+        ca.includeInConversionsMetric ?? ca.include_in_conversions_metric ?? false
+      ),
+      defaultValue: Number(vs.defaultValue ?? vs.default_value ?? 0),
+      alwaysUseDefaultValue: Boolean(
+        vs.alwaysUseDefaultValue ?? vs.always_use_default_value ?? false
+      ),
+    }
+  })
+
+  return { success: true, actions }
+}
+
+/**
+ * List Customer Match (CRM-based) audience lists for a customer, with their
+ * approximate sizes. Used by the audit to flag clients that haven't set up
+ * Customer Match — a lever the Google rep specifically recommended.
+ */
+export async function listCustomerMatchLists(customerId: string): Promise<{
+  success: boolean
+  lists?: Array<{
+    id: string
+    name: string
+    sizeForSearch: number
+    membershipStatus: string
+  }>
+  error?: string
+}> {
+  const query = `
+    SELECT
+      user_list.id,
+      user_list.name,
+      user_list.type,
+      user_list.size_for_search,
+      user_list.membership_status
+    FROM user_list
+    WHERE user_list.type = 'CRM_BASED'
+  `
+
+  const result = await searchStreamQuery(customerId, query)
+  if (!result.success) {
+    return { success: false, error: result.error }
+  }
+
+  const lists = (result.results || []).map((row) => {
+    const ul = (row as { userList?: Record<string, unknown> }).userList || {}
+    return {
+      id: String(ul.id ?? ''),
+      name: String(ul.name ?? 'Unknown'),
+      sizeForSearch: Number(ul.sizeForSearch ?? ul.size_for_search ?? 0),
+      membershipStatus: String(ul.membershipStatus ?? ul.membership_status ?? 'UNKNOWN'),
+    }
+  })
+
+  return { success: true, lists }
+}
