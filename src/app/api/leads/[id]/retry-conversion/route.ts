@@ -91,6 +91,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const result = await sendEnhancedConversion({
       customerId: googleAdsConfig.customerId,
       gclid: lead.gclid,
+      gbraid: lead.gbraid || undefined,
+      wbraid: lead.wbraid || undefined,
       email: lead.email || undefined,
       phone: lead.phone || undefined,
       conversionAction: conversionActionId,

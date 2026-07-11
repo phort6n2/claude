@@ -172,6 +172,8 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         saleNotes: true,
         formData: true,
         gclid: true,
+        gbraid: true,
+        wbraid: true,
         offlineConversionSent: true,
       },
     })
@@ -179,7 +181,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     // Send Offline Conversion when marked as SOLD with a sale value
     if (
       data.status === 'SOLD' &&
-      updated.gclid &&
+      (updated.gclid || updated.gbraid || updated.wbraid) &&
       !existing.offlineConversionSent &&
       (updated.saleValue || data.saleValue)
     ) {
@@ -196,6 +198,8 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
           const result = await sendOfflineConversion({
             customerId: googleAdsConfig.customerId,
             gclid: updated.gclid,
+            gbraid: updated.gbraid,
+            wbraid: updated.wbraid,
             conversionAction: googleAdsConfig.saleConversionActionId,
             conversionDateTime: new Date(conversionDate),
             conversionValue,
@@ -216,6 +220,8 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
               const enhancedResult = await sendEnhancedConversion({
                 customerId: googleAdsConfig.customerId,
                 gclid: updated.gclid,
+                gbraid: updated.gbraid,
+                wbraid: updated.wbraid,
                 email: leadEmail || undefined,
                 phone: leadPhone || undefined,
                 conversionAction: googleAdsConfig.saleConversionActionId,
@@ -239,8 +245,15 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       }
     }
 
-    // Remove gclid and offlineConversionSent from response
-    const { gclid: _g, offlineConversionSent: _o, ...responseData } = updated
+    // Remove click ids and offlineConversionSent from response
+    const {
+      gclid: _g,
+      gbraid: _gb,
+      wbraid: _wb,
+      offlineConversionSent: _o,
+      ...responseData
+    } = updated
+    void _g; void _gb; void _wb; void _o
 
     return NextResponse.json(responseData)
   } catch (error) {

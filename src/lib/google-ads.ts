@@ -257,6 +257,57 @@ export function formatPhoneE164(phone: string, countryCode = '1'): string {
 }
 
 /**
+ * Route click identifiers into their correct Google Ads API field.
+ *
+ * Google rejects an upload with "gclid could not be decoded" when a
+ * gbraid/wbraid value — the identifiers used for iOS/privacy traffic — is placed
+ * in the `gclid` field. Real gclids always begin with a letter (e.g. "Cj0K",
+ * "EAIa"); gbraid/wbraid values begin with a digit (observed "0AAAA…"). This
+ * normalizer keeps real gclids as `gclid`, honors explicit gbraid/wbraid, and
+ * reroutes a misfiled iOS identifier so the click still attributes instead of
+ * being rejected. Only one identifier is returned, in priority order, because a
+ * ClickConversion accepts a single click id.
+ */
+export function resolveClickIds(input: {
+  gclid?: string | null
+  gbraid?: string | null
+  wbraid?: string | null
+}): { gclid?: string; gbraid?: string; wbraid?: string } {
+  const gclid = input.gclid?.trim() || undefined
+  const gbraid = input.gbraid?.trim() || undefined
+  const wbraid = input.wbraid?.trim() || undefined
+
+  // A real gclid starts with a letter. Anything else in the gclid slot is a
+  // misfiled iOS identifier.
+  const gclidIsReal = !!gclid && /^[A-Za-z]/.test(gclid)
+
+  if (gclidIsReal) return { gclid }
+  if (gbraid) return { gbraid }
+  if (wbraid) return { wbraid }
+
+  // Misfiled iOS id with no explicit gbraid/wbraid column. For web-form lead-gen
+  // this is a gbraid (web-to-web); route it there rather than sending a value
+  // Google will reject as an undecodable gclid.
+  if (gclid) return { gbraid: gclid }
+
+  return {}
+}
+
+/**
+ * Apply a resolved click identifier onto a ClickConversion payload. No-op when
+ * there is no usable identifier (enhanced conversions can still match on hashed
+ * email/phone alone).
+ */
+function applyClickId(
+  target: Record<string, unknown>,
+  ids: { gclid?: string; gbraid?: string; wbraid?: string }
+): void {
+  if (ids.gclid) target.gclid = ids.gclid
+  else if (ids.gbraid) target.gbraid = ids.gbraid
+  else if (ids.wbraid) target.wbraid = ids.wbraid
+}
+
+/**
  * Send Enhanced Conversion for a lead
  * This sends hashed email/phone to Google Ads via uploadClickConversions
  * (Enhanced Conversions for Leads - uses click conversions with user identifiers)
@@ -266,7 +317,9 @@ export function formatPhoneE164(phone: string, countryCode = '1'): string {
  */
 export async function sendEnhancedConversion(params: {
   customerId: string
-  gclid?: string // Optional - conversions can be matched via user identifiers alone
+  gclid?: string | null // Optional - conversions can be matched via user identifiers alone
+  gbraid?: string | null // iOS web-to-web click id
+  wbraid?: string | null // iOS web-to-app click id
   email?: string
   phone?: string
   conversionAction: string
@@ -320,7 +373,7 @@ export async function sendEnhancedConversion(params: {
   }
 
   // Build the click conversion with user identifiers (Enhanced Conversions for Leads)
-  // GCLID is optional - Google can match via user identifiers alone
+  // A click id is optional - Google can match via user identifiers alone
   const clickConversion: Record<string, unknown> = {
     conversionAction: `customers/${customerId}/conversionActions/${params.conversionAction}`,
     conversionDateTime: formatGoogleAdsDateTime(params.conversionDateTime),
@@ -328,10 +381,12 @@ export async function sendEnhancedConversion(params: {
     userIdentifiers,
   }
 
-  // Only include gclid if present
-  if (params.gclid) {
-    clickConversion.gclid = params.gclid
-  }
+  // Attach the click id in its correct field (gclid vs gbraid/wbraid). Misfiled
+  // iOS identifiers are rerouted so Google doesn't reject the whole upload.
+  applyClickId(
+    clickConversion,
+    resolveClickIds({ gclid: params.gclid, gbraid: params.gbraid, wbraid: params.wbraid })
+  )
 
   try {
     const url = `${GOOGLE_ADS_API_BASE}/customers/${customerId}:uploadClickConversions`
@@ -424,7 +479,9 @@ export async function sendEnhancedConversion(params: {
  */
 export async function sendOfflineConversion(params: {
   customerId: string
-  gclid: string
+  gclid?: string | null
+  gbraid?: string | null
+  wbraid?: string | null
   conversionAction: string
   conversionDateTime: Date
   conversionValue: number
@@ -452,14 +509,29 @@ export async function sendOfflineConversion(params: {
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}+00:00`
   }
 
-  // Build the click conversion
-  const clickConversion = {
+  // An offline (sale) conversion has no user identifiers, so it MUST carry a
+  // click id to attribute. Route it to the correct field; bail out cleanly if
+  // there's nothing usable rather than sending a value Google will reject.
+  const ids = resolveClickIds({
     gclid: params.gclid,
+    gbraid: params.gbraid,
+    wbraid: params.wbraid,
+  })
+  if (!ids.gclid && !ids.gbraid && !ids.wbraid) {
+    return {
+      success: false,
+      error: 'No usable click id (gclid/gbraid/wbraid) to attribute this offline conversion',
+    }
+  }
+
+  // Build the click conversion
+  const clickConversion: Record<string, unknown> = {
     conversionAction: `customers/${customerId}/conversionActions/${params.conversionAction}`,
     conversionDateTime: formatGoogleAdsDateTime(params.conversionDateTime),
     conversionValue: params.conversionValue,
     currencyCode: params.currencyCode || 'USD',
   }
+  applyClickId(clickConversion, ids)
 
   try {
     const response = await fetchWithRetry(
@@ -1059,6 +1131,369 @@ export async function getCustomerDetails(customerId: string): Promise<{
       descriptiveName: String(row.customer.descriptive_name || row.customer.descriptiveName || 'Unknown'),
       currencyCode: String(row.customer.currency_code || row.customer.currencyCode || 'USD'),
       timeZone: String(row.customer.time_zone || row.customer.timeZone || 'America/Los_Angeles'),
+    },
+  }
+}
+
+/**
+ * Get conversion actions with their value/counting settings. Used by the
+ * account-hygiene audit to verify that a client's sale conversion action
+ * actually tracks value (a prerequisite for value-based Smart Bidding).
+ */
+export async function getConversionActionSettings(customerId: string): Promise<{
+  success: boolean
+  actions?: Array<{
+    id: string
+    name: string
+    category: string
+    status: string
+    type: string
+    countingType: string
+    includeInConversionsMetric: boolean
+    defaultValue: number
+    alwaysUseDefaultValue: boolean
+  }>
+  error?: string
+}> {
+  const query = `
+    SELECT
+      conversion_action.id,
+      conversion_action.name,
+      conversion_action.category,
+      conversion_action.status,
+      conversion_action.type,
+      conversion_action.counting_type,
+      conversion_action.include_in_conversions_metric,
+      conversion_action.value_settings.default_value,
+      conversion_action.value_settings.always_use_default_value
+    FROM conversion_action
+  `
+
+  const result = await searchStreamQuery(customerId, query)
+  if (!result.success) {
+    return { success: false, error: result.error }
+  }
+
+  const actions = (result.results || []).map((row) => {
+    const ca =
+      (row as { conversionAction?: Record<string, unknown> }).conversionAction || {}
+    const vs = (ca.valueSettings || ca.value_settings || {}) as Record<string, unknown>
+    return {
+      id: String(ca.id ?? ''),
+      name: String(ca.name ?? 'Unknown'),
+      category: String(ca.category ?? 'UNKNOWN'),
+      status: String(ca.status ?? 'UNKNOWN'),
+      type: String(ca.type ?? 'UNKNOWN'),
+      countingType: String(ca.countingType ?? ca.counting_type ?? 'UNKNOWN'),
+      includeInConversionsMetric: Boolean(
+        ca.includeInConversionsMetric ?? ca.include_in_conversions_metric ?? false
+      ),
+      defaultValue: Number(vs.defaultValue ?? vs.default_value ?? 0),
+      alwaysUseDefaultValue: Boolean(
+        vs.alwaysUseDefaultValue ?? vs.always_use_default_value ?? false
+      ),
+    }
+  })
+
+  return { success: true, actions }
+}
+
+/**
+ * List Customer Match (CRM-based) audience lists for a customer, with their
+ * approximate sizes. Used by the audit to flag clients that haven't set up
+ * Customer Match — a lever the Google rep specifically recommended.
+ */
+export async function listCustomerMatchLists(customerId: string): Promise<{
+  success: boolean
+  lists?: Array<{
+    id: string
+    name: string
+    sizeForSearch: number
+    membershipStatus: string
+  }>
+  error?: string
+}> {
+  const query = `
+    SELECT
+      user_list.id,
+      user_list.name,
+      user_list.type,
+      user_list.size_for_search,
+      user_list.membership_status
+    FROM user_list
+    WHERE user_list.type = 'CRM_BASED'
+  `
+
+  const result = await searchStreamQuery(customerId, query)
+  if (!result.success) {
+    return { success: false, error: result.error }
+  }
+
+  const lists = (result.results || []).map((row) => {
+    const ul = (row as { userList?: Record<string, unknown> }).userList || {}
+    return {
+      id: String(ul.id ?? ''),
+      name: String(ul.name ?? 'Unknown'),
+      sizeForSearch: Number(ul.sizeForSearch ?? ul.size_for_search ?? 0),
+      membershipStatus: String(ul.membershipStatus ?? ul.membership_status ?? 'UNKNOWN'),
+    }
+  })
+
+  return { success: true, lists }
+}
+
+/**
+ * Search-terms report (last 30 days) — the actual queries that triggered ads,
+ * with spend and conversions. Used to surface wasted spend and irrelevant
+ * traffic as negative-keyword suggestions.
+ */
+export async function getSearchTermsReport(customerId: string): Promise<{
+  success: boolean
+  terms?: Array<{
+    term: string
+    campaignId: string
+    campaignName: string
+    adGroupName: string
+    clicks: number
+    cost: number
+    conversions: number
+    conversionsValue: number
+  }>
+  error?: string
+}> {
+  const query = `
+    SELECT
+      search_term_view.search_term,
+      campaign.id,
+      campaign.name,
+      ad_group.name,
+      metrics.clicks,
+      metrics.cost_micros,
+      metrics.conversions,
+      metrics.conversions_value
+    FROM search_term_view
+    WHERE segments.date DURING LAST_30_DAYS
+    ORDER BY metrics.cost_micros DESC
+    LIMIT 500
+  `
+
+  const result = await searchStreamQuery(customerId, query)
+  if (!result.success) return { success: false, error: result.error }
+
+  // A term can appear across multiple ad groups/days; aggregate by term text.
+  const map = new Map<
+    string,
+    {
+      term: string
+      campaignId: string
+      campaignName: string
+      adGroupName: string
+      clicks: number
+      cost: number
+      conversions: number
+      conversionsValue: number
+    }
+  >()
+
+  for (const row of result.results || []) {
+    const r = row as {
+      searchTermView?: Record<string, unknown>
+      campaign?: Record<string, unknown>
+      adGroup?: Record<string, unknown>
+      metrics?: Record<string, number>
+    }
+    const term = String(r.searchTermView?.searchTerm ?? r.searchTermView?.search_term ?? '')
+    if (!term) continue
+    const m = r.metrics || {}
+    const cost = Number(m.cost_micros ?? m.costMicros ?? 0) / 1_000_000
+    const existing = map.get(term)
+    if (existing) {
+      existing.clicks += Number(m.clicks || 0)
+      existing.cost += cost
+      existing.conversions += Number(m.conversions || 0)
+      existing.conversionsValue += Number(m.conversions_value ?? m.conversionsValue ?? 0)
+    } else {
+      map.set(term, {
+        term,
+        campaignId: String(r.campaign?.id ?? ''),
+        campaignName: String(r.campaign?.name ?? 'Unknown'),
+        adGroupName: String(r.adGroup?.name ?? 'Unknown'),
+        clicks: Number(m.clicks || 0),
+        cost,
+        conversions: Number(m.conversions || 0),
+        conversionsValue: Number(m.conversions_value ?? m.conversionsValue ?? 0),
+      })
+    }
+  }
+
+  return { success: true, terms: Array.from(map.values()) }
+}
+
+/**
+ * All existing negative keyword texts (ad-group + campaign level), lowercased,
+ * so suggestions can skip terms that are already excluded.
+ */
+export async function getNegativeKeywordTexts(customerId: string): Promise<{
+  success: boolean
+  negatives?: Set<string>
+  error?: string
+}> {
+  const adGroupQuery = `
+    SELECT ad_group_criterion.keyword.text
+    FROM ad_group_criterion
+    WHERE ad_group_criterion.negative = TRUE
+      AND ad_group_criterion.type = 'KEYWORD'
+  `
+  const campaignQuery = `
+    SELECT campaign_criterion.keyword.text
+    FROM campaign_criterion
+    WHERE campaign_criterion.negative = TRUE
+      AND campaign_criterion.type = 'KEYWORD'
+  `
+
+  const [adGroupRes, campaignRes] = await Promise.all([
+    searchStreamQuery(customerId, adGroupQuery),
+    searchStreamQuery(customerId, campaignQuery),
+  ])
+
+  if (!adGroupRes.success && !campaignRes.success) {
+    return { success: false, error: adGroupRes.error || campaignRes.error }
+  }
+
+  const negatives = new Set<string>()
+  for (const row of adGroupRes.results || []) {
+    const t = (row as { adGroupCriterion?: { keyword?: { text?: string } } }).adGroupCriterion
+      ?.keyword?.text
+    if (t) negatives.add(t.toLowerCase())
+  }
+  for (const row of campaignRes.results || []) {
+    const t = (row as { campaignCriterion?: { keyword?: { text?: string } } }).campaignCriterion
+      ?.keyword?.text
+    if (t) negatives.add(t.toLowerCase())
+  }
+
+  return { success: true, negatives }
+}
+
+/**
+ * Campaign performance (last 30 days, aggregated) including bidding strategy,
+ * budget, and impression-share-lost signals. Powers the ROAS dashboard and the
+ * budget-limited-vs-rank-limited detection.
+ */
+export async function getCampaignPerformance(customerId: string): Promise<{
+  success: boolean
+  campaigns?: Array<{
+    id: string
+    name: string
+    status: string
+    biddingStrategyType: string
+    budget: number
+    cost: number
+    clicks: number
+    impressions: number
+    conversions: number
+    conversionsValue: number
+    searchImpressionShare: number
+    searchBudgetLostIS: number
+    searchRankLostIS: number
+  }>
+  error?: string
+}> {
+  const query = `
+    SELECT
+      campaign.id,
+      campaign.name,
+      campaign.status,
+      campaign.bidding_strategy_type,
+      campaign_budget.amount_micros,
+      metrics.cost_micros,
+      metrics.clicks,
+      metrics.impressions,
+      metrics.conversions,
+      metrics.conversions_value,
+      metrics.search_impression_share,
+      metrics.search_budget_lost_impression_share,
+      metrics.search_rank_lost_impression_share
+    FROM campaign
+    WHERE campaign.status = 'ENABLED'
+      AND segments.date DURING LAST_30_DAYS
+  `
+
+  const result = await searchStreamQuery(customerId, query)
+  if (!result.success) return { success: false, error: result.error }
+
+  const campaigns = (result.results || []).map((row) => {
+    const r = row as {
+      campaign?: Record<string, unknown>
+      campaignBudget?: Record<string, unknown>
+      metrics?: Record<string, number>
+    }
+    const c = r.campaign || {}
+    const m = r.metrics || {}
+    return {
+      id: String(c.id ?? ''),
+      name: String(c.name ?? 'Unknown'),
+      status: String(c.status ?? 'UNKNOWN'),
+      biddingStrategyType: String(c.biddingStrategyType ?? c.bidding_strategy_type ?? 'UNKNOWN'),
+      budget: Number(r.campaignBudget?.amountMicros ?? r.campaignBudget?.amount_micros ?? 0) / 1_000_000,
+      cost: Number(m.cost_micros ?? m.costMicros ?? 0) / 1_000_000,
+      clicks: Number(m.clicks || 0),
+      impressions: Number(m.impressions || 0),
+      conversions: Number(m.conversions || 0),
+      conversionsValue: Number(m.conversions_value ?? m.conversionsValue ?? 0),
+      searchImpressionShare: Number(m.search_impression_share ?? m.searchImpressionShare ?? 0),
+      searchBudgetLostIS: Number(
+        m.search_budget_lost_impression_share ?? m.searchBudgetLostImpressionShare ?? 0
+      ),
+      searchRankLostIS: Number(
+        m.search_rank_lost_impression_share ?? m.searchRankLostImpressionShare ?? 0
+      ),
+    }
+  })
+
+  return { success: true, campaigns }
+}
+
+/**
+ * Read account-level conversion settings — specifically whether "enhanced
+ * conversions for leads" is turned on. When it's off, Google rejects every
+ * upload that carries hashed email/phone with "Make sure you've turned on
+ * enhanced conversions for leads in conversion settings." Surfaced in the
+ * Ads Health audit so you know which accounts need the manual switch.
+ */
+export async function getCustomerConversionSettings(customerId: string): Promise<{
+  success: boolean
+  settings?: {
+    enhancedConversionsForLeadsEnabled: boolean
+    acceptedCustomerDataTerms: boolean
+  }
+  error?: string
+}> {
+  const query = `
+    SELECT
+      customer.conversion_tracking_setting.enhanced_conversions_for_leads_enabled,
+      customer.conversion_tracking_setting.accepted_customer_data_terms
+    FROM customer
+    LIMIT 1
+  `
+
+  const result = await searchStreamQuery(customerId, query)
+  if (!result.success) return { success: false, error: result.error }
+
+  const row = result.results?.[0] as
+    | { customer?: { conversionTrackingSetting?: Record<string, unknown> } }
+    | undefined
+  const cts = row?.customer?.conversionTrackingSetting || {}
+
+  return {
+    success: true,
+    settings: {
+      enhancedConversionsForLeadsEnabled: Boolean(
+        cts.enhancedConversionsForLeadsEnabled ?? cts.enhanced_conversions_for_leads_enabled ?? false
+      ),
+      acceptedCustomerDataTerms: Boolean(
+        cts.acceptedCustomerDataTerms ?? cts.accepted_customer_data_terms ?? false
+      ),
     },
   }
 }
