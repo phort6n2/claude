@@ -381,12 +381,21 @@ export async function sendEnhancedConversion(params: {
     userIdentifiers,
   }
 
-  // Attach the click id in its correct field (gclid vs gbraid/wbraid). Misfiled
-  // iOS identifiers are rerouted so Google doesn't reject the whole upload.
-  applyClickId(
-    clickConversion,
-    resolveClickIds({ gclid: params.gclid, gbraid: params.gbraid, wbraid: params.wbraid })
-  )
+  // Attach ONLY a real gclid here. iOS gbraid/wbraid identifiers are
+  // deliberately omitted: lead conversion actions use one-per-click counting,
+  // which Google rejects outright when a gbraid/wbraid is present ("one-per-click
+  // counting can't be used with gbraid or wbraid"). These leads still match on
+  // the hashed email/phone we send as user identifiers, so dropping the iOS
+  // click id loses no attribution while avoiding a hard rejection of the whole
+  // conversion.
+  const enhancedClickIds = resolveClickIds({
+    gclid: params.gclid,
+    gbraid: params.gbraid,
+    wbraid: params.wbraid,
+  })
+  if (enhancedClickIds.gclid) {
+    clickConversion.gclid = enhancedClickIds.gclid
+  }
 
   try {
     const url = `${GOOGLE_ADS_API_BASE}/customers/${customerId}:uploadClickConversions`
