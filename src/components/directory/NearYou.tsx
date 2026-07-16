@@ -106,11 +106,13 @@ export function NearYou({ shops }: { shops: Shop[] }) {
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {nearest.map(({ shop, distance }) => (
-          <div key={shop.slug}>
+          <div key={shop.slug} className="flex h-full flex-col">
             <div className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-blue-700">
               <Navigation width={12} height={12} /> {formatMiles(distance)} away
             </div>
-            <ShopCard shop={shop} />
+            <div className="flex-1">
+              <ShopCard shop={shop} />
+            </div>
           </div>
         ))}
       </div>

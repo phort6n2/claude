@@ -14,9 +14,14 @@ import { ShopCard } from '@/components/directory/ShopCard'
 import { HeroSearch } from '@/components/directory/HeroSearch'
 import { CTASection } from '@/components/directory/CTASection'
 import { NearYou } from '@/components/directory/NearYou'
+import { enrichShops } from '@/lib/directory/photos'
 
-export default function DirectoryHome() {
-  const featured = getFeaturedShops(6)
+// Refresh periodically so website hero images stay current.
+export const revalidate = 3600
+
+export default async function DirectoryHome() {
+  const featured = await enrichShops(getFeaturedShops(6))
+  const nearShops = await enrichShops(getAllShops())
   const cities = getCitySummaries()
   const states = getStateSummaries()
   const shopCount = getShopCount()
@@ -53,7 +58,7 @@ export default function DirectoryHome() {
       </section>
 
       {/* Near you — location-aware default (IP-based, upgradeable to GPS) */}
-      <NearYou shops={getAllShops()} />
+      <NearYou shops={nearShops} />
 
       {/* Services */}
       <section className="mx-auto max-w-6xl px-4 py-14">

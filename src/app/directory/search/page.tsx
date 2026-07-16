@@ -10,6 +10,7 @@ import {
 import type { ServiceKey } from '@/lib/directory/types'
 import { ShopCard } from '@/components/directory/ShopCard'
 import { SearchFilters } from '@/components/directory/SearchFilters'
+import { enrichShops } from '@/lib/directory/photos'
 
 export const metadata: Metadata = {
   title: 'Search Auto Glass Shops',
@@ -36,7 +37,7 @@ export default async function SearchPage({
     : undefined
   const mobileOnly = get('mobile') === '1'
 
-  const results = searchShops({ q, state, service, mobileOnly })
+  const results = await enrichShops(searchShops({ q, state, service, mobileOnly }))
   const states = getStateSummaries()
 
   const activeLabel = [

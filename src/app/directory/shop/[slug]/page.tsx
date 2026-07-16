@@ -35,9 +35,11 @@ import { ShopCard } from '@/components/directory/ShopCard'
 import { ShopPhoto } from '@/components/directory/ShopPhoto'
 import { ShopHero } from '@/components/directory/ShopHero'
 import { ShopMap } from '@/components/directory/ShopMap'
+import { SocialLinks } from '@/components/directory/SocialLinks'
+import { ExternalLink } from 'lucide-react'
 import { OpenNow } from '@/components/directory/OpenNow'
 import { StickyCallBar } from '@/components/directory/StickyCallBar'
-import { getShopPhotos, withPhotos } from '@/lib/directory/photos'
+import { enrichShop } from '@/lib/directory/photos'
 
 // Rebuild periodically so newly uploaded owner photos appear.
 export const revalidate = 300
@@ -74,7 +76,7 @@ export default async function ShopDetailPage({
   const baseShop = getShopBySlug(slug)
   if (!baseShop) notFound()
 
-  const shop = withPhotos(baseShop, await getShopPhotos(slug))
+  const shop = await enrichShop(baseShop)
   const photos = shop.photos ?? []
   const mapQuery = [
     shop.name,
@@ -257,6 +259,30 @@ export default async function ShopDetailPage({
             >
               <Navigation width={16} height={16} /> Get directions
             </a>
+
+            {/* Deep links to the business's own pages (owner-provided on claim) */}
+            {shop.links && shop.links.length > 0 && (
+              <>
+                <h2 className="mt-10 flex items-center gap-2 text-xl font-bold text-gray-900">
+                  <ExternalLink width={20} height={20} className="text-blue-600" />
+                  More from {shop.name}
+                </h2>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {shop.links.map((l) => (
+                    <a
+                      key={l.url}
+                      href={l.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:border-blue-300 hover:bg-blue-50"
+                    >
+                      {l.label}
+                      <ExternalLink width={15} height={15} className="shrink-0 text-gray-400" />
+                    </a>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -310,6 +336,13 @@ export default async function ShopDetailPage({
                   </a>
                 </div>
               </div>
+
+              {/* Social profiles (auto-discovered from the website) */}
+              {shop.socials && shop.socials.length > 0 && (
+                <div className="rounded-xl border border-gray-200 p-5">
+                  <SocialLinks socials={shop.socials} />
+                </div>
+              )}
 
               {/* Hours */}
               <div className="rounded-xl border border-gray-200 p-5">

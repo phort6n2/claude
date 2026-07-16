@@ -74,6 +74,10 @@ export interface Shop {
   certifications?: string[]
   /** A short featured testimonial the owner can supply (real quotes only). */
   testimonial?: { quote: string; author: string }
+  /** Deep links to the business's own service/location pages (claimed listings). */
+  links?: { label: string; url: string }[]
+  /** Social profiles — auto-discovered from the website, or owner-provided. */
+  socials?: { platform: string; url: string }[]
 
   // Directory state
   /** A claimed listing means the owner has verified/edited it. */

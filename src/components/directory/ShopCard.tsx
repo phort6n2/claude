@@ -5,8 +5,7 @@ import { serviceLabel, shopHref, cityHref } from '@/lib/directory/data'
 import { telHref, faviconUrl } from '@/lib/directory/format'
 import { cn } from '@/lib/utils'
 import { StarRating } from './StarRating'
-import { ShopPhoto } from './ShopPhoto'
-import { ShopCover } from './ShopCover'
+import { SafeShopImage } from './SafeShopImage'
 import { OpenNow } from './OpenNow'
 
 export function ShopCard({
@@ -20,20 +19,16 @@ export function ShopCard({
   return (
     <article
       className={cn(
-        'group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm ring-1 ring-transparent transition duration-200',
+        'group relative flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm ring-1 ring-transparent transition duration-200',
         'hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-lg hover:ring-gray-100',
         'focus-within:ring-2 focus-within:ring-blue-500/60',
         shop.featured && 'border-blue-200',
         className
       )}
     >
-      {/* Photo band — owner photo, else a branded auto-glass cover */}
+      {/* Photo band — website/owner photo, else a branded auto-glass cover */}
       <div className="relative h-36 w-full shrink-0 overflow-hidden border-b border-gray-100">
-        {shop.photos?.[0] ? (
-          <ShopPhoto src={shop.photos[0]} alt={shop.name} />
-        ) : (
-          <ShopCover slug={shop.slug} />
-        )}
+        <SafeShopImage src={shop.photos?.[0]} alt={shop.name} slug={shop.slug} />
         {shop.featured && (
           <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-blue-600 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm">
             Featured
@@ -111,7 +106,7 @@ export function ShopCard({
         </div>
 
         {/* CTA row — Call is primary (the directory's core conversion) */}
-        <div className="mt-5 flex items-center gap-2 border-t border-gray-100 pt-4">
+        <div className="mt-auto flex items-center gap-2 border-t border-gray-100 pt-4">
           <a
             href={telHref(shop.phone)}
             aria-label={`Call ${shop.name} at ${shop.phone}`}

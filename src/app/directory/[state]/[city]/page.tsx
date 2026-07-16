@@ -17,7 +17,7 @@ import { cityFaqs } from '@/lib/directory/faqs'
 import { cityIntro, cityAdvice } from '@/lib/directory/content'
 import { CityShopExplorer } from '@/components/directory/CityShopExplorer'
 import { CTASection } from '@/components/directory/CTASection'
-import { getPhotosForSlugs, withPhotos } from '@/lib/directory/photos'
+import { enrichShops } from '@/lib/directory/photos'
 
 // Rebuild periodically so newly uploaded owner photos appear.
 export const revalidate = 300
@@ -52,8 +52,7 @@ export default async function CityPage({
   if (!summary) notFound()
 
   const shops = getShopsByCity(summary.state, summary.city)
-  const photoMap = await getPhotosForSlugs()
-  const shopsWithPhotos = shops.map((s) => withPhotos(s, photoMap[s.slug] ?? []))
+  const shopsWithPhotos = await enrichShops(shops)
   const mobileCount = shops.filter((s) => s.mobileService).length
   const faqs = cityFaqs(summary.city, summary.state)
   const advice = cityAdvice(summary.city)

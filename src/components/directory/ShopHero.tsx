@@ -1,7 +1,6 @@
 import type { Shop } from '@/lib/directory/types'
 import { faviconUrl } from '@/lib/directory/format'
-import { ShopCover } from './ShopCover'
-import { ShopPhoto } from './ShopPhoto'
+import { SafeShopImage } from './SafeShopImage'
 
 /**
  * Shop-page hero: the business name over an image. Uses an uploaded photo when
@@ -12,11 +11,7 @@ export function ShopHero({ shop, photo }: { shop: Shop; photo?: string }) {
   const fav = faviconUrl(shop.website)
   return (
     <div className="relative h-52 w-full overflow-hidden rounded-2xl border border-gray-200 sm:h-72">
-      {photo ? (
-        <ShopPhoto src={photo} alt={shop.name} />
-      ) : (
-        <ShopCover slug={shop.slug} watermark={220} />
-      )}
+      <SafeShopImage src={photo} alt={shop.name} slug={shop.slug} watermark={220} />
       <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-5 sm:p-6">
         {fav && (

@@ -13,6 +13,9 @@ import {
   jsonLdScript,
 } from '@/lib/directory/seo'
 import { ShopCard } from '@/components/directory/ShopCard'
+import { enrichShops } from '@/lib/directory/photos'
+
+export const revalidate = 3600
 
 export function generateStaticParams() {
   return getStateSummaries().map((s) => ({ state: s.state }))
@@ -43,7 +46,7 @@ export default async function StatePage({
   const summary = getStateSummaries().find((s) => s.state === state.toLowerCase())
   if (!summary) notFound()
 
-  const shops = getShopsByState(summary.state)
+  const shops = await enrichShops(getShopsByState(summary.state))
   const breadcrumb = breadcrumbJsonLd([
     { name: 'Directory', path: '/directory' },
     { name: summary.stateFull, path: `/directory/${summary.state}` },
