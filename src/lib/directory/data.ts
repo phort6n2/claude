@@ -60,6 +60,16 @@ export const SERVICES: ServiceMeta[] = [
     blurb: 'Regulator and motor repair for windows that won’t roll up or down.',
   },
   {
+    key: 'sunroof-repair',
+    label: 'Sunroof Repair',
+    blurb: 'Repair and replacement of sunroof and moonroof glass and seals.',
+  },
+  {
+    key: 'window-tint',
+    label: 'Window Tinting',
+    blurb: 'Film installation for heat, glare, and UV protection.',
+  },
+  {
     key: 'commercial-fleet',
     label: 'Commercial & Fleet',
     blurb: 'Volume glass programs for delivery, rideshare, and company fleets.',

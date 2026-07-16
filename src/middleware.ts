@@ -64,7 +64,49 @@ function handleDirectoryHost(req: NextRequest): NextResponse | null {
   return NextResponse.rewrite(url)
 }
 
+function redirect301(req: NextRequest, pathname: string, search = ''): NextResponse {
+  const url = req.nextUrl.clone()
+  url.pathname = pathname
+  url.search = search
+  return NextResponse.redirect(url, 301)
+}
+
+/**
+ * Permanent redirects from the legacy WordPress directory URLs to their new
+ * equivalents, so the old site's SEO and inbound links carry over. Runs on
+ * every host, before host routing.
+ */
+function legacyRedirect(req: NextRequest): NextResponse | null {
+  const path = req.nextUrl.pathname.replace(/\/+$/, '') || '/'
+
+  const shop = path.match(/^\/auto-glass-shop\/([^/]+)$/)
+  if (shop) return redirect301(req, `/directory/shop/${shop[1]}`)
+
+  const loc = path.match(/^\/location\/([^/]+)$/)
+  if (loc) {
+    return redirect301(
+      req,
+      '/directory/search',
+      `?q=${encodeURIComponent(loc[1].replace(/-/g, ' '))}`
+    )
+  }
+
+  const map: Record<string, string> = {
+    '/listing-category/auto-glass-shop': '/directory',
+    '/submit-listing': '/directory/claim',
+    '/listing-author': '/directory',
+    '/blog': '/directory',
+    '/contact': '/directory/claim',
+  }
+  if (map[path]) return redirect301(req, map[path])
+
+  return null
+}
+
 export default function middleware(req: NextRequest) {
+  const legacy = legacyRedirect(req)
+  if (legacy) return legacy
+
   const directoryResponse = handleDirectoryHost(req)
   if (directoryResponse) return directoryResponse
 

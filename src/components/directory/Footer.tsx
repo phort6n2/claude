@@ -65,7 +65,7 @@ export function Footer() {
         <div className="mt-12 border-t border-gray-200 pt-6 text-xs text-gray-500">
           <p>
             © {new Date().getFullYear()} Windshield Repair HQ. Listings are provided
-            for informational purposes. Sample data shown for demonstration.
+            for informational purposes.
           </p>
         </div>
       </div>

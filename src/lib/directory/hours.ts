@@ -21,6 +21,10 @@ export function openStatus(hours: BusinessHours[], now: Date): OpenStatus {
   const today = hours.find((h) => h.day === day)
 
   if (today?.open && today.close) {
+    // Whole-day hours (00:00–23:59) represent a 24-hour operation.
+    if (today.open === '00:00' && today.close === '23:59') {
+      return { open: true, label: 'Open 24 hours' }
+    }
     const open = toMinutes(today.open)
     const close = toMinutes(today.close)
     if (nowMins >= open && nowMins < close) {

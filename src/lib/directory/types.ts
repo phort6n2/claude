@@ -16,6 +16,8 @@ export type ServiceKey =
   | 'side-window'
   | 'rear-window'
   | 'power-window-repair'
+  | 'sunroof-repair'
+  | 'window-tint'
   | 'commercial-fleet'
   | 'rv-heavy-equipment'
 
@@ -50,6 +52,8 @@ export interface Shop {
   /** Full state name for display, e.g. "Texas". */
   stateFull: string
   zip: string
+  /** Two-letter country code; defaults to US when absent. */
+  country?: string
   lat?: number
   lng?: number
 

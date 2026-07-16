@@ -130,7 +130,7 @@ export function autoRepairJsonLd(shop: Shop): Record<string, unknown> {
       addressLocality: shop.city,
       addressRegion: shop.state.toUpperCase(),
       postalCode: shop.zip,
-      addressCountry: 'US',
+      addressCountry: shop.country ?? 'US',
     },
     areaServed: {
       '@type': 'City',
