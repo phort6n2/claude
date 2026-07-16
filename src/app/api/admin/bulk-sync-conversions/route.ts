@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sendEnhancedConversion } from '@/lib/google-ads'
+import { eligibleLeadWhere } from '@/lib/conversion-sync'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300 // 5 minutes for bulk operations
@@ -37,21 +38,16 @@ export async function GET(request: NextRequest) {
 
   try {
     // Build where clause: either explicit IDs (batched mode) or date-range fallback
+    // Explicit IDs come from the (already-filtered) unsynced list, so honor
+    // them as-is. The date-range fallback uses shared eligibility so it skips
+    // too-recent leads and the permanent-error backlog like the cron does.
     const where = leadIds
       ? {
           id: { in: leadIds },
           enhancedConversionSent: false,
           OR: [{ email: { not: null } }, { phone: { not: null } }],
         }
-      : (() => {
-          const startDate = new Date()
-          startDate.setDate(startDate.getDate() - days)
-          return {
-            createdAt: { gte: startDate },
-            enhancedConversionSent: false,
-            OR: [{ email: { not: null } }, { phone: { not: null } }],
-          }
-        })()
+      : eligibleLeadWhere(days)
 
     const leads = await prisma.lead.findMany({
       where,

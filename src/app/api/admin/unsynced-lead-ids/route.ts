@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { eligibleLeadWhere } from '@/lib/conversion-sync'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,13 +40,12 @@ export async function GET(request: NextRequest) {
   )
   const clientId = searchParams.get('clientId') || undefined
 
-  const startDate = new Date()
-  startDate.setDate(startDate.getDate() - days)
-
+  // Same eligibility as the cron: excludes leads younger than 6h (would error
+  // "click too recent") and leads that already failed with a permanent error
+  // (aged-out clicks, inaccessible accounts) — so the dead backlog stops
+  // showing up as "unsynced" and manual syncs don't re-hammer it.
   const where = {
-    createdAt: { gte: startDate },
-    enhancedConversionSent: false,
-    OR: [{ email: { not: null } }, { phone: { not: null } }],
+    ...eligibleLeadWhere(days),
     ...(clientId ? { clientId } : {}),
   }
 
