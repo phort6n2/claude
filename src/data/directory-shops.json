@@ -24,7 +24,7 @@
       {"day": 5, "open": "07:30", "close": "18:00"},
       {"day": 6, "open": "08:00", "close": "14:00"}
     ],
-    "description": "Family-owned auto glass shop serving greater Austin since 2009. Same-day windshield replacement, insurance-approved work, and free mobile service anywhere inside the 183 loop. Factory-grade ADAS recalibration on modern vehicles.",
+    "description": "Family-run since 2009, ClearView keeps Austin drivers moving with same-day windshield replacement, quick chip and crack repair, and side and rear glass work. Mobile technicians come to you across the city, bill State Farm, GEICO, Progressive, and Allstate directly, and recalibrate ADAS cameras so lane-keeping and automatic braking work exactly as the automaker intended.",
     "rating": 4.9,
     "reviewCount": 412,
     "yearsInBusiness": 16,
@@ -55,7 +55,7 @@
       {"day": 5, "open": "08:00", "close": "17:30"},
       {"day": 6, "open": null, "close": null}
     ],
-    "description": "North Austin windshield specialists with a dedicated commercial fleet program. OEM and OEE glass in stock for most makes, mobile crews on call across Williamson County.",
+    "description": "Up on Research Boulevard, Lone Star has handled North Austin windshields for over a decade, from a single cracked pane to a whole delivery fleet. Book a mobile visit around town and settle up through USAA, Farmers, or Liberty Mutual; commercial accounts get priority scheduling to keep trucks earning.",
     "rating": 4.7,
     "reviewCount": 203,
     "yearsInBusiness": 11,
@@ -83,7 +83,7 @@
       {"day": 5, "open": "08:00", "close": "17:00"},
       {"day": 6, "open": null, "close": null}
     ],
-    "description": "South Austin in-shop glass replacement with lifetime warranty on installation. Loaner cars available while your calibration completes.",
+    "description": "Capitol City runs a tidy South Austin shop off Slaughter Lane for windshield replacements, rock-chip fixes, and stuck power windows. Every install includes in-house ADAS recalibration and a lifetime warranty on workmanship, with State Farm and Nationwide claims handled at the counter while you wait.",
     "rating": 4.6,
     "reviewCount": 97,
     "yearsInBusiness": 7,
@@ -114,7 +114,7 @@
       {"day": 5, "open": "07:00", "close": "18:00"},
       {"day": 6, "open": "08:00", "close": "15:00"}
     ],
-    "description": "San Antonio's highest-volume mobile auto glass team. We come to your home or office citywide, handle the insurance paperwork, and recalibrate lane-assist cameras on-site.",
+    "description": "Alamo Auto Glass has covered San Antonio for nearly two decades with a large mobile crew that meets you at home, at work, or on the jobsite. From chip repairs to full replacements, side and rear glass, and fleet vehicles, the team files with every major carrier here — State Farm, GEICO, Progressive, USAA, and Allstate — and calibrates safety cameras right in your driveway.",
     "rating": 4.8,
     "reviewCount": 531,
     "yearsInBusiness": 19,
@@ -142,7 +142,7 @@
       {"day": 5, "open": "08:30", "close": "17:00"},
       {"day": 6, "open": null, "close": null}
     ],
-    "description": "Rock chip and crack repair specialists. Most repairs done in under 30 minutes and covered $0 out-of-pocket with comprehensive insurance.",
+    "description": "Riverwalk keeps it simple: rock chips and cracks, repaired right, usually in under half an hour. Serving San Antonio's South Side with mobile visits, they'll often complete the work at $0 out of pocket when you carry comprehensive coverage through Progressive or Farmers.",
     "rating": 4.5,
     "reviewCount": 64,
     "yearsInBusiness": 5,
@@ -174,7 +174,7 @@
       {"day": 5, "open": "07:00", "close": "18:00"},
       {"day": 6, "open": "08:00", "close": "16:00"}
     ],
-    "description": "Denver metro's trusted glass shop for cars, trucks, RVs, and heavy equipment. Colorado's hail country keeps us busy — we bill your insurer directly and waive deductibles where allowed.",
+    "description": "Between Colorado hailstorms and mountain gravel, Denver windshields take a beating, and Mile High has repaired them for 22 years. The shop handles everything from compact cars to RVs and heavy equipment, sends mobile units across the metro, and bills insurers like State Farm, American Family, and USAA directly, waiving your deductible wherever your policy allows.",
     "rating": 4.9,
     "reviewCount": 688,
     "yearsInBusiness": 22,
@@ -203,7 +203,7 @@
       {"day": 5, "open": "08:00", "close": "17:30"},
       {"day": 6, "open": null, "close": null}
     ],
-    "description": "East Denver in-shop specialists with certified ADAS recalibration bays. Fleet accounts welcome with net-30 billing.",
+    "description": "Front Range works out of a fixed East Colfax facility built around certified ADAS recalibration bays, so camera-equipped windshields leave properly aimed. Alongside replacements, chip repairs, and power-window fixes, they run fleet accounts on net-30 terms and file with State Farm, Progressive, and Nationwide.",
     "rating": 4.7,
     "reviewCount": 154,
     "yearsInBusiness": 13,
@@ -231,7 +231,7 @@
       {"day": 5, "open": "07:30", "close": "17:00"},
       {"day": 6, "open": "09:00", "close": "13:00"}
     ],
-    "description": "Boulder County mobile windshield service. We service the foothills communities other shops won't drive to — Nederland, Lyons, and Ward included.",
+    "description": "Rocky Mountain Windshield brings mobile glass service to Boulder County, including the foothill towns most shops skip like Nederland, Lyons, and Ward. Expect windshield replacement, repairs, and on-site ADAS recalibration, with direct billing through State Farm, GEICO, and American Family.",
     "rating": 4.8,
     "reviewCount": 88,
     "yearsInBusiness": 9,
@@ -263,7 +263,7 @@
       {"day": 5, "open": "06:30", "close": "18:00"},
       {"day": 6, "open": "07:00", "close": "15:00"}
     ],
-    "description": "Valley-wide mobile auto glass with early-morning appointments to beat the heat. Arizona has zero-deductible glass coverage on many policies — we'll check yours for free.",
+    "description": "Desert Auto Glass covers the whole Valley with mobile appointments that start before the Phoenix heat sets in. Many Arizona comprehensive policies carry zero-deductible glass coverage — the team checks yours at no charge, then handles replacement, repair, side and rear glass, and camera recalibration, billing State Farm, GEICO, Progressive, Allstate, or Farmers directly.",
     "rating": 4.9,
     "reviewCount": 745,
     "yearsInBusiness": 18,
@@ -291,7 +291,7 @@
       {"day": 5, "open": "07:00", "close": "17:00"},
       {"day": 6, "open": null, "close": null}
     ],
-    "description": "North Phoenix and Deer Valley windshield replacement with same-day mobile slots. Free zero-deductible verification on Arizona comprehensive policies.",
+    "description": "Serving North Phoenix and Deer Valley, Valley Windshield Pros keeps same-day mobile slots open for windshield replacements, chip repairs, and commercial fleets. They'll verify for free whether your Arizona policy waives the glass deductible, and bill GEICO, USAA, or Liberty Mutual.",
     "rating": 4.6,
     "reviewCount": 129,
     "yearsInBusiness": 8,
@@ -320,7 +320,7 @@
       {"day": 5, "open": "07:30", "close": "17:30"},
       {"day": 6, "open": "08:00", "close": "13:00"}
     ],
-    "description": "Tucson's calibration-first auto glass shop. Every camera-equipped windshield leaves with a printed recalibration report for your records and your insurer.",
+    "description": "Cactus Glass built its Tucson operation around calibration: every camera-equipped windshield leaves with a printed recalibration report for your records and your insurer. The crew handles replacements, repairs, and chips in-shop or on the road, with direct billing to State Farm, Progressive, and American Family.",
     "rating": 4.8,
     "reviewCount": 176,
     "yearsInBusiness": 10,
@@ -352,7 +352,7 @@
       {"day": 5, "open": "07:00", "close": "18:30"},
       {"day": 6, "open": "08:00", "close": "16:00"}
     ],
-    "description": "Serving all of DFW with a fleet of mobile units and two calibration centers. Corporate fleet contracts, dealership overflow, and consumer same-day service.",
+    "description": "Metroplex covers the full DFW area from two calibration centers backed by a fleet of mobile units. Whether it's a consumer same-day repair, a dealership overflow job, or a corporate fleet contract, they replace and recalibrate glass and bill State Farm, GEICO, Allstate, Progressive, and Nationwide.",
     "rating": 4.8,
     "reviewCount": 602,
     "yearsInBusiness": 20,
@@ -380,7 +380,7 @@
       {"day": 5, "open": "08:00", "close": "17:00"},
       {"day": 6, "open": null, "close": null}
     ],
-    "description": "North Dallas mobile windshield replacement with a lifetime leak-free guarantee. Text-to-book and real-time technician tracking.",
+    "description": "Trinity brings windshield replacement and chip repair to North Dallas driveways, with text-to-book scheduling and live technician tracking so you know exactly when help arrives. Installs carry a lifetime leak-free guarantee, and claims run through Farmers or Liberty Mutual.",
     "rating": 4.5,
     "reviewCount": 71,
     "yearsInBusiness": 6,
@@ -412,7 +412,7 @@
       {"day": 5, "open": "07:00", "close": "18:00"},
       {"day": 6, "open": "08:00", "close": "16:00"}
     ],
-    "description": "Tampa Bay's zero-deductible windshield experts. Florida law waives your comprehensive deductible on windshield replacement — we handle the paperwork start to finish, no cost to you.",
+    "description": "Under Florida law, comprehensive policies waive the deductible on windshield replacement, and Sunshine Auto Glass handles that paperwork end to end so Tampa Bay drivers pay nothing out of pocket. The team covers replacements, repairs, side and rear glass, and ADAS recalibration, coming to you across the bay and billing State Farm, GEICO, Progressive, Allstate, and USAA.",
     "rating": 4.9,
     "reviewCount": 934,
     "yearsInBusiness": 15,
@@ -440,7 +440,7 @@
       {"day": 5, "open": "07:30", "close": "17:30"},
       {"day": 6, "open": "08:00", "close": "13:00"}
     ],
-    "description": "Carrollwood and North Tampa mobile glass service. Free zero-deductible verification and same-week fleet scheduling.",
+    "description": "Gulf Coast serves Carrollwood and North Tampa with mobile windshield replacement and chip repair, plus same-week scheduling for commercial fleets. Florida's zero-deductible glass law means most replacements cost you nothing; they'll confirm your coverage for free and file with State Farm, Progressive, or Nationwide.",
     "rating": 4.6,
     "reviewCount": 142,
     "yearsInBusiness": 12,
@@ -472,7 +472,7 @@
       {"day": 5, "open": "07:30", "close": "18:00"},
       {"day": 6, "open": "08:00", "close": "15:00"}
     ],
-    "description": "Serving metro Atlanta inside and outside the Perimeter. Beltline-area shop plus mobile crews covering Buckhead, Midtown, Decatur, and Sandy Springs.",
+    "description": "Peachtree works both sides of the Perimeter from its Beltline-area shop, with mobile crews reaching Buckhead, Midtown, Decatur, and Sandy Springs. Services run the full range — windshield and side and rear glass, chip repair, stuck power windows, and ADAS recalibration — with direct billing to State Farm, GEICO, Allstate, Progressive, and Farmers.",
     "rating": 4.8,
     "reviewCount": 488,
     "yearsInBusiness": 14,
@@ -500,7 +500,7 @@
       {"day": 5, "open": "08:00", "close": "17:00"},
       {"day": 6, "open": null, "close": null}
     ],
-    "description": "South Atlanta and East Point mobile windshield service with fast insurance claims and honest chip-vs-replace advice.",
+    "description": "Southside covers South Atlanta and East Point with mobile windshield service and straight advice on whether a chip can be repaired or the glass truly needs replacing. Repairs and replacements move quickly through GEICO and Progressive claims.",
     "rating": 4.4,
     "reviewCount": 58,
     "yearsInBusiness": 4,
@@ -532,7 +532,7 @@
       {"day": 5, "open": "08:00", "close": "17:30"},
       {"day": 6, "open": "09:00", "close": "14:00"}
     ],
-    "description": "Seattle and Eastside auto glass with indoor calibration bays — no weather delays on your recalibration. Mobile service from Ballard to Bellevue.",
+    "description": "Rain never delays a recalibration at Emerald City — the Seattle shop aims ADAS cameras in indoor bays, then sends mobile techs anywhere from Ballard to Bellevue. The team replaces and repairs windshields plus side and rear glass, billing State Farm, GEICO, PEMCO, Allstate, and USAA directly.",
     "rating": 4.9,
     "reviewCount": 356,
     "yearsInBusiness": 13,

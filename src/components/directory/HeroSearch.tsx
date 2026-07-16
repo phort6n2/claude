@@ -21,10 +21,10 @@ export function HeroSearch({ states }: { states: StateSummary[] }) {
   return (
     <form
       onSubmit={submit}
-      className="mx-auto flex w-full max-w-2xl flex-col gap-2 rounded-xl bg-white p-2 shadow-lg sm:flex-row"
+      className="mx-auto flex w-full max-w-2xl flex-col gap-2 rounded-2xl bg-white p-2 shadow-xl ring-1 ring-black/5 sm:flex-row sm:items-center"
     >
-      <div className="flex flex-1 items-center gap-2 rounded-lg px-3">
-        <Search width={18} height={18} className="text-gray-400" />
+      <div className="flex flex-1 items-center gap-2 rounded-xl px-3 focus-within:bg-gray-50 sm:focus-within:bg-transparent">
+        <Search width={18} height={18} className="shrink-0 text-gray-400" />
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -36,7 +36,7 @@ export function HeroSearch({ states }: { states: StateSummary[] }) {
       <select
         value={state}
         onChange={(e) => setState(e.target.value)}
-        className="rounded-lg border-none bg-gray-50 px-3 py-2.5 text-gray-700 outline-none sm:w-40"
+        className="cursor-pointer rounded-xl border-none bg-gray-50 px-3 py-2.5 text-gray-700 outline-none transition-colors hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-blue-500 sm:w-40"
         aria-label="Filter by state"
       >
         <option value="">All states</option>
@@ -48,8 +48,9 @@ export function HeroSearch({ states }: { states: StateSummary[] }) {
       </select>
       <button
         type="submit"
-        className="rounded-lg bg-blue-600 px-6 py-2.5 font-semibold text-white hover:bg-blue-700"
+        className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 font-semibold text-white outline-none transition-colors hover:bg-blue-700 active:bg-blue-800 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
       >
+        <Search width={18} height={18} className="sm:hidden" />
         Search
       </button>
     </form>
