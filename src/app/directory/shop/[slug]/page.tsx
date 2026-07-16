@@ -75,6 +75,13 @@ export default async function ShopDetailPage({
 
   const shop = withPhotos(baseShop, await getShopPhotos(slug))
   const photos = shop.photos ?? []
+  const mapQuery = [
+    shop.name,
+    shop.street,
+    `${shop.city}, ${shop.state.toUpperCase()} ${shop.zip}`,
+  ]
+    .filter(Boolean)
+    .join(', ')
   const related = getRelatedShops(shop, 3)
   const autoRepair = autoRepairJsonLd(shop)
   const breadcrumb = breadcrumbJsonLd([
@@ -239,25 +246,21 @@ export default async function ShopDetailPage({
             )}
 
             {/* Location + directions */}
-            {typeof shop.lat === 'number' && typeof shop.lng === 'number' && (
-              <>
-                <h2 className="mt-10 flex items-center gap-2 text-xl font-bold text-gray-900">
-                  <MapPin width={20} height={20} className="text-blue-600" />
-                  Location
-                </h2>
-                <div className="mt-4 h-64 overflow-hidden rounded-xl border border-gray-200">
-                  <ShopMap lat={shop.lat} lng={shop.lng} name={shop.name} />
-                </div>
-                <a
-                  href={directionsHref(shop)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-3 inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                >
-                  <Navigation width={16} height={16} /> Get directions
-                </a>
-              </>
-            )}
+            <h2 className="mt-10 flex items-center gap-2 text-xl font-bold text-gray-900">
+              <MapPin width={20} height={20} className="text-blue-600" />
+              Location
+            </h2>
+            <div className="mt-4 h-64 overflow-hidden rounded-xl border border-gray-200">
+              <ShopMap query={mapQuery} name={shop.name} />
+            </div>
+            <a
+              href={directionsHref(shop)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              <Navigation width={16} height={16} /> Get directions
+            </a>
           </div>
 
           {/* Sidebar */}

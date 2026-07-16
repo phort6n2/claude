@@ -92,12 +92,16 @@ export function CityShopExplorer({ shops }: { shops: Shop[] }) {
         .map(mapEl.current, { scrollWheelZoom: false })
         .setView([39.5, -98.35], 4)
       leaflet
-        .tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap contributors',
-          maxZoom: 19,
+        .tileLayer('https://{s}.basemaps.cartocdn.com/voyager/{z}/{x}/{y}{r}.png', {
+          attribution: '© OpenStreetMap · © CARTO',
+          subdomains: 'abcd',
+          maxZoom: 20,
         })
         .addTo(map.current)
       drawMarkers()
+      // Leaflet renders blank if the container was sized after init — force a
+      // recalculation once layout settles.
+      setTimeout(() => map.current && map.current.invalidateSize(), 200)
     })
     return () => {
       cancelled = true
