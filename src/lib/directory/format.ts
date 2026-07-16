@@ -21,6 +21,17 @@ export function telHref(phone: string): string {
   return `tel:${phone.replace(/[^0-9]/g, '')}`
 }
 
+/** Keyless favicon URL for a business website (Google's favicon service). */
+export function faviconUrl(website?: string, size = 128): string | null {
+  if (!website) return null
+  try {
+    const host = new URL(website).hostname.replace(/^www\./, '')
+    return `https://www.google.com/s2/favicons?domain=${host}&sz=${size}`
+  } catch {
+    return null
+  }
+}
+
 /** Google Maps directions deep link — by coordinates when available, else address. */
 export function directionsHref(shop: {
   lat?: number

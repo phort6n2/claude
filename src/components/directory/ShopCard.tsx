@@ -2,10 +2,11 @@ import Link from 'next/link'
 import { MapPin, Phone, Truck, BadgeCheck, ArrowRight } from 'lucide-react'
 import type { Shop } from '@/lib/directory/types'
 import { serviceLabel, shopHref, cityHref } from '@/lib/directory/data'
-import { telHref } from '@/lib/directory/format'
+import { telHref, faviconUrl } from '@/lib/directory/format'
 import { cn } from '@/lib/utils'
 import { StarRating } from './StarRating'
 import { ShopPhoto } from './ShopPhoto'
+import { ShopCover } from './ShopCover'
 import { OpenNow } from './OpenNow'
 
 export function ShopCard({
@@ -15,6 +16,7 @@ export function ShopCard({
   shop: Shop
   className?: string
 }) {
+  const favicon = faviconUrl(shop.website)
   return (
     <article
       className={cn(
@@ -25,9 +27,13 @@ export function ShopCard({
         className
       )}
     >
-      {/* Photo band (owner photo or branded placeholder) with overlay badges */}
-      <div className="relative h-36 w-full shrink-0 border-b border-gray-100">
-        <ShopPhoto src={shop.photos?.[0]} alt={shop.name} />
+      {/* Photo band — owner photo, else a branded auto-glass cover */}
+      <div className="relative h-36 w-full shrink-0 overflow-hidden border-b border-gray-100">
+        {shop.photos?.[0] ? (
+          <ShopPhoto src={shop.photos[0]} alt={shop.name} />
+        ) : (
+          <ShopCover slug={shop.slug} />
+        )}
         {shop.featured && (
           <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-blue-600 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm">
             Featured
@@ -40,6 +46,16 @@ export function ShopCard({
           >
             <BadgeCheck width={13} height={13} /> Verified
           </span>
+        )}
+        {favicon && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={favicon}
+            alt=""
+            width={32}
+            height={32}
+            className="absolute bottom-2 left-3 h-8 w-8 rounded-lg bg-white p-1 shadow ring-1 ring-black/5"
+          />
         )}
       </div>
 

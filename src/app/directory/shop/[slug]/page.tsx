@@ -33,6 +33,7 @@ import { dayLabel, formatTime, telHref, directionsHref } from '@/lib/directory/f
 import { StarRating } from '@/components/directory/StarRating'
 import { ShopCard } from '@/components/directory/ShopCard'
 import { ShopPhoto } from '@/components/directory/ShopPhoto'
+import { ShopHero } from '@/components/directory/ShopHero'
 import { ShopMap } from '@/components/directory/ShopMap'
 import { OpenNow } from '@/components/directory/OpenNow'
 import { StickyCallBar } from '@/components/directory/StickyCallBar'
@@ -126,11 +127,9 @@ export default async function ShopDetailPage({
         </nav>
       </div>
 
-      {/* Hero photo (owner-uploaded on claimed listings, else branded placeholder) */}
+      {/* Hero — business name over an uploaded photo or a branded cover */}
       <div className="mx-auto max-w-6xl px-4 pt-6">
-        <div className="relative h-44 w-full overflow-hidden rounded-2xl border border-gray-200 sm:h-64">
-          <ShopPhoto src={photos[0]} alt={shop.name} iconSize={64} />
-        </div>
+        <ShopHero shop={shop} photo={photos[0]} />
         {photos.length > 1 && (
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
             {photos.slice(1, 6).map((url) => (
@@ -150,17 +149,14 @@ export default async function ShopDetailPage({
           {/* Main column */}
           <div className="lg:col-span-2">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{shop.name}</h1>
-                <Link
-                  href={cityHref(shop)}
-                  className="mt-2 inline-flex items-center gap-1.5 text-gray-500 hover:text-blue-600"
-                >
-                  <MapPin width={16} height={16} />
-                  {shop.street ? `${shop.street}, ` : ''}
-                  {shop.city}, {shop.state.toUpperCase()} {shop.zip}
-                </Link>
-              </div>
+              <Link
+                href={cityHref(shop)}
+                className="inline-flex items-center gap-1.5 text-gray-600 hover:text-blue-600"
+              >
+                <MapPin width={16} height={16} />
+                {shop.street ? `${shop.street}, ` : ''}
+                {shop.city}, {shop.state.toUpperCase()} {shop.zip}
+              </Link>
               {shop.claimed && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-3 py-1 text-sm font-medium text-green-700">
                   <BadgeCheck width={15} height={15} /> Verified listing
