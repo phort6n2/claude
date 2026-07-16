@@ -106,6 +106,64 @@ export default function ForShopsPage() {
         </div>
       </section>
 
+      {/* Trust strip */}
+      <section className="mx-auto max-w-5xl px-4 pb-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            'No long-term contracts',
+            'You own your accounts & data',
+            'Built only for auto glass',
+            'Transparent, call-based reporting',
+          ].map((t) => (
+            <div
+              key={t}
+              className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white p-4 text-sm font-medium text-gray-800"
+            >
+              <Check className="shrink-0 text-green-500" width={18} height={18} /> {t}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="mx-auto max-w-3xl px-4 py-14">
+        <h2 className="text-center text-2xl font-bold text-gray-900">Common questions</h2>
+        <div className="mt-8 space-y-3">
+          {[
+            {
+              q: 'Is the directory listing really free?',
+              a: 'Yes. Your listing is free forever. Managed SEO and Google Ads is a separate, optional paid service you can add whenever you want more booked jobs.',
+            },
+            {
+              q: 'Do I have to sign a long-term contract?',
+              a: 'No. We earn your business month to month — there’s nothing to get started but a conversation.',
+            },
+            {
+              q: 'Who owns the Google Ads and Google Business Profile accounts?',
+              a: 'You do. We work inside your own accounts, so you keep everything — history, data, and assets — even if we ever part ways.',
+            },
+            {
+              q: 'How much does it cost?',
+              a: 'It depends on your market and goals, so we quote transparently after a free assessment. You’ll see exactly what you’re paying for before committing.',
+            },
+            {
+              q: 'How fast will I see results?',
+              a: 'Search and Maps ads can start driving calls within days of launch. SEO compounds over weeks and months — we focus both on tracked calls and quote requests, not vanity metrics.',
+            },
+          ].map((f) => (
+            <details key={f.q} className="group rounded-xl border border-gray-200 bg-white p-4">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold text-gray-900">
+                {f.q}
+                <span className="shrink-0 text-lg text-gray-400 transition-transform group-open:rotate-45">
+                  +
+                </span>
+              </summary>
+              <p className="mt-2 text-sm leading-relaxed text-gray-600">{f.a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
       <section className="mx-auto max-w-3xl px-4 py-16 text-center">
         <MapPin className="mx-auto text-blue-600" width={32} height={32} />
         <h2 className="mt-4 text-2xl font-bold text-gray-900">

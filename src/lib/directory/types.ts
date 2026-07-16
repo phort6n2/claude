@@ -64,6 +64,12 @@ export interface Shop {
   rating?: number
   reviewCount?: number
   yearsInBusiness?: number
+  /** Owner-uploaded photo URLs. Empty/absent → a branded placeholder is shown. */
+  photos?: string[]
+  /** Trade certifications (e.g. "I-CAR", "AGSC/AGRSS", "OEM-approved"). */
+  certifications?: string[]
+  /** A short featured testimonial the owner can supply (real quotes only). */
+  testimonial?: { quote: string; author: string }
 
   // Directory state
   /** A claimed listing means the owner has verified/edited it. */

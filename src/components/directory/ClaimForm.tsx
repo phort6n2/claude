@@ -23,10 +23,10 @@ export function ClaimForm({ existingShopSlug, existingShopName }: ClaimFormProps
     const data = new FormData(form)
     const payload = {
       businessName: String(data.get('businessName') ?? ''),
-      contactName: String(data.get('contactName') ?? ''),
       email: String(data.get('email') ?? ''),
-      phone: String(data.get('phone') ?? ''),
       city: String(data.get('city') ?? ''),
+      contactName: String(data.get('contactName') ?? ''),
+      phone: String(data.get('phone') ?? ''),
       state: String(data.get('state') ?? ''),
       website: String(data.get('website') ?? ''),
       message: String(data.get('message') ?? ''),
@@ -80,19 +80,19 @@ export function ClaimForm({ existingShopSlug, existingShopName }: ClaimFormProps
         </div>
       )}
 
+      {/* Essentials — the only required fields */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <div>
+        <div className="sm:col-span-2">
           <label className={label} htmlFor="businessName">
             Business name *
           </label>
-          <input id="businessName" name="businessName" required className={input}
-            defaultValue={existingShopName ?? ''} />
-        </div>
-        <div>
-          <label className={label} htmlFor="contactName">
-            Your name *
-          </label>
-          <input id="contactName" name="contactName" required className={input} />
+          <input
+            id="businessName"
+            name="businessName"
+            required
+            className={input}
+            defaultValue={existingShopName ?? ''}
+          />
         </div>
         <div>
           <label className={label} htmlFor="email">
@@ -101,38 +101,56 @@ export function ClaimForm({ existingShopSlug, existingShopName }: ClaimFormProps
           <input id="email" name="email" type="email" required className={input} />
         </div>
         <div>
-          <label className={label} htmlFor="phone">
-            Phone *
-          </label>
-          <input id="phone" name="phone" type="tel" required className={input} />
-        </div>
-        <div>
           <label className={label} htmlFor="city">
             City *
           </label>
           <input id="city" name="city" required className={input} />
         </div>
-        <div>
-          <label className={label} htmlFor="state">
-            State *
-          </label>
-          <input id="state" name="state" required placeholder="e.g. TX" className={input} />
+      </div>
+
+      {/* Optional — lighter friction, enriched later */}
+      <details className="group rounded-lg border border-gray-200 bg-gray-50/60">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-gray-700 marker:content-none">
+          <span className="inline-flex items-center gap-2">
+            <span className="text-blue-600 transition-transform group-open:rotate-90">›</span>
+            Add more details (optional — speeds up setup)
+          </span>
+        </summary>
+        <div className="space-y-4 border-t border-gray-200 p-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className={label} htmlFor="contactName">
+                Your name
+              </label>
+              <input id="contactName" name="contactName" className={input} />
+            </div>
+            <div>
+              <label className={label} htmlFor="phone">
+                Phone
+              </label>
+              <input id="phone" name="phone" type="tel" className={input} />
+            </div>
+            <div>
+              <label className={label} htmlFor="state">
+                State
+              </label>
+              <input id="state" name="state" placeholder="e.g. TX" className={input} />
+            </div>
+            <div>
+              <label className={label} htmlFor="website">
+                Website
+              </label>
+              <input id="website" name="website" type="url" placeholder="https://" className={input} />
+            </div>
+          </div>
+          <div>
+            <label className={label} htmlFor="message">
+              Anything else? (services, service area, hours)
+            </label>
+            <textarea id="message" name="message" rows={3} className={input} />
+          </div>
         </div>
-      </div>
-
-      <div>
-        <label className={label} htmlFor="website">
-          Website
-        </label>
-        <input id="website" name="website" type="url" placeholder="https://" className={input} />
-      </div>
-
-      <div>
-        <label className={label} htmlFor="message">
-          Anything else? (services, service area, hours)
-        </label>
-        <textarea id="message" name="message" rows={4} className={input} />
-      </div>
+      </details>
 
       <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-gray-200 bg-gray-50 p-3.5 text-sm text-gray-700 transition-colors hover:bg-gray-100">
         <input
@@ -155,18 +173,23 @@ export function ClaimForm({ existingShopSlug, existingShopName }: ClaimFormProps
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={status === 'submitting'}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm outline-none transition-colors hover:bg-blue-700 active:bg-blue-800 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-      >
-        {status === 'submitting' && <Loader2 className="animate-spin" width={18} height={18} />}
-        {status === 'submitting'
-          ? 'Submitting…'
-          : existingShopSlug
-            ? 'Submit claim'
-            : 'Add my free listing'}
-      </button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <button
+          type="submit"
+          disabled={status === 'submitting'}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm outline-none transition-colors hover:bg-blue-700 active:bg-blue-800 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+        >
+          {status === 'submitting' && <Loader2 className="animate-spin" width={18} height={18} />}
+          {status === 'submitting'
+            ? 'Submitting…'
+            : existingShopSlug
+              ? 'Submit claim'
+              : 'Add my free listing'}
+        </button>
+        <p className="text-xs text-gray-500">
+          Free forever · No credit card · Most listings live within 24 hours.
+        </p>
+      </div>
     </form>
   )
 }

@@ -28,6 +28,7 @@
     "rating": 4.9,
     "reviewCount": 412,
     "yearsInBusiness": 16,
+    "certifications": ["I-CAR Gold Class", "AGSC Member", "OEM-approved calibration"],
     "claimed": true,
     "featured": true
   },
@@ -178,6 +179,7 @@
     "rating": 4.9,
     "reviewCount": 688,
     "yearsInBusiness": 22,
+    "certifications": ["I-CAR certified", "AGSC/AGRSS compliant", "Dow-certified adhesives"],
     "claimed": true,
     "featured": true
   },
@@ -267,6 +269,7 @@
     "rating": 4.9,
     "reviewCount": 745,
     "yearsInBusiness": 18,
+    "certifications": ["I-CAR Gold Class", "OEM-approved calibration"],
     "claimed": true,
     "featured": true
   },
@@ -416,6 +419,7 @@
     "rating": 4.9,
     "reviewCount": 934,
     "yearsInBusiness": 15,
+    "certifications": ["AGSC Member", "I-CAR certified", "Sika-certified adhesives"],
     "claimed": true,
     "featured": true
   },

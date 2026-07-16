@@ -14,12 +14,15 @@ import { z } from 'zod'
 // The shape below is stable, so any of those is a drop-in.
 
 const ClaimSchema = z.object({
+  // Only three fields are required — keep first-touch friction low for a free
+  // lead magnet; everything else is enriched later.
   businessName: z.string().min(2, 'Business name is required'),
-  contactName: z.string().min(2, 'Your name is required'),
   email: z.string().email('A valid email is required'),
-  phone: z.string().min(7, 'A valid phone number is required'),
   city: z.string().min(2, 'City is required'),
-  state: z.string().min(2, 'State is required'),
+  // Optional details.
+  contactName: z.string().optional(),
+  phone: z.string().optional(),
+  state: z.string().optional(),
   website: z.string().url().optional().or(z.literal('')),
   // Present when a visitor is claiming an existing listing.
   existingShopSlug: z.string().optional(),

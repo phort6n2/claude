@@ -11,6 +11,8 @@ import {
   Clock,
   ShieldCheck,
   Calendar,
+  Navigation,
+  Award,
 } from 'lucide-react'
 import {
   getAllShops,
@@ -27,9 +29,13 @@ import {
   jsonLdScript,
 } from '@/lib/directory/seo'
 import { GENERAL_AUTO_GLASS_FAQS } from '@/lib/directory/faqs'
-import { dayLabel, formatTime, telHref } from '@/lib/directory/format'
+import { dayLabel, formatTime, telHref, directionsHref } from '@/lib/directory/format'
 import { StarRating } from '@/components/directory/StarRating'
 import { ShopCard } from '@/components/directory/ShopCard'
+import { ShopPhoto } from '@/components/directory/ShopPhoto'
+import { ShopMap } from '@/components/directory/ShopMap'
+import { OpenNow } from '@/components/directory/OpenNow'
+import { StickyCallBar } from '@/components/directory/StickyCallBar'
 
 export function generateStaticParams() {
   return getAllShops().map((s) => ({ slug: s.slug }))
@@ -107,7 +113,14 @@ export default async function ShopDetailPage({
         </nav>
       </div>
 
-      <div className="mx-auto max-w-6xl px-4 py-8">
+      {/* Hero photo (owner-uploaded on claimed listings, else branded placeholder) */}
+      <div className="mx-auto max-w-6xl px-4 pt-6">
+        <div className="relative h-44 w-full overflow-hidden rounded-2xl border border-gray-200 sm:h-64">
+          <ShopPhoto src={shop.photos?.[0]} alt={shop.name} iconSize={64} />
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-6xl px-4 pb-24 pt-6 sm:pb-8">
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Main column */}
           <div className="lg:col-span-2">
@@ -144,6 +157,7 @@ export default async function ShopDetailPage({
                   <Truck width={15} height={15} /> Mobile service
                 </span>
               )}
+              <OpenNow hours={shop.hours} />
             </div>
 
             <p className="mt-6 leading-relaxed text-gray-700">{shop.description}</p>
@@ -182,6 +196,47 @@ export default async function ShopDetailPage({
                     </span>
                   ))}
                 </div>
+              </>
+            )}
+
+            {/* Certifications */}
+            {shop.certifications && shop.certifications.length > 0 && (
+              <>
+                <h2 className="mt-10 flex items-center gap-2 text-xl font-bold text-gray-900">
+                  <Award width={20} height={20} className="text-blue-600" />
+                  Certifications &amp; training
+                </h2>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {shop.certifications.map((c) => (
+                    <span
+                      key={c}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700"
+                    >
+                      <Award width={14} height={14} className="text-blue-500" /> {c}
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Location + directions */}
+            {typeof shop.lat === 'number' && typeof shop.lng === 'number' && (
+              <>
+                <h2 className="mt-10 flex items-center gap-2 text-xl font-bold text-gray-900">
+                  <MapPin width={20} height={20} className="text-blue-600" />
+                  Location
+                </h2>
+                <div className="mt-4 h-64 overflow-hidden rounded-xl border border-gray-200">
+                  <ShopMap lat={shop.lat} lng={shop.lng} name={shop.name} />
+                </div>
+                <a
+                  href={directionsHref(shop)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  <Navigation width={16} height={16} /> Get directions
+                </a>
               </>
             )}
           </div>
@@ -223,6 +278,14 @@ export default async function ShopDetailPage({
                       {shop.city}, {shop.state.toUpperCase()} {shop.zip}
                     </span>
                   </div>
+                  <a
+                    href={directionsHref(shop)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 font-medium text-blue-600 hover:text-blue-700"
+                  >
+                    <Navigation width={16} height={16} /> Get directions
+                  </a>
                 </div>
               </div>
 
@@ -245,7 +308,20 @@ export default async function ShopDetailPage({
                 </ul>
               </div>
 
-              {!shop.claimed && (
+              {shop.claimed ? (
+                <div className="rounded-xl border border-gray-200 p-5 text-sm">
+                  <p className="font-semibold text-gray-900">Own this business?</p>
+                  <p className="mt-1 text-gray-600">
+                    Manage your listing, add photos, and keep your details current.
+                  </p>
+                  <Link
+                    href={`/directory/claim?shop=${shop.slug}`}
+                    className="mt-3 inline-block rounded-lg border border-gray-300 px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50"
+                  >
+                    Manage this listing
+                  </Link>
+                </div>
+              ) : (
                 <div className="rounded-xl border border-blue-200 bg-blue-50 p-5 text-sm">
                   <p className="font-semibold text-blue-900">Is this your shop?</p>
                   <p className="mt-1 text-blue-800">
@@ -292,6 +368,8 @@ export default async function ShopDetailPage({
           </section>
         )}
       </div>
+
+      <StickyCallBar phone={shop.phone} />
     </>
   )
 }

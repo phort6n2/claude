@@ -15,7 +15,7 @@ import {
 } from '@/lib/directory/seo'
 import { cityFaqs } from '@/lib/directory/faqs'
 import { cityIntro, cityAdvice } from '@/lib/directory/content'
-import { ShopCard } from '@/components/directory/ShopCard'
+import { CityShopExplorer } from '@/components/directory/CityShopExplorer'
 import { CTASection } from '@/components/directory/CTASection'
 
 export function generateStaticParams() {
@@ -102,10 +102,8 @@ export default async function CityPage({
         </span>
       </div>
 
-      <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {shops.map((shop) => (
-          <ShopCard key={shop.slug} shop={shop} />
-        ))}
+      <div className="mt-8">
+        <CityShopExplorer shops={shops} />
       </div>
 
       {/* Local SEO copy block */}

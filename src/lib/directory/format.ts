@@ -20,3 +20,21 @@ export function formatTime(hhmm: string): string {
 export function telHref(phone: string): string {
   return `tel:${phone.replace(/[^0-9]/g, '')}`
 }
+
+/** Google Maps directions deep link — by coordinates when available, else address. */
+export function directionsHref(shop: {
+  lat?: number
+  lng?: number
+  street: string
+  city: string
+  state: string
+  zip: string
+}): string {
+  if (typeof shop.lat === 'number' && typeof shop.lng === 'number') {
+    return `https://www.google.com/maps/dir/?api=1&destination=${shop.lat},${shop.lng}`
+  }
+  const q = encodeURIComponent(
+    `${shop.street}, ${shop.city}, ${shop.state.toUpperCase()} ${shop.zip}`
+  )
+  return `https://www.google.com/maps/dir/?api=1&destination=${q}`
+}
