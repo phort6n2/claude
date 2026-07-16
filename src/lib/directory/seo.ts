@@ -147,9 +147,9 @@ export function autoRepairJsonLd(shop: Shop): Record<string, unknown> {
 
   if (shop.email) data.email = shop.email
 
-  // image: only emit when the shop actually has one. The current Shop model
-  // has no image field, so nothing is added today. If the schema later gains
-  // e.g. `shop.image`, add: `if (shop.image) data.image = shop.image`.
+  if (shop.photos && shop.photos.length > 0) {
+    data.image = shop.photos.slice(0, 6)
+  }
 
   if (typeof shop.lat === 'number' && typeof shop.lng === 'number') {
     data.geo = {

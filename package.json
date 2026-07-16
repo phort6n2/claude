@@ -21,6 +21,7 @@
     "@prisma/client": "^6.19.1",
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/react-query": "^5.90.16",
+    "@vercel/blob": "^2.6.1",
     "@vercel/postgres": "^0.10.0",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",

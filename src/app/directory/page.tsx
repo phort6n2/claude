@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { MapPin, Truck, ShieldCheck, Star, ArrowRight } from 'lucide-react'
 import {
+  getAllShops,
   getFeaturedShops,
   getCitySummaries,
   getShopCount,
@@ -12,6 +13,7 @@ import { HERO, OWNER_CTA } from '@/lib/directory/content'
 import { ShopCard } from '@/components/directory/ShopCard'
 import { HeroSearch } from '@/components/directory/HeroSearch'
 import { CTASection } from '@/components/directory/CTASection'
+import { NearYou } from '@/components/directory/NearYou'
 
 export default function DirectoryHome() {
   const featured = getFeaturedShops(6)
@@ -49,6 +51,9 @@ export default function DirectoryHome() {
           </div>
         </div>
       </section>
+
+      {/* Near you — location-aware default (IP-based, upgradeable to GPS) */}
+      <NearYou shops={getAllShops()} />
 
       {/* Services */}
       <section className="mx-auto max-w-6xl px-4 py-14">

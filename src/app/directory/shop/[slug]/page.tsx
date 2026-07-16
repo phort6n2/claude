@@ -36,6 +36,10 @@ import { ShopPhoto } from '@/components/directory/ShopPhoto'
 import { ShopMap } from '@/components/directory/ShopMap'
 import { OpenNow } from '@/components/directory/OpenNow'
 import { StickyCallBar } from '@/components/directory/StickyCallBar'
+import { getShopPhotos, withPhotos } from '@/lib/directory/photos'
+
+// Rebuild periodically so newly uploaded owner photos appear.
+export const revalidate = 300
 
 export function generateStaticParams() {
   return getAllShops().map((s) => ({ slug: s.slug }))
@@ -66,9 +70,11 @@ export default async function ShopDetailPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const shop = getShopBySlug(slug)
-  if (!shop) notFound()
+  const baseShop = getShopBySlug(slug)
+  if (!baseShop) notFound()
 
+  const shop = withPhotos(baseShop, await getShopPhotos(slug))
+  const photos = shop.photos ?? []
   const related = getRelatedShops(shop, 3)
   const autoRepair = autoRepairJsonLd(shop)
   const breadcrumb = breadcrumbJsonLd([
@@ -116,8 +122,20 @@ export default async function ShopDetailPage({
       {/* Hero photo (owner-uploaded on claimed listings, else branded placeholder) */}
       <div className="mx-auto max-w-6xl px-4 pt-6">
         <div className="relative h-44 w-full overflow-hidden rounded-2xl border border-gray-200 sm:h-64">
-          <ShopPhoto src={shop.photos?.[0]} alt={shop.name} iconSize={64} />
+          <ShopPhoto src={photos[0]} alt={shop.name} iconSize={64} />
         </div>
+        {photos.length > 1 && (
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            {photos.slice(1, 6).map((url) => (
+              <div
+                key={url}
+                className="h-16 w-24 shrink-0 overflow-hidden rounded-lg border border-gray-200"
+              >
+                <ShopPhoto src={url} alt={shop.name} />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="mx-auto max-w-6xl px-4 pb-24 pt-6 sm:pb-8">

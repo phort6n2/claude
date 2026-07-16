@@ -17,6 +17,10 @@ import { cityFaqs } from '@/lib/directory/faqs'
 import { cityIntro, cityAdvice } from '@/lib/directory/content'
 import { CityShopExplorer } from '@/components/directory/CityShopExplorer'
 import { CTASection } from '@/components/directory/CTASection'
+import { getPhotosForSlugs, withPhotos } from '@/lib/directory/photos'
+
+// Rebuild periodically so newly uploaded owner photos appear.
+export const revalidate = 300
 
 export function generateStaticParams() {
   return getCitySummaries().map((c) => ({ state: c.state, city: c.citySlug }))
@@ -48,6 +52,8 @@ export default async function CityPage({
   if (!summary) notFound()
 
   const shops = getShopsByCity(summary.state, summary.city)
+  const photoMap = await getPhotosForSlugs()
+  const shopsWithPhotos = shops.map((s) => withPhotos(s, photoMap[s.slug] ?? []))
   const mobileCount = shops.filter((s) => s.mobileService).length
   const faqs = cityFaqs(summary.city, summary.state)
   const advice = cityAdvice(summary.city)
@@ -103,7 +109,7 @@ export default async function CityPage({
       </div>
 
       <div className="mt-8">
-        <CityShopExplorer shops={shops} />
+        <CityShopExplorer shops={shopsWithPhotos} />
       </div>
 
       {/* Local SEO copy block */}

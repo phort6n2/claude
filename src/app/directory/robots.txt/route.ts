@@ -16,6 +16,7 @@ export function GET(): Response {
     'Disallow: /admin',
     'Disallow: /portal',
     'Disallow: /master-leads',
+    'Disallow: /directory/manage',
     'Disallow: /api/',
     '',
     `Sitemap: ${absoluteUrl('/directory/sitemap.xml')}`,
