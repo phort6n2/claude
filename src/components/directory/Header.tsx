@@ -17,13 +17,13 @@ export function Header({ className }: { className?: string }) {
         <Link
           href="/directory"
           className="group flex shrink-0 items-center gap-2 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-          aria-label="AutoGlass Directory home"
+          aria-label="Windshield Repair HQ home"
         >
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm ring-1 ring-inset ring-white/10 transition-colors group-hover:bg-blue-700">
             <Shield width={18} height={18} />
           </span>
           <span className="text-lg font-bold tracking-tight text-gray-900">
-            AutoGlass<span className="text-blue-600">Directory</span>
+            Windshield Repair <span className="text-blue-600">HQ</span>
           </span>
         </Link>
 

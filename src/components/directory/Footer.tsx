@@ -17,7 +17,7 @@ export function Footer() {
                 <Shield width={18} height={18} />
               </span>
               <span className="text-base font-bold tracking-tight text-gray-900">
-                AutoGlass<span className="text-blue-600">Directory</span>
+                Windshield Repair <span className="text-blue-600">HQ</span>
               </span>
             </div>
             <p className="mt-3 text-sm leading-relaxed text-gray-600">
@@ -64,7 +64,7 @@ export function Footer() {
 
         <div className="mt-12 border-t border-gray-200 pt-6 text-xs text-gray-500">
           <p>
-            © {new Date().getFullYear()} AutoGlass Directory. Listings are provided
+            © {new Date().getFullYear()} Windshield Repair HQ. Listings are provided
             for informational purposes. Sample data shown for demonstration.
           </p>
         </div>

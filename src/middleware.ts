@@ -7,7 +7,7 @@ import {
 
 // Hostnames that should serve the PUBLIC auto glass directory at their root.
 // Set DIRECTORY_HOST to your directory domain(s), comma-separated, e.g.
-//   DIRECTORY_HOST="autoglassdirectory.com,www.autoglassdirectory.com"
+//   DIRECTORY_HOST="windshieldrepairhq.com,www.windshieldrepairhq.com"
 // Attach the same domain in Vercel and the directory shows at the root — no
 // code change needed. Leave unset and everything behaves as before.
 const DIRECTORY_HOSTS = (process.env.DIRECTORY_HOST || '')

@@ -7,10 +7,10 @@ import {
 } from '@/lib/directory/data'
 
 // Base URL for absolute sitemap links. Set NEXT_PUBLIC_SITE_URL in production
-// (e.g. https://www.autoglassdirectory.com). Falls back to a placeholder so the
+// (e.g. https://www.windshieldrepairhq.com). Falls back to the brand domain so the
 // build never fails locally.
 const BASE = (
-  process.env.NEXT_PUBLIC_SITE_URL || 'https://autoglassdirectory.example'
+  process.env.NEXT_PUBLIC_SITE_URL || 'https://windshieldrepairhq.com'
 ).replace(/\/$/, '')
 
 export default function sitemap(): MetadataRoute.Sitemap {

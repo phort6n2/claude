@@ -49,7 +49,7 @@ To add or edit a shop, edit the JSON and redeploy. Slugs must be unique.
 ## Going to production — the two things to wire up
 
 1. **`NEXT_PUBLIC_SITE_URL`** — set to your real domain (e.g.
-   `https://www.autoglassdirectory.com`) so sitemap/canonical URLs are absolute.
+   `https://www.windshieldrepairhq.com`) so sitemap/canonical URLs are absolute.
 2. **Claim submissions sink** — `src/app/api/directory/claim/route.ts` currently
    validates and `console.log`s each lead (Vercel's filesystem is read-only).
    Point it at a durable sink: a `DirectoryLead` Postgres table, a transactional

@@ -7,12 +7,12 @@ import {
   jsonLdScript,
 } from '@/lib/directory/seo'
 
-const SITE_NAME = 'AutoGlass Directory'
+const SITE_NAME = 'Windshield Repair HQ'
 const SITE_DESCRIPTION =
   'Find trusted auto glass and windshield repair shops near you. Free directory of local windshield replacement, chip repair, ADAS calibration, and mobile auto glass services.'
 
 const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL || 'https://autoglassdirectory.example'
+  process.env.NEXT_PUBLIC_SITE_URL || 'https://windshieldrepairhq.com'
 ).replace(/\/$/, '')
 
 export const metadata: Metadata = {

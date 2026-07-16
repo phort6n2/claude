@@ -9,7 +9,7 @@
 import type { Shop } from './types'
 import { serviceMeta, shopHref } from './data'
 
-const SITE_NAME = 'AutoGlass Directory'
+const SITE_NAME = 'Windshield Repair HQ'
 
 /** Full weekday names indexed by BusinessHours.day (0 = Sunday). */
 const DAY_NAMES = [
@@ -32,7 +32,7 @@ const DAY_NAMES = [
  */
 export function absoluteUrl(path: string): string {
   const base = (
-    process.env.NEXT_PUBLIC_SITE_URL || 'https://autoglassdirectory.example'
+    process.env.NEXT_PUBLIC_SITE_URL || 'https://windshieldrepairhq.com'
   ).replace(/\/$/, '')
   if (!path) return base
   return path.startsWith('/') ? `${base}${path}` : `${base}/${path}`
