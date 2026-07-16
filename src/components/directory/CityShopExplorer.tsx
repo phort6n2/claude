@@ -1,7 +1,6 @@
 'use client'
 
-import 'leaflet/dist/leaflet.css'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Truck, Clock, SlidersHorizontal } from 'lucide-react'
 import type { Shop, ServiceKey } from '@/lib/directory/types'
 import { SERVICES } from '@/lib/directory/data'
@@ -11,14 +10,11 @@ import { ShopCard } from './ShopCard'
 
 type SortKey = 'rating' | 'reviews'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 export function CityShopExplorer({ shops }: { shops: Shop[] }) {
   const [service, setService] = useState<ServiceKey | ''>('')
   const [mobileOnly, setMobileOnly] = useState(false)
   const [openOnly, setOpenOnly] = useState(false)
   const [sort, setSort] = useState<SortKey>('rating')
-  const [hovered, setHovered] = useState<string | null>(null)
   const [now, setNow] = useState<Date | null>(null)
 
   useEffect(() => setNow(new Date()), [])
@@ -43,87 +39,21 @@ export function CityShopExplorer({ shops }: { shops: Shop[] }) {
     )
   }, [shops, service, mobileOnly, openOnly, sort, now])
 
-  // ---- Leaflet map ----
-  const mapEl = useRef<HTMLDivElement>(null)
-  const map = useRef<any>(null)
-  const L = useRef<any>(null)
-  const markers = useRef<Record<string, any>>({})
-
-  function pin(active: boolean) {
-    const color = active ? '#1d4ed8' : '#2563eb'
-    const size = active ? 42 : 30
-    return L.current.divIcon({
-      className: '',
-      html: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${color}" stroke="white" stroke-width="1.5"><path d="M12 21s-6-5.5-6-10a6 6 0 0 1 12 0c0 4.5-6 10-6 10z"/><circle cx="12" cy="11" r="2.3" fill="white" stroke="none"/></svg>`,
-      iconSize: [size, size],
-      iconAnchor: [size / 2, size],
-    })
-  }
-
-  function drawMarkers() {
-    if (!L.current || !map.current) return
-    Object.values(markers.current).forEach((m: any) => map.current.removeLayer(m))
-    markers.current = {}
-    const pts: [number, number][] = []
-    filtered.forEach((s) => {
-      if (typeof s.lat !== 'number' || typeof s.lng !== 'number') return
-      const m = L.current
-        .marker([s.lat, s.lng], { icon: pin(false) })
-        .addTo(map.current)
-        .bindPopup(
-          `<strong>${s.name}</strong><br/><a href="/directory/shop/${s.slug}">View details →</a>`
-        )
-      m.on('mouseover', () => setHovered(s.slug))
-      m.on('mouseout', () => setHovered(null))
-      markers.current[s.slug] = m
-      pts.push([s.lat, s.lng])
-    })
-    if (pts.length) map.current.fitBounds(pts, { padding: [40, 40], maxZoom: 13 })
-  }
-
-  // init once
-  useEffect(() => {
-    let cancelled = false
-    import('leaflet').then((mod) => {
-      const leaflet = (mod as any).default ?? mod
-      if (cancelled || !mapEl.current || map.current) return
-      L.current = leaflet
-      map.current = leaflet
-        .map(mapEl.current, { scrollWheelZoom: false })
-        .setView([39.5, -98.35], 4)
-      leaflet
-        .tileLayer('https://{s}.basemaps.cartocdn.com/voyager/{z}/{x}/{y}{r}.png', {
-          attribution: '© OpenStreetMap · © CARTO',
-          subdomains: 'abcd',
-          maxZoom: 20,
-        })
-        .addTo(map.current)
-      drawMarkers()
-      // Leaflet renders blank if the container was sized after init — force a
-      // recalculation once layout settles.
-      setTimeout(() => map.current && map.current.invalidateSize(), 200)
-    })
-    return () => {
-      cancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // redraw on filter change
-  useEffect(() => {
-    drawMarkers()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtered])
-
-  // reflect hover state on pins
-  useEffect(() => {
-    if (!L.current) return
-    Object.entries(markers.current).forEach(([slug, m]: [string, any]) => {
-      m.setIcon(pin(slug === hovered))
-      m.setZIndexOffset(slug === hovered ? 1000 : 0)
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hovered])
+  // Keyless Google Maps embed. A single-shop city pins the business; a
+  // multi-shop city shows the city area. Stable (not tied to filters), so the
+  // iframe doesn't reload as you filter the list.
+  const mapSrc = useMemo(() => {
+    const first = shops[0]
+    if (!first) return null
+    const q =
+      shops.length === 1
+        ? [first.name, first.street, `${first.city}, ${first.state.toUpperCase()} ${first.zip}`]
+            .filter(Boolean)
+            .join(', ')
+        : `auto glass, ${first.city}, ${first.state.toUpperCase()}`
+    const zoom = shops.length === 1 ? 14 : 11
+    return `https://www.google.com/maps?q=${encodeURIComponent(q)}&z=${zoom}&output=embed`
+  }, [shops])
 
   const chip = (active: boolean) =>
     cn(
@@ -140,11 +70,7 @@ export function CityShopExplorer({ shops }: { shops: Shop[] }) {
         <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500">
           <SlidersHorizontal width={15} height={15} /> Filter
         </span>
-        <button
-          type="button"
-          onClick={() => setMobileOnly((v) => !v)}
-          className={chip(mobileOnly)}
-        >
+        <button type="button" onClick={() => setMobileOnly((v) => !v)} className={chip(mobileOnly)}>
           <Truck width={14} height={14} /> Mobile
         </button>
         <button type="button" onClick={() => setOpenOnly((v) => !v)} className={chip(openOnly)}>
@@ -184,29 +110,22 @@ export function CityShopExplorer({ shops }: { shops: Shop[] }) {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Map */}
         <div className="order-first">
-          <div
-            ref={mapEl}
-            className="isolate h-[320px] w-full overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 lg:sticky lg:top-20 lg:h-[560px]"
-            style={{ zIndex: 0 }}
-          />
+          {mapSrc && (
+            <iframe
+              src={mapSrc}
+              title={`Map of auto glass shops in ${shops[0]?.city}`}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              className="h-[320px] w-full rounded-2xl border border-gray-200 lg:sticky lg:top-20 lg:h-[560px]"
+              style={{ border: 0 }}
+            />
+          )}
         </div>
 
         {/* List */}
         <div className="space-y-4">
           {filtered.map((s) => (
-            <div
-              key={s.slug}
-              onMouseEnter={() => setHovered(s.slug)}
-              onMouseLeave={() => setHovered(null)}
-            >
-              <ShopCard
-                shop={s}
-                className={cn(
-                  'transition-shadow',
-                  hovered === s.slug && 'border-blue-400 ring-2 ring-blue-400'
-                )}
-              />
-            </div>
+            <ShopCard key={s.slug} shop={s} />
           ))}
           {filtered.length === 0 && (
             <div className="rounded-xl border border-dashed border-gray-300 py-16 text-center text-sm text-gray-500">
