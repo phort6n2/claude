@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { MapPin, Search, Truck, ShieldCheck, Star, ArrowRight } from 'lucide-react'
+import { MapPin, Truck, ShieldCheck, Star, ArrowRight } from 'lucide-react'
 import {
   getFeaturedShops,
   getCitySummaries,
@@ -8,8 +8,10 @@ import {
   SERVICES,
   cityHref,
 } from '@/lib/directory/data'
+import { HERO, OWNER_CTA } from '@/lib/directory/content'
 import { ShopCard } from '@/components/directory/ShopCard'
 import { HeroSearch } from '@/components/directory/HeroSearch'
+import { CTASection } from '@/components/directory/CTASection'
 
 export default function DirectoryHome() {
   const featured = getFeaturedShops(6)
@@ -23,17 +25,18 @@ export default function DirectoryHome() {
       <section className="bg-gradient-to-b from-blue-700 to-blue-600 px-4 py-16 text-white sm:py-24">
         <div className="mx-auto max-w-3xl text-center">
           <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
-            Find a trusted auto glass shop near you
+            {HERO.title}
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-blue-100">
-            Compare {shopCount}+ local windshield repair, replacement, and mobile
-            auto glass shops. Read reviews, check services, and call directly — no
-            middleman.
+            {HERO.subtitle}
           </p>
           <div className="mt-8">
             <HeroSearch states={states} />
           </div>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-blue-100">
+            <span className="inline-flex items-center gap-1.5">
+              <MapPin width={16} height={16} /> {shopCount}+ shops listed
+            </span>
             <span className="inline-flex items-center gap-1.5">
               <Truck width={16} height={16} /> Mobile service available
             </span>
@@ -113,30 +116,12 @@ export default function DirectoryHome() {
       </section>
 
       {/* Shop-owner CTA — this is the lead magnet */}
-      <section className="bg-gray-900 px-4 py-16 text-white">
-        <div className="mx-auto max-w-3xl text-center">
-          <h2 className="text-2xl font-bold sm:text-3xl">Own an auto glass shop?</h2>
-          <p className="mx-auto mt-3 max-w-xl text-gray-300">
-            Get a free listing and start showing up when local drivers search for
-            windshield repair. When you&apos;re ready to grow, we offer done-for-you
-            SEO and Google Ads management built specifically for auto glass shops.
-          </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/directory/claim"
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700"
-            >
-              <Search width={18} height={18} /> Add your shop — free
-            </Link>
-            <Link
-              href="/directory/for-shops"
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-600 px-6 py-3 font-semibold text-white hover:bg-gray-800"
-            >
-              See SEO &amp; ads services
-            </Link>
-          </div>
-        </div>
-      </section>
+      <CTASection
+        title={OWNER_CTA.title}
+        description={OWNER_CTA.body}
+        primary={{ label: OWNER_CTA.primary, href: '/directory/claim' }}
+        secondary={{ label: OWNER_CTA.secondary, href: '/directory/for-shops' }}
+      />
     </>
   )
 }

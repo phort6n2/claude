@@ -1,12 +1,22 @@
 import type { Metadata } from 'next'
 import { Header } from '@/components/directory/Header'
 import { Footer } from '@/components/directory/Footer'
+import {
+  websiteJsonLd,
+  organizationJsonLd,
+  jsonLdScript,
+} from '@/lib/directory/seo'
 
 const SITE_NAME = 'AutoGlass Directory'
 const SITE_DESCRIPTION =
   'Find trusted auto glass and windshield repair shops near you. Free directory of local windshield replacement, chip repair, ADAS calibration, and mobile auto glass services.'
 
+const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL || 'https://autoglassdirectory.example'
+).replace(/\/$/, '')
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: `${SITE_NAME} — Find Auto Glass & Windshield Shops Near You`,
     template: `%s | ${SITE_NAME}`,
@@ -27,6 +37,15 @@ export default function DirectoryLayout({
 }) {
   return (
     <div className="min-h-screen bg-white text-gray-900">
+      {/* Site-wide structured data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(websiteJsonLd()) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(organizationJsonLd()) }}
+      />
       <Header />
       <main>{children}</main>
       <Footer />

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Search, TrendingUp, Phone, BarChart3, MapPin, Check } from 'lucide-react'
+import { FOR_SHOPS } from '@/lib/directory/content'
 
 export const metadata: Metadata = {
   title: 'SEO & Google Ads for Auto Glass Shops',
@@ -44,15 +45,11 @@ export default function ForShopsPage() {
       <section className="bg-gradient-to-b from-gray-900 to-gray-800 px-4 py-20 text-white">
         <div className="mx-auto max-w-3xl text-center">
           <span className="inline-block rounded-full bg-blue-600/20 px-3 py-1 text-sm font-medium text-blue-300">
-            For auto glass shop owners
+            {FOR_SHOPS.eyebrow}
           </span>
-          <h1 className="mt-4 text-3xl font-bold sm:text-5xl">
-            More windshield jobs, less guesswork
-          </h1>
+          <h1 className="mt-4 text-3xl font-bold sm:text-5xl">{FOR_SHOPS.title}</h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-300">
-            We handle the SEO and Google Ads so you can handle the glass. Marketing
-            built specifically for auto glass shops — measured in calls and booked
-            jobs, not impressions.
+            {FOR_SHOPS.subtitle}
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link

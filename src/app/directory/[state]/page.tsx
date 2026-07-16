@@ -7,6 +7,11 @@ import {
   getShopsByState,
   cityHref,
 } from '@/lib/directory/data'
+import {
+  breadcrumbJsonLd,
+  itemListJsonLd,
+  jsonLdScript,
+} from '@/lib/directory/seo'
 import { ShopCard } from '@/components/directory/ShopCard'
 
 export function generateStaticParams() {
@@ -39,9 +44,22 @@ export default async function StatePage({
   if (!summary) notFound()
 
   const shops = getShopsByState(summary.state)
+  const breadcrumb = breadcrumbJsonLd([
+    { name: 'Directory', path: '/directory' },
+    { name: summary.stateFull, path: `/directory/${summary.state}` },
+  ])
+  const itemList = itemListJsonLd(shops)
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(breadcrumb) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(itemList) }}
+      />
       <nav className="flex items-center gap-1.5 text-sm text-gray-500">
         <Link href="/directory" className="hover:text-blue-600">
           Directory

@@ -21,7 +21,21 @@ reads from a static JSON seed file, so it builds, previews, and deploys with
 | `/directory/claim` | Dynamic | Free-listing / claim form (lead capture) |
 | `/directory/for-shops` | Static | SEO & ads upsell landing page |
 | `/directory/sitemap.xml` | Static | Auto-generated sitemap of every page above |
+| `/directory/robots.txt` | Static | Crawl rules; points at the sitemap (route handler, since Next only treats `robots.ts` as special at the app root) |
 | `POST /api/directory/claim` | API | Receives + validates listing/claim submissions |
+
+### Supporting modules
+
+- `src/lib/directory/seo.ts` — reusable schema.org JSON-LD builders (WebSite +
+  SearchAction, Organization, BreadcrumbList, AutoRepair, ItemList, FAQPage) and
+  `absoluteUrl()`.
+- `src/lib/directory/faqs.ts` — curated general + per-city FAQ content, used for
+  both visible on-page copy and FAQPage markup.
+- `src/lib/directory/content.ts` — centralized marketing copy (hero, for-shops,
+  claim, owner CTA, city intro/advice) so pages don't hardcode strings.
+- `src/components/directory/` — shared UI: `ShopCard`, `Header`, `Footer`,
+  `StarRating`, `HeroSearch`, `SearchFilters`, `ClaimForm`, plus reusable
+  `Badge`, `Section`, and `CTASection`.
 
 ## Data
 

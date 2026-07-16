@@ -18,11 +18,18 @@ import {
   getRelatedShops,
   serviceMeta,
   cityHref,
+  shopHref,
 } from '@/lib/directory/data'
+import {
+  autoRepairJsonLd,
+  breadcrumbJsonLd,
+  faqPageJsonLd,
+  jsonLdScript,
+} from '@/lib/directory/seo'
+import { GENERAL_AUTO_GLASS_FAQS } from '@/lib/directory/faqs'
 import { dayLabel, formatTime, telHref } from '@/lib/directory/format'
 import { StarRating } from '@/components/directory/StarRating'
 import { ShopCard } from '@/components/directory/ShopCard'
-import type { Shop } from '@/lib/directory/types'
 
 export function generateStaticParams() {
   return getAllShops().map((s) => ({ slug: s.slug }))
@@ -47,68 +54,6 @@ export async function generateMetadata({
   }
 }
 
-/** Build schema.org LocalBusiness / AutoRepair JSON-LD for rich results. */
-function buildJsonLd(shop: Shop) {
-  const openingHours = shop.hours
-    .filter((h) => h.open && h.close)
-    .map((h) => ({
-      '@type': 'OpeningHoursSpecification',
-      dayOfWeek: [
-        'Sunday',
-        'Monday',
-        'Tuesday',
-        'Wednesday',
-        'Thursday',
-        'Friday',
-        'Saturday',
-      ][h.day],
-      opens: h.open,
-      closes: h.close,
-    }))
-
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'AutoRepair',
-    name: shop.name,
-    description: shop.description,
-    telephone: shop.phone,
-    ...(shop.email ? { email: shop.email } : {}),
-    ...(shop.website ? { url: shop.website } : {}),
-    address: {
-      '@type': 'PostalAddress',
-      streetAddress: shop.street,
-      addressLocality: shop.city,
-      addressRegion: shop.state.toUpperCase(),
-      postalCode: shop.zip,
-      addressCountry: 'US',
-    },
-    ...(shop.lat && shop.lng
-      ? {
-          geo: {
-            '@type': 'GeoCoordinates',
-            latitude: shop.lat,
-            longitude: shop.lng,
-          },
-        }
-      : {}),
-    ...(shop.rating && shop.reviewCount
-      ? {
-          aggregateRating: {
-            '@type': 'AggregateRating',
-            ratingValue: shop.rating,
-            reviewCount: shop.reviewCount,
-            bestRating: 5,
-          },
-        }
-      : {}),
-    openingHoursSpecification: openingHours,
-    makesOffer: shop.services.map((s) => ({
-      '@type': 'Offer',
-      itemOffered: { '@type': 'Service', name: serviceMeta(s).label },
-    })),
-  }
-}
-
 export default async function ShopDetailPage({
   params,
 }: {
@@ -119,13 +64,28 @@ export default async function ShopDetailPage({
   if (!shop) notFound()
 
   const related = getRelatedShops(shop, 3)
-  const jsonLd = buildJsonLd(shop)
+  const autoRepair = autoRepairJsonLd(shop)
+  const breadcrumb = breadcrumbJsonLd([
+    { name: 'Directory', path: '/directory' },
+    { name: shop.stateFull, path: `/directory/${shop.state}` },
+    { name: shop.city, path: cityHref(shop) },
+    { name: shop.name, path: shopHref(shop) },
+  ])
+  const faq = faqPageJsonLd(GENERAL_AUTO_GLASS_FAQS.slice(0, 5))
 
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(autoRepair) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(breadcrumb) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(faq) }}
       />
 
       {/* Breadcrumb */}
@@ -302,6 +262,21 @@ export default async function ShopDetailPage({
             </div>
           </aside>
         </div>
+
+        {/* FAQ — visible content backing the FAQPage schema */}
+        <section className="mt-16 max-w-3xl">
+          <h2 className="text-xl font-bold text-gray-900">
+            Auto glass questions, answered
+          </h2>
+          <dl className="mt-5 space-y-5">
+            {GENERAL_AUTO_GLASS_FAQS.slice(0, 5).map((f) => (
+              <div key={f.q}>
+                <dt className="font-semibold text-gray-900">{f.q}</dt>
+                <dd className="mt-1 text-gray-600">{f.a}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
 
         {/* Related */}
         {related.length > 0 && (

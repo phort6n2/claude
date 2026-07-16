@@ -1,13 +1,22 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Truck, ShieldCheck, Phone } from 'lucide-react'
+import { Truck, ShieldCheck } from 'lucide-react'
 import {
   getCitySummaries,
   getCitySummary,
   getShopsByCity,
 } from '@/lib/directory/data'
+import {
+  breadcrumbJsonLd,
+  itemListJsonLd,
+  faqPageJsonLd,
+  jsonLdScript,
+} from '@/lib/directory/seo'
+import { cityFaqs } from '@/lib/directory/faqs'
+import { cityIntro, cityAdvice } from '@/lib/directory/content'
 import { ShopCard } from '@/components/directory/ShopCard'
+import { CTASection } from '@/components/directory/CTASection'
 
 export function generateStaticParams() {
   return getCitySummaries().map((c) => ({ state: c.state, city: c.citySlug }))
@@ -40,9 +49,31 @@ export default async function CityPage({
 
   const shops = getShopsByCity(summary.state, summary.city)
   const mobileCount = shops.filter((s) => s.mobileService).length
+  const faqs = cityFaqs(summary.city, summary.state)
+  const advice = cityAdvice(summary.city)
+
+  const breadcrumb = breadcrumbJsonLd([
+    { name: 'Directory', path: '/directory' },
+    { name: summary.stateFull, path: `/directory/${summary.state}` },
+    { name: summary.city, path: `/directory/${summary.state}/${summary.citySlug}` },
+  ])
+  const itemList = itemListJsonLd(shops)
+  const faqSchema = faqPageJsonLd(faqs)
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(breadcrumb) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(itemList) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(faqSchema) }}
+      />
       <nav className="flex items-center gap-1.5 text-sm text-gray-500">
         <Link href="/directory" className="hover:text-blue-600">
           Directory
@@ -59,9 +90,7 @@ export default async function CityPage({
         Auto glass &amp; windshield repair in {summary.city}, {summary.state.toUpperCase()}
       </h1>
       <p className="mt-2 max-w-3xl text-gray-600">
-        {summary.count} local auto glass {summary.count === 1 ? 'shop' : 'shops'} in{' '}
-        {summary.city} offering windshield replacement, rock chip repair, and ADAS
-        camera calibration. {mobileCount > 0 && `${mobileCount} offer mobile service that comes to you.`}
+        {cityIntro(summary.city, summary.stateFull, summary.count, mobileCount)}
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2 text-sm">
@@ -81,45 +110,36 @@ export default async function CityPage({
 
       {/* Local SEO copy block */}
       <section className="mt-14 max-w-3xl">
-        <h2 className="text-xl font-bold text-gray-900">
-          Choosing an auto glass shop in {summary.city}
-        </h2>
-        <div className="prose prose-sm mt-3 text-gray-600">
-          <p>
-            A cracked or chipped windshield rarely stays small. In {summary.city},
-            temperature swings and road debris can turn a coin-sized chip into a
-            crack that spreads across your line of sight — and once damage reaches
-            the edge of the glass or a driver&apos;s primary viewing area, repair is
-            usually no longer an option and full replacement is required.
-          </p>
-          <p>
-            When comparing the shops above, look for three things: whether they
-            handle your insurance directly (most comprehensive policies cover glass),
-            whether they offer <strong>mobile service</strong> so you don&apos;t have
-            to drive on damaged glass, and whether they perform{' '}
-            <strong>ADAS calibration</strong>. Any vehicle with lane-keep assist or
-            automatic emergency braking needs its forward-facing camera recalibrated
-            after a windshield replacement — skipping this step can leave safety
-            systems misaligned.
-          </p>
+        <h2 className="text-xl font-bold text-gray-900">{advice.title}</h2>
+        <div className="mt-3 space-y-4 text-gray-600">
+          {advice.paragraphs.map((p, i) => (
+            <p key={i}>{p}</p>
+          ))}
         </div>
       </section>
 
-      <div className="mt-10 rounded-xl bg-gray-900 p-8 text-center text-white">
-        <h2 className="text-xl font-bold">
-          Run an auto glass shop in {summary.city}?
+      {/* FAQ — visible content backing the FAQPage schema */}
+      <section className="mt-14 max-w-3xl">
+        <h2 className="text-xl font-bold text-gray-900">
+          Auto glass FAQs for {summary.city}
         </h2>
-        <p className="mx-auto mt-2 max-w-xl text-gray-300">
-          List your business here for free and get found by local drivers searching
-          for windshield repair.
-        </p>
-        <Link
-          href="/directory/claim"
-          className="mt-5 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700"
-        >
-          <Phone width={18} height={18} /> Add your shop — free
-        </Link>
-      </div>
+        <dl className="mt-5 space-y-5">
+          {faqs.map((f) => (
+            <div key={f.q}>
+              <dt className="font-semibold text-gray-900">{f.q}</dt>
+              <dd className="mt-1 text-gray-600">{f.a}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <CTASection
+        className="mt-14 rounded-2xl"
+        title={`Run an auto glass shop in ${summary.city}?`}
+        description="List your business here for free and get found by local drivers searching for windshield repair."
+        primary={{ label: 'Add your shop — free', href: '/directory/claim' }}
+        secondary={{ label: 'See SEO & ads services', href: '/directory/for-shops' }}
+      />
     </div>
   )
 }
