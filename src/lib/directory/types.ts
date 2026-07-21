@@ -82,6 +82,12 @@ export interface Shop {
   links?: { label: string; url: string }[]
   /** Social profiles — auto-discovered from the website, or owner-provided. */
   socials?: { platform: string; url: string }[]
+  /**
+   * Paying agency client — the top "Featured Partner" tier. Ranks above
+   * founding-member `featured` shops and gets a distinct badge. Designate via
+   * the JSON flag or the DIRECTORY_CLIENT_SLUGS env var.
+   */
+  client?: boolean
 
   // Directory state
   /** A claimed listing means the owner has verified/edited it. */

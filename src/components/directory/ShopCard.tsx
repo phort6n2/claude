@@ -29,10 +29,16 @@ export function ShopCard({
       {/* Photo band — website/owner photo, else a branded auto-glass cover */}
       <div className="relative h-36 w-full shrink-0 overflow-hidden border-b border-gray-100">
         <SafeShopImage src={shop.photos?.[0]} alt={shop.name} slug={shop.slug} />
-        {shop.featured && (
-          <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-blue-600 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm">
-            Featured
+        {shop.client ? (
+          <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-amber-500 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm">
+            Partner
           </span>
+        ) : (
+          shop.featured && (
+            <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-blue-600 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm">
+              Featured
+            </span>
+          )
         )}
         {shop.claimed && (
           <span

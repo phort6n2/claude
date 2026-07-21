@@ -21,7 +21,7 @@
 
 import { unstable_cache } from 'next/cache'
 import { list, put } from '@vercel/blob'
-import type { Shop } from './types'
+import type { Shop, BusinessHours } from './types'
 import { getAllShops } from './data'
 
 const TEXT_SEARCH_URL = 'https://places.googleapis.com/v1/places:searchText'
@@ -32,6 +32,48 @@ export interface ShopReview {
   rating: number
   count: number
   placeId: string
+  /** Weekly hours pulled from the shop's Google Business Profile, if available. */
+  hours?: BusinessHours[]
+}
+
+interface GooglePeriodPoint {
+  day: number
+  hour: number
+  minute: number
+}
+interface GooglePeriod {
+  open?: GooglePeriodPoint
+  close?: GooglePeriodPoint
+}
+
+const hhmm = (h: number, m: number) =>
+  `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+
+/** Convert Google `regularOpeningHours.periods` (day 0=Sun) to our schema. */
+function parseHours(regular: { periods?: GooglePeriod[] } | undefined): BusinessHours[] | undefined {
+  const periods = regular?.periods
+  if (!periods || !periods.length) return undefined
+  const byDay = new Map<number, { open: string; close: string }>()
+  for (const p of periods) {
+    if (!p.open) continue
+    const day = p.open.day
+    // No close point → open 24 hours that day.
+    const open = hhmm(p.open.hour, p.open.minute)
+    const close = p.close ? hhmm(p.close.hour, p.close.minute) : '23:59'
+    const existing = byDay.get(day)
+    if (!existing) {
+      byDay.set(day, { open, close })
+    } else {
+      // Merge split shifts into earliest open / latest close.
+      if (open < existing.open) existing.open = open
+      if (close > existing.close) existing.close = close
+    }
+  }
+  if (!byDay.size) return undefined
+  return Array.from({ length: 7 }, (_, day) => {
+    const h = byDay.get(day)
+    return { day, open: h?.open ?? null, close: h?.close ?? null }
+  })
 }
 
 type Snapshot = Record<string, ShopReview & { updatedAt: string }>
@@ -77,7 +119,7 @@ const cachedSnapshot = unstable_cache(readSnapshot, ['directory-reviews-snapshot
 export async function getReview(shop: Shop): Promise<ShopReview | null> {
   const snap = await cachedSnapshot()
   const r = snap[shop.slug]
-  return r ? { rating: r.rating, count: r.count, placeId: r.placeId } : null
+  return r ? { rating: r.rating, count: r.count, placeId: r.placeId, hours: r.hours } : null
 }
 
 /**
@@ -90,7 +132,10 @@ export async function withReviews(shops: Shop[]): Promise<Shop[]> {
   if (!Object.keys(snap).length) return shops
   return shops.map((s) => {
     const r = snap[s.slug]
-    return r ? { ...s, rating: r.rating, reviewCount: r.count } : s
+    if (!r) return s
+    // Fill hours from Google only when we don't already have curated hours.
+    const useHours = (!s.hours || s.hours.length === 0) && r.hours ? r.hours : s.hours
+    return { ...s, rating: r.rating, reviewCount: r.count, hours: useHours }
   })
 }
 
@@ -107,14 +152,22 @@ function queryFor(shop: Shop): string {
 async function fetchByPlaceId(id: string): Promise<ShopReview | null> {
   try {
     const res = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(id)}`, {
-      headers: { 'X-Goog-Api-Key': apiKey(), 'X-Goog-FieldMask': 'rating,userRatingCount,id' },
+      headers: {
+        'X-Goog-Api-Key': apiKey(),
+        'X-Goog-FieldMask': 'rating,userRatingCount,id,regularOpeningHours',
+      },
       cache: 'no-store',
       signal: AbortSignal.timeout(TIMEOUT),
     })
     if (!res.ok) return null
     const d = await res.json()
     if (typeof d.rating !== 'number') return null
-    return { rating: d.rating, count: d.userRatingCount ?? 0, placeId: d.id ?? id }
+    return {
+      rating: d.rating,
+      count: d.userRatingCount ?? 0,
+      placeId: d.id ?? id,
+      hours: parseHours(d.regularOpeningHours),
+    }
   } catch {
     return null
   }
@@ -127,7 +180,8 @@ async function fetchByText(query: string): Promise<ShopReview | null> {
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': apiKey(),
-        'X-Goog-FieldMask': 'places.id,places.rating,places.userRatingCount',
+        'X-Goog-FieldMask':
+          'places.id,places.rating,places.userRatingCount,places.regularOpeningHours',
       },
       body: JSON.stringify({ textQuery: query, maxResultCount: 1 }),
       cache: 'no-store',
@@ -137,7 +191,12 @@ async function fetchByText(query: string): Promise<ShopReview | null> {
     const d = await res.json()
     const p = d.places?.[0]
     if (!p || typeof p.rating !== 'number') return null
-    return { rating: p.rating, count: p.userRatingCount ?? 0, placeId: p.id }
+    return {
+      rating: p.rating,
+      count: p.userRatingCount ?? 0,
+      placeId: p.id,
+      hours: parseHours(p.regularOpeningHours),
+    }
   } catch {
     return null
   }

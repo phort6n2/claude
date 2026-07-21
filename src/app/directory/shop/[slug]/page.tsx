@@ -19,6 +19,7 @@ import {
   getAllShops,
   getShopBySlug,
   getRelatedShops,
+  cityHasFoundingMember,
   serviceMeta,
   cityHref,
   shopHref,
@@ -88,8 +89,12 @@ export default async function ShopDetailPage({
   if (review) {
     shop.rating = review.rating
     shop.reviewCount = review.count
+    // Backfill hours from the shop's Google Business Profile when we don't
+    // already have curated hours on file.
+    if (review.hours && shop.hours.length === 0) shop.hours = review.hours
   }
   const photos = shop.photos ?? []
+  const foundingAvailable = !cityHasFoundingMember(shop)
   const mapQuery = [
     shop.name,
     shop.street,
@@ -179,6 +184,11 @@ export default async function ShopDetailPage({
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-4">
+              {shop.client && (
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-1 text-sm font-semibold text-amber-800 ring-1 ring-inset ring-amber-600/20">
+                  <Trophy width={15} height={15} className="text-amber-500" /> Featured partner
+                </span>
+              )}
               <IndependentBadge />
               {shop.rating != null && (
                 <span className="inline-flex items-center gap-1.5">
@@ -416,21 +426,40 @@ export default async function ShopDetailPage({
                 </div>
               ) : (
                 <div className="rounded-xl border border-blue-200 bg-blue-50 p-5 text-sm">
-                  <p className="flex items-center gap-1.5 font-semibold text-blue-900">
-                    <Trophy width={16} height={16} className="text-amber-500" /> Founding offer for{' '}
-                    {shop.city}
-                  </p>
-                  <p className="mt-1 text-blue-800">
-                    We feature <strong>one shop per city</strong>. Claim this free listing now to
-                    lock in {shop.city}&apos;s featured spot, get exclusive quote leads sent
-                    straight to you, and add your photos — before a competitor does.
-                  </p>
-                  <Link
-                    href={`/directory/claim?shop=${shop.slug}`}
-                    className="mt-3 inline-block rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
-                  >
-                    Claim {shop.city}&apos;s spot — free
-                  </Link>
+                  {foundingAvailable ? (
+                    <>
+                      <p className="flex items-center gap-1.5 font-semibold text-blue-900">
+                        <Trophy width={16} height={16} className="text-amber-500" /> Founding offer
+                        for {shop.city}
+                      </p>
+                      <p className="mt-1 text-blue-800">
+                        We feature one <strong>founding member</strong> per city. Claim this free
+                        listing now to become {shop.city}&apos;s founding member — priority
+                        placement, exclusive quote leads sent straight to you, and your photos —
+                        before a competitor does.
+                      </p>
+                      <Link
+                        href={`/directory/claim?shop=${shop.slug}`}
+                        className="mt-3 inline-block rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
+                      >
+                        Claim {shop.city}&apos;s founding spot — free
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-semibold text-blue-900">Is this your shop?</p>
+                      <p className="mt-1 text-blue-800">
+                        Claim this free listing to edit your details, add photos, and get exclusive
+                        quote leads sent straight to you.
+                      </p>
+                      <Link
+                        href={`/directory/claim?shop=${shop.slug}`}
+                        className="mt-3 inline-block rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
+                      >
+                        Claim this listing — free
+                      </Link>
+                    </>
+                  )}
                 </div>
               )}
             </div>

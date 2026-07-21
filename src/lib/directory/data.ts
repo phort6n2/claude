@@ -14,7 +14,26 @@ import type {
   StateSummary,
 } from './types'
 
-const shops = rawShops as Shop[]
+// Operator overrides: designate paying clients (top "Partner" tier) and
+// founding-member featured shops without editing the seed file — set
+// DIRECTORY_CLIENT_SLUGS / DIRECTORY_FEATURED_SLUGS (comma-separated slugs) in
+// the environment. Clients always imply featured.
+function slugSet(envVar: string | undefined): Set<string> {
+  return new Set((envVar || '').split(',').map((s) => s.trim()).filter(Boolean))
+}
+const CLIENT_SLUGS = slugSet(process.env.DIRECTORY_CLIENT_SLUGS)
+const FEATURED_SLUGS = slugSet(process.env.DIRECTORY_FEATURED_SLUGS)
+
+const shops = (rawShops as Shop[]).map((s) => {
+  const client = s.client || CLIENT_SLUGS.has(s.slug)
+  const featured = s.featured || client || FEATURED_SLUGS.has(s.slug)
+  return client === !!s.client && featured === !!s.featured ? s : { ...s, client, featured }
+})
+
+/** Ranking tier: paying client (2) > founding-member featured (1) > standard. */
+function tier(s: Shop): number {
+  return s.client ? 2 : s.featured ? 1 : 0
+}
 
 // ---- Service catalog -----------------------------------------------------
 
@@ -109,15 +128,37 @@ export function shopHref(shop: Pick<Shop, 'slug'>): string {
 
 // ---- Listing queries -----------------------------------------------------
 
-/** Featured first, then by rating/review volume — mirrors how pages rank shops. */
+/** Clients first, then founding-member featured, then by rating/review volume. */
 function rankShops(list: Shop[]): Shop[] {
   return [...list].sort((a, b) => {
-    if (a.featured !== b.featured) return a.featured ? -1 : 1
+    const tierA = tier(a)
+    const tierB = tier(b)
+    if (tierA !== tierB) return tierB - tierA
     const ratA = a.rating ?? 0
     const ratB = b.rating ?? 0
     if (ratB !== ratA) return ratB - ratA
     return (b.reviewCount ?? 0) - (a.reviewCount ?? 0)
   })
+}
+
+/**
+ * Whether a city's founding-member spot is already taken by a DIFFERENT shop —
+ * i.e. another shop in the same city that has claimed a featured slot (a real
+ * founding member; paying-client Partners are a separate paid tier and don't
+ * consume the free founding spot). Used to stop over-promising the founding
+ * offer once it's gone.
+ */
+export function cityHasFoundingMember(shop: Shop): boolean {
+  const slug = citySlug(shop.city)
+  return shops.some(
+    (s) =>
+      s.slug !== shop.slug &&
+      s.state === shop.state &&
+      citySlug(s.city) === slug &&
+      s.featured &&
+      s.claimed &&
+      !s.client
+  )
 }
 
 export function getAllShops(): Shop[] {
