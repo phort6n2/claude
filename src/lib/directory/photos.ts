@@ -80,12 +80,21 @@ const SOCIAL_PATTERNS: { platform: string; test: RegExp }[] = [
 ]
 
 function extractSocials(html: string): SocialLink[] {
-  const hrefs = new Set<string>()
-  for (const m of html.matchAll(/href=["']([^"']+)["']/gi)) hrefs.add(m[1])
+  // Collect candidate URLs from anchor hrefs AND from anywhere else they
+  // appear — many sites list their profiles in JSON-LD `sameAs`, meta tags, or
+  // inline JSON rather than as clickable links, so scanning only <a href> misses
+  // them. The SOCIAL_PATTERNS already exclude share/intent URLs.
+  const urls = new Set<string>()
+  for (const m of html.matchAll(/href=["']([^"']+)["']/gi)) urls.add(m[1])
+  for (const m of html.matchAll(/https?:\/\/[^\s"'<>()\\]+/gi)) urls.add(m[0])
   const found: SocialLink[] = []
   const seen = new Set<string>()
-  for (const href of hrefs) {
-    const url = href.replace(/&amp;/g, '&').split('?')[0]
+  for (const raw of urls) {
+    const url = raw
+      .replace(/&amp;/g, '&')
+      .replace(/\\\//g, '/') // unescape JSON-embedded slashes
+      .split('?')[0]
+      .replace(/[\\"']+$/, '')
     for (const { platform, test } of SOCIAL_PATTERNS) {
       if (seen.has(platform)) continue
       if (test.test(url)) {
