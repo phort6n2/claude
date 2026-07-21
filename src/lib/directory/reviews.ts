@@ -6,9 +6,9 @@
 //
 // COST CONTROL — the important part:
 // Pages NEVER call Google. They read a cached snapshot that is refreshed on a
-// fixed schedule (a cron hitting /api/directory/reviews/refresh). So Google is
-// billed at exactly `shops × refreshes` — e.g. 6 shops once a day ≈ 180
-// calls/month — completely independent of site traffic. A viral spike costs
+// fixed schedule (a monthly cron hitting /api/directory/reviews/refresh). So
+// Google is billed at exactly `shops × refreshes` — e.g. 6 shops once a month ≈
+// 6 calls/month — completely independent of site traffic. A viral spike costs
 // the same as a quiet day. The snapshot lives in Vercel Blob; reading it is
 // free and cached ~1h.
 //

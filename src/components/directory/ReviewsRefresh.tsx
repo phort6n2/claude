@@ -37,7 +37,7 @@ export function ReviewsRefresh() {
         <Star width={18} height={18} className="text-blue-600" /> Google ratings
       </h2>
       <p className="mt-1 text-sm text-gray-600">
-        Ratings refresh automatically once a day. Use this to pull them now — it&apos;s the only
+        Ratings refresh automatically once a month. Use this to pull them now — it&apos;s the only
         action that calls the Google API, so cost stays fixed no matter your traffic.
       </p>
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
