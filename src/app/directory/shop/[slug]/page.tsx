@@ -378,18 +378,24 @@ export default async function ShopDetailPage({
                 <h3 className="flex items-center gap-2 font-semibold text-gray-900">
                   <Clock width={16} height={16} /> Hours
                 </h3>
-                <ul className="mt-3 space-y-1.5 text-sm">
-                  {shop.hours.map((h) => (
-                    <li key={h.day} className="flex justify-between">
-                      <span className="text-gray-500">{dayLabel(h.day)}</span>
-                      <span className="font-medium text-gray-800">
-                        {h.open && h.close
-                          ? `${formatTime(h.open)} – ${formatTime(h.close)}`
-                          : 'Closed'}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                {shop.hours.length === 0 ? (
+                  <p className="mt-3 text-sm text-gray-500">
+                    Call to confirm hours.
+                  </p>
+                ) : (
+                  <ul className="mt-3 space-y-1.5 text-sm">
+                    {shop.hours.map((h) => (
+                      <li key={h.day} className="flex justify-between">
+                        <span className="text-gray-500">{dayLabel(h.day)}</span>
+                        <span className="font-medium text-gray-800">
+                          {h.open && h.close
+                            ? `${formatTime(h.open)} – ${formatTime(h.close)}`
+                            : 'Closed'}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               {shop.claimed ? (

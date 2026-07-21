@@ -24,6 +24,9 @@ export function OpenNow({
     setStatus(openStatus(hours, new Date()))
   }, [hours])
 
+  // Shops with no hours on file (e.g. imported listings) show no badge rather
+  // than a misleading "Closed".
+  if (!hours || hours.length === 0) return null
   if (!status) return null
 
   return (
