@@ -1,13 +1,14 @@
 import type { Metadata } from 'next'
-import { ImagePlus } from 'lucide-react'
+import { ImagePlus, Wand2 } from 'lucide-react'
 import { getAllShops } from '@/lib/directory/data'
 import { uploadsEnabled } from '@/lib/directory/photos'
 import { ManageUploader } from '@/components/directory/ManageUploader'
+import { WebsiteTools } from '@/components/directory/WebsiteTools'
 
-// Internal photo-management tool. Kept out of the index; the upload API is
-// secret-gated, so this page is a convenience form, not a security boundary.
+// Internal agency tools. Kept out of the index; the APIs are secret-gated, so
+// this page is a convenience console, not a security boundary.
 export const metadata: Metadata = {
-  title: 'Manage listing photos',
+  title: 'Manage listings',
   robots: { index: false, follow: false },
 }
 
@@ -21,26 +22,38 @@ export default function ManagePage() {
   const enabled = uploadsEnabled()
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-12">
+    <div className="mx-auto max-w-2xl px-4 py-12">
       <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-        <ImagePlus width={24} height={24} className="text-blue-600" /> Listing photos
+        <Wand2 width={24} height={24} className="text-blue-600" /> Listing tools
       </h1>
       <p className="mt-2 text-gray-600">
-        Add photos to a shop listing. Uploads are stored securely and appear on the
-        listing within a few minutes.
+        Auto-fill new listings from a website, find SEO sales prospects, and add photos.
       </p>
 
       {!enabled && (
         <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Uploads aren&apos;t configured on this deployment yet. Set{' '}
-          <code className="rounded bg-amber-100 px-1">BLOB_READ_WRITE_TOKEN</code> and{' '}
-          <code className="rounded bg-amber-100 px-1">DIRECTORY_UPLOAD_SECRET</code> in
-          your environment variables to enable it.
+          Some tools need env vars. Set{' '}
+          <code className="rounded bg-amber-100 px-1">DIRECTORY_UPLOAD_SECRET</code> (for the
+          URL/SEO tools) and connect a Vercel Blob store to add{' '}
+          <code className="rounded bg-amber-100 px-1">BLOB_READ_WRITE_TOKEN</code> (for photo
+          uploads).
         </div>
       )}
 
-      <div className="mt-6">
-        <ManageUploader shops={shops} />
+      <div className="mt-8">
+        <WebsiteTools />
+      </div>
+
+      <div className="mt-12">
+        <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900">
+          <ImagePlus width={20} height={20} className="text-blue-600" /> Listing photos
+        </h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Add photos to a listing — they appear within a few minutes.
+        </p>
+        <div className="mt-4">
+          <ManageUploader shops={shops} />
+        </div>
       </div>
     </div>
   )
