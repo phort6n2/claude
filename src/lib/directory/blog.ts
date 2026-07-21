@@ -14,6 +14,7 @@
 // simply reports no posts yet — nothing breaks.
 
 import { unstable_cache } from 'next/cache'
+import { SEED_POSTS } from '@/data/directory-blog'
 
 const BASE = 'https://api.babylovegrowth.ai/api/integrations'
 const TIMEOUT = 8000
@@ -41,8 +42,10 @@ export interface Article extends ArticleSummary {
   faqJsonLd?: unknown
 }
 
+// The blog is live whenever there are hand-written seed posts OR the
+// BabyLoveGrowth feed is connected.
 export function blogEnabled(): boolean {
-  return !!process.env.BABYLOVEGROWTH_API_KEY
+  return SEED_POSTS.length > 0 || !!process.env.BABYLOVEGROWTH_API_KEY
 }
 
 export function articleDate(a: ArticleSummary): string | undefined {
@@ -104,16 +107,32 @@ const cachedArticle = (id: number) =>
     revalidate: 3600,
   })()
 
-/** All published articles for this site (summaries only). */
+function sortByDateDesc(list: ArticleSummary[]): ArticleSummary[] {
+  return [...list].sort((a, b) => {
+    const da = articleDate(a) ?? ''
+    const db = articleDate(b) ?? ''
+    return da < db ? 1 : da > db ? -1 : 0
+  })
+}
+
+/**
+ * All published articles for this site (summaries only) — hand-written seed
+ * posts merged with the live BabyLoveGrowth feed, newest first. If a live post
+ * shares a slug with a seed, the live one wins.
+ */
 export async function listArticles(): Promise<ArticleSummary[]> {
-  if (!blogEnabled()) return []
-  return cachedList()
+  const api = process.env.BABYLOVEGROWTH_API_KEY ? await cachedList() : []
+  const apiSlugs = new Set(api.map((a) => a.slug))
+  const seeds = SEED_POSTS.filter((s) => !apiSlugs.has(s.slug))
+  return sortByDateDesc([...api, ...seeds])
 }
 
 /** A single full article (with content_html) by its slug. */
 export async function getArticleBySlug(slug: string): Promise<Article | null> {
-  if (!blogEnabled()) return null
-  const summary = (await cachedList()).find((a) => a.slug === slug)
-  if (!summary) return null
-  return cachedArticle(summary.id)
+  // Live feed takes precedence over a same-slug seed.
+  if (process.env.BABYLOVEGROWTH_API_KEY) {
+    const summary = (await cachedList()).find((a) => a.slug === slug)
+    if (summary) return cachedArticle(summary.id)
+  }
+  return SEED_POSTS.find((s) => s.slug === slug) ?? null
 }

@@ -46,6 +46,12 @@ function handleDirectoryHost(req: NextRequest): NextResponse | null {
     return NextResponse.rewrite(url)
   }
 
+  // Static assets in /public (e.g. /blog/*.jpg, /logo.png) serve as-is —
+  // don't nest them under /directory or they'd 404 on the public domain.
+  if (/\.[a-zA-Z0-9]+$/.test(pathname)) {
+    return NextResponse.next()
+  }
+
   // Everything else that belongs to the internal app is hidden from the
   // public domain.
   if (
@@ -95,7 +101,6 @@ function legacyRedirect(req: NextRequest): NextResponse | null {
     '/listing-category/auto-glass-shop': '/directory',
     '/submit-listing': '/directory/claim',
     '/listing-author': '/directory',
-    '/blog': '/directory',
     '/contact': '/directory/claim',
   }
   if (map[path]) return redirect301(req, map[path])
