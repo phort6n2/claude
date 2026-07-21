@@ -15,13 +15,14 @@ import { HeroSearch } from '@/components/directory/HeroSearch'
 import { CTASection } from '@/components/directory/CTASection'
 import { NearYou } from '@/components/directory/NearYou'
 import { enrichShops } from '@/lib/directory/photos'
+import { withReviews } from '@/lib/directory/reviews'
 
 // Refresh periodically so website hero images stay current.
 export const revalidate = 3600
 
 export default async function DirectoryHome() {
-  const featured = await enrichShops(getFeaturedShops(6))
-  const nearShops = await enrichShops(getAllShops())
+  const featured = await withReviews(await enrichShops(getFeaturedShops(6)))
+  const nearShops = await withReviews(await enrichShops(getAllShops()))
   const cities = getCitySummaries()
   const states = getStateSummaries()
   const shopCount = getShopCount()

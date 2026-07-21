@@ -14,6 +14,7 @@ import {
 } from '@/lib/directory/seo'
 import { ShopCard } from '@/components/directory/ShopCard'
 import { enrichShops } from '@/lib/directory/photos'
+import { withReviews } from '@/lib/directory/reviews'
 
 export const revalidate = 3600
 
@@ -46,7 +47,7 @@ export default async function StatePage({
   const summary = getStateSummaries().find((s) => s.state === state.toLowerCase())
   if (!summary) notFound()
 
-  const shops = await enrichShops(getShopsByState(summary.state))
+  const shops = await withReviews(await enrichShops(getShopsByState(summary.state)))
   const breadcrumb = breadcrumbJsonLd([
     { name: 'Directory', path: '/directory' },
     { name: summary.stateFull, path: `/directory/${summary.state}` },

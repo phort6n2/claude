@@ -65,8 +65,12 @@ export interface Shop {
 
   // Marketing / trust signals
   description: string
+  /** Star rating — populated live from Google reviews when configured. */
   rating?: number
+  /** Total review count — populated live from Google reviews when configured. */
   reviewCount?: number
+  /** Google Place ID for exact review lookups (optional; else matched by name+address). */
+  googlePlaceId?: string
   yearsInBusiness?: number
   /** Owner-uploaded photo URLs. Empty/absent → a branded placeholder is shown. */
   photos?: string[]

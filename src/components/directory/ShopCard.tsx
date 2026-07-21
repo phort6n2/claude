@@ -75,7 +75,10 @@ export function ShopCard({
 
         <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
           {shop.rating != null && (
-            <StarRating rating={shop.rating} reviewCount={shop.reviewCount} />
+            <span className="inline-flex items-center gap-1.5">
+              <StarRating rating={shop.rating} reviewCount={shop.reviewCount} />
+              <span className="text-xs text-gray-400">Google</span>
+            </span>
           )}
           <OpenNow hours={shop.hours} />
         </div>

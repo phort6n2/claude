@@ -41,6 +41,8 @@ import { OpenNow } from '@/components/directory/OpenNow'
 import { StickyCallBar } from '@/components/directory/StickyCallBar'
 import { QuoteForm } from '@/components/directory/QuoteForm'
 import { enrichShop } from '@/lib/directory/photos'
+import { getReview, withReviews, googlePlaceUrl } from '@/lib/directory/reviews'
+import { GoogleReviews } from '@/components/directory/GoogleReviews'
 
 // Rebuild periodically so newly uploaded owner photos appear.
 export const revalidate = 300
@@ -78,6 +80,13 @@ export default async function ShopDetailPage({
   if (!baseShop) notFound()
 
   const shop = await enrichShop(baseShop)
+  // Live Google rating + count (no-op without an API key). Feeds the inline
+  // StarRating and the sidebar reviews widget.
+  const review = await getReview(shop)
+  if (review) {
+    shop.rating = review.rating
+    shop.reviewCount = review.count
+  }
   const photos = shop.photos ?? []
   const mapQuery = [
     shop.name,
@@ -86,7 +95,7 @@ export default async function ShopDetailPage({
   ]
     .filter(Boolean)
     .join(', ')
-  const related = getRelatedShops(shop, 3)
+  const related = await withReviews(getRelatedShops(shop, 3))
   const autoRepair = autoRepairJsonLd(shop)
   const breadcrumb = breadcrumbJsonLd([
     { name: 'Directory', path: '/directory' },
@@ -169,7 +178,10 @@ export default async function ShopDetailPage({
 
             <div className="mt-4 flex flex-wrap items-center gap-4">
               {shop.rating != null && (
-                <StarRating rating={shop.rating} reviewCount={shop.reviewCount} size={18} />
+                <span className="inline-flex items-center gap-1.5">
+                  <StarRating rating={shop.rating} reviewCount={shop.reviewCount} size={18} />
+                  <span className="text-xs text-gray-400">on Google</span>
+                </span>
               )}
               {shop.yearsInBusiness != null && (
                 <span className="inline-flex items-center gap-1.5 text-sm text-gray-500">
@@ -337,6 +349,15 @@ export default async function ShopDetailPage({
                   </a>
                 </div>
               </div>
+
+              {/* Live Google rating + count */}
+              {review && (
+                <GoogleReviews
+                  rating={review.rating}
+                  count={review.count}
+                  url={googlePlaceUrl(review.placeId)}
+                />
+              )}
 
               {/* Lead capture — free quote request straight to the shop */}
               <QuoteForm
