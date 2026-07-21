@@ -17,6 +17,10 @@
     {
       "path": "/api/cron/recover-stuck-call-analyses",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/directory/reviews/refresh",
+      "schedule": "0 8 * * *"
     }
   ]
 }
