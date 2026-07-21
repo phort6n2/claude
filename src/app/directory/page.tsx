@@ -136,7 +136,10 @@ export default async function DirectoryHome() {
 
       {/* Services */}
       <section className="mx-auto max-w-6xl px-4 py-14">
-        <h2 className="text-center text-2xl font-bold text-gray-900">
+        <p className="text-center text-sm font-semibold uppercase tracking-wider text-blue-600">
+          What you need
+        </p>
+        <h2 className="mt-1.5 text-center text-2xl font-bold text-gray-900">
           Browse by service
         </h2>
         <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -159,7 +162,10 @@ export default async function DirectoryHome() {
         <div className="mx-auto max-w-6xl px-4">
           <div className="flex items-end justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Featured shops</h2>
+              <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">
+                Top of the directory
+              </p>
+              <h2 className="mt-1 text-2xl font-bold text-gray-900">Featured shops</h2>
               <p className="mt-1 text-gray-600">
                 Top-rated auto glass providers across our coverage areas.
               </p>
@@ -187,7 +193,10 @@ export default async function DirectoryHome() {
 
       {/* Cities */}
       <section className="mx-auto max-w-6xl px-4 py-14">
-        <h2 className="text-2xl font-bold text-gray-900">Popular cities</h2>
+        <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">
+          Browse by area
+        </p>
+        <h2 className="mt-1 text-2xl font-bold text-gray-900">Popular cities</h2>
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {cities.map((c) => (
             <Link

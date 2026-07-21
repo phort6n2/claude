@@ -83,7 +83,10 @@ export function NearYou({ shops }: { shops: Shop[] }) {
     <section className="mx-auto max-w-6xl px-4 py-12">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+          <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">
+            Closest to you
+          </p>
+          <h2 className="mt-1 flex items-center gap-2 text-2xl font-bold text-gray-900">
             <Navigation width={20} height={20} className="text-blue-600" />
             Auto glass shops near {state.location ?? 'you'}
           </h2>
