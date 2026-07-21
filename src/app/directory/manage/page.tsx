@@ -8,6 +8,7 @@ import { QuoteInbox } from '@/components/directory/QuoteInbox'
 import { OwnerKeys } from '@/components/directory/OwnerKeys'
 import { ReviewsRefresh } from '@/components/directory/ReviewsRefresh'
 import { SpamAudit } from '@/components/directory/SpamAudit'
+import { ClaimsInbox } from '@/components/directory/ClaimsInbox'
 
 // Internal agency tools. Kept out of the index; the APIs are secret-gated, so
 // this page is a convenience console, not a security boundary.
@@ -46,6 +47,10 @@ export default function ManagePage() {
 
       <div className="mt-8">
         <WebsiteTools />
+      </div>
+
+      <div className="mt-8">
+        <ClaimsInbox />
       </div>
 
       <div className="mt-8">

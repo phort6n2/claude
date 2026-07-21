@@ -1,34 +1,38 @@
 import { NextResponse } from 'next/server'
+import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
+import { saveClaim, listClaims, type Claim } from '@/lib/directory/claims'
 
 // ============================================
 // DIRECTORY — FREE LISTING / CLAIM SUBMISSIONS
 // ============================================
-// This endpoint receives new-listing and claim requests from the public
-// directory. For the JSON-seed MVP it validates the payload and logs it — the
-// filesystem is read-only on Vercel, so submissions should be forwarded to a
-// durable sink. Wire ONE of these in production:
-//   1. Insert into the command-center Postgres DB (a `DirectoryLead` table).
-//   2. Email yourself via a transactional provider (Resend/SendGrid).
-//   3. Push to a CRM / spreadsheet webhook.
-// The shape below is stable, so any of those is a drop-in.
+//   POST                → receive a claim/new-listing submission (public).
+//                         Stored in the review queue (Vercel Blob).
+//   GET (x-upload-secret) → the operator's pending-claims review queue.
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 const ClaimSchema = z.object({
-  // Only three fields are required — keep first-touch friction low for a free
-  // lead magnet; everything else is enriched later.
   businessName: z.string().min(2, 'Business name is required'),
   email: z.string().email('A valid email is required'),
-  city: z.string().min(2, 'City is required'),
-  // Optional details.
+  city: z.string().optional(),
   contactName: z.string().optional(),
   phone: z.string().optional(),
   state: z.string().optional(),
+  stateFull: z.string().optional(),
+  street: z.string().optional(),
+  zip: z.string().optional(),
   website: z.string().url().optional().or(z.literal('')),
-  // Present when a visitor is claiming an existing listing.
   existingShopSlug: z.string().optional(),
-  // Optional interest in the paid upsell — a warm signal for sales.
   wantsMarketingHelp: z.boolean().optional(),
   message: z.string().max(2000).optional(),
+  // From the Google Business Profile picker.
+  placeId: z.string().optional(),
+  googleCategory: z.string().optional(),
+  verifyVerdict: z.string().optional(),
+  serviceAreaOnly: z.boolean().optional(),
+  // Honeypot — must be empty.
+  company: z.string().max(0).optional(),
 })
 
 export async function POST(request: Request) {
@@ -46,15 +50,43 @@ export async function POST(request: Request) {
       { status: 422 }
     )
   }
+  const d = parsed.data
+  if (d.company) return NextResponse.json({ ok: true }, { status: 201 }) // drop bots
 
-  const lead = {
-    ...parsed.data,
-    type: parsed.data.existingShopSlug ? 'claim' : 'new_listing',
-    submittedAt: new Date().toISOString(),
+  const claim: Claim = {
+    id: randomUUID(),
+    type: d.existingShopSlug ? 'claim' : 'new_listing',
+    businessName: d.businessName,
+    email: d.email,
+    contactName: d.contactName || undefined,
+    phone: d.phone || undefined,
+    website: d.website || undefined,
+    city: d.city || undefined,
+    state: d.state || undefined,
+    stateFull: d.stateFull || undefined,
+    street: d.street || undefined,
+    zip: d.zip || undefined,
+    placeId: d.placeId || undefined,
+    googleCategory: d.googleCategory || undefined,
+    verifyVerdict: d.verifyVerdict || undefined,
+    serviceAreaOnly: d.serviceAreaOnly,
+    existingShopSlug: d.existingShopSlug || undefined,
+    wantsMarketingHelp: d.wantsMarketingHelp,
+    message: d.message || undefined,
+    createdAt: new Date().toISOString(),
   }
 
-  // TODO: replace this log with a durable sink (DB insert / email / webhook).
-  console.log('[directory:lead]', JSON.stringify(lead))
-
+  await saveClaim(claim)
   return NextResponse.json({ ok: true }, { status: 201 })
+}
+
+function authed(request: Request): boolean {
+  const secret = process.env.DIRECTORY_UPLOAD_SECRET
+  return !!secret && request.headers.get('x-upload-secret') === secret
+}
+
+export async function GET(request: Request) {
+  if (!authed(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const claims = await listClaims()
+  return NextResponse.json({ claims })
 }
