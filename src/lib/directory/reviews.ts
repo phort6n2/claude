@@ -34,6 +34,10 @@ export interface ShopReview {
   placeId: string
   /** Weekly hours pulled from the shop's Google Business Profile, if available. */
   hours?: BusinessHours[]
+  /** Google Business Profile primary category, e.g. "Auto glass shop". */
+  category?: string
+  /** Places API type tags, e.g. ["car_repair"]. */
+  types?: string[]
 }
 
 interface GooglePeriodPoint {
@@ -119,7 +123,16 @@ const cachedSnapshot = unstable_cache(readSnapshot, ['directory-reviews-snapshot
 export async function getReview(shop: Shop): Promise<ShopReview | null> {
   const snap = await cachedSnapshot()
   const r = snap[shop.slug]
-  return r ? { rating: r.rating, count: r.count, placeId: r.placeId, hours: r.hours } : null
+  return r
+    ? {
+        rating: r.rating,
+        count: r.count,
+        placeId: r.placeId,
+        hours: r.hours,
+        category: r.category,
+        types: r.types,
+      }
+    : null
 }
 
 /**
@@ -154,7 +167,8 @@ async function fetchByPlaceId(id: string): Promise<ShopReview | null> {
     const res = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(id)}`, {
       headers: {
         'X-Goog-Api-Key': apiKey(),
-        'X-Goog-FieldMask': 'rating,userRatingCount,id,regularOpeningHours',
+        'X-Goog-FieldMask':
+          'rating,userRatingCount,id,regularOpeningHours,primaryType,primaryTypeDisplayName,types',
       },
       cache: 'no-store',
       signal: AbortSignal.timeout(TIMEOUT),
@@ -167,6 +181,8 @@ async function fetchByPlaceId(id: string): Promise<ShopReview | null> {
       count: d.userRatingCount ?? 0,
       placeId: d.id ?? id,
       hours: parseHours(d.regularOpeningHours),
+      category: d.primaryTypeDisplayName?.text ?? d.primaryType,
+      types: d.types,
     }
   } catch {
     return null
@@ -181,7 +197,7 @@ async function fetchByText(query: string): Promise<ShopReview | null> {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': apiKey(),
         'X-Goog-FieldMask':
-          'places.id,places.rating,places.userRatingCount,places.regularOpeningHours',
+          'places.id,places.rating,places.userRatingCount,places.regularOpeningHours,places.primaryType,places.primaryTypeDisplayName,places.types',
       },
       body: JSON.stringify({ textQuery: query, maxResultCount: 1 }),
       cache: 'no-store',
@@ -196,6 +212,8 @@ async function fetchByText(query: string): Promise<ShopReview | null> {
       count: p.userRatingCount ?? 0,
       placeId: p.id,
       hours: parseHours(p.regularOpeningHours),
+      category: p.primaryTypeDisplayName?.text ?? p.primaryType,
+      types: p.types,
     }
   } catch {
     return null
