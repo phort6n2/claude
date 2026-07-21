@@ -173,8 +173,20 @@ export function getShopBySlug(slug: string): Shop | undefined {
   return shops.find((s) => s.slug === slug)
 }
 
-export function getFeaturedShops(limit = 6): Shop[] {
-  return rankShops(shops.filter((s) => s.featured)).slice(0, limit)
+/**
+ * Featured shops for the homepage. Rotates WITHIN each tier by `rotate` (pass a
+ * changing bucket like the current hour) so that, when there are more featured
+ * shops than slots, every client and founding-member cycles through the
+ * homepage over time instead of only the top few ever showing. Clients still
+ * always rank above founding-member featured shops.
+ */
+export function getFeaturedShops(limit = 9, rotate = 0): Shop[] {
+  const featured = shops.filter((s) => s.featured)
+  const clients = rankShops(featured.filter((s) => s.client))
+  const founders = rankShops(featured.filter((s) => !s.client))
+  const spin = (arr: Shop[]) =>
+    arr.length ? arr.map((_, i) => arr[(i + rotate) % arr.length]) : arr
+  return [...spin(clients), ...spin(founders)].slice(0, limit)
 }
 
 export function getShopsByCity(state: string, city: string): Shop[] {

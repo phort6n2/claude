@@ -21,7 +21,10 @@ import { withReviews } from '@/lib/directory/reviews'
 export const revalidate = 3600
 
 export default async function DirectoryHome() {
-  const featured = await withReviews(await enrichShops(getFeaturedShops(9)))
+  // Rotate the featured set each hour (matches revalidate) so all featured
+  // shops get homepage time, not just the top 9.
+  const rotation = Math.floor(Date.now() / 3_600_000)
+  const featured = await withReviews(await enrichShops(getFeaturedShops(9, rotation)))
   const nearShops = await withReviews(await enrichShops(getAllShops()))
   const cities = getCitySummaries()
   const states = getStateSummaries()
