@@ -21,7 +21,7 @@ import { withReviews } from '@/lib/directory/reviews'
 export const revalidate = 3600
 
 export default async function DirectoryHome() {
-  const featured = await withReviews(await enrichShops(getFeaturedShops(6)))
+  const featured = await withReviews(await enrichShops(getFeaturedShops(9)))
   const nearShops = await withReviews(await enrichShops(getAllShops()))
   const cities = getCitySummaries()
   const states = getStateSummaries()
@@ -98,9 +98,15 @@ export default async function DirectoryHome() {
               View all <ArrowRight width={16} height={16} />
             </Link>
           </div>
+          {/* 3 on mobile, 6 on tablet, 9 on desktop — clean rows at each size. */}
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {featured.map((shop) => (
-              <ShopCard key={shop.slug} shop={shop} />
+            {featured.map((shop, i) => (
+              <div
+                key={shop.slug}
+                className={i >= 6 ? 'hidden lg:block' : i >= 3 ? 'hidden sm:block' : ''}
+              >
+                <ShopCard shop={shop} />
+              </div>
             ))}
           </div>
         </div>
