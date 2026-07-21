@@ -207,6 +207,7 @@ export default async function DirectoryHome() {
 
       {/* Shop-owner CTA — this is the lead magnet */}
       <CTASection
+        eyebrow="For shop owners"
         title={OWNER_CTA.title}
         description={OWNER_CTA.body}
         primary={{ label: OWNER_CTA.primary, href: '/directory/claim' }}
