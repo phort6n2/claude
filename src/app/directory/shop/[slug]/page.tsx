@@ -39,6 +39,7 @@ import { SocialLinks } from '@/components/directory/SocialLinks'
 import { ExternalLink } from 'lucide-react'
 import { OpenNow } from '@/components/directory/OpenNow'
 import { StickyCallBar } from '@/components/directory/StickyCallBar'
+import { QuoteForm } from '@/components/directory/QuoteForm'
 import { enrichShop } from '@/lib/directory/photos'
 
 // Rebuild periodically so newly uploaded owner photos appear.
@@ -336,6 +337,13 @@ export default async function ShopDetailPage({
                   </a>
                 </div>
               </div>
+
+              {/* Lead capture — free quote request straight to the shop */}
+              <QuoteForm
+                shopSlug={shop.slug}
+                shopName={shop.name}
+                services={shop.services}
+              />
 
               {/* Social profiles (auto-discovered from the website) */}
               {shop.socials && shop.socials.length > 0 && (

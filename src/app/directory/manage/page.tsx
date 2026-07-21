@@ -4,6 +4,7 @@ import { getAllShops } from '@/lib/directory/data'
 import { uploadsEnabled } from '@/lib/directory/photos'
 import { ManageUploader } from '@/components/directory/ManageUploader'
 import { WebsiteTools } from '@/components/directory/WebsiteTools'
+import { QuoteInbox } from '@/components/directory/QuoteInbox'
 
 // Internal agency tools. Kept out of the index; the APIs are secret-gated, so
 // this page is a convenience console, not a security boundary.
@@ -42,6 +43,10 @@ export default function ManagePage() {
 
       <div className="mt-8">
         <WebsiteTools />
+      </div>
+
+      <div className="mt-8">
+        <QuoteInbox />
       </div>
 
       <div className="mt-12">
