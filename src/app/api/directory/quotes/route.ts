@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { saveQuote, listAllQuotes, type Quote } from '@/lib/directory/quotes'
+import { notifyNewQuote } from '@/lib/directory/notify'
 import { getShopBySlug } from '@/lib/directory/data'
 
 // Public consumer lead capture + secret-gated agency inbox.
@@ -54,6 +55,8 @@ export async function POST(request: Request) {
   }
 
   const stored = await saveQuote(quote)
+  // Email the owner + agency (best-effort, no-op until email is configured).
+  await notifyNewQuote(quote, shop)
   // Even if storage isn't configured we return ok — the lead is logged
   // server-side and we never want to show the consumer an error.
   return NextResponse.json({ ok: true, stored })
