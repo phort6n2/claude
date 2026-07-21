@@ -21,7 +21,7 @@ export function HeroSearch({ states }: { states: StateSummary[] }) {
   return (
     <form
       onSubmit={submit}
-      className="mx-auto flex w-full max-w-2xl flex-col gap-2 rounded-2xl bg-white p-2 shadow-xl ring-1 ring-black/5 sm:flex-row sm:items-center"
+      className="mx-auto flex w-full max-w-2xl flex-col gap-2 rounded-2xl bg-white p-2 shadow-2xl shadow-blue-950/40 ring-1 ring-black/5 sm:flex-row sm:items-center"
     >
       <div className="flex flex-1 items-center gap-2 rounded-xl px-3 focus-within:bg-gray-50 sm:focus-within:bg-transparent">
         <Search width={18} height={18} className="shrink-0 text-gray-400" />
@@ -48,7 +48,7 @@ export function HeroSearch({ states }: { states: StateSummary[] }) {
       </select>
       <button
         type="submit"
-        className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 font-semibold text-white outline-none transition-colors hover:bg-blue-700 active:bg-blue-800 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-blue-600 to-blue-700 px-6 py-2.5 font-semibold text-white shadow-lg shadow-blue-600/30 outline-none transition-colors hover:from-blue-500 hover:to-blue-600 active:from-blue-700 active:to-blue-800 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
       >
         <Search width={18} height={18} className="sm:hidden" />
         Search

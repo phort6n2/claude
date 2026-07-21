@@ -33,29 +33,99 @@ export default async function DirectoryHome() {
   return (
     <>
       {/* Hero */}
-      <section className="bg-gradient-to-b from-blue-700 to-blue-600 px-4 py-16 text-white sm:py-24">
+      <section className="relative isolate overflow-hidden bg-blue-800 px-4 py-20 text-white sm:py-28">
+        {/* Depth: base gradient */}
+        <div
+          aria-hidden
+          className="absolute inset-0 -z-20 bg-gradient-to-b from-blue-800 via-blue-700 to-blue-600"
+        />
+        {/* Depth: layered radial glows (top focal + corners) */}
+        <div
+          aria-hidden
+          className="absolute inset-0 -z-10"
+          style={{
+            background:
+              'radial-gradient(60% 50% at 50% 0%, rgba(56,189,248,0.35), transparent 70%), radial-gradient(40% 40% at 85% 15%, rgba(37,99,235,0.45), transparent 70%), radial-gradient(45% 45% at 12% 88%, rgba(29,78,216,0.5), transparent 70%)',
+          }}
+        />
+        {/* Depth: subtle glass-grid motif, faded toward the edges */}
+        <svg
+          aria-hidden
+          className="absolute inset-0 -z-10 h-full w-full opacity-[0.07]"
+          style={{
+            maskImage: 'radial-gradient(80% 60% at 50% 20%, black, transparent)',
+            WebkitMaskImage: 'radial-gradient(80% 60% at 50% 20%, black, transparent)',
+          }}
+        >
+          <defs>
+            <pattern id="glassgrid" width="44" height="44" patternUnits="userSpaceOnUse">
+              <path d="M44 0H0V44" fill="none" stroke="white" strokeWidth="1" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#glassgrid)" />
+        </svg>
+
         <div className="mx-auto max-w-3xl text-center">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
-            {HERO.title}
+          {/* Eyebrow */}
+          <div className="mb-6 flex justify-center">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-blue-50 ring-1 ring-inset ring-white/20 backdrop-blur">
+              <ShieldCheck width={15} height={15} className="text-cyan-300" />
+              Free directory · independent shops in all 50 states
+            </span>
+          </div>
+
+          <h1 className="text-balance text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl">
+            Find a trusted auto glass shop{' '}
+            <span className="bg-gradient-to-r from-cyan-200 to-white bg-clip-text text-transparent">
+              near you
+            </span>
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-lg text-blue-100">
+          <p className="mx-auto mt-5 max-w-2xl text-pretty text-lg leading-relaxed text-blue-50/90">
             {HERO.subtitle}
           </p>
-          <div className="mt-8">
+
+          {/* Elevated search with a soft glow behind it */}
+          <div className="relative mx-auto mt-9 max-w-2xl">
+            <div
+              aria-hidden
+              className="absolute -inset-x-6 -inset-y-3 -z-10 rounded-[2rem] bg-cyan-400/20 blur-2xl"
+            />
             <HeroSearch states={states} />
+            <p className="mt-3 text-sm text-blue-100/80">
+              Free to search · no account needed.
+            </p>
           </div>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-blue-100">
-            <span className="inline-flex items-center gap-1.5">
-              <MapPin width={16} height={16} /> {shopCount}+ shops listed
+
+          {/* Trust chips */}
+          <ul className="mt-8 flex flex-wrap items-center justify-center gap-2.5 text-sm">
+            {[
+              { icon: MapPin, label: `${shopCount}+ shops listed` },
+              { icon: Truck, label: 'Mobile service available' },
+              { icon: ShieldCheck, label: 'Insurance-approved shops' },
+              { icon: Star, label: 'Real Google reviews' },
+            ].map(({ icon: Icon, label }) => (
+              <li
+                key={label}
+                className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1.5 font-medium text-blue-50 ring-1 ring-inset ring-white/15 backdrop-blur"
+              >
+                <Icon width={15} height={15} className="text-cyan-300" />
+                {label}
+              </li>
+            ))}
+          </ul>
+
+          {/* Truthful confidence strip */}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-blue-100/80">
+            <span>
+              <span className="font-semibold text-white">Independent</span> &amp; locally owned
             </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Truck width={16} height={16} /> Mobile service available
+            <span aria-hidden className="hidden h-4 w-px bg-white/20 sm:block" />
+            <span>
+              Covering all <span className="font-semibold text-white">50 states + DC</span>
             </span>
-            <span className="inline-flex items-center gap-1.5">
-              <ShieldCheck width={16} height={16} /> Insurance-approved shops
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Star width={16} height={16} /> Verified reviews
+            <span aria-hidden className="hidden h-4 w-px bg-white/20 sm:block" />
+            <span>
+              <span className="font-semibold text-white">Free</span> forever
             </span>
           </div>
         </div>
