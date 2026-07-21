@@ -17,6 +17,9 @@ import { listQuotesForShop, quotesEnabled } from '@/lib/directory/quotes'
 import { OwnerLogin } from '@/components/directory/OwnerLogin'
 import { OwnerSession } from '@/components/directory/OwnerSession'
 import { ReviewWidgetCode } from '@/components/directory/ReviewWidgetCode'
+import { OwnerProfileEditor } from '@/components/directory/OwnerProfileEditor'
+import { getOwnerProfile } from '@/lib/directory/profiles'
+import { enrichShop } from '@/lib/directory/photos'
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://windshieldrepairhq.com').replace(
   /\/$/,
@@ -61,6 +64,18 @@ export default async function OwnerPage({
 
   const quotes = await listQuotesForShop(shop.slug)
   const storageOn = quotesEnabled()
+
+  // Current effective values for the profile editor: owner overrides win,
+  // otherwise fall back to seed + auto-detected socials.
+  const profile = await getOwnerProfile(shop.slug)
+  const enriched = await enrichShop(shop)
+  const profileInitial = {
+    description: profile?.description ?? shop.description,
+    phone: profile?.phone ?? shop.phone,
+    website: profile?.website ?? shop.website ?? '',
+    email: profile?.email ?? shop.email ?? '',
+    socials: profile?.socials ?? enriched.socials ?? [],
+  }
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
@@ -114,6 +129,9 @@ export default async function OwnerPage({
           </Link>
         </div>
       </section>
+
+      {/* Owner self-service profile editing */}
+      <OwnerProfileEditor initial={profileInitial} />
 
       {/* Free embeddable review widget for the shop's own website */}
       <ReviewWidgetCode

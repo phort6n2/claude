@@ -44,6 +44,7 @@ import { StickyCallBar } from '@/components/directory/StickyCallBar'
 import { QuoteForm } from '@/components/directory/QuoteForm'
 import { IndependentBadge } from '@/components/directory/IndependentBadge'
 import { enrichShop } from '@/lib/directory/photos'
+import { applyOwnerProfile } from '@/lib/directory/profiles'
 import { getReview, withReviews, googlePlaceUrl } from '@/lib/directory/reviews'
 import { GoogleReviews } from '@/components/directory/GoogleReviews'
 
@@ -82,7 +83,8 @@ export default async function ShopDetailPage({
   const baseShop = getShopBySlug(slug)
   if (!baseShop) notFound()
 
-  const shop = await enrichShop(baseShop)
+  // Auto-detect from the website, then let the owner's saved overrides win.
+  const shop = await applyOwnerProfile(await enrichShop(baseShop))
   // Live Google rating + count (no-op without an API key). Feeds the inline
   // StarRating and the sidebar reviews widget.
   const review = await getReview(shop)
