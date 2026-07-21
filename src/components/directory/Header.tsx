@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Shield } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { blogEnabled } from '@/lib/directory/blog'
 
 const navLink =
   'rounded-lg px-3 py-2 text-sm font-medium text-gray-600 outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2'
@@ -40,6 +41,14 @@ export function Header({ className }: { className?: string }) {
           >
             Browse by city
           </Link>
+          {blogEnabled() && (
+            <Link
+              href="/directory/blog"
+              className={cn(navLink, 'hidden sm:inline-flex')}
+            >
+              Blog
+            </Link>
+          )}
           <Link
             href="/directory/claim"
             className="ml-1 inline-flex items-center rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm outline-none transition-colors hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"

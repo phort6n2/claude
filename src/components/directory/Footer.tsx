@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Shield } from 'lucide-react'
 import { getStateSummaries } from '@/lib/directory/data'
+import { blogEnabled } from '@/lib/directory/blog'
 
 const footLink =
   'rounded-sm outline-none transition-colors hover:text-blue-600 focus-visible:text-blue-600 focus-visible:underline'
@@ -44,6 +45,13 @@ export function Footer() {
                   Find a shop
                 </Link>
               </li>
+              {blogEnabled() && (
+                <li>
+                  <Link href="/directory/blog" className={footLink}>
+                    Blog
+                  </Link>
+                </li>
+              )}
             </ul>
           </div>
 
