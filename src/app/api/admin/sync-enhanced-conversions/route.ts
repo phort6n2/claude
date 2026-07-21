@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { sendEnhancedConversion } from '@/lib/google-ads'
+import { eligibleLeadWhere } from '@/lib/conversion-sync'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300 // 5 minutes for bulk operations
@@ -41,21 +42,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Days must be between 1 and 90' }, { status: 400 })
   }
 
-  const startDate = new Date()
-  startDate.setDate(startDate.getDate() - days)
-
   try {
-    // Find leads that need enhanced conversion sync
-    // Note: GCLID is no longer required - we send all leads with user data
+    // Find leads that need enhanced conversion sync. Eligibility (age gate +
+    // permanent-error skip) is shared with the cron via eligibleLeadWhere.
     const leads = await prisma.lead.findMany({
-      where: {
-        createdAt: { gte: startDate },
-        enhancedConversionSent: false,
-        OR: [
-          { email: { not: null } },
-          { phone: { not: null } },
-        ],
-      },
+      where: eligibleLeadWhere(days),
       include: {
         client: {
           include: {

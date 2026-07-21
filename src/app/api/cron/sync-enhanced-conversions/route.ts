@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sendEnhancedConversion } from '@/lib/google-ads'
+import { eligibleLeadWhere } from '@/lib/conversion-sync'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300 // 5 minutes
@@ -25,16 +26,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const startDate = new Date()
-  startDate.setDate(startDate.getDate() - LOOKBACK_DAYS)
-
   try {
     const leads = await prisma.lead.findMany({
-      where: {
-        createdAt: { gte: startDate },
-        enhancedConversionSent: false,
-        OR: [{ email: { not: null } }, { phone: { not: null } }],
-      },
+      // Eligibility (age gate + permanent-error skip) is centralized so the
+      // cron, manual bulk-sync, and the unsynced list stay in agreement.
+      where: eligibleLeadWhere(LOOKBACK_DAYS),
       include: {
         client: {
           include: { googleAdsConfig: true },

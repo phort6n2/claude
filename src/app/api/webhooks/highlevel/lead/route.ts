@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sendEnhancedConversion } from '@/lib/google-ads'
+import { MIN_CONVERSION_AGE_MS } from '@/lib/conversion-sync'
 import { notifyNewLead } from '@/lib/push-notifications'
 import { kickOffCallAnalysis } from '@/lib/call-analysis/queue'
 import { findSameDayDuplicateCanonical } from '@/lib/lead-dedup'
@@ -430,7 +431,13 @@ export async function POST(request: NextRequest) {
           hasGclid: !!gclid,
         })
 
-        if (googleAdsConfig?.isActive && conversionActionId) {
+        // A brand-new lead's ad click is almost always < 6 hours old, and
+        // Google rejects those as "click too recent." Defer to the sync cron,
+        // which uploads the lead once it has aged past Google's 6h minimum.
+        const clickTooRecent =
+          Date.now() - lead.createdAt.getTime() < MIN_CONVERSION_AGE_MS
+
+        if (googleAdsConfig?.isActive && conversionActionId && !clickTooRecent) {
           const result = await sendEnhancedConversion({
             customerId: googleAdsConfig.customerId,
             gclid: gclid || undefined, // Optional - will be included if present
@@ -464,6 +471,8 @@ export async function POST(request: NextRequest) {
             })
             console.warn(`[HighLevel Webhook] Enhanced conversion failed for lead ${lead.id}:`, result.error)
           }
+        } else if (googleAdsConfig?.isActive && conversionActionId && clickTooRecent) {
+          console.log(`[HighLevel Webhook] Deferring enhanced conversion for lead ${lead.id} — click too recent (<6h); the sync cron will upload it once it ages past Google's 6h minimum.`)
         } else {
           // Log why enhanced conversion was skipped
           const reason = !googleAdsConfig
