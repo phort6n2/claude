@@ -16,6 +16,12 @@ import { OWNER_COOKIE, verifyOwnerKey } from '@/lib/directory/owner-auth'
 import { listQuotesForShop, quotesEnabled } from '@/lib/directory/quotes'
 import { OwnerLogin } from '@/components/directory/OwnerLogin'
 import { OwnerSession } from '@/components/directory/OwnerSession'
+import { ReviewWidgetCode } from '@/components/directory/ReviewWidgetCode'
+
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://windshieldrepairhq.com').replace(
+  /\/$/,
+  ''
+)
 
 export const dynamic = 'force-dynamic'
 
@@ -108,6 +114,11 @@ export default async function OwnerPage({
           </Link>
         </div>
       </section>
+
+      {/* Free embeddable review widget for the shop's own website */}
+      <ReviewWidgetCode
+        code={`<script src="${SITE_URL}/widget/reviews.js" data-shop="${shop.slug}" async></script>`}
+      />
 
       {/* Leads */}
       <section className="mt-8">

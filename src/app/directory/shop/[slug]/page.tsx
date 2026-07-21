@@ -13,6 +13,7 @@ import {
   Calendar,
   Navigation,
   Award,
+  Trophy,
 } from 'lucide-react'
 import {
   getAllShops,
@@ -40,6 +41,7 @@ import { ExternalLink } from 'lucide-react'
 import { OpenNow } from '@/components/directory/OpenNow'
 import { StickyCallBar } from '@/components/directory/StickyCallBar'
 import { QuoteForm } from '@/components/directory/QuoteForm'
+import { IndependentBadge } from '@/components/directory/IndependentBadge'
 import { enrichShop } from '@/lib/directory/photos'
 import { getReview, withReviews, googlePlaceUrl } from '@/lib/directory/reviews'
 import { GoogleReviews } from '@/components/directory/GoogleReviews'
@@ -177,6 +179,7 @@ export default async function ShopDetailPage({
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-4">
+              <IndependentBadge />
               {shop.rating != null && (
                 <span className="inline-flex items-center gap-1.5">
                   <StarRating rating={shop.rating} reviewCount={shop.reviewCount} size={18} />
@@ -413,15 +416,20 @@ export default async function ShopDetailPage({
                 </div>
               ) : (
                 <div className="rounded-xl border border-blue-200 bg-blue-50 p-5 text-sm">
-                  <p className="font-semibold text-blue-900">Is this your shop?</p>
+                  <p className="flex items-center gap-1.5 font-semibold text-blue-900">
+                    <Trophy width={16} height={16} className="text-amber-500" /> Founding offer for{' '}
+                    {shop.city}
+                  </p>
                   <p className="mt-1 text-blue-800">
-                    Claim this free listing to edit your details and add photos.
+                    We feature <strong>one shop per city</strong>. Claim this free listing now to
+                    lock in {shop.city}&apos;s featured spot, get exclusive quote leads sent
+                    straight to you, and add your photos — before a competitor does.
                   </p>
                   <Link
                     href={`/directory/claim?shop=${shop.slug}`}
                     className="mt-3 inline-block rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
                   >
-                    Claim this listing
+                    Claim {shop.city}&apos;s spot — free
                   </Link>
                 </div>
               )}
