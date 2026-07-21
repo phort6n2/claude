@@ -92,7 +92,10 @@ export default async function CityPage({
         <span className="text-gray-700">{summary.city}</span>
       </nav>
 
-      <h1 className="mt-4 text-3xl font-bold text-gray-900">
+      <p className="mt-4 text-sm font-semibold uppercase tracking-wider text-blue-600">
+        Local shops
+      </p>
+      <h1 className="mt-1 text-3xl font-bold text-gray-900">
         Auto glass &amp; windshield repair in {summary.city}, {summary.state.toUpperCase()}
       </h1>
       <p className="mt-2 max-w-3xl text-gray-600">

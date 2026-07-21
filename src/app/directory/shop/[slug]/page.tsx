@@ -469,11 +469,14 @@ export default async function ShopDetailPage({
         </div>
 
         {/* FAQ — visible content backing the FAQPage schema */}
-        <section className="mt-16 max-w-3xl">
-          <h2 className="text-xl font-bold text-gray-900">
+        <section className="mt-10">
+          <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">
+            Good to know
+          </p>
+          <h2 className="mt-1 text-xl font-bold text-gray-900">
             Auto glass questions, answered
           </h2>
-          <dl className="mt-5 space-y-5">
+          <dl className="mt-5 grid gap-x-10 gap-y-6 lg:grid-cols-2">
             {GENERAL_AUTO_GLASS_FAQS.slice(0, 5).map((f) => (
               <div key={f.q}>
                 <dt className="font-semibold text-gray-900">{f.q}</dt>
@@ -485,8 +488,11 @@ export default async function ShopDetailPage({
 
         {/* Related */}
         {related.length > 0 && (
-          <section className="mt-16">
-            <h2 className="text-xl font-bold text-gray-900">
+          <section className="mt-14">
+            <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">
+              Nearby
+            </p>
+            <h2 className="mt-1 text-xl font-bold text-gray-900">
               More auto glass shops in {shop.city}
             </h2>
             <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

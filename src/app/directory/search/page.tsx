@@ -54,7 +54,10 @@ export default async function SearchPage({
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-900">Find an auto glass shop</h1>
+      <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">
+        Search
+      </p>
+      <h1 className="mt-1 text-2xl font-bold text-gray-900">Find an auto glass shop</h1>
       <p className="mt-1 text-gray-600">
         {results.length} {results.length === 1 ? 'result' : 'results'}
         {activeLabel && <span className="text-gray-400"> — {activeLabel}</span>}
