@@ -311,6 +311,25 @@ export default async function ShopDetailPage({
                 </div>
               </>
             )}
+
+            {/* FAQ — in the main column so it fills the space beside the
+                taller sidebar (no gap under the map). */}
+            <section className="mt-10">
+              <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">
+                Good to know
+              </p>
+              <h2 className="mt-1 text-xl font-bold text-gray-900">
+                Auto glass questions, answered
+              </h2>
+              <dl className="mt-5 space-y-6">
+                {GENERAL_AUTO_GLASS_FAQS.slice(0, 5).map((f) => (
+                  <div key={f.q}>
+                    <dt className="font-semibold text-gray-900">{f.q}</dt>
+                    <dd className="mt-1 text-gray-600">{f.a}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
           </div>
 
           {/* Sidebar */}
@@ -467,24 +486,6 @@ export default async function ShopDetailPage({
             </div>
           </aside>
         </div>
-
-        {/* FAQ — visible content backing the FAQPage schema */}
-        <section className="mt-10">
-          <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">
-            Good to know
-          </p>
-          <h2 className="mt-1 text-xl font-bold text-gray-900">
-            Auto glass questions, answered
-          </h2>
-          <dl className="mt-5 grid gap-x-10 gap-y-6 lg:grid-cols-2">
-            {GENERAL_AUTO_GLASS_FAQS.slice(0, 5).map((f) => (
-              <div key={f.q}>
-                <dt className="font-semibold text-gray-900">{f.q}</dt>
-                <dd className="mt-1 text-gray-600">{f.a}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
 
         {/* Related */}
         {related.length > 0 && (
