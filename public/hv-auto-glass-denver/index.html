@@ -1,0 +1,781 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Denver mobile windshield replacement, repair &amp; ADAS calibration. We come to you — often $0 with insurance. Same-day service, lifetime warranty. Call (720) 232-0320.">
+<meta name="theme-color" content="#0B0E12">
+<title>HV Auto Glass Denver — $0 Windshield Replacement, We Come To You</title>
+<style>
+  /* ============ TOKENS ============ */
+  :root{
+    --obsidian:#0B0E12;
+    --panel:#151A21;
+    --panel-2:#1C232C;
+    --line:#28313C;
+    --amber:#FFC53D;
+    --amber-deep:#F0A400;
+    --cyan:#5AD1F0;
+    --cyan-deep:#26A9CE;
+    --ink:#EAEEF3;
+    --muted:#9BA6B2;
+    --muted-2:#6E7A87;
+    --white:#F6F8FB;
+    --success:#4ADE80;
+
+    --bg:var(--obsidian);
+    --surface:var(--panel);
+    --surface-2:var(--panel-2);
+    --text:var(--ink);
+    --text-muted:var(--muted);
+    --border:var(--line);
+    --card-shadow:0 24px 60px -20px rgba(0,0,0,.7);
+
+    --font-display:"Helvetica Neue",-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+    --font-body:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","Roboto Mono",Menlo,Consolas,monospace;
+
+    --maxw:1180px;
+    --r:18px;
+    --r-sm:12px;
+  }
+  /* Light theme adapts the "light" sections; the hero stays intentionally dark in both. */
+  :root[data-theme="light"]{
+    --white:#FFFFFF;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:var(--font-body);font-size:17px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    overflow-x:hidden;
+  }
+  a{color:inherit;text-decoration:none}
+  img{max-width:100%;display:block}
+  h1,h2,h3{margin:0;font-family:var(--font-display);font-weight:800;letter-spacing:-.02em;text-wrap:balance;line-height:1.05}
+  p{margin:0}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 22px}
+  .eyebrow{
+    font-family:var(--font-mono);font-size:12.5px;letter-spacing:.22em;text-transform:uppercase;
+    font-weight:600;color:var(--amber);display:inline-flex;align-items:center;gap:9px;
+  }
+  .eyebrow::before{content:"";width:26px;height:1.5px;background:linear-gradient(90deg,var(--amber),transparent)}
+  .eyebrow.cyan{color:var(--cyan)}
+  .eyebrow.cyan::before{background:linear-gradient(90deg,var(--cyan),transparent)}
+  .eyebrow.dark{color:var(--amber-deep)}
+  .eyebrow.dark::before{background:linear-gradient(90deg,var(--amber-deep),transparent)}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:10px;
+    font-family:var(--font-display);font-weight:800;font-size:16px;letter-spacing:-.01em;
+    padding:16px 26px;border-radius:999px;border:1px solid transparent;cursor:pointer;
+    transition:transform .18s ease, box-shadow .18s ease, background .18s ease;white-space:nowrap;
+  }
+  .btn:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
+  .btn-primary{background:var(--amber);color:#1A1200;box-shadow:0 10px 30px -8px rgba(255,197,61,.5)}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 16px 40px -8px rgba(255,197,61,.6)}
+  .btn-ghost{background:rgba(255,255,255,.04);color:var(--ink);border-color:var(--line)}
+  .btn-ghost:hover{background:rgba(255,255,255,.09);transform:translateY(-2px)}
+  .btn-dark{background:#0B0E12;color:#fff}
+  .btn-dark:hover{transform:translateY(-2px)}
+
+  section{position:relative}
+  .section-pad{padding:96px 0}
+  @media(max-width:760px){.section-pad{padding:64px 0}}
+
+  /* ============ TOP BAR ============ */
+  header.nav{
+    position:sticky;top:0;z-index:60;background:rgba(11,14,18,.82);
+    backdrop-filter:blur(14px);border-bottom:1px solid rgba(40,49,60,.7);
+  }
+  .nav-inner{display:flex;align-items:center;justify-content:space-between;height:70px}
+  .brand{display:flex;align-items:center;gap:12px;font-family:var(--font-display);font-weight:800;letter-spacing:-.02em;font-size:19px}
+  .brand .mark{width:38px;height:38px;flex:none}
+  .brand small{display:block;font-family:var(--font-mono);font-weight:500;font-size:10.5px;letter-spacing:.14em;color:var(--muted-2);text-transform:uppercase;margin-top:2px}
+  .nav-right{display:flex;align-items:center;gap:18px}
+  .nav-phone{display:flex;flex-direction:column;align-items:flex-end;line-height:1.15}
+  .nav-phone .lab{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-2)}
+  .nav-phone .num{font-family:var(--font-display);font-weight:800;font-size:19px;color:var(--ink);font-variant-numeric:tabular-nums}
+  .nav-phone .num:hover{color:var(--amber)}
+  @media(max-width:640px){.nav-phone .lab{display:none}.brand small{display:none}.nav-inner{height:60px}}
+
+  /* ============ HERO ============ */
+  .hero{position:relative;overflow:hidden;background:var(--obsidian);isolation:isolate}
+  .hero-bg{position:absolute;inset:0;z-index:-2}
+  .hero-bg .glow{position:absolute;border-radius:50%;filter:blur(90px);opacity:.5}
+  .glow.a{width:520px;height:520px;background:radial-gradient(circle,#3A2E00,transparent 68%);top:-160px;right:-120px}
+  .glow.b{width:460px;height:460px;background:radial-gradient(circle,#062B36,transparent 68%);bottom:-180px;left:-120px}
+  .hero-crack{position:absolute;inset:0;z-index:-1;opacity:.5;pointer-events:none}
+  .hero-inner{display:grid;grid-template-columns:1.06fr .94fr;gap:56px;align-items:center;padding:70px 0 88px}
+  @media(max-width:940px){.hero-inner{grid-template-columns:1fr;gap:40px;padding:48px 0 60px}}
+
+  .hero h1{font-size:clamp(38px,5.4vw,62px);margin:20px 0 0}
+  .hero h1 .hl{color:var(--amber);position:relative;white-space:nowrap}
+  .hero .sub{font-size:clamp(17px,2vw,20px);color:var(--muted);margin-top:20px;max-width:33ch}
+  .hero .sub b{color:var(--ink);font-weight:700}
+  .hero-cta{display:flex;flex-wrap:wrap;gap:14px;margin-top:30px}
+  .trust-strip{display:flex;flex-wrap:wrap;align-items:center;gap:22px;margin-top:34px;padding-top:26px;border-top:1px solid var(--line)}
+  .trust-item{display:flex;align-items:center;gap:11px}
+  .trust-item .ic{width:22px;height:22px;color:var(--cyan);flex:none}
+  .trust-item small{display:block;font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2)}
+  .trust-item .big{font-family:var(--font-display);font-weight:800;font-size:16px;color:var(--ink);line-height:1.1}
+  .rating-stars{color:var(--amber);letter-spacing:2px;font-size:14px}
+
+  /* quote card */
+  .quote-card{
+    background:linear-gradient(180deg,rgba(28,35,44,.96),rgba(21,26,33,.98));
+    border:1px solid var(--line);border-radius:22px;padding:28px;box-shadow:var(--card-shadow);
+    position:relative;overflow:hidden;
+  }
+  .quote-card::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;
+    background:linear-gradient(90deg,var(--amber),var(--cyan))}
+  .qc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}
+  .qc-title{font-family:var(--font-display);font-weight:800;font-size:22px}
+  .qc-badge{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#0B0E12;background:var(--success);padding:5px 10px;border-radius:999px;font-weight:700;white-space:nowrap}
+  .qc-sub{color:var(--muted);font-size:14px;margin-bottom:18px}
+  .field{margin-bottom:13px}
+  .field label{display:block;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted-2);margin-bottom:6px}
+  .field input,.field select{
+    width:100%;background:#0E1319;border:1px solid var(--line);border-radius:11px;
+    padding:13px 14px;color:var(--ink);font-size:15.5px;font-family:var(--font-body);transition:border .15s,box-shadow .15s;
+  }
+  .field input::placeholder{color:#55606c}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px rgba(255,197,61,.18)}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .seg{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .seg input{position:absolute;opacity:0;pointer-events:none}
+  .seg label{
+    display:flex;align-items:center;justify-content:center;gap:7px;text-align:center;cursor:pointer;
+    background:#0E1319;border:1px solid var(--line);border-radius:11px;padding:12px 8px;
+    font-family:var(--font-body);font-size:13.5px;font-weight:600;letter-spacing:0;color:var(--muted);text-transform:none;margin:0;transition:all .15s;
+  }
+  .seg input:checked + label{border-color:var(--amber);background:rgba(255,197,61,.1);color:var(--ink)}
+  .seg input:focus-visible + label{outline:2px solid var(--cyan);outline-offset:2px}
+  .qc-submit{width:100%;margin-top:6px}
+  .qc-fine{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:13px;color:var(--muted-2);font-size:12px}
+  .qc-fine svg{width:13px;height:13px;flex:none}
+  .qc-success{display:none;text-align:center;padding:24px 8px}
+  .qc-success.on{display:block;animation:pop .4s ease}
+  @keyframes pop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+  .qc-success .check{width:66px;height:66px;margin:0 auto 16px;border-radius:50%;background:rgba(74,222,128,.12);display:flex;align-items:center;justify-content:center}
+  .qc-success .check svg{width:34px;height:34px;color:var(--success)}
+  .embed-note{margin-top:14px;font-size:11px;color:var(--muted-2);text-align:center;font-family:var(--font-mono);letter-spacing:.04em}
+
+  /* ============ $0 DEDUCTIBLE BAND ============ */
+  .band-zero{background:linear-gradient(100deg,var(--amber) 0%,var(--amber-deep) 100%);color:#1A1200;position:relative;overflow:hidden}
+  .band-zero .wrap{display:grid;grid-template-columns:auto 1fr auto;gap:34px;align-items:center;padding:34px 22px}
+  .zero-badge{display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0B0E12;color:var(--amber);border-radius:16px;padding:16px 22px;min-width:118px}
+  .zero-badge .amt{font-family:var(--font-display);font-weight:800;font-size:44px;line-height:1}
+  .zero-badge .cap{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;margin-top:4px;color:var(--muted)}
+  .band-zero h2{font-size:clamp(22px,3vw,30px);color:#1A1200}
+  .band-zero p{font-size:15.5px;color:#4a3500;margin-top:6px;max-width:60ch;font-weight:500}
+  @media(max-width:860px){.band-zero .wrap{grid-template-columns:auto 1fr;gap:20px}.band-zero .btn{grid-column:1/-1}}
+  @media(max-width:520px){.band-zero .wrap{grid-template-columns:1fr;text-align:center}.zero-badge{margin:0 auto}}
+
+  /* ============ TRUST TRIPLE ============ */
+  .triple{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  @media(max-width:820px){.triple{grid-template-columns:1fr}}
+  .tcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:30px 26px;transition:transform .2s,border-color .2s}
+  .tcard:hover{transform:translateY(-4px);border-color:#3a4756}
+  .tcard .ic{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:rgba(90,209,240,.1);color:var(--cyan);margin-bottom:18px}
+  .tcard .ic svg{width:26px;height:26px}
+  .tcard h3{font-size:20px;margin-bottom:8px}
+  .tcard p{color:var(--muted);font-size:15px}
+
+  /* ============ SECTION HEADS ============ */
+  .shead{text-align:center;max-width:640px;margin:0 auto 52px}
+  .shead h2{font-size:clamp(28px,3.6vw,42px);margin-top:16px}
+  .shead p{color:var(--muted);font-size:17px;margin-top:14px}
+  .shead .eyebrow{justify-content:center}
+
+  /* ============ SERVICES ============ */
+  .svc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media(max-width:820px){.svc-grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:520px){.svc-grid{grid-template-columns:1fr}}
+  .svc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:22px;display:flex;gap:16px;align-items:flex-start;transition:.2s;position:relative;overflow:hidden}
+  .svc:hover{border-color:var(--amber);transform:translateY(-3px)}
+  .svc .ic{width:44px;height:44px;flex:none;border-radius:11px;background:var(--surface-2);color:var(--amber);display:flex;align-items:center;justify-content:center}
+  .svc .ic svg{width:23px;height:23px}
+  .svc h3{font-size:16.5px;margin-bottom:4px}
+  .svc p{font-size:13.5px;color:var(--muted);line-height:1.5}
+  .svc .tag{position:absolute;top:14px;right:14px;font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--cyan);background:rgba(90,209,240,.1);padding:3px 8px;border-radius:999px}
+
+  /* ============ PROCESS ============ */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;position:relative}
+  @media(max-width:820px){.steps{grid-template-columns:1fr;gap:16px}}
+  .step{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:32px 26px;position:relative}
+  .step .n{font-family:var(--font-display);font-weight:800;font-size:15px;width:40px;height:40px;border-radius:12px;background:var(--amber);color:#1A1200;display:flex;align-items:center;justify-content:center;margin-bottom:20px}
+  .step h3{font-size:20px;margin-bottom:9px}
+  .step p{color:var(--muted);font-size:15px}
+  .step .arrow{position:absolute;top:52px;right:-16px;color:var(--line);z-index:2}
+  @media(max-width:820px){.step .arrow{display:none}}
+
+  /* ============ REVIEWS + MAP ============ */
+  .rev-layout{display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:start}
+  @media(max-width:940px){.rev-layout{grid-template-columns:1fr}}
+  .goog{display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px 24px;margin-bottom:20px}
+  .goog .score{font-family:var(--font-display);font-weight:800;font-size:44px;line-height:1;color:var(--ink)}
+  .goog .gwrap{flex:1}
+  .goog .grow{display:flex;align-items:center;gap:10px}
+  .goog .glogo{font-family:var(--font-display);font-weight:700;font-size:15px;letter-spacing:-.01em}
+  .goog .glogo .b{color:#4285F4}.goog .glogo .r{color:#EA4335}.goog .glogo .y{color:#FBBC05}.goog .glogo .g{color:#34A853}
+  .goog small{color:var(--muted);font-size:13px;display:block;margin-top:3px}
+  .rev-cards{display:flex;flex-direction:column;gap:14px}
+  .rev{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:20px 22px}
+  .rev-top{display:flex;align-items:center;gap:12px;margin-bottom:11px}
+  .rev-av{width:42px;height:42px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:800;font-size:16px;color:#1A1200}
+  .rev-nm{font-weight:700;font-size:15px}
+  .rev-meta{font-size:12px;color:var(--muted-2);font-family:var(--font-mono);letter-spacing:.03em}
+  .rev-stars{color:var(--amber);font-size:13px;letter-spacing:1.5px;margin-left:auto}
+  .rev p{font-size:14.5px;color:var(--muted);line-height:1.6}
+  .rev .verified{margin-top:10px;font-size:11px;color:var(--success);font-family:var(--font-mono);letter-spacing:.04em;display:flex;align-items:center;gap:5px}
+  .rev .verified svg{width:12px;height:12px}
+
+  /* map */
+  .map-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;position:sticky;top:90px}
+  .map-svg{width:100%;height:auto;display:block;background:#0E1319}
+  .map-foot{padding:20px 22px}
+  .map-foot h3{font-size:18px;margin-bottom:12px}
+  .area-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+  .area-chip{font-size:12.5px;font-family:var(--font-mono);letter-spacing:.02em;color:var(--ink);background:var(--surface-2);border:1px solid var(--border);padding:6px 12px;border-radius:999px;display:flex;align-items:center;gap:6px}
+  .area-chip .dot{width:6px;height:6px;border-radius:50%;background:var(--cyan)}
+
+  /* ============ GUARANTEE ============ */
+  .guar{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:44px;display:grid;grid-template-columns:auto 1fr;gap:36px;align-items:center;position:relative;overflow:hidden}
+  .guar::before{content:"";position:absolute;inset:0;background:radial-gradient(600px 200px at 100% 0,rgba(90,209,240,.06),transparent);pointer-events:none}
+  @media(max-width:760px){.guar{grid-template-columns:1fr;padding:32px;text-align:center}}
+  .seal{width:130px;height:130px;flex:none;margin:0 auto}
+  .guar h2{font-size:clamp(24px,3vw,32px);margin-bottom:12px}
+  .guar p{color:var(--muted);font-size:16px;max-width:56ch}
+  .guar ul{list-style:none;padding:0;margin:18px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:560px){.guar ul{grid-template-columns:1fr;text-align:left}}
+  .guar li{display:flex;align-items:center;gap:10px;font-size:14.5px;color:var(--ink)}
+  .guar li svg{width:18px;height:18px;color:var(--success);flex:none}
+
+  /* ============ FAQ ============ */
+  .faq-wrap{max-width:820px;margin:0 auto}
+  .faq{border-bottom:1px solid var(--border)}
+  .faq button{width:100%;background:none;border:none;color:var(--ink);text-align:left;cursor:pointer;
+    padding:24px 8px;display:flex;align-items:center;justify-content:space-between;gap:20px;
+    font-family:var(--font-display);font-weight:700;font-size:18px;letter-spacing:-.01em}
+  .faq button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:6px}
+  .faq .plus{width:26px;height:26px;flex:none;position:relative;transition:transform .25s}
+  .faq .plus::before,.faq .plus::after{content:"";position:absolute;background:var(--amber);border-radius:2px}
+  .faq .plus::before{top:12px;left:4px;right:4px;height:2px}
+  .faq .plus::after{left:12px;top:4px;bottom:4px;width:2px;transition:opacity .25s}
+  .faq.open .plus::after{opacity:0}
+  .faq .ans{max-height:0;overflow:hidden;transition:max-height .3s ease}
+  .faq .ans p{color:var(--muted);font-size:15.5px;padding:0 8px 24px;max-width:70ch}
+
+  /* ============ FINAL CTA ============ */
+  .final{background:linear-gradient(160deg,#12171E,#0B0E12);border-top:1px solid var(--line);text-align:center;position:relative;overflow:hidden}
+  .final::before{content:"";position:absolute;top:-40%;left:50%;transform:translateX(-50%);width:700px;height:400px;background:radial-gradient(circle,rgba(255,197,61,.1),transparent 70%);pointer-events:none}
+  .final h2{font-size:clamp(30px,4.4vw,50px);position:relative}
+  .final p{color:var(--muted);font-size:19px;margin:18px auto 0;max-width:52ch;position:relative}
+  .final-cta{display:flex;gap:15px;justify-content:center;flex-wrap:wrap;margin-top:34px;position:relative}
+  .final .callnum{font-family:var(--font-display);font-weight:800;font-size:clamp(30px,5vw,46px);color:var(--amber);margin-top:26px;display:inline-flex;align-items:center;gap:14px;font-variant-numeric:tabular-nums;position:relative}
+  .final .callnum svg{width:34px;height:34px}
+
+  /* ============ FOOTER ============ */
+  footer{background:#08090C;border-top:1px solid var(--line);padding:56px 0 40px;color:var(--muted)}
+  .foot-grid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:36px;margin-bottom:40px}
+  @media(max-width:820px){.foot-grid{grid-template-columns:1fr 1fr;gap:28px}}
+  @media(max-width:480px){.foot-grid{grid-template-columns:1fr}}
+  footer h4{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-2);margin:0 0 16px}
+  footer ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+  footer a{font-size:14px;color:var(--muted)}
+  footer a:hover{color:var(--amber)}
+  .foot-brand p{font-size:14px;margin-top:14px;max-width:34ch}
+  .foot-bottom{border-top:1px solid var(--line);padding-top:24px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted-2)}
+
+  /* ============ STICKY MOBILE BAR ============ */
+  .mbar{position:fixed;left:0;right:0;bottom:0;z-index:70;display:none;
+    background:rgba(11,14,18,.94);backdrop-filter:blur(14px);border-top:1px solid var(--line);
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom));grid-template-columns:1fr 1fr;gap:10px}
+  .mbar .btn{padding:14px;font-size:15px;width:100%}
+  @media(max-width:760px){.mbar{display:grid}body{padding-bottom:74px}}
+
+  .icon{width:18px;height:18px;flex:none}
+</style>
+</head>
+<body>
+<!-- ================= NAV ================= -->
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top" aria-label="HV Auto Glass Denver home">
+      <svg class="mark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <rect x="1.5" y="1.5" width="37" height="37" rx="10" fill="#FFC53D"/>
+        <path d="M11 26.5 L20 9 L29 26.5 Z" fill="#0B0E12"/>
+        <path d="M20 9 L20 26.5" stroke="#FFC53D" stroke-width="1.4"/>
+        <path d="M15 22 L25 22" stroke="#FFC53D" stroke-width="1.4"/>
+      </svg>
+      <span>HV Auto Glass<br><small>Denver · Since 2018</small></span>
+    </a>
+    <div class="nav-right">
+      <div class="nav-phone">
+        <span class="lab">Call or text 7 days</span>
+        <a class="num" href="tel:+17202320320">(720) 232-0320</a>
+      </div>
+      <a class="btn btn-primary" href="#quote">Free Quote</a>
+    </div>
+  </div>
+</header>
+
+<!-- ================= HERO ================= -->
+<section class="hero" id="top">
+  <div class="hero-bg" aria-hidden="true">
+    <div class="glow a"></div><div class="glow b"></div>
+  </div>
+  <svg class="hero-crack" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <g stroke="#5AD1F0" stroke-width="1" fill="none" opacity="0.6">
+      <path d="M980 140 L1050 90 M980 140 L1120 175 M980 140 L1000 260 M980 140 L900 210 M980 140 L1080 240 M1000 260 L1060 330 M1000 260 L940 320 M900 210 L840 250"/>
+      <circle cx="980" cy="140" r="3.5" fill="#5AD1F0"/>
+    </g>
+  </svg>
+  <div class="wrap hero-inner">
+    <div class="hero-copy">
+      <span class="eyebrow">Denver's Trusted Mobile Auto Glass Shop</span>
+      <h1>Cracked windshield?<br>We come to you —<br><span class="hl">often $0 with insurance.</span></h1>
+      <p class="sub">Certified mobile windshield replacement &amp; <b>ADAS calibration</b> across Denver. Same-day service at your home or office, backed by a <b>lifetime warranty</b>.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#quote">Get My Free Quote →</a>
+        <a class="btn btn-ghost" href="tel:+17202320320">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          (720) 232-0320
+        </a>
+      </div>
+      <div class="trust-strip">
+        <div class="trust-item">
+          <svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg>
+          <div><span class="big">4.9<span class="rating-stars"> ★★★★★</span></span><small>200+ Google reviews</small></div>
+        </div>
+        <div class="trust-item">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c1.5 0 2.91.37 4.15 1.02"/></svg>
+          <div><span class="big">All insurance</span><small>Preferred shop</small></div>
+        </div>
+        <div class="trust-item">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <div><span class="big">Lifetime</span><small>Workmanship warranty</small></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUOTE CARD -->
+    <div class="quote-card" id="quote">
+      <form id="quoteForm" novalidate>
+        <div class="qc-head">
+          <span class="qc-title">Get your free quote</span>
+          <span class="qc-badge">60-sec reply</span>
+        </div>
+        <p class="qc-sub">Tell us about your vehicle — we'll text you a price and the next available time.</p>
+        <div class="field">
+          <label for="nm">Full name</label>
+          <input id="nm" name="name" type="text" placeholder="Jordan Miller" autocomplete="name" required>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="ph">Mobile phone</label>
+            <input id="ph" name="phone" type="tel" placeholder="(720) 555-0134" autocomplete="tel" required>
+          </div>
+          <div class="field">
+            <label for="zip">Service ZIP</label>
+            <input id="zip" name="zip" type="text" inputmode="numeric" placeholder="80202" autocomplete="postal-code" required>
+          </div>
+        </div>
+        <div class="field">
+          <label for="veh">Year / Make / Model</label>
+          <input id="veh" name="vehicle" type="text" placeholder="2021 Toyota RAV4" required>
+        </div>
+        <div class="field">
+          <label for="svc">What do you need?</label>
+          <select id="svc" name="service">
+            <option>Windshield replacement</option>
+            <option>Rock chip / crack repair</option>
+            <option>Door or side window</option>
+            <option>Back glass</option>
+            <option>ADAS calibration</option>
+            <option>Not sure — help me decide</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Filing through insurance?</label>
+          <div class="seg">
+            <input type="radio" id="ins-y" name="insurance" value="yes" checked>
+            <label for="ins-y">✔ Yes — check my $0</label>
+            <input type="radio" id="ins-n" name="insurance" value="no">
+            <label for="ins-n">Paying out of pocket</label>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary qc-submit">Send My Free Quote →</button>
+        <div class="qc-fine">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          No spam. Your info is only used for your quote.
+        </div>
+      </form>
+      <div class="qc-success" id="quoteSuccess" role="status" aria-live="polite">
+        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <h3 style="font-size:22px;margin-bottom:8px">You're all set!</h3>
+        <p style="color:var(--muted);font-size:15px">A HV Auto Glass specialist will text <b id="echoName" style="color:var(--ink)"></b> within a few minutes with your price and next available slot.</p>
+        <a class="btn btn-ghost" href="tel:+17202320320" style="margin-top:18px">Or call us now — (720) 232-0320</a>
+      </div>
+      <p class="embed-note">▲ Demo form — drop your HighLevel embed here to go live</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= $0 DEDUCTIBLE BAND ================= -->
+<section class="band-zero" aria-label="Insurance coverage">
+  <div class="wrap">
+    <div class="zero-badge"><span class="amt">$0</span><span class="cap">Out of pocket</span></div>
+    <div>
+      <h2>In Colorado, your windshield may be 100% covered.</h2>
+      <p>Colorado is one of the few states where comprehensive coverage often replaces your windshield with <b>no deductible</b>. We're a preferred shop for all major carriers and file the whole claim for you — zero paperwork, zero surprises.</p>
+    </div>
+    <a class="btn btn-dark" href="#quote">Check my coverage free →</a>
+  </div>
+</section>
+
+<!-- ================= TRUST TRIPLE ================= -->
+<section class="section-pad">
+  <div class="wrap">
+    <div class="triple">
+      <div class="tcard">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div>
+        <h3>We come to you — free</h3>
+        <p>Home, office, or roadside anywhere in metro Denver. Our mobile techs bring the shop to your driveway at no extra charge.</p>
+      </div>
+      <div class="tcard">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M22 4L12 14.01l-3-3"/></svg></div>
+        <h3>ADAS calibration on-site</h3>
+        <p>Lane-keep and auto-brake cameras must be re-calibrated after a new windshield. We do it in-house so your safety systems work exactly as designed.</p>
+      </div>
+      <div class="tcard">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+        <h3>Lifetime warranty</h3>
+        <p>Every install is backed for as long as you own the vehicle — against leaks, wind noise, and workmanship. If it's not right, we make it right.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SERVICES ================= -->
+<section class="section-pad" id="services" style="background:#0E1319;border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">What we fix</span>
+      <h2>Every kind of auto glass, one team</h2>
+      <p>All makes and models — from a quick rock-chip fill to a full windshield replacement with camera calibration.</p>
+    </div>
+    <div class="svc-grid">
+      <div class="svc"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l2-5h14l2 5"/><path d="M3 9h18v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"/><path d="M12 4v14"/></svg></div><div><h3>Windshield replacement</h3><p>OEM-quality glass, expertly installed and sealed — usually same or next day.</p></div></div>
+      <div class="svc"><span class="tag">Fast fix</span><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><div><h3>Rock chip &amp; crack repair</h3><p>Stop a chip before it spreads — most repairs done in under 30 minutes.</p></div></div>
+      <div class="svc"><span class="tag">Safety</span><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></div><div><h3>ADAS calibration</h3><p>Precision re-calibration of lane-keep, auto-brake &amp; cruise cameras.</p></div></div>
+      <div class="svc"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M12 6v12"/></svg></div><div><h3>Door &amp; side windows</h3><p>Shattered or stuck side glass replaced and re-sealed the same visit.</p></div></div>
+      <div class="svc"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l2-9h12l2 9"/><rect x="2" y="17" width="20" height="4" rx="1"/></svg></div><div><h3>Back glass</h3><p>Rear windshields and defroster-line glass for every make and model.</p></div></div>
+      <div class="svc"><span class="tag">No extra cost</span><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div><div><h3>Mobile service</h3><p>We bring the full shop to your home, work, or the roadside — free.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PROCESS ================= -->
+<section class="section-pad">
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow cyan">How it works</span>
+      <h2>From cracked to crystal-clear in 3 steps</h2>
+      <p>No guessing, no waiting on hold. Here's exactly what happens after you reach out.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="n">1</div>
+        <h3>Get your free quote</h3>
+        <p>Send your vehicle details or call. We text back a firm price and confirm your $0 insurance eligibility — no obligation.</p>
+        <svg class="arrow" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </div>
+      <div class="step">
+        <div class="n">2</div>
+        <h3>Pick mobile or in-shop</h3>
+        <p>Choose a time that works and let us come to your home or office — or drop by the shop. We handle the entire insurance claim for you.</p>
+        <svg class="arrow" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </div>
+      <div class="step">
+        <div class="n">3</div>
+        <h3>Drive away, warrantied</h3>
+        <p>Certified techs replace and calibrate — often same-day. You're covered by our lifetime workmanship warranty for as long as you own the car.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= REVIEWS + MAP ================= -->
+<section class="section-pad" id="reviews" style="background:#0E1319;border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">Don't just take our word for it</span>
+      <h2>Denver drivers rate us 4.9 stars</h2>
+    </div>
+    <div class="rev-layout">
+      <div>
+        <div class="goog">
+          <div class="score">4.9</div>
+          <div class="gwrap">
+            <div class="grow">
+              <span class="glogo"><span class="b">G</span><span class="r">o</span><span class="y">o</span><span class="b">g</span><span class="g">l</span><span class="r">e</span></span>
+              <span class="rating-stars" style="font-size:16px">★★★★★</span>
+            </div>
+            <small>Based on 200+ verified Google reviews · Since 2018</small>
+          </div>
+        </div>
+        <div class="rev-cards">
+          <div class="rev">
+            <div class="rev-top">
+              <div class="rev-av" style="background:#5AD1F0">NG</div>
+              <div><div class="rev-nm">Naomi Gomez</div><div class="rev-meta">Cherry Creek · 2 weeks ago</div></div>
+              <div class="rev-stars">★★★★★</div>
+            </div>
+            <p>"A lifesaver! They came to my office to replace my cracked windshield and had it done in no time. The technician was friendly and professional, and the price was unbeatable."</p>
+            <div class="verified"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Verified Google review</div>
+          </div>
+          <div class="rev">
+            <div class="rev-top">
+              <div class="rev-av" style="background:#FFC53D">DR</div>
+              <div><div class="rev-nm">Derrick R.</div><div class="rev-meta">Aurora · 1 month ago</div></div>
+              <div class="rev-stars">★★★★★</div>
+            </div>
+            <p>"Insurance covered the whole thing — I paid nothing. They filed the claim, showed up on time, and recalibrated my Subaru's cameras right in my driveway. Couldn't be easier."</p>
+            <div class="verified"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Verified Google review</div>
+          </div>
+          <div class="rev">
+            <div class="rev-top">
+              <div class="rev-av" style="background:#4ADE80">SP</div>
+              <div><div class="rev-nm">Sofia P.</div><div class="rev-meta">Lakewood · 1 month ago</div></div>
+              <div class="rev-stars">★★★★★</div>
+            </div>
+            <p>"Caught a rock chip on I-25 and they fixed it same afternoon before it spread. Quick, honest, and way cheaper than a full replacement. Highly recommend."</p>
+            <div class="verified"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Verified Google review</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAP -->
+      <div class="map-card">
+        <svg class="map-svg" viewBox="0 0 400 300" role="img" aria-label="HV Auto Glass Denver mobile service area map">
+          <defs>
+            <pattern id="grid" width="26" height="26" patternUnits="userSpaceOnUse">
+              <path d="M26 0H0V26" fill="none" stroke="#1C232C" stroke-width="1"/>
+            </pattern>
+            <radialGradient id="reach" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#FFC53D" stop-opacity="0.16"/>
+              <stop offset="70%" stop-color="#5AD1F0" stop-opacity="0.06"/>
+              <stop offset="100%" stop-color="#5AD1F0" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <rect width="400" height="300" fill="#0E1319"/>
+          <rect width="400" height="300" fill="url(#grid)"/>
+          <!-- highways -->
+          <path d="M40 150 L360 150" stroke="#28313C" stroke-width="6" fill="none"/>
+          <path d="M200 20 L200 280" stroke="#28313C" stroke-width="6" fill="none"/>
+          <path d="M60 40 Q200 150 340 260" stroke="#28313C" stroke-width="4" fill="none"/>
+          <text x="46" y="144" fill="#3a4756" font-size="8" font-family="monospace">I-70</text>
+          <text x="205" y="34" fill="#3a4756" font-size="8" font-family="monospace">I-25</text>
+          <!-- reach -->
+          <circle cx="200" cy="150" r="140" fill="url(#reach)"/>
+          <circle cx="200" cy="150" r="118" fill="none" stroke="#5AD1F0" stroke-width="1" stroke-dasharray="5 6" opacity="0.5"/>
+          <!-- city pins -->
+          <g font-family="monospace" font-size="9" fill="#EAEEF3">
+            <g><circle cx="200" cy="150" r="7" fill="#FFC53D"/><circle cx="200" cy="150" r="12" fill="none" stroke="#FFC53D" stroke-width="1.5" opacity="0.5"/><text x="200" y="172" text-anchor="middle" font-weight="bold">Denver</text></g>
+            <g><circle cx="300" cy="185" r="4" fill="#5AD1F0"/><text x="300" y="205" text-anchor="middle">Aurora</text></g>
+            <g><circle cx="120" cy="170" r="4" fill="#5AD1F0"/><text x="118" y="190" text-anchor="middle">Lakewood</text></g>
+            <g><circle cx="150" cy="95" r="4" fill="#5AD1F0"/><text x="150" y="85" text-anchor="middle">Arvada</text></g>
+            <g><circle cx="228" cy="92" r="4" fill="#5AD1F0"/><text x="235" y="82" text-anchor="middle">Thornton</text></g>
+            <g><circle cx="168" cy="128" r="4" fill="#5AD1F0"/><text x="150" y="120" text-anchor="middle">Wheat Ridge</text></g>
+          </g>
+        </svg>
+        <div class="map-foot">
+          <h3>Serving all of metro Denver</h3>
+          <div class="area-list">
+            <span class="area-chip"><span class="dot"></span>Denver</span>
+            <span class="area-chip"><span class="dot"></span>Aurora</span>
+            <span class="area-chip"><span class="dot"></span>Lakewood</span>
+            <span class="area-chip"><span class="dot"></span>Arvada</span>
+            <span class="area-chip"><span class="dot"></span>Wheat Ridge</span>
+            <span class="area-chip"><span class="dot"></span>Thornton</span>
+          </div>
+          <p style="color:var(--muted);font-size:13.5px;margin-top:14px">Not sure if we reach you? <a href="tel:+17202320320" style="color:var(--cyan)">Give us a call</a> — we probably do.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= GUARANTEE ================= -->
+<section class="section-pad">
+  <div class="wrap">
+    <div class="guar">
+      <svg class="seal" viewBox="0 0 120 120" aria-hidden="true">
+        <circle cx="60" cy="60" r="56" fill="none" stroke="#FFC53D" stroke-width="2"/>
+        <circle cx="60" cy="60" r="48" fill="rgba(255,197,61,.08)" stroke="#FFC53D" stroke-width="1" stroke-dasharray="3 4"/>
+        <path d="M60 30 L66 44 L44 56 M60 30 L54 44 L76 56" fill="none" stroke="#5AD1F0" stroke-width="1.5"/>
+        <text x="60" y="66" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-weight="800" font-size="19" fill="#FFC53D">LIFE</text>
+        <text x="60" y="82" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-weight="800" font-size="19" fill="#FFC53D">TIME</text>
+        <text x="60" y="98" text-anchor="middle" font-family="monospace" font-size="7" letter-spacing="1.5" fill="#9BA6B2">WARRANTY</text>
+      </svg>
+      <div>
+        <span class="eyebrow cyan">Our promise</span>
+        <h2 style="margin-top:14px">If it's not perfect, we make it right — free.</h2>
+        <p>We've kept a 100% customer-satisfaction rating since 2018 by standing behind every job. Your installation is protected for as long as you own your vehicle.</p>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Lifetime workmanship warranty</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>No leaks or wind-noise guarantee</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>OEM-quality glass &amp; adhesives</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Certified, insured technicians</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section class="section-pad" id="faq" style="background:#0E1319;border-top:1px solid var(--line)">
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">Good to know</span>
+      <h2>Questions Denver drivers ask us</h2>
+    </div>
+    <div class="faq-wrap">
+      <div class="faq">
+        <button aria-expanded="false"><span>Will filing a glass claim raise my insurance rates?</span><span class="plus"></span></button>
+        <div class="ans"><p>In most cases, no. Comprehensive glass claims in Colorado are typically "no-fault" and don't count against you like an at-fault accident. We'll walk you through exactly what your policy covers before you commit — with zero pressure.</p></div>
+      </div>
+      <div class="faq">
+        <button aria-expanded="false"><span>Do I really pay $0 for a windshield?</span><span class="plus"></span></button>
+        <div class="ans"><p>If you carry comprehensive coverage, Colorado law often means a full windshield replacement with no deductible. Tell us your carrier when you request a quote and we'll confirm your out-of-pocket cost — usually within minutes.</p></div>
+      </div>
+      <div class="faq">
+        <button aria-expanded="false"><span>How fast can you replace my windshield?</span><span class="plus"></span></button>
+        <div class="ans"><p>Most replacements are completed same-day or next-day. Once the new glass is set, the adhesive needs about an hour to cure before you drive — we'll give you a safe-drive-away time on site.</p></div>
+      </div>
+      <div class="faq">
+        <button aria-expanded="false"><span>What is ADAS calibration and do I need it?</span><span class="plus"></span></button>
+        <div class="ans"><p>If your vehicle has lane-departure warning, automatic braking, or adaptive cruise, the forward-facing camera lives on your windshield. After a replacement it must be re-calibrated so those safety features aim correctly. We calibrate in-house so you leave fully protected — no second appointment elsewhere.</p></div>
+      </div>
+      <div class="faq">
+        <button aria-expanded="false"><span>Can you really come to my home or office?</span><span class="plus"></span></button>
+        <div class="ans"><p>Yes — free mobile service is our specialty. We bring the complete shop to your driveway, workplace, or roadside anywhere in metro Denver at no extra charge. Just pick the spot when you book.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FINAL CTA ================= -->
+<section class="final section-pad">
+  <div class="wrap">
+    <h2>Clear glass. Zero hassle.<br>Often zero cost.</h2>
+    <p>Get a free, no-obligation quote in about 60 seconds — and find out if your windshield is fully covered.</p>
+    <div class="final-cta">
+      <a class="btn btn-primary" href="#quote">Get My Free Quote →</a>
+      <a class="btn btn-ghost" href="tel:+17202320320">Prefer to talk? Call us</a>
+    </div>
+    <a class="callnum" href="tel:+17202320320">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+      (720) 232-0320
+    </a>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <a class="brand" href="#top">
+          <svg class="mark" viewBox="0 0 40 40" fill="none" aria-hidden="true"><rect x="1.5" y="1.5" width="37" height="37" rx="10" fill="#FFC53D"/><path d="M11 26.5 L20 9 L29 26.5 Z" fill="#0B0E12"/><path d="M20 9 L20 26.5" stroke="#FFC53D" stroke-width="1.4"/><path d="M15 22 L25 22" stroke="#FFC53D" stroke-width="1.4"/></svg>
+          <span>HV Auto Glass<br><small>Denver · Since 2018</small></span>
+        </a>
+        <p>Denver's trusted mobile auto glass shop. Windshield replacement, repair &amp; ADAS calibration — we come to you.</p>
+      </div>
+      <div>
+        <h4>Services</h4>
+        <ul>
+          <li><a href="#services">Windshield replacement</a></li>
+          <li><a href="#services">Rock chip &amp; crack repair</a></li>
+          <li><a href="#services">ADAS calibration</a></li>
+          <li><a href="#services">Door &amp; back glass</a></li>
+          <li><a href="#services">Mobile service</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Service area</h4>
+        <ul>
+          <li><a href="#reviews">Denver</a></li>
+          <li><a href="#reviews">Aurora</a></li>
+          <li><a href="#reviews">Lakewood</a></li>
+          <li><a href="#reviews">Arvada · Wheat Ridge</a></li>
+          <li><a href="#reviews">Thornton</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Get in touch</h4>
+        <ul>
+          <li><a href="tel:+17202320320" style="color:var(--amber);font-weight:700;font-size:16px">(720) 232-0320</a></li>
+          <li><a href="tel:+17208027097">Alt: (720) 802-7097</a></li>
+          <li><a href="#quote">Free online quote</a></li>
+          <li style="color:var(--muted-2);font-size:13px;margin-top:6px">Open 7 days · Call or text</li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 HV Auto Glass Denver. All rights reserved.</span>
+      <span>Privacy · Terms &amp; Conditions · Licensed &amp; Insured</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ================= STICKY MOBILE BAR ================= -->
+<div class="mbar">
+  <a class="btn btn-ghost" href="tel:+17202320320">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+    Call
+  </a>
+  <a class="btn btn-primary" href="#quote">Free Quote</a>
+</div>
+
+<script>
+(function(){
+  // FAQ accordion
+  document.querySelectorAll('.faq button').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var faq = btn.parentElement, ans = faq.querySelector('.ans'), open = faq.classList.contains('open');
+      document.querySelectorAll('.faq').forEach(function(f){
+        f.classList.remove('open');
+        f.querySelector('.ans').style.maxHeight = null;
+        f.querySelector('button').setAttribute('aria-expanded','false');
+      });
+      if(!open){
+        faq.classList.add('open');
+        ans.style.maxHeight = ans.scrollHeight + 'px';
+        btn.setAttribute('aria-expanded','true');
+      }
+    });
+  });
+
+  // Quote form demo submit
+  var form = document.getElementById('quoteForm');
+  if(form){
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      var name = (document.getElementById('nm').value || 'you').trim();
+      var first = name.split(' ')[0] || 'you';
+      document.getElementById('echoName').textContent = first;
+      form.style.display = 'none';
+      document.querySelector('.embed-note').style.display = 'none';
+      document.getElementById('quoteSuccess').classList.add('on');
+    });
+  }
+})();
+</script>
+</body>
+</html>
