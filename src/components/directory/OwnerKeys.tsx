@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { KeyRound, Loader2, Search, Copy, Check } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { KeyRound, Loader2, Search, Copy, Check, PencilLine } from 'lucide-react'
 
 interface Owner {
   slug: string
@@ -12,10 +13,30 @@ interface Owner {
 }
 
 export function OwnerKeys() {
+  const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [owners, setOwners] = useState<Owner[] | null>(null)
   const [copied, setCopied] = useState('')
+  const [opening, setOpening] = useState('')
+
+  async function openDashboard(slug: string) {
+    setOpening(slug)
+    setError('')
+    try {
+      const res = await fetch('/api/directory/owner/impersonate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Failed to open')
+      router.push('/directory/owner')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to open')
+      setOpening('')
+    }
+  }
 
   async function load() {
     setBusy(true)
@@ -50,7 +71,8 @@ export function OwnerKeys() {
       </h2>
       <p className="mt-1 text-sm text-gray-600">
         Send a shop its private link — they sign in to see their leads (and your upsell). Anyone
-        with the link can access that listing, so share it only with the owner.
+        with the link can access that listing, so share it only with the owner. Or open any
+        listing&apos;s dashboard yourself to make edits on the owner&apos;s behalf.
       </p>
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
@@ -89,21 +111,36 @@ export function OwnerKeys() {
                 </div>
                 <p className="mt-0.5 max-w-md truncate text-xs text-gray-400">{o.link}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => copy(o.link, o.slug)}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                {copied === o.slug ? (
-                  <>
-                    <Check width={14} height={14} className="text-green-600" /> Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy width={14} height={14} /> Copy link
-                  </>
-                )}
-              </button>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => openDashboard(o.slug)}
+                  disabled={opening === o.slug}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {opening === o.slug ? (
+                    <Loader2 className="animate-spin" width={14} height={14} />
+                  ) : (
+                    <PencilLine width={14} height={14} />
+                  )}
+                  Open &amp; edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => copy(o.link, o.slug)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  {copied === o.slug ? (
+                    <>
+                      <Check width={14} height={14} className="text-green-600" /> Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy width={14} height={14} /> Copy link
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           ))}
         </div>
