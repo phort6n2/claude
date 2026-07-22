@@ -840,16 +840,66 @@
     a.addEventListener('click', function(){ track('click_to_call', {phone:'7202320320'}); });
   });
 
+  // ===== Lead delivery to HighLevel =====
+  // Paste your HighLevel Inbound Webhook URL between the quotes to go live.
+  // (GHL: Automations → Workflows → new Workflow → "Inbound Webhook" trigger → copy the URL.)
+  var LEAD_WEBHOOK = "";
+
   var form = document.getElementById('quoteForm');
   if(form){
-    form.addEventListener('submit', function(e){
-      e.preventDefault();
-      var name = (document.getElementById('nm').value || 'you').trim();
-      var first = name.split(' ')[0] || 'you';
+    var submitBtn = form.querySelector('.qc-submit');
+    var origBtnHTML = submitBtn ? submitBtn.innerHTML : '';
+
+    function showSuccess(first){
       document.getElementById('echoName').textContent = first;
-      track('generate_lead', {form:'quote'});
       form.style.display = 'none';
       document.getElementById('quoteSuccess').classList.add('on');
+    }
+    function showError(){
+      if(submitBtn){ submitBtn.disabled = false; submitBtn.innerHTML = origBtnHTML; }
+      var err = document.getElementById('quoteError');
+      if(!err){
+        err = document.createElement('p');
+        err.id = 'quoteError';
+        err.style.cssText = 'margin-top:10px;font-size:13px;text-align:center;color:#EA4335';
+        submitBtn.insertAdjacentElement('afterend', err);
+      }
+      err.innerHTML = 'Sorry — that didn’t go through. Please call <a href="tel:+17202320320" style="color:var(--amber);font-weight:700">(720) 232-0320</a>.';
+    }
+
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      var nm = document.getElementById('nm'), ph = document.getElementById('ph'), zip = document.getElementById('zip');
+      var required = [nm, ph, zip], ok = true;
+      required.forEach(function(f){
+        if(!f.value.trim()){ f.style.borderColor = '#EA4335'; ok = false; }
+        else { f.style.borderColor = ''; }
+      });
+      if(!ok){ (required.find(function(f){return !f.value.trim();})||nm).focus(); return; }
+
+      var first = (nm.value.trim().split(' ')[0]) || 'there';
+      track('generate_lead', {form:'quote'});
+
+      // No webhook set yet → demo success (page still works while you wire it up)
+      if(!LEAD_WEBHOOK){ showSuccess(first); return; }
+
+      var insEl = document.querySelector('input[name="insurance"]:checked');
+      var data = new URLSearchParams();
+      data.append('full_name', nm.value.trim());
+      data.append('first_name', first);
+      data.append('phone', ph.value.trim());
+      data.append('postal_code', zip.value.trim());
+      data.append('vehicle', (document.getElementById('veh').value || '').trim());
+      data.append('service', document.getElementById('svc').value);
+      data.append('insurance', insEl ? insEl.value : '');
+      data.append('carrier', document.getElementById('carrier').value || '');
+      data.append('source', 'landing:hv-auto-glass-denver');
+      data.append('page', location.href);
+
+      if(submitBtn){ submitBtn.disabled = true; submitBtn.textContent = 'Sending…'; }
+      fetch(LEAD_WEBHOOK, {method:'POST', mode:'no-cors', body:data})
+        .then(function(){ showSuccess(first); })
+        .catch(function(){ showError(); });
     });
   }
 })();
