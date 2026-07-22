@@ -85,17 +85,15 @@ function redirect301(req: NextRequest, pathname: string, search = ''): NextRespo
 function legacyRedirect(req: NextRequest): NextResponse | null {
   const path = req.nextUrl.pathname.replace(/\/+$/, '') || '/'
 
+  // The 6 real shop listings → their new listing pages (slugs match 1:1).
   const shop = path.match(/^\/auto-glass-shop\/([^/]+)$/)
   if (shop) return redirect301(req, `/directory/shop/${shop[1]}`)
 
-  const loc = path.match(/^\/location\/([^/]+)$/)
-  if (loc) {
-    return redirect301(
-      req,
-      '/directory/search',
-      `?q=${encodeURIComponent(loc[1].replace(/-/g, ' '))}`
-    )
-  }
+  // Legacy SEO content (WordPress) → closest section. New articles now come
+  // from the blog, so the informational Q&A pages point there; the programmatic
+  // shop/city pages point at the directory home (search + browse).
+  if (/^\/auto-glass-repair\/[^/]+$/.test(path)) return redirect301(req, '/blog')
+  if (/^\/uncategorized\/[^/]+$/.test(path)) return redirect301(req, '/')
 
   const map: Record<string, string> = {
     '/listing-category/auto-glass-shop': '/directory',
