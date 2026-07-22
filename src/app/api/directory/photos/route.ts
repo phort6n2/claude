@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { put } from '@vercel/blob'
 import { isAdmin } from '@/lib/directory/admin-auth'
+import { blobEnabled } from '@/lib/directory/blob'
 import { getShopBySlug } from '@/lib/directory/data'
 import { getShopPhotos } from '@/lib/directory/photos'
 
@@ -27,8 +28,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const secret = process.env.DIRECTORY_UPLOAD_SECRET
-  if (!process.env.BLOB_READ_WRITE_TOKEN || !secret) {
+  if (!blobEnabled()) {
     return NextResponse.json(
       { error: 'Photo uploads are not configured on this deployment.' },
       { status: 503 }

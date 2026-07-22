@@ -21,6 +21,7 @@
 
 import { unstable_cache } from 'next/cache'
 import { list, put } from '@vercel/blob'
+import { blobEnabled } from './blob'
 import type { Shop, BusinessHours } from './types'
 import { getAllShops } from './data'
 
@@ -101,7 +102,7 @@ export function googlePlaceUrl(placeId: string): string {
 // ----------------------------------------------------------------------------
 
 async function readSnapshot(): Promise<Snapshot> {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return {}
+  if (!blobEnabled()) return {}
   try {
     const { blobs } = await list({ prefix: SNAPSHOT_PATH })
     const blob = blobs.find((b) => b.pathname === SNAPSHOT_PATH)
@@ -236,7 +237,7 @@ export async function refreshReviews(): Promise<{
   skipped: number
 }> {
   const shops = getAllShops()
-  if (!reviewsEnabled() || !process.env.BLOB_READ_WRITE_TOKEN) {
+  if (!reviewsEnabled() || !blobEnabled()) {
     return { updated: 0, total: shops.length, skipped: shops.length }
   }
 

@@ -9,6 +9,7 @@
 // return empty. For scale/compliance, migrate this to Postgres later.
 
 import { list, put } from '@vercel/blob'
+import { blobEnabled } from './blob'
 
 const PREFIX = 'directory/quotes'
 
@@ -26,7 +27,7 @@ export interface Quote {
 }
 
 export function quotesEnabled(): boolean {
-  return !!process.env.BLOB_READ_WRITE_TOKEN
+  return blobEnabled()
 }
 
 export async function saveQuote(q: Quote): Promise<boolean> {
