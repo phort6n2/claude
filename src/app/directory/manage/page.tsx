@@ -57,8 +57,8 @@ export default async function ManagePage() {
           <strong className="font-semibold">Connect a Vercel Blob store to turn on storage.</strong>{' '}
           It powers everything that saves data — incoming leads, claim submissions, owner profile
           edits, and photo uploads. In Vercel → Storage, create a Blob store and connect it to this
-          project (it adds <code className="rounded bg-amber-100 px-1">BLOB_READ_WRITE_TOKEN</code>),
-          then redeploy. Until then those actions run but nothing is saved.
+          project (adds <code className="rounded bg-amber-100 px-1">BLOB_STORE_ID</code>), then
+          redeploy. Until then those actions run but nothing is saved.
         </div>
       )}
 

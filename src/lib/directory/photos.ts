@@ -8,13 +8,14 @@
 
 import { list } from '@vercel/blob'
 import { unstable_cache } from 'next/cache'
+import { blobEnabled } from './blob'
 import type { Shop } from './types'
 
 const PREFIX = 'directory/photos'
 
 /** True when the deployment is configured to store/serve uploaded photos. */
 export function uploadsEnabled(): boolean {
-  return !!process.env.BLOB_READ_WRITE_TOKEN
+  return blobEnabled()
 }
 
 /** Public URLs of uploaded photos for one shop. Empty when uploads are off. */

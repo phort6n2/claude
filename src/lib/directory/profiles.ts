@@ -9,6 +9,7 @@
 
 import { list, put } from '@vercel/blob'
 import { unstable_cache } from 'next/cache'
+import { blobEnabled } from './blob'
 import type { Shop } from './types'
 
 const PREFIX = 'directory/profiles'
@@ -23,7 +24,7 @@ export interface OwnerProfile {
 }
 
 export function profilesEnabled(): boolean {
-  return !!process.env.BLOB_READ_WRITE_TOKEN
+  return blobEnabled()
 }
 
 async function readProfile(slug: string): Promise<OwnerProfile | null> {

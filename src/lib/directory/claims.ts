@@ -8,6 +8,7 @@
 // claim is logged (operator told to configure storage) and reads return empty.
 
 import { list, put } from '@vercel/blob'
+import { blobEnabled } from './blob'
 
 const PREFIX = 'directory/claims'
 
@@ -37,7 +38,7 @@ export interface Claim {
 }
 
 export function claimsEnabled(): boolean {
-  return !!process.env.BLOB_READ_WRITE_TOKEN
+  return blobEnabled()
 }
 
 export async function saveClaim(claim: Claim): Promise<boolean> {
