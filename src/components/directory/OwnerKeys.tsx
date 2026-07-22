@@ -12,7 +12,6 @@ interface Owner {
 }
 
 export function OwnerKeys() {
-  const [secret, setSecret] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [owners, setOwners] = useState<Owner[] | null>(null)
@@ -23,7 +22,6 @@ export function OwnerKeys() {
     setError('')
     try {
       const res = await fetch('/api/directory/owner/keys', {
-        headers: { 'x-upload-secret': secret },
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed')
@@ -45,9 +43,6 @@ export function OwnerKeys() {
     }
   }
 
-  const input =
-    'w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30'
-
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
       <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900">
@@ -59,18 +54,10 @@ export function OwnerKeys() {
       </p>
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        <input
-          type="password"
-          value={secret}
-          onChange={(e) => setSecret(e.target.value)}
-          placeholder="DIRECTORY_UPLOAD_SECRET"
-          className={input}
-          autoComplete="off"
-        />
         <button
           type="button"
           onClick={load}
-          disabled={busy || !secret}
+          disabled={busy}
           className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
         >
           {busy ? <Loader2 className="animate-spin" width={16} height={16} /> : <Search width={16} height={16} />}

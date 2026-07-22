@@ -13,7 +13,6 @@ interface ShopOption {
 type Status = 'idle' | 'uploading' | 'done' | 'error'
 
 export function ManageUploader({ shops }: { shops: ShopOption[] }) {
-  const [secret, setSecret] = useState('')
   const [slug, setSlug] = useState(shops[0]?.slug ?? '')
   const [file, setFile] = useState<File | null>(null)
   const [status, setStatus] = useState<Status>('idle')
@@ -31,7 +30,6 @@ export function ManageUploader({ shops }: { shops: ShopOption[] }) {
       body.set('file', file)
       const res = await fetch('/api/directory/photos', {
         method: 'POST',
-        headers: { 'x-upload-secret': secret },
         body,
       })
       const json = await res.json().catch(() => ({}))
@@ -52,21 +50,6 @@ export function ManageUploader({ shops }: { shops: ShopOption[] }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-      <div>
-        <label className="mb-1.5 block text-sm font-medium text-gray-700" htmlFor="secret">
-          Upload secret
-        </label>
-        <input
-          id="secret"
-          type="password"
-          value={secret}
-          onChange={(e) => setSecret(e.target.value)}
-          placeholder="DIRECTORY_UPLOAD_SECRET"
-          className={field}
-          autoComplete="off"
-        />
-      </div>
-
       <div>
         <label className="mb-1.5 block text-sm font-medium text-gray-700" htmlFor="shop">
           Shop
@@ -108,7 +91,7 @@ export function ManageUploader({ shops }: { shops: ShopOption[] }) {
 
       <button
         type="submit"
-        disabled={status === 'uploading' || !file || !secret}
+        disabled={status === 'uploading' || !file}
         className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {status === 'uploading' ? (

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { isAdmin } from '@/lib/directory/admin-auth'
 import { refreshReviews, reviewsEnabled } from '@/lib/directory/reviews'
 
 // Refreshes the Google review snapshot. This is the ONLY endpoint that calls
@@ -20,8 +21,7 @@ function authorized(request: Request): boolean {
     const qs = url.searchParams.get('secret') === cron
     if (bearer || qs) return true
   }
-  const upload = process.env.DIRECTORY_UPLOAD_SECRET
-  if (upload && request.headers.get('x-upload-secret') === upload) return true
+  if (isAdmin(request)) return true
   return false
 }
 

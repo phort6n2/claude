@@ -49,7 +49,6 @@ function toSeedJson(d: ListingDraft): string {
 }
 
 export function WebsiteTools() {
-  const [secret, setSecret] = useState('')
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState<'' | 'scaffold' | 'audit'>('')
   const [error, setError] = useState('')
@@ -63,7 +62,7 @@ export function WebsiteTools() {
     try {
       const res = await fetch('/api/directory/scaffold', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-upload-secret': secret },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url }),
       })
       const json = await res.json()
@@ -81,9 +80,7 @@ export function WebsiteTools() {
     setError('')
     setProspects(null)
     try {
-      const res = await fetch('/api/directory/scaffold', {
-        headers: { 'x-upload-secret': secret },
-      })
+      const res = await fetch('/api/directory/scaffold')
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed')
       setProspects(json.prospects)
@@ -99,21 +96,6 @@ export function WebsiteTools() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <label className="mb-1.5 block text-sm font-medium text-gray-700" htmlFor="tools-secret">
-          Upload secret
-        </label>
-        <input
-          id="tools-secret"
-          type="password"
-          value={secret}
-          onChange={(e) => setSecret(e.target.value)}
-          placeholder="DIRECTORY_UPLOAD_SECRET"
-          className={input}
-          autoComplete="off"
-        />
-      </div>
-
       {/* Auto-fill from URL */}
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900">
@@ -132,7 +114,7 @@ export function WebsiteTools() {
           <button
             type="button"
             onClick={scaffold}
-            disabled={busy !== '' || !url || !secret}
+            disabled={busy !== '' || !url}
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
           >
             {busy === 'scaffold' ? <Loader2 className="animate-spin" width={16} height={16} /> : <Search width={16} height={16} />}
@@ -182,7 +164,7 @@ export function WebsiteTools() {
           <button
             type="button"
             onClick={audit}
-            disabled={busy !== '' || !secret}
+            disabled={busy !== ''}
             className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
           >
             {busy === 'audit' ? <Loader2 className="animate-spin" width={16} height={16} /> : <Search width={16} height={16} />}

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { isAdmin } from '@/lib/directory/admin-auth'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { saveQuote, listAllQuotes, type Quote } from '@/lib/directory/quotes'
@@ -63,8 +64,7 @@ export async function POST(request: Request) {
 }
 
 function authed(request: Request): boolean {
-  const secret = process.env.DIRECTORY_UPLOAD_SECRET
-  return !!secret && request.headers.get('x-upload-secret') === secret
+  return isAdmin(request)
 }
 
 export async function GET(request: Request) {
