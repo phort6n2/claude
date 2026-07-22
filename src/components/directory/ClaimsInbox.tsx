@@ -38,7 +38,6 @@ function timeAgo(iso: string): string {
 }
 
 export function ClaimsInbox() {
-  const [secret, setSecret] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [claims, setClaims] = useState<Claim[] | null>(null)
@@ -47,7 +46,7 @@ export function ClaimsInbox() {
     setBusy(true)
     setError('')
     try {
-      const res = await fetch('/api/directory/claim', { headers: { 'x-upload-secret': secret } })
+      const res = await fetch('/api/directory/claim')
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed')
       setClaims(json.claims)
@@ -57,9 +56,6 @@ export function ClaimsInbox() {
       setBusy(false)
     }
   }
-
-  const input =
-    'w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30'
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -71,18 +67,10 @@ export function ClaimsInbox() {
       </p>
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        <input
-          type="password"
-          value={secret}
-          onChange={(e) => setSecret(e.target.value)}
-          placeholder="DIRECTORY_UPLOAD_SECRET"
-          className={input}
-          autoComplete="off"
-        />
         <button
           type="button"
           onClick={load}
-          disabled={busy || !secret}
+          disabled={busy}
           className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
         >
           {busy ? <Loader2 className="animate-spin" width={16} height={16} /> : <Search width={16} height={16} />}

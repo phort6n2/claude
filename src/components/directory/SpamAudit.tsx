@@ -27,7 +27,6 @@ const LABEL: Record<Flag['verdict'], string> = {
 }
 
 export function SpamAudit() {
-  const [secret, setSecret] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<{ checked: number; okCount: number; flagged: Flag[]; note?: string } | null>(null)
@@ -36,7 +35,7 @@ export function SpamAudit() {
     setBusy(true)
     setError('')
     try {
-      const res = await fetch('/api/directory/verify', { headers: { 'x-upload-secret': secret } })
+      const res = await fetch('/api/directory/verify')
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed')
       setResult(json)
@@ -46,9 +45,6 @@ export function SpamAudit() {
       setBusy(false)
     }
   }
-
-  const input =
-    'w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30'
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -62,18 +58,10 @@ export function SpamAudit() {
       </p>
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        <input
-          type="password"
-          value={secret}
-          onChange={(e) => setSecret(e.target.value)}
-          placeholder="DIRECTORY_UPLOAD_SECRET"
-          className={input}
-          autoComplete="off"
-        />
         <button
           type="button"
           onClick={audit}
-          disabled={busy || !secret}
+          disabled={busy}
           className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
         >
           {busy ? <Loader2 className="animate-spin" width={16} height={16} /> : <Search width={16} height={16} />}

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { isAdmin } from '@/lib/directory/admin-auth'
 import { makeOwnerKey, ownerAuthConfigured } from '@/lib/directory/owner-auth'
 import { getAllShops } from '@/lib/directory/data'
 
@@ -8,8 +9,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 function authed(request: Request): boolean {
-  const secret = process.env.DIRECTORY_UPLOAD_SECRET
-  return !!secret && request.headers.get('x-upload-secret') === secret
+  return isAdmin(request)
 }
 
 export async function GET(request: Request) {

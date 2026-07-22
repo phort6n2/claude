@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { put } from '@vercel/blob'
+import { isAdmin } from '@/lib/directory/admin-auth'
 import { getShopBySlug } from '@/lib/directory/data'
 import { getShopPhotos } from '@/lib/directory/photos'
 
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
       { status: 503 }
     )
   }
-  if (request.headers.get('x-upload-secret') !== secret) {
+  if (!isAdmin(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

@@ -45,6 +45,11 @@ export function Footer() {
                   Find a shop
                 </Link>
               </li>
+              <li>
+                <Link href="/directory/login" className={footLink}>
+                  Log in
+                </Link>
+              </li>
               {blogEnabled() && (
                 <li>
                   <Link href="/directory/blog" className={footLink}>

@@ -1,7 +1,10 @@
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { ImagePlus, Wand2 } from 'lucide-react'
 import { getAllShops } from '@/lib/directory/data'
 import { uploadsEnabled } from '@/lib/directory/photos'
+import { ADMIN_COOKIE, verifyAdminToken } from '@/lib/directory/admin-auth'
 import { ManageUploader } from '@/components/directory/ManageUploader'
 import { WebsiteTools } from '@/components/directory/WebsiteTools'
 import { QuoteInbox } from '@/components/directory/QuoteInbox'
@@ -9,15 +12,23 @@ import { OwnerKeys } from '@/components/directory/OwnerKeys'
 import { ReviewsRefresh } from '@/components/directory/ReviewsRefresh'
 import { SpamAudit } from '@/components/directory/SpamAudit'
 import { ClaimsInbox } from '@/components/directory/ClaimsInbox'
+import { AdminSignOut } from '@/components/directory/AdminSignOut'
 
-// Internal agency tools. Kept out of the index; the APIs are secret-gated, so
-// this page is a convenience console, not a security boundary.
+// Internal agency console. Gated behind the admin session cookie — a signed-in
+// admin reaches it; everyone else is bounced to the sign-in page.
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Manage listings',
   robots: { index: false, follow: false },
 }
 
-export default function ManagePage() {
+export default async function ManagePage() {
+  const cookieStore = await cookies()
+  const admin = verifyAdminToken(cookieStore.get(ADMIN_COOKIE)?.value)
+  if (!admin) {
+    redirect('/directory/login')
+  }
   const shops = getAllShops().map((s) => ({
     slug: s.slug,
     name: s.name,
@@ -28,12 +39,18 @@ export default function ManagePage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
-      <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-        <Wand2 width={24} height={24} className="text-blue-600" /> Listing tools
-      </h1>
-      <p className="mt-2 text-gray-600">
-        Auto-fill new listings from a website, find SEO sales prospects, and add photos.
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <Wand2 width={24} height={24} className="text-blue-600" /> Listing tools
+          </h1>
+          <p className="mt-2 text-gray-600">
+            Auto-fill new listings from a website, find SEO sales prospects, and add photos.
+          </p>
+          <p className="mt-1 text-xs text-gray-400">Signed in as {admin}</p>
+        </div>
+        <AdminSignOut />
+      </div>
 
       {!enabled && (
         <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
