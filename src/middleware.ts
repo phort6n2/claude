@@ -6,14 +6,21 @@ import {
 } from '@/lib/features'
 
 // Hostnames that should serve the PUBLIC auto glass directory at their root.
-// Set DIRECTORY_HOST to your directory domain(s), comma-separated, e.g.
-//   DIRECTORY_HOST="windshieldrepairhq.com,www.windshieldrepairhq.com"
-// Attach the same domain in Vercel and the directory shows at the root — no
-// code change needed. Leave unset and everything behaves as before.
-const DIRECTORY_HOSTS = (process.env.DIRECTORY_HOST || '')
-  .split(',')
-  .map((h) => h.trim().toLowerCase())
-  .filter(Boolean)
+// The production directory domain is baked in so no env var is needed — just
+// attach the domain in Vercel and point DNS, and the directory shows at the
+// root. Extra hosts can still be added via DIRECTORY_HOST (comma-separated).
+// Only requests whose Host header matches one of these are affected, so this is
+// inert until the domain actually points at this deployment.
+const DEFAULT_DIRECTORY_HOSTS = ['windshieldrepairhq.com', 'www.windshieldrepairhq.com']
+const DIRECTORY_HOSTS = Array.from(
+  new Set([
+    ...DEFAULT_DIRECTORY_HOSTS,
+    ...(process.env.DIRECTORY_HOST || '')
+      .split(',')
+      .map((h) => h.trim().toLowerCase())
+      .filter(Boolean),
+  ])
+)
 
 function requestHost(req: NextRequest): string {
   return (req.headers.get('host') || '').split(':')[0].toLowerCase()
