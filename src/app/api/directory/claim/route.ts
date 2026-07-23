@@ -3,6 +3,8 @@ import { isAdmin } from '@/lib/directory/admin-auth'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { saveClaim, listClaims, type Claim } from '@/lib/directory/claims'
+import { getShopBySlug, getCityRank } from '@/lib/directory/data'
+import { hydratePaidFeatured } from '@/lib/directory/featured'
 
 // ============================================
 // DIRECTORY — FREE LISTING / CLAIM SUBMISSIONS
@@ -27,6 +29,12 @@ const ClaimSchema = z.object({
   existingShopSlug: z.string().optional(),
   wantsMarketingHelp: z.boolean().optional(),
   message: z.string().max(2000).optional(),
+  // Expanded capture (sales intel):
+  services: z.array(z.string().max(40)).max(20).optional(),
+  monthlyVolume: z.string().max(40).optional(),
+  frustration: z.string().max(1000).optional(),
+  smsConsent: z.boolean().optional(),
+  intent: z.enum(['free', 'featured']).optional(),
   // From the Google Business Profile picker.
   placeId: z.string().optional(),
   googleCategory: z.string().optional(),
@@ -74,11 +82,28 @@ export async function POST(request: Request) {
     existingShopSlug: d.existingShopSlug || undefined,
     wantsMarketingHelp: d.wantsMarketingHelp,
     message: d.message || undefined,
+    services: d.services?.length ? d.services : undefined,
+    monthlyVolume: d.monthlyVolume || undefined,
+    frustration: d.frustration || undefined,
+    smsConsent: d.smsConsent,
+    intent: d.intent,
     createdAt: new Date().toISOString(),
   }
 
   await saveClaim(claim)
-  return NextResponse.json({ ok: true }, { status: 201 })
+
+  // For a claim on an existing listing, return its live city rank so the
+  // confirmation screen can show the "you're #X of Y" reveal + Featured upsell.
+  let rank: { rank: number; total: number; city: string; state: string } | undefined
+  if (d.existingShopSlug) {
+    await hydratePaidFeatured()
+    const shop = getShopBySlug(d.existingShopSlug)
+    if (shop) {
+      const r = getCityRank(shop)
+      rank = { rank: r.rank, total: r.total, city: shop.city, state: shop.state }
+    }
+  }
+  return NextResponse.json({ ok: true, slug: d.existingShopSlug, rank }, { status: 201 })
 }
 
 function authed(request: Request): boolean {

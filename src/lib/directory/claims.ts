@@ -34,6 +34,12 @@ export interface Claim {
   existingShopSlug?: string
   wantsMarketingHelp?: boolean
   message?: string
+  // Sales intel captured on the claim form:
+  services?: string[]
+  monthlyVolume?: string
+  frustration?: string
+  smsConsent?: boolean
+  intent?: 'free' | 'featured'
   createdAt: string
 }
 

@@ -47,6 +47,7 @@ import { enrichShop } from '@/lib/directory/photos'
 import { applyOwnerProfile } from '@/lib/directory/profiles'
 import { getReview, withReviews, googlePlaceUrl } from '@/lib/directory/reviews'
 import { GoogleReviews } from '@/components/directory/GoogleReviews'
+import { hydratePaidFeatured } from '@/lib/directory/featured'
 
 // Rebuild periodically so newly uploaded owner photos appear.
 export const revalidate = 300
@@ -82,6 +83,8 @@ export default async function ShopDetailPage({
   const { slug } = await params
   const baseShop = getShopBySlug(slug)
   if (!baseShop) notFound()
+
+  await hydratePaidFeatured()
 
   // Auto-detect from the website, then let the owner's saved overrides win.
   const shop = await applyOwnerProfile(await enrichShop(baseShop))

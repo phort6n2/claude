@@ -12,6 +12,7 @@ import { ShopCard } from '@/components/directory/ShopCard'
 import { SearchFilters } from '@/components/directory/SearchFilters'
 import { enrichShops } from '@/lib/directory/photos'
 import { withReviews } from '@/lib/directory/reviews'
+import { hydratePaidFeatured } from '@/lib/directory/featured'
 
 export const metadata: Metadata = {
   title: 'Search Auto Glass Shops',
@@ -38,6 +39,7 @@ export default async function SearchPage({
     : undefined
   const mobileOnly = get('mobile') === '1'
 
+  await hydratePaidFeatured()
   const results = await withReviews(
     await enrichShops(searchShops({ q, state, service, mobileOnly }))
   )
