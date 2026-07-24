@@ -445,11 +445,19 @@ function ClaimSuccess({
         <CheckCircle2 className="text-green-600" width={32} height={32} />
       </span>
       <h2 className="mt-4 text-xl font-bold text-gray-900">
-        {newListing ? 'One step to go live' : slug ? 'Your listing is claimed' : 'Submission received'}
+        {newListing
+          ? intent === 'featured'
+            ? 'One step to go live'
+            : 'Your free listing is in'
+          : slug
+            ? 'Your listing is claimed'
+            : 'Submission received'}
       </h2>
       <p className="mt-2 text-gray-600">
         {newListing
-          ? `Your listing is ready. Check out below to publish it — right at the top of ${rank?.city ?? 'your city'}.`
+          ? intent === 'featured'
+            ? `Your listing is ready. Check out below to publish it — right at the top of ${rank?.city ?? 'your city'}.`
+            : `Thanks! We'll review it and get it live shortly. Want it live right now — at the very top of ${rank?.city ?? 'your city'}? Go Featured below.`
           : slug
             ? "Thanks! We'll verify ownership shortly. In the meantime — here's where you stand."
             : "Thanks! We'll review your listing and get it live shortly."}

@@ -113,10 +113,11 @@ export async function POST(request: Request) {
       const r = getCityRank(shop)
       rank = { rank: r.rank, total: r.total, city: shop.city, state: shop.state }
     }
-  } else if (d.intent === 'featured' && d.city && (d.state || '').length === 2) {
-    // A brand-new shop buying Featured: create a PENDING listing now so the
-    // checkout can carry its slug; the webhook publishes + features it on
-    // payment. (Free new listings stay in the review queue — not created here.)
+  } else if (d.city && (d.state || '').length === 2) {
+    // Any brand-new listing (free OR featured intent): create a PENDING listing
+    // so the confirmation screen can offer instant self-serve Featured. If they
+    // pay, the webhook publishes + features it (payment is the spam filter). If
+    // they don't, it stays pending and the claim above sits in the review queue.
     const state = d.state!.toLowerCase()
     const services = (d.services ?? []).filter((s): s is ServiceKey =>
       SERVICE_KEYS.has(s as ServiceKey)
