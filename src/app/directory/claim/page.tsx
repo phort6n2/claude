@@ -3,6 +3,7 @@ import { Check } from 'lucide-react'
 import { getShopBySlug } from '@/lib/directory/data'
 import { CLAIM } from '@/lib/directory/content'
 import { ClaimForm } from '@/components/directory/ClaimForm'
+import { AgmpDisclosure } from '@/components/directory/AgmpDisclosure'
 
 export const metadata: Metadata = {
   title: 'Add Your Auto Glass Shop — Free Listing',
@@ -19,6 +20,8 @@ export default async function ClaimPage({
   const shopParam = sp.shop
   const slug = Array.isArray(shopParam) ? shopParam[0] : shopParam
   const existing = slug ? getShopBySlug(slug) : undefined
+  const intentParam = Array.isArray(sp.intent) ? sp.intent[0] : sp.intent
+  const intent = intentParam === 'featured' ? 'featured' : 'free'
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12">
@@ -49,8 +52,10 @@ export default async function ClaimPage({
             <ClaimForm
               existingShopSlug={existing?.slug}
               existingShopName={existing?.name}
+              intent={intent}
             />
           </div>
+          <AgmpDisclosure className="mt-4" />
         </div>
       </div>
     </div>

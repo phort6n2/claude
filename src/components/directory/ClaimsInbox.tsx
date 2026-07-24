@@ -19,6 +19,11 @@ interface Claim {
   existingShopSlug?: string
   wantsMarketingHelp?: boolean
   message?: string
+  services?: string[]
+  monthlyVolume?: string
+  frustration?: string
+  smsConsent?: boolean
+  intent?: 'free' | 'featured'
   createdAt: string
 }
 
@@ -102,6 +107,11 @@ export function ClaimsInbox() {
                       {c.type === 'claim' ? 'Claim' : 'New listing'}
                     </span>
                     <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${v.cls}`}>{v.label}</span>
+                    {c.intent === 'featured' && (
+                      <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white">
+                        wants Featured
+                      </span>
+                    )}
                   </div>
                   <span className="text-xs text-gray-400">{timeAgo(c.createdAt)}</span>
                 </div>
@@ -130,6 +140,30 @@ export function ClaimsInbox() {
                     </span>
                   )}
                 </div>
+                {(c.monthlyVolume || c.services?.length || c.smsConsent) && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                    {c.monthlyVolume && (
+                      <span className="rounded bg-gray-100 px-2 py-0.5 font-medium text-gray-700">
+                        ~{c.monthlyVolume} jobs/mo
+                      </span>
+                    )}
+                    {c.services?.map((s) => (
+                      <span key={s} className="rounded bg-gray-100 px-2 py-0.5 text-gray-600">
+                        {s.replace(/-/g, ' ')}
+                      </span>
+                    ))}
+                    {c.smsConsent && (
+                      <span className="rounded bg-green-50 px-2 py-0.5 font-medium text-green-700">
+                        SMS opt-in ✓
+                      </span>
+                    )}
+                  </div>
+                )}
+                {c.frustration && (
+                  <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                    <span className="font-semibold">Frustration:</span> {c.frustration}
+                  </p>
+                )}
                 {c.message && <p className="mt-3 text-sm text-gray-700">{c.message}</p>}
                 {c.serviceAreaOnly && (
                   <p className="mt-2 inline-flex items-center gap-1 text-xs text-gray-400">

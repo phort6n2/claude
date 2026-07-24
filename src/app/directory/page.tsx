@@ -16,11 +16,13 @@ import { CTASection } from '@/components/directory/CTASection'
 import { NearYou } from '@/components/directory/NearYou'
 import { enrichShops } from '@/lib/directory/photos'
 import { withReviews } from '@/lib/directory/reviews'
+import { hydratePaidFeatured } from '@/lib/directory/featured'
 
 // Refresh periodically so website hero images stay current.
 export const revalidate = 3600
 
 export default async function DirectoryHome() {
+  await hydratePaidFeatured()
   // Rotate the featured set each hour (matches revalidate) so all featured
   // shops get homepage time, not just the top 9.
   const rotation = Math.floor(Date.now() / 3_600_000)

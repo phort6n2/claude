@@ -1,7 +1,45 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Search, TrendingUp, Phone, BarChart3, MapPin, Check } from 'lucide-react'
+import { Search, TrendingUp, Phone, BarChart3, MapPin, Check, Star } from 'lucide-react'
 import { FOR_SHOPS } from '@/lib/directory/content'
+import { AgmpDisclosure } from '@/components/directory/AgmpDisclosure'
+import { AGMP_AUDIT_URL, FEATURED_PRICE_DISPLAY } from '@/lib/directory/agmp'
+
+const TIERS = [
+  {
+    name: 'Free Listing',
+    price: 'Free',
+    priceNote: 'forever',
+    features: ['Directory listing', 'Show up in city & service searches', 'Get quote requests'],
+    excluded: ['Priority “Featured” position', 'Google Map Pack + AI search', 'Google Ads', 'Conversion website'],
+    cta: { label: 'Add my free listing', href: '/directory/claim' },
+    highlight: false,
+  },
+  {
+    name: 'Featured',
+    price: FEATURED_PRICE_DISPLAY,
+    priceNote: 'cancel anytime',
+    features: ['Everything in Free', 'Priority “Featured” position in your city', '“Featured” badge on your listing'],
+    excluded: ['Google Map Pack + AI search', 'Google Ads', 'Conversion website'],
+    cta: { label: `Get Featured — ${FEATURED_PRICE_DISPLAY}`, href: '/directory/claim?intent=featured' },
+    highlight: true,
+  },
+  {
+    name: 'Managed Growth',
+    price: 'Custom',
+    priceNote: 'starts with a free audit',
+    features: [
+      'Everything in Featured',
+      'Local SEO — Google Map Pack + AI search',
+      'Google Ads management',
+      'Conversion website',
+      'Call tracking & reporting',
+    ],
+    excluded: [],
+    cta: { label: 'Start with a free audit', href: AGMP_AUDIT_URL, external: true },
+    highlight: false,
+  },
+]
 
 export const metadata: Metadata = {
   title: 'SEO & Google Ads for Auto Glass Shops',
@@ -65,7 +103,74 @@ export default function ForShopsPage() {
               Back to directory
             </Link>
           </div>
+          <p className="mx-auto mt-6 max-w-2xl text-xs text-gray-400">
+            Windshield Repair HQ&apos;s growth services are powered by{' '}
+            <a href={AGMP_AUDIT_URL} className="underline hover:text-gray-200">
+              Auto Glass Marketing Pros
+            </a>{' '}
+            — the marketing agency built only for auto glass shops.
+          </p>
         </div>
+      </section>
+
+      {/* Pricing tiers */}
+      <section className="mx-auto max-w-6xl px-4 py-16">
+        <h2 className="text-center text-2xl font-bold text-gray-900">Pick your level</h2>
+        <p className="mx-auto mt-2 max-w-xl text-center text-gray-600">
+          Start free, jump the line for {FEATURED_PRICE_DISPLAY}, or hand growth to us entirely.
+        </p>
+        <div className="mt-10 grid gap-6 lg:grid-cols-3">
+          {TIERS.map((t) => (
+            <div
+              key={t.name}
+              className={
+                'flex flex-col rounded-2xl border p-6 shadow-sm ' +
+                (t.highlight ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-gray-200')
+              }
+            >
+              {t.highlight && (
+                <span className="mb-3 inline-flex w-fit items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700">
+                  <Star width={12} height={12} /> Most popular
+                </span>
+              )}
+              <h3 className="text-lg font-bold text-gray-900">{t.name}</h3>
+              <p className="mt-2">
+                <span className="text-3xl font-extrabold text-gray-900">{t.price}</span>{' '}
+                <span className="text-sm text-gray-500">{t.priceNote}</span>
+              </p>
+              <ul className="mt-5 space-y-2 text-sm">
+                {t.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-gray-800">
+                    <Check className="mt-0.5 shrink-0 text-green-500" width={16} height={16} /> {f}
+                  </li>
+                ))}
+                {t.excluded.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-gray-400">
+                    <span className="mt-0.5 w-4 shrink-0 text-center">—</span> {f}
+                  </li>
+                ))}
+              </ul>
+              <a
+                href={t.cta.href}
+                {...('external' in t.cta && t.cta.external
+                  ? { target: '_blank', rel: 'noopener noreferrer' }
+                  : {})}
+                className={
+                  'mt-6 inline-flex items-center justify-center rounded-lg px-5 py-2.5 text-sm font-semibold ' +
+                  (t.highlight
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'border border-gray-300 text-gray-800 hover:bg-gray-50')
+                }
+              >
+                {t.cta.label}
+              </a>
+            </div>
+          ))}
+        </div>
+        <p className="mt-6 text-center text-xs text-gray-500">
+          Paid &ldquo;Featured&rdquo; placements are always labeled Featured in the directory. Paid
+          placement never changes the neutral ranking drivers see beyond the labeled slots.
+        </p>
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-16">

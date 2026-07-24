@@ -30,6 +30,19 @@ const shops = (rawShops as Shop[]).map((s) => {
   return client === !!s.client && featured === !!s.featured ? s : { ...s, client, featured }
 })
 
+// Self-serve paid "Featured" ($7/mo) slugs, stored in Vercel Blob and hydrated
+// per request from featured.ts. Kept separate from the static/env featured set
+// so a shop that buys Featured goes live without a redeploy (ISR revalidates,
+// and the Stripe webhook triggers on-demand revalidation).
+let PAID_FEATURED = new Set<string>()
+export function setPaidFeatured(slugs: Iterable<string>): void {
+  PAID_FEATURED = new Set(slugs)
+}
+/** Overlay the dynamic paid-Featured flag onto a shop before ranking/display. */
+function withPaid(s: Shop): Shop {
+  return s.featured || !PAID_FEATURED.has(s.slug) ? s : { ...s, featured: true }
+}
+
 /** Ranking tier: paying client (2) > founding-member featured (1) > standard. */
 function tier(s: Shop): number {
   return s.client ? 2 : s.featured ? 1 : 0
@@ -130,7 +143,7 @@ export function shopHref(shop: Pick<Shop, 'slug'>): string {
 
 /** Clients first, then founding-member featured, then by rating/review volume. */
 function rankShops(list: Shop[]): Shop[] {
-  return [...list].sort((a, b) => {
+  return list.map(withPaid).sort((a, b) => {
     const tierA = tier(a)
     const tierB = tier(b)
     if (tierA !== tierB) return tierB - tierA
@@ -181,7 +194,7 @@ export function getShopBySlug(slug: string): Shop | undefined {
  * always rank above founding-member featured shops.
  */
 export function getFeaturedShops(limit = 9, rotate = 0): Shop[] {
-  const featured = shops.filter((s) => s.featured)
+  const featured = shops.map(withPaid).filter((s) => s.featured)
   const clients = rankShops(featured.filter((s) => s.client))
   const founders = rankShops(featured.filter((s) => !s.client))
   const spin = (arr: Shop[]) =>
@@ -198,6 +211,19 @@ export function getShopsByCity(state: string, city: string): Shop[] {
 
 export function getShopsByState(state: string): Shop[] {
   return rankShops(shops.filter((s) => s.state === state.toLowerCase()))
+}
+
+/**
+ * A shop's live rank within its own city (1-based) and the number of shops in
+ * that city. Uses the same ranking the public city page shows, so the number a
+ * shop is told ("you're #X of Y") is exactly what a driver sees. Reflects paid
+ * Featured status when PAID_FEATURED has been hydrated (call setPaidFeatured
+ * first in async contexts).
+ */
+export function getCityRank(shop: Shop): { rank: number; total: number } {
+  const list = getShopsByCity(shop.state, shop.city)
+  const idx = list.findIndex((s) => s.slug === shop.slug)
+  return { rank: idx < 0 ? list.length : idx + 1, total: list.length }
 }
 
 /** Other shops in the same city, excluding the given one. */

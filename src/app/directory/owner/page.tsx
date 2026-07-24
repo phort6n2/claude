@@ -12,9 +12,11 @@ import {
   BadgeCheck,
   Wrench,
 } from 'lucide-react'
-import { getShopBySlug, shopHref } from '@/lib/directory/data'
+import { getShopBySlug, shopHref, getCityRank } from '@/lib/directory/data'
 import { OWNER_COOKIE, verifyOwnerKey } from '@/lib/directory/owner-auth'
 import { ADMIN_COOKIE, verifyAdminToken } from '@/lib/directory/admin-auth'
+import { hydratePaidFeatured, isPaidFeatured } from '@/lib/directory/featured'
+import { featuredCheckoutUrl, AGMP_AUDIT_URL, FEATURED_PRICE_DISPLAY } from '@/lib/directory/agmp'
 import { listQuotesForShop, quotesEnabled } from '@/lib/directory/quotes'
 import { OwnerLogin } from '@/components/directory/OwnerLogin'
 import { OwnerSession } from '@/components/directory/OwnerSession'
@@ -68,6 +70,11 @@ export default async function OwnerPage({
   const quotes = await listQuotesForShop(shop.slug)
   const storageOn = quotesEnabled()
 
+  // Live city rank + paid-Featured status (the recurring upsell hook).
+  await hydratePaidFeatured()
+  const { rank, total } = getCityRank(shop)
+  const isFeatured = shop.featured || (await isPaidFeatured(shop.slug))
+
   // Current effective values for the profile editor: owner overrides win,
   // otherwise fall back to seed + auto-detected socials.
   const profile = await getOwnerProfile(shop.slug)
@@ -79,6 +86,7 @@ export default async function OwnerPage({
     email: profile?.email ?? shop.email ?? '',
     socials: profile?.socials ?? enriched.socials ?? [],
   }
+  const featuredCheckout = featuredCheckoutUrl(shop.slug, profileInitial.email || undefined)
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
@@ -110,6 +118,51 @@ export default async function OwnerPage({
         </div>
         <OwnerSession persistKey={persistKey} />
       </div>
+
+      {/* Live city rank — the recurring hook */}
+      <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="flex items-center gap-2 text-sm font-medium text-blue-600">
+              <TrendingUp width={16} height={16} /> Your rank in {shop.city}
+            </p>
+            <p className="mt-1 text-3xl font-extrabold text-gray-900">
+              #{rank}{' '}
+              <span className="text-base font-semibold text-gray-500">
+                of {total} auto glass shops
+              </span>
+            </p>
+            {isFeatured ? (
+              <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700">
+                <Sparkles width={12} height={12} /> Featured in {shop.city}
+              </p>
+            ) : (
+              <p className="mt-2 max-w-md text-sm text-gray-600">
+                The top listings capture most of the driver clicks. Jump to the top of {shop.city}.
+              </p>
+            )}
+          </div>
+          {!isFeatured && (
+            <div className="flex flex-col items-stretch gap-2">
+              <a
+                href={featuredCheckout ?? AGMP_AUDIT_URL}
+                {...(featuredCheckout ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                <Sparkles width={16} height={16} /> Get Featured — {FEATURED_PRICE_DISPLAY}
+              </a>
+              <a
+                href={AGMP_AUDIT_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-center text-xs font-medium text-blue-700 hover:text-blue-800"
+              >
+                Or run a free audit
+              </a>
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Marketing / upsell — the whole point of getting owners logged in */}
       <section className="mt-6 overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 p-6 text-white shadow-sm sm:p-8">
