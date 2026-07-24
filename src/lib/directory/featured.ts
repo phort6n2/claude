@@ -12,10 +12,14 @@
 // data.ts owns the ranking overlay; here we just hydrate it from Blob.
 
 import { list, put, del } from '@vercel/blob'
+import { unstable_cache, revalidateTag } from 'next/cache'
 import { blobEnabled } from './blob'
 import { setPaidFeatured } from './data'
 
 const PREFIX = 'directory/featured'
+// Shared invalidation tag for all runtime directory data (paid Featured +
+// dynamic listings). Busting it makes the next page render read fresh Blob.
+export const RUNTIME_TAG = 'directory-runtime'
 
 export interface FeaturedRecord {
   slug: string
@@ -45,15 +49,19 @@ async function readAll(): Promise<FeaturedRecord[]> {
   }
 }
 
-// Read directly from Blob. The ranking pages are ISR (regenerate every 5 min,
-// or on demand when the Stripe webhook calls revalidatePath), so this runs only
-// on regeneration — infrequent — and always sees the latest paid set.
+// Wrapped in unstable_cache so ISR ranking pages can read it without becoming
+// dynamic; grant/revoke bust RUNTIME_TAG for instant refresh.
+const cachedRead = unstable_cache(readAll, ['directory-paid-featured-v2'], {
+  tags: [RUNTIME_TAG],
+  revalidate: 300,
+})
+
 export async function getPaidFeatured(): Promise<FeaturedRecord[]> {
-  return readAll()
+  return cachedRead()
 }
 
 export async function getPaidFeaturedSlugs(): Promise<string[]> {
-  return Array.from(new Set((await readAll()).map((r) => r.slug)))
+  return Array.from(new Set((await cachedRead()).map((r) => r.slug)))
 }
 
 export async function isPaidFeatured(slug: string): Promise<boolean> {
@@ -79,12 +87,14 @@ export async function grantFeatured(rec: FeaturedRecord): Promise<void> {
     contentType: 'application/json',
     addRandomSuffix: true,
   })
+  revalidateTag(RUNTIME_TAG, 'max')
 }
 
 /** Remove a shop's paid-Featured status (e.g. on subscription cancellation). */
 export async function revokeFeatured(slug: string): Promise<void> {
   if (!blobEnabled()) return
   await clearSlug(slug)
+  revalidateTag(RUNTIME_TAG, 'max')
 }
 
 /** Find the shop slug for a Stripe subscription/customer id (for cancellations). */

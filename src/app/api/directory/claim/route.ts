@@ -3,8 +3,16 @@ import { isAdmin } from '@/lib/directory/admin-auth'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { saveClaim, listClaims, type Claim } from '@/lib/directory/claims'
-import { getShopBySlug, getCityRank } from '@/lib/directory/data'
-import { hydratePaidFeatured } from '@/lib/directory/featured'
+import { getShopBySlug, getCityRank, getShopsByCity, SERVICES } from '@/lib/directory/data'
+import {
+  hydrateDirectory,
+  makeUniqueSlug,
+  createPendingListing,
+  stateFullFrom,
+} from '@/lib/directory/listings'
+import type { Shop, ServiceKey } from '@/lib/directory/types'
+
+const SERVICE_KEYS = new Set(SERVICES.map((s) => s.key))
 
 // ============================================
 // DIRECTORY — FREE LISTING / CLAIM SUBMISSIONS
@@ -91,19 +99,59 @@ export async function POST(request: Request) {
   }
 
   await saveClaim(claim)
+  await hydrateDirectory()
 
-  // For a claim on an existing listing, return its live city rank so the
-  // confirmation screen can show the "you're #X of Y" reveal + Featured upsell.
+  // Rank reveal + slug for the confirmation screen / Featured checkout.
+  let slug = d.existingShopSlug
   let rank: { rank: number; total: number; city: string; state: string } | undefined
+  let newListing = false
+
   if (d.existingShopSlug) {
-    await hydratePaidFeatured()
+    // Claiming an existing listing → its live city rank.
     const shop = getShopBySlug(d.existingShopSlug)
     if (shop) {
       const r = getCityRank(shop)
       rank = { rank: r.rank, total: r.total, city: shop.city, state: shop.state }
     }
+  } else if (d.intent === 'featured' && d.city && (d.state || '').length === 2) {
+    // A brand-new shop buying Featured: create a PENDING listing now so the
+    // checkout can carry its slug; the webhook publishes + features it on
+    // payment. (Free new listings stay in the review queue — not created here.)
+    const state = d.state!.toLowerCase()
+    const services = (d.services ?? []).filter((s): s is ServiceKey =>
+      SERVICE_KEYS.has(s as ServiceKey)
+    )
+    const mobileService = services.includes('mobile-service')
+    if (!services.length) services.push('windshield-repair', 'windshield-replacement')
+    slug = await makeUniqueSlug(d.businessName, d.city, state)
+    const shop: Shop = {
+      slug,
+      name: d.businessName,
+      phone: d.phone || '',
+      website: d.website || undefined,
+      street: d.street || '',
+      city: d.city,
+      state,
+      stateFull: d.stateFull || stateFullFrom(state),
+      zip: d.zip || '',
+      services,
+      mobileService,
+      insurance: [],
+      hours: [],
+      description:
+        d.message?.trim() ||
+        `${d.businessName} — auto glass and windshield services in ${d.city}, ${state.toUpperCase()}.`,
+      claimed: true,
+      featured: false,
+      ...(d.placeId ? { googlePlaceId: d.placeId } : {}),
+    }
+    await createPendingListing(shop, d.email)
+    const total = getShopsByCity(state, d.city).length
+    rank = { rank: total + 1, total: total + 1, city: d.city, state }
+    newListing = true
   }
-  return NextResponse.json({ ok: true, slug: d.existingShopSlug, rank }, { status: 201 })
+
+  return NextResponse.json({ ok: true, slug, rank, newListing }, { status: 201 })
 }
 
 function authed(request: Request): boolean {

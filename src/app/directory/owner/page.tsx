@@ -15,7 +15,8 @@ import {
 import { getShopBySlug, shopHref, getCityRank } from '@/lib/directory/data'
 import { OWNER_COOKIE, verifyOwnerKey } from '@/lib/directory/owner-auth'
 import { ADMIN_COOKIE, verifyAdminToken } from '@/lib/directory/admin-auth'
-import { hydratePaidFeatured, isPaidFeatured } from '@/lib/directory/featured'
+import { isPaidFeatured } from '@/lib/directory/featured'
+import { hydrateDirectory } from '@/lib/directory/listings'
 import { featuredCheckoutUrl, AGMP_AUDIT_URL, FEATURED_PRICE_DISPLAY } from '@/lib/directory/agmp'
 import { listQuotesForShop, quotesEnabled } from '@/lib/directory/quotes'
 import { OwnerLogin } from '@/components/directory/OwnerLogin'
@@ -71,7 +72,7 @@ export default async function OwnerPage({
   const storageOn = quotesEnabled()
 
   // Live city rank + paid-Featured status (the recurring upsell hook).
-  await hydratePaidFeatured()
+  await hydrateDirectory()
   const { rank, total } = getCityRank(shop)
   const isFeatured = shop.featured || (await isPaidFeatured(shop.slug))
 

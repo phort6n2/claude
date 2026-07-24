@@ -43,6 +43,21 @@ function withPaid(s: Shop): Shop {
   return s.featured || !PAID_FEATURED.has(s.slug) ? s : { ...s, featured: true }
 }
 
+// Self-serve listings created at runtime (see listings.ts), merged into the
+// directory per request via setDynamicListings(). Empty until hydrated.
+let DYNAMIC: Shop[] = []
+export function setDynamicListings(listings: Shop[]): void {
+  DYNAMIC = listings
+}
+/** Seed shops + any published dynamic listings — the full working set. */
+function allShops(): Shop[] {
+  return DYNAMIC.length ? [...shops, ...DYNAMIC] : shops
+}
+/** Whether a slug already exists in the seed (used by slug generation). */
+export function hasSlug(slug: string): boolean {
+  return shops.some((s) => s.slug === slug)
+}
+
 /** Ranking tier: paying client (2) > founding-member featured (1) > standard. */
 function tier(s: Shop): number {
   return s.client ? 2 : s.featured ? 1 : 0
@@ -163,7 +178,7 @@ function rankShops(list: Shop[]): Shop[] {
  */
 export function cityHasFoundingMember(shop: Shop): boolean {
   const slug = citySlug(shop.city)
-  return shops.some(
+  return allShops().some(
     (s) =>
       s.slug !== shop.slug &&
       s.state === shop.state &&
@@ -175,15 +190,15 @@ export function cityHasFoundingMember(shop: Shop): boolean {
 }
 
 export function getAllShops(): Shop[] {
-  return rankShops(shops)
+  return rankShops(allShops())
 }
 
 export function getShopCount(): number {
-  return shops.length
+  return allShops().length
 }
 
 export function getShopBySlug(slug: string): Shop | undefined {
-  return shops.find((s) => s.slug === slug)
+  return allShops().find((s) => s.slug === slug)
 }
 
 /**
@@ -194,7 +209,7 @@ export function getShopBySlug(slug: string): Shop | undefined {
  * always rank above founding-member featured shops.
  */
 export function getFeaturedShops(limit = 9, rotate = 0): Shop[] {
-  const featured = shops.map(withPaid).filter((s) => s.featured)
+  const featured = allShops().map(withPaid).filter((s) => s.featured)
   const clients = rankShops(featured.filter((s) => s.client))
   const founders = rankShops(featured.filter((s) => !s.client))
   const spin = (arr: Shop[]) =>
@@ -205,12 +220,12 @@ export function getFeaturedShops(limit = 9, rotate = 0): Shop[] {
 export function getShopsByCity(state: string, city: string): Shop[] {
   const slug = citySlug(city)
   return rankShops(
-    shops.filter((s) => s.state === state.toLowerCase() && citySlug(s.city) === slug)
+    allShops().filter((s) => s.state === state.toLowerCase() && citySlug(s.city) === slug)
   )
 }
 
 export function getShopsByState(state: string): Shop[] {
-  return rankShops(shops.filter((s) => s.state === state.toLowerCase()))
+  return rankShops(allShops().filter((s) => s.state === state.toLowerCase()))
 }
 
 /**
@@ -237,7 +252,7 @@ export function getRelatedShops(shop: Shop, limit = 3): Shop[] {
 
 export function getCitySummaries(): CitySummary[] {
   const map = new Map<string, CitySummary>()
-  for (const s of shops) {
+  for (const s of allShops()) {
     const key = `${s.state}/${citySlug(s.city)}`
     const existing = map.get(key)
     if (existing) {
@@ -296,7 +311,7 @@ export interface SearchParams {
 
 export function searchShops(params: SearchParams): Shop[] {
   const q = params.q?.trim().toLowerCase()
-  const result = shops.filter((s) => {
+  const result = allShops().filter((s) => {
     if (params.state && s.state !== params.state.toLowerCase()) return false
     if (params.city && citySlug(s.city) !== citySlug(params.city)) return false
     if (params.service && !s.services.includes(params.service)) return false
