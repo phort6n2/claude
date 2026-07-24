@@ -19,7 +19,7 @@ import { CityShopExplorer } from '@/components/directory/CityShopExplorer'
 import { CTASection } from '@/components/directory/CTASection'
 import { enrichShops } from '@/lib/directory/photos'
 import { withReviews } from '@/lib/directory/reviews'
-import { hydratePaidFeatured } from '@/lib/directory/featured'
+import { hydrateDirectory } from '@/lib/directory/listings'
 
 // Rebuild periodically so newly uploaded owner photos appear.
 export const revalidate = 300
@@ -53,7 +53,7 @@ export default async function CityPage({
   const summary = getCitySummary(state, city)
   if (!summary) notFound()
 
-  await hydratePaidFeatured()
+  await hydrateDirectory()
   const shops = getShopsByCity(summary.state, summary.city)
   const shopsWithPhotos = await withReviews(await enrichShops(shops))
   const mobileCount = shops.filter((s) => s.mobileService).length

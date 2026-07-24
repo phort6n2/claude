@@ -15,7 +15,7 @@ import {
 import { ShopCard } from '@/components/directory/ShopCard'
 import { enrichShops } from '@/lib/directory/photos'
 import { withReviews } from '@/lib/directory/reviews'
-import { hydratePaidFeatured } from '@/lib/directory/featured'
+import { hydrateDirectory } from '@/lib/directory/listings'
 
 export const revalidate = 3600
 
@@ -48,7 +48,7 @@ export default async function StatePage({
   const summary = getStateSummaries().find((s) => s.state === state.toLowerCase())
   if (!summary) notFound()
 
-  await hydratePaidFeatured()
+  await hydrateDirectory()
   const shops = await withReviews(await enrichShops(getShopsByState(summary.state)))
   const breadcrumb = breadcrumbJsonLd([
     { name: 'Directory', path: '/directory' },

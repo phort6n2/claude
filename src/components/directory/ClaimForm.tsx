@@ -61,7 +61,11 @@ const VOLUME_OPTIONS = ['Under 20', '20–50', '50–100', '100–250', '250+']
 export function ClaimForm({ existingShopSlug, existingShopName, intent = 'free' }: ClaimFormProps) {
   const [status, setStatus] = useState<Status>('idle')
   const [errorMsg, setErrorMsg] = useState('')
-  const [result, setResult] = useState<{ slug?: string; rank?: RankInfo } | null>(null)
+  const [result, setResult] = useState<{
+    slug?: string
+    rank?: RankInfo
+    newListing?: boolean
+  } | null>(null)
 
   // Prefillable fields (the GBP picker sets these; also the manual fallback).
   const [businessName, setBusinessName] = useState(existingShopName ?? '')
@@ -128,7 +132,7 @@ export function ClaimForm({ existingShopSlug, existingShopName, intent = 'free' 
       })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(j.error || 'Something went wrong. Please try again.')
-      setResult({ slug: j.slug, rank: j.rank })
+      setResult({ slug: j.slug, rank: j.rank, newListing: j.newListing })
       setStatus('success')
     } catch (err) {
       setStatus('error')
@@ -411,12 +415,13 @@ function ClaimSuccess({
   email,
   intent,
 }: {
-  result: { slug?: string; rank?: RankInfo } | null
+  result: { slug?: string; rank?: RankInfo; newListing?: boolean } | null
   email: string
   intent: 'free' | 'featured'
 }) {
   const rank = result?.rank
   const slug = result?.slug
+  const newListing = !!result?.newListing
   const checkout = slug ? featuredCheckoutUrl(slug, email) : null
   const featuredCta = checkout ? (
     <a
@@ -440,29 +445,41 @@ function ClaimSuccess({
         <CheckCircle2 className="text-green-600" width={32} height={32} />
       </span>
       <h2 className="mt-4 text-xl font-bold text-gray-900">
-        {slug ? 'Your listing is claimed' : 'Submission received'}
+        {newListing ? 'One step to go live' : slug ? 'Your listing is claimed' : 'Submission received'}
       </h2>
       <p className="mt-2 text-gray-600">
-        {slug
-          ? "Thanks! We'll verify ownership shortly. In the meantime — here's where you stand."
-          : "Thanks! We'll review your listing and get it live shortly."}
+        {newListing
+          ? `Your listing is ready. Check out below to publish it — right at the top of ${rank?.city ?? 'your city'}.`
+          : slug
+            ? "Thanks! We'll verify ownership shortly. In the meantime — here's where you stand."
+            : "Thanks! We'll review your listing and get it live shortly."}
       </p>
 
       {rank && (
         <div className="mt-6 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
           <p className="flex items-center gap-2 text-sm font-medium text-blue-700">
-            <TrendingUp width={16} height={16} /> Your ranking in {rank.city}
+            <TrendingUp width={16} height={16} />{' '}
+            {newListing ? `Auto glass shops in ${rank.city}` : `Your ranking in ${rank.city}`}
           </p>
           <p className="mt-1 text-3xl font-extrabold text-gray-900">
-            #{rank.rank}{' '}
-            <span className="text-lg font-semibold text-gray-500">
-              of {rank.total} auto glass shops
-            </span>
+            {newListing ? (
+              <>
+                {rank.total}{' '}
+                <span className="text-lg font-semibold text-gray-500">shops in {rank.city}</span>
+              </>
+            ) : (
+              <>
+                #{rank.rank}{' '}
+                <span className="text-lg font-semibold text-gray-500">
+                  of {rank.total} auto glass shops
+                </span>
+              </>
+            )}
           </p>
           <p className="mt-2 text-sm text-gray-600">
-            In local search, the top few listings capture the large majority of the clicks — the rest
-            split what&apos;s left. Featured jumps you to the top of {rank.city} on Windshield Repair
-            HQ.
+            {newListing
+              ? `Go Featured and your listing launches at the very top of ${rank.city} on Windshield Repair HQ — above every free listing.`
+              : `In local search, the top few listings capture the large majority of the clicks — the rest split what's left. Featured jumps you to the top of ${rank.city} on Windshield Repair HQ.`}
           </p>
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
             {featuredCta}

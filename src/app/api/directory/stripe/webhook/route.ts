@@ -3,6 +3,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
 import { getShopBySlug, citySlug } from '@/lib/directory/data'
 import { grantFeatured, revokeFeatured, slugForStripeId } from '@/lib/directory/featured'
+import { publishListing, hydrateDynamicListings } from '@/lib/directory/listings'
 
 // Stripe webhook for the self-serve $7/mo Featured tier.
 //   checkout.session.completed      → grant Featured + revalidate the shop's pages
@@ -75,6 +76,10 @@ export async function POST(request: Request) {
         customerId: (obj.customer as string | undefined) || undefined,
         subscriptionId: (obj.subscription as string | undefined) || undefined,
       })
+      // If this was a brand-new self-serve listing, publish it live now.
+      await publishListing(slug)
+      // Load the freshly published listing so revalidateShop can resolve its city/state.
+      await hydrateDynamicListings()
       await revalidateShop(slug)
     }
     return NextResponse.json({ ok: true })
