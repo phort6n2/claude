@@ -305,6 +305,7 @@ function featuredEmail(r: Recipient, step: number): Email {
          <p style="margin:0 0 12px">Featured listings appear <strong>above every shop in ${esc(
            city
          )} that isn't Featured</strong> — so you're the first name drivers see when they're deciding who to call.</p>
+         <p style="margin:0 0 12px">Featured shops can also show their <strong>latest blog posts</strong> right on their listing — fresh content that keeps customers reading.</p>
          <p style="margin:0">It's ${esc(FEATURED_PRICE_DISPLAY)}, and you can cancel anytime.</p>`,
         link,
         `Feature ${r.shop.name} — ${FEATURED_PRICE_DISPLAY}`
