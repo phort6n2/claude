@@ -181,6 +181,16 @@ export async function unsubscribeSlug(slug: string, token: string): Promise<bool
   return markUnsubscribed(slug)
 }
 
+/** Has this shop opted out of marketing email? Shared with the rank triggers. */
+export async function isUnsubscribed(slug: string): Promise<boolean> {
+  return (await readState(slug))?.unsubscribed === true
+}
+
+/** Public unsubscribe link for a shop (reused by other marketing sends). */
+export function unsubscribeUrlFor(slug: string): string {
+  return unsubUrl(slug)
+}
+
 // ---- segmentation ---------------------------------------------------------
 
 function daysSince(iso?: string): number {

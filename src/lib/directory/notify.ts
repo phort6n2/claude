@@ -243,3 +243,70 @@ export async function notifyListingPublished(opts: {
     html,
   })
 }
+
+/**
+ * "You just got passed" — the loss-aversion trigger. Fired when a shop drops a
+ * position in its city (see rank-history.ts). This is MARKETING, not
+ * transactional, so the caller must check consent + unsubscribe first; we
+ * always include the unsubscribe link and the postal address.
+ */
+export async function notifyRankDrop(opts: {
+  shop: Shop
+  email: string
+  from: number
+  to: number
+  total: number
+  passedBy?: { slug: string; name: string }[]
+  unsubscribeUrl: string
+  mailingAddress: string
+}): Promise<void> {
+  if (!notificationsEnabled()) return
+  const { shop, email, from, to, total, passedBy, unsubscribeUrl, mailingAddress } = opts
+
+  const checkout = featuredCheckoutUrl(shop.slug, email) || `${SITE_URL}/directory/for-shops`
+  const passer = passedBy?.[0]?.name
+  const subject = passer
+    ? `${passer} just passed you in ${shop.city}`
+    : `You slipped to #${to} in ${shop.city}`
+
+  const opening = passer
+    ? `<strong>${esc(passer)}</strong> just moved ahead of ${esc(
+        shop.name
+      )} in ${esc(shop.city)}.`
+    : `${esc(shop.name)} just slipped in ${esc(shop.city)}.`
+
+  const html = `<!doctype html><html><body style="margin:0;background:#f3f4f6;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0"><tr><td align="center">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb">
+      <tr><td style="background:#2563eb;padding:20px 28px;color:#fff;font-weight:700;font-size:16px">Windshield Repair HQ</td></tr>
+      <tr><td style="padding:28px">
+        <h1 style="margin:0 0 12px;font-size:20px;color:#111827">${esc(subject)}</h1>
+        <div style="color:#374151;font-size:15px;line-height:1.6">
+          <p style="margin:0 0 12px">${opening}</p>
+          <p style="margin:0 0 16px">You moved from <strong>#${from}</strong> to <strong>#${to}</strong> of ${total} auto glass shops in ${esc(
+            shop.city
+          )}.</p>
+          <p style="margin:0 0 12px">Featured listings sit above every shop in ${esc(
+            shop.city
+          )} that isn't Featured — so your spot doesn't depend on who else moves.</p>
+        </div>
+        <div style="margin:22px 0 4px"><a href="${esc(
+          checkout
+        )}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 22px;border-radius:10px">Get the top spot — ${esc(
+    FEATURED_PRICE_DISPLAY
+  )}</a></div>
+      </td></tr>
+      <tr><td style="padding:16px 28px;background:#f9fafb;border-top:1px solid #f0f0f0;color:#9ca3af;font-size:12px;line-height:1.6">
+        You're getting this because you asked us to keep you posted on your listing.<br>
+        <a href="${esc(unsubscribeUrl)}" style="color:#6b7280">Unsubscribe</a> · ${esc(mailingAddress)}
+      </td></tr>
+    </table>
+  </td></tr></table></body></html>`
+
+  await send({
+    to: [email],
+    subject,
+    text: `${passer ? `${passer} just passed you.` : 'You slipped.'} ${shop.name} moved from #${from} to #${to} of ${total} in ${shop.city}. Featured puts you above every non-Featured shop: ${checkout}`,
+    html,
+  })
+}

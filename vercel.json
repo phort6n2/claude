@@ -25,6 +25,10 @@
     {
       "path": "/api/directory/campaign/run",
       "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/directory/rank/snapshot",
+      "schedule": "0 13 * * *"
     }
   ]
 }
