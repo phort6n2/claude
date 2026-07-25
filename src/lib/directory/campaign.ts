@@ -31,7 +31,7 @@ import { listMarketingConsent } from './profiles'
 import { hydrateDirectory } from './listings'
 import {
   featuredCheckoutUrl,
-  AGMP_AUDIT_URL,
+  rankUrl,
   FEATURED_PRICE_DISPLAY,
 } from './agmp'
 import type { Shop } from './types'
@@ -352,7 +352,9 @@ function featuredEmail(r: Recipient, step: number): Email {
 // --- Track B: Featured → AGMP managed (uses real lead count) ---
 
 function agmpEmail(r: Recipient, step: number): Email {
-  const link = AGMP_AUDIT_URL
+  // Hand off to /rank with this shop's real position so AGMP's page opens on
+  // the same story the email told (and attribution comes back to WRHQ).
+  const link = rankUrl({ rank: r.rank, of: r.total, city: r.shop.city, shop: r.shop.name })
   const city = r.shop.city
 
   if (step === 1) {

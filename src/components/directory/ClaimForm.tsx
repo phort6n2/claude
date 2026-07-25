@@ -15,7 +15,7 @@ import {
 import { GbpPicker, type GbpDetails } from './GbpPicker'
 import {
   featuredCheckoutUrl,
-  AGMP_AUDIT_URL,
+  rankUrl,
   AGMP_PHONE_DISPLAY,
   AGMP_PHONE_TEL,
   FEATURED_PRICE_DISPLAY,
@@ -141,7 +141,14 @@ export function ClaimForm({ existingShopSlug, existingShopName, intent = 'free' 
   }
 
   if (status === 'success') {
-    return <ClaimSuccess result={result} email={email} intent={intent} />
+    return (
+      <ClaimSuccess
+        result={result}
+        email={email}
+        intent={intent}
+        businessName={businessName}
+      />
+    )
   }
 
   const input =
@@ -414,15 +421,25 @@ function ClaimSuccess({
   result,
   email,
   intent,
+  businessName,
 }: {
   result: { slug?: string; rank?: RankInfo; newListing?: boolean } | null
   email: string
   intent: 'free' | 'featured'
+  businessName?: string
 }) {
   const rank = result?.rank
   const slug = result?.slug
   const newListing = !!result?.newListing
   const checkout = slug ? featuredCheckoutUrl(slug, email) : null
+  // Hand off to AGMP's /rank page carrying this shop's real position, so the
+  // rank-reveal narrative continues instead of restarting at a bare audit.
+  const agmpRank = rankUrl({
+    rank: rank?.rank,
+    of: rank?.total,
+    city: rank?.city,
+    shop: businessName || undefined,
+  })
   const featuredCta = checkout ? (
     <a
       href={checkout}
@@ -492,7 +509,7 @@ function ClaimSuccess({
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
             {featuredCta}
             <a
-              href={AGMP_AUDIT_URL}
+              href={agmpRank}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 hover:text-blue-800"
@@ -507,7 +524,7 @@ function ClaimSuccess({
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           {featuredCta}
           <a
-            href={AGMP_AUDIT_URL}
+            href={agmpRank}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 hover:text-blue-800"
