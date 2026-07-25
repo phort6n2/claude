@@ -312,3 +312,58 @@ export async function notifyRankDrop(opts: {
     html,
   })
 }
+
+/**
+ * Send a one-off test email and REPORT the outcome. Everything else here
+ * swallows failures on purpose (a lead must never fail because email is down),
+ * which makes a misconfigured key or unverified domain invisible. This is the
+ * deliberate exception: it returns Resend's actual error so the console can
+ * show what's wrong.
+ */
+export async function sendTestEmail(to: string): Promise<{ ok: boolean; error?: string }> {
+  const key = process.env.RESEND_API_KEY
+  if (!key) return { ok: false, error: 'RESEND_API_KEY is not set.' }
+
+  const from = fromAddress()
+  const html = `<!doctype html><html><body style="margin:0;background:#f3f4f6;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0"><tr><td align="center">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb">
+      <tr><td style="background:#2563eb;padding:20px 28px;color:#fff;font-weight:700;font-size:16px">Windshield Repair HQ</td></tr>
+      <tr><td style="padding:28px;color:#374151;font-size:15px;line-height:1.6">
+        <h1 style="margin:0 0 12px;font-size:20px;color:#111827">Email is working ✅</h1>
+        <p style="margin:0 0 12px">If you're reading this, your Resend key and sending domain are set up correctly.</p>
+        <p style="margin:0;color:#6b7280;font-size:13px">Sent from <strong>${esc(from)}</strong>.
+        Lead alerts and listing emails will come from this address.</p>
+      </td></tr>
+    </table>
+  </td></tr></table></body></html>`
+
+  try {
+    const res = await fetch(RESEND_ENDPOINT, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        subject: 'Windshield Repair HQ — email is working',
+        text: `Your Resend key and sending domain are set up correctly. Sent from ${from}.`,
+        html,
+      }),
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) {
+      // Resend's message is the useful part (unverified domain, bad key, etc).
+      const body = await res.text()
+      let detail = body
+      try {
+        detail = (JSON.parse(body).message as string) || body
+      } catch {
+        /* keep raw */
+      }
+      return { ok: false, error: `Resend ${res.status}: ${detail}` }
+    }
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Send failed' }
+  }
+}
