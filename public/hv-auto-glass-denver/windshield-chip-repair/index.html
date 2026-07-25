@@ -287,7 +287,6 @@
 
   /* map */
   .map-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;position:sticky;top:90px}
-  .map-svg{width:100%;height:auto;display:block;background:#0E1319}
   .map-foot{padding:20px 22px}
   .map-foot h3{font-size:18px;margin-bottom:12px}
   .area-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
@@ -516,6 +515,28 @@
   @media(max-width:360px){
     .quote-card{padding:20px 16px}
   }
+
+  /* Real Google Business Profile map */
+  .map-embed{width:100%;height:300px;border:0;display:block;background:#0E1319}
+  @media(max-width:940px){.map-embed{height:260px}}
+
+  /* Work photos — real jobs, not stock */
+  .work{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media(max-width:860px){.work{grid-template-columns:1fr;gap:14px}}
+  @media(max-width:520px){.work{grid-template-columns:1fr}}
+  .work figure{margin:0;position:relative;border-radius:var(--r-sm);overflow:hidden;
+    border:1px solid var(--border);background:var(--surface-2);aspect-ratio:3/2}
+  .work img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s ease}
+  .work figure:hover img{transform:scale(1.04)}
+  @media(prefers-reduced-motion:reduce){.work figure:hover img{transform:none}}
+  .work figcaption{position:absolute;left:0;right:0;bottom:0;padding:24px 14px 11px;
+    font-size:12.5px;font-weight:600;color:#fff;line-height:1.3;
+    background:linear-gradient(transparent,rgba(6,9,13,.9))}
+  /* Crop bias keeps the subject in frame and pushes the printed phone
+     numbers on the promo tiles out of view — a baked-in number can't be
+     swapped by the call-tracking pool, so it must not be visible. */
+  .work .crop-eq img{object-position:center 34%}
+  .work .crop-finished img{object-position:center 30%}
 
   /* ===== Service detail block (service & city pages) ===== */
   .detail-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:46px;align-items:start}
@@ -765,6 +786,35 @@
   </div>
 </section>
 
+
+<!-- ================= REAL WORK ================= -->
+<section class="section-pad" id="work" style="padding-top:0">
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">On the job</span>
+      <h2>Our technicians, our actual work</h2>
+      <p>Real installs from around metro Denver — cars, trucks and heavy equipment.</p>
+    </div>
+    <div class="work">
+      <figure>
+        <img src="/hv-auto-glass-denver/img/shop-install.webp" width="900" height="675" loading="lazy" decoding="async"
+             alt="Three HV Auto Glass technicians removing a windshield from a vehicle in the shop bay">
+        <figcaption>Windshield out, pinchweld prepped</figcaption>
+      </figure>
+      <figure class="crop-eq">
+        <img src="/hv-auto-glass-denver/img/heavy-equipment.webp" width="900" height="1200" loading="lazy" decoding="async"
+             alt="John Deere 310J backhoe with newly fitted cab glass taped while the urethane cures">
+        <figcaption>Heavy equipment &amp; cab glass</figcaption>
+      </figure>
+      <figure class="crop-finished">
+        <img src="/hv-auto-glass-denver/img/finished-windshield.webp" width="900" height="900" loading="lazy" decoding="async"
+             alt="Freshly installed windshield taped while the adhesive cures during a mobile appointment">
+        <figcaption>Mobile install, curing on site</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
 <!-- ================= PROCESS ================= -->
 <section class="section-pad">
   <div class="wrap">
@@ -847,38 +897,11 @@
 
       <!-- MAP -->
       <div class="map-card">
-        <svg class="map-svg" viewBox="0 0 400 300" role="img" aria-label="HV Auto Glass Denver mobile service area map">
-          <defs>
-            <pattern id="grid" width="26" height="26" patternUnits="userSpaceOnUse">
-              <path d="M26 0H0V26" fill="none" stroke="#1C232C" stroke-width="1"/>
-            </pattern>
-            <radialGradient id="reach" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stop-color="#FFC53D" stop-opacity="0.16"/>
-              <stop offset="70%" stop-color="#5AD1F0" stop-opacity="0.06"/>
-              <stop offset="100%" stop-color="#5AD1F0" stop-opacity="0"/>
-            </radialGradient>
-          </defs>
-          <rect width="400" height="300" fill="#0E1319"/>
-          <rect width="400" height="300" fill="url(#grid)"/>
-          <!-- highways -->
-          <path d="M40 150 L360 150" stroke="#28313C" stroke-width="6" fill="none"/>
-          <path d="M200 20 L200 280" stroke="#28313C" stroke-width="6" fill="none"/>
-          <path d="M60 40 Q200 150 340 260" stroke="#28313C" stroke-width="4" fill="none"/>
-          <text x="46" y="144" fill="#3a4756" font-size="11" font-family="monospace">I-70</text>
-          <text x="205" y="34" fill="#3a4756" font-size="11" font-family="monospace">I-25</text>
-          <!-- reach -->
-          <circle cx="200" cy="150" r="140" fill="url(#reach)"/>
-          <circle cx="200" cy="150" r="118" fill="none" stroke="#5AD1F0" stroke-width="1" stroke-dasharray="5 6" opacity="0.5"/>
-          <!-- city pins -->
-          <g font-family="monospace" font-size="13" fill="#EAEEF3">
-            <g><circle cx="200" cy="150" r="7" fill="#FFC53D"/><circle cx="200" cy="150" r="12" fill="none" stroke="#FFC53D" stroke-width="1.5" opacity="0.5"/><text x="200" y="172" text-anchor="middle" font-weight="bold">Denver</text></g>
-            <g><circle cx="300" cy="185" r="4" fill="#5AD1F0"/><text x="300" y="205" text-anchor="middle">Aurora</text></g>
-            <g><circle cx="120" cy="170" r="4" fill="#5AD1F0"/><text x="118" y="190" text-anchor="middle">Lakewood</text></g>
-            <g><circle cx="150" cy="95" r="4" fill="#5AD1F0"/><text x="150" y="85" text-anchor="middle">Arvada</text></g>
-            <g><circle cx="228" cy="92" r="4" fill="#5AD1F0"/><text x="235" y="82" text-anchor="middle">Thornton</text></g>
-            <g><circle cx="168" cy="128" r="4" fill="#5AD1F0"/><text x="168" y="118" text-anchor="middle">Wheat Ridge</text></g>
-          </g>
-        </svg>
+        <iframe class="map-embed"
+          src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d3068.0317167477388!2d-105.0555081!3d39.7389384!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x43c58b88b0334405%3A0xc161b6aad581f3b4!2sHV%20Auto%20Glass%20Denver!5e0!3m2!1sen!2sca!4v1769394826917!5m2!1sen!2sca"
+          title="HV Auto Glass Denver on Google Maps"
+          loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+          allowfullscreen></iframe>
         <div class="map-foot">
           <h3>Serving all of metro Denver</h3>
           <div class="area-list">
