@@ -1,0 +1,210 @@
+/* ============================================================
+   HV AUTO GLASS — GHL form styling to match the landing page
+   Paste into: GHL form builder → Styles / Settings → Custom CSS
+   ------------------------------------------------------------
+   This CSS runs INSIDE the form's iframe, so plain element
+   selectors (input, label, button) are safe and are the most
+   reliable way to target GHL's markup across versions.
+
+   IMPORTANT: this is tuned for the form being EMBEDDED in the
+   landing page's dark card, which already supplies the border,
+   22px radius, padding and the amber/cyan top stripe. So the
+   form itself is transparent with no border — that avoids a
+   card-inside-a-card look. If you also use this form somewhere
+   standalone, see "STANDALONE" at the bottom.
+   ============================================================ */
+
+/* ---------- 1. Shell: transparent, let the page card show ---------- */
+html, body,
+.form-builder--wrapper,
+.hl-form, form,
+[class*="form-wrapper"], [class*="formWrapper"] {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+}
+
+body, .form-builder--wrapper, .hl-form, form {
+  padding: 0 !important;                      /* the page card provides padding */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               Helvetica, Arial, sans-serif !important;
+  color: #EAEEF3 !important;
+  color-scheme: dark;                          /* native dropdowns render dark */
+}
+
+/* ---------- 2. Headings and helper text ---------- */
+h1, h2, h3, h4,
+[class*="heading"], [class*="Heading"] {
+  color: #EAEEF3 !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+  line-height: 1.15 !important;
+}
+
+p, [class*="description"], [class*="subtitle"], [class*="help"] {
+  color: #9BA6B2 !important;
+  font-size: 14px !important;
+  line-height: 1.55 !important;
+}
+
+/* ---------- 3. Field labels — uppercase mono.
+   This detail carries most of the design's character. ---------- */
+label,
+.form-label,
+[class*="field-label"], [class*="fieldLabel"] {
+  display: block !important;
+  color: #8592A0 !important;
+  font-family: ui-monospace, "SF Mono", "Roboto Mono", Menlo, Consolas, monospace !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.11em !important;
+  text-transform: uppercase !important;
+  margin-bottom: 6px !important;
+}
+
+/* ---------- 4. Inputs, selects, textareas ---------- */
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="number"],
+input[type="url"],
+input[type="date"],
+select,
+textarea {
+  width: 100% !important;
+  background: #0E1319 !important;
+  border: 1px solid #28313C !important;
+  border-radius: 11px !important;
+  color: #EAEEF3 !important;
+  font-family: inherit !important;
+  font-size: 15.5px !important;
+  padding: 13px 14px !important;
+  box-shadow: none !important;
+  transition: border-color .15s ease, box-shadow .15s ease !important;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #55606C !important;
+  opacity: 1 !important;
+}
+
+/* Focus ring — amber glow, matches the page */
+input:focus, select:focus, textarea:focus {
+  outline: none !important;
+  border-color: #FFC53D !important;
+  box-shadow: 0 0 0 3px rgba(255, 197, 61, 0.18) !important;
+}
+
+/* Chrome autofill would otherwise paint inputs white/yellow
+   and wreck the dark theme. This keeps them dark. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #EAEEF3 !important;
+  -webkit-box-shadow: 0 0 0 1000px #0E1319 inset !important;
+  caret-color: #EAEEF3 !important;
+  transition: background-color 9999s ease-out 0s !important;
+}
+
+/* Custom dropdown arrow (native one disappears with appearance:none) */
+select {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239BA6B2' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 12px center !important;
+  background-size: 18px !important;
+  padding-right: 40px !important;
+}
+select option { background: #0E1319 !important; color: #EAEEF3 !important; }
+
+/* ---------- 5. Radios & checkboxes — sentence case, not mono ---------- */
+input[type="radio"] + label,
+input[type="checkbox"] + label,
+.radio-label, .checkbox-label,
+[class*="radio"] label, [class*="checkbox"] label {
+  text-transform: none !important;
+  font-family: inherit !important;
+  font-size: 14px !important;
+  letter-spacing: 0 !important;
+  color: #EAEEF3 !important;
+  margin-bottom: 0 !important;
+}
+input[type="radio"], input[type="checkbox"] { accent-color: #FFC53D !important; }
+
+/* ---------- 6. Submit button — full amber pill ---------- */
+button[type="submit"],
+.btn-submit, .form-btn, [class*="submit"] button, button[class*="submit"] {
+  display: block !important;
+  width: 100% !important;
+  background: #FFC53D !important;
+  background-image: none !important;
+  color: #1A1200 !important;
+  border: none !important;
+  border-radius: 999px !important;
+  font-family: inherit !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.01em !important;
+  padding: 16px 26px !important;
+  margin-top: 6px !important;
+  cursor: pointer !important;
+  box-shadow: 0 10px 30px -8px rgba(255, 197, 61, 0.5) !important;
+  transition: transform .18s ease, box-shadow .18s ease !important;
+}
+button[type="submit"]:hover,
+.btn-submit:hover, .form-btn:hover {
+  background: #FFC53D !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 16px 40px -8px rgba(255, 197, 61, 0.6) !important;
+}
+button[type="submit"]:focus-visible {
+  outline: 3px solid #5AD1F0 !important;
+  outline-offset: 2px !important;
+}
+
+/* ---------- 7. Spacing rhythm between fields ---------- */
+.form-group, [class*="field-container"], [class*="fieldContainer"],
+[class*="form-field"] {
+  margin-bottom: 13px !important;
+}
+
+/* ---------- 8. Validation errors ---------- */
+[class*="error"], [class*="invalid"], .text-danger {
+  color: #EA4335 !important;
+  font-size: 12.5px !important;
+  text-transform: none !important;
+  font-family: inherit !important;
+  letter-spacing: 0 !important;
+}
+input.error, input[aria-invalid="true"] { border-color: #EA4335 !important; }
+
+/* ---------- 9. Fine print / consent text ---------- */
+[class*="consent"], [class*="disclaimer"], [class*="terms"], small {
+  color: #8592A0 !important;
+  font-size: 11px !important;
+  line-height: 1.45 !important;
+  text-transform: none !important;
+  font-family: inherit !important;
+  letter-spacing: 0 !important;
+}
+
+/* ---------- 10. Kill GHL's default focus/hover blues ---------- */
+*:focus { outline-color: #FFC53D !important; }
+a { color: #5AD1F0 !important; }
+
+
+/* ============================================================
+   STANDALONE USE
+   If you use this form OUTSIDE the landing page card (its own
+   page, a popup), uncomment this so it brings its own card:
+
+   body, form {
+     background: linear-gradient(180deg, #1C232C, #151A21) !important;
+     border: 1px solid #28313C !important;
+     border-radius: 22px !important;
+     padding: 28px !important;
+   }
+   ============================================================ */
