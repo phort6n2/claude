@@ -5,11 +5,46 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Denver mobile windshield replacement, repair &amp; ADAS calibration. We come to you — often $0 with insurance. Same-day service, lifetime warranty. Call (720) 232-0320.">
 <meta name="theme-color" content="#0B0E12">
-<!-- ANALYTICS: paste your GA4 tag here to enable tracking. The page already fires
-     'click_to_call' and 'generate_lead' events via gtag()/dataLayer when present.
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXX"></script>
-<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-XXXXXXX');</script>
--->
+<!-- ============================================================
+     TRACKING CONFIG — the only place you need to paste IDs.
+     Fill these three in and everything else wires itself up:
+     Google Ads conversion tracking, enhanced conversions, and GA4.
+     Leave a value as "" to disable that piece.
+     ============================================================ -->
+<script>
+  window.HV_CONFIG = {
+    // Google Ads → Tools → Conversions → your "Lead / Form Submit" action →
+    // "Tag setup" → "Use Google tag". It shows: send_to: 'AW-123456789/AbC-D_efGh12'
+    GOOGLE_ADS_ID:    "",   // the AW- part,  e.g. "AW-123456789"
+    GOOGLE_ADS_LABEL: "",   // the part after the slash, e.g. "AbC-D_efGh12"
+
+    GA4_ID: "",             // optional, e.g. "G-XXXXXXXX"
+
+    // Assign an average lead value so Google can optimize toward revenue.
+    // Set to 0 if you'd rather report conversions without a value.
+    LEAD_VALUE: 0,
+    CURRENCY: "USD"
+  };
+
+  // Boot gtag.js once if either Google Ads or GA4 is configured.
+  (function(){
+    var c = window.HV_CONFIG;
+    var primary = c.GOOGLE_ADS_ID || c.GA4_ID;
+    if(!primary) return;                       // nothing configured yet → no-op
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function(){ window.dataLayer.push(arguments); };
+    gtag('js', new Date());
+    var s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(primary);
+    document.head.appendChild(s);
+    if(c.GOOGLE_ADS_ID){
+      // allow_enhanced_conversions lets hashed email/phone improve match rates
+      gtag('config', c.GOOGLE_ADS_ID, { allow_enhanced_conversions: true });
+    }
+    if(c.GA4_ID){ gtag('config', c.GA4_ID); }
+  })();
+</script>
 
 <title>HV Auto Glass Denver — $0 Windshield Replacement, We Come To You</title>
 <style>
@@ -864,6 +899,42 @@
     a.addEventListener('click', function(){ track('click_to_call', {phone:'7202320320'}); });
   });
 
+  // ===== Google Ads conversion =====
+  // Reports the lead straight from the page, so it does not depend on any CRM
+  // automation. The gclid Google set on the landing URL is what ties this
+  // conversion back to the click that paid for it.
+  //
+  // Enhanced conversions: email/phone are passed to gtag, which hashes them
+  // in the browser (they are never sent in the clear) to raise match rates.
+  //
+  // Deduped by transaction_id and a sessionStorage flag, so a refresh or a
+  // double-click can't report the same lead twice.
+  function fireAdsConversion(lead){
+    var c = window.HV_CONFIG || {};
+    if(!c.GOOGLE_ADS_ID || !c.GOOGLE_ADS_LABEL || !window.gtag) return;
+
+    var txnId = 'hv-' + (attribution.gclid || 'direct') + '-' +
+                String(lead.phone || '').replace(/\D/g,'').slice(-10);
+    try{
+      if(sessionStorage.getItem('hv_conv_' + txnId)) return;   // already reported
+      sessionStorage.setItem('hv_conv_' + txnId, '1');
+    }catch(e){}
+
+    try{
+      gtag('set', 'user_data', {
+        email: lead.email || undefined,
+        phone_number: lead.phone || undefined
+      });
+    }catch(e){}
+
+    gtag('event', 'conversion', {
+      send_to: c.GOOGLE_ADS_ID + '/' + c.GOOGLE_ADS_LABEL,
+      value: Number(c.LEAD_VALUE) || 0,
+      currency: c.CURRENCY || 'USD',
+      transaction_id: txnId
+    });
+  }
+
   // ===== Lead delivery to HighLevel =====
   // HighLevel Inbound Workflow webhook. NOTE: this URL is visible in page source
   // (unavoidable for any browser-side post). It is write-only — it can only start
@@ -907,10 +978,11 @@
       if(!ok){ (firstBad || nm).focus(); return; }
 
       var first = (nm.value.trim().split(' ')[0]) || 'there';
+      var leadInfo = { email: em.value.trim(), phone: ph.value.trim() };
       track('generate_lead', {form:'quote'});
 
-      // No webhook set yet → demo success (page still works while you wire it up)
-      if(!LEAD_WEBHOOK){ showSuccess(first); return; }
+      // No webhook set yet → still report the conversion, then show success
+      if(!LEAD_WEBHOOK){ fireAdsConversion(leadInfo); showSuccess(first); return; }
 
       var insEl = document.querySelector('input[name="insurance"]:checked');
       var fullName = nm.value.trim();
@@ -942,6 +1014,7 @@
       })
         .then(function(res){
           if(!res.ok) throw new Error('HTTP ' + res.status);
+          fireAdsConversion(leadInfo);   // only count a conversion once the lead landed
           showSuccess(first);
         })
         .catch(function(){ showError(); });
