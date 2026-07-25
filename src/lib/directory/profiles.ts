@@ -20,6 +20,8 @@ export interface OwnerProfile {
   website?: string
   email?: string
   socials?: { platform: string; url: string }[]
+  // Optional blog or RSS/Atom URL — powers "Latest from the blog" on the listing.
+  blogUrl?: string
   // Owner's explicit choice about marketing emails (the upsell drip). Undefined
   // = never asked; true/false = a deliberate opt-in / opt-out from the dashboard.
   marketingOptIn?: boolean

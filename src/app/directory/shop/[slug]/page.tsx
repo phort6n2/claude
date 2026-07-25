@@ -44,7 +44,9 @@ import { StickyCallBar } from '@/components/directory/StickyCallBar'
 import { QuoteForm } from '@/components/directory/QuoteForm'
 import { IndependentBadge } from '@/components/directory/IndependentBadge'
 import { enrichShop } from '@/lib/directory/photos'
-import { applyOwnerProfile } from '@/lib/directory/profiles'
+import { applyOwnerProfile, getOwnerProfile } from '@/lib/directory/profiles'
+import { getShopPosts } from '@/lib/directory/feed'
+import { ShopBlogPosts } from '@/components/directory/ShopBlogPosts'
 import { getReview, withReviews, googlePlaceUrl } from '@/lib/directory/reviews'
 import { GoogleReviews } from '@/components/directory/GoogleReviews'
 import { hydrateDirectory } from '@/lib/directory/listings'
@@ -108,6 +110,9 @@ export default async function ShopDetailPage({
     .filter(Boolean)
     .join(', ')
   const related = await withReviews(getRelatedShops(shop, 3))
+  // Latest posts from the owner's blog (if they configured a feed URL).
+  const ownerProfile = await getOwnerProfile(shop.slug)
+  const blogPosts = await getShopPosts(shop.slug, ownerProfile?.blogUrl)
   const autoRepair = autoRepairJsonLd(shop)
   const breadcrumb = breadcrumbJsonLd([
     { name: 'Directory', path: '/directory' },
@@ -273,6 +278,9 @@ export default async function ShopDetailPage({
                 </div>
               </>
             )}
+
+            {/* Latest blog posts (owner-configured feed) */}
+            <ShopBlogPosts posts={blogPosts} shopName={shop.name} />
 
             {/* Location + directions */}
             <h2 className="mt-10 flex items-center gap-2 text-xl font-bold text-gray-900">

@@ -145,14 +145,21 @@ export async function createPendingListing(shop: Shop, email?: string): Promise<
   return true
 }
 
-/** Publish a pending listing (called by the Stripe webhook on payment). */
-export async function publishListing(slug: string): Promise<boolean> {
+/**
+ * Publish a pending listing (Stripe webhook on payment, or admin free-approve).
+ * Returns the record plus whether this call was the one that flipped it live —
+ * callers use newlyPublished to fire a one-time "you're live" email.
+ */
+export async function publishListing(
+  slug: string
+): Promise<{ record: ListingRecord; newlyPublished: boolean } | null> {
   const rec = await readSlug(slug)
-  if (!rec) return false
-  if (rec.status === 'published') return true
-  await writeSlug(slug, { ...rec, status: 'published' })
+  if (!rec) return null
+  if (rec.status === 'published') return { record: rec, newlyPublished: false }
+  const updated: ListingRecord = { ...rec, status: 'published' }
+  await writeSlug(slug, updated)
   revalidateTag(RUNTIME_TAG, 'max')
-  return true
+  return { record: updated, newlyPublished: true }
 }
 
 /** Whether a slug belongs to a dynamic (self-serve) listing in any status. */

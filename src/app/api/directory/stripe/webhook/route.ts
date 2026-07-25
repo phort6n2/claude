@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getShopBySlug, citySlug } from '@/lib/directory/data'
 import { grantFeatured, revokeFeatured, slugForStripeId } from '@/lib/directory/featured'
 import { publishListing, hydrateDynamicListings } from '@/lib/directory/listings'
+import { notifyListingPublished } from '@/lib/directory/notify'
 
 // Stripe webhook for the self-serve $7/mo Featured tier.
 //   checkout.session.completed      → grant Featured + revalidate the shop's pages
@@ -77,10 +78,18 @@ export async function POST(request: Request) {
         subscriptionId: (obj.subscription as string | undefined) || undefined,
       })
       // If this was a brand-new self-serve listing, publish it live now.
-      await publishListing(slug)
+      const published = await publishListing(slug)
       // Load the freshly published listing so revalidateShop can resolve its city/state.
       await hydrateDynamicListings()
       await revalidateShop(slug)
+      // Welcome + celebration email — only if this call published a new listing.
+      if (published?.newlyPublished) {
+        await notifyListingPublished({
+          shop: published.record.shop,
+          email: email || published.record.email,
+          featured: true,
+        })
+      }
     }
     return NextResponse.json({ ok: true })
   }

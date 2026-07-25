@@ -18,6 +18,7 @@ const ProfileSchema = z.object({
   phone: z.string().max(40).optional(),
   website: z.string().url().max(300).optional().or(z.literal('')),
   email: z.string().email().max(200).optional().or(z.literal('')),
+  blogUrl: z.string().url().max(300).optional().or(z.literal('')),
   socials: z
     .array(
       z.object({
@@ -49,6 +50,7 @@ export async function POST(request: Request) {
     phone: d.phone?.trim() || undefined,
     website: d.website?.trim() || undefined,
     email: d.email?.trim() || undefined,
+    blogUrl: d.blogUrl?.trim() || undefined,
     socials: socials.length ? socials : undefined,
   })
   return NextResponse.json({ ok: true, stored })

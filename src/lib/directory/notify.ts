@@ -10,8 +10,13 @@
 import type { Quote } from './quotes'
 import type { Shop } from './types'
 import { serviceMeta } from './data'
+import { featuredCheckoutUrl, AGMP_AUDIT_URL, FEATURED_PRICE_DISPLAY } from './agmp'
 
 const RESEND_ENDPOINT = 'https://api.resend.com/emails'
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://windshieldrepairhq.com').replace(
+  /\/$/,
+  ''
+)
 
 export function notificationsEnabled(): boolean {
   return !!process.env.RESEND_API_KEY
@@ -154,4 +159,77 @@ export async function notifyNewQuote(quote: Quote, shop: Shop): Promise<void> {
   }
 
   await Promise.all(jobs)
+}
+
+/**
+ * Email the owner the moment their listing goes live — a welcome + a natural
+ * upsell touchpoint. Free listings get nudged to Featured; a shop that just
+ * paid for Featured gets a celebration + a soft nudge toward managed growth.
+ * Best-effort and consent-free: it's transactional (their own listing status).
+ */
+export async function notifyListingPublished(opts: {
+  shop: Shop
+  email?: string
+  featured?: boolean
+}): Promise<void> {
+  if (!notificationsEnabled()) return
+  const { shop, email, featured } = opts
+  if (!email) return
+
+  const listingUrl = `${SITE_URL}/directory/shop/${shop.slug}`
+  const checkout = featuredCheckoutUrl(shop.slug, email) || `${SITE_URL}/directory/for-shops`
+
+  const heading = featured
+    ? `You’re live and Featured in ${shop.city} 🎉`
+    : `${shop.name} is live 🎉`
+
+  const bodyHtml = featured
+    ? `<p style="margin:0 0 12px">Your listing is published and <strong>Featured</strong> — it now appears above every shop in ${esc(
+        shop.city
+      )} that isn’t Featured, so you’re the first name drivers see.</p>
+       <p style="margin:0 0 12px">When you’re ready to grow beyond the directory — Google Map Pack, ads, reviews — we can run all of it for you. No pressure; start with a free audit whenever it helps.</p>`
+    : `<p style="margin:0 0 12px">Your free listing is published and live on Windshield Repair HQ — drivers in ${esc(
+        shop.city
+      )} can find you and request a quote right now.</p>
+       <p style="margin:0 0 12px">Want to be the <strong>first</strong> shop they see? Featured puts ${esc(
+         shop.name
+       )} at the top of ${esc(shop.city)} for ${esc(FEATURED_PRICE_DISPLAY)} — cancel anytime.</p>`
+
+  const primaryHref = featured ? listingUrl : checkout
+  const primaryLabel = featured ? 'View your listing' : `Get Featured — ${FEATURED_PRICE_DISPLAY}`
+  const footer = featured
+    ? `You’re getting this because your listing is Featured on Windshield Repair HQ. Managed growth is powered by Auto Glass Marketing Pros — <a href="${esc(
+        AGMP_AUDIT_URL
+      )}" style="color:#6b7280">free audit</a>.`
+    : `You’re getting this because you added your shop to Windshield Repair HQ. <a href="${esc(
+        listingUrl
+      )}" style="color:#6b7280">View your listing</a>.`
+
+  const html = `<!doctype html><html><body style="margin:0;background:#f3f4f6;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0"><tr><td align="center">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb">
+      <tr><td style="background:#2563eb;padding:20px 28px;color:#fff;font-weight:700;font-size:16px">Windshield Repair HQ</td></tr>
+      <tr><td style="padding:28px">
+        <h1 style="margin:0 0 12px;font-size:20px;color:#111827">${esc(heading)}</h1>
+        <div style="color:#374151;font-size:15px;line-height:1.6">${bodyHtml}</div>
+        <div style="margin:22px 0 4px"><a href="${esc(
+          primaryHref
+        )}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 22px;border-radius:10px">${esc(
+    primaryLabel
+  )}</a></div>
+      </td></tr>
+      <tr><td style="padding:16px 28px;background:#f9fafb;border-top:1px solid #f0f0f0;color:#9ca3af;font-size:12px;line-height:1.6">${footer}</td></tr>
+    </table>
+  </td></tr></table></body></html>`
+
+  const text = featured
+    ? `${shop.name} is live and Featured in ${shop.city}. View it: ${listingUrl}`
+    : `${shop.name} is live on Windshield Repair HQ. View it: ${listingUrl}\n\nWant the top spot in ${shop.city}? Featured is ${FEATURED_PRICE_DISPLAY}: ${checkout}`
+
+  await send({
+    to: [email],
+    subject: heading,
+    text,
+    html,
+  })
 }
