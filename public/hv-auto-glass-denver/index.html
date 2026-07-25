@@ -346,6 +346,21 @@
 
   .icon{width:18px;height:18px;flex:none}
 
+  /* ===== Real-work photo strip =====
+     Absolute image paths on purpose: the page's canonical URL has no
+     trailing slash, so relative paths would resolve to the parent. */
+  .work{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:760px){.work{grid-template-columns:1fr;gap:12px}}
+  .work figure{margin:0;position:relative;border-radius:var(--r-sm);overflow:hidden;
+    border:1px solid var(--border);background:var(--surface-2);aspect-ratio:3/2}
+  .work img{width:100%;height:100%;object-fit:cover;display:block;
+    transition:transform .5s ease}
+  .work figure:hover img{transform:scale(1.04)}
+  .work figcaption{position:absolute;left:0;right:0;bottom:0;padding:22px 16px 12px;
+    font-size:13px;font-weight:600;color:#fff;
+    background:linear-gradient(transparent,rgba(6,9,13,.88))}
+  @media(prefers-reduced-motion:reduce){.work figure:hover img{transform:none}}
+
   /* ===== Audit fixes (CRO + UI/UX, desktop & mobile) ===== */
   /* Hero headline: let it wrap, never clip on small screens */
   .hero h1{font-size:clamp(30px,7vw,62px)}
@@ -836,7 +851,11 @@
     </div>
     <div class="foot-bottom">
       <span>© 2026 HV Auto Glass Denver. All rights reserved.</span>
-      <span>Privacy · Terms &amp; Conditions · Licensed &amp; Insured</span>
+      <span>
+        <a href="/hv-auto-glass-denver/privacy">Privacy Policy</a> ·
+        <a href="/hv-auto-glass-denver/terms">Terms &amp; Conditions</a> ·
+        Licensed &amp; Insured
+      </span>
     </div>
   </div>
 </footer>
