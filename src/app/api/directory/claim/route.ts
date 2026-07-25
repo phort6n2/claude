@@ -170,6 +170,15 @@ function authed(request: Request): boolean {
 
 export async function GET(request: Request) {
   if (!authed(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // A new-listing claim is "done" once its listing is live — derive that from
+  // the directory itself (getShopBySlug only returns published shops), so an
+  // approved listing leaves the active queue and stays out across reloads.
+  await hydrateDirectory()
   const claims = await listClaims()
-  return NextResponse.json({ claims })
+  const annotated = claims.map((c) => ({
+    ...c,
+    published:
+      c.type === 'new_listing' && !!c.listingSlug && !!getShopBySlug(c.listingSlug),
+  }))
+  return NextResponse.json({ claims: annotated })
 }
