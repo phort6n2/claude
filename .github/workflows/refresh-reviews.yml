@@ -30,10 +30,7 @@ jobs:
         run: node landing/fetch-reviews.cjs
 
       - name: Rebuild pages with the new numbers
-        run: |
-          node landing/build-pages.cjs
-          cp landing/hv-auto-glass-denver.html public/hv-auto-glass-denver/index.html
-          node landing/build-pages.cjs
+        run: npm run build:landing
 
       - name: Commit if anything changed
         run: |
@@ -43,6 +40,6 @@ jobs:
             echo "No review changes this week."
             exit 0
           fi
-          git add landing/reviews.json public/hv-auto-glass-denver
+          git add landing/reviews.json quote-site public/hv-auto-glass-denver
           git commit -m "Refresh Google reviews [skip ci]"
           git push

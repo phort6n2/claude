@@ -2,10 +2,19 @@
    Every page keeps the same design, form, tracking and call handling —
    only the copy, metadata and FAQ change.
 
-   BASE is the path prefix the site is served from. On the Vercel preview the
-   mini-site lives under /hv-auto-glass-denver. Once quote.hvautoglassdenver.com
-   points at the site root, set BASE to '' and rebuild — the slugs themselves
-   already match the existing Google Ads final URLs. */
+   Two outputs, both generated from this one source so they cannot drift:
+
+     quote-site/                    BASE=''  — the standalone site, served at
+                                    the root of its own Vercel project and
+                                    mapped to quote.hvautoglassdenver.com. The
+                                    slugs match the existing Google Ads final
+                                    URLs exactly.
+     public/hv-auto-glass-denver/   BASE='/hv-auto-glass-denver' — the preview
+                                    copy riding along with the Next.js app.
+                                    Drop this once the domain is live.
+
+   Override with the BASE and OUTDIR environment variables; `npm run
+   build:landing` produces both. */
 
 const fs = require('fs');
 const path = require('path');
@@ -23,7 +32,9 @@ try {
 const BASE = process.env.BASE !== undefined ? process.env.BASE : '/hv-auto-glass-denver';
 const ORIGIN = 'https://quote.hvautoglassdenver.com';
 const TEMPLATE = path.join(__dirname, 'hv-auto-glass-denver.html');
-const OUTDIR = path.join(__dirname, '..', 'public', 'hv-auto-glass-denver');
+const OUTDIR = process.env.OUTDIR
+  ? path.resolve(process.env.OUTDIR)
+  : path.join(__dirname, '..', 'public', 'hv-auto-glass-denver');
 
 const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const strip = s => String(s).replace(/<[^>]+>/g,'');
@@ -172,7 +183,7 @@ function build(p){
   s = applyReviews(s);
 
   // --- point in-page nav links at real pages, and fix the base path ---
-  s = s.replace(/href="\/hv-auto-glass-denver\//g, `href="${BASE}/`);
+  s = s.replace(/="\/hv-auto-glass-denver\//g, `="${BASE}/`);
 
   return s;
 }
@@ -285,7 +296,7 @@ for (const p of pages){
     `<script type="application/ld+json">${JSON.stringify(homeFaqLd(home))}</script>\n</body>`);
 
   home = applyReviews(home);
-  home = home.replace(/href="\/hv-auto-glass-denver\//g, `href="${BASE}/`);
+  home = home.replace(/="\/hv-auto-glass-denver\//g, `="${BASE}/`);
   fs.writeFileSync(path.join(OUTDIR, 'index.html'), home);
 }
 
@@ -298,10 +309,30 @@ for (const [src, slug] of [['legal-privacy.html','privacy'], ['legal-terms.html'
   if (!/rel="canonical"/.test(h)) {
     h = h.replace('</head>', `<link rel="canonical" href="${canonical}">\n</head>`);
   }
-  h = h.replace(/href="\/hv-auto-glass-denver\//g, `href="${BASE}/`);
+  // Match the bare "/hv-auto-glass-denver" home link as well as prefixed
+  // paths, so BASE='' rewrites it to "/" rather than leaving it dangling.
+  h = h.replace(/="\/hv-auto-glass-denver(?=["/])/g, `="${BASE || '/'}`)
+       .replace(/="\/hv-auto-glass-denver\//g, `="${BASE}/`);
   const dir = path.join(OUTDIR, slug);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'index.html'), h);
+}
+
+// --- Vercel static config -------------------------------------------------
+// Only meaningful for the standalone build, which is the root of its own
+// Vercel project. Harmless in the preview copy, which sits inside public/.
+if (BASE === '') {
+  fs.copyFileSync(path.join(__dirname, 'vercel-static.json'), path.join(OUTDIR, 'vercel.json'));
+}
+
+// --- images ---------------------------------------------------------------
+// landing/img is the source of truth; each build target gets its own copy so
+// the output directory is self-contained and can be served on its own.
+{
+  const from = path.join(__dirname, 'img');
+  const to = path.join(OUTDIR, 'img');
+  fs.mkdirSync(to, { recursive: true });
+  for (const f of fs.readdirSync(from)) fs.copyFileSync(path.join(from, f), path.join(to, f));
 }
 
 // --- sitemap.xml + robots.txt ---------------------------------------------
