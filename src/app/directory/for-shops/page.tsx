@@ -3,7 +3,12 @@ import Link from 'next/link'
 import { Search, TrendingUp, Phone, BarChart3, MapPin, Check, Star } from 'lucide-react'
 import { FOR_SHOPS } from '@/lib/directory/content'
 import { AgmpDisclosure } from '@/components/directory/AgmpDisclosure'
-import { AGMP_AUDIT_URL, FEATURED_PRICE_DISPLAY } from '@/lib/directory/agmp'
+import {
+  AGMP_RANK_URL,
+  AGMP_SITE_URL,
+  AGMP_FRAMEWORK_URL,
+  FEATURED_PRICE_DISPLAY,
+} from '@/lib/directory/agmp'
 
 const TIERS = [
   {
@@ -47,7 +52,7 @@ const TIERS = [
       'Call tracking & reporting',
     ],
     excluded: [],
-    cta: { label: 'Start with a free audit', href: AGMP_AUDIT_URL, external: true },
+    cta: { label: 'Start with a free audit', href: AGMP_RANK_URL, external: true },
     highlight: false,
   },
 ]
@@ -116,10 +121,14 @@ export default function ForShopsPage() {
           </div>
           <p className="mx-auto mt-6 max-w-2xl text-xs text-gray-400">
             Windshield Repair HQ&apos;s growth services are powered by{' '}
-            <a href={AGMP_AUDIT_URL} className="underline hover:text-gray-200">
+            <a href={AGMP_SITE_URL} className="underline hover:text-gray-200">
               Auto Glass Marketing Pros
             </a>{' '}
-            — the marketing agency built only for auto glass shops.
+            — the marketing agency built only for auto glass shops. See{' '}
+            <a href={AGMP_FRAMEWORK_URL} className="underline hover:text-gray-200">
+              how their framework works
+            </a>
+            .
           </p>
         </div>
       </section>

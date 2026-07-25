@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { isAdmin } from '@/lib/directory/admin-auth'
-import { getShopBySlug, citySlug } from '@/lib/directory/data'
+import { getShopBySlug, citySlug, getCityRank } from '@/lib/directory/data'
 import { publishListing, hydrateDynamicListings } from '@/lib/directory/listings'
 import { notifyListingPublished } from '@/lib/directory/notify'
 
@@ -38,10 +38,14 @@ export async function POST(request: Request) {
 
   // Welcome + upsell email — only the first time it goes live (free approve).
   if (result.newlyPublished) {
+    const published = shop ?? result.record.shop
+    const position = shop ? getCityRank(shop) : undefined
     await notifyListingPublished({
-      shop: shop ?? result.record.shop,
+      shop: published,
       email: result.record.email,
       featured: false,
+      rank: position?.rank,
+      total: position?.total,
     })
   }
   return NextResponse.json({ ok: true, slug })

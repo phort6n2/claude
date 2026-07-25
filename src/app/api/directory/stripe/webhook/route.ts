@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
-import { getShopBySlug, citySlug } from '@/lib/directory/data'
+import { getShopBySlug, citySlug, getCityRank } from '@/lib/directory/data'
 import { grantFeatured, revokeFeatured, slugForStripeId } from '@/lib/directory/featured'
 import { publishListing, hydrateDynamicListings } from '@/lib/directory/listings'
 import { notifyListingPublished } from '@/lib/directory/notify'
@@ -84,10 +84,14 @@ export async function POST(request: Request) {
       await revalidateShop(slug)
       // Welcome + celebration email — only if this call published a new listing.
       if (published?.newlyPublished) {
+        const live = getShopBySlug(slug)
+        const position = live ? getCityRank(live) : undefined
         await notifyListingPublished({
-          shop: published.record.shop,
+          shop: live ?? published.record.shop,
           email: email || published.record.email,
           featured: true,
+          rank: position?.rank,
+          total: position?.total,
         })
       }
     }

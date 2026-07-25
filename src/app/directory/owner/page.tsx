@@ -20,7 +20,7 @@ import { isPaidFeatured } from '@/lib/directory/featured'
 import { hydrateDirectory } from '@/lib/directory/listings'
 import {
   featuredCheckoutUrl,
-  AGMP_AUDIT_URL,
+  rankUrl,
   AGMP_SITE_URL,
   AGMP_PHONE_TEL,
   FEATURED_PRICE_DISPLAY,
@@ -97,6 +97,8 @@ export default async function OwnerPage({
     socials: profile?.socials ?? enriched.socials ?? [],
   }
   const featuredCheckout = featuredCheckoutUrl(shop.slug, profileInitial.email || undefined)
+  // AGMP handoff carrying this shop's real position (continues the rank narrative).
+  const agmpRank = rankUrl({ rank, of: total, city: shop.city, shop: shop.name })
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
@@ -172,7 +174,7 @@ export default async function OwnerPage({
                 </a>
               )}
               <a
-                href={AGMP_AUDIT_URL}
+                href={agmpRank}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-center text-xs font-medium text-blue-700 hover:text-blue-800"
@@ -289,7 +291,7 @@ export default async function OwnerPage({
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
           <a
-            href={AGMP_AUDIT_URL}
+            href={agmpRank}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-50"

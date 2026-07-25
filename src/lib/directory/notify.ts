@@ -10,7 +10,7 @@
 import type { Quote } from './quotes'
 import type { Shop } from './types'
 import { serviceMeta } from './data'
-import { featuredCheckoutUrl, AGMP_AUDIT_URL, FEATURED_PRICE_DISPLAY } from './agmp'
+import { featuredCheckoutUrl, rankUrl, FEATURED_PRICE_DISPLAY } from './agmp'
 
 const RESEND_ENDPOINT = 'https://api.resend.com/emails'
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://windshieldrepairhq.com').replace(
@@ -171,10 +171,19 @@ export async function notifyListingPublished(opts: {
   shop: Shop
   email?: string
   featured?: boolean
+  /** City position, when known — personalizes the AGMP /rank handoff. */
+  rank?: number
+  total?: number
 }): Promise<void> {
   if (!notificationsEnabled()) return
   const { shop, email, featured } = opts
   if (!email) return
+  const agmpRank = rankUrl({
+    rank: opts.rank,
+    of: opts.total,
+    city: shop.city,
+    shop: shop.name,
+  })
 
   const listingUrl = `${SITE_URL}/directory/shop/${shop.slug}`
   const checkout = featuredCheckoutUrl(shop.slug, email) || `${SITE_URL}/directory/for-shops`
@@ -200,7 +209,7 @@ export async function notifyListingPublished(opts: {
   const primaryLabel = featured ? 'View your listing' : `Get Featured — ${FEATURED_PRICE_DISPLAY}`
   const footer = featured
     ? `You’re getting this because your listing is Featured on Windshield Repair HQ. Managed growth is powered by Auto Glass Marketing Pros — <a href="${esc(
-        AGMP_AUDIT_URL
+        agmpRank
       )}" style="color:#6b7280">free audit</a>.`
     : `You’re getting this because you added your shop to Windshield Repair HQ. <a href="${esc(
         listingUrl
