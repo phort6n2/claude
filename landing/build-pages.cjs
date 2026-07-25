@@ -82,6 +82,46 @@ const DETAIL_CSS = `
     border-left:1.5px solid var(--success);border-bottom:1.5px solid var(--success);transform:rotate(-45deg)}
 `;
 
+// Business structured data, identical on every page bar the canonical url.
+// The aggregate rating is attached only when reviews.json holds live Google
+// numbers — never invented.
+function businessLd(canonical){
+  const ld = {
+    '@context':'https://schema.org','@type':'AutoGlassShop',
+    name:'HV Auto Glass Denver',
+    telephone:'+1-720-232-0320',
+    email:'hvautoglassdenver@gmail.com',
+    url:canonical,
+    image:`${ORIGIN}${BASE}/img/logo-amber.webp`,
+    address:{'@type':'PostalAddress',streetAddress:'1440 Sheridan Blvd',
+      addressLocality:'Denver',addressRegion:'CO',postalCode:'80214',addressCountry:'US'},
+    geo:{'@type':'GeoCoordinates',latitude:39.7389384,longitude:-105.0555081},
+    areaServed:['Denver','Aurora','Lakewood','Arvada','Wheat Ridge','Thornton'].map(n=>({'@type':'City',name:n})),
+    openingHoursSpecification:[
+      {'@type':'OpeningHoursSpecification',dayOfWeek:['Monday','Tuesday','Wednesday','Thursday','Friday'],opens:'09:00',closes:'17:00'},
+      {'@type':'OpeningHoursSpecification',dayOfWeek:'Saturday',opens:'09:00',closes:'14:00'}
+    ]
+  };
+  if (REVIEWS && REVIEWS.rating && REVIEWS.count) {
+    ld.aggregateRating = {'@type':'AggregateRating',
+      ratingValue:String(REVIEWS.rating), reviewCount:String(REVIEWS.count),
+      bestRating:'5', worstRating:'1'};
+  }
+  return ld;
+}
+
+// The home page's FAQ lives in the template rather than pages.config, so read
+// the questions and answers back out of the markup we are about to ship.
+function homeFaqLd(html){
+  const qs = [...html.matchAll(
+    /<button aria-expanded="false"><span>([\s\S]*?)<\/span>[\s\S]*?<div class="ans"><p>([\s\S]*?)<\/p>/g)];
+  return {
+    '@context':'https://schema.org','@type':'FAQPage',
+    mainEntity: qs.map(m=>({'@type':'Question',name:strip(m[1]).trim(),
+      acceptedAnswer:{'@type':'Answer',text:strip(m[2]).trim()}}))
+  };
+}
+
 function build(p){
   let s = fs.readFileSync(TEMPLATE, 'utf8');
   const canonical = `${ORIGIN}/${p.slug}`;
@@ -124,29 +164,8 @@ function build(p){
     mainEntity: p.faq.map(([q,a])=>({'@type':'Question',name:strip(q),
       acceptedAnswer:{'@type':'Answer',text:strip(a)}}))
   };
-  const bizLd = {
-    '@context':'https://schema.org','@type':'AutoGlassShop',
-    name:'HV Auto Glass Denver',
-    telephone:'+1-720-232-0320',
-    email:'hvautoglassdenver@gmail.com',
-    url:canonical,
-    image:`${ORIGIN}${BASE}/img/logo-amber.webp`,
-    address:{'@type':'PostalAddress',streetAddress:'1440 Sheridan Blvd',
-      addressLocality:'Denver',addressRegion:'CO',postalCode:'80214',addressCountry:'US'},
-    geo:{'@type':'GeoCoordinates',latitude:39.7389384,longitude:-105.0555081},
-    areaServed:['Denver','Aurora','Lakewood','Arvada','Wheat Ridge','Thornton'].map(n=>({'@type':'City',name:n})),
-    openingHoursSpecification:[
-      {'@type':'OpeningHoursSpecification',dayOfWeek:['Monday','Tuesday','Wednesday','Thursday','Friday'],opens:'09:00',closes:'17:00'},
-      {'@type':'OpeningHoursSpecification',dayOfWeek:'Saturday',opens:'09:00',closes:'14:00'}
-    ]
-  };
-  if (REVIEWS && REVIEWS.rating && REVIEWS.count) {
-    bizLd.aggregateRating = {'@type':'AggregateRating',
-      ratingValue:String(REVIEWS.rating), reviewCount:String(REVIEWS.count),
-      bestRating:'5', worstRating:'1'};
-  }
   s = s.replace('</body>',
-    `<script type="application/ld+json">${JSON.stringify(bizLd)}</script>\n` +
+    `<script type="application/ld+json">${JSON.stringify(businessLd(canonical))}</script>\n` +
     `<script type="application/ld+json">${JSON.stringify(faqLd)}</script>\n</body>`);
 
   // --- live Google rating, count and review quotes ---
@@ -228,41 +247,69 @@ function applyReviews(s){
   return s;
 }
 
-// Footer service links should go to the real pages rather than an anchor.
-function relinkFooter(s){
-  const map = [
-    ['Windshield replacement','windshield-replacement'],
-    ['Rock chip &amp; crack repair','rock-chip-repair'],
-    ['ADAS calibration','adas-calibration'],
-    ['Door &amp; back glass','back-glass-repair'],
-    ['Mobile service','mobile-service'],
-    ['Denver','windshield-replacement'],
-    ['Aurora','auto-glass-repair-aurora'],
-    ['Lakewood','auto-glass-repair-lakewood'],
-    ['Arvada · Wheat Ridge','auto-glass-repair-arvada'],
-    ['Thornton','auto-glass-repair-thornton'],
-  ];
-  map.forEach(([label,slug])=>{
-    s = s.replace(`<a href="#services">${label}</a>`, `<a href="${BASE}/${slug}">${label}</a>`);
-    s = s.replace(`<a href="#reviews">${label}</a>`, `<a href="${BASE}/${slug}">${label}</a>`);
-  });
-  return s;
+// The nav and footer links in the template are real hrefs, so no relinking is
+// needed — only the BASE prefix is rewritten, which build() already does.
+
+// A crawlable link to every page, so nothing depends on a stale sitemap.
+function sitemapUrls(){
+  return [`${ORIGIN}/`, ...pages.map(p=>`${ORIGIN}/${p.slug}`),
+          `${ORIGIN}/privacy`, `${ORIGIN}/terms`];
 }
 
 let n = 0;
 for (const p of pages){
   const dir = path.join(OUTDIR, p.slug);
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, 'index.html'), relinkFooter(build(p)));
+  fs.writeFileSync(path.join(dir, 'index.html'), build(p));
   n++;
 }
 
-// Rebuild the home page too, so its footer links point at the new pages.
+// --- Home page -------------------------------------------------------------
+// It gets the same head treatment as every other page. Previously it shipped
+// with no canonical, no Open Graph tags and no structured data, which made the
+// most important page in the account the weakest one technically.
 {
   let home = fs.readFileSync(TEMPLATE, 'utf8');
+  const canonical = `${ORIGIN}/`;
+  const title = (home.match(/<title>([\s\S]*?)<\/title>/) || [,''])[1];
+  const desc  = (home.match(/<meta name="description" content="([\s\S]*?)">/) || [,''])[1];
+
+  home = home.replace('<meta name="theme-color" content="#0B0E12">',
+    `<meta name="theme-color" content="#0B0E12">\n<link rel="canonical" href="${canonical}">\n` +
+    `<meta property="og:title" content="${title}">\n` +
+    `<meta property="og:description" content="${desc}">\n` +
+    `<meta property="og:type" content="website">\n<meta property="og:url" content="${canonical}">`);
+
+  home = home.replace('</body>',
+    `<script type="application/ld+json">${JSON.stringify(businessLd(canonical))}</script>\n` +
+    `<script type="application/ld+json">${JSON.stringify(homeFaqLd(home))}</script>\n</body>`);
+
   home = applyReviews(home);
   home = home.replace(/href="\/hv-auto-glass-denver\//g, `href="${BASE}/`);
-  fs.writeFileSync(path.join(OUTDIR, 'index.html'), relinkFooter(home));
+  fs.writeFileSync(path.join(OUTDIR, 'index.html'), home);
 }
 
-console.log(`built ${n} pages into ${OUTDIR} (BASE="${BASE}")`);
+// --- Legal pages: canonical + robots, built from the standalone sources -----
+for (const [src, slug] of [['legal-privacy.html','privacy'], ['legal-terms.html','terms']]) {
+  const from = path.join(__dirname, src);
+  if (!fs.existsSync(from)) continue;
+  let h = fs.readFileSync(from, 'utf8');
+  const canonical = `${ORIGIN}/${slug}`;
+  if (!/rel="canonical"/.test(h)) {
+    h = h.replace('</head>', `<link rel="canonical" href="${canonical}">\n</head>`);
+  }
+  h = h.replace(/href="\/hv-auto-glass-denver\//g, `href="${BASE}/`);
+  const dir = path.join(OUTDIR, slug);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'index.html'), h);
+}
+
+// --- sitemap.xml + robots.txt ---------------------------------------------
+fs.writeFileSync(path.join(OUTDIR, 'sitemap.xml'),
+  `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+  sitemapUrls().map(u=>`  <url><loc>${u}</loc></url>`).join('\n') +
+  `\n</urlset>\n`);
+fs.writeFileSync(path.join(OUTDIR, 'robots.txt'),
+  `User-agent: *\nAllow: /\n\nSitemap: ${ORIGIN}/sitemap.xml\n`);
+
+console.log(`built ${n} pages + home, legal, sitemap into ${OUTDIR} (BASE="${BASE}")`);

@@ -85,8 +85,8 @@ const pages = [
   title:'Auto Glass Repair in Denver — Mobile Service, We Come To You',
   desc:'Mobile auto glass repair across metro Denver: windshields, door glass, back glass and rock chips. Same-day service, lifetime warranty. Call (720) 232-0320.',
   eyebrow:'Auto Glass Repair',
-  h1:'Auto glass repair in Denver — <span class="hl">we come to you, free.</span>',
-  sub:'Windshields, side windows, back glass and rock chips, repaired at your home, your workplace or the roadside anywhere in metro Denver.',
+  h1:'Auto glass repair in Denver — <span class="hl">repaired if we can, replaced if we must.</span>',
+  sub:'Windshields, side windows, back glass and rock chips. Tell us what happened and we will tell you straight whether it needs a 30-minute repair or a full replacement.',
   svc:'Not sure — help me decide',
   intro:{
     heading:'One team for every piece of glass on the vehicle',
@@ -425,7 +425,7 @@ const pages = [
     bullets:[
       'We contact your carrier and file the claim on your behalf',
       'Your out-of-pocket cost confirmed before any work begins',
-      'Preferred shop for all major carriers, direct-billed',
+      'We bill all major carriers direct — no reimbursement paperwork for you',
       'Repairs are frequently covered in full with no deductible',
       'ADAS calibration included in the claim when your vehicle requires it',
       'No-insurance and cash pricing available if you would rather not file'
@@ -434,61 +434,167 @@ const pages = [
   faq:[
     ['Will filing a glass claim raise my premium?','In most cases no. Comprehensive glass claims are generally treated as no-fault and are not weighted like an at-fault accident. Individual carriers vary, so we will walk you through what your policy says before you commit.'],
     ['Do I really pay nothing?','Often, yes — if you carry comprehensive coverage. It depends on your specific policy, so we confirm your exact out-of-pocket cost with your carrier before we start, rather than promising a number we cannot see.'],
-    ['Can my insurer make me use their shop?','No. They may suggest a network shop, but the choice of who repairs your vehicle is yours. We are a preferred shop for the major carriers and bill them directly.'],
+    ['Can my insurer make me use their shop?','No. They may suggest a network shop, but under Colorado law the choice of who repairs your vehicle is yours. We bill the major carriers directly, so using us costs you nothing extra.'],
     ['What if I do not have comprehensive coverage?','Then it is a cash job, and we will give you a straight price upfront. Repairs in particular are inexpensive enough that many customers skip the claim entirely.']
   ]
 },
 ];
 
 // ---- City pages -------------------------------------------------------
-const cities = [
-  {slug:'auto-glass-repair-aurora', city:'Aurora',
-   blurb:'Aurora is our busiest service area outside Denver proper. Between I-225, Havana and the commuter run along Alameda, chips from highway gravel are constant — and most of them are repairable if you catch them early.',
-   areas:'Southlands, Aurora Hills, Del Mar, Buckley, Saddle Rock and the neighbourhoods along I-225'},
-  {slug:'auto-glass-repair-lakewood', city:'Lakewood',
-   blurb:'Lakewood sits right where 6th Avenue and C-470 meet the foothills traffic, which is hard on windshields. We cover the whole area daily, including the industrial stretch along West Colfax.',
-   areas:'Belmar, Green Mountain, Union Square, Applewood and the 6th Avenue corridor'},
-  {slug:'auto-glass-repair-arvada', city:'Arvada',
-   blurb:'Arvada gets the worst of the winter road treatment coming down from the northwest, and sanded roads throw a lot of stone. We run mobile service across Arvada most days of the week.',
-   areas:'Olde Town, Candelas, Leyden Rock, West Woods and the Wadsworth corridor'},
-  {slug:'auto-glass-repair-thornton', city:'Thornton',
-   blurb:'Thornton drivers spend a lot of time on I-25 and the 104th corridor, both reliable sources of rock chips. Mobile service means we can meet you at home or at work rather than costing you a trip south.',
-   areas:'Original Thornton, Eastlake, Riverdale, Hunters Glen and the I-25 corridor'},
-  {slug:'auto-glass-repair-wheat-ridge', city:'Wheat Ridge',
-   blurb:'Wheat Ridge is a short run for our technicians, so it is often one of the first stops of the day — which usually means we can offer an earlier slot than most.',
-   areas:'Applewood, Fruitdale, Wheat Ridge Town Center and the I-70 frontage'},
+// Each city page is written from scratch rather than generated from one
+// template with the name swapped in. Near-identical location pages read as
+// doorway pages to Google, which is both a spam-policy problem and a drag on
+// the landing page experience half of Quality Score. Every field below —
+// headline, body, bullets and FAQ — is specific to that city.
+const cityPages = [
+{
+  slug:'auto-glass-repair-aurora', city:'Aurora',
+  title:'Aurora Auto Glass Repair — Mobile Windshield Service, CO',
+  desc:'Mobile windshield repair and replacement across Aurora, from Southlands to Anschutz. ADAS recalibration in-house, often $0 with comprehensive. Call (720) 232-0320.',
+  h1:'Aurora auto glass repair — <span class="hl">booked around your shift.</span>',
+  sub:'Mobile windshield replacement, chip repair and ADAS calibration anywhere in Aurora. We work around Buckley and Anschutz schedules, so the van comes to you rather than the other way round.',
+  heading:'Aurora: high mileage, newer cars, and a lot of highway gravel',
+  paras:[
+    'Aurora is the largest service area we cover outside Denver proper, and it generates more rock chips than anywhere else on our schedule. The reason is simple mileage — I-225, the Havana corridor and the long E-470 commutes mean Aurora drivers rack up highway miles at speed, and highway miles are where windshield damage comes from. A stone thrown at 65mph does damage a parking lot never will.',
+    'It is also a newer fleet than most of the metro. A large share of the vehicles we see in Aurora carry a forward-facing camera behind the mirror for lane keeping and automatic emergency braking, which means the windshield cannot simply be swapped and handed back. The camera has to be recalibrated to the new glass or the safety systems aim at the wrong place. We do that ourselves rather than sending you on to a dealership.',
+    'The other thing that shapes how we schedule Aurora is shift work. Between Buckley Space Force Base and the Anschutz Medical Campus, a lot of our Aurora customers are not free between nine and five. Mobile service solves that — we meet the car in the driveway or the staff car park while you are inside.'
+  ],
+  bullets:[
+    'Free mobile service across all of Aurora — home, workplace or roadside',
+    'Southlands, Saddle Rock, Aurora Hills, Del Mar, Green Valley Ranch and the I-225 corridor',
+    'On-site calibration for lane-keeping and emergency-braking cameras',
+    'We can work at Buckley and Anschutz car parks while you are on shift',
+    'Chips caught early are usually a 30-minute repair, not a replacement',
+    'Claim filed with your carrier before we arrive — often $0 in Colorado'
+  ],
+  faq:[
+    ['Do you charge extra to come out to Aurora?','No. Aurora is inside our standard service area, so mobile service is free — the same as it is in Denver. There is no mileage surcharge for Southlands or the far east side.'],
+    ['My car has lane assist. Can you calibrate it in Aurora, or do I need a dealership?','We calibrate it ourselves, and for many vehicles we can do it on site in Aurora. Some models require a level floor and a controlled target distance — if yours is one of them we will bring it into the shop and hand it back the same day rather than sending you to a dealer.'],
+    ['Can you come to Buckley or the Anschutz campus?','Yes, and we do regularly. We need to be able to reach the vehicle and park alongside it. Tell us the lot and any gate or badge requirement when you book so we are not held up at the entrance.'],
+    ['I got a chip on I-225 this morning. How long can I leave it?','Not long, especially in winter. A fresh chip is clean and repairs almost invisibly; one that has collected a week of road grime and been through a few freezing nights and hot defroster cycles often will not hold a repair. Same-day is genuinely better than next-week here.']
+  ]
+},
+{
+  slug:'auto-glass-repair-lakewood', city:'Lakewood',
+  title:'Lakewood Auto Glass Repair — Mobile Windshield Service, CO',
+  desc:'Mobile windshield replacement and chip repair throughout Lakewood, Belmar and Green Mountain. Mountain-road gravel damage a speciality. Call (720) 232-0320.',
+  h1:'Lakewood auto glass repair — <span class="hl">mountain-road damage handled.</span>',
+  sub:'Windshield replacement, chip and crack repair and ADAS calibration across Lakewood. If your glass picked up damage on a run up US 6 or I-70, this is the page you want.',
+  heading:'Lakewood sits at the bottom of the canyon roads, and it shows',
+  paras:[
+    'Almost every Lakewood customer we see has the same story: the chip did not happen in town. US 6 up Clear Creek Canyon, I-70 towards the tunnel, and the C-470 climb are three of the most reliable windshield-wreckers in Colorado. They combine high speed, coarse road surface and, for half the year, a heavy layer of traction sand that trucks throw straight into the car behind.',
+    'That pattern changes what we recommend. Canyon-road damage tends to be multiple small impacts rather than one big one, and it is often out at the edge of the glass where you barely notice it. Edge damage matters more than most drivers expect — the perimeter is where the windshield carries structural load, so a crack that starts there is the one most likely to run right across the screen on the first cold night.',
+    'We cover the whole of Lakewood daily, from Belmar and the Union Boulevard offices out to Green Mountain and the West Colfax industrial stretch. Because we are based just up Sheridan, Lakewood is a short run for us and we can usually fit an appointment in without pushing you into next week.'
+  ],
+  bullets:[
+    'Free mobile service throughout Lakewood — no travel charge',
+    'Belmar, Green Mountain, Union Square, Applewood, Glennon Heights and the 6th Avenue corridor',
+    'Multiple-chip repairs from canyon and I-70 gravel in a single visit',
+    'Edge-crack assessment — we tell you honestly when a repair will not hold',
+    'A short drive from our Sheridan Boulevard shop, so earlier slots are realistic',
+    'Federal Center and Union Boulevard workplace visits welcome'
+  ],
+  faq:[
+    ['I picked up several chips driving up I-70. Can they all be repaired at once?','Usually, yes. We can fill several separate impacts in one visit, and it is far cheaper than a replacement. The limits are how large each one is and how close together they sit — a cluster of breaks in the same area weakens the glass enough that replacement becomes the safer call. We will tell you which you are looking at before we start.'],
+    ['There is a crack near the edge of my windshield. Is that different?','Yes, and it is worth taking seriously. The edge of the glass is where it carries load, so cracks that start there tend to spread — often overnight when the temperature drops. Edge damage is also the case where a repair is least likely to hold, so it is usually a replacement.'],
+    ['Do you cover Green Mountain and Applewood?','Both, along with the rest of Lakewood. There is no travel surcharge anywhere in the city, and Lakewood is close enough to our shop that we can often get to you sooner than a same-day quote elsewhere in the metro.'],
+    ['Can you replace glass at the Federal Center or a Union Boulevard office?','Yes — workplace visits are how a lot of our Lakewood jobs run. We need somewhere legal to park alongside the vehicle with room to open the doors. If the lot needs a badge or a visitor pass, let us know when booking.']
+  ]
+},
+{
+  slug:'auto-glass-repair-arvada', city:'Arvada',
+  title:'Arvada Auto Glass Repair — Mobile Windshield Service, CO',
+  desc:'Mobile windshield repair and replacement in Arvada, from Olde Town to Candelas. Winter sand damage, ADAS calibration, direct insurance billing. Call (720) 232-0320.',
+  h1:'Arvada auto glass repair — <span class="hl">no Olde Town parking hunt.</span>',
+  sub:'Windshield replacement, chip repair and ADAS recalibration throughout Arvada. We come to your driveway, which beats finding somewhere to leave the car for half a day.',
+  heading:'Winter sand off the northwest roads is Arvada\'s main problem',
+  paras:[
+    'Arvada takes the brunt of the winter road treatment coming down from the northwest, and traction sand is brutal on glass. Wadsworth, Indiana Street and the Highway 93 approach get sanded heavily and stay sanded for days after the snow has gone, so the chip season here runs long past the last storm. If you drive Arvada in February you will collect chips — the only question is whether you catch them while they are still repairable.',
+    'The newer end of the city changes the job as well. Candelas, Leyden Rock and West Woods are full of recent-model vehicles, and recent-model means a camera behind the mirror driving lane keeping and automatic braking. Those cameras have to be recalibrated when the glass changes. We do it in-house, which is the difference between one appointment and two.',
+    'And there is a practical reason mobile suits Arvada specifically: parking. Olde Town and the older grid around Ralston Road are not places you want to leave a car all day waiting on a glass shop. We come to the house, the drive or the workplace, do the job there, and you never move the vehicle.'
+  ],
+  bullets:[
+    'Free mobile service across Arvada — Olde Town to the Jefferson County line',
+    'Olde Town, Candelas, Leyden Rock, West Woods, Ralston Valley and the Wadsworth corridor',
+    'Winter sand chip repair — several impacts filled in one visit',
+    'ADAS camera recalibration in-house, so it stays a single appointment',
+    'No need to find all-day parking or give up the car for a shop visit',
+    'Insurance handled for you, frequently with no deductible on repairs'
+  ],
+  faq:[
+    ['Why do I keep getting chips in winter here?','Traction sand. The roads on Arvada\'s northwest side are sanded hard and stay gritty long after the snow clears, and every vehicle in front of you throws that grit backwards. It is the single most common cause of the damage we repair in Arvada, and it is why we suggest getting chips filled through the winter rather than waiting for spring.'],
+    ['My street in Olde Town is narrow. Can you still work there?','Usually. What we need is room to open the doors fully and walk around the vehicle, plus somewhere legal to park the van nearby. If the street is genuinely too tight we can meet you at a nearby lot or bring the car into the shop — tell us the address when you book and we will flag it in advance.'],
+    ['I have a newer car in Candelas with lane assist. Is calibration extra?','Calibration is a separate operation but we do it ourselves in the same visit, so it does not cost you a second appointment or a dealership trip. If your insurance is covering the replacement, the calibration is normally included in that claim — we will confirm before we start.'],
+    ['How far into Arvada do you go?','All of it, out to the Jefferson County boundary, and there is no mileage charge anywhere in the city. Candelas and Leyden Rock are as covered as Olde Town.']
+  ]
+},
+{
+  slug:'auto-glass-repair-thornton', city:'Thornton',
+  title:'Thornton Auto Glass Repair — Mobile Windshield Service, CO',
+  desc:'Mobile windshield replacement and rock chip repair in Thornton, CO. I-25 commuter damage, ADAS calibration in-house, direct insurance billing. Call (720) 232-0320.',
+  h1:'Thornton auto glass repair — <span class="hl">without the drive south.</span>',
+  sub:'Mobile windshield replacement, chip repair and ADAS calibration throughout Thornton. We drive to you, so a rock chip does not cost you an afternoon on I-25.',
+  heading:'The I-25 commute is what puts Thornton windshields in front of us',
+  paras:[
+    'Thornton is a commuter city, and the commute is the problem. The northern stretch of I-25 has been under near-continuous widening and resurfacing work for years, which means temporary surfaces, loose aggregate and construction traffic — the exact recipe for windshield damage. Add the 104th and 120th Avenue arterials feeding into it and most Thornton drivers are covering a lot of chip-prone miles every week.',
+    'That daily distance is also why we push mobile service hard here. If you are already spending an hour a day on I-25, the last thing that makes sense is a second trip south to sit in a waiting room. We bring the glass, the urethane and the calibration gear to your driveway or your office car park, and the vehicle never leaves Thornton.',
+    'One local note worth knowing: the damage pattern up here skews towards long cracks rather than clean chips. Highway speed impacts start bigger, and Thornton\'s temperature swings finish the job overnight. A crack that was four inches when you parked can be across the screen by morning, so if you are on the fence, call the same day.'
+  ],
+  bullets:[
+    'Free mobile service throughout Thornton — home, workplace or roadside',
+    'Original Thornton, Eastlake, Riverdale, Hunters Glen, Northglenn border and the I-25 corridor',
+    'Long-crack assessment — a straight answer on repair versus replacement',
+    'No trip south: we bring glass, adhesive and calibration equipment to you',
+    'ADAS recalibration handled in-house, not subcontracted to a dealership',
+    'Claim filed with your carrier in advance, often at no cost to you'
+  ],
+  faq:[
+    ['My crack is about six inches. Repair or replace?','Six inches is right at the boundary. If it is a single clean crack, away from the edge and outside your direct line of sight, a repair will often hold. If it branches, touches the edge, or sits in front of the driver, replacement is the honest answer — a repair there either fails or leaves distortion where you most need clear glass. We will look and tell you which it is rather than guessing over the phone.'],
+    ['It cracked further overnight. Is that normal in Thornton?','Very. Overnight lows here drop hard and the glass contracts, and then a hot defroster in the morning expands the inner layer while the outside is still freezing. That stress is what drives a crack across a windshield. It is the main reason we suggest same-day repair rather than waiting for the weekend.'],
+    ['Can you meet me at work rather than at home?','Yes, and most Thornton jobs run that way. Office car parks, industrial yards and even park-and-ride lots work fine as long as there is room to open the doors and we are parked legally. You carry on working and we hand the keys back when it is cured.'],
+    ['Do you cover Northglenn and Eastlake too?','Yes. Our Thornton coverage runs across the whole city and over the Northglenn boundary, with no travel charge either side of it.']
+  ]
+},
+{
+  slug:'auto-glass-repair-wheat-ridge', city:'Wheat Ridge',
+  title:'Wheat Ridge Auto Glass Repair — Mobile Windshield Service, CO',
+  desc:'Mobile windshield repair and replacement in Wheat Ridge, CO — minutes from our Sheridan Boulevard shop, so we can usually offer the earliest slot. Call (720) 232-0320.',
+  h1:'Wheat Ridge auto glass repair — <span class="hl">we are practically neighbours.</span>',
+  sub:'Windshield replacement, chip repair and ADAS calibration across Wheat Ridge. Our shop sits on Sheridan Boulevard at the city line, so this is the shortest run on our schedule.',
+  heading:'Our shop is on Sheridan, which makes Wheat Ridge the easy one',
+  paras:[
+    'We are at 1440 Sheridan Boulevard, effectively on the Wheat Ridge line. In practical terms that means Wheat Ridge jobs are usually the first stop of the day or the one we can slot in when something else finishes early — so if you need glass sorted today rather than Thursday, this is the part of the metro where we are most likely to say yes.',
+    'It also makes the in-shop option genuinely easy here. Mobile service is free and it is how we normally work, but some jobs are better done indoors: a replacement in driving snow, or a calibration on a vehicle that demands a level floor and controlled lighting. From most of Wheat Ridge that is a five-minute drive rather than a trek across town, so you get the better job without the inconvenience that usually comes with it.',
+    'The local damage pattern is mostly I-70. The frontage roads and the on-ramps at Kipling and Ward throw a lot of stone, and 38th Avenue picks up its share of construction gravel. Most of what we see from Wheat Ridge is repairable if it comes to us in the first week.'
+  ],
+  bullets:[
+    'Minutes from our Sheridan Boulevard shop — realistically the earliest slots we have',
+    'Applewood, Fruitdale, Wheat Ridge Town Center, Paramount Heights and the I-70 frontage',
+    'Easy in-shop option when weather or calibration makes indoors the better job',
+    'Free mobile service at home or work, exactly as everywhere else we cover',
+    'Chip repair usually done in 20 to 30 minutes while you carry on',
+    'Direct billing to your carrier — Colorado repairs are often fully covered'
+  ],
+  faq:[
+    ['Can you get to me today?','More often in Wheat Ridge than anywhere else we serve. Our shop is on Sheridan at the city line, so a Wheat Ridge job is a short run and easy to fit around the rest of the day. Call in the morning and there is a good chance we can be there the same afternoon.'],
+    ['Should I come to the shop or have you come out?','Either — mobile is free and it is what most people choose. The shop is the better option in two situations: bad weather, because urethane needs dry conditions and a workable temperature to bond properly, and calibrations on vehicles that require a level floor with controlled target distances. From Wheat Ridge the shop is close enough that it is barely an inconvenience.'],
+    ['Where exactly are you?','1440 Sheridan Boulevard, Denver, CO 80214, right by the city boundary. We are open Monday to Friday 9am to 5pm and Saturday 9am to 2pm, closed Sunday.'],
+    ['I got a chip on the I-70 frontage road. Is it worth repairing?','Almost certainly, if you bring it to us early. Most frontage-road chips are small stone impacts that fill well and stop there. What kills a repair is time — dirt and water work into the break and the resin no longer bonds cleanly. Within the first week, results are usually very good.']
+  ]
+},
 ];
 
-cities.forEach(c=>{
+cityPages.forEach(c=>{
   pages.push({
     slug:c.slug,
-    title:`${c.city} Auto Glass Repair — Mobile Windshield Service`,
-    desc:`Mobile auto glass repair and windshield replacement in ${c.city}, CO. We come to you, often $0 with insurance, lifetime warranty. Call (720) 232-0320.`,
+    title:c.title,
+    desc:c.desc,
     eyebrow:`${c.city}, Colorado`,
-    h1:`${c.city} auto glass repair — <span class="hl">we come to you.</span>`,
-    sub:`Mobile windshield replacement, chip repair and ADAS calibration throughout ${c.city}. Same-day and next-day slots, often at no cost with comprehensive insurance.`,
+    h1:c.h1,
+    sub:c.sub,
     svc:'Not sure — help me decide',
-    intro:{
-      heading:`Serving ${c.city} and the surrounding neighbourhoods`,
-      paras:[
-        c.blurb,
-        `Everything we do in Denver we do in ${c.city}, at the same price and with the same lifetime workmanship warranty: windshield replacement, rock chip and crack repair, door and back glass, and ADAS camera recalibration. Mobile service is free — we come to your home, your workplace or the roadside.`
-      ],
-      bullets:[
-        `Free mobile service throughout ${c.city} — home, work or roadside`,
-        `Covering ${c.areas}`,
-        'Windshield replacement with OEM-quality glass matched to your VIN',
-        'Rock chip and crack repair, usually finished in under 30 minutes',
-        'ADAS recalibration performed in-house, no second appointment',
-        'Insurance claim filed for you — often $0 out of pocket in Colorado'
-      ]
-    },
-    faq:[
-      [`Do you charge extra to come out to ${c.city}?`,`No. ${c.city} is inside our standard service area, so mobile service is free — the same as it is in Denver.`],
-      [`How soon can you get to ${c.city}?`,'Most jobs can be scheduled same-day or next-day. Call and we will give you the next genuine opening rather than a vague window.'],
-      ['Will my insurance cover it?','If you carry comprehensive coverage, Colorado glass claims often carry no deductible. Tell us your carrier when you request a quote and we will confirm your out-of-pocket cost first.'],
-      [`Can you do ADAS calibration in ${c.city}?`,'Yes. We handle calibration ourselves rather than sending you to a dealership, and where the vehicle allows it we can do it on site.']
-    ]
+    intro:{ heading:c.heading, paras:c.paras, bullets:c.bullets },
+    faq:c.faq
   });
 });
 
