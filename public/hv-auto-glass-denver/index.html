@@ -818,6 +818,11 @@
         <h4>Get in touch</h4>
         <ul>
           <li><a href="tel:+17202320320" style="color:var(--amber);font-weight:700;font-size:16px">(720) 232-0320</a></li>
+          <!-- Google Ads call asset number. Footer ONLY, and deliberately excluded
+               from the GHL number pool: Google verifies this number appears on the
+               site, so it must not be swapped by dynamic number insertion.
+               The no-swap class + data attribute are the opt-out hooks. -->
+          <li><a class="ghl-no-swap" data-no-swap="true" href="tel:+17208027097">+1 720-802-7097</a></li>
           <li><a href="#quote">Free online quote</a></li>
           <li style="color:var(--muted-2);font-size:13px;margin-top:6px">Open 7 days · Call or text</li>
         </ul>
@@ -1022,5 +1027,19 @@
   }
 })();
 </script>
+
+<!-- ============================================================
+     HighLevel call tracking — dynamic number insertion.
+     Swaps the hardcoded (720) 232-0320 for a rotating pool number so GHL
+     can tie a phone call back to the visitor's session, and report call
+     conversions to Google Ads via its "Number Pool Calling" trigger.
+     Loaded last so every number is in the DOM before the swap runs.
+
+     NOTE: the footer's +1 720-802-7097 is the Google Ads call asset number
+     and must NOT be swapped — it carries .ghl-no-swap / data-no-swap.
+     Verify after deploy that it still shows unchanged.
+     ============================================================ -->
+<script src="https://backend.leadconnectorhq.com/appengine/loc/L9OIGvEMdvEEkF4JPdCx/pool/wOJKRvf8uHUmxsfi30VY/number_pool.js"></script>
+<script src="https://backend.leadconnectorhq.com/appengine/js/user_session.js"></script>
 </body>
 </html>
