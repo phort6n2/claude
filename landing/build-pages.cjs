@@ -2,19 +2,14 @@
    Every page keeps the same design, form, tracking and call handling —
    only the copy, metadata and FAQ change.
 
-   Two outputs, both generated from this one source so they cannot drift:
+   Output goes to quote-site/ at the repo root: root-relative, self-contained,
+   and served as the root of its own Vercel project (mapped to
+   quote.hvautoglassdenver.com). The slugs match the existing Google Ads final
+   URLs exactly. Deliberately NOT inside the Next.js app's public/ directory —
+   this site must not be reachable from the application's own domain.
 
-     quote-site/                    BASE=''  — the standalone site, served at
-                                    the root of its own Vercel project and
-                                    mapped to quote.hvautoglassdenver.com. The
-                                    slugs match the existing Google Ads final
-                                    URLs exactly.
-     public/hv-auto-glass-denver/   BASE='/hv-auto-glass-denver' — the preview
-                                    copy riding along with the Next.js app.
-                                    Drop this once the domain is live.
-
-   Override with the BASE and OUTDIR environment variables; `npm run
-   build:landing` produces both. */
+   Run with `npm run build:landing`. BASE and OUTDIR override the defaults if
+   the site ever needs to be served from a sub-path again. */
 
 const fs = require('fs');
 const path = require('path');
@@ -29,12 +24,12 @@ try {
   if (!REVIEWS.rating || !REVIEWS.count) REVIEWS = null;
 } catch (e) { REVIEWS = null; }
 
-const BASE = process.env.BASE !== undefined ? process.env.BASE : '/hv-auto-glass-denver';
+const BASE = process.env.BASE !== undefined ? process.env.BASE : '';
 const ORIGIN = 'https://quote.hvautoglassdenver.com';
 const TEMPLATE = path.join(__dirname, 'hv-auto-glass-denver.html');
 const OUTDIR = process.env.OUTDIR
   ? path.resolve(process.env.OUTDIR)
-  : path.join(__dirname, '..', 'public', 'hv-auto-glass-denver');
+  : path.join(__dirname, '..', 'quote-site');
 
 const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const strip = s => String(s).replace(/<[^>]+>/g,'');

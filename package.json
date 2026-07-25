@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "build:landing": "node landing/build-pages.cjs && BASE='' OUTDIR=quote-site node landing/build-pages.cjs",
+    "build:landing": "node landing/build-pages.cjs",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",

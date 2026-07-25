@@ -40,6 +40,6 @@ jobs:
             echo "No review changes this week."
             exit 0
           fi
-          git add landing/reviews.json quote-site public/hv-auto-glass-denver
+          git add landing/reviews.json quote-site
           git commit -m "Refresh Google reviews [skip ci]"
           git push
