@@ -193,7 +193,8 @@ export async function notifyListingPublished(opts: {
       )} can find you and request a quote right now.</p>
        <p style="margin:0 0 12px">Want to be the <strong>first</strong> shop they see? Featured puts ${esc(
          shop.name
-       )} at the top of ${esc(shop.city)} for ${esc(FEATURED_PRICE_DISPLAY)} — cancel anytime.</p>`
+       )} at the top of ${esc(shop.city)} for ${esc(FEATURED_PRICE_DISPLAY)} — cancel anytime.</p>
+       <p style="margin:0 0 12px">Featured shops can also show their <strong>latest blog posts</strong> right on their listing.</p>`
 
   const primaryHref = featured ? listingUrl : checkout
   const primaryLabel = featured ? 'View your listing' : `Get Featured — ${FEATURED_PRICE_DISPLAY}`

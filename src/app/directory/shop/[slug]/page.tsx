@@ -46,6 +46,7 @@ import { IndependentBadge } from '@/components/directory/IndependentBadge'
 import { enrichShop } from '@/lib/directory/photos'
 import { applyOwnerProfile, getOwnerProfile } from '@/lib/directory/profiles'
 import { getShopPosts } from '@/lib/directory/feed'
+import { isPaidFeatured } from '@/lib/directory/featured'
 import { ShopBlogPosts } from '@/components/directory/ShopBlogPosts'
 import { getReview, withReviews, googlePlaceUrl } from '@/lib/directory/reviews'
 import { GoogleReviews } from '@/components/directory/GoogleReviews'
@@ -110,9 +111,12 @@ export default async function ShopDetailPage({
     .filter(Boolean)
     .join(', ')
   const related = await withReviews(getRelatedShops(shop, 3))
-  // Latest posts from the owner's blog (if they configured a feed URL).
-  const ownerProfile = await getOwnerProfile(shop.slug)
-  const blogPosts = await getShopPosts(shop.slug, ownerProfile?.blogUrl)
+  // Latest posts from the owner's blog — a PAID perk (Featured / Partner only),
+  // so the feed is one of the concrete reasons to upgrade. getShopBySlug doesn't
+  // apply the paid overlay, hence the explicit isPaidFeatured check.
+  const paidTier = shop.client || shop.featured || (await isPaidFeatured(shop.slug))
+  const ownerProfile = paidTier ? await getOwnerProfile(shop.slug) : null
+  const blogPosts = paidTier ? await getShopPosts(shop.slug, ownerProfile?.blogUrl) : []
   const autoRepair = autoRepairJsonLd(shop)
   const breadcrumb = breadcrumbJsonLd([
     { name: 'Directory', path: '/directory' },

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Pencil, Loader2, Check } from 'lucide-react'
+import { Pencil, Loader2, Check, Sparkles, Lock } from 'lucide-react'
 
 const PLATFORMS: { key: string; label: string; placeholder: string }[] = [
   { key: 'facebook', label: 'Facebook', placeholder: 'https://facebook.com/yourshop' },
@@ -22,9 +22,18 @@ interface Props {
     blogUrl: string
     socials: { platform: string; url: string }[]
   }
+  /** Blog feed is a paid perk — free shops see a locked upgrade prompt. */
+  featured?: boolean
+  featuredHref?: string
+  featuredPrice?: string
 }
 
-export function OwnerProfileEditor({ initial }: Props) {
+export function OwnerProfileEditor({
+  initial,
+  featured = false,
+  featuredHref,
+  featuredPrice = '$7/mo',
+}: Props) {
   const [description, setDescription] = useState(initial.description)
   const [phone, setPhone] = useState(initial.phone)
   const [website, setWebsite] = useState(initial.website)
@@ -114,20 +123,41 @@ export function OwnerProfileEditor({ initial }: Props) {
           </div>
           <div className="sm:col-span-2">
             <label className={label} htmlFor="p-blog">
-              Blog or RSS feed URL <span className="font-normal text-gray-400">(optional)</span>
+              Blog or RSS feed URL{' '}
+              {featured ? (
+                <span className="font-normal text-gray-400">(optional)</span>
+              ) : (
+                <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                  <Sparkles width={11} height={11} /> Featured
+                </span>
+              )}
             </label>
             <input
               id="p-blog"
               type="url"
               placeholder="https://yourshop.com/blog"
-              className={input}
+              className={`${input} ${featured ? '' : 'cursor-not-allowed bg-gray-50 text-gray-400'}`}
               value={blogUrl}
+              disabled={!featured}
               onChange={(e) => setBlogUrl(e.target.value)}
             />
-            <p className="mt-1 text-xs text-gray-400">
-              Have a blog? We&apos;ll show your latest posts on your listing. Paste your blog page or
-              RSS feed — we&apos;ll find the feed automatically.
-            </p>
+            {featured ? (
+              <p className="mt-1 text-xs text-gray-400">
+                Have a blog? We&apos;ll show your latest posts on your listing. Paste your blog page
+                or RSS feed — we&apos;ll find the feed automatically.
+              </p>
+            ) : (
+              <p className="mt-1.5 text-xs text-gray-500">
+                <Lock width={11} height={11} className="mr-1 inline align-[-1px] text-gray-400" />
+                Featured shops can show their latest blog posts right on their listing — fresh
+                content that keeps customers reading.{' '}
+                {featuredHref && (
+                  <a href={featuredHref} className="font-semibold text-blue-600 hover:text-blue-700">
+                    Upgrade for {featuredPrice} →
+                  </a>
+                )}
+              </p>
+            )}
           </div>
         </div>
 

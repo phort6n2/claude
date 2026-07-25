@@ -148,8 +148,9 @@ export default async function OwnerPage({
               </p>
             ) : (
               <p className="mt-2 max-w-md text-sm text-gray-600">
-                Featured shops appear above every shop in {shop.city} that isn&apos;t Featured. Jump
-                the line for {FEATURED_PRICE_DISPLAY}.
+                Featured shops appear above every shop in {shop.city} that isn&apos;t Featured — and
+                can show their latest blog posts on their listing. Jump the line for{' '}
+                {FEATURED_PRICE_DISPLAY}.
               </p>
             )}
           </div>
@@ -312,7 +313,12 @@ export default async function OwnerPage({
       </section>
 
       {/* Owner self-service profile editing */}
-      <OwnerProfileEditor initial={profileInitial} />
+      <OwnerProfileEditor
+        initial={profileInitial}
+        featured={isFeatured}
+        featuredHref={featuredCheckout ?? '/directory/for-shops'}
+        featuredPrice={FEATURED_PRICE_DISPLAY}
+      />
 
       {/* Marketing-email opt-in (feeds the upsell drip) */}
       <MarketingOptIn initial={profile?.marketingOptIn === true} city={shop.city} />
