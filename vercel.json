@@ -21,6 +21,10 @@
     {
       "path": "/api/directory/reviews/refresh",
       "schedule": "0 8 1 * *"
+    },
+    {
+      "path": "/api/directory/campaign/run",
+      "schedule": "0 15 * * *"
     }
   ]
 }
