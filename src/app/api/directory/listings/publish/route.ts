@@ -4,6 +4,7 @@ import { isAdmin } from '@/lib/directory/admin-auth'
 import { getShopBySlug, citySlug, getCityRank } from '@/lib/directory/data'
 import { publishListing, hydrateDynamicListings } from '@/lib/directory/listings'
 import { notifyListingPublished } from '@/lib/directory/notify'
+import { sendLeadEvent } from '@/lib/directory/webhooks'
 
 // Admin-only: approve & publish a pending self-serve listing for FREE (no
 // Stripe). Used from the Claims inbox to take a reviewed new-listing submission
@@ -36,7 +37,8 @@ export async function POST(request: Request) {
     revalidatePath(`/directory/${shop.state}/${citySlug(shop.city)}`)
   }
 
-  // Welcome + upsell email — only the first time it goes live (free approve).
+  // First time it goes live: welcome + upsell the owner, and tell AGMP so the
+  // nurture can pick it up. Both are best-effort and fire exactly once.
   if (result.newlyPublished) {
     const published = shop ?? result.record.shop
     const position = shop ? getCityRank(shop) : undefined
@@ -44,6 +46,19 @@ export async function POST(request: Request) {
       shop: published,
       email: result.record.email,
       featured: false,
+      rank: position?.rank,
+      total: position?.total,
+    })
+    await sendLeadEvent({
+      type: 'shop.published',
+      slug: published.slug,
+      name: published.name,
+      email: result.record.email,
+      phone: published.phone || undefined,
+      city: published.city,
+      state: published.state.toUpperCase(),
+      website: published.website || undefined,
+      services: published.services,
       rank: position?.rank,
       total: position?.total,
     })

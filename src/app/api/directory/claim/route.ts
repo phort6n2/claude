@@ -10,6 +10,7 @@ import {
   createPendingListing,
   stateFullFrom,
 } from '@/lib/directory/listings'
+import { sendLeadEvent } from '@/lib/directory/webhooks'
 import type { Shop, ServiceKey } from '@/lib/directory/types'
 
 const SERVICE_KEYS = new Set(SERVICES.map((s) => s.key))
@@ -160,6 +161,29 @@ export async function POST(request: Request) {
     rank = { rank: total + 1, total: total + 1, city: d.city, state }
     newListing = true
   }
+
+  // Tell AGMP a shop just raised its hand, so the Day 0–10 nurture can start.
+  // Best-effort — a webhook failure must never fail the shop's submission.
+  await sendLeadEvent({
+    type: d.existingShopSlug ? 'shop.claimed' : 'shop.listing_submitted',
+    slug,
+    name: d.businessName,
+    email: d.email,
+    phone: d.phone || undefined,
+    // Claiming an existing listing doesn't post city/state (they're already on
+    // the shop record) — fall back to the resolved rank so AGMP always knows
+    // which market the prospect is in.
+    city: d.city || rank?.city || undefined,
+    state: (d.state || rank?.state)?.toUpperCase() || undefined,
+    website: d.website || undefined,
+    services: d.services?.length ? d.services : undefined,
+    rank: rank?.rank,
+    total: rank?.total,
+    monthlyVolume: d.monthlyVolume || undefined,
+    frustration: d.frustration || undefined,
+    smsConsent: d.smsConsent,
+    wantsMarketingHelp: d.wantsMarketingHelp,
+  })
 
   return NextResponse.json({ ok: true, slug, rank, newListing }, { status: 201 })
 }

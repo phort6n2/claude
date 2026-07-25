@@ -15,6 +15,7 @@ import { SpamAudit } from '@/components/directory/SpamAudit'
 import { ClaimsInbox } from '@/components/directory/ClaimsInbox'
 import { CampaignPanel } from '@/components/directory/CampaignPanel'
 import { RankMovement } from '@/components/directory/RankMovement'
+import { AgmpIntegration } from '@/components/directory/AgmpIntegration'
 import { AdminSignOut } from '@/components/directory/AdminSignOut'
 
 // Internal agency console. Gated behind the admin session cookie — a signed-in
@@ -89,6 +90,14 @@ export default async function ManagePage() {
       {/* Growth / maintenance tools */}
       <div className="mt-8">
         <CampaignPanel />
+      </div>
+
+      <div className="mt-8">
+        <AgmpIntegration
+          webhookConfigured={!!process.env.AGMP_WEBHOOK_URL}
+          webhookSigned={!!process.env.AGMP_WEBHOOK_SECRET}
+          exportTokenSet={!!process.env.DIRECTORY_EXPORT_TOKEN}
+        />
       </div>
 
       <div className="mt-8">

@@ -20,7 +20,6 @@ import { isPaidFeatured } from '@/lib/directory/featured'
 import { hydrateDirectory } from '@/lib/directory/listings'
 import {
   featuredCheckoutUrl,
-  rankUrl,
   AGMP_SITE_URL,
   AGMP_PHONE_TEL,
   FEATURED_PRICE_DISPLAY,
@@ -98,7 +97,7 @@ export default async function OwnerPage({
   }
   const featuredCheckout = featuredCheckoutUrl(shop.slug, profileInitial.email || undefined)
   // AGMP handoff carrying this shop's real position (continues the rank narrative).
-  const agmpRank = rankUrl({ rank, of: total, city: shop.city, shop: shop.name })
+  const agmpRank = `/api/directory/agmp/rank?slug=${encodeURIComponent(shop.slug)}`
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
