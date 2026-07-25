@@ -9,6 +9,7 @@ import {
   campaignEnabled,
 } from '@/lib/directory/campaign'
 import { notifyRankDrop } from '@/lib/directory/notify'
+import { sendLeadEvent } from '@/lib/directory/webhooks'
 
 // Rank snapshot + "you just got passed" trigger.
 //
@@ -64,6 +65,29 @@ export async function POST(request: Request) {
   const drops = report.events.filter((e) => e.direction === 'dropped')
   const notified: string[] = []
   const skipped: string[] = []
+
+  // Push drops to AGMP regardless of the shop's marketing consent: this is
+  // B2B prospect intel for the agency's own outbound, not an email to the shop.
+  // (The email below is what's consent-gated.)
+  if (!dryRun) {
+    for (const e of drops) {
+      const shop = getShopBySlug(e.slug)
+      await sendLeadEvent({
+        type: 'shop.rank_dropped',
+        slug: e.slug,
+        name: e.name,
+        email: shop?.email || undefined,
+        phone: shop?.phone || undefined,
+        city: e.city,
+        state: e.state.toUpperCase(),
+        website: shop?.website || undefined,
+        rank: e.to,
+        previousRank: e.from,
+        total: e.total,
+        passedBy: e.passedBy?.map((p) => p.name),
+      })
+    }
+  }
   // Safety valve: a bulk listing import shifts every rank in a city at once.
   // Cap the sends so that can never turn into a mass blast; the events are all
   // still recorded, and the rest simply aren't emailed.

@@ -5,6 +5,7 @@ import { getShopBySlug, citySlug, getCityRank } from '@/lib/directory/data'
 import { grantFeatured, revokeFeatured, slugForStripeId } from '@/lib/directory/featured'
 import { publishListing, hydrateDynamicListings } from '@/lib/directory/listings'
 import { notifyListingPublished } from '@/lib/directory/notify'
+import { sendLeadEvent } from '@/lib/directory/webhooks'
 
 // Stripe webhook for the self-serve $7/mo Featured tier.
 //   checkout.session.completed      → grant Featured + revalidate the shop's pages
@@ -82,14 +83,31 @@ export async function POST(request: Request) {
       // Load the freshly published listing so revalidateShop can resolve its city/state.
       await hydrateDynamicListings()
       await revalidateShop(slug)
+      const live = getShopBySlug(slug)
+      const position = live ? getCityRank(live) : undefined
       // Welcome + celebration email — only if this call published a new listing.
       if (published?.newlyPublished) {
-        const live = getShopBySlug(slug)
-        const position = live ? getCityRank(live) : undefined
         await notifyListingPublished({
           shop: live ?? published.record.shop,
           email: email || published.record.email,
           featured: true,
+          rank: position?.rank,
+          total: position?.total,
+        })
+      }
+      // A shop just paid — the strongest buying signal we have. Tell AGMP even
+      // when the listing already existed (this fires on every new subscription).
+      if (live) {
+        await sendLeadEvent({
+          type: 'shop.featured',
+          slug: live.slug,
+          name: live.name,
+          email: email || published?.record.email,
+          phone: live.phone || undefined,
+          city: live.city,
+          state: live.state.toUpperCase(),
+          website: live.website || undefined,
+          services: live.services,
           rank: position?.rank,
           total: position?.total,
         })
