@@ -20,6 +20,10 @@ export interface OwnerProfile {
   website?: string
   email?: string
   socials?: { platform: string; url: string }[]
+  // Owner's explicit choice about marketing emails (the upsell drip). Undefined
+  // = never asked; true/false = a deliberate opt-in / opt-out from the dashboard.
+  marketingOptIn?: boolean
+  marketingOptInAt?: string
   updatedAt: string
 }
 
@@ -48,11 +52,7 @@ export function getOwnerProfile(slug: string): Promise<OwnerProfile | null> {
   })()
 }
 
-export async function saveOwnerProfile(
-  slug: string,
-  data: Omit<OwnerProfile, 'updatedAt'>
-): Promise<boolean> {
-  const record: OwnerProfile = { ...data, updatedAt: new Date().toISOString() }
+async function writeProfile(slug: string, record: OwnerProfile): Promise<boolean> {
   if (!profilesEnabled()) {
     console.log('[directory:profile:unstored]', slug, JSON.stringify(record))
     return false
@@ -61,8 +61,64 @@ export async function saveOwnerProfile(
     access: 'public',
     contentType: 'application/json',
     addRandomSuffix: false,
+    allowOverwrite: true,
   })
   return true
+}
+
+export async function saveOwnerProfile(
+  slug: string,
+  data: Omit<OwnerProfile, 'updatedAt' | 'marketingOptIn' | 'marketingOptInAt'>
+): Promise<boolean> {
+  // The listing-edit form doesn't carry the marketing choice — carry the
+  // existing consent forward so a profile save never silently opts them out.
+  const existing = await readProfile(slug)
+  const record: OwnerProfile = {
+    ...data,
+    marketingOptIn: existing?.marketingOptIn,
+    marketingOptInAt: existing?.marketingOptInAt,
+    updatedAt: new Date().toISOString(),
+  }
+  return writeProfile(slug, record)
+}
+
+/** Flip an owner's marketing-email consent, preserving the rest of the profile. */
+export async function setMarketingOptIn(slug: string, optIn: boolean): Promise<boolean> {
+  const existing = await readProfile(slug)
+  const record: OwnerProfile = {
+    ...(existing ?? {}),
+    marketingOptIn: optIn,
+    marketingOptInAt: optIn ? new Date().toISOString() : existing?.marketingOptInAt,
+    updatedAt: new Date().toISOString(),
+  }
+  return writeProfile(slug, record)
+}
+
+/** Every profile that has made a deliberate marketing choice, keyed by slug. */
+export async function listMarketingConsent(): Promise<
+  Map<string, { optIn: boolean; email?: string }>
+> {
+  const out = new Map<string, { optIn: boolean; email?: string }>()
+  if (!profilesEnabled()) return out
+  try {
+    const { blobs } = await list({ prefix: `${PREFIX}/` })
+    await Promise.all(
+      blobs.map(async (b) => {
+        try {
+          const slug = b.pathname.replace(`${PREFIX}/`, '').replace(/\.json$/, '')
+          const p = (await (await fetch(b.url, { cache: 'no-store' })).json()) as OwnerProfile
+          if (typeof p.marketingOptIn === 'boolean') {
+            out.set(slug, { optIn: p.marketingOptIn, email: p.email?.trim() || undefined })
+          }
+        } catch {
+          /* skip unreadable */
+        }
+      })
+    )
+  } catch {
+    /* no store */
+  }
+  return out
 }
 
 /** Merge an owner's saved overrides onto a shop (owner values win). */

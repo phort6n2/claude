@@ -30,6 +30,7 @@ import { OwnerLogin } from '@/components/directory/OwnerLogin'
 import { OwnerSession } from '@/components/directory/OwnerSession'
 import { ReviewWidgetCode } from '@/components/directory/ReviewWidgetCode'
 import { OwnerProfileEditor } from '@/components/directory/OwnerProfileEditor'
+import { MarketingOptIn } from '@/components/directory/MarketingOptIn'
 import { getOwnerProfile } from '@/lib/directory/profiles'
 import { enrichShop } from '@/lib/directory/photos'
 
@@ -311,6 +312,9 @@ export default async function OwnerPage({
 
       {/* Owner self-service profile editing */}
       <OwnerProfileEditor initial={profileInitial} />
+
+      {/* Marketing-email opt-in (feeds the upsell drip) */}
+      <MarketingOptIn initial={profile?.marketingOptIn === true} city={shop.city} />
 
       {/* Free embeddable review widget for the shop's own website */}
       <ReviewWidgetCode
