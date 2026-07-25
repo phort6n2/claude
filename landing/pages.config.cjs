@@ -115,7 +115,7 @@ const pages = [
   title:'Auto Glass Replacement in Denver — Same-Day Mobile Service',
   desc:'Auto glass replacement in Denver for windshields, door glass and back glass. OEM-quality glass, mobile service, lifetime warranty. Call (720) 232-0320.',
   eyebrow:'Auto Glass Replacement',
-  h1:'Auto glass replacement in Denver — <span class="hl">done at your driveway.</span>',
+  h1:'Auto glass replacement in Denver — <span class="hl">any glass on the vehicle.</span>',
   sub:'Windshields, door glass and back glass replaced with OEM-quality parts, at your home or office, usually the same or next day.',
   svc:'Windshield replacement',
   intro:{
@@ -175,7 +175,7 @@ const pages = [
   title:'Windshield Chip Repair in Denver — Same-Day, Often $0',
   desc:'Same-day windshield chip repair in Denver. Under 30 minutes, keeps your factory glass, and usually covered by insurance. Call (720) 232-0320.',
   eyebrow:'Windshield Chip Repair',
-  h1:'Windshield chip repair — <span class="hl">quick, cheap, often free.</span>',
+  h1:'Windshield chip repair in Denver — <span class="hl">quick, cheap, often free.</span>',
   sub:'A chip repaired today costs a fraction of a windshield replaced next month. Most take under 30 minutes and are covered in full by insurance.',
   svc:'Rock chip / crack repair',
   intro:{
@@ -204,7 +204,7 @@ const pages = [
   title:'Windshield Crack Repair in Denver — Repair or Replace?',
   desc:'Windshield crack repair in Denver. We repair short cracks and replace when it is not safe to fill. Honest advice, mobile service. Call (720) 232-0320.',
   eyebrow:'Windshield Crack Repair',
-  h1:'Windshield crack repair — <span class="hl">and honest advice.</span>',
+  h1:'Windshield crack repair in Denver — <span class="hl">before it runs across the glass.</span>',
   sub:'Short cracks can often be filled and stopped. Long ones, edge cracks and anything in your line of sight need replacing — and we will tell you which you have.',
   svc:'Rock chip / crack repair',
   intro:{
@@ -263,7 +263,7 @@ const pages = [
   title:'Car Window Replacement in Denver — Mobile, Same-Day',
   desc:'Car window replacement in Denver for side, quarter and door glass. Full glass cleanup included, mobile service. Call (720) 232-0320.',
   eyebrow:'Car Window Replacement',
-  h1:'Car window replacement — <span class="hl">glass, cleanup and all.</span>',
+  h1:'Car window replacement in Denver — <span class="hl">glass, cleanup and all.</span>',
   sub:'Side, quarter and door glass replaced at your home or office, with every last piece of shattered tempered glass cleaned out.',
   svc:'Door or side window',
   intro:{
