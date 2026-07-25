@@ -472,6 +472,12 @@
           <input id="veh" name="vehicle" type="text" placeholder="2021 Toyota RAV4">
         </div>
         <div class="field">
+          <label for="vin">VIN <span style="text-transform:none;letter-spacing:0;color:var(--muted-2)">(optional — gets you the most accurate quote)</span></label>
+          <input id="vin" name="vin" type="text" placeholder="1HGCM82633A004352" autocomplete="off"
+                 spellcheck="false" maxlength="17" style="text-transform:uppercase;letter-spacing:.04em">
+          <p id="vinHint" style="margin-top:5px;font-size:11px;color:var(--muted-2);display:none"></p>
+        </div>
+        <div class="field">
           <label for="svc">What do you need?</label>
           <select id="svc" name="service">
             <option>Windshield replacement</option>
@@ -946,6 +952,54 @@
   // the workflow — but it can be called by anyone, so keep spam filtering in GHL.
   var LEAD_WEBHOOK = "https://services.leadconnectorhq.com/hooks/L9OIGvEMdvEEkF4JPdCx/webhook-trigger/c7731469-ccbf-47e5-b022-ae53ee5b15bb";
 
+  // ===== Phone: format to (xxx) xxx-xxxx as they type =====
+  // Live formatting confirms they've entered the right number of digits.
+  // Digits are also normalised to E.164 for GHL and Google, since both match
+  // phone numbers more reliably in that form than "(720) 555-0134".
+  function phDigits(v){
+    var d = String(v || '').replace(/\D/g, '');
+    if(d.length === 11 && d.charAt(0) === '1') d = d.slice(1);   // drop US country code
+    return d.slice(0, 10);
+  }
+  function phFormat(d){
+    if(!d) return '';
+    if(d.length < 4) return '(' + d;
+    if(d.length < 7) return '(' + d.slice(0,3) + ') ' + d.slice(3);
+    return '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6);
+  }
+  function phE164(v){
+    var d = phDigits(v);
+    return d.length === 10 ? '+1' + d : '';
+  }
+  var phEl = document.getElementById('ph');
+  if(phEl){
+    phEl.setAttribute('maxlength', '14');            // "(720) 555-0134"
+    phEl.addEventListener('input', function(){
+      this.value = phFormat(phDigits(this.value));   // also handles pasted numbers
+    });
+  }
+
+  // ===== VIN: uppercase, strip invalid characters, confirm at 17 =====
+  // Real VINs are uppercase and never contain I, O or Q (they'd be mistaken
+  // for 1 and 0), so those are filtered out as the user types.
+  var vinEl = document.getElementById('vin'), vinHint = document.getElementById('vinHint');
+  if(vinEl){
+    vinEl.addEventListener('input', function(){
+      var v = this.value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, '').slice(0, 17);
+      this.value = v;
+      if(!v){
+        this.style.borderColor = '';
+        if(vinHint) vinHint.style.display = 'none';
+      } else if(v.length === 17){
+        this.style.borderColor = 'var(--success)';
+        if(vinHint){ vinHint.textContent = '✓ Looks like a valid VIN'; vinHint.style.color = 'var(--success)'; vinHint.style.display = 'block'; }
+      } else {
+        this.style.borderColor = '';
+        if(vinHint){ vinHint.textContent = v.length + ' of 17 characters'; vinHint.style.color = 'var(--muted-2)'; vinHint.style.display = 'block'; }
+      }
+    });
+  }
+
   var form = document.getElementById('quoteForm');
   if(form){
     var submitBtn = form.querySelector('.qc-submit');
@@ -977,13 +1031,15 @@
         var bad = !f.value.trim();
         // Email must also look like an address, not just be non-empty
         if(!bad && f === em) bad = !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(f.value.trim());
+        // Phone must be a complete 10-digit number, not a partial one
+        if(!bad && f === ph) bad = phDigits(f.value).length !== 10;
         if(bad){ f.style.borderColor = '#EA4335'; if(!firstBad) firstBad = f; ok = false; }
         else { f.style.borderColor = ''; }
       });
       if(!ok){ (firstBad || nm).focus(); return; }
 
       var first = (nm.value.trim().split(' ')[0]) || 'there';
-      var leadInfo = { email: em.value.trim(), phone: ph.value.trim() };
+      var leadInfo = { email: em.value.trim(), phone: phE164(ph.value) || ph.value.trim() };
       track('generate_lead', {form:'quote'});
 
       // No webhook set yet → still report the conversion, then show success
@@ -997,9 +1053,11 @@
         first_name: parts[0] || fullName,
         last_name: parts.length > 1 ? parts.slice(1).join(' ') : '',
         email: em.value.trim(),
-        phone: ph.value.trim(),
+        phone: phE164(ph.value) || ph.value.trim(),
+        phone_formatted: ph.value.trim(),
         postal_code: zip.value.trim(),
         vehicle: (document.getElementById('veh').value || '').trim(),
+        vin: (document.getElementById('vin').value || '').trim(),
         service: document.getElementById('svc').value,
         insurance: insEl ? insEl.value : '',
         carrier: document.getElementById('carrier').value || '',
