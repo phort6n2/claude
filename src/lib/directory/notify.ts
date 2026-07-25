@@ -22,7 +22,9 @@ export function notificationsEnabled(): boolean {
   return !!process.env.RESEND_API_KEY
 }
 
-function fromAddress(): string {
+/** Single source of truth for the send identity (must be on a Resend-verified
+ * domain). Override with DIRECTORY_FROM_EMAIL. */
+export function fromAddress(): string {
   return (
     process.env.DIRECTORY_FROM_EMAIL ||
     'Windshield Repair HQ <leads@windshieldrepairhq.com>'

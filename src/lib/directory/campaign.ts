@@ -34,6 +34,7 @@ import {
   rankUrl,
   FEATURED_PRICE_DISPLAY,
 } from './agmp'
+import { fromAddress } from './notify'
 import type { Shop } from './types'
 
 const PREFIX = 'directory/campaign'
@@ -433,9 +434,7 @@ export function buildEmail(r: Recipient, step: number): Email {
 async function sendEmail(slug: string, to: string, email: Email): Promise<void> {
   const key = process.env.RESEND_API_KEY
   if (!key) throw new Error('RESEND_API_KEY missing')
-  const from =
-    process.env.DIRECTORY_FROM_EMAIL ||
-    'Windshield Repair HQ <hello@windshieldrepairhq.com>'
+  const from = fromAddress()
   const res = await fetch(RESEND_ENDPOINT, {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
