@@ -48,19 +48,27 @@ Other
 > conditional-logic settings. If it's fiddly, just leave carrier always visible —
 > it's a minor loss.
 
-### Hidden fields (important for Google Ads)
-Add hidden fields so the click IDs the page passes get captured. Name them to
-match the URL parameters exactly:
+### Click IDs (important for Google Ads)
+
+**GCLID is a STANDARD field in GHL** — do not create a custom field for it.
+Map the incoming `gclid` straight to that standard field. That is also where
+GHL's "Add to Google Ads" action looks for the click ID, so putting it there
+is what lets the conversion fire.
+
+Check whether `gbraid` and `wbraid` are standard in your account too. If they
+aren't, create them as custom fields — Google sends those *instead of* `gclid`
+on iOS and consent-mode traffic, so skipping them loses those conversions.
+
+The rest are custom fields (or hidden form fields, if using a GHL form):
 
 ```
-gclid          gbraid         wbraid
-msclkid        fbclid
+msclkid        fbclid         ttclid        li_fat_id
 utm_source     utm_medium     utm_campaign
-utm_term       utm_content
+utm_term       utm_content    landing_page  referrer
 ```
 
-The landing page appends these to the form URL automatically, so GHL will
-populate them on submit with no extra work.
+The landing page appends all of these to the form URL / webhook payload
+automatically.
 
 ---
 
