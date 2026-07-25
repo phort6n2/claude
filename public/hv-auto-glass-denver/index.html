@@ -841,9 +841,10 @@
   });
 
   // ===== Lead delivery to HighLevel =====
-  // Paste your HighLevel Inbound Webhook URL between the quotes to go live.
-  // (GHL: Automations → Workflows → new Workflow → "Inbound Webhook" trigger → copy the URL.)
-  var LEAD_WEBHOOK = "";
+  // HighLevel Inbound Workflow webhook. NOTE: this URL is visible in page source
+  // (unavoidable for any browser-side post). It is write-only — it can only start
+  // the workflow — but it can be called by anyone, so keep spam filtering in GHL.
+  var LEAD_WEBHOOK = "https://services.leadconnectorhq.com/hooks/L9OIGvEMdvEEkF4JPdCx/webhook-trigger/c7731469-ccbf-47e5-b022-ae53ee5b15bb";
 
   var form = document.getElementById('quoteForm');
   if(form){
@@ -884,21 +885,32 @@
       if(!LEAD_WEBHOOK){ showSuccess(first); return; }
 
       var insEl = document.querySelector('input[name="insurance"]:checked');
-      var data = new URLSearchParams();
-      data.append('full_name', nm.value.trim());
-      data.append('first_name', first);
-      data.append('phone', ph.value.trim());
-      data.append('postal_code', zip.value.trim());
-      data.append('vehicle', (document.getElementById('veh').value || '').trim());
-      data.append('service', document.getElementById('svc').value);
-      data.append('insurance', insEl ? insEl.value : '');
-      data.append('carrier', document.getElementById('carrier').value || '');
-      data.append('source', 'landing:hv-auto-glass-denver');
-      data.append('page', location.href);
+      var fullName = nm.value.trim();
+      var parts = fullName.split(/\s+/);
+      var payload = {
+        full_name: fullName,
+        first_name: parts[0] || fullName,
+        last_name: parts.length > 1 ? parts.slice(1).join(' ') : '',
+        phone: ph.value.trim(),
+        postal_code: zip.value.trim(),
+        vehicle: (document.getElementById('veh').value || '').trim(),
+        service: document.getElementById('svc').value,
+        insurance: insEl ? insEl.value : '',
+        carrier: document.getElementById('carrier').value || '',
+        source: 'landing:hv-auto-glass-denver',
+        page: location.href
+      };
 
       if(submitBtn){ submitBtn.disabled = true; submitBtn.textContent = 'Sending…'; }
-      fetch(LEAD_WEBHOOK, {method:'POST', mode:'no-cors', body:data})
-        .then(function(){ showSuccess(first); })
+      fetch(LEAD_WEBHOOK, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      })
+        .then(function(res){
+          if(!res.ok) throw new Error('HTTP ' + res.status);
+          showSuccess(first);
+        })
         .catch(function(){ showError(); });
     });
   }
