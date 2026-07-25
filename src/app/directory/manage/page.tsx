@@ -4,6 +4,8 @@ import { cookies } from 'next/headers'
 import { Wand2 } from 'lucide-react'
 import { getAllShops } from '@/lib/directory/data'
 import { uploadsEnabled } from '@/lib/directory/photos'
+import { notificationsEnabled, fromAddress } from '@/lib/directory/notify'
+import { campaignEnabled } from '@/lib/directory/campaign'
 import { ADMIN_COOKIE, verifyAdminToken } from '@/lib/directory/admin-auth'
 import { ManageUploader } from '@/components/directory/ManageUploader'
 import { OwnerViewPicker } from '@/components/directory/OwnerViewPicker'
@@ -16,6 +18,7 @@ import { ClaimsInbox } from '@/components/directory/ClaimsInbox'
 import { CampaignPanel } from '@/components/directory/CampaignPanel'
 import { RankMovement } from '@/components/directory/RankMovement'
 import { AgmpIntegration } from '@/components/directory/AgmpIntegration'
+import { EmailStatus } from '@/components/directory/EmailStatus'
 import { AdminSignOut } from '@/components/directory/AdminSignOut'
 
 // Internal agency console. Gated behind the admin session cookie — a signed-in
@@ -65,6 +68,16 @@ export default async function ManagePage() {
           redeploy. Until then those actions run but nothing is saved.
         </div>
       )}
+
+      <div className="mt-8">
+        <EmailStatus
+          transportReady={notificationsEnabled()}
+          fromAddress={fromAddress()}
+          notifyEmail={process.env.DIRECTORY_NOTIFY_EMAIL ?? ''}
+          mailingAddressSet={!!process.env.DIRECTORY_MAILING_ADDRESS}
+          campaignArmed={campaignEnabled()}
+        />
+      </div>
 
       {/* Actionable inboxes first — the daily work */}
       <div className="mt-8">
