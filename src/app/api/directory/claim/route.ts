@@ -70,6 +70,14 @@ export async function POST(request: Request) {
   const d = parsed.data
   if (d.company) return NextResponse.json({ ok: true }, { status: 201 }) // drop bots
 
+  // For a brand-new listing, generate its slug up front so we can store it on
+  // the claim (lets the operator one-click "Approve & publish" from the inbox)
+  // and reuse it for the pending listing + checkout below.
+  const isNewListing = !d.existingShopSlug && !!d.city && (d.state || '').length === 2
+  const listingSlug = isNewListing
+    ? await makeUniqueSlug(d.businessName, d.city as string, (d.state as string).toLowerCase())
+    : undefined
+
   const claim: Claim = {
     id: randomUUID(),
     type: d.existingShopSlug ? 'claim' : 'new_listing',
@@ -95,6 +103,7 @@ export async function POST(request: Request) {
     frustration: d.frustration || undefined,
     smsConsent: d.smsConsent,
     intent: d.intent,
+    listingSlug,
     createdAt: new Date().toISOString(),
   }
 
@@ -124,9 +133,9 @@ export async function POST(request: Request) {
     )
     const mobileService = services.includes('mobile-service')
     if (!services.length) services.push('windshield-repair', 'windshield-replacement')
-    slug = await makeUniqueSlug(d.businessName, d.city, state)
+    slug = listingSlug
     const shop: Shop = {
-      slug,
+      slug: slug as string,
       name: d.businessName,
       phone: d.phone || '',
       website: d.website || undefined,

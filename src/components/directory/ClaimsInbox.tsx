@@ -1,7 +1,18 @@
 'use client'
 
-import { useState } from 'react'
-import { ClipboardList, Loader2, Search, Phone, Mail, Globe, Truck } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import {
+  ClipboardList,
+  Loader2,
+  RefreshCw,
+  Phone,
+  Mail,
+  Globe,
+  Truck,
+  Rocket,
+  CheckCircle2,
+  ExternalLink,
+} from 'lucide-react'
 
 interface Claim {
   id: string
@@ -24,6 +35,7 @@ interface Claim {
   frustration?: string
   smsConsent?: boolean
   intent?: 'free' | 'featured'
+  listingSlug?: string
   createdAt: string
 }
 
@@ -46,6 +58,8 @@ export function ClaimsInbox() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [claims, setClaims] = useState<Claim[] | null>(null)
+  const [publishing, setPublishing] = useState('')
+  const [published, setPublished] = useState<Set<string>>(new Set())
 
   async function load() {
     setBusy(true)
@@ -62,24 +76,53 @@ export function ClaimsInbox() {
     }
   }
 
+  async function publish(slug: string) {
+    setPublishing(slug)
+    setError('')
+    try {
+      const res = await fetch('/api/directory/listings/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Failed to publish')
+      setPublished((p) => new Set(p).add(slug))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to publish')
+    } finally {
+      setPublishing('')
+    }
+  }
+
+  useEffect(() => {
+    load()
+  }, [])
+
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-      <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900">
-        <ClipboardList width={18} height={18} className="text-blue-600" /> Claims &amp; submissions
-      </h2>
-      <p className="mt-1 text-sm text-gray-600">
-        New listings and claims awaiting review, with each one&apos;s Google category verdict.
-      </p>
-
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900">
+            <ClipboardList width={18} height={18} className="text-blue-600" /> Claims &amp; submissions
+            {claims && claims.length > 0 && (
+              <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white">
+                {claims.length}
+              </span>
+            )}
+          </h2>
+          <p className="mt-1 text-sm text-gray-600">
+            New listings and claims awaiting review, with each one&apos;s Google category verdict.
+          </p>
+        </div>
         <button
           type="button"
           onClick={load}
           disabled={busy}
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
         >
-          {busy ? <Loader2 className="animate-spin" width={16} height={16} /> : <Search width={16} height={16} />}
-          Load claims
+          {busy ? <Loader2 className="animate-spin" width={15} height={15} /> : <RefreshCw width={15} height={15} />}
+          Refresh
         </button>
       </div>
 
@@ -118,7 +161,7 @@ export function ClaimsInbox() {
                 <div className="mt-1 text-sm text-gray-500">
                   {[c.city, c.state?.toUpperCase()].filter(Boolean).join(', ')}
                   {c.googleCategory ? ` · Google: ${c.googleCategory}` : ''}
-                  {c.serviceAreaOnly ? ' · mobile/SAB' : ''}
+                  {c.serviceAreaOnly ? ' · mobile only' : ''}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-sm">
                   <a href={`mailto:${c.email}`} className="inline-flex items-center gap-1.5 font-medium text-blue-600 hover:text-blue-700">
@@ -169,6 +212,37 @@ export function ClaimsInbox() {
                   <p className="mt-2 inline-flex items-center gap-1 text-xs text-gray-400">
                     <Truck width={12} height={12} /> Service-area business
                   </p>
+                )}
+
+                {/* Approve & publish a new-listing submission for free */}
+                {c.type === 'new_listing' && c.listingSlug && (
+                  <div className="mt-3 border-t border-gray-100 pt-3">
+                    {published.has(c.listingSlug) ? (
+                      <a
+                        href={`/directory/shop/${c.listingSlug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-green-700"
+                      >
+                        <CheckCircle2 width={15} height={15} /> Published — view listing
+                        <ExternalLink width={13} height={13} />
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => publish(c.listingSlug as string)}
+                        disabled={publishing === c.listingSlug}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60"
+                      >
+                        {publishing === c.listingSlug ? (
+                          <Loader2 className="animate-spin" width={14} height={14} />
+                        ) : (
+                          <Rocket width={14} height={14} />
+                        )}
+                        Approve &amp; publish (free)
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             )

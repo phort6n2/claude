@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Inbox, Loader2, Search, Phone, Mail, Car } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Inbox, Loader2, RefreshCw, Phone, Mail, Car, MessageSquare } from 'lucide-react'
 
 interface Quote {
   id: string
@@ -35,8 +35,7 @@ export function QuoteInbox() {
     setBusy(true)
     setError('')
     try {
-      const res = await fetch('/api/directory/quotes', {
-      })
+      const res = await fetch('/api/directory/quotes')
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed')
       setQuotes(json.quotes)
@@ -47,28 +46,36 @@ export function QuoteInbox() {
     }
   }
 
+  // Auto-load on mount — leads are just Blob reads, and the operator should see
+  // new ones at a glance without clicking.
+  useEffect(() => {
+    load()
+  }, [])
+
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900">
             <Inbox width={18} height={18} className="text-blue-600" /> Quote requests
+            {quotes && quotes.length > 0 && (
+              <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white">
+                {quotes.length}
+              </span>
+            )}
           </h2>
           <p className="mt-1 text-sm text-gray-600">
             Every lead submitted through the directory, newest first.
           </p>
         </div>
-      </div>
-
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
         <button
           type="button"
           onClick={load}
           disabled={busy}
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
         >
-          {busy ? <Loader2 className="animate-spin" width={16} height={16} /> : <Search width={16} height={16} />}
-          Load leads
+          {busy ? <Loader2 className="animate-spin" width={15} height={15} /> : <RefreshCw width={15} height={15} />}
+          Refresh
         </button>
       </div>
 
@@ -86,7 +93,6 @@ export function QuoteInbox() {
 
       {quotes && quotes.length > 0 && (
         <div className="mt-5 space-y-3">
-          <p className="text-sm font-medium text-gray-500">{quotes.length} total</p>
           {quotes.map((q) => (
             <div key={q.id} className="rounded-lg border border-gray-200 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">

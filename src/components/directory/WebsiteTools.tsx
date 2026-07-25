@@ -140,7 +140,7 @@ export function WebsiteTools() {
             )}
             <details className="rounded-lg border border-gray-200">
               <summary className="cursor-pointer px-4 py-2 text-sm font-medium text-gray-700">
-                Copy JSON for the seed file
+                Copy listing data (for your developer)
               </summary>
               <pre className="overflow-x-auto border-t border-gray-200 p-4 text-xs text-gray-800">
                 {toSeedJson(result.draft)}
@@ -168,7 +168,7 @@ export function WebsiteTools() {
             className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
           >
             {busy === 'audit' ? <Loader2 className="animate-spin" width={16} height={16} /> : <Search width={16} height={16} />}
-            Scan listings
+            Find SEO prospects
           </button>
         </div>
 

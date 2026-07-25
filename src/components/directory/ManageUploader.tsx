@@ -51,6 +51,14 @@ export function ManageUploader({ shops }: { shops: ShopOption[] }) {
   return (
     <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
       <div>
+        <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900">
+          <ImageIcon width={18} height={18} className="text-blue-600" /> Listing photos
+        </h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Add photos to a listing — they appear within a few minutes.
+        </p>
+      </div>
+      <div>
         <label className="mb-1.5 block text-sm font-medium text-gray-700" htmlFor="shop">
           Shop
         </label>
