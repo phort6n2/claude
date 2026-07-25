@@ -1,47 +1,56 @@
 /* ============================================================
-   HV AUTO GLASS — GHL form styling to match the landing page
+   HV AUTO GLASS — GHL form styling  ·  v2
    Paste into: GHL form builder → Styles / Settings → Custom CSS
+   Replace any earlier version wholesale.
    ------------------------------------------------------------
-   This CSS runs INSIDE the form's iframe, so plain element
-   selectors (input, label, button) are safe and are the most
-   reliable way to target GHL's markup across versions.
-
-   IMPORTANT: this is tuned for the form being EMBEDDED in the
-   landing page's dark card, which already supplies the border,
-   22px radius, padding and the amber/cyan top stripe. So the
-   form itself is transparent with no border — that avoids a
-   card-inside-a-card look. If you also use this form somewhere
-   standalone, see "STANDALONE" at the bottom.
+   WHAT v2 FIXES
+   1. Fields that stayed white. GHL renders plain text fields as
+      <input> with NO type attribute, and `input[type="text"]`
+      does not match a type-less input. v2 selects inputs by
+      EXCLUSION instead, so every field is caught.
+   2. The white panel behind the form. v2 clears backgrounds on
+      every container first, then re-paints only the inputs and
+      button — so GHL's wrapper can't leave a white card inside
+      the page's dark card.
    ============================================================ */
 
-/* ---------- 1. Shell: transparent, let the page card show ---------- */
-html, body,
-.form-builder--wrapper,
-.hl-form, form,
-[class*="form-wrapper"], [class*="formWrapper"] {
-  background: transparent !important;
+/* ---------- 1. Clear every container background ----------
+   Broad on purpose: GHL's wrapper class names vary by version,
+   so instead of guessing them we blank everything and re-paint
+   the controls below. */
+html, body, body * {
   background-color: transparent !important;
-  border: none !important;
+  background-image: none !important;
   box-shadow: none !important;
-  margin: 0 !important;
 }
 
-body, .form-builder--wrapper, .hl-form, form {
-  padding: 0 !important;                      /* the page card provides padding */
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #EAEEF3 !important;
+  color-scheme: dark;                        /* native dropdowns render dark */
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
                Helvetica, Arial, sans-serif !important;
-  color: #EAEEF3 !important;
-  color-scheme: dark;                          /* native dropdowns render dark */
 }
 
-/* ---------- 2. Headings and helper text ---------- */
-h1, h2, h3, h4,
-[class*="heading"], [class*="Heading"] {
+/* Strip borders/radius from wrappers only (controls keep theirs, set below) */
+form, div, section, fieldset, [class*="wrapper"], [class*="container"],
+[class*="card"], [class*="panel"], [class*="form-builder"] {
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+/* ---------- 2. Headings and helper text ----------
+   NOTE: the landing page card already shows "Get your free quote"
+   above this form. Delete the heading inside the GHL form to avoid
+   showing it twice — or uncomment the display:none rule below. */
+h1, h2, h3, h4, [class*="heading"], [class*="Heading"] {
   color: #EAEEF3 !important;
   font-weight: 800 !important;
   letter-spacing: -0.02em !important;
   line-height: 1.15 !important;
 }
+/* h1, h2, h3, .form-heading, [class*="heading"] { display: none !important; } */
 
 p, [class*="description"], [class*="subtitle"], [class*="help"] {
   color: #9BA6B2 !important;
@@ -49,9 +58,9 @@ p, [class*="description"], [class*="subtitle"], [class*="help"] {
   line-height: 1.55 !important;
 }
 
-/* ---------- 3. Field labels — uppercase mono.
-   This detail carries most of the design's character. ---------- */
-label,
+/* ---------- 3. Field labels — small uppercase mono ----------
+   Excludes radio/checkbox labels, which are handled in §6. */
+label:not([for]),
 .form-label,
 [class*="field-label"], [class*="fieldLabel"] {
   display: block !important;
@@ -64,43 +73,41 @@ label,
   margin-bottom: 6px !important;
 }
 
-/* ---------- 4. Inputs, selects, textareas ---------- */
-input[type="text"],
-input[type="email"],
-input[type="tel"],
-input[type="number"],
-input[type="url"],
-input[type="date"],
+/* ---------- 4. ALL text inputs — selected by exclusion ----------
+   This is the key fix: catches <input> with no type attribute,
+   which is how GHL renders Full Name, Postal Code, etc. */
+input:not([type="radio"]):not([type="checkbox"]):not([type="submit"]):not([type="button"]):not([type="hidden"]):not([type="file"]),
 select,
 textarea {
   width: 100% !important;
-  background: #0E1319 !important;
+  background-color: #0E1319 !important;
   border: 1px solid #28313C !important;
   border-radius: 11px !important;
   color: #EAEEF3 !important;
   font-family: inherit !important;
   font-size: 15.5px !important;
   padding: 13px 14px !important;
+  margin: 0 !important;
   box-shadow: none !important;
   transition: border-color .15s ease, box-shadow .15s ease !important;
   -webkit-appearance: none;
   appearance: none;
 }
+textarea { min-height: 96px !important; line-height: 1.5 !important; }
 
 input::placeholder, textarea::placeholder {
   color: #55606C !important;
   opacity: 1 !important;
 }
 
-/* Focus ring — amber glow, matches the page */
+/* Focus ring — amber glow */
 input:focus, select:focus, textarea:focus {
   outline: none !important;
   border-color: #FFC53D !important;
   box-shadow: 0 0 0 3px rgba(255, 197, 61, 0.18) !important;
 }
 
-/* Chrome autofill would otherwise paint inputs white/yellow
-   and wreck the dark theme. This keeps them dark. */
+/* Chrome autofill would otherwise repaint inputs white/yellow */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
@@ -110,7 +117,7 @@ input:-webkit-autofill:focus {
   transition: background-color 9999s ease-out 0s !important;
 }
 
-/* Custom dropdown arrow (native one disappears with appearance:none) */
+/* ---------- 5. Dropdown arrow (native one is removed by appearance:none) ---------- */
 select {
   background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239BA6B2' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
@@ -118,28 +125,45 @@ select {
   background-size: 18px !important;
   padding-right: 40px !important;
 }
-select option { background: #0E1319 !important; color: #EAEEF3 !important; }
+select option { background-color: #0E1319 !important; color: #EAEEF3 !important; }
 
-/* ---------- 5. Radios & checkboxes — sentence case, not mono ---------- */
-input[type="radio"] + label,
-input[type="checkbox"] + label,
+/* ---------- 6. Radios & checkboxes ----------
+   Sentence case, readable, and the control keeps its amber accent. */
+input[type="radio"], input[type="checkbox"] {
+  -webkit-appearance: auto !important;
+  appearance: auto !important;
+  width: auto !important;
+  accent-color: #FFC53D !important;
+  margin: 0 8px 0 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  vertical-align: middle !important;
+  flex: none !important;
+}
+label[for],
+input[type="radio"] + label, input[type="checkbox"] + label,
 .radio-label, .checkbox-label,
 [class*="radio"] label, [class*="checkbox"] label {
-  text-transform: none !important;
+  display: inline-block !important;
+  color: #EAEEF3 !important;
   font-family: inherit !important;
   font-size: 14px !important;
+  font-weight: 400 !important;
   letter-spacing: 0 !important;
-  color: #EAEEF3 !important;
-  margin-bottom: 0 !important;
+  text-transform: none !important;
+  margin: 0 !important;
+  cursor: pointer !important;
 }
-input[type="radio"], input[type="checkbox"] { accent-color: #FFC53D !important; }
+/* Give each option a little breathing room */
+[class*="radio"] > div, [class*="checkbox"] > div,
+.radio-group > div { margin-bottom: 8px !important; }
 
-/* ---------- 6. Submit button — full amber pill ---------- */
-button[type="submit"],
+/* ---------- 7. Submit button — full amber pill ---------- */
+button[type="submit"], button:not([type]),
 .btn-submit, .form-btn, [class*="submit"] button, button[class*="submit"] {
   display: block !important;
   width: 100% !important;
-  background: #FFC53D !important;
+  background-color: #FFC53D !important;
   background-image: none !important;
   color: #1A1200 !important;
   border: none !important;
@@ -149,14 +173,12 @@ button[type="submit"],
   font-weight: 800 !important;
   letter-spacing: -0.01em !important;
   padding: 16px 26px !important;
-  margin-top: 6px !important;
+  margin-top: 8px !important;
   cursor: pointer !important;
   box-shadow: 0 10px 30px -8px rgba(255, 197, 61, 0.5) !important;
   transition: transform .18s ease, box-shadow .18s ease !important;
 }
-button[type="submit"]:hover,
-.btn-submit:hover, .form-btn:hover {
-  background: #FFC53D !important;
+button[type="submit"]:hover, .btn-submit:hover, .form-btn:hover {
   transform: translateY(-2px) !important;
   box-shadow: 0 16px 40px -8px rgba(255, 197, 61, 0.6) !important;
 }
@@ -165,46 +187,42 @@ button[type="submit"]:focus-visible {
   outline-offset: 2px !important;
 }
 
-/* ---------- 7. Spacing rhythm between fields ---------- */
+/* ---------- 8. Spacing between fields ---------- */
 .form-group, [class*="field-container"], [class*="fieldContainer"],
 [class*="form-field"] {
   margin-bottom: 13px !important;
 }
 
-/* ---------- 8. Validation errors ---------- */
+/* ---------- 9. Validation errors ---------- */
 [class*="error"], [class*="invalid"], .text-danger {
   color: #EA4335 !important;
   font-size: 12.5px !important;
-  text-transform: none !important;
   font-family: inherit !important;
+  text-transform: none !important;
   letter-spacing: 0 !important;
 }
 input.error, input[aria-invalid="true"] { border-color: #EA4335 !important; }
 
-/* ---------- 9. Fine print / consent text ---------- */
+/* ---------- 10. Fine print, links, icons ---------- */
 [class*="consent"], [class*="disclaimer"], [class*="terms"], small {
   color: #8592A0 !important;
   font-size: 11px !important;
   line-height: 1.45 !important;
-  text-transform: none !important;
   font-family: inherit !important;
+  text-transform: none !important;
   letter-spacing: 0 !important;
 }
-
-/* ---------- 10. Kill GHL's default focus/hover blues ---------- */
-*:focus { outline-color: #FFC53D !important; }
 a { color: #5AD1F0 !important; }
+svg { color: #8592A0 !important; }
 
 
 /* ============================================================
    STANDALONE USE
-   If you use this form OUTSIDE the landing page card (its own
-   page, a popup), uncomment this so it brings its own card:
+   If this form is ALSO used outside the landing page card, add
+   its own card back by uncommenting:
 
-   body, form {
-     background: linear-gradient(180deg, #1C232C, #151A21) !important;
-     border: 1px solid #28313C !important;
-     border-radius: 22px !important;
+   body {
+     background-color: #151A21 !important;
      padding: 28px !important;
    }
    ============================================================ */
