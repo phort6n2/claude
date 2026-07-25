@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Windshield Repair HQ">
+  <rect width="512" height="512" rx="112" fill="#2563eb"/>
+  <path d="M256 108 L150 156 V236 C150 330 256 404 256 404 C256 404 362 330 362 236 V156 Z" fill="#ffffff"/>
+  <path d="M214 250 l28 28 56 -60" fill="none" stroke="#2563eb" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

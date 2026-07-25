@@ -27,6 +27,7 @@ import { blobEnabled } from './blob'
 import { getShopBySlug, getCityRank } from './data'
 import { listClaims } from './claims'
 import { listQuotesForShop } from './quotes'
+import { listMarketingConsent } from './profiles'
 import { hydrateDirectory } from './listings'
 import {
   featuredCheckoutUrl,
@@ -189,32 +190,54 @@ function daysSince(iso?: string): number {
 
 /**
  * Everyone eligible for the drip: a live shop whose owner opted into marketing,
- * segmented by tier. Deduped by slug (most-recent consenting claim wins). Client
- * (already-managed) shops are excluded.
+ * segmented by tier. Consent comes from two places:
+ *   • the "wants marketing help" box on their original claim, and
+ *   • the marketing toggle on their owner dashboard (added later).
+ * The dashboard toggle wins — an explicit opt-out there overrides an old claim
+ * consent, and an opt-in there enrolls owners who never checked the box. Client
+ * (already-managed) shops are always excluded.
  */
 export async function segmentRecipients(): Promise<Recipient[]> {
   await hydrateDirectory()
-  const claims = await listClaims() // already sorted newest-first
-  const seen = new Set<string>()
+  const [claims, consent] = await Promise.all([listClaims(), listMarketingConsent()])
+
+  // Newest consenting claim per slug wins for the email fallback.
+  const claimBySlug = new Map<string, { email?: string; wants: boolean }>()
+  for (const c of claims) {
+    const slug = c.existingShopSlug || c.listingSlug
+    if (!slug || claimBySlug.has(slug)) continue
+    claimBySlug.set(slug, { email: c.email, wants: !!c.wantsMarketingHelp })
+  }
+
+  // Union of every slug either source knows about.
+  const slugs = new Set<string>([...claimBySlug.keys(), ...consent.keys()])
   const out: Recipient[] = []
 
-  for (const c of claims) {
-    if (!c.wantsMarketingHelp) continue
-    if (!c.email) continue
-    const slug = c.existingShopSlug || c.listingSlug
-    if (!slug || seen.has(slug)) continue
-    seen.add(slug)
+  for (const slug of slugs) {
+    const dash = consent.get(slug) // dashboard toggle, if set
+    const claim = claimBySlug.get(slug)
+
+    // Consent decision: dashboard toggle is authoritative when present.
+    let eligible: boolean
+    if (dash) eligible = dash.optIn
+    else eligible = !!claim?.wants
+    if (!eligible) continue
 
     const shop = getShopBySlug(slug)
     if (!shop) continue // pending/unpublished — not live yet, nothing to upsell
     if (shop.client) continue // already an AGMP client
+
+    // Prefer an owner-provided address; for an explicit dashboard opt-in, fall
+    // back to the listing email so a willing owner is never dropped.
+    const email = dash?.email || claim?.email || (dash ? shop.email : undefined)
+    if (!email) continue
 
     const track: CampaignTrack = shop.featured ? 'agmp' : 'featured'
     const { rank, total } = getCityRank(shop)
     const quotes = await listQuotesForShop(slug).catch(() => [])
     const leads30 = quotes.filter((q) => daysSince(q.createdAt) <= 30).length
 
-    out.push({ slug, email: c.email, shop, track, rank, total, leads30 })
+    out.push({ slug, email, shop, track, rank, total, leads30 })
   }
   return out
 }
