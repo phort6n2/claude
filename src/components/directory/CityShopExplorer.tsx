@@ -122,8 +122,11 @@ export function CityShopExplorer({ shops }: { shops: Shop[] }) {
           )}
         </div>
 
-        {/* List */}
-        <div className="space-y-4">
+        {/* List — self-start so the grid doesn't stretch these cards to the
+            map's height (each card's h-full would otherwise fill the column and
+            push the rest below the fold). The map column still stretches so it
+            can stay sticky while scrolling the list. */}
+        <div className="space-y-4 self-start">
           {filtered.map((s) => (
             <ShopCard key={s.slug} shop={s} />
           ))}
