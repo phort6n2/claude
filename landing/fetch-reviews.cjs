@@ -11,7 +11,10 @@
    Usage:
      GOOGLE_PLACES_API_KEY=xxx node landing/fetch-reviews.cjs
    Optional:
-     PLACE_ID=ChIJ...     skip the lookup call (recommended once you have it)
+     PLACE_ID=ChIJ...     override the baked-in place id below
+
+   The place id is public information (it appears in Google Maps URLs), so it
+   lives in the source. Only the API key is a secret.
 
    Fails safe: on any error it leaves the existing reviews.json untouched and
    exits 0, so a transient API problem can never blank the reviews on the site
@@ -24,6 +27,7 @@ const path = require('path');
 const OUT = path.join(__dirname, 'reviews.json');
 const KEY = process.env.GOOGLE_PLACES_API_KEY;
 const BUSINESS = 'HV Auto Glass Denver, 1440 Sheridan Blvd, Denver, CO 80214';
+const DEFAULT_PLACE_ID = 'ChIJQ9b9Z0iHa4cRhCqizeWC2IM';   // HV Auto Glass Denver
 
 function bail(msg) {
   console.error('fetch-reviews: ' + msg);
@@ -57,8 +61,9 @@ async function get(url, fieldMask) {
   if (!KEY) bail('GOOGLE_PLACES_API_KEY is not set.');
 
   try {
-    // 1. Resolve the place id (only when not supplied — saves a call every run)
-    let placeId = process.env.PLACE_ID;
+    // 1. Resolve the place id. Normally the baked-in one is used and this
+    //    costs nothing; the Text Search fallback only runs if it's cleared.
+    let placeId = process.env.PLACE_ID || DEFAULT_PLACE_ID;
     if (!placeId) {
       const search = await post(
         'https://places.googleapis.com/v1/places:searchText',
@@ -75,8 +80,12 @@ async function get(url, fieldMask) {
     // 2. One Place Details call. Narrow field mask = cheapest possible request.
     const d = await get(
       `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`,
-      'rating,userRatingCount,googleMapsUri,reviews'
+      // displayName/formattedAddress ride along free — `reviews` already puts
+      // this request in the highest SKU tier — and let the log confirm we hit
+      // the right business.
+      'displayName,formattedAddress,rating,userRatingCount,googleMapsUri,reviews'
     );
+    console.log(`place ${placeId} → ${d.displayName?.text} — ${d.formattedAddress}`);
 
     if (typeof d.rating !== 'number' || typeof d.userRatingCount !== 'number') {
       bail('Response did not include rating/userRatingCount.');

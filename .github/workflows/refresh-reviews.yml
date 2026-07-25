@@ -24,7 +24,9 @@ jobs:
       - name: Fetch latest Google reviews
         env:
           GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
-          PLACE_ID: ${{ secrets.GOOGLE_PLACE_ID }}   # optional, saves one call
+          # Optional override. Left unset, the script uses the place id baked
+          # into fetch-reviews.cjs, so no second secret is needed.
+          PLACE_ID: ${{ secrets.GOOGLE_PLACE_ID }}
         run: node landing/fetch-reviews.cjs
 
       - name: Rebuild pages with the new numbers
