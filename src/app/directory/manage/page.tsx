@@ -14,6 +14,7 @@ import { ReviewsRefresh } from '@/components/directory/ReviewsRefresh'
 import { SpamAudit } from '@/components/directory/SpamAudit'
 import { ClaimsInbox } from '@/components/directory/ClaimsInbox'
 import { CampaignPanel } from '@/components/directory/CampaignPanel'
+import { RankMovement } from '@/components/directory/RankMovement'
 import { AdminSignOut } from '@/components/directory/AdminSignOut'
 
 // Internal agency console. Gated behind the admin session cookie — a signed-in
@@ -71,6 +72,10 @@ export default async function ManagePage() {
 
       <div className="mt-8">
         <ClaimsInbox />
+      </div>
+
+      <div className="mt-8">
+        <RankMovement />
       </div>
 
       <div className="mt-8">
