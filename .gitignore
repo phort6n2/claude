@@ -44,3 +44,6 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# Temporary review screenshots (not part of the app)
+/scratchpad-shots/

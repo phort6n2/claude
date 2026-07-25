@@ -1,0 +1,45 @@
+name: Refresh Google reviews
+
+# Pulls the live Google rating, review count and top reviews once a week and
+# bakes them into the static pages. One Places API call per run — visitors
+# never trigger the API, and the key never reaches the browser.
+on:
+  schedule:
+    - cron: '17 9 * * 1'        # Mondays, 09:17 UTC
+  workflow_dispatch:            # allows a manual run from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch latest Google reviews
+        env:
+          GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+          # Optional override. Left unset, the script uses the place id baked
+          # into fetch-reviews.cjs, so no second secret is needed.
+          PLACE_ID: ${{ secrets.GOOGLE_PLACE_ID }}
+        run: node landing/fetch-reviews.cjs
+
+      - name: Rebuild pages with the new numbers
+        run: npm run build:landing
+
+      - name: Commit if anything changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No review changes this week."
+            exit 0
+          fi
+          git add landing/reviews.json quote-site
+          git commit -m "Refresh Google reviews [skip ci]"
+          git push
