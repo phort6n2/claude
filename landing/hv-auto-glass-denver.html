@@ -418,6 +418,10 @@
           <label for="nm">Full name</label>
           <input id="nm" name="name" type="text" placeholder="Jordan Miller" autocomplete="name" required>
         </div>
+        <div class="field">
+          <label for="em">Email</label>
+          <input id="em" name="email" type="email" placeholder="jordan@email.com" autocomplete="email" inputmode="email" required>
+        </div>
         <div class="field-row">
           <div class="field">
             <label for="ph">Mobile phone</label>
@@ -870,13 +874,17 @@
 
     form.addEventListener('submit', function(e){
       e.preventDefault();
-      var nm = document.getElementById('nm'), ph = document.getElementById('ph'), zip = document.getElementById('zip');
-      var required = [nm, ph, zip], ok = true;
+      var nm = document.getElementById('nm'), em = document.getElementById('em'),
+          ph = document.getElementById('ph'), zip = document.getElementById('zip');
+      var required = [nm, em, ph, zip], ok = true, firstBad = null;
       required.forEach(function(f){
-        if(!f.value.trim()){ f.style.borderColor = '#EA4335'; ok = false; }
+        var bad = !f.value.trim();
+        // Email must also look like an address, not just be non-empty
+        if(!bad && f === em) bad = !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(f.value.trim());
+        if(bad){ f.style.borderColor = '#EA4335'; if(!firstBad) firstBad = f; ok = false; }
         else { f.style.borderColor = ''; }
       });
-      if(!ok){ (required.find(function(f){return !f.value.trim();})||nm).focus(); return; }
+      if(!ok){ (firstBad || nm).focus(); return; }
 
       var first = (nm.value.trim().split(' ')[0]) || 'there';
       track('generate_lead', {form:'quote'});
@@ -891,6 +899,7 @@
         full_name: fullName,
         first_name: parts[0] || fullName,
         last_name: parts.length > 1 ? parts.slice(1).join(' ') : '',
+        email: em.value.trim(),
         phone: ph.value.trim(),
         postal_code: zip.value.trim(),
         vehicle: (document.getElementById('veh').value || '').trim(),
