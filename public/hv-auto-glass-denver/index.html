@@ -835,6 +835,26 @@
   if(insN) insN.addEventListener('change', syncCarrier);
   syncCarrier();
 
+  // ===== Ad click-ID + UTM attribution capture =====
+  // Grabs Google/Microsoft/Meta click IDs and UTMs from the landing URL and keeps them
+  // for the session, so they survive navigation across the mini-site and still get
+  // attached to the lead even if the visitor submits from another page.
+  var ATTR_KEYS = ['gclid','gbraid','wbraid','gclsrc','msclkid','fbclid','ttclid','li_fat_id',
+                   'utm_source','utm_medium','utm_campaign','utm_term','utm_content'];
+  var attribution = (function(){
+    var store = {};
+    try{ store = JSON.parse(sessionStorage.getItem('hv_attr') || '{}'); }catch(e){ store = {}; }
+    var qs = new URLSearchParams(location.search), touched = false;
+    ATTR_KEYS.forEach(function(k){
+      var v = qs.get(k);
+      if(v){ store[k] = v; touched = true; }          // newest click wins
+    });
+    if(!store.landing_page){ store.landing_page = location.href.split('#')[0]; touched = true; }
+    if(!store.referrer){ store.referrer = document.referrer || ''; touched = true; }
+    if(touched){ try{ sessionStorage.setItem('hv_attr', JSON.stringify(store)); }catch(e){} }
+    return store;
+  })();
+
   // Fire an analytics event if GA4/gtag or dataLayer is present (safe no-op otherwise)
   function track(name, params){
     try{ if(window.gtag){ window.gtag('event', name, params||{}); }
@@ -909,6 +929,10 @@
         source: 'landing:hv-auto-glass-denver',
         page: location.href
       };
+      // Attach ad click IDs / UTMs so Google Ads conversions can be matched back
+      ATTR_KEYS.concat(['landing_page','referrer']).forEach(function(k){
+        payload[k] = attribution[k] || '';
+      });
 
       if(submitBtn){ submitBtn.disabled = true; submitBtn.textContent = 'Sending…'; }
       fetch(LEAD_WEBHOOK, {
