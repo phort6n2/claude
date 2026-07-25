@@ -532,6 +532,14 @@
      swapped by the call-tracking pool, so it must not be visible. */
   .work .crop-eq img{object-position:center 34%}
   .work .crop-finished img{object-position:center 30%}
+
+  /* Real brand logo */
+  .brand{flex-direction:column;align-items:flex-start;gap:3px}
+  .brand-logo{height:30px;width:auto;display:block}
+  .brand small{margin-top:0}
+  footer .brand-logo{height:34px}
+  @media(max-width:640px){.brand-logo{height:25px}.brand small{display:none}}
+  @media(max-width:360px){.brand-logo{height:22px}}
 </style>
 </head>
 <body>
@@ -539,17 +547,13 @@
 <header class="nav">
   <div class="wrap nav-inner">
     <a class="brand" href="#top" aria-label="HV Auto Glass Denver home">
-      <svg class="mark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-        <rect x="1.5" y="1.5" width="37" height="37" rx="10" fill="#FFC53D"/>
-        <path d="M11 26.5 L20 9 L29 26.5 Z" fill="#0B0E12"/>
-        <path d="M20 9 L20 26.5" stroke="#FFC53D" stroke-width="1.4"/>
-        <path d="M15 22 L25 22" stroke="#FFC53D" stroke-width="1.4"/>
-      </svg>
-      <span>HV Auto Glass<br><small>Denver · Since 2018</small></span>
+      <img class="brand-logo" src="/hv-auto-glass-denver/img/logo-white.webp" width="449" height="120"
+           alt="HV Auto Glass" fetchpriority="high" decoding="async">
+      <small>Denver &middot; Since 2018</small>
     </a>
     <div class="nav-right">
       <div class="nav-phone">
-        <span class="lab">Open 7 days a week</span>
+        <span class="lab">Mon&ndash;Fri 9&ndash;5 &middot; Sat 9&ndash;2</span>
         <a class="num" href="tel:+17202320320">(720) 232-0320</a>
       </div>
       <a class="btn btn-primary" href="#quote">Free Quote</a>
@@ -958,8 +962,9 @@
     <div class="foot-grid">
       <div class="foot-brand">
         <a class="brand" href="#top">
-          <svg class="mark" viewBox="0 0 40 40" fill="none" aria-hidden="true"><rect x="1.5" y="1.5" width="37" height="37" rx="10" fill="#FFC53D"/><path d="M11 26.5 L20 9 L29 26.5 Z" fill="#0B0E12"/><path d="M20 9 L20 26.5" stroke="#FFC53D" stroke-width="1.4"/><path d="M15 22 L25 22" stroke="#FFC53D" stroke-width="1.4"/></svg>
-          <span>HV Auto Glass<br><small>Denver · Since 2018</small></span>
+          <img class="brand-logo" src="/hv-auto-glass-denver/img/logo-white.webp" width="449" height="120"
+               alt="HV Auto Glass" loading="lazy" decoding="async">
+          <small>Denver &middot; Since 2018</small>
         </a>
         <p>Denver's trusted mobile auto glass shop. Windshield replacement, repair &amp; ADAS calibration — we come to you.</p>
       </div>
@@ -992,8 +997,10 @@
                site, so it must not be swapped by dynamic number insertion.
                The no-swap class + data attribute are the opt-out hooks. -->
           <li><a class="ghl-no-swap" data-no-swap="true" href="tel:+17208027097">+1 720-802-7097</a></li>
+          <li><a href="mailto:hvautoglassdenver@gmail.com">hvautoglassdenver@gmail.com</a></li>
+          <li><a href="https://maps.google.com/?cid=13934619566903784372" target="_blank" rel="noopener">1440 Sheridan Blvd, Denver, CO 80214</a></li>
           <li><a href="#quote">Free online quote</a></li>
-          <li style="color:var(--muted-2);font-size:13px;margin-top:6px">Open 7 days a week</li>
+          <li style="color:var(--muted-2);font-size:13px;margin-top:6px">Mon&ndash;Fri 9am&ndash;5pm &middot; Sat 9am&ndash;2pm</li>
         </ul>
       </div>
     </div>

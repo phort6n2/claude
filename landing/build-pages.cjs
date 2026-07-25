@@ -11,6 +11,15 @@ const fs = require('fs');
 const path = require('path');
 const { pages } = require('./pages.config.cjs');
 
+// Live Google rating/reviews, refreshed weekly by fetch-reviews.cjs.
+// Absent or unreadable => the page falls back to its neutral wording rather
+// than showing invented numbers.
+let REVIEWS = null;
+try {
+  REVIEWS = JSON.parse(fs.readFileSync(path.join(__dirname, 'reviews.json'), 'utf8'));
+  if (!REVIEWS.rating || !REVIEWS.count) REVIEWS = null;
+} catch (e) { REVIEWS = null; }
+
 const BASE = process.env.BASE !== undefined ? process.env.BASE : '/hv-auto-glass-denver';
 const ORIGIN = 'https://quote.hvautoglassdenver.com';
 const TEMPLATE = path.join(__dirname, 'hv-auto-glass-denver.html');
@@ -117,17 +126,105 @@ function build(p){
   };
   const bizLd = {
     '@context':'https://schema.org','@type':'AutoGlassShop',
-    name:'HV Auto Glass Denver', telephone:'+1-720-232-0320',
-    url:canonical, areaServed:'Denver, Colorado',
-    address:{'@type':'PostalAddress',addressLocality:'Denver',addressRegion:'CO',addressCountry:'US'}
+    name:'HV Auto Glass Denver',
+    telephone:'+1-720-232-0320',
+    email:'hvautoglassdenver@gmail.com',
+    url:canonical,
+    image:`${ORIGIN}${BASE}/img/logo-amber.webp`,
+    address:{'@type':'PostalAddress',streetAddress:'1440 Sheridan Blvd',
+      addressLocality:'Denver',addressRegion:'CO',postalCode:'80214',addressCountry:'US'},
+    geo:{'@type':'GeoCoordinates',latitude:39.7389384,longitude:-105.0555081},
+    areaServed:['Denver','Aurora','Lakewood','Arvada','Wheat Ridge','Thornton'].map(n=>({'@type':'City',name:n})),
+    openingHoursSpecification:[
+      {'@type':'OpeningHoursSpecification',dayOfWeek:['Monday','Tuesday','Wednesday','Thursday','Friday'],opens:'09:00',closes:'17:00'},
+      {'@type':'OpeningHoursSpecification',dayOfWeek:'Saturday',opens:'09:00',closes:'14:00'}
+    ]
   };
+  if (REVIEWS && REVIEWS.rating && REVIEWS.count) {
+    bizLd.aggregateRating = {'@type':'AggregateRating',
+      ratingValue:String(REVIEWS.rating), reviewCount:String(REVIEWS.count),
+      bestRating:'5', worstRating:'1'};
+  }
   s = s.replace('</body>',
     `<script type="application/ld+json">${JSON.stringify(bizLd)}</script>\n` +
     `<script type="application/ld+json">${JSON.stringify(faqLd)}</script>\n</body>`);
 
+  // --- live Google rating, count and review quotes ---
+  s = applyReviews(s);
+
   // --- point in-page nav links at real pages, and fix the base path ---
   s = s.replace(/href="\/hv-auto-glass-denver\//g, `href="${BASE}/`);
 
+  return s;
+}
+
+// Swap the rating, review count and review cards for live Google data.
+// With no data file we strip the specific claims instead of inventing them.
+function applyReviews(s){
+  const has = !!REVIEWS;
+  const rating = has ? REVIEWS.rating : null;
+  const count  = has ? REVIEWS.count  : null;
+
+  if (has) {
+    s = s.split('>4.9<').join(`>${rating}<`);
+    s = s.replace('<span class="big">4.9<span class="rating-stars">',
+                  `<span class="big">${rating}<span class="rating-stars">`);
+    s = s.replace(/200\+ Google reviews/g, `${count} Google reviews`);
+    s = s.replace(/Based on 200\+ verified Google reviews · Since 2018/g,
+                  `Based on ${count} verified Google reviews · Since 2018`);
+    s = s.replace(/Denver drivers rate us 4\.9 stars/g,
+                  `Denver drivers rate us ${rating} stars`);
+  } else {
+    // No live data yet: strip every unverifiable specific rather than shipping
+    // invented ratings or testimonials, which is both a credibility problem and
+    // a Google Ads policy risk.
+    s = s.replace('<span class="big">4.9<span class="rating-stars"> \u2605\u2605\u2605\u2605\u2605</span></span><small>200+ Google reviews</small>',
+                  '<span class="big">Google reviewed</span><small>Rated by Denver drivers</small>');
+    s = s.replace('Based on 200+ verified Google reviews \u00b7 Since 2018',
+                  'Verified Google reviews \u00b7 Serving Denver since 2018');
+    s = s.replace('Denver drivers rate us 4.9 stars', 'What Denver drivers say');
+    s = s.replace('<div class="score">4.9</div>', '');
+    s = s.replace(">4.9<", ">&nbsp;<");
+    // stars imply a rating we can't yet substantiate
+    s = s.replace('<span class="rating-stars" style="font-size:16px">\u2605\u2605\u2605\u2605\u2605</span>', '');
+
+    // Swap the sample testimonials for a link to the real Google listing
+    const a0 = s.indexOf('<div class="rev-cards">');
+    if (a0 !== -1) {
+      const b0 = s.indexOf('\n        </div>', a0);
+      if (b0 !== -1) {
+        s = s.slice(0, a0) + `<div class="rev-cards">
+          <div class="rev">
+            <p style="font-size:15.5px;color:var(--ink);margin-bottom:14px">Read what Denver drivers say about us in their own words \u2014 every review, unedited, on our Google listing.</p>
+            <a class="btn btn-ghost" href="https://maps.google.com/?cid=13934619566903784372" target="_blank" rel="noopener">See our Google reviews \u2192</a>
+          </div>` + s.slice(b0);
+      }
+    }
+  }
+
+  // Replace the three placeholder review cards with real ones when we have them
+  if (has && REVIEWS.reviews && REVIEWS.reviews.length) {
+    const colors = ['#5AD1F0','#FFC53D','#4ADE80'];
+    const cards = REVIEWS.reviews.map((r,i)=>{
+      const initials = r.author.split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      const stars = '★'.repeat(Math.round(r.rating));
+      const text = strip(r.text).replace(/"/g,'&quot;');
+      return `          <div class="rev">
+            <div class="rev-top">
+              <div class="rev-av" style="background:${colors[i%3]}">${esc(initials)}</div>
+              <div><div class="rev-nm">${esc(r.author)}</div><div class="rev-meta">${esc(r.when)}</div></div>
+              <div class="rev-stars">${stars}</div>
+            </div>
+            <p>&ldquo;${text}&rdquo;</p>
+            <div class="verified"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Verified Google review</div>
+          </div>`;
+    }).join('\n');
+    const a = s.indexOf('<div class="rev-cards">');
+    if (a !== -1) {
+      const b = s.indexOf('\n        </div>', a);
+      if (b !== -1) s = s.slice(0,a) + '<div class="rev-cards">\n' + cards + s.slice(b);
+    }
+  }
   return s;
 }
 
@@ -163,6 +260,7 @@ for (const p of pages){
 // Rebuild the home page too, so its footer links point at the new pages.
 {
   let home = fs.readFileSync(TEMPLATE, 'utf8');
+  home = applyReviews(home);
   home = home.replace(/href="\/hv-auto-glass-denver\//g, `href="${BASE}/`);
   fs.writeFileSync(path.join(OUTDIR, 'index.html'), relinkFooter(home));
 }
