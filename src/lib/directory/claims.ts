@@ -40,6 +40,8 @@ export interface Claim {
   frustration?: string
   smsConsent?: boolean
   intent?: 'free' | 'featured'
+  /** Slug of the pending self-serve listing created for a new-listing claim. */
+  listingSlug?: string
   createdAt: string
 }
 

@@ -11,13 +11,20 @@ import {
   ExternalLink,
   BadgeCheck,
   Wrench,
+  MessageSquare,
 } from 'lucide-react'
 import { getShopBySlug, shopHref, getCityRank } from '@/lib/directory/data'
 import { OWNER_COOKIE, verifyOwnerKey } from '@/lib/directory/owner-auth'
 import { ADMIN_COOKIE, verifyAdminToken } from '@/lib/directory/admin-auth'
 import { isPaidFeatured } from '@/lib/directory/featured'
 import { hydrateDirectory } from '@/lib/directory/listings'
-import { featuredCheckoutUrl, AGMP_AUDIT_URL, FEATURED_PRICE_DISPLAY } from '@/lib/directory/agmp'
+import {
+  featuredCheckoutUrl,
+  AGMP_AUDIT_URL,
+  AGMP_SITE_URL,
+  AGMP_PHONE_TEL,
+  FEATURED_PRICE_DISPLAY,
+} from '@/lib/directory/agmp'
 import { listQuotesForShop, quotesEnabled } from '@/lib/directory/quotes'
 import { OwnerLogin } from '@/components/directory/OwnerLogin'
 import { OwnerSession } from '@/components/directory/OwnerSession'
@@ -139,19 +146,28 @@ export default async function OwnerPage({
               </p>
             ) : (
               <p className="mt-2 max-w-md text-sm text-gray-600">
-                The top listings capture most of the driver clicks. Jump to the top of {shop.city}.
+                Featured shops appear above every shop in {shop.city} that isn&apos;t Featured. Jump
+                the line for {FEATURED_PRICE_DISPLAY}.
               </p>
             )}
           </div>
           {!isFeatured && (
             <div className="flex flex-col items-stretch gap-2">
-              <a
-                href={featuredCheckout ?? AGMP_AUDIT_URL}
-                {...(featuredCheckout ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
-              >
-                <Sparkles width={16} height={16} /> Get Featured — {FEATURED_PRICE_DISPLAY}
-              </a>
+              {featuredCheckout ? (
+                <a
+                  href={featuredCheckout}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+                >
+                  <Sparkles width={16} height={16} /> Get Featured — {FEATURED_PRICE_DISPLAY}
+                </a>
+              ) : (
+                <a
+                  href={`sms:${AGMP_PHONE_TEL}`}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+                >
+                  <Sparkles width={16} height={16} /> Go Featured ({FEATURED_PRICE_DISPLAY}) — text us
+                </a>
+              )}
               <a
                 href={AGMP_AUDIT_URL}
                 target="_blank"
@@ -165,51 +181,15 @@ export default async function OwnerPage({
         </div>
       </section>
 
-      {/* Marketing / upsell — the whole point of getting owners logged in */}
-      <section className="mt-6 overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 p-6 text-white shadow-sm sm:p-8">
-        <div className="flex items-center gap-2 text-sm font-medium text-blue-100">
-          <Sparkles width={16} height={16} /> From Windshield Repair HQ
-        </div>
-        <h2 className="mt-2 text-xl font-bold sm:text-2xl">
-          {quotes.length > 0
-            ? `You've received ${quotes.length} lead${quotes.length === 1 ? '' : 's'} — let's get you more.`
-            : 'Ready to turn your listing into a steady stream of jobs?'}
-        </h2>
-        <p className="mt-2 max-w-2xl text-blue-100">
-          Your free listing puts you on the map. Our managed SEO &amp; Google Ads get you to the
-          top of local search — where {shop.city} drivers are searching for glass repair right
-          now. Most shops we work with see more calls within 60 days.
-        </p>
-        <div className="mt-5 flex flex-wrap gap-3">
-          <a
-            href={`mailto:hello@windshieldrepairhq.com?subject=${encodeURIComponent(
-              `Grow ${shop.name} with SEO & Ads`
-            )}`}
-            className="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-50"
-          >
-            <TrendingUp width={16} height={16} /> Book a free growth call
-          </a>
-          <Link
-            href="/directory/for-shops"
-            className="inline-flex items-center gap-2 rounded-lg border border-white/40 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/10"
-          >
-            See how it works <ExternalLink width={15} height={15} />
-          </Link>
-        </div>
-      </section>
-
-      {/* Owner self-service profile editing */}
-      <OwnerProfileEditor initial={profileInitial} />
-
-      {/* Free embeddable review widget for the shop's own website */}
-      <ReviewWidgetCode
-        code={`<script src="${SITE_URL}/widget/reviews.js" data-shop="${shop.slug}" async></script>`}
-      />
-
-      {/* Leads */}
+      {/* Leads — the owner's core value, shown FIRST */}
       <section className="mt-8">
         <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900">
           <Inbox width={20} height={20} className="text-blue-600" /> Your quote requests
+          {quotes.length > 0 && (
+            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">
+              {quotes.length}
+            </span>
+          )}
         </h2>
 
         {!storageOn && (
@@ -244,7 +224,13 @@ export default async function OwnerPage({
                     href={`tel:${q.phone}`}
                     className="inline-flex items-center gap-1.5 font-medium text-blue-600 hover:text-blue-700"
                   >
-                    <Phone width={14} height={14} /> {q.phone}
+                    <Phone width={14} height={14} /> Call {q.phone}
+                  </a>
+                  <a
+                    href={`sms:${q.phone}`}
+                    className="inline-flex items-center gap-1.5 font-medium text-blue-600 hover:text-blue-700"
+                  >
+                    <MessageSquare width={14} height={14} /> Text
                   </a>
                   {q.email && (
                     <a
@@ -265,7 +251,71 @@ export default async function OwnerPage({
             ))}
           </div>
         )}
+
+        {/* Honest nudge right after the leads — the best "get more" moment */}
+        {!isFeatured && quotes.length > 0 && (
+          <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
+            <p className="text-sm font-semibold text-blue-900">Want more requests like these?</p>
+            <p className="mt-1 text-sm text-blue-800">
+              Featured shops appear above every shop in {shop.city} that isn&apos;t Featured — so more
+              drivers see you first.
+            </p>
+            <a
+              href={featuredCheckout ?? `sms:${AGMP_PHONE_TEL}`}
+              {...(featuredCheckout ? {} : {})}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              <Sparkles width={15} height={15} /> Get Featured — {FEATURED_PRICE_DISPLAY}
+            </a>
+          </div>
+        )}
       </section>
+
+      {/* Managed growth (AGMP) — the bigger upsell, AFTER the owner's value */}
+      <section className="mt-8 overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 p-6 text-white shadow-sm sm:p-8">
+        <div className="flex items-center gap-2 text-sm font-medium text-blue-100">
+          <Sparkles width={16} height={16} /> Grow beyond the directory
+        </div>
+        <h2 className="mt-2 text-xl font-bold sm:text-2xl">
+          Ready to own local search in {shop.city}?
+        </h2>
+        <p className="mt-2 max-w-2xl text-blue-100">
+          Featured jumps you ahead of every un-Featured shop here. To reach the top of Google itself
+          — the Map Pack, Google Ads, and a site built to turn clicks into calls — that&apos;s our
+          done-for-you managed growth. Start with a free audit of where you stand today.
+        </p>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <a
+            href={AGMP_AUDIT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+          >
+            <TrendingUp width={16} height={16} /> Run my free audit
+          </a>
+          <Link
+            href="/directory/for-shops"
+            className="inline-flex items-center gap-2 rounded-lg border border-white/40 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/10"
+          >
+            See how it works <ExternalLink width={15} height={15} />
+          </Link>
+        </div>
+        <p className="mt-4 text-xs text-blue-100/80">
+          Growth services are powered by{' '}
+          <a href={AGMP_SITE_URL} target="_blank" rel="noopener noreferrer" className="underline">
+            Auto Glass Marketing Pros
+          </a>{' '}
+          — the marketing agency built only for auto glass shops.
+        </p>
+      </section>
+
+      {/* Owner self-service profile editing */}
+      <OwnerProfileEditor initial={profileInitial} />
+
+      {/* Free embeddable review widget for the shop's own website */}
+      <ReviewWidgetCode
+        code={`<script src="${SITE_URL}/widget/reviews.js" data-shop="${shop.slug}" async></script>`}
+      />
     </div>
   )
 }

@@ -1,11 +1,12 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
-import { ImagePlus, Wand2 } from 'lucide-react'
+import { Wand2 } from 'lucide-react'
 import { getAllShops } from '@/lib/directory/data'
 import { uploadsEnabled } from '@/lib/directory/photos'
 import { ADMIN_COOKIE, verifyAdminToken } from '@/lib/directory/admin-auth'
 import { ManageUploader } from '@/components/directory/ManageUploader'
+import { OwnerViewPicker } from '@/components/directory/OwnerViewPicker'
 import { WebsiteTools } from '@/components/directory/WebsiteTools'
 import { QuoteInbox } from '@/components/directory/QuoteInbox'
 import { OwnerKeys } from '@/components/directory/OwnerKeys'
@@ -42,10 +43,10 @@ export default async function ManagePage() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-            <Wand2 width={24} height={24} className="text-blue-600" /> Listing tools
+            <Wand2 width={24} height={24} className="text-blue-600" /> Directory admin
           </h1>
           <p className="mt-2 text-gray-600">
-            Auto-fill new listings from a website, find SEO sales prospects, and add photos.
+            Your leads and claims to action, plus tools to add and grow listings.
           </p>
           <p className="mt-1 text-xs text-gray-400">Signed in as {admin}</p>
         </div>
@@ -62,8 +63,9 @@ export default async function ManagePage() {
         </div>
       )}
 
+      {/* Actionable inboxes first — the daily work */}
       <div className="mt-8">
-        <WebsiteTools />
+        <QuoteInbox />
       </div>
 
       <div className="mt-8">
@@ -71,11 +73,20 @@ export default async function ManagePage() {
       </div>
 
       <div className="mt-8">
-        <QuoteInbox />
+        <OwnerViewPicker shops={shops} />
       </div>
 
       <div className="mt-8">
         <OwnerKeys />
+      </div>
+
+      {/* Growth / maintenance tools */}
+      <div className="mt-8">
+        <WebsiteTools />
+      </div>
+
+      <div className="mt-8">
+        <ManageUploader shops={shops} />
       </div>
 
       <div className="mt-8">
@@ -84,18 +95,6 @@ export default async function ManagePage() {
 
       <div className="mt-8">
         <SpamAudit />
-      </div>
-
-      <div className="mt-12">
-        <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900">
-          <ImagePlus width={20} height={20} className="text-blue-600" /> Listing photos
-        </h2>
-        <p className="mt-1 text-sm text-gray-600">
-          Add photos to a listing — they appear within a few minutes.
-        </p>
-        <div className="mt-4">
-          <ManageUploader shops={shops} />
-        </div>
       </div>
     </div>
   )
