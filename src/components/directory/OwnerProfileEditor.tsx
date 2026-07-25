@@ -19,6 +19,7 @@ interface Props {
     phone: string
     website: string
     email: string
+    blogUrl: string
     socials: { platform: string; url: string }[]
   }
 }
@@ -28,6 +29,7 @@ export function OwnerProfileEditor({ initial }: Props) {
   const [phone, setPhone] = useState(initial.phone)
   const [website, setWebsite] = useState(initial.website)
   const [email, setEmail] = useState(initial.email)
+  const [blogUrl, setBlogUrl] = useState(initial.blogUrl)
   const [socials, setSocials] = useState<Record<string, string>>(() =>
     Object.fromEntries(PLATFORMS.map((p) => [p.key, initial.socials.find((s) => s.platform === p.key)?.url ?? '']))
   )
@@ -43,6 +45,7 @@ export function OwnerProfileEditor({ initial }: Props) {
       phone,
       website,
       email,
+      blogUrl,
       socials: PLATFORMS.map((p) => ({ platform: p.key, url: socials[p.key]?.trim() ?? '' })).filter(
         (s) => s.url
       ),
@@ -108,6 +111,23 @@ export function OwnerProfileEditor({ initial }: Props) {
               Website
             </label>
             <input id="p-web" type="url" className={input} value={website} onChange={(e) => setWebsite(e.target.value)} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={label} htmlFor="p-blog">
+              Blog or RSS feed URL <span className="font-normal text-gray-400">(optional)</span>
+            </label>
+            <input
+              id="p-blog"
+              type="url"
+              placeholder="https://yourshop.com/blog"
+              className={input}
+              value={blogUrl}
+              onChange={(e) => setBlogUrl(e.target.value)}
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              Have a blog? We&apos;ll show your latest posts on your listing. Paste your blog page or
+              RSS feed — we&apos;ll find the feed automatically.
+            </p>
           </div>
         </div>
 

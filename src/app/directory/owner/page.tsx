@@ -93,6 +93,7 @@ export default async function OwnerPage({
     phone: profile?.phone ?? shop.phone,
     website: profile?.website ?? shop.website ?? '',
     email: profile?.email ?? shop.email ?? '',
+    blogUrl: profile?.blogUrl ?? '',
     socials: profile?.socials ?? enriched.socials ?? [],
   }
   const featuredCheckout = featuredCheckoutUrl(shop.slug, profileInitial.email || undefined)

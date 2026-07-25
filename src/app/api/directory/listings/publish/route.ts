@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { isAdmin } from '@/lib/directory/admin-auth'
 import { getShopBySlug, citySlug } from '@/lib/directory/data'
 import { publishListing, hydrateDynamicListings } from '@/lib/directory/listings'
+import { notifyListingPublished } from '@/lib/directory/notify'
 
 // Admin-only: approve & publish a pending self-serve listing for FREE (no
 // Stripe). Used from the Claims inbox to take a reviewed new-listing submission
@@ -18,8 +19,8 @@ export async function POST(request: Request) {
   const slug = String(body?.slug ?? '').trim()
   if (!slug) return NextResponse.json({ error: 'Missing slug' }, { status: 400 })
 
-  const ok = await publishListing(slug)
-  if (!ok) {
+  const result = await publishListing(slug)
+  if (!result) {
     return NextResponse.json(
       { error: 'No pending listing found for that slug.' },
       { status: 404 }
@@ -33,6 +34,15 @@ export async function POST(request: Request) {
   if (shop) {
     revalidatePath(`/directory/${shop.state}`)
     revalidatePath(`/directory/${shop.state}/${citySlug(shop.city)}`)
+  }
+
+  // Welcome + upsell email — only the first time it goes live (free approve).
+  if (result.newlyPublished) {
+    await notifyListingPublished({
+      shop: shop ?? result.record.shop,
+      email: result.record.email,
+      featured: false,
+    })
   }
   return NextResponse.json({ ok: true, slug })
 }
