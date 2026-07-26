@@ -330,6 +330,22 @@ if (BASE === '') {
   for (const f of fs.readdirSync(from)) fs.copyFileSync(path.join(from, f), path.join(to, f));
 }
 
+// --- favicon.ico + web manifest -------------------------------------------
+// Browsers request /favicon.ico by path whatever the <link> tags say, so the
+// icon is copied to the site root as well as living under img/.
+fs.copyFileSync(path.join(__dirname, 'img', 'favicon.ico'), path.join(OUTDIR, 'favicon.ico'));
+fs.writeFileSync(path.join(OUTDIR, 'site.webmanifest'), JSON.stringify({
+  name: 'HV Auto Glass Denver',
+  short_name: 'HV Auto Glass',
+  icons: [
+    { src: `${BASE}/img/icon-192.png`, sizes: '192x192', type: 'image/png' },
+    { src: `${BASE}/img/icon-512.png`, sizes: '512x512', type: 'image/png' },
+  ],
+  theme_color: '#0B0E12',
+  background_color: '#0B0E12',
+  display: 'browser',
+}, null, 2) + '\n');
+
 // --- sitemap.xml + robots.txt ---------------------------------------------
 fs.writeFileSync(path.join(OUTDIR, 'sitemap.xml'),
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
