@@ -27,16 +27,18 @@ const path = require('path');
 const OUT = path.join(__dirname, 'reviews.json');
 const KEY = process.env.GOOGLE_PLACES_API_KEY;
 const BUSINESS = 'HV Auto Glass Denver, 1440 Sheridan Blvd, Denver, CO 80214';
-// No default place id. ChIJQ9b9Z0iHa4cRhCqizeWC2IM was tried and resolves to
-// "All Nations Autos" at 1395 Sheridan Blvd — a different business. Set the
-// PLACE_ID secret once the correct id is confirmed; until then the Text Search
-// below resolves the listing by name and address.
-const DEFAULT_PLACE_ID = '';
+// An earlier id, ChIJQ9b9Z0iHa4cRhCqizeWC2IM, resolved to "All Nations Autos"
+// at 1395 Sheridan Blvd — a different business — and its 3.9 stars were
+// published across the whole site before anyone noticed. Hence the checks
+// below: a wrong place id is otherwise completely silent, because the numbers
+// it returns look perfectly plausible.
+const DEFAULT_PLACE_ID = 'ChIJBUQzsIiLxUMRtPOB1aq2YcE';
 
-// The listing must actually be the auto glass business. Publishing another
-// company's rating is worse than publishing none, and a wrong id is silent
-// otherwise — the numbers just look plausible.
+// The listing must be an auto glass business...
 const EXPECT_NAME = /(auto\s*glass|windshield)/i;
+// ...and it must be in Colorado. Name alone would happily accept an auto glass
+// shop on the other side of the world.
+const EXPECT_ADDRESS = /(,\s*CO\b|Colorado)/i;
 
 function bail(msg) {
   console.error('fetch-reviews: ' + msg);
@@ -97,11 +99,14 @@ async function get(url, fieldMask) {
     const placeName = (d.displayName && d.displayName.text) || '';
     console.log(`place ${placeId} → ${placeName} — ${d.formattedAddress}`);
 
-    // Refuse to publish a listing that is not this business.
-    if (!EXPECT_NAME.test(placeName)) {
-      bail(`resolved listing is "${placeName}" (${d.formattedAddress}), which does not ` +
-           `look like the auto glass business. Refusing to publish its rating and reviews. ` +
-           `Check the PLACE_ID secret.`);
+    // Refuse to publish a listing that is not this business, in this state.
+    const addr = d.formattedAddress || '';
+    const wrong = !EXPECT_NAME.test(placeName) ? 'the name is not an auto glass business'
+                : !EXPECT_ADDRESS.test(addr)   ? 'the address is not in Colorado'
+                : null;
+    if (wrong) {
+      bail(`resolved listing is "${placeName}" (${addr}) — ${wrong}. Refusing to ` +
+           `publish its rating and reviews. Check the place id.`);
     }
 
     if (typeof d.rating !== 'number' || typeof d.userRatingCount !== 'number') {
