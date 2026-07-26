@@ -32,6 +32,13 @@ export interface Claim {
   serviceAreaOnly?: boolean
   // Claiming an existing listing:
   existingShopSlug?: string
+  /**
+   * Set when WE matched the submission to an existing listing (they used "Add
+   * your shop" without realising we already list them) rather than them
+   * clicking "claim" on it. Records what matched, so the operator can
+   * spot-check before approving.
+   */
+  autoMatchedOn?: 'phone' | 'website' | 'name+city'
   wantsMarketingHelp?: boolean
   message?: string
   // Sales intel captured on the claim form:

@@ -3,7 +3,13 @@ import { isAdmin } from '@/lib/directory/admin-auth'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { saveClaim, listClaims, type Claim } from '@/lib/directory/claims'
-import { getShopBySlug, getCityRank, getShopsByCity, SERVICES } from '@/lib/directory/data'
+import {
+  getShopBySlug,
+  getCityRank,
+  getShopsByCity,
+  findShopByIdentity,
+  SERVICES,
+} from '@/lib/directory/data'
 import {
   hydrateDirectory,
   makeUniqueSlug,
@@ -71,17 +77,33 @@ export async function POST(request: Request) {
   const d = parsed.data
   if (d.company) return NextResponse.json({ ok: true }, { status: 201 }) // drop bots
 
-  // For a brand-new listing, generate its slug up front so we can store it on
-  // the claim (lets the operator one-click "Approve & publish" from the inbox)
-  // and reuse it for the pending listing + checkout below.
-  const isNewListing = !d.existingShopSlug && !!d.city && (d.state || '').length === 2
+  // An owner using "Add your shop" may not realise we already list them. Match
+  // first — otherwise we'd mint a second listing for the same business, and a
+  // paid upgrade would publish the duplicate while the original sat unclaimed.
+  await hydrateDirectory()
+  const matched = d.existingShopSlug
+    ? null
+    : findShopByIdentity({
+        name: d.businessName,
+        city: d.city,
+        state: d.state,
+        phone: d.phone,
+        website: d.website || undefined,
+      })
+  // Treat a match as a claim on the shop we already have.
+  const claimSlug = d.existingShopSlug || matched?.shop.slug
+
+  // For a genuinely new listing, generate its slug up front so we can store it
+  // on the claim (lets the operator one-click "Approve & publish" from the
+  // inbox) and reuse it for the pending listing + checkout below.
+  const isNewListing = !claimSlug && !!d.city && (d.state || '').length === 2
   const listingSlug = isNewListing
     ? await makeUniqueSlug(d.businessName, d.city as string, (d.state as string).toLowerCase())
     : undefined
 
   const claim: Claim = {
     id: randomUUID(),
-    type: d.existingShopSlug ? 'claim' : 'new_listing',
+    type: claimSlug ? 'claim' : 'new_listing',
     businessName: d.businessName,
     email: d.email,
     contactName: d.contactName || undefined,
@@ -96,7 +118,10 @@ export async function POST(request: Request) {
     googleCategory: d.googleCategory || undefined,
     verifyVerdict: d.verifyVerdict || undefined,
     serviceAreaOnly: d.serviceAreaOnly,
-    existingShopSlug: d.existingShopSlug || undefined,
+    existingShopSlug: claimSlug || undefined,
+    // Recorded when WE matched them to an existing listing rather than them
+    // clicking "claim" on it, so the operator can spot-check the match.
+    ...(matched ? { autoMatchedOn: matched.on } : {}),
     wantsMarketingHelp: d.wantsMarketingHelp,
     message: d.message || undefined,
     services: d.services?.length ? d.services : undefined,
@@ -112,13 +137,14 @@ export async function POST(request: Request) {
   await hydrateDirectory()
 
   // Rank reveal + slug for the confirmation screen / Featured checkout.
-  let slug = d.existingShopSlug
+  let slug = claimSlug
   let rank: { rank: number; total: number; city: string; state: string } | undefined
   let newListing = false
 
-  if (d.existingShopSlug) {
-    // Claiming an existing listing → its live city rank.
-    const shop = getShopBySlug(d.existingShopSlug)
+  if (claimSlug) {
+    // Claiming an existing listing (either they clicked claim, or we matched
+    // them to it) → its live city rank drives the rank-reveal upsell.
+    const shop = getShopBySlug(claimSlug)
     if (shop) {
       const r = getCityRank(shop)
       rank = { rank: r.rank, total: r.total, city: shop.city, state: shop.state }
@@ -165,7 +191,7 @@ export async function POST(request: Request) {
   // Tell AGMP a shop just raised its hand, so the Day 0–10 nurture can start.
   // Best-effort — a webhook failure must never fail the shop's submission.
   await sendLeadEvent({
-    type: d.existingShopSlug ? 'shop.claimed' : 'shop.listing_submitted',
+    type: claimSlug ? 'shop.claimed' : 'shop.listing_submitted',
     slug,
     name: d.businessName,
     email: d.email,
@@ -185,7 +211,13 @@ export async function POST(request: Request) {
     wantsMarketingHelp: d.wantsMarketingHelp,
   })
 
-  return NextResponse.json({ ok: true, slug, rank, newListing }, { status: 201 })
+  // Tell them when we linked their submission to a listing they didn't pick, so
+  // a genuine second location isn't silently folded into the first one.
+  const matchedShop = matched
+    ? { name: matched.shop.name, slug: matched.shop.slug, city: matched.shop.city, state: matched.shop.state }
+    : undefined
+
+  return NextResponse.json({ ok: true, slug, rank, newListing, matched: matchedShop }, { status: 201 })
 }
 
 function authed(request: Request): boolean {

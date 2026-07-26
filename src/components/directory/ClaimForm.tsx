@@ -65,6 +65,8 @@ export function ClaimForm({ existingShopSlug, existingShopName, intent = 'free' 
     slug?: string
     rank?: RankInfo
     newListing?: boolean
+    /** Set when the server linked this submission to a listing we already had. */
+    matched?: { name: string; slug: string; city: string; state: string }
   } | null>(null)
 
   // Prefillable fields (the GBP picker sets these; also the manual fallback).
@@ -132,7 +134,7 @@ export function ClaimForm({ existingShopSlug, existingShopName, intent = 'free' 
       })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(j.error || 'Something went wrong. Please try again.')
-      setResult({ slug: j.slug, rank: j.rank, newListing: j.newListing })
+      setResult({ slug: j.slug, rank: j.rank, newListing: j.newListing, matched: j.matched })
       setStatus('success')
     } catch (err) {
       setStatus('error')
@@ -423,7 +425,12 @@ function ClaimSuccess({
   intent,
   businessName,
 }: {
-  result: { slug?: string; rank?: RankInfo; newListing?: boolean } | null
+  result: {
+    slug?: string
+    rank?: RankInfo
+    newListing?: boolean
+    matched?: { name: string; slug: string; city: string; state: string }
+  } | null
   email: string
   intent: 'free' | 'featured'
   businessName?: string
@@ -431,6 +438,7 @@ function ClaimSuccess({
   const rank = result?.rank
   const slug = result?.slug
   const newListing = !!result?.newListing
+  const matched = result?.matched
   const checkout = slug ? featuredCheckoutUrl(slug, email) : null
   // Hand off to AGMP's /rank page carrying this shop's real position, so the
   // rank-reveal narrative continues instead of restarting at a bare audit.
@@ -479,6 +487,29 @@ function ClaimSuccess({
             ? "Thanks! We'll verify ownership shortly. In the meantime — here's where you stand."
             : "Thanks! We'll review your listing and get it live shortly."}
       </p>
+
+      {matched && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
+          <p className="font-semibold text-amber-900">
+            We already had a listing for you — no duplicate created
+          </p>
+          <p className="mt-1 text-amber-800">
+            Your claim was matched to{' '}
+            <a
+              href={`/directory/shop/${matched.slug}`}
+              className="font-semibold underline decoration-amber-400 underline-offset-2 hover:text-amber-900"
+            >
+              {matched.name}
+            </a>{' '}
+            in {matched.city}, {matched.state.toUpperCase()}, so you&apos;ll take over that page
+            instead of starting a second one.
+          </p>
+          <p className="mt-2 text-amber-800">
+            If that&apos;s a different business or a second location, reply to your confirmation
+            email and we&apos;ll set up a separate listing.
+          </p>
+        </div>
+      )}
 
       {rank && (
         <div className="mt-6 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
