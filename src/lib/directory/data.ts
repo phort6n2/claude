@@ -241,6 +241,78 @@ export function getCityRank(shop: Shop): { rank: number; total: number } {
   return { rank: idx < 0 ? list.length : idx + 1, total: list.length }
 }
 
+// ---- Identity matching (duplicate prevention) -----------------------------
+// A shop owner who uses "Add your shop" may not realise the directory already
+// lists them unclaimed. Without a check we'd mint a second listing (slug
+// collisions are auto-avoided), so one business could appear twice — and if
+// they paid for Featured, the duplicate would go live while the original sat
+// unclaimed. Match on submit instead, and treat it as a claim.
+
+/** Strip punctuation and legal suffixes so "Able Auto Glass LLC" == "Able Auto Glass". */
+function identityName(name: string): string {
+  return (name || '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/\b(llc|l\.l\.c|inc|incorporated|co|company|corp|corporation|ltd)\b/g, ' ')
+    .replace(/[^a-z0-9]/g, '')
+}
+
+function hostOf(url?: string): string | null {
+  if (!url) return null
+  try {
+    return new URL(url).hostname.replace(/^www\./, '').toLowerCase()
+  } catch {
+    return null
+  }
+}
+
+export interface IdentityMatch {
+  shop: Shop
+  /** Which signal matched — the strongest one wins. */
+  on: 'phone' | 'website' | 'name+city'
+}
+
+/**
+ * Find an existing listing that is probably the same business. Deliberately
+ * conservative: a phone or website match is treated as definitive (both are
+ * unique to a business), while a name match additionally requires the same
+ * city and state so two unrelated "Auto Glass Express" shops don't collide.
+ */
+export function findShopByIdentity(input: {
+  name?: string
+  city?: string
+  state?: string
+  phone?: string
+  website?: string
+}): IdentityMatch | null {
+  const all = allShops()
+  const digits = (s?: string) => (s || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '')
+
+  const phone = digits(input.phone)
+  if (phone.length === 10) {
+    const hit = all.find((s) => digits(s.phone) === phone)
+    if (hit) return { shop: hit, on: 'phone' }
+  }
+
+  const host = hostOf(input.website)
+  if (host) {
+    const hit = all.find((s) => hostOf(s.website) === host)
+    if (hit) return { shop: hit, on: 'website' }
+  }
+
+  const name = identityName(input.name || '')
+  const city = citySlug(input.city || '')
+  const state = (input.state || '').toLowerCase()
+  if (name && city && state) {
+    const hit = all.find(
+      (s) => identityName(s.name) === name && citySlug(s.city) === city && s.state === state
+    )
+    if (hit) return { shop: hit, on: 'name+city' }
+  }
+
+  return null
+}
+
 /** Other shops in the same city, excluding the given one. */
 export function getRelatedShops(shop: Shop, limit = 3): Shop[] {
   return getShopsByCity(shop.state, shop.city)

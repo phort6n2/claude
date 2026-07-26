@@ -28,6 +28,7 @@ interface Claim {
   verifyVerdict?: string
   serviceAreaOnly?: boolean
   existingShopSlug?: string
+  autoMatchedOn?: 'phone' | 'website' | 'name+city'
   wantsMarketingHelp?: boolean
   message?: string
   services?: string[]
@@ -117,6 +118,13 @@ export function ClaimsInbox() {
               {c.type === 'claim' ? 'Claim' : 'New listing'}
             </span>
             <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${v.cls}`}>{v.label}</span>
+            {/* They used "Add your shop" but we already listed them — worth a
+                glance to confirm it's the same business, not a 2nd location. */}
+            {c.autoMatchedOn && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
+                auto-matched on {c.autoMatchedOn}
+              </span>
+            )}
             {!doneCard && c.intent === 'featured' && (
               <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white">
                 wants Featured
