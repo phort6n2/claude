@@ -102,3 +102,63 @@ export async function sendLeadEvent(
     return false
   }
 }
+
+/**
+ * Send a clearly-marked test event and REPORT what happened.
+ *
+ * Deliberate exception to the swallow-failures rule above: a real claim must
+ * never fail because AGMP is down, but a test whose whole job is to tell you
+ * whether the wiring works has to surface the receiver's actual answer. A
+ * mistyped URL otherwise fails completely silently.
+ */
+export async function sendTestLeadEvent(): Promise<{
+  ok: boolean
+  status?: number
+  body?: string
+  error?: string
+  signed: boolean
+}> {
+  const url = process.env.AGMP_WEBHOOK_URL
+  const signed = !!process.env.AGMP_WEBHOOK_SECRET
+  if (!url) return { ok: false, error: 'AGMP_WEBHOOK_URL is not set in Vercel.', signed }
+
+  const payload: LeadEvent = {
+    type: 'shop.claimed',
+    slug: 'test-shop',
+    name: 'TEST — Windshield Repair HQ wiring check',
+    email: 'test@windshieldrepairhq.com',
+    phone: '(555) 010-0000',
+    city: 'Testville',
+    state: 'TX',
+    rank: 4,
+    total: 11,
+    wantsMarketingHelp: true,
+    occurredAt: new Date().toISOString(),
+    source: 'windshieldrepairhq',
+  }
+  const body = JSON.stringify(payload)
+  const signature = sign(body)
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-WRHQ-Event': payload.type,
+        // Lets the receiving workflow filter test traffic out of real nurture.
+        'X-WRHQ-Test': '1',
+        ...(signature ? { 'X-WRHQ-Signature': signature } : {}),
+      },
+      body,
+      signal: AbortSignal.timeout(10000),
+    })
+    const text = (await res.text().catch(() => '')).slice(0, 500)
+    return { ok: res.ok, status: res.status, body: text, signed }
+  } catch (e) {
+    // Node's fetch reports a bare "fetch failed"; the useful part (ENOTFOUND on
+    // a typo'd host, ECONNREFUSED, TimeoutError) lives on the cause.
+    const cause = (e as { cause?: { code?: string } })?.cause?.code
+    const msg = e instanceof Error ? e.message : String(e)
+    return { ok: false, error: cause ? `${msg} (${cause})` : msg, signed }
+  }
+}
