@@ -50,7 +50,7 @@ export async function generateMetadata({
     alternates: { canonical: `/directory/${summary.state}/${summary.citySlug}` },
     // follow: true — the page still passes authority through to the shop
     // listings on it. We're declining the impression, not the crawl.
-    ...(shouldIndexCity(summary.count)
+    ...(shouldIndexCity(summary.count, summary.city, summary.state)
       ? {}
       : { robots: { index: false, follow: true } }),
   }

@@ -37,7 +37,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Only cities we're actually asking Google to index. Listing a noindexed URL
   // in the sitemap sends two contradictory signals about the same page.
   const cityPages = getCitySummaries()
-    .filter((c) => shouldIndexCity(c.count))
+    .filter((c) => shouldIndexCity(c.count, c.city, c.state))
     .map((c) => ({
       url: `${BASE}/directory/${c.state}/${c.citySlug}`,
       changeFrequency: 'weekly' as const,
