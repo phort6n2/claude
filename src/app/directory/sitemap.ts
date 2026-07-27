@@ -6,6 +6,7 @@ import {
   shopHref,
 } from '@/lib/directory/data'
 import { listArticles } from '@/lib/directory/blog'
+import { shouldIndexCity } from '@/lib/directory/indexing'
 
 // Base URL for absolute sitemap links. Set NEXT_PUBLIC_SITE_URL in production
 // (e.g. https://www.windshieldrepairhq.com). Falls back to the brand domain so the
@@ -33,11 +34,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }))
 
-  const cityPages = getCitySummaries().map((c) => ({
-    url: `${BASE}/directory/${c.state}/${c.citySlug}`,
-    changeFrequency: 'weekly' as const,
-    priority: 0.8,
-  }))
+  // Only cities we're actually asking Google to index. Listing a noindexed URL
+  // in the sitemap sends two contradictory signals about the same page.
+  const cityPages = getCitySummaries()
+    .filter((c) => shouldIndexCity(c.count))
+    .map((c) => ({
+      url: `${BASE}/directory/${c.state}/${c.citySlug}`,
+      changeFrequency: 'weekly' as const,
+      priority: 0.8,
+    }))
 
   const shopPages = getAllShops().map((s) => ({
     url: `${BASE}${shopHref(s)}`,
