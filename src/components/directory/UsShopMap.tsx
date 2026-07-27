@@ -12,6 +12,13 @@ interface Props {
   counts: Record<string, number>
   width: number
   height: number
+  /**
+   * Set when the surrounding page already supplies a heading and a state list
+   * (the homepage does). Suppresses both so they aren't said twice — but keeps
+   * the state name and the back button once a state is open, since those are
+   * the only way to tell where you are and how to get out.
+   */
+  embedded?: boolean
 }
 
 /** Zoom is applied as a transform on a <g>, so CSS can animate it — the SVG
@@ -30,7 +37,7 @@ function zoomFor(
   return { k, x: (x0 + x1) / 2, y: (y0 + y1) / 2 }
 }
 
-export function UsShopMap({ states, points, counts, width, height }: Props) {
+export function UsShopMap({ states, points, counts, width, height, embedded }: Props) {
   const [active, setActive] = useState<StateShape | null>(null)
   const [selected, setSelected] = useState<MapPoint | null>(null)
   const [hover, setHover] = useState<string | null>(null)
@@ -78,27 +85,29 @@ export function UsShopMap({ states, points, counts, width, height }: Props) {
 
   return (
     <div className="relative">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">
-            {active ? active.name : 'Auto glass shops across the US'}
-          </h2>
-          <p className="mt-0.5 text-sm text-gray-600">
-            {active
-              ? `${counts[active.state] ?? 0} shop${(counts[active.state] ?? 0) === 1 ? '' : 's'} — tap a pin for details`
-              : 'Tap a state to zoom in and see individual shops.'}
-          </p>
+      {(!embedded || active) && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">
+              {active ? active.name : 'Auto glass shops across the US'}
+            </h2>
+            <p className="mt-0.5 text-sm text-gray-600">
+              {active
+                ? `${counts[active.state] ?? 0} shop${(counts[active.state] ?? 0) === 1 ? '' : 's'} — tap a pin for details`
+                : 'Tap a state to zoom in and see individual shops.'}
+            </p>
+          </div>
+          {active && (
+            <button
+              type="button"
+              onClick={reset}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              <ArrowLeft width={15} height={15} /> All states
+            </button>
+          )}
         </div>
-        {active && (
-          <button
-            type="button"
-            onClick={reset}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            <ArrowLeft width={15} height={15} /> All states
-          </button>
-        )}
-      </div>
+      )}
 
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
         <svg
@@ -211,7 +220,7 @@ export function UsShopMap({ states, points, counts, width, height }: Props) {
 
       {/* Real links, so the map is navigable without a pointer and crawlers can
           follow it. Visible as a state list under the map when zoomed out. */}
-      {!active && (
+      {!active && !embedded && (
         <div className="mt-6">
           <h3 className="text-sm font-semibold text-gray-900">Or jump straight to a state</h3>
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">

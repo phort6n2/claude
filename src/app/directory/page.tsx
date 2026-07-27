@@ -13,6 +13,8 @@ import { ShopCard } from '@/components/directory/ShopCard'
 import { HeroSearch } from '@/components/directory/HeroSearch'
 import { CTASection } from '@/components/directory/CTASection'
 import { NearYou } from '@/components/directory/NearYou'
+import { MapSection } from '@/components/directory/MapSection'
+import { MAP_WIDTH, MAP_HEIGHT } from '@/lib/directory/usmap-constants'
 import { enrichShops } from '@/lib/directory/photos'
 import { withReviews } from '@/lib/directory/reviews'
 import { hydrateDirectory } from '@/lib/directory/listings'
@@ -200,6 +202,24 @@ export default async function DirectoryHome() {
           we cover gives a one-shop town the same weight as San Antonio. Full
           coverage is reachable in one click via /browse and via the state links
           below, and every city page is in the sitemap either way. */}
+      {/* Map. Loads its geometry on scroll rather than with the page — see
+          MapSection. The state links below it are server-rendered regardless,
+          so location browsing never depends on the map loading. */}
+      <section className="mx-auto max-w-6xl px-4 pt-14">
+        <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">
+          Find a shop near you
+        </p>
+        <h2 className="mt-1 text-2xl font-bold text-gray-900">
+          {shopCount.toLocaleString()} shops on the map
+        </h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Tap your state to zoom in, then tap a shop to open its listing.
+        </p>
+        <div className="mt-6">
+          <MapSection width={MAP_WIDTH} height={MAP_HEIGHT} />
+        </div>
+      </section>
+
       <section className="mx-auto max-w-6xl px-4 py-14">
         <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">
           Browse by area
