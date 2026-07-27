@@ -2708,5 +2708,620 @@
   "source": "https://titanautoglass.net/auto-glass-dallas/",
   "tier": "own-site",
   "addedAt": "2026-07-27"
+ },
+ "twin-cities-auto-glass-bloomington": {
+  "source": "https://www.tcautoglass.net/drop-off-locations/bloomington-auto-glass-repair-replacement/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "liberty-glass-service": {
+  "source": "https://libertyglassservice.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "only-1-auto-glass-maplewood": {
+  "source": "https://only1autoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "only-1-auto-glass-burnsville": {
+  "source": "https://only1autoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "accupro-glass-llc": {
+  "source": "https://www.accuproglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "savon-auto-glass-llc": {
+  "source": "https://www.savonautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "river-city-auto-glass": {
+  "source": "https://rivercityautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "c-auto-glass-cleveland": {
+  "source": "https://cautoglass.com/contact/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "signature-auto-glass": {
+  "source": "https://cautoglass.com/contact/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "comet-glass": {
+  "source": "https://www.cometglass.com/automotive-glass-repairs",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "heartland-auto-glass": {
+  "source": "https://www.heartlandautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "clarity-auto-glass-olathe": {
+  "source": "https://www.clarityautoglass.com/olathe-auto-glass/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "barnwell-auto-glass": {
+  "source": "https://barnwellautoglass.com/contact-us/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "the-glassman": {
+  "source": "https://www.heyglassman.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "the-glassman-derby": {
+  "source": "https://www.heyglassman.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "the-glassman-newton": {
+  "source": "https://www.heyglassman.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "only-1-auto-glass-minneapolis": {
+  "source": "https://only1autoglass.com/Contact-Us/Locations/Minneapolis",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "city-auto-glass-minneapolis": {
+  "source": "https://www.cityautoglass.com/locations/minneapolis-installation-center/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "accurate-auto-glass": {
+  "source": "https://www.yelp.com/biz/accurate-auto-glass-minneapolis",
+  "tier": "aggregator",
+  "addedAt": "2026-07-27"
+ },
+ "new-central-auto-body": {
+  "source": "https://newcentralauto.com/windshield-and-auto-glass-repair-in-minneapolis/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "heppner-s-auto-body-and-glass-midway": {
+  "source": "https://heppnersautobody.com/locations/st-paul-midway/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "heppner-s-auto-body-and-glass-east-7th-street": {
+  "source": "https://heppnersautobody.com/locations/st-paul-east-7th-street/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "haas-collision-and-glass": {
+  "source": "https://haascollisionandglass.com/contact-us/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "discount-auto-glass-saint-paul": {
+  "source": "https://www.superpages.com/saint-paul-mn/bpp/discount-auto-glass-16916166",
+  "tier": "aggregator",
+  "addedAt": "2026-07-27"
+ },
+ "advantage-auto-glass-inc": {
+  "source": "https://www.yelp.com/biz/advantage-auto-glass-saint-paul",
+  "tier": "aggregator",
+  "addedAt": "2026-07-27"
+ },
+ "avenue-glass": {
+  "source": "https://avenue-glass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "alliance-glass-and-sign": {
+  "source": "https://www.allianceglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "tom-s-glass-master-s": {
+  "source": "https://www.yelp.com/biz/toms-glass-masters-east-boston",
+  "tier": "aggregator",
+  "addedAt": "2026-07-27"
+ },
+ "jn-phillips-auto-glass": {
+  "source": "https://www.yellowpages.com/brighton-ma/mip/jn-phillips-auto-glass-16636087",
+  "tier": "aggregator",
+  "addedAt": "2026-07-27"
+ },
+ "local-auto-glass": {
+  "source": "https://www.hs-autoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "jn-phillips-auto-glass-quincy": {
+  "source": "https://www.yelp.com/biz/jn-phillips-auto-glass-quincy",
+  "tier": "aggregator",
+  "addedAt": "2026-07-27"
+ },
+ "sam-auto-glass": {
+  "source": "https://www.yelp.com/biz/sam-auto-glass-cambridge",
+  "tier": "aggregator",
+  "addedAt": "2026-07-27"
+ },
+ "toucan-auto-center": {
+  "source": "https://toucanautocenter.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "affordable-auto-glass-and-repair": {
+  "source": "https://affordableautoglassrepair.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "jn-phillips-auto-glass-worcester": {
+  "source": "https://www.yellowpages.com/worcester-ma/mip/jn-phillips-auto-glass-2637291",
+  "tier": "aggregator",
+  "addedAt": "2026-07-27"
+ },
+ "roy-s-auto-glass-dudley": {
+  "source": "https://roysautoglass.net/worcester-auto-glass/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "u-save-auto-glass": {
+  "source": "https://www.yellowpages.com/providence-ri/mip/u-save-auto-glass-479650577",
+  "tier": "aggregator",
+  "addedAt": "2026-07-27"
+ },
+ "new-bridgeport-auto-glass-llc": {
+  "source": "https://www.yellowpages.com/bridgeport-ct/mip/new-bridgeport-auto-glass-llc-468430610",
+  "tier": "aggregator",
+  "addedAt": "2026-07-27"
+ },
+ "auto-glass-shoppe": {
+  "source": "https://autoglassshoppe.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "brooklyn-auto-sound-and-glass": {
+  "source": "https://brooklynautosglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "new-and-used-auto-discount-glass-shop-ltd": {
+  "source": "https://brooklynautoglassservice.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "brooklyn-discount-auto-tinting": {
+  "source": "https://brooklyndiscountautotinting.com/auto-glass-replacement/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "hamilton-automotive-center": {
+  "source": "https://www.hamilton-automotivecenter.com/windshield-replacement",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "hunts-point-service-station": {
+  "source": "https://www.huntspointauto.com/services/auto-glass-windshields-sunroof-bronx-ny",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "mobile-auto-glass-inc": {
+  "source": "https://mobileautoglassjamaica.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "tri-state-new-and-used-autoglass": {
+  "source": "https://www.yellowpages.com/jamaica-ny/mip/tri-state-new-and-used-autoglass-12933572",
+  "tier": "aggregator",
+  "addedAt": "2026-07-27"
+ },
+ "broadstreet-auto-glass": {
+  "source": "https://www.yellowpages.com/newark-nj/mip/broadstreet-auto-glass-2467675",
+  "tier": "aggregator",
+  "addedAt": "2026-07-27"
+ },
+ "sernio-s-auto-body": {
+  "source": "https://serniosautobody.com/services/auto-glass-repair/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "a-plus-auto-glass-jersey-city": {
+  "source": "https://autoglassonwheels.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "fija-auto-glass-and-mirror": {
+  "source": "https://www.superpages.com/bp/paterson-nj/fija-auto-glass-mirror-L0001499596.htm",
+  "tier": "aggregator",
+  "addedAt": "2026-07-27"
+ },
+ "elmwood-collision": {
+  "source": "https://www.elmwoodcollision.com/auto-glass-service",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "j-and-t-auto-glass": {
+  "source": "https://www.jtautoglass.net/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "auto-glass-4-less": {
+  "source": "https://syracusewindshield.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "windshield-go": {
+  "source": "https://windshieldgo.com/our-locations/auto-glass-atlanta-ga/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "new-auto-glass": {
+  "source": "https://atlantamobileautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "auto-glass-atlanta": {
+  "source": "https://www.decaturautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "low-price-auto-glass-snellville": {
+  "source": "https://www.lpagatlanta.com/mobile-auto-glass-services",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "low-price-auto-glass-conley": {
+  "source": "https://www.lpagatlanta.com/mobile-auto-glass-services",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "express-mobile-auto-glass": {
+  "source": "https://www.expressautoglassga.com/atlanta-auto-glass",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "georgia-auto-glass": {
+  "source": "https://georgiaautoglass.net/glass-repair/ga/roswell/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "low-price-auto-glass-nashville": {
+  "source": "https://www.lowpriceautoglassnashvilletn.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "broad-glass": {
+  "source": "https://broadglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "total-mobile-install": {
+  "source": "https://www.totalmobileinstall.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "jazz-auto-glass-and-tint": {
+  "source": "https://neworleansautoglassservice.com/contact/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "new-orleans-auto-glass": {
+  "source": "https://autoglasslouisiana.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "star-glass-inc": {
+  "source": "https://starglass.com/autoglass/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "tiger-glass-works-llc": {
+  "source": "https://www.tigerglassworksllc.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "always-low-price-auto-glass": {
+  "source": "https://www.autoglassatlowprices.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "magic-city-auto-glass": {
+  "source": "https://www.magiccityautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "a1-glass-and-auto": {
+  "source": "https://a1glassnauto.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "glassmasters": {
+  "source": "https://auto-glass-shops.cmac.ws/glassmasters/10074/",
+  "tier": "aggregator",
+  "addedAt": "2026-07-27"
+ },
+ "one-hour-auto-glass": {
+  "source": "https://auto-glass-shops.cmac.ws/one-hour-auto-glass/14304/",
+  "tier": "aggregator",
+  "addedAt": "2026-07-27"
+ },
+ "charlie-s-auto-glass-pompano-beach": {
+  "source": "https://www.charliesautoglasspompano.com/fort-lauderdale-windshield-repair",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "c-a-auto-glass-and-power-windows-repair": {
+  "source": "https://cagiautoglass.com/north-las-vegas-location/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "western-glass-solutions": {
+  "source": "https://westernglass702.webnode.page",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "shine-auto-glass": {
+  "source": "https://www.bbb.org/us/co/thornton/profile/windshield-repair/shine-auto-glass-1296-1000170026",
+  "tier": "aggregator",
+  "addedAt": "2026-07-27"
+ },
+ "all-glass-installation": {
+  "source": "https://allglassinstallation.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "all-glass-installation-dallas": {
+  "source": "https://allglassinstallation.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "asap-mobile-auto-glass-grand-prairie": {
+  "source": "https://asapmobileautoglass.com/grand-prairie-tx/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "nations-auto-glass": {
+  "source": "https://nationsautoglass.com/mesquite-texas/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "new-image-auto-glass-surprise": {
+  "source": "https://www.newimageautoglass.com/surprise.htm",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "new-image-auto-glass-glendale": {
+  "source": "https://www.newimageautoglass.com/glendale.htm",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "arrowhead-auto-glass": {
+  "source": "https://www.arrowheadautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "auto-glass-2020": {
+  "source": "https://www.autoglass2020.com/contact",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "t-and-s-auto-glass": {
+  "source": "https://tsautoglass.com/contact.htm",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "all-auto-glass-installation": {
+  "source": "https://www.allautoglassinstallation.com/auto-glass-fontana/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "auto-spot-corona": {
+  "source": "https://autospotcorona.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "torrance-auto-glass-repair": {
+  "source": "https://www.torranceautoglassrepair.com/about-us.html",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "gustafson-brothers": {
+  "source": "https://gustafsonbros.com/huntington-beach-auto-glass-repair-replacement/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "proper-auto-glass": {
+  "source": "https://www.properautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "quiroz-auto-glass": {
+  "source": "https://autoglassshopoxnardca.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "low-price-auto-glass-moreno-valley": {
+  "source": "https://www.lowpriceautoglassca.net/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "elk-grove-windshield-and-calibration": {
+  "source": "https://www.elkgrovewindshieldcalibration.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "visions-auto-glass-and-calibration": {
+  "source": "https://visionsautoglassrepair.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "express-auto-glass-lancaster": {
+  "source": "https://expressautoglassav.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "santa-clarita-auto-glass-inc": {
+  "source": "https://www.bbb.org/us/ca/valencia/profile/windshield-repair/santa-clarita-auto-glass-inc-1216-13034780",
+  "tier": "aggregator",
+  "addedAt": "2026-07-27"
+ },
+ "avila-auto-glass": {
+  "source": "https://avilaautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "certified-auto-glass-and-replacement": {
+  "source": "https://certifiedautog.wixsite.com/certified/contact",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "liberty-auto-glass-san-diego": {
+  "source": "https://libertymobileautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "broadway-auto-glass": {
+  "source": "https://www.broadway-autoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "my-auto-glass": {
+  "source": "https://www.myautoglass.net/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "auto-glass-specialists-san-diego": {
+  "source": "https://www.autoglassspecialists.net/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "auto-glass-specialists-chula-vista": {
+  "source": "https://www.autoglassspecialists.net/our-services/service-area/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "auto-glass-specialists-spring-valley": {
+  "source": "https://www.autoglassspecialists.net/our-services/service-area/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "budget-auto-glass-el-cajon": {
+  "source": "https://www.budgetautoglass.net/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "payless-auto-glass": {
+  "source": "https://sdpaylessautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "collision-auto-glass-and-calibration": {
+  "source": "https://collisionautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "collision-auto-glass-and-calibration-tualatin": {
+  "source": "https://collisionautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "ms-glass-outlet-portland": {
+  "source": "https://www.msglassoutlet.com/auto-glass-repair-portland-or",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "253-glass-repair": {
+  "source": "https://253glass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "auto-fx": {
+  "source": "https://autofxtacoma.com/auto-glass-repair/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "eastlake-auto-glass": {
+  "source": "https://eastlakeautoglass.net/windshield-replacement/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "al-s-windshield-repair-and-replacement": {
+  "source": "https://alswindshieldrepair.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "glass-experts": {
+  "source": "https://glassexpertswa.com/auto-glass/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "kaizen-auto-glass": {
+  "source": "https://kaizenautoglassrepair.com/automotive-repair-glass/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "hampton-auto-glass-camas": {
+  "source": "https://www.hamptonautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "eugene-windshield-repair": {
+  "source": "https://www.eugenewindshieldrepair.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "i-5-glass": {
+  "source": "https://www.i5glass.com/auto-glass",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "century-glass": {
+  "source": "https://centuryglassnv.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "z-1-glass": {
+  "source": "https://z1glass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "er-auto-glass": {
+  "source": "https://erautoglassllc.com/mobile-auto-glass-service",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "todd-s-auto-glass": {
+  "source": "https://www.toddsautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "badger-glass-anchorage": {
+  "source": "https://badgerglassak.com/services/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
  }
 }
