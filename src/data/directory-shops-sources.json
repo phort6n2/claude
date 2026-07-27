@@ -1,9 +1,4 @@
 {
- "acme-auto-glass": {
-  "source": "https://acmeautoglass.com",
-  "tier": "own-site",
-  "addedAt": "2026-07-27"
- },
  "in-and-out-auto-glass-san-francisco": {
   "source": "https://inandoutglass.com/",
   "tier": "own-site",
@@ -2407,6 +2402,311 @@
  "nu-pro-mobile-auto-glass": {
   "source": "https://www.yellowpages.com/alexandria-va/mip/nu-pro-mobile-auto-glass-18106430",
   "tier": "aggregator",
+  "addedAt": "2026-07-27"
+ },
+ "mid-michigan-glass-works": {
+  "source": "https://www.midmichiganglassworks.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "twin-bay-glass": {
+  "source": "https://twinbayglass.com/automotive/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "action-glass": {
+  "source": "https://actionglassmi.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "action-glass-allendale": {
+  "source": "https://actionglassmi.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "scott-s-auto-glass-plus": {
+  "source": "https://scottsautoglassplus.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "auto-glass-solutions": {
+  "source": "https://www.autoglasssolutionsbc.net",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "red-robin-auto-glass-llc": {
+  "source": "https://www.redrobinautoglass.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "auto-vision-center": {
+  "source": "https://www.autovisioncenterec.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "pro-valley-auto-glass": {
+  "source": "https://www.provalleyautoglass.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "glass-service-center-inc": {
+  "source": "https://www.gsclacrosse.com/auto-glass/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "oshkosh-auto-and-glass": {
+  "source": "https://oshkoshautoandglass.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "lakeshore-auto-glass": {
+  "source": "https://www.lakeshoreautoglass.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "lake-auto-glass-and-service": {
+  "source": "https://wiautoglass.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "elite-auto-glass-janesville": {
+  "source": "https://eliteautoglasswi.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "auto-glass-professionals-little-canada": {
+  "source": "https://agpmn.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "auto-glass-professionals-eden-prairie": {
+  "source": "https://agpmn.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "kato-glass": {
+  "source": "https://www.katoglass.net/services",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "noble-glass-inc": {
+  "source": "https://nobleglass.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "onsiteglassmn": {
+  "source": "https://onsiteglassmn.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "d-and-w-auto-glass-inc": {
+  "source": "https://www.dwautoglass.net/auto-glass",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "defender-auto-glass-elyria": {
+  "source": "https://defenderautoglass.com/windshield-repair/elyria-ohio-auto-glass-repair-facility/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "s-and-s-autoglass": {
+  "source": "https://www.ssautoglassfindlay.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "king-s-auto-glass-zanesville": {
+  "source": "https://www.kings-autoglass.com/zanesville-oh-location",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "butler-adkins-auto-glass-llc": {
+  "source": "https://www.butlerautoglass.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "a-new-view-auto-glass": {
+  "source": "https://www.anewviewautoglassoh.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "american-eagle-auto-glass": {
+  "source": "https://www.americaneagleautoglass.com/shops/terre-haute-in",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "perfection-auto-glass": {
+  "source": "https://www.perfectionautoglassrichmond.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "perfection-auto-glass-connersville": {
+  "source": "https://www.perfectionautoglassrichmond.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "aa-glass-llc": {
+  "source": "https://aaglassllc.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "k-and-b-auto-glass-works": {
+  "source": "https://kbautoglass.com",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "aaron-s-autoglass-west-roxbury": {
+  "source": "https://www.aaronsautoglass.com/locations",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "aaron-s-autoglass-raynham": {
+  "source": "https://www.aaronsautoglass.com/locations",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "spindle-city-auto-glass-inc": {
+  "source": "https://spindlecityautoglass.com/auto-glass-repair/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "auto-glass-specialists-auburn": {
+  "source": "https://autoglassspecialistsma.com/locations.php",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "j-r-glass": {
+  "source": "https://www.jandrglass.com/auto-glass/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "advanced-auto-glass-plymouth": {
+  "source": "https://advancedautoglassofcapecod.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "advanced-auto-glass-forestdale": {
+  "source": "https://advancedautoglassofcapecod.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "a-wizard-auto-glass": {
+  "source": "https://www.awizardautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "executive-glass-llc": {
+  "source": "https://www.executiveglassct.com/contact-us/3211423",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "plymouth-glass-and-mirror": {
+  "source": "https://www.plymouthglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "dashing-auto-glass": {
+  "source": "https://www.superpages.com/new-haven-ct/bpp/dashing-auto-glass-535400555",
+  "tier": "aggregator",
+  "addedAt": "2026-07-27"
+ },
+ "nexus-autoglass": {
+  "source": "https://www.nexusglassct.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "absolute-auto-glass-woonsocket": {
+  "source": "https://www.absoluteautoglassri1.com/auto-glass/4520531",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "granite-state-glass": {
+  "source": "https://burlingtonglass.com/granite-state-glass-concord-nh/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "granite-state-glass-portsmouth": {
+  "source": "https://burlingtonglass.com/granite-state-glass-portsmouth-nh/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "granite-state-glass-keene": {
+  "source": "https://burlingtonglass.com/granite-state-glass-keene-nh/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "granite-state-glass-laconia": {
+  "source": "https://burlingtonglass.com/granite-state-glass-laconia-nh/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "granite-state-glass-rochester": {
+  "source": "https://burlingtonglass.com/granite-state-glass-rochester-nh/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "granite-state-glass-hudson": {
+  "source": "https://burlingtonglass.com/granite-state-glass-hudson-nh/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "monadnock-auto-glass": {
+  "source": "https://monadnockautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "granite-state-glass-saint-johnsbury": {
+  "source": "https://burlingtonglass.com/granite-state-glass-st-johnsbury-vt/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "windshield-works-of-vermont": {
+  "source": "https://www.windshieldworksvt.com/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "american-glass-co": {
+  "source": "https://americanglassme.com/auto-glass/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "american-glass-co-skowhegan": {
+  "source": "https://americanglassme.com/auto-glass/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "expert-auto-glass-winslow": {
+  "source": "https://expertautoglass.me/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "sunrise-glass": {
+  "source": "https://www.sunriseglass.com/auto-glass/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "sunrise-glass-ellsworth": {
+  "source": "https://www.sunriseglass.com/auto-glass/",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "payless-auto-glass-and-calibrations-hartford": {
+  "source": "https://paylessautoglass.com/pages/payless-locations.php",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "payless-auto-glass-and-calibrations-waterbury": {
+  "source": "https://paylessautoglass.com/pages/payless-locations.php",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "payless-auto-glass-and-calibrations-warwick": {
+  "source": "https://paylessautoglass.com/pages/payless-locations.php",
+  "tier": "own-site",
+  "addedAt": "2026-07-27"
+ },
+ "titan-auto-glass-frisco": {
+  "source": "https://titanautoglass.net/auto-glass-dallas/",
+  "tier": "own-site",
   "addedAt": "2026-07-27"
  }
 }
