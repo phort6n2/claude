@@ -14,6 +14,7 @@ import {
   jsonLdScript,
 } from '@/lib/directory/seo'
 import { cityFaqs } from '@/lib/directory/faqs'
+import { shouldIndexCity } from '@/lib/directory/indexing'
 import { cityIntro, cityAdvice } from '@/lib/directory/content'
 import { CityShopExplorer } from '@/components/directory/CityShopExplorer'
 import { CTASection } from '@/components/directory/CTASection'
@@ -37,10 +38,21 @@ export async function generateMetadata({
   const summary = getCitySummary(state, city)
   if (!summary) return { title: 'City not found' }
   const title = `Auto Glass Repair in ${summary.city}, ${summary.state.toUpperCase()}`
+  // "Compare 1 auto glass and windshield shops" was both ungrammatical and a
+  // promise the page couldn't keep.
+  const description =
+    summary.count === 1
+      ? `Auto glass and windshield repair in ${summary.city}, ${summary.stateFull}. Windshield replacement, chip repair, ADAS calibration, and mobile service near you.`
+      : `Compare ${summary.count} auto glass and windshield shops in ${summary.city}, ${summary.stateFull}. Windshield replacement, chip repair, ADAS calibration, and mobile service near you.`
   return {
     title,
-    description: `Compare ${summary.count} auto glass and windshield shops in ${summary.city}, ${summary.stateFull}. Windshield replacement, chip repair, ADAS calibration, and mobile service near you.`,
+    description,
     alternates: { canonical: `/directory/${summary.state}/${summary.citySlug}` },
+    // follow: true — the page still passes authority through to the shop
+    // listings on it. We're declining the impression, not the crawl.
+    ...(shouldIndexCity(summary.count)
+      ? {}
+      : { robots: { index: false, follow: true } }),
   }
 }
 
