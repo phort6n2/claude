@@ -16,7 +16,11 @@ export default function BrowsePage() {
     <div className="mx-auto max-w-6xl px-4 py-12">
       <h1 className="text-3xl font-bold text-gray-900">Browse by location</h1>
       <p className="mt-2 text-gray-600">
-        Find auto glass shops in every city we cover.
+        Find auto glass shops in every city we cover.{' '}
+        <Link href="/directory/map" className="font-semibold text-blue-700 hover:underline">
+          Or explore them on the map
+        </Link>
+        .
       </p>
 
       <div className="mt-10 space-y-10">
