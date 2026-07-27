@@ -401,6 +401,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92029",
+  "lat": 33.07693,
+  "lng": -117.11377,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -427,6 +429,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92346",
+  "lat": 34.12122,
+  "lng": -117.22813,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -452,6 +456,8 @@
   "state": "nv",
   "stateFull": "Nevada",
   "zip": "89502",
+  "lat": 39.48232,
+  "lng": -119.76433,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -479,6 +485,8 @@
   "state": "nv",
   "stateFull": "Nevada",
   "zip": "89118",
+  "lat": 36.0923,
+  "lng": -115.20787,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -506,6 +514,8 @@
   "state": "az",
   "stateFull": "Arizona",
   "zip": "85016",
+  "lat": 33.50926,
+  "lng": -112.03068,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -532,6 +542,8 @@
   "state": "az",
   "stateFull": "Arizona",
   "zip": "85021",
+  "lat": 33.5554,
+  "lng": -112.10906,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -562,6 +574,8 @@
   "state": "hi",
   "stateFull": "Hawaii",
   "zip": "96817",
+  "lat": 21.32045,
+  "lng": -157.85547,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -587,6 +601,8 @@
   "state": "hi",
   "stateFull": "Hawaii",
   "zip": "96819",
+  "lat": 21.33146,
+  "lng": -157.88518,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -611,6 +627,8 @@
   "state": "ak",
   "stateFull": "Alaska",
   "zip": "99709",
+  "lat": 64.82385,
+  "lng": -147.79292,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -635,6 +653,8 @@
   "state": "ak",
   "stateFull": "Alaska",
   "zip": "99518",
+  "lat": 61.15235,
+  "lng": -149.86028,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -780,6 +800,8 @@
   "state": "ms",
   "stateFull": "Mississippi",
   "zip": "39567",
+  "lat": 30.35722,
+  "lng": -88.54856,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -806,6 +828,8 @@
   "state": "ms",
   "stateFull": "Mississippi",
   "zip": "39440",
+  "lat": 31.66489,
+  "lng": -89.15799,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -855,6 +879,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29223",
+  "lat": 34.05198,
+  "lng": -80.98275,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -879,6 +905,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "60639",
+  "lat": 41.91712,
+  "lng": -87.7346,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -905,6 +933,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "60639",
+  "lat": 41.91807,
+  "lng": -87.7695,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -930,6 +960,8 @@
   "state": "oh",
   "stateFull": "Ohio",
   "zip": "43207",
+  "lat": 39.90845,
+  "lng": -82.98557,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -958,6 +990,8 @@
   "state": "oh",
   "stateFull": "Ohio",
   "zip": "43206",
+  "lat": 39.93684,
+  "lng": -82.97783,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -982,6 +1016,8 @@
   "state": "mi",
   "stateFull": "Michigan",
   "zip": "48314",
+  "lat": 42.61355,
+  "lng": -83.03394,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1008,6 +1044,8 @@
   "state": "mi",
   "stateFull": "Michigan",
   "zip": "48208",
+  "lat": 42.34935,
+  "lng": -83.09077,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1030,6 +1068,8 @@
   "state": "in",
   "stateFull": "Indiana",
   "zip": "46032",
+  "lat": 39.96559,
+  "lng": -86.13397,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1082,6 +1122,8 @@
   "state": "wi",
   "stateFull": "Wisconsin",
   "zip": "53058",
+  "lat": 43.09803,
+  "lng": -88.40162,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -1111,6 +1153,8 @@
   "state": "wi",
   "stateFull": "Wisconsin",
   "zip": "53204",
+  "lat": 43.01236,
+  "lng": -87.92954,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -1133,6 +1177,8 @@
   "state": "mo",
   "stateFull": "Missouri",
   "zip": "63126",
+  "lat": 38.53578,
+  "lng": -90.38078,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1182,6 +1228,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "27529",
+  "lat": 35.70344,
+  "lng": -78.60026,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1212,6 +1260,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "27615",
+  "lat": 35.87837,
+  "lng": -78.59229,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1238,6 +1288,8 @@
   "state": "tn",
   "stateFull": "Tennessee",
   "zip": "37211",
+  "lat": 36.10774,
+  "lng": -86.74367,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1288,6 +1340,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "23225",
+  "lat": 37.50808,
+  "lng": -77.49204,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1315,6 +1369,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "23236",
+  "lat": 37.50233,
+  "lng": -77.61055,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1367,6 +1423,8 @@
   "state": "ky",
   "stateFull": "Kentucky",
   "zip": "40223",
+  "lat": 38.25,
+  "lng": -85.51237,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1394,6 +1452,8 @@
   "state": "md",
   "stateFull": "Maryland",
   "zip": "21231",
+  "lat": 39.29266,
+  "lng": -76.59732,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1450,6 +1510,8 @@
   "state": "wv",
   "stateFull": "West Virginia",
   "zip": "25703",
+  "lat": 38.42702,
+  "lng": -82.41433,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1499,6 +1561,8 @@
   "state": "dc",
   "stateFull": "District of Columbia",
   "zip": "20019",
+  "lat": 38.89973,
+  "lng": -76.93733,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1525,6 +1589,8 @@
   "state": "ma",
   "stateFull": "Massachusetts",
   "zip": "02719",
+  "lat": 41.65612,
+  "lng": -70.91159,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1578,6 +1644,8 @@
   "state": "vt",
   "stateFull": "Vermont",
   "zip": "05001",
+  "lat": 43.66125,
+  "lng": -72.3416,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1602,6 +1670,8 @@
   "state": "vt",
   "stateFull": "Vermont",
   "zip": "05602",
+  "lat": 44.24943,
+  "lng": -72.56031,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1627,6 +1697,8 @@
   "state": "nh",
   "stateFull": "New Hampshire",
   "zip": "03104",
+  "lat": 42.98873,
+  "lng": -71.41099,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1653,6 +1725,8 @@
   "state": "nh",
   "stateFull": "New Hampshire",
   "zip": "03581",
+  "lat": 44.4279,
+  "lng": -71.19262,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1702,6 +1776,8 @@
   "state": "mn",
   "stateFull": "Minnesota",
   "zip": "55375",
+  "lat": 44.90359,
+  "lng": -93.74741,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1730,6 +1806,8 @@
   "state": "ia",
   "stateFull": "Iowa",
   "zip": "52404",
+  "lat": 41.96236,
+  "lng": -91.6971,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1778,6 +1856,8 @@
   "state": "ks",
   "stateFull": "Kansas",
   "zip": "67211",
+  "lat": 37.67813,
+  "lng": -97.33688,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1800,6 +1880,8 @@
   "state": "ne",
   "stateFull": "Nebraska",
   "zip": "68127",
+  "lat": 41.21831,
+  "lng": -96.05749,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1826,6 +1908,8 @@
   "state": "nd",
   "stateFull": "North Dakota",
   "zip": "58554",
+  "lat": 46.82997,
+  "lng": -100.87197,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1850,6 +1934,8 @@
   "state": "sd",
   "stateFull": "South Dakota",
   "zip": "57105",
+  "lat": 43.5269,
+  "lng": -96.73138,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1876,6 +1962,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "11731",
+  "lat": 40.87131,
+  "lng": -73.32296,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1903,6 +1991,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "11741",
+  "lat": 40.77199,
+  "lng": -73.0832,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -1928,6 +2018,8 @@
   "state": "nj",
   "stateFull": "New Jersey",
   "zip": "08050",
+  "lat": 39.66743,
+  "lng": -74.23854,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -1952,6 +2044,8 @@
   "state": "nj",
   "stateFull": "New Jersey",
   "zip": "08096",
+  "lat": 39.84947,
+  "lng": -75.14197,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -1978,6 +2072,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "18702",
+  "lat": 41.25402,
+  "lng": -75.87325,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2003,6 +2099,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "18201",
+  "lat": 40.93247,
+  "lng": -75.97176,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -2027,6 +2125,8 @@
   "state": "ct",
   "stateFull": "Connecticut",
   "zip": "06492",
+  "lat": 41.48621,
+  "lng": -72.81324,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -2050,6 +2150,8 @@
   "state": "ct",
   "stateFull": "Connecticut",
   "zip": "06484",
+  "lat": 41.29515,
+  "lng": -73.07308,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2073,6 +2175,8 @@
   "state": "de",
   "stateFull": "Delaware",
   "zip": "19702",
+  "lat": 39.61128,
+  "lng": -75.76842,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2099,6 +2203,8 @@
   "state": "de",
   "stateFull": "Delaware",
   "zip": "19901",
+  "lat": 39.12599,
+  "lng": -75.53118,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2122,6 +2228,8 @@
   "state": "ri",
   "stateFull": "Rhode Island",
   "zip": "02908",
+  "lat": 41.83487,
+  "lng": -71.41888,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -2147,6 +2255,8 @@
   "state": "ri",
   "stateFull": "Rhode Island",
   "zip": "02919",
+  "lat": 41.82643,
+  "lng": -71.47224,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2170,6 +2280,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78705",
+  "lat": 30.30161,
+  "lng": -97.73894,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2195,6 +2307,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "76117",
+  "lat": 32.82904,
+  "lng": -97.29015,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2249,6 +2363,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "73160",
+  "lat": 35.36339,
+  "lng": -97.50495,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2275,6 +2391,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "74145",
+  "lat": 36.10438,
+  "lng": -95.88448,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2299,6 +2417,8 @@
   "state": "nm",
   "stateFull": "New Mexico",
   "zip": "87107",
+  "lat": 35.11351,
+  "lng": -106.61515,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2324,6 +2444,8 @@
   "state": "nm",
   "stateFull": "New Mexico",
   "zip": "87109",
+  "lat": 35.14485,
+  "lng": -106.58322,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2347,6 +2469,8 @@
   "state": "ar",
   "stateFull": "Arkansas",
   "zip": "72113",
+  "lat": 34.83069,
+  "lng": -92.38581,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2374,6 +2498,8 @@
   "state": "ar",
   "stateFull": "Arkansas",
   "zip": "72201",
+  "lat": 34.74179,
+  "lng": -92.27641,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2427,6 +2553,8 @@
   "state": "la",
   "stateFull": "Louisiana",
   "zip": "70814",
+  "lat": 30.48524,
+  "lng": -91.0832,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2450,6 +2578,8 @@
   "state": "wa",
   "stateFull": "Washington",
   "zip": "98155",
+  "lat": 47.73786,
+  "lng": -122.29112,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2476,6 +2606,8 @@
   "state": "wa",
   "stateFull": "Washington",
   "zip": "98371",
+  "lat": 47.18395,
+  "lng": -122.33626,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2553,6 +2685,8 @@
   "state": "co",
   "stateFull": "Colorado",
   "zip": "80020",
+  "lat": 39.91036,
+  "lng": -105.07835,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2580,6 +2714,8 @@
   "state": "ut",
   "stateFull": "Utah",
   "zip": "84096",
+  "lat": 40.50776,
+  "lng": -111.99162,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2605,6 +2741,8 @@
   "state": "ut",
   "stateFull": "Utah",
   "zip": "84119",
+  "lat": 40.71924,
+  "lng": -111.95768,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2654,6 +2792,8 @@
   "state": "mt",
   "stateFull": "Montana",
   "zip": "59101",
+  "lat": 45.77959,
+  "lng": -108.50883,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2677,6 +2817,8 @@
   "state": "mt",
   "stateFull": "Montana",
   "zip": "59714",
+  "lat": 45.79862,
+  "lng": -111.18547,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2700,6 +2842,8 @@
   "state": "wy",
   "stateFull": "Wyoming",
   "zip": "82601",
+  "lat": 42.84801,
+  "lng": -106.29319,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2724,6 +2868,8 @@
   "state": "wy",
   "stateFull": "Wyoming",
   "zip": "82001",
+  "lat": 41.1344,
+  "lng": -104.82542,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2746,6 +2892,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "75241",
+  "lat": 32.69542,
+  "lng": -96.74255,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2771,6 +2919,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "75210",
+  "lat": 32.75838,
+  "lng": -96.74157,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -2796,6 +2946,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "75212",
+  "lat": 32.77674,
+  "lng": -96.91789,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -2822,6 +2974,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "76132",
+  "lat": 32.67722,
+  "lng": -97.41666,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -2843,6 +2997,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "76118",
+  "lat": 32.80895,
+  "lng": -97.2175,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -2863,6 +3019,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "76010",
+  "lat": 32.73546,
+  "lng": -97.08074,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -2883,6 +3041,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "76017",
+  "lat": 32.67575,
+  "lng": -97.12858,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -2904,6 +3064,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "75074",
+  "lat": 33.00954,
+  "lng": -96.69949,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -2926,6 +3088,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "75074",
+  "lat": 33.01603,
+  "lng": -96.69933,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -2948,6 +3112,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "75038",
+  "lat": 32.87133,
+  "lng": -96.98802,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -2968,6 +3134,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "75060",
+  "lat": 32.80128,
+  "lng": -96.91904,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -2988,6 +3156,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "75044",
+  "lat": 32.97506,
+  "lng": -96.66063,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -3008,6 +3178,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "75044",
+  "lat": 32.93885,
+  "lng": -96.66262,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -3029,6 +3201,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "79401",
+  "lat": 33.57881,
+  "lng": -101.84556,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -3050,6 +3224,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "79407",
+  "lat": 33.55748,
+  "lng": -101.9367,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -3071,6 +3247,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "79424",
+  "lat": 33.51965,
+  "lng": -101.97997,
   "services": [
    "windshield-repair",
    "chip-repair",
@@ -3096,6 +3274,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "79905",
+  "lat": 31.76451,
+  "lng": -106.40786,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -3116,6 +3296,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "79915",
+  "lat": 31.72517,
+  "lng": -106.35698,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -3137,6 +3319,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "79925",
+  "lat": 31.79455,
+  "lng": -106.36045,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -3158,6 +3342,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "79936",
+  "lat": 31.72638,
+  "lng": -106.27199,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -3178,6 +3364,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78414",
+  "lat": 27.65417,
+  "lng": -97.37232,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -3199,6 +3387,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78404",
+  "lat": 27.75542,
+  "lng": -97.39147,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -3220,6 +3410,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78413",
+  "lat": 27.6962,
+  "lng": -97.41639,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -3266,6 +3458,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78041",
+  "lat": 27.56356,
+  "lng": -99.47329,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -3291,6 +3485,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78238",
+  "lat": 29.4851,
+  "lng": -98.63105,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -3319,6 +3515,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78217",
+  "lat": 29.57923,
+  "lng": -98.40115,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -3371,6 +3569,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78201",
+  "lat": 29.48054,
+  "lng": -98.54195,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -3393,6 +3593,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "76706",
+  "lat": 31.52397,
+  "lng": -97.13335,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -3420,6 +3622,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "76643",
+  "lat": 31.42771,
+  "lng": -97.19144,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -3443,6 +3647,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "76711",
+  "lat": 31.52508,
+  "lng": -97.14099,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -3466,6 +3672,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "76541",
+  "lat": 31.11787,
+  "lng": -97.7271,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -3486,6 +3694,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "76541",
+  "lat": 31.11613,
+  "lng": -97.72524,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -3507,6 +3717,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78501",
+  "lat": 26.20218,
+  "lng": -98.21256,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -3547,6 +3759,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78501",
+  "lat": 26.20615,
+  "lng": -98.24628,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -3567,6 +3781,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78521",
+  "lat": 25.89456,
+  "lng": -97.44747,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -3587,6 +3803,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78520",
+  "lat": 25.90419,
+  "lng": -97.49293,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -3608,6 +3826,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "73114",
+  "lat": 35.5656,
+  "lng": -97.52894,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -3632,6 +3852,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "73106",
+  "lat": 35.46793,
+  "lng": -97.53755,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -3658,6 +3880,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "73107",
+  "lat": 35.46434,
+  "lng": -97.56404,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -3680,6 +3904,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "73069",
+  "lat": 35.21837,
+  "lng": -97.45904,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -3703,6 +3929,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "73072",
+  "lat": 35.19266,
+  "lng": -97.45904,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -3724,6 +3952,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "73003",
+  "lat": 35.65107,
+  "lng": -97.48224,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -3745,6 +3975,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "73034",
+  "lat": 35.6822,
+  "lng": -97.4753,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -3767,6 +3999,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "74145",
+  "lat": 36.10383,
+  "lng": -95.89916,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -3788,6 +4022,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "74146",
+  "lat": 36.07853,
+  "lng": -95.86862,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -3813,6 +4049,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "74145",
+  "lat": 36.10811,
+  "lng": -95.89186,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -3836,6 +4074,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "74012",
+  "lat": 36.05551,
+  "lng": -95.81354,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -3857,6 +4097,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "74012",
+  "lat": 36.05358,
+  "lng": -95.81526,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -3878,6 +4120,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "90033",
+  "lat": 34.05534,
+  "lng": -118.22323,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -3901,6 +4145,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "90020",
+  "lat": 34.06866,
+  "lng": -118.29534,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -3921,6 +4167,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "90033",
+  "lat": 34.05654,
+  "lng": -118.22022,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -3942,6 +4190,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "90802",
+  "lat": 33.77164,
+  "lng": -118.19738,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -3963,6 +4213,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "90802",
+  "lat": 33.76948,
+  "lng": -118.1719,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -3985,6 +4237,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "90813",
+  "lat": 33.78255,
+  "lng": -118.17667,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -4007,6 +4261,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92805",
+  "lat": 33.82087,
+  "lng": -117.91938,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -4028,6 +4284,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92805",
+  "lat": 33.81256,
+  "lng": -117.90626,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -4071,6 +4329,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92705",
+  "lat": 33.72796,
+  "lng": -117.85041,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -4093,6 +4353,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92704",
+  "lat": 33.71435,
+  "lng": -117.91387,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -4113,6 +4375,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92703",
+  "lat": 33.74867,
+  "lng": -117.89978,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -4134,6 +4398,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92503",
+  "lat": 33.89524,
+  "lng": -117.49085,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -4156,6 +4422,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92503",
+  "lat": 33.91008,
+  "lng": -117.44842,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -4177,6 +4445,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92501",
+  "lat": 33.99034,
+  "lng": -117.36876,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -4199,6 +4469,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92410",
+  "lat": 34.09944,
+  "lng": -117.30939,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -4224,6 +4496,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92410",
+  "lat": 34.11028,
+  "lng": -117.2765,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -4247,6 +4521,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92410",
+  "lat": 34.1079,
+  "lng": -117.27872,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -4268,6 +4544,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92614",
+  "lat": 33.68848,
+  "lng": -117.8584,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -4290,6 +4568,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "91911",
+  "lat": 32.60132,
+  "lng": -117.07792,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -4311,6 +4591,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "91911",
+  "lat": 32.609,
+  "lng": -117.0808,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -4332,6 +4614,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "91910",
+  "lat": 32.62636,
+  "lng": -117.08772,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -4353,6 +4637,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92058",
+  "lat": 33.22405,
+  "lng": -117.33312,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -4375,6 +4661,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92054",
+  "lat": 33.20168,
+  "lng": -117.33955,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -4399,6 +4687,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92054",
+  "lat": 33.19564,
+  "lng": -117.35292,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -4420,6 +4710,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92058",
+  "lat": 33.21411,
+  "lng": -117.35208,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -4441,6 +4733,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "91103",
+  "lat": 34.15459,
+  "lng": -118.15628,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -4463,6 +4757,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "91107",
+  "lat": 34.14609,
+  "lng": -118.0938,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -4488,6 +4784,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "95125",
+  "lat": 37.30958,
+  "lng": -121.87448,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -4512,6 +4810,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "95126",
+  "lat": 37.32159,
+  "lng": -121.90861,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -4534,6 +4834,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "95121",
+  "lat": 37.31195,
+  "lng": -121.83349,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -4555,6 +4857,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "95825",
+  "lat": 38.60225,
+  "lng": -121.40149,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -4579,6 +4883,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "95826",
+  "lat": 38.55102,
+  "lng": -121.41606,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -4604,6 +4910,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "93710",
+  "lat": 36.82491,
+  "lng": -119.7904,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -4628,6 +4936,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "93701",
+  "lat": 36.7396,
+  "lng": -119.79198,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -4651,6 +4961,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "93721",
+  "lat": 36.71813,
+  "lng": -119.78002,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -4674,6 +4986,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94621",
+  "lat": 37.74721,
+  "lng": -122.18956,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -4698,6 +5012,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94606",
+  "lat": 37.78541,
+  "lng": -122.24131,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -4724,6 +5040,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94606",
+  "lat": 37.79344,
+  "lng": -122.2528,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -4748,6 +5066,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94606",
+  "lat": 37.7931,
+  "lng": -122.25443,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -4769,6 +5089,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "93313",
+  "lat": 35.30098,
+  "lng": -119.03557,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -4797,6 +5119,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "93307",
+  "lat": 35.33853,
+  "lng": -119.00309,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -4822,6 +5146,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "95205",
+  "lat": 37.97002,
+  "lng": -121.27875,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -4846,6 +5172,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "95354",
+  "lat": 37.65227,
+  "lng": -120.99387,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -4872,6 +5200,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "95351",
+  "lat": 37.64917,
+  "lng": -120.97521,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -4895,6 +5225,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "95351",
+  "lat": 37.62168,
+  "lng": -120.98591,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -4918,6 +5250,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94538",
+  "lat": 37.50572,
+  "lng": -121.95804,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -4940,6 +5274,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94539",
+  "lat": 37.50591,
+  "lng": -121.93791,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -4965,6 +5301,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "95407",
+  "lat": 38.41544,
+  "lng": -122.71343,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -4989,6 +5327,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "95403",
+  "lat": 38.47194,
+  "lng": -122.73818,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -5011,6 +5351,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "93901",
+  "lat": 36.66527,
+  "lng": -121.62853,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -5035,6 +5377,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "93901",
+  "lat": 36.66513,
+  "lng": -121.64098,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -5060,6 +5404,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "33126",
+  "lat": 25.77876,
+  "lng": -80.26728,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5085,6 +5431,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "33125",
+  "lat": 25.77549,
+  "lng": -80.23097,
   "services": [
    "windshield-replacement",
    "side-window",
@@ -5108,6 +5456,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "32806",
+  "lat": 28.51659,
+  "lng": -81.38112,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -5129,6 +5479,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "32812",
+  "lat": 28.48047,
+  "lng": -81.32744,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5155,6 +5507,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "33614",
+  "lat": 27.98442,
+  "lng": -82.51353,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5178,6 +5532,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "33610",
+  "lat": 27.99632,
+  "lng": -82.38823,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -5198,6 +5554,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "32207",
+  "lat": 30.30539,
+  "lng": -81.63601,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -5219,6 +5577,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "33309",
+  "lat": 26.18859,
+  "lng": -80.15833,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -5241,6 +5601,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "33711",
+  "lat": 27.75822,
+  "lng": -82.67935,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -5261,6 +5623,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "33716",
+  "lat": 27.89035,
+  "lng": -82.66737,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -5281,6 +5645,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "33712",
+  "lat": 27.76846,
+  "lng": -82.65637,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5305,6 +5671,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "33018",
+  "lat": 25.8974,
+  "lng": -80.34374,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -5325,6 +5693,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "33014",
+  "lat": 25.88785,
+  "lng": -80.31886,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -5345,6 +5715,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "32304",
+  "lat": 30.44735,
+  "lng": -84.37305,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -5365,6 +5737,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "32301",
+  "lat": 30.42535,
+  "lng": -84.2269,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -5385,6 +5759,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "32303",
+  "lat": 30.46276,
+  "lng": -84.28205,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -5407,6 +5783,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "33912",
+  "lat": 26.51218,
+  "lng": -81.8581,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -5428,6 +5806,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "33913",
+  "lat": 26.55401,
+  "lng": -81.76825,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5450,6 +5830,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "33461",
+  "lat": 26.62818,
+  "lng": -80.09809,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -5471,6 +5853,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "33409",
+  "lat": 26.70401,
+  "lng": -80.10041,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5494,6 +5878,8 @@
   "state": "ga",
   "stateFull": "Georgia",
   "zip": "30308",
+  "lat": 33.76858,
+  "lng": -84.36781,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5520,6 +5906,8 @@
   "state": "ga",
   "stateFull": "Georgia",
   "zip": "30067",
+  "lat": 33.90342,
+  "lng": -84.48333,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5546,6 +5934,8 @@
   "state": "ga",
   "stateFull": "Georgia",
   "zip": "30101",
+  "lat": 34.06202,
+  "lng": -84.66052,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -5570,6 +5960,8 @@
   "state": "ga",
   "stateFull": "Georgia",
   "zip": "31404",
+  "lat": 32.05207,
+  "lng": -81.06578,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5593,6 +5985,8 @@
   "state": "ga",
   "stateFull": "Georgia",
   "zip": "31901",
+  "lat": 32.48572,
+  "lng": -84.99021,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5616,6 +6010,8 @@
   "state": "ga",
   "stateFull": "Georgia",
   "zip": "31904",
+  "lat": 32.50691,
+  "lng": -84.98153,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5639,6 +6035,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "28098",
+  "lat": 35.26493,
+  "lng": -81.10258,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5668,6 +6066,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "27401",
+  "lat": 36.07559,
+  "lng": -79.79935,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5691,6 +6091,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "27284",
+  "lat": 36.1085,
+  "lng": -80.089,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5716,6 +6118,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29445",
+  "lat": 33.00772,
+  "lng": -80.04103,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5742,6 +6146,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29418",
+  "lat": 32.92483,
+  "lng": -80.071,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5771,6 +6177,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29607",
+  "lat": 34.79252,
+  "lng": -82.35341,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5795,6 +6203,8 @@
   "state": "tn",
   "stateFull": "Tennessee",
   "zip": "38118",
+  "lat": 35.07007,
+  "lng": -89.96198,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5820,6 +6230,8 @@
   "state": "tn",
   "stateFull": "Tennessee",
   "zip": "38128",
+  "lat": 35.189,
+  "lng": -89.92807,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5842,6 +6254,8 @@
   "state": "tn",
   "stateFull": "Tennessee",
   "zip": "37912",
+  "lat": 36.00895,
+  "lng": -84.00562,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5866,6 +6280,8 @@
   "state": "tn",
   "stateFull": "Tennessee",
   "zip": "37919",
+  "lat": 35.95186,
+  "lng": -83.97652,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5891,6 +6307,8 @@
   "state": "tn",
   "stateFull": "Tennessee",
   "zip": "37421",
+  "lat": 35.03523,
+  "lng": -85.17806,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5917,6 +6335,8 @@
   "state": "tn",
   "stateFull": "Tennessee",
   "zip": "37421",
+  "lat": 35.05589,
+  "lng": -85.18865,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -5943,6 +6363,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "10040",
+  "lat": 40.85858,
+  "lng": -73.93175,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -5965,6 +6387,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "11218",
+  "lat": 40.63943,
+  "lng": -73.96891,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -5987,6 +6411,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "10458",
+  "lat": 40.85811,
+  "lng": -73.89119,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -6014,6 +6440,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "10455",
+  "lat": 40.81377,
+  "lng": -73.89876,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -6037,6 +6465,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "14206",
+  "lat": 42.8847,
+  "lng": -78.8118,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -6059,6 +6489,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "14206",
+  "lat": 42.88456,
+  "lng": -78.79212,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -6086,6 +6518,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "14608",
+  "lat": 43.1637,
+  "lng": -77.6221,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -6109,6 +6543,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "14606",
+  "lat": 43.1739,
+  "lng": -77.66204,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -6134,6 +6570,8 @@
   "state": "nj",
   "stateFull": "New Jersey",
   "zip": "07114",
+  "lat": 40.72445,
+  "lng": -74.17504,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -6154,6 +6592,8 @@
   "state": "nj",
   "stateFull": "New Jersey",
   "zip": "07304",
+  "lat": 40.72006,
+  "lng": -74.07953,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -6174,6 +6614,8 @@
   "state": "nj",
   "stateFull": "New Jersey",
   "zip": "07503",
+  "lat": 40.90588,
+  "lng": -74.16698,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -6195,6 +6637,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "19116",
+  "lat": 40.10352,
+  "lng": -75.02849,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -6222,6 +6666,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "19124",
+  "lat": 40.00068,
+  "lng": -75.09765,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -6246,6 +6692,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "15205",
+  "lat": 40.43972,
+  "lng": -80.0905,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -6269,6 +6717,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "15203",
+  "lat": 40.42887,
+  "lng": -79.9815,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -6289,6 +6739,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "60647",
+  "lat": 41.93041,
+  "lng": -87.68777,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -6312,6 +6764,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "60620",
+  "lat": 41.74594,
+  "lng": -87.64383,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -6332,6 +6786,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "60634",
+  "lat": 41.95311,
+  "lng": -87.76791,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -6352,6 +6808,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "60502",
+  "lat": 41.80753,
+  "lng": -88.274,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -6372,6 +6830,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "60505",
+  "lat": 41.73207,
+  "lng": -88.31037,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -6392,6 +6852,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "60540",
+  "lat": 41.77198,
+  "lng": -88.15084,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -6415,6 +6877,8 @@
   "state": "oh",
   "stateFull": "Ohio",
   "zip": "44134",
+  "lat": 41.41886,
+  "lng": -81.6951,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -6440,6 +6904,8 @@
   "state": "oh",
   "stateFull": "Ohio",
   "zip": "44133",
+  "lat": 41.35069,
+  "lng": -81.75561,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -6460,6 +6926,8 @@
   "state": "oh",
   "stateFull": "Ohio",
   "zip": "45214",
+  "lat": 39.12613,
+  "lng": -84.55236,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -6480,6 +6948,8 @@
   "state": "oh",
   "stateFull": "Ohio",
   "zip": "45242",
+  "lat": 39.26915,
+  "lng": -84.3802,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -6500,6 +6970,8 @@
   "state": "oh",
   "stateFull": "Ohio",
   "zip": "43612",
+  "lat": 41.72192,
+  "lng": -83.55174,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -6522,6 +6994,8 @@
   "state": "oh",
   "stateFull": "Ohio",
   "zip": "43612",
+  "lat": 41.72008,
+  "lng": -83.57025,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -6545,6 +7019,8 @@
   "state": "oh",
   "stateFull": "Ohio",
   "zip": "43560",
+  "lat": 41.71302,
+  "lng": -83.67938,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -6570,6 +7046,8 @@
   "state": "oh",
   "stateFull": "Ohio",
   "zip": "45402",
+  "lat": 39.76054,
+  "lng": -84.19453,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -6590,6 +7068,8 @@
   "state": "oh",
   "stateFull": "Ohio",
   "zip": "45420",
+  "lat": 39.69836,
+  "lng": -84.10997,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -6610,6 +7090,8 @@
   "state": "mi",
   "stateFull": "Michigan",
   "zip": "48238",
+  "lat": 42.38299,
+  "lng": -83.13932,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -6632,6 +7114,8 @@
   "state": "mi",
   "stateFull": "Michigan",
   "zip": "48227",
+  "lat": 42.37298,
+  "lng": -83.17849,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -6652,6 +7136,8 @@
   "state": "mi",
   "stateFull": "Michigan",
   "zip": "48213",
+  "lat": 42.39721,
+  "lng": -83.00262,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -6673,6 +7159,8 @@
   "state": "mi",
   "stateFull": "Michigan",
   "zip": "49534",
+  "lat": 43.00969,
+  "lng": -85.77878,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -6694,6 +7182,8 @@
   "state": "in",
   "stateFull": "Indiana",
   "zip": "46227",
+  "lat": 39.71599,
+  "lng": -86.1299,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -6717,6 +7207,8 @@
   "state": "in",
   "stateFull": "Indiana",
   "zip": "46241",
+  "lat": 39.75691,
+  "lng": -86.23682,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -6737,6 +7229,8 @@
   "state": "in",
   "stateFull": "Indiana",
   "zip": "46825",
+  "lat": 41.12582,
+  "lng": -85.14781,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -6757,6 +7251,8 @@
   "state": "in",
   "stateFull": "Indiana",
   "zip": "46808",
+  "lat": 41.11243,
+  "lng": -85.1919,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -6778,6 +7274,8 @@
   "state": "co",
   "stateFull": "Colorado",
   "zip": "80214",
+  "lat": 39.72837,
+  "lng": -105.05332,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -6805,6 +7303,8 @@
   "state": "co",
   "stateFull": "Colorado",
   "zip": "80228",
+  "lat": 39.70443,
+  "lng": -105.13758,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -6832,6 +7332,8 @@
   "state": "co",
   "stateFull": "Colorado",
   "zip": "80907",
+  "lat": 38.88229,
+  "lng": -104.81198,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -6859,6 +7361,8 @@
   "state": "co",
   "stateFull": "Colorado",
   "zip": "80917",
+  "lat": 38.8867,
+  "lng": -104.76005,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -6884,6 +7388,8 @@
   "state": "co",
   "stateFull": "Colorado",
   "zip": "80909",
+  "lat": 38.83711,
+  "lng": -104.78812,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -6905,6 +7411,8 @@
   "state": "co",
   "stateFull": "Colorado",
   "zip": "80011",
+  "lat": 39.72503,
+  "lng": -104.79321,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -6930,6 +7438,8 @@
   "state": "co",
   "stateFull": "Colorado",
   "zip": "80013",
+  "lat": 39.67346,
+  "lng": -104.78931,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -6951,6 +7461,8 @@
   "state": "az",
   "stateFull": "Arizona",
   "zip": "85741",
+  "lat": 32.32584,
+  "lng": -111.04595,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -6974,6 +7486,8 @@
   "state": "az",
   "stateFull": "Arizona",
   "zip": "85710",
+  "lat": 32.2185,
+  "lng": -110.80687,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -6999,6 +7513,8 @@
   "state": "az",
   "stateFull": "Arizona",
   "zip": "85701",
+  "lat": 32.22544,
+  "lng": -110.97178,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -7020,6 +7536,8 @@
   "state": "az",
   "stateFull": "Arizona",
   "zip": "85215",
+  "lat": 33.45193,
+  "lng": -111.70094,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7042,6 +7560,8 @@
   "state": "az",
   "stateFull": "Arizona",
   "zip": "85204",
+  "lat": 33.39342,
+  "lng": -111.81635,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -7066,6 +7586,8 @@
   "state": "az",
   "stateFull": "Arizona",
   "zip": "85201",
+  "lat": 33.43495,
+  "lng": -111.87115,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7091,6 +7613,8 @@
   "state": "az",
   "stateFull": "Arizona",
   "zip": "85260",
+  "lat": 33.62052,
+  "lng": -111.90531,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7115,6 +7639,8 @@
   "state": "az",
   "stateFull": "Arizona",
   "zip": "85259",
+  "lat": 33.58964,
+  "lng": -111.83293,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -7135,6 +7661,8 @@
   "state": "az",
   "stateFull": "Arizona",
   "zip": "85251",
+  "lat": 33.48035,
+  "lng": -111.93284,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -7156,6 +7684,8 @@
   "state": "nv",
   "stateFull": "Nevada",
   "zip": "89123",
+  "lat": 36.03176,
+  "lng": -115.16884,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7180,6 +7710,8 @@
   "state": "nv",
   "stateFull": "Nevada",
   "zip": "89148",
+  "lat": 36.08526,
+  "lng": -115.28389,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7231,6 +7763,8 @@
   "state": "nv",
   "stateFull": "Nevada",
   "zip": "89015",
+  "lat": 36.03302,
+  "lng": -115.00393,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7254,6 +7788,8 @@
   "state": "nv",
   "stateFull": "Nevada",
   "zip": "89015",
+  "lat": 36.01647,
+  "lng": -114.95909,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -7274,6 +7810,8 @@
   "state": "nv",
   "stateFull": "Nevada",
   "zip": "89015",
+  "lat": 36.03643,
+  "lng": -114.99188,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -7294,6 +7832,8 @@
   "state": "ut",
   "stateFull": "Utah",
   "zip": "84115",
+  "lat": 40.69981,
+  "lng": -111.90882,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -7314,6 +7854,8 @@
   "state": "ut",
   "stateFull": "Utah",
   "zip": "84101",
+  "lat": 40.76506,
+  "lng": -111.89201,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -7334,6 +7876,8 @@
   "state": "ut",
   "stateFull": "Utah",
   "zip": "84111",
+  "lat": 40.76277,
+  "lng": -111.87938,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -7355,6 +7899,8 @@
   "state": "ut",
   "stateFull": "Utah",
   "zip": "84606",
+  "lat": 40.22963,
+  "lng": -111.65713,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7377,6 +7923,8 @@
   "state": "ut",
   "stateFull": "Utah",
   "zip": "84601",
+  "lat": 40.22977,
+  "lng": -111.6673,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -7397,6 +7945,8 @@
   "state": "ut",
   "stateFull": "Utah",
   "zip": "84606",
+  "lat": 40.2221,
+  "lng": -111.65642,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -7418,6 +7968,8 @@
   "state": "wa",
   "stateFull": "Washington",
   "zip": "98117",
+  "lat": 47.69056,
+  "lng": -122.35875,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7441,6 +7993,8 @@
   "state": "wa",
   "stateFull": "Washington",
   "zip": "98134",
+  "lat": 47.57745,
+  "lng": -122.32898,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7463,6 +8017,8 @@
   "state": "wa",
   "stateFull": "Washington",
   "zip": "98122",
+  "lat": 47.61743,
+  "lng": -122.30251,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7486,6 +8042,8 @@
   "state": "wa",
   "stateFull": "Washington",
   "zip": "99212",
+  "lat": 47.65815,
+  "lng": -117.29434,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7514,6 +8072,8 @@
   "state": "wa",
   "stateFull": "Washington",
   "zip": "99206",
+  "lat": 47.6787,
+  "lng": -117.27709,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7537,6 +8097,8 @@
   "state": "wa",
   "stateFull": "Washington",
   "zip": "99208",
+  "lat": 47.71507,
+  "lng": -117.38965,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7560,6 +8122,8 @@
   "state": "wa",
   "stateFull": "Washington",
   "zip": "99201",
+  "lat": 47.65517,
+  "lng": -117.41525,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7586,6 +8150,8 @@
   "state": "or",
   "stateFull": "Oregon",
   "zip": "97305",
+  "lat": 45.00488,
+  "lng": -122.97628,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7611,6 +8177,8 @@
   "state": "or",
   "stateFull": "Oregon",
   "zip": "97301",
+  "lat": 44.93248,
+  "lng": -123.01008,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7634,6 +8202,8 @@
   "state": "mn",
   "stateFull": "Minnesota",
   "zip": "55422",
+  "lat": 44.98488,
+  "lng": -93.3587,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7660,6 +8230,8 @@
   "state": "mo",
   "stateFull": "Missouri",
   "zip": "64052",
+  "lat": 39.09526,
+  "lng": -94.45728,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7682,6 +8254,8 @@
   "state": "mo",
   "stateFull": "Missouri",
   "zip": "65802",
+  "lat": 37.21038,
+  "lng": -93.26648,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7707,6 +8281,8 @@
   "state": "mo",
   "stateFull": "Missouri",
   "zip": "65802",
+  "lat": 37.22442,
+  "lng": -93.23408,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7730,6 +8306,8 @@
   "state": "wi",
   "stateFull": "Wisconsin",
   "zip": "53718",
+  "lat": 43.05183,
+  "lng": -89.28653,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -7775,6 +8353,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94124",
+  "lat": 37.74472,
+  "lng": -122.40411,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -7802,6 +8382,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94124",
+  "lat": 37.73933,
+  "lng": -122.40163,
   "services": [
    "windshield-replacement",
    "side-window",
@@ -7826,6 +8408,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "91205",
+  "lat": 34.14626,
+  "lng": -118.24511,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -7848,6 +8432,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "91762",
+  "lat": 34.06325,
+  "lng": -117.67106,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -7872,6 +8458,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "91762",
+  "lat": 34.05601,
+  "lng": -117.68535,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -7900,6 +8488,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "91786",
+  "lat": 34.10711,
+  "lng": -117.63672,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -7924,6 +8514,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "91768",
+  "lat": 34.06202,
+  "lng": -117.76702,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -7946,6 +8538,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "90605",
+  "lat": 33.91712,
+  "lng": -118.04497,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -7969,6 +8563,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "93454",
+  "lat": 34.95652,
+  "lng": -120.43393,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -7991,6 +8587,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94402",
+  "lat": 37.56081,
+  "lng": -122.31437,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8014,6 +8612,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92646",
+  "lat": 33.67213,
+  "lng": -117.97056,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8036,6 +8636,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94559",
+  "lat": 38.29219,
+  "lng": -122.27783,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8059,6 +8661,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94596",
+  "lat": 37.90787,
+  "lng": -122.06478,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8085,6 +8689,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "93401",
+  "lat": 35.24676,
+  "lng": -120.6421,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8111,6 +8717,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92021",
+  "lat": 32.79486,
+  "lng": -116.94019,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -8137,6 +8745,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92020",
+  "lat": 32.81406,
+  "lng": -116.96225,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8165,6 +8775,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94533",
+  "lat": 38.25898,
+  "lng": -122.03412,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8189,6 +8801,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94551",
+  "lat": 37.69184,
+  "lng": -121.75062,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8215,6 +8829,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94509",
+  "lat": 38.00995,
+  "lng": -121.83814,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8238,6 +8854,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "91401",
+  "lat": 34.17892,
+  "lng": -118.44209,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8282,6 +8900,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "91790",
+  "lat": 34.06871,
+  "lng": -117.92672,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8331,6 +8951,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "95380",
+  "lat": 37.48054,
+  "lng": -120.84889,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -8351,6 +8973,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "95993",
+  "lat": 39.14404,
+  "lng": -121.6888,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -8371,6 +8995,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "93274",
+  "lat": 36.20993,
+  "lng": -119.32595,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -8392,6 +9018,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "93274",
+  "lat": 36.20955,
+  "lng": -119.33119,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8413,6 +9041,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "91362",
+  "lat": 34.2113,
+  "lng": -118.83513,
   "services": [
    "windshield-repair",
    "chip-repair",
@@ -8435,6 +9065,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92563",
+  "lat": 33.56042,
+  "lng": -117.137,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8456,6 +9088,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "95501",
+  "lat": 40.79988,
+  "lng": -124.1729,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -8476,6 +9110,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "91710",
+  "lat": 34.01675,
+  "lng": -117.68922,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -8497,6 +9133,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92553",
+  "lat": 33.91734,
+  "lng": -117.24493,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8519,6 +9157,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "95624",
+  "lat": 38.44498,
+  "lng": -121.39393,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -8540,6 +9180,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92008",
+  "lat": 33.1638,
+  "lng": -117.35208,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -8560,6 +9202,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92626",
+  "lat": 33.67664,
+  "lng": -117.89177,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -8581,6 +9225,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92868",
+  "lat": 33.80228,
+  "lng": -117.86173,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8605,6 +9251,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "93301",
+  "lat": 35.37803,
+  "lng": -119.00334,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8627,6 +9275,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "95205",
+  "lat": 37.97394,
+  "lng": -121.27624,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8654,6 +9304,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "95354",
+  "lat": 37.6379,
+  "lng": -120.94351,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8676,6 +9328,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "93292",
+  "lat": 36.3367,
+  "lng": -119.27871,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8700,6 +9354,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "93035",
+  "lat": 34.19155,
+  "lng": -119.21042,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8726,6 +9382,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "93003",
+  "lat": 34.26415,
+  "lng": -119.22808,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8749,6 +9407,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "93101",
+  "lat": 34.41726,
+  "lng": -119.69736,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8774,6 +9434,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92211",
+  "lat": 33.80194,
+  "lng": -116.38942,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8799,6 +9461,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92234",
+  "lat": 33.78265,
+  "lng": -116.45955,
   "services": [
    "windshield-replacement",
    "window-tint"
@@ -8819,6 +9483,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "93550",
+  "lat": 34.58119,
+  "lng": -118.1184,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8842,6 +9508,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "93534",
+  "lat": 34.66027,
+  "lng": -118.14133,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8867,6 +9535,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92392",
+  "lat": 34.5022,
+  "lng": -117.32877,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -8891,6 +9561,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92590",
+  "lat": 33.51642,
+  "lng": -117.16764,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -8917,6 +9589,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92590",
+  "lat": 33.50502,
+  "lng": -117.15416,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -8943,6 +9617,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "92029",
+  "lat": 33.12431,
+  "lng": -117.10637,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -8967,6 +9643,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94591",
+  "lat": 38.1083,
+  "lng": -122.2264,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -8992,6 +9670,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94518",
+  "lat": 37.95873,
+  "lng": -122.03113,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9016,6 +9696,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94706",
+  "lat": 37.88273,
+  "lng": -122.29643,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -9043,6 +9725,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94544",
+  "lat": 37.61864,
+  "lng": -122.06273,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9068,6 +9752,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94544",
+  "lat": 37.60941,
+  "lng": -122.06636,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9096,6 +9782,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94538",
+  "lat": 37.50188,
+  "lng": -121.94907,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -9119,6 +9807,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "94086",
+  "lat": 37.37817,
+  "lng": -122.03347,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9142,6 +9832,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "95050",
+  "lat": 37.35715,
+  "lng": -121.94347,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9169,6 +9861,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "96002",
+  "lat": 40.56625,
+  "lng": -122.36277,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9190,6 +9884,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "96002",
+  "lat": 40.56367,
+  "lng": -122.35047,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -9211,6 +9907,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "95973",
+  "lat": 39.76143,
+  "lng": -121.86616,
   "services": [
    "windshield-replacement",
    "adas-calibration",
@@ -9233,6 +9931,8 @@
   "state": "ca",
   "stateFull": "California",
   "zip": "95340",
+  "lat": 37.28785,
+  "lng": -120.46184,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9276,6 +9976,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "28105",
+  "lat": 35.15719,
+  "lng": -80.72952,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9306,6 +10008,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "28269",
+  "lat": 35.33687,
+  "lng": -80.82478,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9332,6 +10036,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "28208",
+  "lat": 35.22594,
+  "lng": -80.90492,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9353,6 +10059,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "28212",
+  "lat": 35.17723,
+  "lng": -80.75072,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -9373,6 +10081,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "28205",
+  "lat": 35.20268,
+  "lng": -80.79984,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9397,6 +10107,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "28027",
+  "lat": 35.44728,
+  "lng": -80.61569,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9425,6 +10137,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "27609",
+  "lat": 35.85011,
+  "lng": -78.60448,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9452,6 +10166,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "27610",
+  "lat": 35.79462,
+  "lng": -78.56876,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -9497,6 +10213,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "28304",
+  "lat": 35.03181,
+  "lng": -78.96091,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -9517,6 +10235,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "28304",
+  "lat": 35.04139,
+  "lng": -78.94722,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -9537,6 +10257,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "28303",
+  "lat": 35.07363,
+  "lng": -78.91409,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -9559,6 +10281,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "27409",
+  "lat": 36.07467,
+  "lng": -79.93542,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9582,6 +10306,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "27401",
+  "lat": 36.07851,
+  "lng": -79.79681,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9608,6 +10334,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "27127",
+  "lat": 36.04851,
+  "lng": -80.25948,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9632,6 +10360,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "27106",
+  "lat": 36.16632,
+  "lng": -80.27701,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9658,6 +10388,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "28803",
+  "lat": 35.55206,
+  "lng": -82.49093,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -9678,6 +10410,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "28806",
+  "lat": 35.61955,
+  "lng": -82.6529,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -9699,6 +10433,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "28704",
+  "lat": 35.46271,
+  "lng": -82.52697,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9723,6 +10459,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "28403",
+  "lat": 34.22826,
+  "lng": -77.91974,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9745,6 +10483,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "28401",
+  "lat": 34.22915,
+  "lng": -77.93184,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9768,6 +10508,8 @@
   "state": "nc",
   "stateFull": "North Carolina",
   "zip": "28412",
+  "lat": 34.07605,
+  "lng": -77.89457,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -9789,6 +10531,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29407",
+  "lat": 32.79807,
+  "lng": -80.01589,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -9809,6 +10553,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29407",
+  "lat": 32.80326,
+  "lng": -80.0145,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9830,6 +10576,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29418",
+  "lat": 32.86754,
+  "lng": -80.05294,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -9850,6 +10598,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29483",
+  "lat": 33.04756,
+  "lng": -80.20069,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -9870,6 +10620,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29485",
+  "lat": 32.98743,
+  "lng": -80.16274,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -9891,6 +10643,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29212",
+  "lat": 34.07505,
+  "lng": -81.17721,
   "services": [
    "windshield-replacement",
    "mobile-service",
@@ -9913,6 +10667,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29223",
+  "lat": 34.07184,
+  "lng": -80.91299,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -9933,6 +10689,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29204",
+  "lat": 34.05078,
+  "lng": -80.98416,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -9954,6 +10712,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29605",
+  "lat": 34.79124,
+  "lng": -82.37936,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -9980,6 +10740,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29301",
+  "lat": 34.95818,
+  "lng": -81.98402,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10006,6 +10768,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29303",
+  "lat": 35.01051,
+  "lng": -81.90505,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10029,6 +10793,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29611",
+  "lat": 34.85038,
+  "lng": -82.45174,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -10049,6 +10815,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29611",
+  "lat": 34.83368,
+  "lng": -82.45785,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -10069,6 +10837,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29611",
+  "lat": 34.83141,
+  "lng": -82.49775,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -10090,6 +10860,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29730",
+  "lat": 34.95121,
+  "lng": -80.99764,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10116,6 +10888,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29715",
+  "lat": 35.06794,
+  "lng": -80.93547,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10164,6 +10938,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29572",
+  "lat": 33.77998,
+  "lng": -78.78853,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10186,6 +10962,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29579",
+  "lat": 33.75531,
+  "lng": -79.0039,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -10227,6 +11005,8 @@
   "state": "sc",
   "stateFull": "South Carolina",
   "zip": "29588",
+  "lat": 33.63066,
+  "lng": -79.03445,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -10248,6 +11028,8 @@
   "state": "ga",
   "stateFull": "Georgia",
   "zip": "30076",
+  "lat": 34.05718,
+  "lng": -84.32759,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10270,6 +11052,8 @@
   "state": "ga",
   "stateFull": "Georgia",
   "zip": "30606",
+  "lat": 33.9147,
+  "lng": -83.4471,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10292,6 +11076,8 @@
   "state": "ga",
   "stateFull": "Georgia",
   "zip": "31211",
+  "lat": 32.8553,
+  "lng": -83.61935,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10313,6 +11099,8 @@
   "state": "ga",
   "stateFull": "Georgia",
   "zip": "31601",
+  "lat": 30.84005,
+  "lng": -83.28007,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10335,6 +11123,8 @@
   "state": "ga",
   "stateFull": "Georgia",
   "zip": "30907",
+  "lat": 33.51559,
+  "lng": -82.05373,
   "services": [
    "windshield-replacement",
    "side-window",
@@ -10358,6 +11148,8 @@
   "state": "ga",
   "stateFull": "Georgia",
   "zip": "30901",
+  "lat": 33.45447,
+  "lng": -81.98265,
   "services": [
    "windshield-replacement",
    "side-window",
@@ -10380,6 +11172,8 @@
   "state": "al",
   "stateFull": "Alabama",
   "zip": "36609",
+  "lat": 30.66156,
+  "lng": -88.13546,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10406,6 +11200,8 @@
   "state": "al",
   "stateFull": "Alabama",
   "zip": "35405",
+  "lat": 33.161,
+  "lng": -87.55702,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10434,6 +11230,8 @@
   "state": "al",
   "stateFull": "Alabama",
   "zip": "36117",
+  "lat": 32.39713,
+  "lng": -86.20803,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -10455,6 +11253,8 @@
   "state": "al",
   "stateFull": "Alabama",
   "zip": "36109",
+  "lat": 32.38171,
+  "lng": -86.21852,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -10480,6 +11280,8 @@
   "state": "al",
   "stateFull": "Alabama",
   "zip": "35805",
+  "lat": 34.71121,
+  "lng": -86.59574,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10505,6 +11307,8 @@
   "state": "al",
   "stateFull": "Alabama",
   "zip": "35758",
+  "lat": 34.75632,
+  "lng": -86.72746,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10530,6 +11334,8 @@
   "state": "al",
   "stateFull": "Alabama",
   "zip": "36301",
+  "lat": 31.22815,
+  "lng": -85.41824,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10552,6 +11358,8 @@
   "state": "ms",
   "stateFull": "Mississippi",
   "zip": "39157",
+  "lat": 32.42958,
+  "lng": -90.12142,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10575,6 +11383,8 @@
   "state": "ms",
   "stateFull": "Mississippi",
   "zip": "39212",
+  "lat": 32.26719,
+  "lng": -90.22724,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -10596,6 +11406,8 @@
   "state": "ms",
   "stateFull": "Mississippi",
   "zip": "39507",
+  "lat": 30.39396,
+  "lng": -89.04492,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -10621,6 +11433,8 @@
   "state": "ms",
   "stateFull": "Mississippi",
   "zip": "39503",
+  "lat": 30.44943,
+  "lng": -89.08445,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10643,6 +11457,8 @@
   "state": "ms",
   "stateFull": "Mississippi",
   "zip": "39532",
+  "lat": 30.44286,
+  "lng": -88.93009,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10666,6 +11482,8 @@
   "state": "ms",
   "stateFull": "Mississippi",
   "zip": "39401",
+  "lat": 31.32308,
+  "lng": -89.29938,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10688,6 +11506,8 @@
   "state": "tn",
   "stateFull": "Tennessee",
   "zip": "37129",
+  "lat": 35.88098,
+  "lng": -86.42247,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10714,6 +11534,8 @@
   "state": "tn",
   "stateFull": "Tennessee",
   "zip": "37128",
+  "lat": 35.84266,
+  "lng": -86.43644,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10739,6 +11561,8 @@
   "state": "tn",
   "stateFull": "Tennessee",
   "zip": "37042",
+  "lat": 36.55266,
+  "lng": -87.38742,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -10760,6 +11584,8 @@
   "state": "tn",
   "stateFull": "Tennessee",
   "zip": "37043",
+  "lat": 36.56687,
+  "lng": -87.2867,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10782,6 +11608,8 @@
   "state": "tn",
   "stateFull": "Tennessee",
   "zip": "37064",
+  "lat": 35.93097,
+  "lng": -86.84934,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10805,6 +11633,8 @@
   "state": "tn",
   "stateFull": "Tennessee",
   "zip": "37604",
+  "lat": 36.30928,
+  "lng": -82.39833,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10831,6 +11661,8 @@
   "state": "ar",
   "stateFull": "Arkansas",
   "zip": "72204",
+  "lat": 34.73514,
+  "lng": -92.30588,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10855,6 +11687,8 @@
   "state": "ar",
   "stateFull": "Arkansas",
   "zip": "72901",
+  "lat": 35.35541,
+  "lng": -94.42199,
   "services": [
    "windshield-replacement",
    "side-window",
@@ -10878,6 +11712,8 @@
   "state": "ar",
   "stateFull": "Arkansas",
   "zip": "72764",
+  "lat": 36.18865,
+  "lng": -94.14222,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -10903,6 +11739,8 @@
   "state": "ar",
   "stateFull": "Arkansas",
   "zip": "72704",
+  "lat": 36.08163,
+  "lng": -94.20868,
   "services": [
    "windshield-replacement",
    "side-window",
@@ -10925,6 +11763,8 @@
   "state": "ar",
   "stateFull": "Arkansas",
   "zip": "72701",
+  "lat": 36.06405,
+  "lng": -94.15956,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -10946,6 +11786,8 @@
   "state": "la",
   "stateFull": "Louisiana",
   "zip": "70001",
+  "lat": 29.9938,
+  "lng": -90.1839,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -10968,6 +11810,8 @@
   "state": "la",
   "stateFull": "Louisiana",
   "zip": "70003",
+  "lat": 30.02702,
+  "lng": -90.21949,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11018,6 +11862,8 @@
   "state": "la",
   "stateFull": "Louisiana",
   "zip": "70518",
+  "lat": 30.15883,
+  "lng": -91.98818,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11045,6 +11891,8 @@
   "state": "la",
   "stateFull": "Louisiana",
   "zip": "70503",
+  "lat": 30.16572,
+  "lng": -92.05964,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11067,6 +11915,8 @@
   "state": "la",
   "stateFull": "Louisiana",
   "zip": "71112",
+  "lat": 32.49677,
+  "lng": -93.69046,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -11088,6 +11938,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "34240",
+  "lat": 27.34682,
+  "lng": -82.40333,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11110,6 +11962,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "34233",
+  "lat": 27.29553,
+  "lng": -82.48924,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -11137,6 +11991,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "34243",
+  "lat": 27.41691,
+  "lng": -82.53969,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -11157,6 +12013,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "34234",
+  "lat": 27.37145,
+  "lng": -82.53556,
   "services": [
    "windshield-repair",
    "chip-repair"
@@ -11178,6 +12036,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "34109",
+  "lat": 26.21713,
+  "lng": -81.78363,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11201,6 +12061,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "34110",
+  "lat": 26.30516,
+  "lng": -81.79656,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11223,6 +12085,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "34135",
+  "lat": 26.36617,
+  "lng": -81.78015,
   "services": [
    "windshield-repair",
    "chip-repair",
@@ -11245,6 +12109,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "33759",
+  "lat": 28.01029,
+  "lng": -82.70879,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11268,6 +12134,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "33765",
+  "lat": 27.97155,
+  "lng": -82.73999,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -11291,6 +12159,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "33756",
+  "lat": 27.94225,
+  "lng": -82.79363,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11313,6 +12183,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "33065",
+  "lat": 26.2744,
+  "lng": -80.28923,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -11334,6 +12206,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "34744",
+  "lat": 28.32841,
+  "lng": -81.39905,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -11361,6 +12235,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "33811",
+  "lat": 27.99281,
+  "lng": -82.03094,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11383,6 +12259,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "34471",
+  "lat": 29.17747,
+  "lng": -82.1426,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11405,6 +12283,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "32114",
+  "lat": 29.22103,
+  "lng": -81.0444,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11432,6 +12312,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "32907",
+  "lat": 28.00149,
+  "lng": -80.62583,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11457,6 +12339,8 @@
   "state": "fl",
   "stateFull": "Florida",
   "zip": "32504",
+  "lat": 30.49416,
+  "lng": -87.22407,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11481,6 +12365,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "61108",
+  "lat": 42.25257,
+  "lng": -89.05589,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11505,6 +12391,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "61108",
+  "lat": 42.26447,
+  "lng": -89.01367,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11530,6 +12418,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "61615",
+  "lat": 40.78335,
+  "lng": -89.61843,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11552,6 +12442,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "61605",
+  "lat": 40.68604,
+  "lng": -89.60007,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11578,6 +12470,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "61604",
+  "lat": 40.71856,
+  "lng": -89.63211,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11602,6 +12496,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "61704",
+  "lat": 40.50265,
+  "lng": -88.92734,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11628,6 +12524,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "61704",
+  "lat": 40.50079,
+  "lng": -88.92873,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11652,6 +12550,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "62703",
+  "lat": 39.7593,
+  "lng": -89.64819,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11677,6 +12577,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "62702",
+  "lat": 39.80772,
+  "lng": -89.60569,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11701,6 +12603,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "61820",
+  "lat": 40.12808,
+  "lng": -88.25326,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11725,6 +12629,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "60432",
+  "lat": 41.528,
+  "lng": -88.06967,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -11748,6 +12654,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "60432",
+  "lat": 41.53467,
+  "lng": -88.08191,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11770,6 +12678,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "60085",
+  "lat": 42.36214,
+  "lng": -87.84481,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -11791,6 +12701,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "60085",
+  "lat": 42.35921,
+  "lng": -87.87233,
   "services": [
    "windshield-replacement",
    "side-window",
@@ -11816,6 +12728,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "60193",
+  "lat": 42.00172,
+  "lng": -88.09492,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11837,6 +12751,8 @@
   "state": "il",
   "stateFull": "Illinois",
   "zip": "60804",
+  "lat": 41.83746,
+  "lng": -87.75631,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -11858,6 +12774,8 @@
   "state": "mo",
   "stateFull": "Missouri",
   "zip": "65202",
+  "lat": 38.95432,
+  "lng": -92.11435,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11885,6 +12803,8 @@
   "state": "mo",
   "stateFull": "Missouri",
   "zip": "65201",
+  "lat": 38.96276,
+  "lng": -92.31225,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11911,6 +12831,8 @@
   "state": "mo",
   "stateFull": "Missouri",
   "zip": "65203",
+  "lat": 38.96626,
+  "lng": -92.33623,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11933,6 +12855,8 @@
   "state": "mo",
   "stateFull": "Missouri",
   "zip": "64129",
+  "lat": 39.06763,
+  "lng": -94.51378,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11955,6 +12879,8 @@
   "state": "mo",
   "stateFull": "Missouri",
   "zip": "64063",
+  "lat": 38.90428,
+  "lng": -94.3683,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -11979,6 +12905,8 @@
   "state": "mo",
   "stateFull": "Missouri",
   "zip": "63366",
+  "lat": 38.80398,
+  "lng": -90.65197,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12004,6 +12932,8 @@
   "state": "mo",
   "stateFull": "Missouri",
   "zip": "64505",
+  "lat": 39.81163,
+  "lng": -94.84082,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12028,6 +12958,8 @@
   "state": "mo",
   "stateFull": "Missouri",
   "zip": "64506",
+  "lat": 39.77508,
+  "lng": -94.83472,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12050,6 +12982,8 @@
   "state": "ks",
   "stateFull": "Kansas",
   "zip": "66607",
+  "lat": 39.04598,
+  "lng": -95.65114,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12080,6 +13014,8 @@
   "state": "ks",
   "stateFull": "Kansas",
   "zip": "66608",
+  "lat": 39.06628,
+  "lng": -95.66741,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12127,6 +13063,8 @@
   "state": "ks",
   "stateFull": "Kansas",
   "zip": "66608",
+  "lat": 39.09113,
+  "lng": -95.68153,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12149,6 +13087,8 @@
   "state": "ks",
   "stateFull": "Kansas",
   "zip": "66049",
+  "lat": 38.9713,
+  "lng": -95.36774,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12172,6 +13112,8 @@
   "state": "ks",
   "stateFull": "Kansas",
   "zip": "66047",
+  "lat": 38.92915,
+  "lng": -95.26419,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12195,6 +13137,8 @@
   "state": "ks",
   "stateFull": "Kansas",
   "zip": "66061",
+  "lat": 38.88196,
+  "lng": -94.82195,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12220,6 +13164,8 @@
   "state": "ks",
   "stateFull": "Kansas",
   "zip": "66212",
+  "lat": 38.95469,
+  "lng": -94.66771,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12244,6 +13190,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "73505",
+  "lat": 34.59424,
+  "lng": -98.4233,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12267,6 +13215,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "73501",
+  "lat": 34.59763,
+  "lng": -98.38506,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12291,6 +13241,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "74074",
+  "lat": 36.11607,
+  "lng": -97.0435,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12314,6 +13266,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "73703",
+  "lat": 36.40852,
+  "lng": -97.89074,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12336,6 +13290,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "74401",
+  "lat": 35.74242,
+  "lng": -95.37234,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12358,6 +13314,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "74403",
+  "lat": 35.75769,
+  "lng": -95.33453,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12379,6 +13337,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "74401",
+  "lat": 35.77302,
+  "lng": -95.40253,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12403,6 +13363,8 @@
   "state": "md",
   "stateFull": "Maryland",
   "zip": "20781",
+  "lat": 38.9326,
+  "lng": -76.92862,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12426,6 +13388,8 @@
   "state": "md",
   "stateFull": "Maryland",
   "zip": "20814",
+  "lat": 38.98715,
+  "lng": -77.09472,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -12447,6 +13411,8 @@
   "state": "md",
   "stateFull": "Maryland",
   "zip": "21061",
+  "lat": 39.17286,
+  "lng": -76.62022,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12472,6 +13438,8 @@
   "state": "md",
   "stateFull": "Maryland",
   "zip": "20707",
+  "lat": 39.09307,
+  "lng": -76.8554,
   "services": [
    "windshield-replacement",
    "sunroof-repair",
@@ -12495,6 +13463,8 @@
   "state": "md",
   "stateFull": "Maryland",
   "zip": "21061",
+  "lat": 39.17176,
+  "lng": -76.6209,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -12521,6 +13491,8 @@
   "state": "md",
   "stateFull": "Maryland",
   "zip": "20723",
+  "lat": 39.11477,
+  "lng": -76.83284,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12568,6 +13540,8 @@
   "state": "md",
   "stateFull": "Maryland",
   "zip": "21401",
+  "lat": 38.97351,
+  "lng": -76.52157,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -12589,6 +13563,8 @@
   "state": "md",
   "stateFull": "Maryland",
   "zip": "21218",
+  "lat": 39.31256,
+  "lng": -76.6195,
   "services": [
    "windshield-repair",
    "window-tint",
@@ -12610,6 +13586,8 @@
   "state": "md",
   "stateFull": "Maryland",
   "zip": "20852",
+  "lat": 39.05818,
+  "lng": -77.10506,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -12630,6 +13608,8 @@
   "state": "de",
   "stateFull": "Delaware",
   "zip": "19801",
+  "lat": 39.74231,
+  "lng": -75.54881,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -12651,6 +13631,8 @@
   "state": "wa",
   "stateFull": "Washington",
   "zip": "98686",
+  "lat": 45.70239,
+  "lng": -122.65161,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12679,6 +13661,8 @@
   "state": "wa",
   "stateFull": "Washington",
   "zip": "98901",
+  "lat": 46.60071,
+  "lng": -120.50527,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12704,6 +13688,8 @@
   "state": "wa",
   "stateFull": "Washington",
   "zip": "98032",
+  "lat": 47.36609,
+  "lng": -122.22984,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12730,6 +13716,8 @@
   "state": "wa",
   "stateFull": "Washington",
   "zip": "98226",
+  "lat": 48.7905,
+  "lng": -122.48597,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12756,6 +13744,8 @@
   "state": "wa",
   "stateFull": "Washington",
   "zip": "98506",
+  "lat": 47.04608,
+  "lng": -122.86383,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12781,6 +13771,8 @@
   "state": "wa",
   "stateFull": "Washington",
   "zip": "99336",
+  "lat": 46.22108,
+  "lng": -119.19065,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -12808,6 +13800,8 @@
   "state": "wa",
   "stateFull": "Washington",
   "zip": "99336",
+  "lat": 46.21636,
+  "lng": -119.1248,
   "services": [
    "windshield-replacement",
    "side-window",
@@ -12832,6 +13826,8 @@
   "state": "wa",
   "stateFull": "Washington",
   "zip": "98203",
+  "lat": 47.93518,
+  "lng": -122.21921,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12858,6 +13854,8 @@
   "state": "or",
   "stateFull": "Oregon",
   "zip": "97402",
+  "lat": 44.05223,
+  "lng": -123.12348,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12881,6 +13879,8 @@
   "state": "or",
   "stateFull": "Oregon",
   "zip": "97701",
+  "lat": 44.07069,
+  "lng": -121.30255,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -12902,6 +13902,8 @@
   "state": "or",
   "stateFull": "Oregon",
   "zip": "97330",
+  "lat": 44.58046,
+  "lng": -123.25943,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -12926,6 +13928,8 @@
   "state": "or",
   "stateFull": "Oregon",
   "zip": "97330",
+  "lat": 44.57212,
+  "lng": -123.25921,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -12950,6 +13954,8 @@
   "state": "or",
   "stateFull": "Oregon",
   "zip": "97123",
+  "lat": 45.51495,
+  "lng": -122.97376,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -12975,6 +13981,8 @@
   "state": "or",
   "stateFull": "Oregon",
   "zip": "97030",
+  "lat": 45.49799,
+  "lng": -122.42546,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13003,6 +14011,8 @@
   "state": "id",
   "stateFull": "Idaho",
   "zip": "83705",
+  "lat": 43.57433,
+  "lng": -116.20237,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13026,6 +14036,8 @@
   "state": "id",
   "stateFull": "Idaho",
   "zip": "83201",
+  "lat": 42.90294,
+  "lng": -112.45219,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -13079,6 +14091,8 @@
   "state": "id",
   "stateFull": "Idaho",
   "zip": "83815",
+  "lat": 47.72011,
+  "lng": -116.79453,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13102,6 +14116,8 @@
   "state": "id",
   "stateFull": "Idaho",
   "zip": "83651",
+  "lat": 43.58684,
+  "lng": -116.57566,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13127,6 +14143,8 @@
   "state": "mt",
   "stateFull": "Montana",
   "zip": "59102",
+  "lat": 45.74935,
+  "lng": -108.61581,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13152,6 +14170,8 @@
   "state": "mt",
   "stateFull": "Montana",
   "zip": "59801",
+  "lat": 46.85062,
+  "lng": -114.01318,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13174,6 +14194,8 @@
   "state": "mt",
   "stateFull": "Montana",
   "zip": "59808",
+  "lat": 46.88837,
+  "lng": -114.01963,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13197,6 +14219,8 @@
   "state": "mt",
   "stateFull": "Montana",
   "zip": "59405",
+  "lat": 47.49102,
+  "lng": -111.29386,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13222,6 +14246,8 @@
   "state": "wy",
   "stateFull": "Wyoming",
   "zip": "82001",
+  "lat": 41.13432,
+  "lng": -104.83567,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13245,6 +14271,8 @@
   "state": "nm",
   "stateFull": "New Mexico",
   "zip": "87108",
+  "lat": 35.0808,
+  "lng": -106.57825,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13274,6 +14302,8 @@
   "state": "nm",
   "stateFull": "New Mexico",
   "zip": "87112",
+  "lat": 35.1009,
+  "lng": -106.53281,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13320,6 +14350,8 @@
   "state": "nm",
   "stateFull": "New Mexico",
   "zip": "87507",
+  "lat": 35.66162,
+  "lng": -105.99574,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -13343,6 +14375,8 @@
   "state": "co",
   "stateFull": "Colorado",
   "zip": "80528",
+  "lat": 40.47845,
+  "lng": -104.99421,
   "services": [
    "windshield-replacement",
    "side-window",
@@ -13367,6 +14401,8 @@
   "state": "co",
   "stateFull": "Colorado",
   "zip": "81008",
+  "lat": 38.31033,
+  "lng": -104.62102,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13390,6 +14426,8 @@
   "state": "co",
   "stateFull": "Colorado",
   "zip": "80301",
+  "lat": 40.02602,
+  "lng": -105.24413,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -13412,6 +14450,8 @@
   "state": "ut",
   "stateFull": "Utah",
   "zip": "84770",
+  "lat": 37.1252,
+  "lng": -113.61568,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13438,6 +14478,8 @@
   "state": "ut",
   "stateFull": "Utah",
   "zip": "84041",
+  "lat": 41.06977,
+  "lng": -111.99322,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -13466,6 +14508,8 @@
   "state": "ut",
   "stateFull": "Utah",
   "zip": "84401",
+  "lat": 41.21581,
+  "lng": -111.97052,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13493,6 +14537,8 @@
   "state": "ut",
   "stateFull": "Utah",
   "zip": "84321",
+  "lat": 41.74395,
+  "lng": -111.83468,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -13517,6 +14563,8 @@
   "state": "nv",
   "stateFull": "Nevada",
   "zip": "89431",
+  "lat": 39.52264,
+  "lng": -119.70093,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13571,6 +14619,8 @@
   "state": "az",
   "stateFull": "Arizona",
   "zip": "85226",
+  "lat": 33.31232,
+  "lng": -111.93545,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13593,6 +14643,8 @@
   "state": "az",
   "stateFull": "Arizona",
   "zip": "85381",
+  "lat": 33.59536,
+  "lng": -112.25686,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -13619,6 +14671,8 @@
   "state": "az",
   "stateFull": "Arizona",
   "zip": "86301",
+  "lat": 34.55331,
+  "lng": -112.46546,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13643,6 +14697,8 @@
   "state": "az",
   "stateFull": "Arizona",
   "zip": "86004",
+  "lat": 35.20676,
+  "lng": -111.61345,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13670,6 +14726,8 @@
   "state": "az",
   "stateFull": "Arizona",
   "zip": "85367",
+  "lat": 32.66658,
+  "lng": -114.41758,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13697,6 +14755,8 @@
   "state": "ma",
   "stateFull": "Massachusetts",
   "zip": "02136",
+  "lat": 42.24872,
+  "lng": -71.13128,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13723,6 +14783,8 @@
   "state": "ma",
   "stateFull": "Massachusetts",
   "zip": "02149",
+  "lat": 42.40302,
+  "lng": -71.05564,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13747,6 +14809,8 @@
   "state": "ma",
   "stateFull": "Massachusetts",
   "zip": "02382",
+  "lat": 42.08184,
+  "lng": -70.96692,
   "services": [
    "windshield-replacement",
    "side-window",
@@ -13770,6 +14834,8 @@
   "state": "ma",
   "stateFull": "Massachusetts",
   "zip": "01851",
+  "lat": 42.63943,
+  "lng": -71.32481,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13814,6 +14880,8 @@
   "state": "ma",
   "stateFull": "Massachusetts",
   "zip": "01089",
+  "lat": 42.1162,
+  "lng": -72.62637,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13836,6 +14904,8 @@
   "state": "ma",
   "stateFull": "Massachusetts",
   "zip": "01104",
+  "lat": 42.12523,
+  "lng": -72.56617,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13859,6 +14929,8 @@
   "state": "ct",
   "stateFull": "Connecticut",
   "zip": "06053",
+  "lat": 41.70058,
+  "lng": -72.77476,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13883,6 +14955,8 @@
   "state": "ct",
   "stateFull": "Connecticut",
   "zip": "06810",
+  "lat": 41.40072,
+  "lng": -73.45496,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13905,6 +14979,8 @@
   "state": "ct",
   "stateFull": "Connecticut",
   "zip": "06610",
+  "lat": 41.18649,
+  "lng": -73.16681,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13927,6 +15003,8 @@
   "state": "ct",
   "stateFull": "Connecticut",
   "zip": "06854",
+  "lat": 41.10876,
+  "lng": -73.43286,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -13948,6 +15026,8 @@
   "state": "ct",
   "stateFull": "Connecticut",
   "zip": "06907",
+  "lat": 41.08966,
+  "lng": -73.51714,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -13969,6 +15049,8 @@
   "state": "vt",
   "stateFull": "Vermont",
   "zip": "05403",
+  "lat": 44.45816,
+  "lng": -73.16854,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -13995,6 +15077,8 @@
   "state": "vt",
   "stateFull": "Vermont",
   "zip": "05701",
+  "lat": 43.59826,
+  "lng": -72.97409,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14018,6 +15102,8 @@
   "state": "me",
   "stateFull": "Maine",
   "zip": "04401",
+  "lat": 44.82758,
+  "lng": -68.74061,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14041,6 +15127,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "12550",
+  "lat": 41.49481,
+  "lng": -74.01656,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14067,6 +15155,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "10950",
+  "lat": 41.31783,
+  "lng": -74.16689,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -14090,6 +15180,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "10977",
+  "lat": 41.08678,
+  "lng": -74.05375,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14112,6 +15204,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "11751",
+  "lat": 40.72934,
+  "lng": -73.21272,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14135,6 +15229,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "14824",
+  "lat": 42.29285,
+  "lng": -76.70813,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14158,6 +15254,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "12180",
+  "lat": 42.747,
+  "lng": -73.68302,
   "services": [
    "windshield-replacement",
    "side-window",
@@ -14181,6 +15279,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "12206",
+  "lat": 42.67342,
+  "lng": -73.77714,
   "services": [
    "windshield-replacement",
    "rear-window"
@@ -14202,6 +15302,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "14120",
+  "lat": 43.03264,
+  "lng": -78.87654,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14225,6 +15327,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "11701",
+  "lat": 40.67158,
+  "lng": -73.42055,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14249,6 +15353,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "11722",
+  "lat": 40.76368,
+  "lng": -73.02508,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14273,6 +15379,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "11780",
+  "lat": 40.86139,
+  "lng": -73.14892,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14296,6 +15404,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "12901",
+  "lat": 44.69101,
+  "lng": -73.4993,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -14316,6 +15426,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "12601",
+  "lat": 41.68646,
+  "lng": -73.93118,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14338,6 +15450,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "13820",
+  "lat": 42.44803,
+  "lng": -75.10467,
   "services": [
    "windshield-replacement",
    "side-window",
@@ -14360,6 +15474,8 @@
   "state": "nj",
   "stateFull": "New Jersey",
   "zip": "08879",
+  "lat": 40.46706,
+  "lng": -74.27586,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14387,6 +15503,8 @@
   "state": "nj",
   "stateFull": "New Jersey",
   "zip": "08318",
+  "lat": 39.61492,
+  "lng": -75.22397,
   "services": [
    "windshield-replacement",
    "adas-calibration",
@@ -14411,6 +15529,8 @@
   "state": "nj",
   "stateFull": "New Jersey",
   "zip": "07512",
+  "lat": 40.89963,
+  "lng": -74.21859,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14438,6 +15558,8 @@
   "state": "nj",
   "stateFull": "New Jersey",
   "zip": "08731",
+  "lat": 39.87317,
+  "lng": -74.23206,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14461,6 +15583,8 @@
   "state": "nj",
   "stateFull": "New Jersey",
   "zip": "07740",
+  "lat": 40.30291,
+  "lng": -73.99485,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14487,6 +15611,8 @@
   "state": "nj",
   "stateFull": "New Jersey",
   "zip": "08610",
+  "lat": 40.18918,
+  "lng": -74.70703,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -14512,6 +15638,8 @@
   "state": "nj",
   "stateFull": "New Jersey",
   "zip": "07080",
+  "lat": 40.5773,
+  "lng": -74.43108,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14536,6 +15664,8 @@
   "state": "nj",
   "stateFull": "New Jersey",
   "zip": "07462",
+  "lat": 41.24209,
+  "lng": -74.46007,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14557,6 +15687,8 @@
   "state": "nj",
   "stateFull": "New Jersey",
   "zip": "07712",
+  "lat": 40.22435,
+  "lng": -74.00399,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -14578,6 +15710,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "18974",
+  "lat": 40.19865,
+  "lng": -75.08598,
   "services": [
    "windshield-replacement",
    "side-window",
@@ -14600,6 +15734,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "16637",
+  "lat": 40.36085,
+  "lng": -78.41956,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14625,6 +15761,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "17754",
+  "lat": 41.24999,
+  "lng": -76.89268,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -14650,6 +15788,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "15936",
+  "lat": 40.19448,
+  "lng": -78.91285,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14676,6 +15816,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "16801",
+  "lat": 40.83105,
+  "lng": -77.80049,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14701,6 +15843,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "17202",
+  "lat": 39.889,
+  "lng": -77.67872,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14725,6 +15869,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "16002",
+  "lat": 40.86178,
+  "lng": -79.85065,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -14749,6 +15895,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "16001",
+  "lat": 40.84317,
+  "lng": -79.96661,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14773,6 +15921,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "15086",
+  "lat": 40.65582,
+  "lng": -80.08217,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14797,6 +15947,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "16117",
+  "lat": 40.85864,
+  "lng": -80.26714,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14821,6 +15973,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "19020",
+  "lat": 40.09098,
+  "lng": -74.92548,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -14846,6 +16000,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "19057",
+  "lat": 40.12738,
+  "lng": -74.83323,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14871,6 +16027,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "16101",
+  "lat": 40.98918,
+  "lng": -80.3217,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -14893,6 +16051,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "16105",
+  "lat": 41.02612,
+  "lng": -80.35365,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14915,6 +16075,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "17404",
+  "lat": 39.96603,
+  "lng": -76.74588,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -14962,6 +16124,8 @@
   "state": "oh",
   "stateFull": "Ohio",
   "zip": "44221",
+  "lat": 41.12936,
+  "lng": -81.48023,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -14990,6 +16154,8 @@
   "state": "oh",
   "stateFull": "Ohio",
   "zip": "44221",
+  "lat": 41.14151,
+  "lng": -81.47155,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -15013,6 +16179,8 @@
   "state": "oh",
   "stateFull": "Ohio",
   "zip": "44312",
+  "lat": 41.03063,
+  "lng": -81.46195,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15038,6 +16206,8 @@
   "state": "oh",
   "stateFull": "Ohio",
   "zip": "44514",
+  "lat": 40.99326,
+  "lng": -80.63369,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15064,6 +16234,8 @@
   "state": "oh",
   "stateFull": "Ohio",
   "zip": "44714",
+  "lat": 40.8307,
+  "lng": -81.35396,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15086,6 +16258,8 @@
   "state": "oh",
   "stateFull": "Ohio",
   "zip": "44706",
+  "lat": 40.78568,
+  "lng": -81.40098,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15109,6 +16283,8 @@
   "state": "oh",
   "stateFull": "Ohio",
   "zip": "45506",
+  "lat": 39.89572,
+  "lng": -83.82532,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15133,6 +16309,8 @@
   "state": "oh",
   "stateFull": "Ohio",
   "zip": "45011",
+  "lat": 39.37839,
+  "lng": -84.5427,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -15154,6 +16332,8 @@
   "state": "mi",
   "stateFull": "Michigan",
   "zip": "48103",
+  "lat": 42.2741,
+  "lng": -83.79912,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15177,6 +16357,8 @@
   "state": "mi",
   "stateFull": "Michigan",
   "zip": "48104",
+  "lat": 42.24709,
+  "lng": -83.73925,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15202,6 +16384,8 @@
   "state": "mi",
   "stateFull": "Michigan",
   "zip": "48532",
+  "lat": 43.00192,
+  "lng": -83.7777,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15225,6 +16409,8 @@
   "state": "mi",
   "stateFull": "Michigan",
   "zip": "48504",
+  "lat": 43.02305,
+  "lng": -83.72085,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15249,6 +16435,8 @@
   "state": "mi",
   "stateFull": "Michigan",
   "zip": "49009",
+  "lat": 42.26733,
+  "lng": -85.65985,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -15272,6 +16460,8 @@
   "state": "mi",
   "stateFull": "Michigan",
   "zip": "48757",
+  "lat": 43.41233,
+  "lng": -83.68419,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15294,6 +16484,8 @@
   "state": "in",
   "stateFull": "Indiana",
   "zip": "47712",
+  "lat": 37.98411,
+  "lng": -87.59246,
   "services": [
    "windshield-replacement",
    "chip-repair"
@@ -15315,6 +16507,8 @@
   "state": "in",
   "stateFull": "Indiana",
   "zip": "47403",
+  "lat": 39.1505,
+  "lng": -86.58087,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -15342,6 +16536,8 @@
   "state": "in",
   "stateFull": "Indiana",
   "zip": "47905",
+  "lat": 40.41229,
+  "lng": -86.8519,
   "services": [
    "windshield-replacement",
    "window-tint",
@@ -15364,6 +16560,8 @@
   "state": "in",
   "stateFull": "Indiana",
   "zip": "47905",
+  "lat": 40.40003,
+  "lng": -86.85659,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15388,6 +16586,8 @@
   "state": "in",
   "stateFull": "Indiana",
   "zip": "46410",
+  "lat": 41.46109,
+  "lng": -87.31647,
   "services": [
    "windshield-replacement",
    "side-window",
@@ -15409,6 +16609,8 @@
   "state": "in",
   "stateFull": "Indiana",
   "zip": "46601",
+  "lat": 41.66501,
+  "lng": -86.25004,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -15430,6 +16632,8 @@
   "state": "ky",
   "stateFull": "Kentucky",
   "zip": "40509",
+  "lat": 38.04051,
+  "lng": -84.45229,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15452,6 +16656,8 @@
   "state": "ky",
   "stateFull": "Kentucky",
   "zip": "40505",
+  "lat": 38.04622,
+  "lng": -84.45893,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15478,6 +16684,8 @@
   "state": "ky",
   "stateFull": "Kentucky",
   "zip": "40508",
+  "lat": 38.05013,
+  "lng": -84.51731,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15503,6 +16711,8 @@
   "state": "ky",
   "stateFull": "Kentucky",
   "zip": "42103",
+  "lat": 36.95608,
+  "lng": -86.4215,
   "services": [
    "windshield-replacement",
    "adas-calibration"
@@ -15524,6 +16734,8 @@
   "state": "ky",
   "stateFull": "Kentucky",
   "zip": "42101",
+  "lat": 37.00801,
+  "lng": -86.41727,
   "services": [
    "windshield-replacement",
    "adas-calibration",
@@ -15546,6 +16758,8 @@
   "state": "ky",
   "stateFull": "Kentucky",
   "zip": "42303",
+  "lat": 37.72324,
+  "lng": -87.11359,
   "services": [
    "windshield-replacement",
    "adas-calibration",
@@ -15568,6 +16782,8 @@
   "state": "ky",
   "stateFull": "Kentucky",
   "zip": "42301",
+  "lat": 37.77331,
+  "lng": -87.12049,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15593,6 +16809,8 @@
   "state": "ky",
   "stateFull": "Kentucky",
   "zip": "41017",
+  "lat": 39.04907,
+  "lng": -84.57709,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15614,6 +16832,8 @@
   "state": "wv",
   "stateFull": "West Virginia",
   "zip": "25387",
+  "lat": 38.38881,
+  "lng": -81.65784,
   "services": [
    "windshield-replacement",
    "chip-repair"
@@ -15634,6 +16854,8 @@
   "state": "wv",
   "stateFull": "West Virginia",
   "zip": "26501",
+  "lat": 39.63364,
+  "lng": -79.96592,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -15655,6 +16877,8 @@
   "state": "mi",
   "stateFull": "Michigan",
   "zip": "48124",
+  "lat": 42.28729,
+  "lng": -83.28529,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -15676,6 +16900,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "18109",
+  "lat": 40.62137,
+  "lng": -75.4483,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15702,6 +16928,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "18017",
+  "lat": 40.63047,
+  "lng": -75.35662,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15725,6 +16953,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "17025",
+  "lat": 40.28554,
+  "lng": -76.97024,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15750,6 +16980,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "17015",
+  "lat": 40.1989,
+  "lng": -77.15312,
   "services": [
    "windshield-replacement"
   ],
@@ -15770,6 +17002,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "17545",
+  "lat": 40.16975,
+  "lng": -76.38529,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15793,6 +17027,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "17603",
+  "lat": 40.03038,
+  "lng": -76.31741,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15818,6 +17054,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "16505",
+  "lat": 42.06944,
+  "lng": -80.20084,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15840,6 +17078,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "19153",
+  "lat": 39.91715,
+  "lng": -75.21444,
   "services": [
    "windshield-replacement",
    "side-window",
@@ -15863,6 +17103,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "19133",
+  "lat": 39.99954,
+  "lng": -75.14746,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15885,6 +17127,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "15215",
+  "lat": 40.49334,
+  "lng": -79.9144,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15911,6 +17155,8 @@
   "state": "pa",
   "stateFull": "Pennsylvania",
   "zip": "15136",
+  "lat": 40.45173,
+  "lng": -80.13201,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -15936,6 +17182,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "11377",
+  "lat": 40.75248,
+  "lng": -73.90635,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -15958,6 +17206,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "10310",
+  "lat": 40.63965,
+  "lng": -74.12144,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -15982,6 +17232,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "10314",
+  "lat": 40.5876,
+  "lng": -74.19751,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -16008,6 +17260,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "10309",
+  "lat": 40.547,
+  "lng": -74.2284,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16030,6 +17284,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "10703",
+  "lat": 40.95742,
+  "lng": -73.87342,
   "services": [
    "windshield-replacement"
   ],
@@ -16050,6 +17306,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "12027",
+  "lat": 42.91352,
+  "lng": -73.89559,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16073,6 +17331,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "12010",
+  "lat": 43.00078,
+  "lng": -74.19034,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16101,6 +17361,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "13224",
+  "lat": 43.05467,
+  "lng": -76.09371,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16126,6 +17388,8 @@
   "state": "ny",
   "stateFull": "New York",
   "zip": "11550",
+  "lat": 40.7041,
+  "lng": -73.62494,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16199,6 +17463,8 @@
   "state": "nj",
   "stateFull": "New Jersey",
   "zip": "08817",
+  "lat": 40.52606,
+  "lng": -74.3875,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16223,6 +17489,8 @@
   "state": "nj",
   "stateFull": "New Jersey",
   "zip": "08755",
+  "lat": 40.03111,
+  "lng": -74.21231,
   "services": [
    "windshield-replacement",
    "side-window",
@@ -16247,6 +17515,8 @@
   "state": "nj",
   "stateFull": "New Jersey",
   "zip": "08619",
+  "lat": 40.24344,
+  "lng": -74.72661,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16296,6 +17566,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "75220",
+  "lat": 32.86643,
+  "lng": -96.88772,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16323,6 +17595,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "75042",
+  "lat": 32.90627,
+  "lng": -96.69652,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -16348,6 +17622,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78211",
+  "lat": 29.36193,
+  "lng": -98.55434,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16372,6 +17648,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78251",
+  "lat": 29.48138,
+  "lng": -98.63523,
   "services": [
    "windshield-replacement",
    "side-window",
@@ -16396,6 +17674,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78216",
+  "lat": 29.55248,
+  "lng": -98.49434,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16422,6 +17702,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78221",
+  "lat": 29.35056,
+  "lng": -98.5163,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16445,6 +17727,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78753",
+  "lat": 30.37612,
+  "lng": -97.68973,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16470,6 +17754,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78741",
+  "lat": 30.23929,
+  "lng": -97.72644,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16497,6 +17783,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78723",
+  "lat": 30.32204,
+  "lng": -97.69666,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16524,6 +17812,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "79924",
+  "lat": 31.87752,
+  "lng": -106.40757,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16549,6 +17839,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "79936",
+  "lat": 31.76818,
+  "lng": -106.28793,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16574,6 +17866,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78417",
+  "lat": 27.71499,
+  "lng": -97.44604,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -16600,6 +17894,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "79118",
+  "lat": 35.14409,
+  "lng": -101.88376,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16623,6 +17919,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "79109",
+  "lat": 35.17841,
+  "lng": -101.88184,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16648,6 +17946,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78501",
+  "lat": 26.21644,
+  "lng": -98.21629,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -16673,6 +17973,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "79706",
+  "lat": 31.96375,
+  "lng": -102.08677,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16696,6 +17998,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "79761",
+  "lat": 31.85168,
+  "lng": -102.3562,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16720,6 +18024,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "79605",
+  "lat": 32.45084,
+  "lng": -99.76477,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16743,6 +18049,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "79602",
+  "lat": 32.42754,
+  "lng": -99.73102,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -16766,6 +18074,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "75701",
+  "lat": 32.30428,
+  "lng": -95.3303,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16789,6 +18099,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "75701",
+  "lat": 32.32322,
+  "lng": -95.2661,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16815,6 +18127,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "77803",
+  "lat": 30.66805,
+  "lng": -96.37295,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16839,6 +18153,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "77801",
+  "lat": 30.6437,
+  "lng": -96.36102,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16861,6 +18177,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "77479",
+  "lat": 29.59665,
+  "lng": -95.62039,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16888,6 +18206,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "77502",
+  "lat": 29.67917,
+  "lng": -95.17382,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16910,6 +18230,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "77502",
+  "lat": 29.68989,
+  "lng": -95.21048,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16935,6 +18257,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "77301",
+  "lat": 30.30845,
+  "lng": -95.46403,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -16956,6 +18280,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "77388",
+  "lat": 30.07218,
+  "lng": -95.48862,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -16998,6 +18324,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78664",
+  "lat": 30.51081,
+  "lng": -97.67841,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -17070,6 +18398,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "76504",
+  "lat": 31.08989,
+  "lng": -97.34486,
   "services": [
    "chip-repair",
    "windshield-repair",
@@ -17092,6 +18422,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "76903",
+  "lat": 31.45229,
+  "lng": -100.43592,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -17113,6 +18445,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "76903",
+  "lat": 31.4776,
+  "lng": -100.44675,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -17135,6 +18469,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "77904",
+  "lat": 28.88396,
+  "lng": -97.0553,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -17155,6 +18491,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "78550",
+  "lat": 26.19178,
+  "lng": -97.69227,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -17175,6 +18513,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "76201",
+  "lat": 33.20822,
+  "lng": -97.15206,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -17197,6 +18537,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "76209",
+  "lat": 33.22576,
+  "lng": -97.10418,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -17219,6 +18561,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "75071",
+  "lat": 33.2309,
+  "lng": -96.61222,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -17241,6 +18585,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "75090",
+  "lat": 33.63793,
+  "lng": -96.60841,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -17262,6 +18608,8 @@
   "state": "tx",
   "stateFull": "Texas",
   "zip": "76302",
+  "lat": 33.88222,
+  "lng": -98.48611,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -17286,6 +18634,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "73107",
+  "lat": 35.49332,
+  "lng": -97.57729,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -17306,6 +18656,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "73130",
+  "lat": 35.47773,
+  "lng": -97.37076,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -17328,6 +18680,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "73069",
+  "lat": 35.21925,
+  "lng": -97.44716,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -17348,6 +18702,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "74145",
+  "lat": 36.09785,
+  "lng": -95.88579,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -17369,6 +18725,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "74012",
+  "lat": 36.05535,
+  "lng": -95.81526,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -17411,6 +18769,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "74006",
+  "lat": 36.74402,
+  "lng": -95.90896,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -17431,6 +18791,8 @@
   "state": "ok",
   "stateFull": "Oklahoma",
   "zip": "74801",
+  "lat": 35.33269,
+  "lng": -96.90873,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -17452,6 +18814,8 @@
   "state": "mn",
   "stateFull": "Minnesota",
   "zip": "56303",
+  "lat": 45.5622,
+  "lng": -94.19696,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -17477,6 +18841,8 @@
   "state": "mn",
   "stateFull": "Minnesota",
   "zip": "55811",
+  "lat": 46.79326,
+  "lng": -92.15621,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -17505,6 +18871,8 @@
   "state": "mn",
   "stateFull": "Minnesota",
   "zip": "55901",
+  "lat": 44.04769,
+  "lng": -92.51074,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -17530,6 +18898,8 @@
   "state": "mn",
   "stateFull": "Minnesota",
   "zip": "55904",
+  "lat": 43.99601,
+  "lng": -92.38803,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -17554,6 +18924,8 @@
   "state": "mn",
   "stateFull": "Minnesota",
   "zip": "55110",
+  "lat": 45.03937,
+  "lng": -93.01857,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -17580,6 +18952,8 @@
   "state": "mn",
   "stateFull": "Minnesota",
   "zip": "55432",
+  "lat": 45.12214,
+  "lng": -93.24441,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -17604,6 +18978,8 @@
   "state": "mn",
   "stateFull": "Minnesota",
   "zip": "55433",
+  "lat": 45.16504,
+  "lng": -93.30813,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -17631,6 +19007,8 @@
   "state": "mn",
   "stateFull": "Minnesota",
   "zip": "55122",
+  "lat": 44.82306,
+  "lng": -93.2055,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -17654,6 +19032,8 @@
   "state": "wi",
   "stateFull": "Wisconsin",
   "zip": "53204",
+  "lat": 43.00978,
+  "lng": -87.92827,
   "services": [
    "windshield-replacement",
    "rear-window",
@@ -17677,6 +19057,8 @@
   "state": "wi",
   "stateFull": "Wisconsin",
   "zip": "53228",
+  "lat": 42.9634,
+  "lng": -88.04776,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -17701,6 +19083,8 @@
   "state": "wi",
   "stateFull": "Wisconsin",
   "zip": "53716",
+  "lat": 43.07309,
+  "lng": -89.30997,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -17725,6 +19109,8 @@
   "state": "wi",
   "stateFull": "Wisconsin",
   "zip": "53718",
+  "lat": 43.16168,
+  "lng": -89.28515,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -17748,6 +19134,8 @@
   "state": "wi",
   "stateFull": "Wisconsin",
   "zip": "54302",
+  "lat": 44.51309,
+  "lng": -87.96468,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -17769,6 +19157,8 @@
   "state": "wi",
   "stateFull": "Wisconsin",
   "zip": "54915",
+  "lat": 44.25857,
+  "lng": -88.36216,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -17790,6 +19180,8 @@
   "state": "wi",
   "stateFull": "Wisconsin",
   "zip": "53403",
+  "lat": 42.72534,
+  "lng": -87.78931,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -17814,6 +19206,8 @@
   "state": "wi",
   "stateFull": "Wisconsin",
   "zip": "53402",
+  "lat": 42.761,
+  "lng": -87.80158,
   "services": [
    "windshield-repair",
    "chip-repair",
@@ -17839,6 +19233,8 @@
   "state": "wi",
   "stateFull": "Wisconsin",
   "zip": "53186",
+  "lat": 43.0112,
+  "lng": -88.19885,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -17862,6 +19258,8 @@
   "state": "wi",
   "stateFull": "Wisconsin",
   "zip": "53144",
+  "lat": 42.5922,
+  "lng": -87.87947,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -17883,6 +19281,8 @@
   "state": "ia",
   "stateFull": "Iowa",
   "zip": "50311",
+  "lat": 41.59764,
+  "lng": -93.67071,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -17906,6 +19306,8 @@
   "state": "ia",
   "stateFull": "Iowa",
   "zip": "50111",
+  "lat": 41.66558,
+  "lng": -93.77303,
   "services": [
    "windshield-replacement",
    "adas-calibration",
@@ -17929,6 +19331,8 @@
   "state": "ia",
   "stateFull": "Iowa",
   "zip": "52806",
+  "lat": 41.55641,
+  "lng": -90.5688,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -17954,6 +19358,8 @@
   "state": "ia",
   "stateFull": "Iowa",
   "zip": "51108",
+  "lat": 42.57842,
+  "lng": -96.41239,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -17978,6 +19384,8 @@
   "state": "ia",
   "stateFull": "Iowa",
   "zip": "51101",
+  "lat": 42.50668,
+  "lng": -96.37549,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -18004,6 +19412,8 @@
   "state": "ia",
   "stateFull": "Iowa",
   "zip": "51503",
+  "lat": 41.28921,
+  "lng": -95.83115,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18028,6 +19438,8 @@
   "state": "ia",
   "stateFull": "Iowa",
   "zip": "50613",
+  "lat": 42.52098,
+  "lng": -92.43598,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -18050,6 +19462,8 @@
   "state": "ne",
   "stateFull": "Nebraska",
   "zip": "68107",
+  "lat": 41.19155,
+  "lng": -95.96735,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18074,6 +19488,8 @@
   "state": "ne",
   "stateFull": "Nebraska",
   "zip": "68137",
+  "lat": 41.19255,
+  "lng": -96.09615,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18099,6 +19515,8 @@
   "state": "ne",
   "stateFull": "Nebraska",
   "zip": "68117",
+  "lat": 41.21242,
+  "lng": -96.0127,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18122,6 +19540,8 @@
   "state": "ne",
   "stateFull": "Nebraska",
   "zip": "68144",
+  "lat": 41.22341,
+  "lng": -96.12446,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18147,6 +19567,8 @@
   "state": "ne",
   "stateFull": "Nebraska",
   "zip": "68510",
+  "lat": 40.81229,
+  "lng": -96.69379,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18172,6 +19594,8 @@
   "state": "ne",
   "stateFull": "Nebraska",
   "zip": "68528",
+  "lat": 40.81465,
+  "lng": -96.73426,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18194,6 +19618,8 @@
   "state": "ne",
   "stateFull": "Nebraska",
   "zip": "68528",
+  "lat": 40.81413,
+  "lng": -96.74228,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18220,6 +19646,8 @@
   "state": "sd",
   "stateFull": "South Dakota",
   "zip": "57064",
+  "lat": 43.44964,
+  "lng": -96.81078,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18244,6 +19672,8 @@
   "state": "sd",
   "stateFull": "South Dakota",
   "zip": "57104",
+  "lat": 43.53748,
+  "lng": -96.73121,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18266,6 +19696,8 @@
   "state": "sd",
   "stateFull": "South Dakota",
   "zip": "57103",
+  "lat": 43.54582,
+  "lng": -96.67573,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18287,6 +19719,8 @@
   "state": "sd",
   "stateFull": "South Dakota",
   "zip": "57701",
+  "lat": 44.08012,
+  "lng": -103.22147,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18310,6 +19744,8 @@
   "state": "sd",
   "stateFull": "South Dakota",
   "zip": "57701",
+  "lat": 44.08762,
+  "lng": -103.20357,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -18335,6 +19771,8 @@
   "state": "sd",
   "stateFull": "South Dakota",
   "zip": "57703",
+  "lat": 44.0619,
+  "lng": -103.14087,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -18357,6 +19795,8 @@
   "state": "nd",
   "stateFull": "North Dakota",
   "zip": "58103",
+  "lat": 46.87289,
+  "lng": -96.84589,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18381,6 +19821,8 @@
   "state": "nd",
   "stateFull": "North Dakota",
   "zip": "58201",
+  "lat": 47.89205,
+  "lng": -97.04468,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18404,6 +19846,8 @@
   "state": "nd",
   "stateFull": "North Dakota",
   "zip": "58504",
+  "lat": 46.8019,
+  "lng": -100.7642,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18426,6 +19870,8 @@
   "state": "nd",
   "stateFull": "North Dakota",
   "zip": "58504",
+  "lat": 46.8003,
+  "lng": -100.77269,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -18447,6 +19893,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "23453",
+  "lat": 36.79345,
+  "lng": -76.06774,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -18470,6 +19918,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "23462",
+  "lat": 36.84204,
+  "lng": -76.15585,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18492,6 +19942,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "23454",
+  "lat": 36.8385,
+  "lng": -76.00923,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -18516,6 +19968,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "23502",
+  "lat": 36.8627,
+  "lng": -76.21608,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18539,6 +19993,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "23502",
+  "lat": 36.88126,
+  "lng": -76.20747,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -18561,6 +20017,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "23701",
+  "lat": 36.81639,
+  "lng": -76.36296,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18584,6 +20042,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "23434",
+  "lat": 36.71601,
+  "lng": -76.66113,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18607,6 +20067,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "23437",
+  "lat": 36.67649,
+  "lng": -76.74947,
   "services": [
    "windshield-replacement",
    "chip-repair",
@@ -18633,6 +20095,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "23608",
+  "lat": 37.16495,
+  "lng": -76.54059,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -18679,6 +20143,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "23188",
+  "lat": 37.3231,
+  "lng": -76.73583,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18702,6 +20168,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "23320",
+  "lat": 36.7729,
+  "lng": -76.23791,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -18725,6 +20193,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "22043",
+  "lat": 38.87669,
+  "lng": -77.2226,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18774,6 +20244,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "20109",
+  "lat": 38.80161,
+  "lng": -77.50743,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18800,6 +20272,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "20151",
+  "lat": 38.89306,
+  "lng": -77.45006,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18824,6 +20298,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "22031",
+  "lat": 38.87583,
+  "lng": -77.23903,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18851,6 +20327,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "22030",
+  "lat": 38.85485,
+  "lng": -77.29139,
   "services": [
    "windshield-replacement",
    "windshield-repair"
@@ -18872,6 +20350,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "22191",
+  "lat": 38.64975,
+  "lng": -77.24531,
   "services": [
    "windshield-replacement",
    "side-window",
@@ -18895,6 +20375,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "22003",
+  "lat": 38.83188,
+  "lng": -77.19536,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18918,6 +20400,8 @@
   "state": "dc",
   "stateFull": "Washington, D.C.",
   "zip": "20002",
+  "lat": 38.9209,
+  "lng": -76.99751,
   "services": [
    "windshield-replacement",
    "windshield-repair",
@@ -18939,6 +20423,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "22203",
+  "lat": 38.88123,
+  "lng": -77.10775,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -18959,6 +20445,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "22203",
+  "lat": 38.87859,
+  "lng": -77.11155,
   "services": [
    "windshield-repair",
    "windshield-replacement",
@@ -18980,6 +20468,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "22181",
+  "lat": 38.88556,
+  "lng": -77.28077,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -19000,6 +20490,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "22305",
+  "lat": 38.83604,
+  "lng": -77.05637,
   "services": [
    "windshield-repair",
    "windshield-replacement"
@@ -19020,6 +20512,8 @@
   "state": "va",
   "stateFull": "Virginia",
   "zip": "22309",
+  "lat": 38.72282,
+  "lng": -77.12045,
   "services": [
    "windshield-repair",
    "windshield-replacement",
