@@ -240,12 +240,20 @@ export default async function DirectoryHome() {
           ))}
         </div>
 
-        <Link
-          href="/directory/browse"
-          className="mt-8 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 hover:text-blue-800"
-        >
-          Browse all {cities.length} cities <ArrowRight width={15} height={15} />
-        </Link>
+        <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2">
+          <Link
+            href="/directory/browse"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 hover:text-blue-800"
+          >
+            Browse all {cities.length} cities <ArrowRight width={15} height={15} />
+          </Link>
+          <Link
+            href="/directory/map"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 hover:text-blue-800"
+          >
+            <MapPin width={15} height={15} /> Explore the map
+          </Link>
+        </div>
       </section>
 
       {/* Shop-owner CTA — this is the lead magnet */}
