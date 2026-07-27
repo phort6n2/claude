@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { LocateFixed, Navigation } from 'lucide-react'
 import type { Shop } from '@/lib/directory/types'
 import { formatMiles } from '@/lib/directory/distance'
@@ -11,7 +11,7 @@ interface NearState {
   available: boolean
   precise: boolean
   location: string | null
-  order: { slug: string; distance: number }[]
+  nearest: { shop: Shop; distance: number }[]
 }
 
 const EMPTY: NearState = {
@@ -19,7 +19,7 @@ const EMPTY: NearState = {
   available: false,
   precise: false,
   location: null,
-  order: [],
+  nearest: [],
 }
 
 /**
@@ -28,13 +28,9 @@ const EMPTY: NearState = {
  * "Use my location" button upgrades to precise GPS coordinates. Renders
  * nothing until a usable location is found, so it never shows an empty shell.
  */
-export function NearYou({ shops }: { shops: Shop[] }) {
+export function NearYou() {
   const [state, setState] = useState<NearState>(EMPTY)
   const [locating, setLocating] = useState(false)
-  const bySlug = useMemo(
-    () => Object.fromEntries(shops.map((s) => [s.slug, s])),
-    [shops]
-  )
 
   async function load(coords?: { lat: number; lng: number }) {
     try {
@@ -46,7 +42,7 @@ export function NearYou({ shops }: { shops: Shop[] }) {
         available: !!json.available,
         precise: !!json.precise,
         location: json.location ?? null,
-        order: Array.isArray(json.order) ? json.order : [],
+        nearest: Array.isArray(json.nearest) ? json.nearest : [],
       })
     } catch {
       setState((s) => ({ ...s, loaded: true }))
@@ -72,11 +68,7 @@ export function NearYou({ shops }: { shops: Shop[] }) {
 
   if (!state.loaded || !state.available) return null
 
-  const nearest = state.order
-    .map((o) => ({ shop: bySlug[o.slug], distance: o.distance }))
-    .filter((x) => x.shop)
-    .slice(0, 3)
-
+  const nearest = state.nearest.filter((x) => x.shop)
   if (nearest.length === 0) return null
 
   return (
