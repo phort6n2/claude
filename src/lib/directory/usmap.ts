@@ -18,9 +18,7 @@ import type { FeatureCollection, Geometry } from 'geojson'
 import statesTopo from 'us-atlas/states-10m.json'
 import type { Topology } from 'topojson-specification'
 
-/** us-atlas ships pre-fitted to this box; keeping it avoids re-fitting. */
-export const MAP_WIDTH = 975
-export const MAP_HEIGHT = 610
+export { MAP_WIDTH, MAP_HEIGHT } from './usmap-constants'
 
 export interface StateShape {
   /** Lowercase 2-letter code, matching Shop.state. */
