@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { MapPin, Truck, ShieldCheck, Star, ArrowRight } from 'lucide-react'
 import {
-  getAllShops,
   getFeaturedShops,
   getCitySummaries,
   getShopCount,
@@ -21,13 +20,15 @@ import { hydrateDirectory } from '@/lib/directory/listings'
 // Refresh periodically so website hero images stay current.
 export const revalidate = 3600
 
+/** Cities shown on the homepage, ordered by shop count (see the section note). */
+const POPULAR_CITY_COUNT = 24
+
 export default async function DirectoryHome() {
   await hydrateDirectory()
   // Rotate the featured set each hour (matches revalidate) so all featured
   // shops get homepage time, not just the top 9.
   const rotation = Math.floor(Date.now() / 3_600_000)
   const featured = await withReviews(await enrichShops(getFeaturedShops(9, rotation)))
-  const nearShops = await withReviews(await enrichShops(getAllShops()))
   const cities = getCitySummaries()
   const states = getStateSummaries()
   const shopCount = getShopCount()
@@ -134,7 +135,7 @@ export default async function DirectoryHome() {
       </section>
 
       {/* Near you — location-aware default (IP-based, upgradeable to GPS) */}
-      <NearYou shops={nearShops} />
+      <NearYou />
 
       {/* Services */}
       <section className="mx-auto max-w-6xl px-4 py-14">
@@ -193,14 +194,22 @@ export default async function DirectoryHome() {
         </div>
       </section>
 
-      {/* Cities */}
+      {/* Cities.
+          Only the densest markets belong here. The homepage is the strongest
+          page on the site, and splitting its internal links across every city
+          we cover gives a one-shop town the same weight as San Antonio. Full
+          coverage is reachable in one click via /browse and via the state links
+          below, and every city page is in the sitemap either way. */}
       <section className="mx-auto max-w-6xl px-4 py-14">
         <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">
           Browse by area
         </p>
         <h2 className="mt-1 text-2xl font-bold text-gray-900">Popular cities</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          The markets with the most shops to compare.
+        </p>
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {cities.map((c) => (
+          {cities.slice(0, POPULAR_CITY_COUNT).map((c) => (
             <Link
               key={`${c.state}-${c.citySlug}`}
               href={cityHref({ state: c.state, city: c.city })}
@@ -214,6 +223,29 @@ export default async function DirectoryHome() {
             </Link>
           ))}
         </div>
+
+        {/* Every state, so the whole directory stays two clicks from here:
+            home → state → city. 51 links instead of 519. */}
+        <h3 className="mt-12 text-lg font-bold text-gray-900">Browse by state</h3>
+        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+          {states.map((s) => (
+            <Link
+              key={s.state}
+              href={`/directory/${s.state}`}
+              className="text-sm text-gray-600 transition-colors hover:text-blue-700 hover:underline"
+            >
+              {s.stateFull}{' '}
+              <span className="text-xs text-gray-400">{s.count}</span>
+            </Link>
+          ))}
+        </div>
+
+        <Link
+          href="/directory/browse"
+          className="mt-8 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 hover:text-blue-800"
+        >
+          Browse all {cities.length} cities <ArrowRight width={15} height={15} />
+        </Link>
       </section>
 
       {/* Shop-owner CTA — this is the lead magnet */}
