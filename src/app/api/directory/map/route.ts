@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getAllShops } from '@/lib/directory/data'
+import { getAllShops, citySlug } from '@/lib/directory/data'
 import { hydrateDirectory } from '@/lib/directory/listings'
 import { getStateShapes, projectPoint, type MapPoint } from '@/lib/directory/usmap'
 
@@ -25,7 +25,15 @@ export async function GET() {
     if (typeof s.lat !== 'number' || typeof s.lng !== 'number') continue
     const p = projectPoint(s.lat, s.lng)
     if (!p) continue
-    points.push({ slug: s.slug, name: s.name, city: s.city, state: s.state, x: p[0], y: p[1] })
+    points.push({
+      slug: s.slug,
+      name: s.name,
+      city: s.city,
+      citySlug: citySlug(s.city),
+      state: s.state,
+      x: p[0],
+      y: p[1],
+    })
   }
 
   return NextResponse.json(

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { MapPin, ArrowLeft, X, Plus, Minus, Crosshair } from 'lucide-react'
+import { ArrowLeft, X, Plus, Minus, Crosshair, ArrowRight } from 'lucide-react'
 import type { StateShape, MapPoint } from '@/lib/directory/usmap'
 
 interface Props {
@@ -21,20 +21,15 @@ interface Props {
   embedded?: boolean
 }
 
-// Two shops closer than this on screen can't be told apart, let alone tapped
-// individually, so they group into one cluster bubble instead.
-const CLUSTER_PX = 22
-// Radius of the fan when a cluster is opened in place.
-const SPIDER_PX = 46
-const MAX_K = 80
+const MAX_K = 40
 
-interface Cluster {
-  id: string
+interface City {
+  key: string
+  city: string
+  state: string
   x: number
   y: number
-  members: MapPoint[]
-  /** Largest gap between members, in map units — zero when they're stacked. */
-  spread: number
+  shops: MapPoint[]
 }
 
 function fitView(
@@ -49,47 +44,16 @@ function fitView(
   return { k, x: (x0 + x1) / 2, y: (y0 + y1) / 2 }
 }
 
-/**
- * Group points that would land on top of each other at the current zoom.
- *
- * Greedy single-pass rather than a proper hierarchy: a state holds at most a
- * couple of hundred pins, and the clusters need to be recomputed on every zoom
- * step, so predictable and cheap beats optimal.
- */
-function clusterPoints(pts: MapPoint[], radius: number): Cluster[] {
-  const out: Cluster[] = []
-  for (const p of pts) {
-    const hit = out.find((c) => Math.hypot(c.x - p.x, c.y - p.y) <= radius)
-    if (hit) {
-      hit.members.push(p)
-      // Re-centre on the mean so the bubble sits among its members.
-      hit.x = hit.members.reduce((t, m) => t + m.x, 0) / hit.members.length
-      hit.y = hit.members.reduce((t, m) => t + m.y, 0) / hit.members.length
-    } else {
-      out.push({ id: p.slug, x: p.x, y: p.y, members: [p], spread: 0 })
-    }
-  }
-  for (const c of out) {
-    let s = 0
-    for (const m of c.members) s = Math.max(s, Math.hypot(m.x - c.x, m.y - c.y))
-    c.spread = s
-  }
-  return out
-}
-
 export function UsShopMap({ states, points, counts, width, height, embedded }: Props) {
   const [active, setActive] = useState<StateShape | null>(null)
-  const [selected, setSelected] = useState<MapPoint | null>(null)
-  const [hover, setHover] = useState<string | null>(null)
-  const [hoverShop, setHoverShop] = useState<string | null>(null)
-  const [spider, setSpider] = useState<string | null>(null)
+  const [openCity, setOpenCity] = useState<string | null>(null)
+  const [hoverState, setHoverState] = useState<string | null>(null)
+  const [hoverCity, setHoverCity] = useState<string | null>(null)
   const [view, setView] = useState({ k: 1, x: width / 2, y: height / 2 })
   const [animate, setAnimate] = useState(true)
 
   const svgRef = useRef<SVGSVGElement | null>(null)
-  const drag = useRef<{ x: number; y: number; cx: number; cy: number } | null>(null)
-  // Rendered pixels per map unit at k=1. Needed to turn "22 px apart on screen"
-  // into map units, which is the only space the SVG understands.
+  const drag = useRef<{ x: number; y: number; cx: number; cy: number; moved: boolean } | null>(null)
   const [pxPerUnit, setPxPerUnit] = useState(1)
 
   useEffect(() => {
@@ -103,116 +67,150 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
   }, [width])
 
   const max = useMemo(() => Math.max(1, ...Object.values(counts)), [counts])
-  const byState = useMemo(() => {
-    const m: Record<string, MapPoint[]> = {}
-    for (const p of points) (m[p.state] ||= []).push(p)
-    return m
+
+  /**
+   * The map's unit is the city, not the shop.
+   *
+   * Individual shop pins piled up in exactly the places with the most shops —
+   * you could see there were shops in Los Angeles but not pick one. Cities are
+   * separated by definition, they're what people search for, and a city marker
+   * can say how many shops it holds before you click it.
+   */
+  const citiesByState = useMemo(() => {
+    const byKey: Record<string, City> = {}
+    for (const p of points) {
+      const key = `${p.state}|${p.city}`
+      const e = (byKey[key] ||= { key, city: p.city, state: p.state, x: 0, y: 0, shops: [] })
+      e.shops.push(p)
+    }
+    const out: Record<string, City[]> = {}
+    for (const c of Object.values(byKey)) {
+      c.x = c.shops.reduce((t, s) => t + s.x, 0) / c.shops.length
+      c.y = c.shops.reduce((t, s) => t + s.y, 0) / c.shops.length
+      c.shops.sort((a, b) => a.name.localeCompare(b.name))
+      ;(out[c.state] ||= []).push(c)
+    }
+    for (const list of Object.values(out)) list.sort((a, b) => b.shops.length - a.shops.length)
+    return out
   }, [points])
 
-  const visible = useMemo(
-    () => (active ? byState[active.state] ?? [] : []),
-    [active, byState]
+  const cities = useMemo(
+    () => (active ? citiesByState[active.state] ?? [] : []),
+    [active, citiesByState]
+  )
+  const selected = useMemo(
+    () => cities.find((c) => c.key === openCity) ?? null,
+    [cities, openCity]
   )
 
-  // Map-unit distance that corresponds to CLUSTER_PX on screen right now.
-  const screenToUnits = useCallback(
+  const u = useCallback(
     (px: number) => px / Math.max(pxPerUnit * view.k, 0.0001),
     [pxPerUnit, view.k]
   )
 
-  const clusters = useMemo(
-    () => clusterPoints(visible, screenToUnits(CLUSTER_PX)),
-    [visible, screenToUnits]
+  /** Marker radius in screen px — area roughly tracks shop count. */
+  const cityRadius = useCallback(
+    (n: number) => Math.min(24, 8 + Math.sqrt(n) * 3),
+    []
   )
 
   /**
-   * City labels, derived from our own shops rather than an external gazetteer.
+   * Cities whose markers would overlap at this zoom are shown as one group.
    *
-   * Two rules keep them readable. They follow the viewport, because "San Diego"
-   * is noise when you're zoomed into the Bay Area. And they're placed greedily
-   * biggest-city-first, dropping any that would collide with one already
-   * placed — an unreadable pile of overlapping names is worse than fewer names.
+   * California has 79 cities and at state zoom the Bay Area and LA basin are a
+   * pile of touching circles — the same "which one do I want" problem, moved up
+   * a level. A group marker says how many cities are underneath and zooms in
+   * when clicked; once they separate, they're ordinary city markers again.
+   * Groups never open a card, so "click a city, get its shops" always holds.
+   */
+  const groups = useMemo(() => {
+    const out: { key: string; x: number; y: number; members: City[] }[] = []
+    for (const c of cities) {
+      const r = u(cityRadius(c.shops.length))
+      const hit = out.find((g) => {
+        const gr = u(cityRadius(Math.max(...g.members.map((m) => m.shops.length))))
+        return Math.hypot(g.x - c.x, g.y - c.y) < (r + gr) * 0.95
+      })
+      if (hit) {
+        hit.members.push(c)
+        hit.x = hit.members.reduce((t, m) => t + m.x, 0) / hit.members.length
+        hit.y = hit.members.reduce((t, m) => t + m.y, 0) / hit.members.length
+      } else {
+        out.push({ key: c.key, x: c.x, y: c.y, members: [c] })
+      }
+    }
+    return out
+  }, [cities, u, cityRadius])
+
+  const soloCities = useMemo(
+    () => groups.filter((g) => g.members.length === 1).map((g) => g.members[0]),
+    [groups]
+  )
+
+  /**
+   * Which cities get a name next to them.
+   *
+   * Every city is clickable, but not every city can be labelled — California
+   * has 79 and at state zoom their names overlap into mush. So: biggest first,
+   * only those in view, four candidate positions each, and skip any that would
+   * collide with a name already placed or with any marker. Fewer names that can
+   * be read beats every name illegible.
    */
   const labels = useMemo(() => {
     if (!active) return []
     const halfW = width / 2 / view.k
     const halfH = height / 2 / view.k
-    const inView = visible.filter(
-      (p) =>
-        p.x >= view.x - halfW &&
-        p.x <= view.x + halfW &&
-        p.y >= view.y - halfH &&
-        p.y <= view.y + halfH
+    // Only cities standing on their own get a name; a group has no single name.
+    const inView = soloCities.filter(
+      (c) =>
+        c.x >= view.x - halfW &&
+        c.x <= view.x + halfW &&
+        c.y >= view.y - halfH &&
+        c.y <= view.y + halfH
     )
-    const byCity: Record<string, { city: string; x: number; y: number; n: number }> = {}
-    for (const p of inView) {
-      const e = (byCity[p.city] ||= { city: p.city, x: 0, y: 0, n: 0 })
-      e.x += p.x
-      e.y += p.y
-      e.n += 1
-    }
-    const candidates = Object.values(byCity)
-      .map((e) => ({ city: e.city, x: e.x / e.n, y: e.y / e.n, n: e.n }))
-      .sort((a, b) => b.n - a.n)
-
-    const fontUnits = screenToUnits(11)
-    const bubble = screenToUnits(30)
-    // Bubbles are obstacles too — a name sitting across a count is worse than
-    // no name. But a city's OWN bubble is the thing it labels, so that one is
-    // excluded, otherwise the densest cities (the ones most worth naming) are
-    // exactly the ones that never get a label.
-    const bubbles = clusters.map((c) => ({ x: c.x, y: c.y, w: bubble, h: bubble }))
+    const font = u(12)
+    const markers = groups.map((c) => {
+      const n = Math.max(...c.members.map((m) => m.shops.length))
+      const d = u(cityRadius(n) * 2 + 4)
+      return { x: c.x, y: c.y, w: d, h: d }
+    })
     const boxes: { x: number; y: number; w: number; h: number }[] = []
+    const placed: { key: string; city: string; x: number; y: number }[] = []
 
-    const placed: { city: string; x: number; y: number }[] = []
-    for (const c of candidates) {
-      if (placed.length >= 10) break
-      const w = c.city.length * fontUnits * 0.58
-      const h = fontUnits * 1.5
-
-      // Candidate positions, in order of preference. The horizontal ones must
-      // clear the bubble by half the label's own width — a fixed offset works
-      // for "Fresno" and puts "Huntington Beach" straight back through it.
-      const side = screenToUnits(17) + w / 2
+    for (const c of inView) {
+      if (placed.length >= 14) break
+      const w = c.city.length * font * 0.58
+      const h = font * 1.5
+      const r = u(cityRadius(c.shops.length))
+      // Own marker is what the label points at, so it isn't an obstacle.
+      const others = markers.filter((m) => !(m.x === c.x && m.y === c.y))
+      const side = r + u(6) + w / 2
       const offsets: [number, number][] = [
-        [0, -screenToUnits(27)],
-        [0, screenToUnits(30)],
-        [side, screenToUnits(4)],
-        [-side, screenToUnits(4)],
+        [0, -(r + u(9))],
+        [0, r + u(15)],
+        [side, u(4)],
+        [-side, u(4)],
       ]
-      // The bubble this label belongs to — allowed to be overlapped.
-      let own = -1
-      let bestD = Infinity
-      bubbles.forEach((b, i) => {
-        const d = Math.hypot(b.x - c.x, b.y - c.y)
-        if (d < bestD) {
-          bestD = d
-          own = i
-        }
-      })
-      const obstacles = [...boxes, ...bubbles.filter((_, i) => i !== own)]
-
       for (const [dx, dy] of offsets) {
         const x = c.x + dx
         const y = c.y + dy
-        const clash = obstacles.some(
+        const clash = [...boxes, ...others].some(
           (o) => Math.abs(o.x - x) < (o.w + w) / 2 && Math.abs(o.y - y) < (o.h + h) / 2
         )
         if (clash) continue
         boxes.push({ x, y, w, h })
-        placed.push({ city: c.city, x, y })
+        placed.push({ key: c.key, city: c.city, x, y })
         break
       }
     }
     return placed
-  }, [active, visible, view, width, height, screenToUnits, clusters])
+  }, [active, soloCities, groups, view, width, height, u, cityRadius])
 
   const openState = useCallback(
     (s: StateShape) => {
       setAnimate(true)
       setActive(s)
-      setSelected(null)
-      setSpider(null)
+      setOpenCity(null)
       setView(fitView(s.bounds, width, height))
     },
     [width, height]
@@ -221,52 +219,31 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
   const reset = useCallback(() => {
     setAnimate(true)
     setActive(null)
-    setSelected(null)
-    setSpider(null)
+    setOpenCity(null)
     setView({ k: 1, x: width / 2, y: height / 2 })
   }, [width, height])
 
   const zoomBy = useCallback((factor: number) => {
     setAnimate(true)
-    setSpider(null)
     setView((v) => ({ ...v, k: Math.min(MAX_K, Math.max(1, v.k * factor)) }))
   }, [])
 
   const recentre = useCallback(() => {
     if (!active) return
     setAnimate(true)
-    setSpider(null)
     setView(fitView(active.bounds, width, height))
   }, [active, width, height])
-
-  function onClusterClick(c: Cluster) {
-    if (c.members.length === 1) {
-      setSelected(c.members[0])
-      return
-    }
-    // Zoom in on the cluster while that would actually separate it; once the
-    // members are effectively stacked, zooming forever won't help — fan them
-    // out in place instead. This is the clustering + spiderfy combination the
-    // Leaflet and Google marker plugins settled on.
-    const separable = c.spread > screenToUnits(CLUSTER_PX) * 0.55 && view.k < MAX_K * 0.6
-    if (separable) {
-      setAnimate(true)
-      setSpider(null)
-      setView({ k: Math.min(MAX_K, view.k * 2.6), x: c.x, y: c.y })
-    } else {
-      setSpider((s) => (s === c.id ? null : c.id))
-    }
-  }
 
   // ---- panning ------------------------------------------------------------
   function onPointerDown(e: React.PointerEvent<SVGSVGElement>) {
     if (!active) return
-    drag.current = { x: e.clientX, y: e.clientY, cx: view.x, cy: view.y }
-    ;(e.target as Element).setPointerCapture?.(e.pointerId)
+    drag.current = { x: e.clientX, y: e.clientY, cx: view.x, cy: view.y, moved: false }
   }
   function onPointerMove(e: React.PointerEvent<SVGSVGElement>) {
     const d = drag.current
     if (!d) return
+    if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 4) d.moved = true
+    if (!d.moved) return
     const scale = Math.max(pxPerUnit * view.k, 0.0001)
     setAnimate(false)
     setView((v) => ({
@@ -278,6 +255,8 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
   function endDrag() {
     drag.current = null
   }
+  /** A drag that ends over a marker must not also open it. */
+  const dragged = () => !!drag.current?.moved
 
   function fill(code: string): string {
     if (active?.state === code) return '#eef4ff'
@@ -287,9 +266,13 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
     return `hsl(214, 88%, ${92 - t * 45}%)`
   }
 
-  const missing = active ? (counts[active.state] ?? 0) - visible.length : 0
-  const u = (px: number) => screenToUnits(px) // shorthand: screen px → map units
-  const spiderCluster = clusters.find((c) => c.id === spider) ?? null
+  const missing = active
+    ? (counts[active.state] ?? 0) - cities.reduce((t, c) => t + c.shops.length, 0)
+    : 0
+
+  // Keep the card clear of its own marker: put it on the opposite side of the
+  // map from whichever half the city sits in.
+  const cardSide = selected && selected.x > view.x ? 'sm:left-3' : 'sm:right-3'
 
   return (
     <div className="relative">
@@ -301,8 +284,8 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
             </h2>
             <p className="mt-0.5 text-sm text-gray-600">
               {active
-                ? `${counts[active.state] ?? 0} shop${(counts[active.state] ?? 0) === 1 ? '' : 's'} — drag to pan, tap a pin for details`
-                : 'Tap a state to zoom in and see individual shops.'}
+                ? `${cities.length} ${cities.length === 1 ? 'city' : 'cities'} with shops. Tap a city for its shops — larger circles cover several nearby cities, tap those to zoom in.`
+                : 'Tap a state to zoom in and see the cities we cover.'}
             </p>
           </div>
           {active && (
@@ -329,8 +312,8 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
           role="img"
           aria-label={
             active
-              ? `Map of auto glass shops in ${active.name}`
-              : 'Map of the United States. Select a state to see its shops.'
+              ? `Map of cities with auto glass shops in ${active.name}`
+              : 'Map of the United States. Select a state to see the cities we cover.'
           }
         >
           <g
@@ -353,157 +336,147 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
                   className={active ? '' : 'cursor-pointer'}
                   style={{
                     transition: 'opacity 400ms, fill 200ms',
-                    filter: hover === s.state && !active ? 'brightness(0.93)' : undefined,
+                    filter: hoverState === s.state && !active ? 'brightness(0.93)' : undefined,
                   }}
                   onClick={() => !active && openState(s)}
-                  onMouseEnter={() => setHover(s.state)}
-                  onMouseLeave={() => setHover(null)}
+                  onMouseEnter={() => setHoverState(s.state)}
+                  onMouseLeave={() => setHoverState(null)}
                 >
                   <title>{`${s.name} — ${counts[s.state] ?? 0} shops`}</title>
                 </path>
               )
             })}
 
-            {/* City names, for orientation — without them a zoomed state is an
-                outline full of anonymous dots. */}
-            {labels.map((l) => (
-              <text
-                key={l.city}
-                x={l.x}
-                y={l.y}
-                textAnchor="middle"
-                fontSize={u(11)}
-                className="pointer-events-none select-none"
-                fill="#334155"
-                stroke="#fff"
-                strokeWidth={u(2.4)}
-                paintOrder="stroke"
-                style={{ fontWeight: 600 }}
-              >
-                {l.city}
-              </text>
-            ))}
-
-            {clusters.map((c) => {
-              const single = c.members.length === 1
-              const isSpider = spider === c.id
-              if (single) {
-                const p = c.members[0]
-                const on = selected?.slug === p.slug || hoverShop === p.slug
-                return (
-                  <g
-                    key={c.id}
-                    className="cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelected(p)
-                    }}
-                    onMouseEnter={() => setHoverShop(p.slug)}
-                    onMouseLeave={() => setHoverShop(null)}
-                  >
-                    <circle cx={p.x} cy={p.y} r={u(14)} fill="transparent" />
-                    <circle
-                      cx={p.x}
-                      cy={p.y}
-                      r={u(on ? 8 : 5)}
-                      fill={on ? '#1d4ed8' : '#2563eb'}
-                      stroke="#fff"
-                      strokeWidth={u(1.8)}
-                    >
-                      <title>{`${p.name} — ${p.city}`}</title>
-                    </circle>
-                  </g>
-                )
-              }
-              // Data brushing: a row hovered in the list must highlight its
-              // marker whatever form that marker currently takes — otherwise
-              // the highlight silently does nothing for any shop that happens
-              // to be inside a cluster, which is most of them when zoomed out.
-              const holdsHovered =
-                (!!hoverShop && c.members.some((m) => m.slug === hoverShop)) ||
-                (!!selected && c.members.some((m) => m.slug === selected.slug))
+            {/* Only cities that actually have shops are drawn, and every one of
+                them is clickable. Nothing on the map is decorative. */}
+            {groups.map((g) => {
+              const solo = g.members.length === 1
+              const c = g.members[0]
+              const shops = g.members.reduce((t, m) => t + m.shops.length, 0)
+              const on = solo && (openCity === c.key || hoverCity === c.key)
+              const r = cityRadius(solo ? c.shops.length : shops)
               return (
                 <g
-                  key={c.id}
+                  key={g.key}
                   className="cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation()
-                    onClusterClick(c)
+                    if (dragged()) return
+                    if (solo) {
+                      setOpenCity((k) => (k === c.key ? null : c.key))
+                      return
+                    }
+                    // A group is an instruction to zoom, never a card — the
+                    // card always answers "shops in one named city".
+                    setAnimate(true)
+                    setOpenCity(null)
+                    setView((v) => ({ k: Math.min(MAX_K, v.k * 2.4), x: g.x, y: g.y }))
                   }}
+                  onMouseEnter={() => solo && setHoverCity(c.key)}
+                  onMouseLeave={() => setHoverCity(null)}
                 >
                   <circle
-                    cx={c.x}
-                    cy={c.y}
-                    r={u((c.members.length > 9 ? 15 : 13) + (holdsHovered ? 4 : 0))}
-                    fill={isSpider || holdsHovered ? '#1d4ed8' : '#2563eb'}
-                    stroke={holdsHovered ? '#1e3a8a' : '#fff'}
-                    strokeWidth={u(holdsHovered ? 2.5 : 2)}
-                    opacity={0.95}
+                    cx={g.x}
+                    cy={g.y}
+                    r={u(r + (on ? 3 : 0))}
+                    fill={on ? '#1d4ed8' : '#2563eb'}
+                    stroke="#fff"
+                    strokeWidth={u(solo ? 2 : 3)}
+                    opacity={solo ? 0.95 : 0.9}
                   >
-                    <title>{`${c.members.length} shops here — tap to open`}</title>
+                    <title>
+                      {solo
+                        ? `${c.city} — ${c.shops.length} shop${c.shops.length === 1 ? '' : 's'}`
+                        : `${g.members.length} nearby cities, ${shops} shops — tap to zoom in`}
+                    </title>
                   </circle>
                   <text
-                    x={c.x}
-                    y={c.y + u(4)}
+                    x={g.x}
+                    y={g.y + u(4)}
                     textAnchor="middle"
-                    fontSize={u(11)}
+                    fontSize={u(12)}
                     fill="#fff"
                     className="pointer-events-none select-none"
                     style={{ fontWeight: 700 }}
                   >
-                    {c.members.length}
+                    {shops}
                   </text>
                 </g>
               )
             })}
 
-            {/* Fanned-out cluster: drawn last so its legs and pins sit on top. */}
-            {spiderCluster &&
-              spiderCluster.members.map((m, i) => {
-                const n = spiderCluster.members.length
-                const angle = (i / n) * Math.PI * 2 - Math.PI / 2
-                const r = u(SPIDER_PX) * (n > 8 ? 1 + i / (n * 2) : 1)
-                const sx = spiderCluster.x + Math.cos(angle) * r
-                const sy = spiderCluster.y + Math.sin(angle) * r
-                const on = selected?.slug === m.slug || hoverShop === m.slug
-                return (
-                  <g
-                    key={m.slug}
-                    className="cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelected(m)
-                    }}
-                    onMouseEnter={() => setHoverShop(m.slug)}
-                    onMouseLeave={() => setHoverShop(null)}
-                  >
-                    <line
-                      x1={spiderCluster.x}
-                      y1={spiderCluster.y}
-                      x2={sx}
-                      y2={sy}
-                      stroke="#94a3b8"
-                      strokeWidth={u(1)}
-                    />
-                    <circle cx={sx} cy={sy} r={u(14)} fill="transparent" />
-                    <circle
-                      cx={sx}
-                      cy={sy}
-                      r={u(on ? 8 : 6)}
-                      fill={on ? '#1d4ed8' : '#2563eb'}
-                      stroke="#fff"
-                      strokeWidth={u(1.8)}
-                    >
-                      <title>{`${m.name} — ${m.city}`}</title>
-                    </circle>
-                  </g>
-                )
-              })}
+            {/* Names drawn after every marker so nothing paints over them. */}
+            {labels.map((l) => (
+              <text
+                key={l.key}
+                x={l.x}
+                y={l.y}
+                textAnchor="middle"
+                fontSize={u(12)}
+                fill="#0f172a"
+                stroke="#fff"
+                strokeWidth={u(2.6)}
+                paintOrder="stroke"
+                className="pointer-events-none select-none"
+                style={{ fontWeight: 600 }}
+              >
+                {l.city}
+              </text>
+            ))}
           </g>
         </svg>
 
+        {/* The card sits on the map, as asked, and lists every shop in the city
+            so nothing depends on hitting a specific dot. */}
+        {selected && (
+          <div
+            /* Bottom sheet on phones — a side panel there would sit on top of
+               the zoom controls. Side panel from sm up, on whichever half of
+               the map the city isn't. */
+            className={`absolute inset-x-3 bottom-3 flex max-h-[55%] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl sm:inset-x-auto sm:top-3 sm:max-h-none sm:w-80 ${cardSide}`}
+          >
+            <div className="flex items-start justify-between gap-2 border-b border-gray-100 px-4 py-3">
+              <div className="min-w-0">
+                <p className="truncate text-base font-bold text-gray-900">{selected.city}</p>
+                <p className="text-xs text-gray-500">
+                  {selected.shops.length} shop{selected.shops.length === 1 ? '' : 's'} ·{' '}
+                  {selected.state.toUpperCase()}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpenCity(null)}
+                aria-label="Close"
+                className="shrink-0 rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              >
+                <X width={17} height={17} />
+              </button>
+            </div>
+            <ul className="min-h-0 flex-1 divide-y divide-gray-100 overflow-y-auto">
+              {selected.shops.map((s) => (
+                <li key={s.slug}>
+                  <Link
+                    href={`/directory/shop/${s.slug}`}
+                    className="block px-4 py-2.5 text-sm font-medium text-gray-900 hover:bg-blue-50"
+                  >
+                    {s.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <Link
+              href={`/directory/${selected.state}/${selected.shops[0].citySlug}`}
+              className="flex items-center justify-between border-t border-gray-100 px-4 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+            >
+              Compare shops in {selected.city} <ArrowRight width={15} height={15} />
+            </Link>
+          </div>
+        )}
+
+        {/* A vertical stack is tall enough to reach the bottom-sheet card on a
+            phone-sized map, so the controls lie flat there instead. */}
         {active && (
-          <div className="absolute right-3 top-3 flex flex-col gap-1.5">
+          <div className="absolute left-3 top-3 flex flex-row gap-1.5 sm:flex-col">
             <button
               type="button"
               onClick={() => zoomBy(1.7)}
@@ -532,64 +505,39 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
         )}
       </div>
 
-      {selected && (
-        <div className="mt-4 flex items-start justify-between gap-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
-          <div className="min-w-0">
-            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-blue-700">
-              <MapPin width={13} height={13} /> {selected.city}, {selected.state.toUpperCase()}
-            </p>
-            <p className="mt-1 truncate text-lg font-bold text-gray-900">{selected.name}</p>
-            <Link
-              href={`/directory/shop/${selected.slug}`}
-              className="mt-1 inline-block text-sm font-semibold text-blue-700 hover:text-blue-800"
-            >
-              View listing →
-            </Link>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSelected(null)}
-            aria-label="Close"
-            className="shrink-0 rounded-lg p-1 text-gray-400 hover:bg-white hover:text-gray-600"
-          >
-            <X width={18} height={18} />
-          </button>
-        </div>
-      )}
-
-      {/* The list is the escape hatch: however tightly pins overlap, every shop
-          is still reachable here, and hovering a row highlights its pin. */}
-      {active && visible.length > 0 && (
+      {/* Real links under the map: keyboard-navigable, crawlable, and a way
+          through for anyone who'd rather not use the map at all. */}
+      {active && cities.length > 0 && (
         <div className="mt-4">
           <p className="mb-2 text-sm font-semibold text-gray-900">
-            All {visible.length} pinned shops in {active.name}
+            Cities we cover in {active.name}
           </p>
-          <ul className="max-h-64 divide-y divide-gray-100 overflow-y-auto rounded-xl border border-gray-200">
-            {visible.map((p) => (
-              <li key={p.slug}>
-                <Link
-                  href={`/directory/shop/${p.slug}`}
-                  onMouseEnter={() => setHoverShop(p.slug)}
-                  onMouseLeave={() => setHoverShop(null)}
-                  onFocus={() => setHoverShop(p.slug)}
-                  onBlur={() => setHoverShop(null)}
-                  className={`flex items-center justify-between gap-3 px-4 py-2.5 text-sm transition-colors ${
-                    hoverShop === p.slug ? 'bg-blue-50' : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="truncate font-medium text-gray-900">{p.name}</span>
-                  <span className="shrink-0 text-xs text-gray-500">{p.city}</span>
-                </Link>
-              </li>
+          <div className="flex flex-wrap gap-2">
+            {cities.map((c) => (
+              <button
+                key={c.key}
+                type="button"
+                onClick={() => setOpenCity(c.key)}
+                onMouseEnter={() => setHoverCity(c.key)}
+                onMouseLeave={() => setHoverCity(null)}
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                  openCity === c.key
+                    ? 'border-blue-300 bg-blue-50 text-blue-800'
+                    : 'border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50'
+                }`}
+              >
+                {c.city}
+                <span className="text-xs text-gray-400">{c.shops.length}</span>
+              </button>
             ))}
-          </ul>
+          </div>
         </div>
       )}
 
       {active && missing > 0 && (
         <p className="mt-3 text-xs text-gray-500">
-          {missing} {missing === 1 ? 'shop is' : 'shops are'} not pinned — we don&apos;t have exact
-          coordinates for {missing === 1 ? 'it' : 'them'} yet.{' '}
+          {missing} {missing === 1 ? 'shop is' : 'shops are'} not on the map — we don&apos;t have
+          exact coordinates for {missing === 1 ? 'it' : 'them'} yet.{' '}
           <Link href={`/directory/${active.state}`} className="font-semibold text-blue-700 hover:underline">
             See all {active.name} shops
           </Link>

@@ -36,6 +36,12 @@ export interface MapPoint {
   slug: string
   name: string
   city: string
+  /**
+   * Sent rather than derived in the browser: the client would have to
+   * re-implement citySlug(), and a drift between the two would produce city
+   * links that 404 with nothing to indicate why.
+   */
+  citySlug: string
   state: string
   x: number
   y: number
