@@ -255,6 +255,19 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
   function endDrag() {
     drag.current = null
   }
+
+  /**
+   * Closing the card shouldn't depend on hitting a small X. Escape and a click
+   * on empty map both dismiss it — the two things people try first.
+   */
+  useEffect(() => {
+    if (!openCity) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpenCity(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [openCity])
   /** A drag that ends over a marker must not also open it. */
   const dragged = () => !!drag.current?.moved
 
@@ -308,6 +321,11 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}
+          onClick={() => {
+            // Markers stopPropagation, so a click that reaches the svg is a
+            // click on empty map. Ignore it if the pointer was dragging.
+            if (!drag.current?.moved) setOpenCity(null)
+          }}
           onPointerLeave={endDrag}
           role="img"
           aria-label={
@@ -446,10 +464,11 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
               <button
                 type="button"
                 onClick={() => setOpenCity(null)}
-                aria-label="Close"
-                className="shrink-0 rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                aria-label={`Close ${selected.city} shops`}
+                title="Close (Esc)"
+                className="-m-1 shrink-0 rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
               >
-                <X width={17} height={17} />
+                <X width={20} height={20} />
               </button>
             </div>
             <ul className="min-h-0 flex-1 divide-y divide-gray-100 overflow-y-auto">
