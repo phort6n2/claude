@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { getAllShops, getStateSummaries } from '@/lib/directory/data'
+import { getAllShops, getStateSummaries, citySlug } from '@/lib/directory/data'
 import { hydrateDirectory } from '@/lib/directory/listings'
 import {
   getStateShapes,
@@ -40,6 +40,7 @@ export default async function MapPage() {
       slug: s.slug,
       name: s.name,
       city: s.city,
+      citySlug: citySlug(s.city),
       state: s.state,
       x: p[0],
       y: p[1],
@@ -66,8 +67,8 @@ export default async function MapPage() {
       <h1 className="text-3xl font-bold text-gray-900">Auto glass shops by state</h1>
       <p className="mt-2 max-w-2xl text-gray-600">
         {shops.length.toLocaleString()} independent shops across {stateCount} states
-        {hasDc ? ' and Washington, D.C' : ''}. {points.length.toLocaleString()} are pinned to their
-        exact address — select a state to zoom in, then tap a pin to open its listing.
+        {hasDc ? ' and Washington, D.C' : ''}. Select a state to see the cities we cover there, then
+        tap a city for the shops in it.
       </p>
 
       <div className="mt-10">
