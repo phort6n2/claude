@@ -268,6 +268,20 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [openCity])
+
+  /**
+   * Stop the page scrolling behind the full-screen card on phones — otherwise
+   * a flick meant for the shop list drags the whole page instead.
+   */
+  useEffect(() => {
+    if (!openCity) return
+    if (!window.matchMedia('(max-width: 639px)').matches) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previous
+    }
+  }, [openCity])
   /** A drag that ends over a marker must not also open it. */
   const dragged = () => !!drag.current?.moved
 
@@ -285,7 +299,13 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
 
   // Keep the card clear of its own marker: put it on the opposite side of the
   // map from whichever half the city sits in.
-  const cardSide = selected && selected.x > view.x ? 'sm:left-3' : 'sm:right-3'
+  // Card docks on whichever half of the map the city isn't, so it never covers
+  // the marker you just clicked...
+  const cardOnLeft = !!selected && selected.x > view.x
+  const cardSide = cardOnLeft ? 'sm:left-3' : 'sm:right-3'
+  // ...and the zoom controls move to the other side, since a full-height card
+  // otherwise sits straight on top of them.
+  const controlsSide = cardOnLeft ? 'sm:left-auto sm:right-3' : 'sm:left-3 sm:right-auto'
 
   return (
     <div className="relative">
@@ -448,14 +468,16 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
             so nothing depends on hitting a specific dot. */}
         {selected && (
           <div
-            /* Bottom sheet on phones — a side panel there would sit on top of
-               the zoom controls. Side panel from sm up, on whichever half of
-               the map the city isn't. */
-            className={`absolute inset-x-3 bottom-3 flex max-h-[55%] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl sm:inset-x-auto sm:top-3 sm:max-h-none sm:w-80 ${cardSide}`}
+            /* Full screen on phones. Constrained to the map container it was
+               capped at a couple of hundred pixels tall — a city with eight
+               shops gave a scroll window barely two rows high. From sm up
+               there's room for a side panel, placed on whichever half of the
+               map the city isn't. */
+            className={`fixed inset-0 z-50 flex flex-col overflow-hidden border-gray-200 bg-white sm:absolute sm:inset-auto sm:bottom-3 sm:top-3 sm:z-auto sm:w-80 sm:rounded-xl sm:border sm:shadow-xl ${cardSide}`}
           >
-            <div className="flex items-start justify-between gap-2 border-b border-gray-100 px-4 py-3">
+            <div className="flex shrink-0 items-start justify-between gap-2 border-b border-gray-100 px-4 py-4 sm:py-3">
               <div className="min-w-0">
-                <p className="truncate text-base font-bold text-gray-900">{selected.city}</p>
+                <p className="truncate text-lg font-bold text-gray-900 sm:text-base">{selected.city}</p>
                 <p className="text-xs text-gray-500">
                   {selected.shops.length} shop{selected.shops.length === 1 ? '' : 's'} ·{' '}
                   {selected.state.toUpperCase()}
@@ -476,7 +498,7 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
                 <li key={s.slug}>
                   <Link
                     href={`/directory/shop/${s.slug}`}
-                    className="block px-4 py-2.5 text-sm font-medium text-gray-900 hover:bg-blue-50"
+                    className="block px-4 py-3.5 text-base font-medium text-gray-900 hover:bg-blue-50 sm:py-2.5 sm:text-sm"
                   >
                     {s.name}
                   </Link>
@@ -485,7 +507,7 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
             </ul>
             <Link
               href={`/directory/${selected.state}/${selected.shops[0].citySlug}`}
-              className="flex items-center justify-between border-t border-gray-100 px-4 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+              className="flex items-center justify-between border-t border-gray-100 px-4 py-4 text-sm font-semibold text-blue-700 hover:bg-blue-50 sm:py-2.5"
             >
               Compare shops in {selected.city} <ArrowRight width={15} height={15} />
             </Link>
@@ -495,7 +517,7 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
         {/* A vertical stack is tall enough to reach the bottom-sheet card on a
             phone-sized map, so the controls lie flat there instead. */}
         {active && (
-          <div className="absolute left-3 top-3 flex flex-row gap-1.5 sm:flex-col">
+          <div className={`absolute left-3 top-3 flex flex-row gap-1.5 sm:flex-col ${controlsSide}`}>
             <button
               type="button"
               onClick={() => zoomBy(1.7)}
