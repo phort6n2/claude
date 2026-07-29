@@ -17,7 +17,7 @@ export function IndependentBadge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-md bg-emerald-50 font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/10',
+        'inline-flex items-center gap-1 rounded-md bg-trust-50 font-medium text-trust-700 ring-1 ring-inset ring-trust-700/15',
         sm ? 'px-1.5 py-0.5 text-xs' : 'px-2.5 py-1 text-sm',
         className
       )}

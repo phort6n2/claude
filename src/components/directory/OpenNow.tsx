@@ -34,7 +34,7 @@ export function OpenNow({
       className={cn(
         'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium',
         status.open
-          ? 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/10'
+          ? 'bg-trust-50 text-trust-700 ring-1 ring-inset ring-trust-700/15'
           : 'bg-gray-100 text-gray-500',
         className
       )}

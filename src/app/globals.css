@@ -14,6 +14,47 @@
      the body rule below won, rendering the whole site in Arial. */
   --font-sans: var(--font-sans-next);
   --font-display: var(--font-display-next);
+
+  /* ---- Colour system -----------------------------------------------------
+     One blue was doing eight jobs: the logo, every eyebrow, every link, every
+     icon, the Featured badge, filter chips, focus rings AND the Call button.
+     When the primary conversion is the same hex as a label 400px above it,
+     nothing reads as the thing to tap.
+
+     So brand and action are now separate. Nothing that isn't a conversion may
+     use `action-*`, and nothing that isn't a paid tier may use `tier-*`. */
+
+  /* Brand — navigation, links, eyebrows, the mark itself. */
+  --color-brand-50: #eff6fb;
+  --color-brand-100: #d8e9f5;
+  --color-brand-200: #b7d5ec;
+  --color-brand-500: #2477ad;
+  --color-brand-600: #1b5e8c;
+  --color-brand-700: #164b70;
+  --color-brand-900: #0f2a44;
+
+  /* Action — calls and conversions ONLY. Warm, so it can never be mistaken
+     for a link. 4.9:1 on white at 700. */
+  --color-action-50: #fff4ed;
+  --color-action-600: #ea580c;
+  --color-action-700: #c2410c;
+  --color-action-800: #9a3412;
+
+  /* Trust — verified, open now, independent. Was split across green-* and
+     emerald-*, two near-identical greens appearing on the same card. */
+  --color-trust-50: #ecfdf5;
+  --color-trust-100: #d1fae5;
+  --color-trust-700: #047857;
+
+  /* Tier — paid placement and star ratings ONLY. Amber previously also marked
+     a free founding offer, which stopped gold meaning money. */
+  --color-tier-50: #fffbeb;
+  --color-tier-100: #fef3c7;
+  --color-tier-600: #d97706;
+
+  /* Surfaces — for alternating section bands instead of white on white. */
+  --color-surface: #f8fafc;
+  --color-surface-2: #f1f5f9;
 }
 
 @media (prefers-color-scheme: dark) {

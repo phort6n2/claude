@@ -30,12 +30,12 @@ export function ShopCard({
       <div className="relative h-36 w-full shrink-0 overflow-hidden border-b border-gray-100">
         <SafeShopImage src={shop.photos?.[0]} alt={shop.name} slug={shop.slug} />
         {shop.client ? (
-          <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-amber-500 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm">
+          <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-tier-600 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm">
             Partner
           </span>
         ) : (
           shop.featured && (
-            <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-blue-600 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm">
+            <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-tier-600 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm">
               Featured
             </span>
           )
@@ -43,7 +43,7 @@ export function ShopCard({
         {shop.claimed && (
           <span
             title="Verified listing"
-            className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-xs font-medium text-green-700 shadow-sm ring-1 ring-inset ring-green-600/10"
+            className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-xs font-medium text-trust-700 shadow-sm ring-1 ring-inset ring-trust-700/15"
           >
             <BadgeCheck width={13} height={13} /> Verified
           </span>
@@ -119,7 +119,7 @@ export function ShopCard({
           <a
             href={telHref(shop.phone)}
             aria-label={`Call ${shop.name} at ${shop.phone}`}
-            className="relative z-10 inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white outline-none transition-colors hover:bg-blue-700 active:bg-blue-800 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            className="relative z-10 inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-action-700 px-3 py-2 text-sm font-semibold text-white outline-none transition-colors hover:bg-action-600 active:bg-action-800 focus-visible:ring-2 focus-visible:ring-action-600 focus-visible:ring-offset-2"
           >
             <Phone width={14} height={14} /> Call
           </a>
