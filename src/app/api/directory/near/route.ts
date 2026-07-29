@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAllShops } from '@/lib/directory/data'
 import { haversineMiles } from '@/lib/directory/distance'
+import { projectPoint } from '@/lib/directory/usmap'
 import { hydrateDirectory } from '@/lib/directory/listings'
 import { enrichShops } from '@/lib/directory/photos'
 import { withReviews } from '@/lib/directory/reviews'
@@ -70,6 +71,11 @@ export async function GET(request: Request) {
     available: nearest.length > 0,
     precise,
     location: locationLabel,
+    // Echo the coordinates back so the client store can show distances on
+    // every card without asking for a permission prompt first. `xy` is the
+    // same point in the map's projected space — the projection is server-only,
+    // so this is the only way the map can draw a "you are here".
+    origin: { lat, lng, xy: projectPoint(lat, lng) },
     nearest,
   })
 }

@@ -22,6 +22,9 @@ export interface MapCityShop {
   /** Only present once the Google reviews snapshot has been populated. */
   rating?: number
   reviewCount?: number
+  /** Absent for shops we couldn't geocode; the card just omits the distance. */
+  lat?: number
+  lng?: number
 }
 
 export async function GET(request: Request) {
@@ -45,6 +48,9 @@ export async function GET(request: Request) {
     street: s.street || undefined,
     ...(typeof s.rating === 'number' ? { rating: s.rating } : {}),
     ...(typeof s.reviewCount === 'number' ? { reviewCount: s.reviewCount } : {}),
+    ...(typeof s.lat === 'number' && typeof s.lng === 'number'
+      ? { lat: s.lat, lng: s.lng }
+      : {}),
   }))
 
   return NextResponse.json(

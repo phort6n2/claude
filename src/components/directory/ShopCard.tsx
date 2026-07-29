@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { StarRating } from './StarRating'
 import { SafeShopImage } from './SafeShopImage'
 import { OpenNow } from './OpenNow'
+import { DistanceBadge } from './DistanceBadge'
 
 export function ShopCard({
   shop,
@@ -87,6 +88,7 @@ export function ShopCard({
             </span>
           )}
           <OpenNow hours={shop.hours} />
+          <DistanceBadge lat={shop.lat} lng={shop.lng} />
         </div>
 
         <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-gray-600">
