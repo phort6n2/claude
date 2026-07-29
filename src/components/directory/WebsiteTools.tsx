@@ -115,7 +115,7 @@ export function WebsiteTools() {
             type="button"
             onClick={scaffold}
             disabled={busy !== '' || !url}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
           >
             {busy === 'scaffold' ? <Loader2 className="animate-spin" width={16} height={16} /> : <Search width={16} height={16} />}
             Analyze

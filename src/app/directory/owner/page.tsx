@@ -160,14 +160,14 @@ export default async function OwnerPage({
               {featuredCheckout ? (
                 <a
                   href={featuredCheckout}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
                 >
                   <Sparkles width={16} height={16} /> Get Featured — {FEATURED_PRICE_DISPLAY}
                 </a>
               ) : (
                 <a
                   href={`sms:${AGMP_PHONE_TEL}`}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
                 >
                   <Sparkles width={16} height={16} /> Go Featured ({FEATURED_PRICE_DISPLAY}) — text us
                 </a>
@@ -267,7 +267,7 @@ export default async function OwnerPage({
             <a
               href={featuredCheckout ?? `sms:${AGMP_PHONE_TEL}`}
               {...(featuredCheckout ? {} : {})}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
             >
               <Sparkles width={15} height={15} /> Get Featured — {FEATURED_PRICE_DISPLAY}
             </a>

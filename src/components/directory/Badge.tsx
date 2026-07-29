@@ -8,7 +8,7 @@ const variants: Record<BadgeVariant, string> = {
   blue: 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/10',
   green: 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/10',
   amber: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/10',
-  solid: 'bg-blue-600 text-white shadow-sm',
+  solid: 'bg-brand-600 text-white shadow-sm',
 }
 
 /**

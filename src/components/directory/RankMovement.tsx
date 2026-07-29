@@ -99,7 +99,7 @@ export function RankMovement() {
           <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900">
             <Activity width={18} height={18} className="text-blue-600" /> Rank movement
             {shown.length > 0 && (
-              <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white">
+              <span className="rounded-full bg-brand-600 px-2 py-0.5 text-xs font-bold text-white">
                 {shown.length}
               </span>
             )}
@@ -130,7 +130,7 @@ export function RankMovement() {
           type="button"
           onClick={() => snapshot(false)}
           disabled={busy !== ''}
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
         >
           {busy === 'snap' ? (
             <Loader2 className="animate-spin" width={16} height={16} />

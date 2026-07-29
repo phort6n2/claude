@@ -54,7 +54,7 @@ export function OwnerLogin({ initialKey = '' }: { initialKey?: string }) {
           <button
             type="submit"
             disabled={busy || !key.trim()}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-3 font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
           >
             {busy ? <Loader2 className="animate-spin" width={18} height={18} /> : <LogIn width={18} height={18} />}
             Sign in

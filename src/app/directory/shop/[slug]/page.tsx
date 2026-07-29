@@ -476,7 +476,7 @@ export default async function ShopDetailPage({
                       </p>
                       <Link
                         href={`/directory/claim?shop=${shop.slug}`}
-                        className="mt-3 inline-block rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
+                        className="mt-3 inline-block rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white hover:bg-brand-700"
                       >
                         Claim {shop.city}&apos;s founding spot — free
                       </Link>
@@ -490,7 +490,7 @@ export default async function ShopDetailPage({
                       </p>
                       <Link
                         href={`/directory/claim?shop=${shop.slug}`}
-                        className="mt-3 inline-block rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
+                        className="mt-3 inline-block rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white hover:bg-brand-700"
                       >
                         Claim this listing — free
                       </Link>

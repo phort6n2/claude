@@ -59,7 +59,7 @@ export function QuoteInbox() {
           <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900">
             <Inbox width={18} height={18} className="text-blue-600" /> Quote requests
             {quotes && quotes.length > 0 && (
-              <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white">
+              <span className="rounded-full bg-brand-600 px-2 py-0.5 text-xs font-bold text-white">
                 {quotes.length}
               </span>
             )}

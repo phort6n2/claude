@@ -114,7 +114,7 @@ export default async function ArticlePage({
           </p>
           <Link
             href="/directory/search"
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 font-semibold text-white hover:bg-blue-700"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 font-semibold text-white hover:bg-brand-700"
           >
             Find a shop near me
           </Link>

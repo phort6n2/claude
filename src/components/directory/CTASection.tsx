@@ -81,7 +81,7 @@ export function CTASection({
           {primary && (
             <Link
               href={primary.href}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-b from-blue-500 to-blue-600 px-6 py-3 font-semibold text-white shadow-lg shadow-blue-600/40 outline-none transition-colors hover:from-blue-400 hover:to-blue-500 active:from-blue-600 active:to-blue-700 focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:ring-offset-2 focus-visible:ring-offset-blue-950 sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-b from-action-600 to-action-700 px-6 py-3 font-semibold text-white shadow-lg shadow-action-700/40 outline-none transition-colors hover:from-action-600 hover:to-action-600 active:from-action-700 active:to-action-800 focus-visible:ring-2 focus-visible:ring-action-600 focus-visible:ring-offset-2 focus-visible:ring-offset-blue-950 sm:w-auto"
             >
               <Search width={18} height={18} /> {primary.label}
             </Link>

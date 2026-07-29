@@ -100,7 +100,7 @@ export function ManageUploader({ shops }: { shops: ShopOption[] }) {
       <button
         type="submit"
         disabled={status === 'uploading' || !file}
-        className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {status === 'uploading' ? (
           <Loader2 className="animate-spin" width={16} height={16} />
