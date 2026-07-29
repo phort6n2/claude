@@ -191,7 +191,7 @@ export default async function ShopDetailPage({
                 {shop.city}, {shop.state.toUpperCase()} {shop.zip}
               </Link>
               {shop.claimed && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-3 py-1 text-sm font-medium text-green-700">
+                <span className="inline-flex items-center gap-1 rounded-full bg-trust-50 px-3 py-1 text-sm font-medium text-trust-700">
                   <BadgeCheck width={15} height={15} /> Verified listing
                 </span>
               )}
@@ -199,8 +199,8 @@ export default async function ShopDetailPage({
 
             <div className="mt-4 flex flex-wrap items-center gap-4">
               {shop.client && (
-                <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-1 text-sm font-semibold text-amber-800 ring-1 ring-inset ring-amber-600/20">
-                  <Trophy width={15} height={15} className="text-amber-500" /> Featured partner
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-tier-50 px-2.5 py-1 text-sm font-semibold text-tier-600 ring-1 ring-inset ring-tier-600/25">
+                  <Trophy width={15} height={15} className="text-tier-600" /> Featured partner
                 </span>
               )}
               <IndependentBadge />
@@ -247,7 +247,7 @@ export default async function ShopDetailPage({
             {shop.insurance.length > 0 && (
               <>
                 <h2 className="mt-10 flex items-center gap-2 text-xl font-bold text-gray-900">
-                  <ShieldCheck width={20} height={20} className="text-green-600" />
+                  <ShieldCheck width={20} height={20} className="text-trust-700" />
                   Works with your insurance
                 </h2>
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -353,7 +353,7 @@ export default async function ShopDetailPage({
               <div className="rounded-xl border border-gray-200 p-5">
                 <a
                   href={telHref(shop.phone)}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-action-700 px-4 py-3 font-semibold text-white hover:bg-action-600"
                 >
                   <Phone width={18} height={18} /> {shop.phone}
                 </a>
@@ -465,7 +465,7 @@ export default async function ShopDetailPage({
                   {foundingAvailable ? (
                     <>
                       <p className="flex items-center gap-1.5 font-semibold text-blue-900">
-                        <Trophy width={16} height={16} className="text-amber-500" /> Founding offer
+                        <Trophy width={16} height={16} className="text-brand-600" /> Founding offer
                         for {shop.city}
                       </p>
                       <p className="mt-1 text-blue-800">

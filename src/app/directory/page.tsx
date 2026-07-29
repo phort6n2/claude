@@ -38,11 +38,11 @@ export default async function DirectoryHome() {
   return (
     <>
       {/* Hero */}
-      <section className="relative isolate overflow-hidden bg-blue-800 px-4 py-20 text-white sm:py-28">
+      <section className="relative isolate overflow-hidden bg-brand-900 px-4 py-20 text-white sm:py-28">
         {/* Depth: base gradient */}
         <div
           aria-hidden
-          className="absolute inset-0 -z-20 bg-gradient-to-b from-blue-800 via-blue-700 to-blue-600"
+          className="absolute inset-0 -z-20 bg-gradient-to-b from-brand-900 via-brand-700 to-brand-600"
         />
         {/* Depth: layered radial glows (top focal + corners) */}
         <div
@@ -50,7 +50,7 @@ export default async function DirectoryHome() {
           className="absolute inset-0 -z-10"
           style={{
             background:
-              'radial-gradient(60% 50% at 50% 0%, rgba(56,189,248,0.35), transparent 70%), radial-gradient(40% 40% at 85% 15%, rgba(37,99,235,0.45), transparent 70%), radial-gradient(45% 45% at 12% 88%, rgba(29,78,216,0.5), transparent 70%)',
+              'radial-gradient(60% 50% at 50% 0%, rgba(56,189,248,0.28), transparent 70%), radial-gradient(38% 38% at 86% 18%, rgba(234,88,12,0.22), transparent 70%), radial-gradient(45% 45% at 12% 88%, rgba(22,75,112,0.55), transparent 70%)',
           }}
         />
         {/* Depth: subtle glass-grid motif, faded toward the edges */}
@@ -163,7 +163,7 @@ export default async function DirectoryHome() {
       </section>
 
       {/* Featured shops */}
-      <section className="bg-gray-50 py-14">
+      <section className="bg-surface py-14">
         <div className="mx-auto max-w-6xl px-4">
           <div className="flex items-end justify-between">
             <div>
@@ -205,18 +205,20 @@ export default async function DirectoryHome() {
       {/* Map. Loads its geometry on scroll rather than with the page — see
           MapSection. The state links below it are server-rendered regardless,
           so location browsing never depends on the map loading. */}
-      <section className="mx-auto max-w-6xl px-4 pt-14">
-        <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">
+      <section className="bg-brand-50 py-14">
+        <div className="mx-auto max-w-6xl px-4">
+        <p className="text-sm font-semibold uppercase tracking-wider text-brand-600">
           Find a shop near you
         </p>
         <h2 className="mt-1 text-2xl font-bold text-gray-900">
           {shopCount.toLocaleString()} shops on the map
         </h2>
         <p className="mt-1 text-sm text-gray-600">
-          Tap your state to zoom in, then tap a shop to open its listing.
+          Tap your state to zoom in, then tap a city to see its shops.
         </p>
         <div className="mt-6">
           <MapSection width={MAP_WIDTH} height={MAP_HEIGHT} />
+        </div>
         </div>
       </section>
 

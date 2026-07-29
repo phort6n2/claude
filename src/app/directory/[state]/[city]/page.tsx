@@ -120,7 +120,7 @@ export default async function CityPage({
         <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 font-medium text-blue-700">
           <Truck width={14} height={14} /> {mobileCount} mobile
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 font-medium text-green-700">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-trust-50 px-3 py-1 font-medium text-trust-700">
           <ShieldCheck width={14} height={14} /> Insurance-approved
         </span>
       </div>
