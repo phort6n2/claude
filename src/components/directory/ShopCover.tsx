@@ -1,16 +1,23 @@
 import { CarFront } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// A branded, auto-glass-themed cover used when a listing has no uploaded photo.
-// The gradient is chosen deterministically from the slug, so every shop looks
-// distinct yet cohesive — and the whole set stays on-brand (blue/teal family).
+// A branded cover used when a listing has no uploaded photo. The gradient is
+// chosen deterministically from the slug, so a shop looks the same everywhere it
+// appears.
+//
+// These were six shades of blue, which on a city page meant eight photo-less
+// shops rendered as eight near-identical blue rectangles — a large part of why
+// the site read as monotonous. They're now eight distinct dark hues: still deep
+// enough for white overlay text, but actually telling listings apart.
 const GRADIENTS = [
-  'from-blue-600 to-indigo-800',
-  'from-sky-600 to-blue-800',
-  'from-cyan-700 to-blue-800',
-  'from-indigo-600 to-blue-900',
-  'from-slate-700 to-blue-900',
-  'from-teal-700 to-cyan-900',
+  'from-[#0F2A44] to-[#1E4A6D]', // navy
+  'from-[#12343B] to-[#1E5F63]', // teal
+  'from-[#1C2B22] to-[#2F4A38]', // forest
+  'from-[#33241C] to-[#5C3A24]', // umber
+  'from-[#2A2438] to-[#4A3A5C]', // plum
+  'from-[#3B1F2B] to-[#6B3247]', // wine
+  'from-[#1E293B] to-[#334155]', // slate
+  'from-[#2B2A16] to-[#54502A]', // olive
 ]
 
 export function coverGradient(slug: string): string {
