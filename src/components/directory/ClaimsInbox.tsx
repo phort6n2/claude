@@ -126,7 +126,7 @@ export function ClaimsInbox() {
               </span>
             )}
             {!doneCard && c.intent === 'featured' && (
-              <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white">
+              <span className="rounded-full bg-brand-600 px-2 py-0.5 text-xs font-bold text-white">
                 wants Featured
               </span>
             )}
@@ -230,7 +230,7 @@ export function ClaimsInbox() {
           <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900">
             <ClipboardList width={18} height={18} className="text-blue-600" /> Claims &amp; submissions
             {active && active.length > 0 && (
-              <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white">
+              <span className="rounded-full bg-brand-600 px-2 py-0.5 text-xs font-bold text-white">
                 {active.length}
               </span>
             )}

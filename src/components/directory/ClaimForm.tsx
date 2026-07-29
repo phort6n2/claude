@@ -396,7 +396,7 @@ export function ClaimForm({ existingShopSlug, existingShopName, intent = 'free' 
         <button
           type="submit"
           disabled={status === 'submitting'}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm outline-none transition-colors hover:bg-blue-700 active:bg-blue-800 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-action-700 px-6 py-3 font-semibold text-white shadow-sm outline-none transition-colors hover:bg-action-600 active:bg-action-800 focus-visible:ring-2 focus-visible:ring-action-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
         >
           {status === 'submitting' && <Loader2 className="animate-spin" width={18} height={18} />}
           {status === 'submitting'
@@ -451,14 +451,14 @@ function ClaimSuccess({
   const featuredCta = checkout ? (
     <a
       href={checkout}
-      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm hover:bg-blue-700 sm:w-auto"
+      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-action-700 px-6 py-3 font-semibold text-white shadow-sm hover:bg-action-600 sm:w-auto"
     >
       <Star width={18} height={18} /> Jump to the top — {FEATURED_PRICE_DISPLAY}
     </a>
   ) : (
     <a
       href={`sms:${AGMP_PHONE_TEL}`}
-      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm hover:bg-blue-700 sm:w-auto"
+      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-action-700 px-6 py-3 font-semibold text-white shadow-sm hover:bg-action-600 sm:w-auto"
     >
       <MessageSquare width={18} height={18} /> Text Matt to go Featured — {FEATURED_PRICE_DISPLAY}
     </a>

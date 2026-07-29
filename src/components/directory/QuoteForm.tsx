@@ -132,7 +132,7 @@ export function QuoteForm({ shopSlug, shopName, services }: Props) {
         <button
           type="submit"
           disabled={status === 'sending'}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-3 font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
         >
           {status === 'sending' ? (
             <Loader2 className="animate-spin" width={18} height={18} />

@@ -98,7 +98,7 @@ export default function ForShopsPage() {
     <>
       <section className="bg-gradient-to-b from-gray-900 to-gray-800 px-4 py-20 text-white">
         <div className="mx-auto max-w-3xl text-center">
-          <span className="inline-block rounded-full bg-blue-600/20 px-3 py-1 text-sm font-medium text-blue-300">
+          <span className="inline-block rounded-full bg-brand-600/20 px-3 py-1 text-sm font-medium text-blue-300">
             {FOR_SHOPS.eyebrow}
           </span>
           <h1 className="mt-4 text-3xl font-bold sm:text-5xl">{FOR_SHOPS.title}</h1>
@@ -108,7 +108,7 @@ export default function ForShopsPage() {
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/directory/claim"
-              className="rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700"
+              className="rounded-lg bg-action-700 px-6 py-3 font-semibold text-white hover:bg-action-600"
             >
               Get a free assessment
             </Link>
@@ -178,7 +178,7 @@ export default function ForShopsPage() {
                 className={
                   'mt-6 inline-flex items-center justify-center rounded-lg px-5 py-2.5 text-sm font-semibold ' +
                   (t.highlight
-                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    ? 'bg-brand-600 text-white hover:bg-brand-700'
                     : 'border border-gray-300 text-gray-800 hover:bg-gray-50')
                 }
               >
@@ -218,7 +218,7 @@ export default function ForShopsPage() {
           <ol className="mt-10 space-y-4">
             {STEPS.map((step, i) => (
               <li key={step} className="flex items-center gap-4 rounded-xl bg-white p-5 shadow-sm">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 font-bold text-white">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600 font-bold text-white">
                   {i + 1}
                 </span>
                 <span className="font-medium text-gray-800">{step}</span>
@@ -300,7 +300,7 @@ export default function ForShopsPage() {
         </p>
         <Link
           href="/directory/claim"
-          className="mt-6 inline-block rounded-lg bg-blue-600 px-8 py-3 font-semibold text-white hover:bg-blue-700"
+          className="mt-6 inline-block rounded-lg bg-action-700 px-8 py-3 font-semibold text-white hover:bg-action-600"
         >
           Claim your free listing
         </Link>

@@ -126,7 +126,7 @@ export function SearchFilters({ states, services, initial }: SearchFiltersProps)
 
       <button
         type="submit"
-        className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white outline-none transition-colors hover:bg-blue-700 active:bg-blue-800 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        className="w-full rounded-lg bg-brand-600 py-2.5 text-sm font-semibold text-white outline-none transition-colors hover:bg-brand-700 active:bg-brand-800 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
       >
         Apply filters
       </button>

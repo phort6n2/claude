@@ -63,7 +63,7 @@ export function MarketingOptIn({ initial, city }: { initial: boolean; city?: str
           onClick={toggle}
           disabled={busy}
           className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors disabled:opacity-60 ${
-            optIn ? 'bg-blue-600' : 'bg-gray-300'
+            optIn ? 'bg-brand-600' : 'bg-gray-300'
           }`}
         >
           <span
