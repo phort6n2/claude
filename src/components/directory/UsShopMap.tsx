@@ -2,7 +2,9 @@
 
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, X, Plus, Minus, Crosshair, ArrowRight } from 'lucide-react'
+import { ArrowLeft, X, Plus, Minus, Crosshair, ArrowRight, Truck, Star } from 'lucide-react'
+import { coverGradient } from './ShopCover'
+import type { MapCityShop } from '@/app/api/directory/map/city/route'
 import type { StateShape, MapPoint } from '@/lib/directory/usmap'
 
 interface Props {
@@ -44,11 +46,47 @@ function fitView(
   return { k, x: (x0 + x1) / 2, y: (y0 + y1) / 2 }
 }
 
+/**
+ * Shop thumbnail with a monogram fallback.
+ *
+ * Most photos are hotlinked from the shop's own website, so some will 404, be
+ * hotlink-protected, or simply be slow. Hiding a broken image leaves an empty
+ * box; falling back to the slug-derived gradient used by the shop cards keeps
+ * every row looking deliberate.
+ */
+function ShopThumb({ slug, name, photo }: { slug: string; name: string; photo?: string }) {
+  const [failed, setFailed] = useState(false)
+  const initials = name.replace(/[^A-Za-z]/g, '').slice(0, 2).toUpperCase() || '?'
+  if (!photo || failed) {
+    return (
+      <span
+        aria-hidden
+        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-sm font-bold tracking-wide text-white/90 ${coverGradient(slug)}`}
+      >
+        {initials}
+      </span>
+    )
+  }
+  return (
+    <span className="block h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-gray-100">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={photo}
+        alt=""
+        loading="lazy"
+        onError={() => setFailed(true)}
+        className="h-full w-full object-cover"
+      />
+    </span>
+  )
+}
+
 export function UsShopMap({ states, points, counts, width, height, embedded }: Props) {
   const [active, setActive] = useState<StateShape | null>(null)
   const [openCity, setOpenCity] = useState<string | null>(null)
   const [hoverState, setHoverState] = useState<string | null>(null)
   const [hoverCity, setHoverCity] = useState<string | null>(null)
+  const [detail, setDetail] = useState<Record<string, MapCityShop[]>>({})
   const [view, setView] = useState({ k: 1, x: width / 2, y: height / 2 })
   const [animate, setAnimate] = useState(true)
 
@@ -268,6 +306,36 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [openCity])
+
+  /**
+   * Photos and services for the open city, fetched on demand.
+   *
+   * The map payload carries only what it needs to draw; enriching all 985 shops
+   * would mean a website-meta lookup each. A card shows five or six shops, so
+   * fetch those six when it opens and keep them for the session.
+   */
+  useEffect(() => {
+    if (!selected || detail[selected.key]) return
+    const key = selected.key
+    const params = new URLSearchParams({
+      state: selected.state,
+      city: selected.shops[0].citySlug,
+    })
+    let live = true
+    fetch(`/api/directory/map/city?${params}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((j) => {
+        // Empty array on failure, so rows fall back to plain names rather than
+        // spinning forever.
+        if (live) setDetail((d) => ({ ...d, [key]: j.shops ?? [] }))
+      })
+      .catch(() => {
+        if (live) setDetail((d) => ({ ...d, [key]: [] }))
+      })
+    return () => {
+      live = false
+    }
+  }, [selected, detail])
 
   /**
    * Stop the page scrolling behind the full-screen card on phones — otherwise
@@ -494,16 +562,38 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
               </button>
             </div>
             <ul className="min-h-0 flex-1 divide-y divide-gray-100 overflow-y-auto">
-              {selected.shops.map((s) => (
-                <li key={s.slug}>
-                  <Link
-                    href={`/directory/shop/${s.slug}`}
-                    className="block px-4 py-3.5 text-base font-medium text-gray-900 hover:bg-blue-50 sm:py-2.5 sm:text-sm"
-                  >
-                    {s.name}
-                  </Link>
-                </li>
-              ))}
+              {selected.shops.map((s) => {
+                const d = detail[selected.key]?.find((x) => x.slug === s.slug)
+                return (
+                  <li key={s.slug}>
+                    <Link
+                      href={`/directory/shop/${s.slug}`}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50"
+                    >
+                      <ShopThumb slug={s.slug} name={s.name} photo={d?.photo} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-base font-semibold text-gray-900 sm:text-sm">
+                          {s.name}
+                        </span>
+                        <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-gray-500">
+                          {typeof d?.rating === 'number' && (
+                            <span className="inline-flex items-center gap-1 font-semibold text-amber-600">
+                              <Star width={12} height={12} fill="currentColor" /> {d.rating}
+                              {d.reviewCount ? ` (${d.reviewCount})` : ''}
+                            </span>
+                          )}
+                          {d?.mobileService && (
+                            <span className="inline-flex items-center gap-1 font-medium text-blue-700">
+                              <Truck width={12} height={12} /> Mobile
+                            </span>
+                          )}
+                          {d?.street && <span className="truncate">{d.street}</span>}
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                )
+              })}
             </ul>
             <Link
               href={`/directory/${selected.state}/${selected.shops[0].citySlug}`}
