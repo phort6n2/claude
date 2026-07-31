@@ -198,13 +198,21 @@
   .qc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}
   .qc-title{font-family:var(--font-display);font-weight:800;font-size:22px}
   .qc-badge{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#0B0E12;background:var(--success);padding:5px 10px;border-radius:999px;font-weight:700;white-space:nowrap}
-  .qc-sub{color:var(--muted);font-size:14px;margin-bottom:18px}
-  .field{margin-bottom:13px}
-  .field label{display:block;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted-2);margin-bottom:6px}
+  .qc-sub{color:var(--muted);font-size:14px;margin-bottom:14px}
+  /* Vehicle became a required field, which adds a row. These are trimmed to
+     pay for it so the card still lands above the fold: the input keeps a 44px
+     tap target and the 16px font that stops iOS zooming on focus — neither is
+     negotiable — and the saving comes from the gaps instead. */
+  .field{margin-bottom:10px}
+  .field label{display:block;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted-2);margin-bottom:5px}
   .field input,.field select{
     width:100%;background:#0E1319;border:1px solid var(--line);border-radius:11px;
-    padding:13px 14px;color:var(--ink);font-size:16px;font-family:var(--font-body);transition:border .15s,box-shadow .15s;
+    padding:11px 14px;color:var(--ink);font-size:16px;font-family:var(--font-body);transition:border .15s,box-shadow .15s;
+    min-height:44px;
   }
+  /* Inline field error, e.g. an unusable vehicle description */
+  .ferr{display:none;margin:5px 0 0;font-size:12.5px;line-height:1.35;color:#EA4335}
+  .ferr.on{display:block}
   .field input::placeholder{color:#55606c}
   .field input:focus,.field select:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px rgba(255,197,61,.18)}
   .field-row{display:grid;grid-template-columns:1fr 1fr;gap:11px}
@@ -665,15 +673,20 @@
             <input id="zip" name="zip" type="text" inputmode="numeric" placeholder="80202" autocomplete="postal-code" required>
           </div>
         </div>
+        <!-- Vehicle is required, so it sits above the toggle rather than
+             behind it. A required field a visitor has to open a panel to find
+             is a dead end. The remaining optional fields stay collapsed to
+             keep the card above the fold. -->
+        <div class="field">
+          <label for="veh">Vehicle — year, make, model</label>
+          <input id="veh" name="vehicle" type="text" placeholder="2021 Toyota RAV4" autocomplete="off" required>
+          <p class="ferr" id="veh-err"></p>
+        </div>
         <button type="button" class="qc-expand" id="qcExpand" aria-expanded="false" aria-controls="qcMore">
-          <span>Add vehicle &amp; insurance details <span style="color:var(--muted-2);font-weight:500">(optional)</span></span>
+          <span>Add VIN &amp; insurance details <span style="color:var(--muted-2);font-weight:500">(optional)</span></span>
           <span class="chev" aria-hidden="true"></span>
         </button>
         <div class="qc-more" id="qcMore">
-        <div class="field">
-          <label for="veh">Vehicle — year, make, model <span style="text-transform:none;letter-spacing:0;color:var(--muted-2)">(optional)</span></label>
-          <input id="veh" name="vehicle" type="text" placeholder="2021 Toyota RAV4">
-        </div>
         <div class="field">
           <label for="vin">VIN <span style="text-transform:none;letter-spacing:0;color:var(--muted-2)">(optional — gets you the most accurate quote)</span></label>
           <input id="vin" name="vin" type="text" placeholder="1HGCM82633A004352" autocomplete="off"
@@ -1285,16 +1298,30 @@
     form.addEventListener('submit', function(e){
       e.preventDefault();
       var nm = document.getElementById('nm'), em = document.getElementById('em'),
-          ph = document.getElementById('ph'), zip = document.getElementById('zip');
-      var required = [nm, em, ph, zip], ok = true, firstBad = null;
+          ph = document.getElementById('ph'), zip = document.getElementById('zip'),
+          veh = document.getElementById('veh');
+      var required = [nm, em, ph, zip, veh], ok = true, firstBad = null;
       required.forEach(function(f){
         var bad = !f.value.trim();
         // Email must also look like an address, not just be non-empty
         if(!bad && f === em) bad = !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(f.value.trim());
         // Phone must be a complete 10-digit number, not a partial one
         if(!bad && f === ph) bad = phDigits(f.value).length !== 10;
+        // Vehicle needs year make model. Two words minimum, so "car" and "."
+        // don't pass — a vehicle we can't identify is a vehicle we can't quote.
+        if(!bad && f === veh){
+          var v = f.value.trim().replace(/\s+/g,' ');
+          bad = v.split(' ').length < 2 || v.length < 6;
+        }
         if(bad){ f.style.borderColor = '#EA4335'; if(!firstBad) firstBad = f; ok = false; }
         else { f.style.borderColor = ''; }
+        var box = document.getElementById(f.id + '-err');
+        if(box){
+          box.textContent = bad ? (f === veh ? 'Add the year, make and model, e.g. 2021 Toyota RAV4.' : '') : '';
+          box.classList.toggle('on', bad && !!box.textContent);
+          if(bad && box.textContent){ f.setAttribute('aria-invalid','true'); f.setAttribute('aria-describedby', f.id + '-err'); }
+          else { f.removeAttribute('aria-invalid'); f.removeAttribute('aria-describedby'); }
+        }
       });
       if(!ok){ (firstBad || nm).focus(); return; }
 
