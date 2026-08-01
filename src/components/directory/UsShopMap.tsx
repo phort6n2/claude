@@ -122,6 +122,7 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
   const [view, setView] = useState({ k: 1, x: width / 2, y: height / 2 })
   const [animate, setAnimate] = useState(true)
   const [locating, setLocating] = useState(false)
+  const [focused, setFocused] = useState<string | null>(null)
   const me = useViewerLocation()
 
   const svgRef = useRef<SVGSVGElement | null>(null)
@@ -552,9 +553,9 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
   /**
    * Photos and services for the open city, fetched on demand.
    *
-   * The map payload carries only what it needs to draw; enriching all 985 shops
-   * would mean a website-meta lookup each. A card shows five or six shops, so
-   * fetch those six when it opens and keep them for the session.
+   * The map payload carries only what it needs to draw; enriching every shop
+   * in the directory would mean a website-meta lookup each. A card shows five
+   * or six shops, so fetch those six when it opens and keep them.
    */
   useEffect(() => {
     if (!selected || detail[selected.key]) return
@@ -757,7 +758,11 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
             if (!drag.current?.moved) setOpenCity(null)
           }}
           onPointerLeave={endDrag}
-          role="img"
+          // Was role="img", which prunes the entire subtree from the
+          // accessibility tree — every state and city marker inside it simply
+          // did not exist for a screen reader, while still being clickable for
+          // everyone else. They're controls, so the SVG is a group.
+          role="group"
           aria-label={
             active
               ? `Map of cities with auto glass shops in ${active.name}`
@@ -792,6 +797,22 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
                     // about a shape you can no longer click.
                     pointerEvents: active ? 'none' : 'auto',
                   }}
+                  // Only the national view has clickable states, so only then
+                  // do they belong in the tab order.
+                  {...(active
+                    ? {}
+                    : {
+                        role: 'button' as const,
+                        tabIndex: 0,
+                        'aria-label': `${s.name} — ${counts[s.state] ?? 0} shops`,
+                        onKeyDown: (e: React.KeyboardEvent) => {
+                          if (e.key !== 'Enter' && e.key !== ' ') return
+                          e.preventDefault()
+                          openState(s)
+                        },
+                        onFocus: () => setHoverState(s.state),
+                        onBlur: () => setHoverState(null),
+                      })}
                   onClick={() => !active && openState(s)}
                   onMouseEnter={() => setHoverState(s.state)}
                   onMouseLeave={() => setHoverState(null)}
@@ -944,26 +965,66 @@ export function UsShopMap({ states, points, counts, width, height, embedded }: P
               const on = solo && (openCity === c.key || hoverCity === c.key)
               const r = cityRadius(solo ? c.shops.length : shops)
               const single = solo && c.shops.length === 1
+              const activate = () => {
+                if (solo) {
+                  setOpenCity((k) => (k === c.key ? null : c.key))
+                  return
+                }
+                // A group is an instruction to zoom, never a card — the
+                // card always answers "shops in one named city".
+                setAnimate(true)
+                setOpenCity(null)
+                setView((v) => ({ k: Math.min(MAX_K, v.k * 2.4), x: g.x, y: g.y }))
+              }
               return (
                 <g
                   key={g.key}
-                  className="cursor-pointer"
+                  className="cursor-pointer focus:outline-none"
+                  // A marker is a button, so it should behave like one:
+                  // reachable by Tab, operable by Enter or Space, and
+                  // announced with what it will do.
+                  role="button"
+                  tabIndex={0}
+                  aria-label={
+                    solo
+                      ? `${c.city} — ${c.shops.length} shop${c.shops.length === 1 ? '' : 's'}`
+                      : `${g.members.length} nearby cities, ${shops} shops. Zoom in.`
+                  }
                   onClick={(e) => {
                     e.stopPropagation()
                     if (dragged()) return
-                    if (solo) {
-                      setOpenCity((k) => (k === c.key ? null : c.key))
-                      return
-                    }
-                    // A group is an instruction to zoom, never a card — the
-                    // card always answers "shops in one named city".
-                    setAnimate(true)
-                    setOpenCity(null)
-                    setView((v) => ({ k: Math.min(MAX_K, v.k * 2.4), x: g.x, y: g.y }))
+                    activate()
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter' && e.key !== ' ') return
+                    e.preventDefault()
+                    e.stopPropagation()
+                    activate()
+                  }}
+                  onFocus={() => {
+                    setFocused(g.key)
+                    if (solo) setHoverCity(c.key)
+                  }}
+                  onBlur={() => {
+                    setFocused(null)
+                    setHoverCity(null)
                   }}
                   onMouseEnter={() => solo && setHoverCity(c.key)}
                   onMouseLeave={() => setHoverCity(null)}
                 >
+                  {/* Focus ring. Keyboard users get no hover, so without this
+                      there'd be no way to tell which marker is selected. */}
+                  {focused === g.key && (
+                    <circle
+                      cx={g.x}
+                      cy={g.y}
+                      r={u(r + 8)}
+                      fill="none"
+                      stroke="#c2410c"
+                      strokeWidth={u(2)}
+                      pointerEvents="none"
+                    />
+                  )}
                   {/* Invisible hit target. The markers are sized to be read,
                       not to be tapped; this gives every one of them a 44px
                       touch area without adding a visible pixel. */}
