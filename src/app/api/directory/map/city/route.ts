@@ -6,9 +6,10 @@ import { withReviews } from '@/lib/directory/reviews'
 
 // Detail for the shops in one city, fetched when its card opens.
 //
-// Deliberately not part of /api/directory/map: enriching all 985 shops means a
-// website-meta lookup each, and it would inflate a payload the homepage already
-// downloads on scroll. A card shows five or six shops, so fetch those six.
+// Deliberately not part of /api/directory/map: enriching every shop in the
+// directory means a website-meta lookup each, and it would inflate a payload
+// the homepage already downloads on scroll. A card shows five or six shops, so
+// fetch those six.
 export const runtime = 'nodejs'
 export const revalidate = 3600
 
