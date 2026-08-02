@@ -26,10 +26,10 @@ const STATE_NAMES = {
 }
 
 // Franchises/chains we deliberately exclude, plus non-auto-glass business types.
-const CHAIN = /safelite|glass doctor|novus|speedy glass|gerber|caliber collision|\babra\b|boyd auto|crash champions|jiffy lube|maaco|ziebart|auto glass now|glass america|diamond triumph|nations? ?auto ?glass|jack morris|only 1 auto glass|auto glass fitters|binswanger/i
+const CHAIN = /safelite|glass doctor|novus|speedy glass|gerber|caliber collision|\babra\b|boyd auto|crash champions|jiffy lube|maaco|ziebart|auto glass now|glass america|diamond triumph|nations? ?auto ?glass|jack morris|only 1 auto glass|auto glass fitters|binswanger|harmon auto ?glass|harmon glass/i
 // Wholesalers/distributors. They sell glass to shops, not to drivers, so a
 // listing sends the customer somewhere that won't serve them.
-const DISTRIBUTOR = /\bmygrant\b|\bpgw\b|pilkington|\bvitro\b|glass depot|american glass wholesale/i
+const DISTRIBUTOR = /\bmygrant\b|\bpgw\b|pilkington|\bvitro\b|glass depot|american glass (wholesale|distributors)/i
 
 const NOT_AUTOGLASS = /shower|residential|storefront|window & door|windows and doors|mirror & shower|glazing contractor/i
 
