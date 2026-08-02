@@ -166,8 +166,22 @@ const flagged = []
 // commercial building, a rebrand still trading under both names), sometimes a
 // sign the agent conflated two records. Reported rather than rejected, so it
 // gets a human look instead of a silent decision either way.
+// Lead-gen spam clusters. Agents keep finding the same network in city after
+// city — Hampton, Newark, Akron, Cleveland, Jacksonville — a run of
+// differently-named shops ("Veracious Auto Glass", "Honorable Auto Glass",
+// "Steadfast Auto Glass") on sequential numbers in one telephone exchange, all
+// funnelling to the same landing page.
+//
+// Neither half is damning alone: an adjective is a fine name, and one exchange
+// can legitimately serve several businesses. Together, in one city, they are
+// the signature. Reported rather than rejected — the call belongs to a person.
+const SPAMMY_ADJECTIVE = /^(veracious|honorable|honest|sure|positive|tried|steadfast|unequivocal|dependable|principled|responsible|reliable|trustworthy|prudent|diligent|earnest|candid|genuine|sincere|upright|scrupulous)\b/i
+const exchangeOwner = new Map()
+const spamClusters = []
+
 const addressOwner = new Map()
 const addressCollisions = []
+
 const rej = (r, why) => rejected.push({ name: r.name ?? '(no name)', city: r.city ?? '?', why, file: r._file })
 
 for (const r of raw) {
@@ -268,6 +282,14 @@ for (const r of raw) {
   }
   if (!addrOwner) addressOwner.set(addrKey, normName(r.name))
 
+  // Same city, same telephone exchange, adjective-led name — see the note by
+  // SPAMMY_ADJECTIVE. Collected now, judged after every record is in.
+  const exKey = `${pd.slice(0, 6)}|${slugify(r.city)}|${state}`
+  const ex = exchangeOwner.get(exKey) || { names: new Set(), adjectives: 0 }
+  ex.names.add(normName(r.name))
+  if (SPAMMY_ADJECTIVE.test(r.name)) ex.adjectives++
+  exchangeOwner.set(exKey, ex)
+
   // Strip unverifiable boasts from the description rather than dropping the shop.
   let description = String(r.description).trim().replace(/\s+/g, ' ')
   if (UNVERIFIABLE.test(description)) {
@@ -322,6 +344,12 @@ for (const r of rejected) byReason[r.why] = (byReason[r.why] || 0) + 1
 const byState = {}
 for (const a of accepted) byState[a.state] = (byState[a.state] || 0) + 1
 
+for (const [key, ex] of exchangeOwner) {
+  if (ex.names.size >= 3 && ex.adjectives >= 2) {
+    spamClusters.push(`${key} — ${ex.names.size} differently-named shops, ${ex.adjectives} adjective-led`)
+  }
+}
+
 console.log(`\n=== INGEST REPORT ===`)
 console.log(`raw from agents : ${raw.length}`)
 console.log(`ACCEPTED        : ${accepted.length}`)
@@ -338,4 +366,9 @@ console.log('  ' + Object.entries(byState).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
 
 writeFileSync(new URL('./accepted.json', import.meta.url).pathname, JSON.stringify(accepted, null, 1))
 writeFileSync(new URL('./rejected.json', import.meta.url).pathname, JSON.stringify(rejected, null, 1))
+if (spamClusters.length) {
+  console.log(`\nPOSSIBLE LEAD-GEN CLUSTERS — ${spamClusters.length}:`)
+  for (const c of spamClusters) console.log(`  ${c}`)
+}
+
 console.log(`\nwrote accepted.json (${accepted.length}) + rejected.json (${rejected.length})`)
