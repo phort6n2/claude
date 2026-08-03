@@ -1,13 +1,13 @@
 {
   "rating": 4.8,
-  "count": 191,
+  "count": 192,
   "mapsUri": "https://maps.google.com/?cid=13934619566903784372&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
   "reviews": [
     {
       "author": "Adam DeBaere",
       "rating": 5,
       "text": "Absolute legends!! They came to my house got it done faster than I could cook macaroni!!! Perfect Job. Awesome and respectful crew. Clean up was great and literally beat every other quote by $150 at least if not more. Recommend a million times over !!",
-      "when": "a month ago"
+      "when": "2 months ago"
     },
     {
       "author": "Sarah Cassel",
@@ -16,6 +16,6 @@
       "when": "3 months ago"
     }
   ],
-  "fetchedAt": "2026-07-27T12:36:52.879Z",
+  "fetchedAt": "2026-08-03T12:35:48.831Z",
   "placeId": "ChIJBUQzsIiLxUMRtPOB1aq2YcE"
 }
