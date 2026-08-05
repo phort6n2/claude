@@ -62,6 +62,8 @@ export interface LeadAttribution {
   utmCampaign?: string | null
   referrerUrl?: string | null
   formData?: Record<string, unknown> | null
+  /** 'FORM' | 'PHONE' — decides what an absence of tracking means. */
+  source?: string | null
 }
 
 function clean(v: unknown): string | null {
@@ -154,7 +156,30 @@ export function getLeadChannel(lead: LeadAttribution): LeadChannelResult {
     }
   }
 
+  // 6. Nothing tagged at all. What that means depends on how the lead arrived:
+  //
+  //    A FORM submission with no ad parameters is someone who found the site on
+  //    their own and filled it in — a native HighLevel survey on the main site,
+  //    or a direct visit. Paid traffic is what carries click ids and UTMs, so
+  //    its absence on a form is itself the signal: this one wasn't from an ad.
+  //
+  //    A PHONE call is different. Calls routed through an ad platform's
+  //    call-tracking pool arrive with no click id either, so silence on a call
+  //    tells us nothing and we must not claim it was organic.
+  if (isFormLead(lead.source)) {
+    return {
+      channel: 'organic',
+      source: null,
+      reason: 'Form submission with no ad tracking — not from a paid click',
+    }
+  }
+
   return { channel: 'unknown', source: null, reason: 'No attribution data captured' }
+}
+
+/** Anything that isn't an inbound call is treated as a form-style submission. */
+function isFormLead(source: string | null | undefined): boolean {
+  return typeof source === 'string' && source.toUpperCase() !== 'PHONE'
 }
 
 /**
@@ -166,12 +191,29 @@ export function getLeadChannelWithDuplicates(
   lead: LeadAttribution & { duplicates?: LeadAttribution[] | null }
 ): LeadChannelResult {
   const own = getLeadChannel(lead)
+  if (own.channel === 'paid') return own
+
+  const duplicates = lead.duplicates ?? []
+
+  // Hard evidence of a paid click on any of the same-day contacts beats this
+  // lead's own result — especially when that result was only "organic" because
+  // no tracking was present. Someone who clicked an ad and also submitted an
+  // untagged form is still a paid lead.
+  for (const dup of duplicates) {
+    const result = getLeadChannel(dup)
+    if (result.channel === 'paid') {
+      return { ...result, reason: `${result.reason} (from same-day contact)` }
+    }
+  }
+
   if (own.channel !== 'unknown') return own
 
-  for (const dup of lead.duplicates ?? []) {
+  // Own lead told us nothing (typically a call) — take whatever a same-day
+  // contact can tell us.
+  for (const dup of duplicates) {
     const result = getLeadChannel(dup)
     if (result.channel !== 'unknown') {
-      return { ...result, reason: `${result.reason} (from same-day form submission)` }
+      return { ...result, reason: `${result.reason} (from same-day contact)` }
     }
   }
   return own
