@@ -1,4 +1,11 @@
 import type { AudioMetrics } from './audio-metrics'
+import { FOCUS_AREAS, FOCUS_AREA_CODES } from './rating'
+
+// Rendered into the prompt so the model can only choose from the fixed
+// taxonomy — free-text missed opportunities can't be aggregated reliably.
+const FOCUS_AREA_CODE_LIST = FOCUS_AREA_CODES.map(
+  (code) => `   - ${code}: ${FOCUS_AREAS[code]}`
+).join('\n')
 
 interface ClientContext {
   businessName: string
@@ -94,13 +101,31 @@ DEDUCTIONS (up to -15)
 - Failed to capture contact info on uncertain lead (-5)
 
 INSTRUCTIONS:
-1. Score honestly. Most calls score 40-60. A 90+ is a genuinely excellent call.
-2. Find at least one thing the rep did well, even on poor calls.
-3. Identify up to 3 specific missed opportunities with the actual transcript quote and timestamp.
-4. Determine the outcome: booked | quote_sent | callback_scheduled | lost | info_only
-5. Write the coaching note in plain language to the shop owner. No jargon. 2-3 sentences.
-6. The coaching note should be direct but constructive — this is visible to the client.
-7. If you apply any deductions, list each one in deductions_applied with the specific reason and the exact points subtracted (-5 each). subscores.deductions should equal the sum of points across deductions_applied. If no deductions apply, return an empty array and subscores.deductions = 0.
+1. BOOKING THE JOB IS THE POINT. If the rep booked the appointment, that is a
+   successful call — score it 75 or above even if the technique was rough, and
+   lead the coaching note with what worked. Only go below 75 on a booked call if
+   the rep did something that actively risks losing the customer.
+2. Grade like a supportive coach, not an auditor. A competent call that moves
+   the customer forward belongs in the 65-80 range. Reserve scores under 50 for
+   calls where the rep clearly mishandled a real opportunity. Do not nitpick a
+   call that went fine.
+3. Find at least one genuine thing the rep did well on every call, and say it
+   first.
+4. Identify up to 3 specific missed opportunities with the actual transcript
+   quote and timestamp. Every missed opportunity MUST include a "focus_area"
+   set to exactly one of these codes:
+${FOCUS_AREA_CODE_LIST}
+   Pick the single code that best fits. Do not invent new codes.
+5. Determine the outcome: booked | quote_sent | callback_scheduled | lost | info_only
+6. Write the coaching note in plain language to the shop owner. No jargon. 2-3
+   sentences. Open with what went well, then at most one thing to work on.
+   This is visible to the client — keep it encouraging and specific, never
+   scolding.
+7. If you apply any deductions, list each one in deductions_applied with the
+   specific reason and the exact points subtracted (-5 each). subscores.deductions
+   should equal the sum of points across deductions_applied. Do not apply
+   deductions on a call that booked the job. If no deductions apply, return an
+   empty array and subscores.deductions = 0.
 
 Return ONLY valid JSON in exactly this format, no markdown, no preamble:
 {
@@ -118,7 +143,8 @@ Return ONLY valid JSON in exactly this format, no markdown, no preamble:
       "moment": "string",
       "transcript_quote": "string",
       "timestamp": "MM:SS",
-      "what_should_have_happened": "string"
+      "what_should_have_happened": "string",
+      "focus_area": "ask_for_appointment"
     }
   ],
   "deductions_applied": [
