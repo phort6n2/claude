@@ -131,6 +131,7 @@ export async function GET(request: NextRequest) {
               utmMedium: true,
               utmCampaign: true,
               referrerUrl: true,
+              landingPageUrl: true,
               createdAt: true,
               statusUpdatedAt: true,
               callAnalyses: {

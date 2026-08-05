@@ -35,6 +35,26 @@ export function isPhoneLead(source: string | null | undefined): boolean {
 }
 
 /**
+ * Shorten a URL to something readable in a narrow mobile row: drop the scheme,
+ * the leading www, the query string (which is usually a wall of UTM tags), and
+ * any trailing slash. The full URL still goes in the link href and title.
+ */
+export function formatUrlForDisplay(url: string | null | undefined): string {
+  if (!url) return ''
+  const raw = url.trim()
+  if (!raw) return ''
+  try {
+    const parsed = new URL(raw)
+    const host = parsed.hostname.replace(/^www\./, '')
+    const path = parsed.pathname.replace(/\/$/, '')
+    return `${host}${path}`
+  } catch {
+    // Not a parseable URL (HighLevel sometimes sends a bare path) — show as-is.
+    return raw
+  }
+}
+
+/**
  * Best available label for a lead. Never returns "Unknown".
  */
 export function getLeadDisplayName(lead: LeadDisplayFields): string {

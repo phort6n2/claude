@@ -29,6 +29,7 @@ import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
 import { getLeadDisplayName, displayNameIsPhone, formatPhoneDisplay } from '@/lib/lead-display'
 import { ChannelBadge } from '@/components/leads/ChannelBadge'
+import { LeadSourceDetails } from '@/components/leads/LeadSourceDetails'
 import { useLeadStream } from '@/hooks/useLeadStream'
 import { CallCoachingReport } from '@/components/portal/CallCoachingReport'
 import { getCallRating, RATING_META } from '@/lib/call-analysis/rating'
@@ -55,6 +56,7 @@ interface LeadDuplicate {
   utmMedium?: string | null
   utmCampaign?: string | null
   referrerUrl?: string | null
+  landingPageUrl?: string | null
 }
 
 interface Lead {
@@ -72,6 +74,7 @@ interface Lead {
   utmMedium?: string | null
   utmCampaign?: string | null
   referrerUrl?: string | null
+  landingPageUrl?: string | null
   saleValue: number | null
   saleDate: string | null
   saleNotes: string | null
@@ -1181,13 +1184,7 @@ function LeadRow({
             )}
 
             {/* Where this lead came from */}
-            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100">
-              <span className="text-xs text-gray-500">Source:</span>
-              <ChannelBadge lead={lead} />
-              {lead.utmCampaign && (
-                <span className="text-xs text-gray-500">{lead.utmCampaign}</span>
-              )}
-            </div>
+            <LeadSourceDetails lead={lead} />
 
             {/* Status & Sale - Inline Edit */}
             <div className="flex gap-3 items-end pt-2 border-t border-gray-100">
