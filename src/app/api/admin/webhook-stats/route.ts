@@ -28,13 +28,9 @@ export async function GET() {
       leadsWithGclid,
       leadsToday,
       leadsThisWeek,
-      enhancedConversionsSent,
-      offlineConversionsSent,
-      leadsWithSyncErrors,
       leadsBySource,
       leadsByClient,
       recentLeads,
-      failedConversions,
     ] = await Promise.all([
       // Total leads
       prisma.lead.count(),
@@ -47,15 +43,6 @@ export async function GET() {
 
       // Leads this week
       prisma.lead.count({ where: { createdAt: { gte: thisWeek } } }),
-
-      // Enhanced conversions sent
-      prisma.lead.count({ where: { enhancedConversionSent: true } }),
-
-      // Offline conversions sent
-      prisma.lead.count({ where: { offlineConversionSent: true } }),
-
-      // Leads with sync errors
-      prisma.lead.count({ where: { googleSyncError: { not: null } } }),
 
       // Leads by source
       prisma.lead.groupBy({
@@ -83,27 +70,6 @@ export async function GET() {
           phone: true,
           source: true,
           gclid: true,
-          enhancedConversionSent: true,
-          offlineConversionSent: true,
-          googleSyncError: true,
-          createdAt: true,
-          client: {
-            select: { businessName: true },
-          },
-        },
-      }),
-
-      // Failed conversions (leads with errors)
-      prisma.lead.findMany({
-        where: { googleSyncError: { not: null } },
-        take: 20,
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          gclid: true,
-          googleSyncError: true,
           createdAt: true,
           client: {
             select: { businessName: true },
@@ -122,7 +88,6 @@ export async function GET() {
 
     // Calculate rates
     const gclidCaptureRate = totalLeads > 0 ? ((leadsWithGclid / totalLeads) * 100).toFixed(1) : '0'
-    const enhancedConversionRate = leadsWithGclid > 0 ? ((enhancedConversionsSent / leadsWithGclid) * 100).toFixed(1) : '0'
 
     return NextResponse.json({
       summary: {
@@ -131,10 +96,6 @@ export async function GET() {
         gclidCaptureRate: `${gclidCaptureRate}%`,
         leadsToday,
         leadsThisWeek,
-        enhancedConversionsSent,
-        enhancedConversionRate: `${enhancedConversionRate}%`,
-        offlineConversionsSent,
-        leadsWithSyncErrors,
       },
       bySource: leadsBySource.map((s) => ({
         source: s.source,
@@ -146,7 +107,6 @@ export async function GET() {
         count: c._count,
       })),
       recentLeads,
-      failedConversions,
     })
   } catch (error) {
     console.error('Failed to fetch webhook stats:', error)

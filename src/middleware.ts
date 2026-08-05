@@ -122,7 +122,7 @@ export default function middleware(req: NextRequest) {
 
   // When content features are disabled (the re-scoped default), short-circuit
   // content-only surfaces so they can't be reached or run. Everything else —
-  // leads, Google Ads, portal, call-analysis, webhooks, auth — passes through
+  // leads, portal, call-analysis, webhooks, auth — passes through
   // untouched.
   if (!CONTENT_ENABLED) {
     const { pathname } = req.nextUrl

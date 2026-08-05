@@ -4,7 +4,6 @@ import {
   ChevronRight,
   Building2,
   FileQuestion,
-  TrendingUp,
   Settings,
   Shield,
   Zap,
@@ -36,13 +35,6 @@ const settingsSections = [
     href: '/admin/settings/api',
     icon: Key,
     color: 'amber',
-  },
-  {
-    title: 'Google Ads',
-    description: 'Connect your MCC for Enhanced Conversions and Offline Conversion Import',
-    href: '/admin/settings/google-ads',
-    icon: TrendingUp,
-    color: 'green',
   },
 ]
 

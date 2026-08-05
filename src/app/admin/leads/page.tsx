@@ -5,7 +5,6 @@ import Link from 'next/link'
 import {
   Phone,
   Mail,
-  Calendar,
   Building2,
   ChevronDown,
   ChevronRight,
@@ -55,8 +54,6 @@ interface Lead {
   createdAt: string
   formName: string | null
   formData: Record<string, unknown> | null
-  enhancedConversionSent: boolean
-  offlineConversionSent: boolean
   client: {
     id: string
     businessName: string
@@ -98,10 +95,6 @@ export default function LeadsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null)
 
-  // Bulk sync state
-  const [syncing, setSyncing] = useState(false)
-  const [syncProgress, setSyncProgress] = useState<{ done: number; total: number; failed: number } | null>(null)
-  const [syncError, setSyncError] = useState<string | null>(null)
 
   // Refresh state (manual button + visibility-change catch-up)
   const [refreshing, setRefreshing] = useState(false)
@@ -263,70 +256,6 @@ export default function LeadsPage() {
     )
   }
 
-  async function handleBulkSync() {
-    setSyncing(true)
-    setSyncError(null)
-    setSyncProgress({ done: 0, total: 0, failed: 0 })
-
-    try {
-      // Step 1: fetch all unsynced IDs for the current client filter
-      const idParams = new URLSearchParams({ days: '365' })
-      if (selectedClient) idParams.set('clientId', selectedClient)
-      const idsRes = await fetch(`/api/admin/unsynced-lead-ids?${idParams.toString()}`)
-      if (!idsRes.ok) {
-        const body = await idsRes.json().catch(() => ({}))
-        throw new Error(body.error || `HTTP ${idsRes.status}`)
-      }
-      const { ids: unsyncedIds, truncated, max } = await idsRes.json() as {
-        ids: string[]
-        total: number
-        truncated: boolean
-        max: number
-      }
-
-      if (unsyncedIds.length === 0) {
-        setSyncing(false)
-        setSyncProgress(null)
-        return
-      }
-
-      setSyncProgress({ done: 0, total: unsyncedIds.length, failed: 0 })
-
-      // Step 2: batch-sync
-      const BATCH_SIZE = 25
-      let done = 0
-      let failed = 0
-
-      for (let i = 0; i < unsyncedIds.length; i += BATCH_SIZE) {
-        const batch = unsyncedIds.slice(i, i + BATCH_SIZE)
-        const res = await fetch(
-          `/api/admin/bulk-sync-conversions?leadIds=${batch.join(',')}`
-        )
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}))
-          throw new Error(body.error || `HTTP ${res.status}`)
-        }
-        const data = await res.json()
-        const batchSuccess = data.results?.success ?? 0
-        const batchFailed = data.results?.failed ?? batch.length - batchSuccess
-        done += batchSuccess
-        failed += batchFailed
-        setSyncProgress({ done: done + failed, total: unsyncedIds.length, failed })
-      }
-
-      if (truncated) {
-        setSyncError(`Synced first ${max}. The 2-hour cron will pick up the rest.`)
-      }
-
-      // Step 3: refetch leads so the new sync status shows up
-      await fetchLeads('manual')
-    } catch (err) {
-      setSyncError(err instanceof Error ? err.message : 'Sync failed')
-    } finally {
-      setSyncing(false)
-    }
-  }
-
   if (loading) {
     return <ListPageSkeleton />
   }
@@ -335,7 +264,7 @@ export default function LeadsPage() {
     <PageContainer>
       <PageHeader
         title="Leads"
-        subtitle="Manage leads from Google Ads campaigns"
+        subtitle="Manage leads from all clients"
       />
 
       {/* Stats Cards */}
@@ -474,43 +403,6 @@ export default function LeadsPage() {
           </button>
         </div>
       </div>
-
-      {/* Bulk sync to Google Ads */}
-      {(() => {
-        const syncedCount = filteredLeads.filter((l) => l.enhancedConversionSent).length
-        if (filteredLeads.length === 0) return null
-        return (
-          <div className="mb-4 bg-white rounded-2xl border border-gray-200 p-4 shadow-sm flex flex-wrap items-center gap-3">
-            <div className="text-sm text-gray-700">
-              <span className="font-semibold text-emerald-600">{syncedCount}</span>
-              <span className="text-gray-500">/{filteredLeads.length}</span>
-              <span className="ml-1 text-gray-600">synced in view · auto-retries every 2h</span>
-            </div>
-            <button
-              onClick={handleBulkSync}
-              disabled={syncing}
-              className="text-sm font-medium px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-            >
-              {syncing ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {syncProgress && syncProgress.total > 0
-                    ? `Syncing ${syncProgress.done}/${syncProgress.total}${syncProgress.failed > 0 ? ` · ${syncProgress.failed} failed` : ''}`
-                    : 'Finding unsynced leads…'}
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-4 w-4" />
-                  Sync all unsynced to Google Ads
-                </>
-              )}
-            </button>
-            {syncError && (
-              <span className="text-sm text-red-600">{syncError}</span>
-            )}
-          </div>
-        )
-      })()}
 
       {/* Leads List - Accordion Style */}
       {filteredLeads.length === 0 ? (
@@ -736,20 +628,7 @@ function LeadRow({
               )}
               {lead.gclid && (
                 <span className="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg font-medium">
-                  Google Ads
-                </span>
-              )}
-              <CheckCircle2
-                className={`h-3.5 w-3.5 flex-shrink-0 ${lead.enhancedConversionSent ? 'text-emerald-500' : 'text-gray-300'}`}
-                aria-label={lead.enhancedConversionSent ? 'Synced to Google Ads' : 'Not synced to Google Ads'}
-              />
-              <span className="sr-only">
-                {lead.enhancedConversionSent ? 'Synced to Google Ads' : 'Not synced to Google Ads'}
-              </span>
-              {lead.offlineConversionSent && (
-                <span className="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg flex items-center gap-1 font-medium" title="Sale conversion sent to Google Ads">
-                  <CheckCircle2 className="h-3 w-3" />
-                  Sale Synced
+                  Paid Click
                 </span>
               )}
             </div>

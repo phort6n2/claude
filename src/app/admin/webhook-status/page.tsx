@@ -25,10 +25,6 @@ interface WebhookStats {
     gclidCaptureRate: string
     leadsToday: number
     leadsThisWeek: number
-    enhancedConversionsSent: number
-    enhancedConversionRate: string
-    offlineConversionsSent: number
-    leadsWithSyncErrors: number
   }
   bySource: Array<{ source: string; count: number }>
   byClient: Array<{ clientId: string; clientName: string; count: number }>
@@ -40,18 +36,6 @@ interface WebhookStats {
     phone: string | null
     source: string
     gclid: string | null
-    enhancedConversionSent: boolean
-    offlineConversionSent: boolean
-    googleSyncError: string | null
-    createdAt: string
-    client: { businessName: string }
-  }>
-  failedConversions: Array<{
-    id: string
-    firstName: string | null
-    lastName: string | null
-    gclid: string | null
-    googleSyncError: string | null
     createdAt: string
     client: { businessName: string }
   }>
@@ -114,7 +98,7 @@ export default function WebhookStatusPage() {
                 <Activity className="h-6 w-6 text-blue-600" />
                 Webhook Status
               </h1>
-              <p className="text-gray-600">Monitor lead capture and Google Ads conversions</p>
+              <p className="text-gray-600">Monitor lead capture from HighLevel webhooks</p>
             </div>
           </div>
           <Button onClick={handleRefresh} disabled={refreshing}>
@@ -150,38 +134,7 @@ export default function WebhookStatusPage() {
             <div className="text-xs text-gray-500">{stats.summary.gclidCaptureRate} of leads</div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-            <div className="flex items-center gap-2 text-blue-600 mb-1">
-              <CheckCircle2 className="h-4 w-4" />
-              <span className="text-sm">Enhanced Sent</span>
-            </div>
-            <div className="text-2xl font-bold text-blue-600">{stats.summary.enhancedConversionsSent}</div>
-            <div className="text-xs text-gray-500">{stats.summary.enhancedConversionRate} success</div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-            <div className="flex items-center gap-2 text-emerald-600 mb-1">
-              <TrendingUp className="h-4 w-4" />
-              <span className="text-sm">Offline Sent</span>
-            </div>
-            <div className="text-2xl font-bold text-emerald-600">{stats.summary.offlineConversionsSent}</div>
-          </div>
         </div>
-
-        {/* Error Alert */}
-        {stats.summary.leadsWithSyncErrors > 0 && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl shadow-sm p-4 mb-6 flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-medium text-red-800">
-                {stats.summary.leadsWithSyncErrors} lead{stats.summary.leadsWithSyncErrors !== 1 ? 's' : ''} with sync errors
-              </h3>
-              <p className="text-sm text-red-700 mt-1">
-                These leads have GCLID but failed to sync with Google Ads. Check the failed conversions below.
-              </p>
-            </div>
-          </div>
-        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* By Source */}
@@ -224,40 +177,6 @@ export default function WebhookStatusPage() {
           </div>
         </div>
 
-        {/* Failed Conversions */}
-        {stats.failedConversions.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-6">
-            <div className="p-4 border-b bg-red-50">
-              <h3 className="font-medium text-red-800 flex items-center gap-2">
-                <XCircle className="h-4 w-4" />
-                Failed Conversions ({stats.failedConversions.length})
-              </h3>
-            </div>
-            <div className="divide-y">
-              {stats.failedConversions.map((lead) => (
-                <Link
-                  key={lead.id}
-                  href={`/admin/leads/${lead.id}`}
-                  className="block p-4 hover:bg-gray-50"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {[lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'}
-                      </p>
-                      <p className="text-sm text-gray-500">{lead.client.businessName}</p>
-                      <p className="text-xs text-red-600 mt-1">{lead.googleSyncError}</p>
-                    </div>
-                    <div className="text-right text-sm text-gray-500">
-                      {new Date(lead.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Recent Leads */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="p-4 border-b">
@@ -297,24 +216,6 @@ export default function WebhookStatusPage() {
                       <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">GCLID</span>
                     ) : (
                       <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded">No GCLID</span>
-                    )}
-                    {lead.enhancedConversionSent && (
-                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Enhanced
-                      </span>
-                    )}
-                    {lead.offlineConversionSent && (
-                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Offline
-                      </span>
-                    )}
-                    {lead.googleSyncError && (
-                      <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded flex items-center gap-1">
-                        <XCircle className="h-3 w-3" />
-                        Error
-                      </span>
                     )}
                     <span className="text-sm text-gray-500">
                       {new Date(lead.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}

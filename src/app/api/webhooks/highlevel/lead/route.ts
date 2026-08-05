@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { sendEnhancedConversion } from '@/lib/google-ads'
-import { MIN_CONVERSION_AGE_MS } from '@/lib/conversion-sync'
 import { notifyNewLead } from '@/lib/push-notifications'
 import { kickOffCallAnalysis } from '@/lib/call-analysis/queue'
 import { findSameDayDuplicateCanonical } from '@/lib/lead-dedup'
@@ -405,103 +403,6 @@ export async function POST(request: NextRequest) {
     }).catch((err) => {
       console.error(`[HighLevel Webhook] Failed to send push notification:`, err)
     })
-
-    // Send Enhanced Conversion to Google Ads if we have user data (email or phone)
-    // Note: GCLID is optional - Google can match conversions via hashed user data alone
-    if (email || phone) {
-      try {
-        // Get client's Google Ads config
-        const googleAdsConfig = await prisma.clientGoogleAds.findUnique({
-          where: { clientId: client.id },
-        })
-
-        // Determine which conversion action to use based on lead source
-        const conversionActionId = leadSource === 'PHONE'
-          ? googleAdsConfig?.callConversionActionId
-          : googleAdsConfig?.formConversionActionId
-
-        console.log(`[HighLevel Webhook] Google Ads config for ${client.businessName}:`, {
-          hasConfig: !!googleAdsConfig,
-          isActive: googleAdsConfig?.isActive,
-          leadSource,
-          conversionActionId,
-          formConversionActionId: googleAdsConfig?.formConversionActionId,
-          callConversionActionId: googleAdsConfig?.callConversionActionId,
-          customerId: googleAdsConfig?.customerId,
-          hasGclid: !!gclid,
-        })
-
-        // A brand-new lead's ad click is almost always < 6 hours old, and
-        // Google rejects those as "click too recent." Defer to the sync cron,
-        // which uploads the lead once it has aged past Google's 6h minimum.
-        const clickTooRecent =
-          Date.now() - lead.createdAt.getTime() < MIN_CONVERSION_AGE_MS
-
-        if (googleAdsConfig?.isActive && conversionActionId && !clickTooRecent) {
-          const result = await sendEnhancedConversion({
-            customerId: googleAdsConfig.customerId,
-            gclid: gclid || undefined, // Optional - will be included if present
-            gbraid: gbraid || undefined,
-            wbraid: wbraid || undefined,
-            email: email || undefined,
-            phone: phone || undefined,
-            conversionAction: conversionActionId,
-            conversionDateTime: new Date(),
-            orderId: lead.id, // Unique identifier for this conversion
-          })
-
-          if (result.success) {
-            // Mark the lead as having sent enhanced conversion
-            await prisma.lead.update({
-              where: { id: lead.id },
-              data: {
-                enhancedConversionSent: true,
-                enhancedConversionSentAt: new Date(),
-                googleSyncError: null, // Clear any previous error
-              },
-            })
-            console.log(`[HighLevel Webhook] Enhanced conversion sent for lead ${lead.id} (gclid: ${gclid ? 'yes' : 'no'})`)
-          } else {
-            // Track the failure for retry
-            await prisma.lead.update({
-              where: { id: lead.id },
-              data: {
-                googleSyncError: `Enhanced conversion failed: ${result.error}`,
-              },
-            })
-            console.warn(`[HighLevel Webhook] Enhanced conversion failed for lead ${lead.id}:`, result.error)
-          }
-        } else if (googleAdsConfig?.isActive && conversionActionId && clickTooRecent) {
-          console.log(`[HighLevel Webhook] Deferring enhanced conversion for lead ${lead.id} — click too recent (<6h); the sync cron will upload it once it ages past Google's 6h minimum.`)
-        } else {
-          // Log why enhanced conversion was skipped
-          const reason = !googleAdsConfig
-            ? 'No Google Ads config for client'
-            : !googleAdsConfig.isActive
-            ? 'Google Ads config is not active'
-            : leadSource === 'PHONE'
-            ? 'No callConversionActionId configured'
-            : 'No formConversionActionId configured'
-          console.log(`[HighLevel Webhook] Enhanced conversion skipped for lead ${lead.id}: ${reason}`)
-        }
-      } catch (err) {
-        // Track the error for retry and log with context
-        const errorMessage = err instanceof Error ? err.message : String(err)
-        await prisma.lead.update({
-          where: { id: lead.id },
-          data: {
-            googleSyncError: `Enhanced conversion error: ${errorMessage}`,
-          },
-        }).catch(() => {}) // Don't fail if update fails
-
-        console.error(`[HighLevel Webhook] Enhanced conversion error:`, {
-          leadId: lead.id,
-          client: client.businessName,
-          gclid: gclid || 'none',
-          error: errorMessage,
-        })
-      }
-    }
 
     return NextResponse.json({
       success: true,

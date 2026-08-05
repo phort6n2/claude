@@ -2,7 +2,7 @@
  * Feature flags for the platform re-scope.
  *
  * The app is being narrowed from a content-automation platform to a
- * leads + Google Ads optimization tool. All content-creation functionality
+ * client-facing leads + call-grading tool. All content-creation functionality
  * (blog/podcast/video/social/press-release/PAA/GBP posting, WordPress
  * publishing, DataForSEO, etc.) is gated behind CONTENT_ENABLED.
  *
@@ -52,7 +52,7 @@ const CONTENT_API_PREFIXES = [
 
 /**
  * Content leaf routes that live UNDER the shared `/api/clients/[id]/**`
- * namespace. The bare `/api/clients/[id]` route plus `google-ads`, `locations`,
+ * namespace. The bare `/api/clients/[id]` route plus `locations`,
  * and `users*` are KEPT, so we must match only these specific leaves — never the
  * whole client subtree.
  */
