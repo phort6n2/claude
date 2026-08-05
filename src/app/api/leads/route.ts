@@ -83,6 +83,15 @@ export async function GET(request: NextRequest) {
                 createdAt: true,
                 callRecordingUrl: true,
                 formName: true,
+                // Attribution so a phone call can inherit the channel from a
+                // same-day form submission by the same person.
+                gclid: true,
+                gbraid: true,
+                wbraid: true,
+                utmSource: true,
+                utmMedium: true,
+                utmCampaign: true,
+                referrerUrl: true,
                 callAnalyses: {
                   orderBy: { createdAt: 'desc' },
                   take: 1,

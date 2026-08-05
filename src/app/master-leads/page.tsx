@@ -27,6 +27,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
+import { ChannelBadge } from '@/components/leads/ChannelBadge'
 import { useLeadStream } from '@/hooks/useLeadStream'
 import { CallCoachingReport } from '@/components/portal/CallCoachingReport'
 import { getCallRating, RATING_META } from '@/lib/call-analysis/rating'
@@ -46,6 +47,13 @@ interface LeadDuplicate {
   callRecordingUrl: string | null
   formName: string | null
   callAnalysis: CallAnalysisSummary | null
+  gclid?: string | null
+  gbraid?: string | null
+  wbraid?: string | null
+  utmSource?: string | null
+  utmMedium?: string | null
+  utmCampaign?: string | null
+  referrerUrl?: string | null
 }
 
 interface Lead {
@@ -57,6 +65,12 @@ interface Lead {
   status: string
   source: string
   gclid: string | null
+  gbraid?: string | null
+  wbraid?: string | null
+  utmSource?: string | null
+  utmMedium?: string | null
+  utmCampaign?: string | null
+  referrerUrl?: string | null
   saleValue: number | null
   saleDate: string | null
   saleNotes: string | null
@@ -945,9 +959,7 @@ function LeadRow({
                   +{lead.duplicates.length} contact{lead.duplicates.length === 1 ? '' : 's'}
                 </span>
               )}
-              {lead.gclid && (
-                <span className="text-xs text-emerald-600 font-medium">Ads</span>
-              )}
+              <ChannelBadge lead={lead} />
             </div>
             <div className="flex items-center gap-x-2 gap-y-0.5 text-sm text-gray-600 flex-wrap">
               {lead.phone && <span>{lead.phone}</span>}
@@ -1165,14 +1177,14 @@ function LeadRow({
               </div>
             )}
 
-            {/* Paid-click attribution (present when the landing page passed a gclid) */}
-            {lead.gclid && (
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
-                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
-                  Paid Click
-                </span>
-              </div>
-            )}
+            {/* Where this lead came from */}
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100">
+              <span className="text-xs text-gray-500">Source:</span>
+              <ChannelBadge lead={lead} showUnknown />
+              {lead.utmCampaign && (
+                <span className="text-xs text-gray-500">{lead.utmCampaign}</span>
+              )}
+            </div>
 
             {/* Status & Sale - Inline Edit */}
             <div className="flex gap-3 items-end pt-2 border-t border-gray-100">
