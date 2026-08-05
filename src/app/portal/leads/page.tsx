@@ -31,6 +31,7 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefresh'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
+import { ChannelBadge } from '@/components/leads/ChannelBadge'
 import { useLeadStream } from '@/hooks/useLeadStream'
 
 interface CallAnalysisSummary {
@@ -47,6 +48,13 @@ interface LeadDuplicate {
   callRecordingUrl: string | null
   formName: string | null
   callAnalysis: CallAnalysisSummary | null
+  gclid?: string | null
+  gbraid?: string | null
+  wbraid?: string | null
+  utmSource?: string | null
+  utmMedium?: string | null
+  utmCampaign?: string | null
+  referrerUrl?: string | null
 }
 
 interface Lead {
@@ -63,6 +71,12 @@ interface Lead {
   saleNotes: string | null
   callRecordingUrl: string | null
   gclid: string | null
+  gbraid?: string | null
+  wbraid?: string | null
+  utmSource?: string | null
+  utmMedium?: string | null
+  utmCampaign?: string | null
+  referrerUrl?: string | null
   createdAt: string
   formName: string | null
   formData: Record<string, unknown> | null
@@ -861,9 +875,7 @@ function LeadRow({
                   +{lead.duplicates.length} contact{lead.duplicates.length === 1 ? '' : 's'}
                 </span>
               )}
-              {lead.gclid && (
-                <span className="text-xs text-emerald-600 font-medium">Ads</span>
-              )}
+              <ChannelBadge lead={lead} />
             </div>
             <div className="flex items-center gap-x-2 gap-y-0.5 text-sm text-gray-600 flex-wrap">
               {lead.phone && <span>{lead.phone}</span>}
@@ -922,14 +934,14 @@ function LeadRow({
               </div>
             )}
 
-            {/* Paid-click attribution */}
-            {lead.gclid && (
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
-                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
-                  Paid Click
-                </span>
-              </div>
-            )}
+            {/* Where this lead came from */}
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100">
+              <span className="text-xs text-gray-500">Source:</span>
+              <ChannelBadge lead={lead} showUnknown />
+              {lead.utmCampaign && (
+                <span className="text-xs text-gray-500">{lead.utmCampaign}</span>
+              )}
+            </div>
 
             {/* Quick Actions */}
             <div className="flex gap-2 pt-2">

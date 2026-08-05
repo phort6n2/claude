@@ -123,8 +123,15 @@ export async function GET(request: NextRequest) {
               saleDate: true,
               saleNotes: true,
               callRecordingUrl: true,
+              // Attribution — drives the paid-vs-organic channel badge.
               gclid: true,
-                      createdAt: true,
+              gbraid: true,
+              wbraid: true,
+              utmSource: true,
+              utmMedium: true,
+              utmCampaign: true,
+              referrerUrl: true,
+              createdAt: true,
               statusUpdatedAt: true,
               callAnalyses: {
                 orderBy: { createdAt: 'desc' },
