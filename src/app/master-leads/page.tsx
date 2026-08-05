@@ -29,6 +29,7 @@ import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
 import { useLeadStream } from '@/hooks/useLeadStream'
 import { CallCoachingReport } from '@/components/portal/CallCoachingReport'
+import { getCallRating, RATING_META } from '@/lib/call-analysis/rating'
 import { Inbox } from 'lucide-react'
 
 interface CallAnalysisSummary {
@@ -725,22 +726,18 @@ function CallScoreChip({ analysis }: { analysis: CallAnalysisSummary }) {
     )
   }
 
-  const score = analysis.score
-  const tone =
-    score >= 80
-      ? 'bg-green-100 text-green-700'
-      : score >= 60
-        ? 'bg-yellow-100 text-yellow-800'
-        : score >= 40
-          ? 'bg-orange-100 text-orange-700'
-          : 'bg-red-100 text-red-700'
+  // Outcome-driven face rather than the raw score — booking the job is what
+  // matters, and a bare number reads harsher than it should.
+  const rating = getCallRating(analysis.outcome, analysis.score)
+  const meta = RATING_META[rating]
 
   return (
     <span
-      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${tone}`}
-      title={`Call coaching score: ${score}/100${analysis.outcome ? ' • ' + analysis.outcome.replace(/_/g, ' ') : ''}`}
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${meta.bg} ${meta.text}`}
+      title={`${meta.label} — ${meta.description} (coaching score ${analysis.score}/100)`}
     >
-      {score}
+      <span role="img" aria-label={meta.label}>{meta.emoji}</span>
+      {meta.label}
     </span>
   )
 }

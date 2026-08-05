@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, CheckCircle2, AlertTriangle, Play, ChevronDown, ChevronUp } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
+import { getCallRating, RATING_META } from '@/lib/call-analysis/rating'
 
 interface MissedOpportunity {
   moment: string
@@ -82,13 +83,6 @@ const OUTCOME_LABELS: Record<string, { label: string; variant: 'success' | 'info
   callback_scheduled: { label: 'Callback Scheduled', variant: 'info' },
   lost: { label: 'Lost', variant: 'default' },
   info_only: { label: 'Info Only', variant: 'default' },
-}
-
-function scoreColor(score: number): string {
-  if (score >= 80) return 'text-green-600 bg-green-50 border-green-200'
-  if (score >= 60) return 'text-yellow-700 bg-yellow-50 border-yellow-200'
-  if (score >= 40) return 'text-orange-700 bg-orange-50 border-orange-200'
-  return 'text-red-700 bg-red-50 border-red-200'
 }
 
 function progressBarColor(score: number, max: number): string {
@@ -276,16 +270,26 @@ function ReportBody({
         <Badge variant={outcomeBadge.variant}>{outcomeBadge.label}</Badge>
       </div>
 
-      {/* Score + sentiment */}
+      {/* Rating + sentiment. The headline is the outcome-driven face, not the
+          raw rubric score — the numeric breakdown lives in the details below. */}
       <div className="flex items-center gap-6 mb-6">
-        <div
-          className={`flex flex-col items-center justify-center rounded-lg border-2 ${scoreColor(
-            a.score
-          )} w-24 h-24`}
-        >
-          <div className="text-3xl font-bold">{a.score}</div>
-          <div className="text-xs uppercase tracking-wide">/100</div>
-        </div>
+        {(() => {
+          const rating = getCallRating(a.outcome, a.score)
+          const meta = RATING_META[rating]
+          return (
+            <div
+              className={`flex flex-col items-center justify-center rounded-lg border-2 ${meta.bg} ${meta.border} ${meta.text} w-24 h-24`}
+              title={meta.description}
+            >
+              <div className="text-4xl leading-none" role="img" aria-label={meta.label}>
+                {meta.emoji}
+              </div>
+              <div className="mt-1 text-xs font-semibold uppercase tracking-wide">
+                {meta.label}
+              </div>
+            </div>
+          )
+        })()}
         <div className="text-sm text-gray-700 space-y-1">
           <div>
             <span className="text-gray-500">Customer:</span>{' '}
@@ -430,6 +434,10 @@ function CollapsibleDetails({
           {/* Score breakdown */}
           <Section title="Score Breakdown">
             <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between pb-2 mb-1 border-b border-gray-100 text-gray-800">
+                <span className="font-medium">Overall</span>
+                <span className="font-semibold tabular-nums">{a.score}/100</span>
+              </div>
               <SubscoreRow label="Discovery" score={a.subscores.discovery} max={20} />
               <SubscoreRow label="Value Building" score={a.subscores.value_building} max={20} />
               <SubscoreRow label="Sales Mechanics" score={a.subscores.sales_mechanics} max={30} />
