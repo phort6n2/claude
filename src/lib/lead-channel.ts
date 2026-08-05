@@ -15,6 +15,17 @@
 
 export type LeadChannel = 'paid' | 'organic' | 'referral' | 'direct' | 'social' | 'unknown'
 
+/**
+ * Whether a phone lead reaching this app can be assumed to have come from ads.
+ *
+ * True for the current setup: the HighLevel number wired to the app is a
+ * tracking number that only appears in ad paths, so organic callers dial the
+ * shop's published number and never land here. This is a fact about the phone
+ * configuration, not something the webhook payload reveals — hence a named
+ * constant rather than a buried condition.
+ */
+export const PHONE_LEADS_COME_FROM_ADS = true
+
 export interface LeadChannelResult {
   channel: LeadChannel
   /** Ad platform / traffic source when we can name it, e.g. "Google Ads". */
@@ -99,17 +110,23 @@ function hostOf(url: string | null): string | null {
 export function getLeadChannel(lead: LeadAttribution): LeadChannelResult {
   const result = classify(lead)
 
-  // Phone calls are only ever reported as paid or untracked.
+  // Every call that reaches this app is an ad call.
   //
-  // An ad-driven call and an organic call both reach us with no click id, so an
-  // absence of ad data can never prove a call was organic. Anything short of a
-  // real paid signal would be a guess dressed up as a fact, and "not from your
-  // ads" is exactly the wrong thing to guess about.
-  if (isPhoneLead(lead.source) && result.channel !== 'paid') {
+  // The HighLevel number the app is wired to is a tracking number used only in
+  // ad paths — Google's call-tracking pool forwards to it. A customer who found
+  // the shop organically rings the shop's published number, which never touches
+  // HighLevel and so never becomes a lead here. The click id is absent either
+  // way, so this can't be derived from the payload; it follows from how the
+  // numbers are set up.
+  //
+  // Flip this if a client ever publishes their HighLevel number somewhere
+  // organic (a GBP listing, the main site), because then untracked calls stop
+  // being ad calls and this would overstate ad performance.
+  if (PHONE_LEADS_COME_FROM_ADS && isPhoneLead(lead.source) && result.channel !== 'paid') {
     return {
-      channel: 'unknown',
+      channel: 'paid',
       source: null,
-      reason: 'Call source not tracked — a call carries no click id either way',
+      reason: 'Call to the ad tracking number — that number is only used in ads',
     }
   }
 
