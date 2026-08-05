@@ -8,20 +8,15 @@ import {
 
 /**
  * Compact "where did this lead come from" badge — paid ads vs organic vs the
- * rest. Renders nothing when there's no attribution at all (typically phone
- * calls, which arrive without a click id), so the lists don't fill with
- * meaningless "Unknown" chips.
+ * rest. Every lead gets one, including phone calls that arrived without a click
+ * id: those read "Untracked", which is more useful than a blank space.
  */
 export function ChannelBadge({
   lead,
-  showUnknown = false,
 }: {
   lead: LeadAttribution & { duplicates?: LeadAttribution[] | null }
-  showUnknown?: boolean
 }) {
   const { channel, source, reason } = getLeadChannelWithDuplicates(lead)
-  if (channel === 'unknown' && !showUnknown) return null
-
   const meta = CHANNEL_META[channel]
   return (
     <span

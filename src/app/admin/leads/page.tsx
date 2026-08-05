@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/theme'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
+import { getLeadDisplayName, displayNameIsPhone, formatPhoneDisplay } from '@/lib/lead-display'
 import { useLeadStream } from '@/hooks/useLeadStream'
 
 interface Lead {
@@ -206,14 +207,6 @@ export default function LeadsPage() {
       hour: 'numeric',
       minute: '2-digit',
     })
-  }
-
-  function formatPhoneDisplay(phone: string) {
-    const cleaned = phone.replace(/\D/g, '')
-    if (cleaned.length === 10) {
-      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`
-    }
-    return phone
   }
 
   function getLeadDetails(lead: Lead) {
@@ -514,7 +507,7 @@ function LeadRow({
   getLeadDetails: (lead: Lead) => { service: string | null; vehicle: string | null; year: string | null; make: string | null; model: string | null; vin: string | null; zipCode: string | null; insuranceHelp: string | null }
 }) {
   const statusConfig = STATUS_CONFIG[lead.status] || STATUS_CONFIG.NEW
-  const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'
+  const fullName = getLeadDisplayName(lead)
   const details = getLeadDetails(lead)
 
   // Edit state
@@ -633,7 +626,9 @@ function LeadRow({
               )}
             </div>
             <div className="flex items-center gap-x-2 gap-y-0.5 text-sm text-gray-600 flex-wrap">
-              {lead.phone && <span>{formatPhoneDisplay(lead.phone)}</span>}
+              {lead.phone && !displayNameIsPhone(lead) && (
+                <span>{formatPhoneDisplay(lead.phone)}</span>
+              )}
               {lead.email && (
                 <>
                   <span className="text-gray-300">•</span>

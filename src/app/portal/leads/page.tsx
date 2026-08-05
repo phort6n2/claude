@@ -18,7 +18,6 @@ import {
   Loader2,
   PlayCircle,
   Check,
-  CheckCircle2,
   Inbox,
   RefreshCw,
 } from 'lucide-react'
@@ -31,6 +30,7 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefresh'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
+import { getLeadDisplayName, displayNameIsPhone, formatPhoneDisplay } from '@/lib/lead-display'
 import { ChannelBadge } from '@/components/leads/ChannelBadge'
 import { useLeadStream } from '@/hooks/useLeadStream'
 
@@ -737,7 +737,7 @@ function LeadRow({
   onUpdate: (lead: Lead) => void
 }) {
   const statusConfig = STATUS_CONFIG[lead.status] || STATUS_CONFIG.NEW
-  const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'
+  const fullName = getLeadDisplayName(lead)
   const details = getLeadDetails(lead)
 
   // Edit state
@@ -878,7 +878,9 @@ function LeadRow({
               <ChannelBadge lead={lead} />
             </div>
             <div className="flex items-center gap-x-2 gap-y-0.5 text-sm text-gray-600 flex-wrap">
-              {lead.phone && <span>{lead.phone}</span>}
+              {lead.phone && !displayNameIsPhone(lead) && (
+                <span>{formatPhoneDisplay(lead.phone)}</span>
+              )}
               {details.service && (
                 <>
                   <span className="text-gray-300">•</span>
@@ -937,7 +939,7 @@ function LeadRow({
             {/* Where this lead came from */}
             <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100">
               <span className="text-xs text-gray-500">Source:</span>
-              <ChannelBadge lead={lead} showUnknown />
+              <ChannelBadge lead={lead} />
               {lead.utmCampaign && (
                 <span className="text-xs text-gray-500">{lead.utmCampaign}</span>
               )}

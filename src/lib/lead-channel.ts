@@ -237,5 +237,13 @@ export const CHANNEL_META: Record<
   social: { label: 'Social', text: 'text-purple-700', bg: 'bg-purple-100', description: 'Came from social media' },
   referral: { label: 'Referral', text: 'text-indigo-700', bg: 'bg-indigo-100', description: 'Came from another website' },
   direct: { label: 'Direct', text: 'text-gray-600', bg: 'bg-gray-100', description: 'Typed the site in directly' },
-  unknown: { label: 'Unknown', text: 'text-gray-500', bg: 'bg-gray-100', description: 'No attribution data captured' },
+  // In practice this is a phone call: untagged forms classify as organic, so
+  // the only leads left without a source are calls that arrived with no click
+  // id. "Untracked" says that plainly without implying something is broken.
+  unknown: {
+    label: 'Untracked',
+    text: 'text-gray-600',
+    bg: 'bg-gray-100',
+    description: 'Source not tracked — calls forwarded by an ad platform’s number pool carry no click id',
+  },
 }
