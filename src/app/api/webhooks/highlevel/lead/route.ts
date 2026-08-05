@@ -192,6 +192,37 @@ export async function POST(request: NextRequest) {
                       getCustomField('Would You Like Us To Help Navigate Your Insurance Claim For You?') ||
                       getCustomField('insurance'),
       radio_3s0t: getCustomField('radio_3s0t'),
+      // Call details HighLevel sends on inbound-call contacts. Previously
+      // dropped entirely, which left phone leads looking empty next to form
+      // leads. Whether a call was answered or missed is the most actionable
+      // thing on the record, so it's captured first.
+      call_status:
+        payload.call_status ||
+        payload.callStatus ||
+        payload.call?.status ||
+        payload.status ||
+        null,
+      call_duration:
+        payload.call_duration ||
+        payload.callDuration ||
+        payload.duration ||
+        payload.call?.duration ||
+        null,
+      call_direction:
+        payload.call_direction ||
+        payload.callDirection ||
+        payload.direction ||
+        payload.call?.direction ||
+        null,
+      caller_number: payload.from || payload.caller_phone || payload.callerPhone || null,
+      called_number: payload.to || payload.rep_phone || payload.repPhone || null,
+      assigned_to:
+        payload.assigned_to ||
+        payload.assignedTo ||
+        payload.user?.name ||
+        payload.user?.email ||
+        null,
+      message: payload.message || payload.body || null,
       // Non-Google click identifiers. There are no dedicated Lead columns for
       // these, so keep them with the form data for attribution reference.
       msclkid: getCustomField('msclkid'),
