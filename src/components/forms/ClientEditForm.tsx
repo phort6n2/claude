@@ -29,7 +29,6 @@ import {
   ExternalLink,
   Store,
   Users,
-  TrendingUp,
   Copy,
   Webhook,
   PhoneCall,
@@ -1092,13 +1091,6 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
             >
               <Users className="h-4 w-4" />
               Users
-            </Link>
-            <Link
-              href={`/admin/clients/${client!.id}/google-ads`}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-            >
-              <TrendingUp className="h-4 w-4" />
-              Google Ads
             </Link>
           </div>
         )}
@@ -2595,42 +2587,6 @@ export default function ClientEditForm({ client, hasWordPressPassword = false }:
           </div>
         )}
       </div>
-
-      {/* Google Ads - only show for existing clients */}
-      {!isNewClient && (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <SectionHeader
-            section="googleads"
-            icon={TrendingUp}
-            title="Google Ads Conversion Tracking"
-            subtitle="Enhanced Conversions and Offline Conversion Import"
-          />
-          {expandedSections.has('googleads') && (
-            <div className="p-6">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <div className="flex items-start gap-3">
-                  <TrendingUp className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-blue-800">
-                    <p className="font-medium">Link this client to Google Ads to:</p>
-                    <ul className="mt-2 list-disc list-inside space-y-1">
-                      <li>Send Enhanced Conversions when leads arrive (with GCLID)</li>
-                      <li>Send Offline Conversions when leads convert to sales</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-              <Link
-                href={`/admin/clients/${client!.id}/google-ads`}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <TrendingUp className="h-4 w-4" />
-                Configure Google Ads
-                <ChevronRight className="h-4 w-4" />
-              </Link>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Bottom Save Button */}
       <div className="flex justify-end gap-3 pt-4">

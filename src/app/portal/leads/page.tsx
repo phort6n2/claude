@@ -61,8 +61,6 @@ interface Lead {
   saleNotes: string | null
   callRecordingUrl: string | null
   gclid: string | null
-  enhancedConversionSent: boolean
-  offlineConversionSent: boolean
   createdAt: string
   formName: string | null
   formData: Record<string, unknown> | null
@@ -541,19 +539,25 @@ function getLeadDetails(lead: Lead) {
     return null
   }
 
-  const service = getField(['interested_in', 'Interested In:', 'Interested In'])
+  const service = getField(['interested_in', 'Interested In:', 'Interested In', 'service'])
   // Get individual vehicle fields
   const year = getField(['vehicle_year', 'Vehicle Year'])
   const make = getField(['vehicle_make', 'Vehicle Make'])
   const model = getField(['vehicle_model', 'Vehicle Model'])
   // Build combined vehicle string
   const vehicleParts = [year, make, model].filter(Boolean)
-  const vehicle = vehicleParts.length > 0 ? vehicleParts.join(' ') : null
+  // The landing-page form sends one combined string (e.g. "2021 Subaru Outback")
+  // instead of separate year/make/model fields.
+  const vehicle =
+    vehicleParts.length > 0
+      ? vehicleParts.join(' ')
+      : getField(['vehicle', 'Vehicle'])
   const vin = getField(['vin', 'VIN', 'Vin'])
   const zipCode = getField(['postal_code', 'postalCode'])
-  const insuranceHelp = getField(['insurance_help', 'Would You Like Us To Help Navigate Your Insurance Claim For You?', 'radio_3s0t'])
+  const insuranceHelp = getField(['insurance_help', 'Would You Like Us To Help Navigate Your Insurance Claim For You?', 'radio_3s0t', 'insurance'])
+  const insuranceCarrier = getField(['insurance_carrier', 'carrier', 'Carrier'])
 
-  return { service, vehicle, year, make, model, vin, zipCode, insuranceHelp }
+  return { service, vehicle, year, make, model, vin, zipCode, insuranceHelp, insuranceCarrier }
 }
 
 // Helper to get all form data fields for display
@@ -857,13 +861,6 @@ function LeadRow({
               {lead.gclid && (
                 <span className="text-xs text-emerald-600 font-medium">Ads</span>
               )}
-              <CheckCircle2
-                className={`h-3.5 w-3.5 flex-shrink-0 ${lead.enhancedConversionSent ? 'text-emerald-500' : 'text-gray-300'}`}
-                aria-label={lead.enhancedConversionSent ? 'Synced to Google Ads' : 'Not synced to Google Ads'}
-              />
-              <span className="sr-only">
-                {lead.enhancedConversionSent ? 'Synced to Google Ads' : 'Not synced to Google Ads'}
-              </span>
             </div>
             <div className="flex items-center gap-x-2 gap-y-0.5 text-sm text-gray-600 flex-wrap">
               {lead.phone && <span>{lead.phone}</span>}
@@ -922,27 +919,12 @@ function LeadRow({
               </div>
             )}
 
-            {/* Google Ads Sync Status */}
-            {(lead.gclid || lead.enhancedConversionSent || lead.offlineConversionSent) && (
+            {/* Paid-click attribution */}
+            {lead.gclid && (
               <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
-                {lead.gclid && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
-                    Google Ads Lead
-                  </span>
-                )}
-                {lead.enhancedConversionSent && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
-                    <CheckCircle2 className="h-3 w-3" />
-                    Lead Synced
-                  </span>
-                )}
-                {lead.offlineConversionSent && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                    <DollarSign className="h-3 w-3" />
-                    <CheckCircle2 className="h-3 w-3" />
-                    Sale Synced
-                  </span>
-                )}
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
+                  Paid Click
+                </span>
               </div>
             )}
 

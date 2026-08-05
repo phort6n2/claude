@@ -309,7 +309,7 @@ export default function ApiStatusPage() {
                   </button>
                 ) : (
                   <a
-                    href={integration.key === 'GOOGLE_ADS' ? '/admin/settings/google-ads' : '/admin/settings/api'}
+                    href="/admin/settings/api"
                     className="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 flex items-center gap-1"
                   >
                     <ExternalLink className="h-3 w-3" />

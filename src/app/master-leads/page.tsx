@@ -18,7 +18,6 @@ import {
   Users,
   Building2,
   ShieldX,
-  CheckCircle2,
   PlayCircle,
   Check,
   RefreshCw,
@@ -64,8 +63,6 @@ interface Lead {
   createdAt: string
   formName: string | null
   formData: Record<string, unknown> | null
-  enhancedConversionSent: boolean
-  offlineConversionSent: boolean
   duplicates: LeadDuplicate[]
   callAnalysis: CallAnalysisSummary | null
   client?: {
@@ -120,11 +117,6 @@ export default function StandaloneMasterLeadsPage() {
   })
   const [showCalendar, setShowCalendar] = useState(false)
   const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null)
-
-  // Bulk sync state
-  const [syncing, setSyncing] = useState(false)
-  const [syncProgress, setSyncProgress] = useState<{ done: number; total: number; failed: number } | null>(null)
-  const [syncError, setSyncError] = useState<string | null>(null)
 
   // Refresh state (manual button + background polling)
   const [refreshing, setRefreshing] = useState(false)
@@ -321,70 +313,6 @@ export default function StandaloneMasterLeadsPage() {
     }
   }
 
-  async function handleBulkSync() {
-    setSyncing(true)
-    setSyncError(null)
-    setSyncProgress({ done: 0, total: 0, failed: 0 })
-
-    try {
-      // Step 1: fetch all unsynced IDs for the current client scope
-      const idParams = new URLSearchParams({ days: '365' })
-      if (selectedClientId !== 'all') idParams.set('clientId', selectedClientId)
-      const idsRes = await fetch(`/api/admin/unsynced-lead-ids?${idParams.toString()}`)
-      if (!idsRes.ok) {
-        const body = await idsRes.json().catch(() => ({}))
-        throw new Error(body.error || `HTTP ${idsRes.status}`)
-      }
-      const { ids: unsyncedIds, truncated, max } = await idsRes.json() as {
-        ids: string[]
-        total: number
-        truncated: boolean
-        max: number
-      }
-
-      if (unsyncedIds.length === 0) {
-        setSyncing(false)
-        setSyncProgress(null)
-        setSyncError('Nothing to sync — all leads are already synced.')
-        return
-      }
-
-      setSyncProgress({ done: 0, total: unsyncedIds.length, failed: 0 })
-
-      // Step 2: batch-sync
-      const BATCH_SIZE = 25
-      let done = 0
-      let failed = 0
-
-      for (let i = 0; i < unsyncedIds.length; i += BATCH_SIZE) {
-        const batch = unsyncedIds.slice(i, i + BATCH_SIZE)
-        const res = await fetch(
-          `/api/admin/bulk-sync-conversions?leadIds=${batch.join(',')}`
-        )
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}))
-          throw new Error(body.error || `HTTP ${res.status}`)
-        }
-        const data = await res.json()
-        const batchSuccess = data.results?.success ?? 0
-        const batchFailed = data.results?.failed ?? batch.length - batchSuccess
-        done += batchSuccess
-        failed += batchFailed
-        setSyncProgress({ done: done + failed, total: unsyncedIds.length, failed })
-      }
-
-      if (truncated) {
-        setSyncError(`Synced first ${max}. The 2-hour cron will pick up the rest.`)
-      }
-
-      // Step 3: refetch leads so the UI reflects new sync status
-      await fetchLeads('manual')
-    } catch (err) {
-      setSyncError(err instanceof Error ? err.message : 'Sync failed')
-    } finally {
-      setSyncing(false)
-    }
-  }
 
   if (authChecking || clientsLoading) {
     return (
@@ -455,13 +383,6 @@ export default function StandaloneMasterLeadsPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Link
-                href="/master-leads/ads-performance"
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 px-3 py-1.5 rounded-md border border-emerald-200 hover:bg-emerald-50 transition-colors"
-              >
-                <TrendingUp className="h-3.5 w-3.5" />
-                Ads
-              </Link>
               <Link
                 href="/master-leads/dashboard"
                 className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 px-3 py-1.5 rounded-md border border-blue-200 hover:bg-blue-50 transition-colors"
@@ -543,48 +464,10 @@ export default function StandaloneMasterLeadsPage() {
               ) : (
                 <>
                   {`${leads.length} lead${leads.length !== 1 ? 's' : ''}`}
-                  {leads.length > 0 && (
-                    <>
-                      <span className="mx-1.5 text-gray-300">·</span>
-                      <span>
-                        <span className="font-semibold text-emerald-600">
-                          {leads.filter((l) => l.enhancedConversionSent).length}
-                        </span>
-                        <span className="text-gray-500">/{leads.length}</span>
-                        {' synced to Google Ads'}
-                      </span>
-                    </>
-                  )}
                 </>
               )}
             </p>
 
-            {!loading && leads.length > 0 && (
-              <div className="mt-2 flex flex-wrap items-center gap-3">
-                <button
-                  onClick={handleBulkSync}
-                  disabled={syncing}
-                  className="text-xs font-medium px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 active:bg-emerald-200 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
-                >
-                  {syncing ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      {syncProgress && syncProgress.total > 0
-                        ? `Syncing ${syncProgress.done}/${syncProgress.total}${syncProgress.failed > 0 ? ` · ${syncProgress.failed} failed` : ''}`
-                        : 'Finding unsynced leads…'}
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Sync all unsynced to Google Ads
-                    </>
-                  )}
-                </button>
-                {syncError && (
-                  <span className="text-xs text-red-600">{syncError}</span>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Leads List */}
@@ -764,18 +647,24 @@ function getLeadDetails(lead: Lead) {
     return null
   }
 
-  const service = getField(['interested_in', 'Interested In:', 'Interested In'])
+  const service = getField(['interested_in', 'Interested In:', 'Interested In', 'service'])
   const year = getField(['vehicle_year', 'Vehicle Year'])
   const make = getField(['vehicle_make', 'Vehicle Make'])
   const model = getField(['vehicle_model', 'Vehicle Model'])
   const vin = getField(['vin', 'VIN', 'Vin'])
   const zipCode = getField(['postal_code', 'postalCode'])
-  const insuranceHelp = getField(['insurance_help', 'Would You Like Us To Help Navigate Your Insurance Claim For You?', 'radio_3s0t'])
+  const insuranceHelp = getField(['insurance_help', 'Would You Like Us To Help Navigate Your Insurance Claim For You?', 'radio_3s0t', 'insurance'])
+  const insuranceCarrier = getField(['insurance_carrier', 'carrier', 'Carrier'])
 
   const vehicleParts = [year, make, model].filter(Boolean)
-  const vehicle = vehicleParts.length > 0 ? vehicleParts.join(' ') : null
+  // The landing-page form sends one combined string (e.g. "2021 Subaru Outback")
+  // instead of separate year/make/model fields.
+  const vehicle =
+    vehicleParts.length > 0
+      ? vehicleParts.join(' ')
+      : getField(['vehicle', 'Vehicle'])
 
-  return { service, vehicle, year, make, model, vin, zipCode, insuranceHelp }
+  return { service, vehicle, year, make, model, vin, zipCode, insuranceHelp, insuranceCarrier }
 }
 
 // Helper to get all form data fields for display
@@ -1062,13 +951,6 @@ function LeadRow({
               {lead.gclid && (
                 <span className="text-xs text-emerald-600 font-medium">Ads</span>
               )}
-              <CheckCircle2
-                className={`h-3.5 w-3.5 flex-shrink-0 ${lead.enhancedConversionSent ? 'text-emerald-500' : 'text-gray-300'}`}
-                aria-label={lead.enhancedConversionSent ? 'Synced to Google Ads' : 'Not synced to Google Ads'}
-              />
-              <span className="sr-only">
-                {lead.enhancedConversionSent ? 'Synced to Google Ads' : 'Not synced to Google Ads'}
-              </span>
             </div>
             <div className="flex items-center gap-x-2 gap-y-0.5 text-sm text-gray-600 flex-wrap">
               {lead.phone && <span>{lead.phone}</span>}
@@ -1286,27 +1168,12 @@ function LeadRow({
               </div>
             )}
 
-            {/* Google Ads Sync Status */}
-            {(lead.gclid || lead.enhancedConversionSent || lead.offlineConversionSent) && (
+            {/* Paid-click attribution (present when the landing page passed a gclid) */}
+            {lead.gclid && (
               <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
-                {lead.gclid && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
-                    Google Ads Lead
-                  </span>
-                )}
-                {lead.enhancedConversionSent && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
-                    <CheckCircle2 className="h-3 w-3" />
-                    Lead Synced
-                  </span>
-                )}
-                {lead.offlineConversionSent && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                    <DollarSign className="h-3 w-3" />
-                    <CheckCircle2 className="h-3 w-3" />
-                    Sale Synced
-                  </span>
-                )}
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
+                  Paid Click
+                </span>
               </div>
             )}
 

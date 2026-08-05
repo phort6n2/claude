@@ -80,8 +80,6 @@ export async function GET(request: NextRequest) {
           saleNotes: true,
           callRecordingUrl: true,
           gclid: true,
-          enhancedConversionSent: true,
-          offlineConversionSent: true,
           createdAt: true,
           statusUpdatedAt: true,
           callAnalyses: {

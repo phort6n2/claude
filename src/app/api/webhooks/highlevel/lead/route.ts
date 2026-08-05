@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { sendEnhancedConversion } from '@/lib/google-ads'
-import { MIN_CONVERSION_AGE_MS } from '@/lib/conversion-sync'
 import { notifyNewLead } from '@/lib/push-notifications'
 import { kickOffCallAnalysis } from '@/lib/call-analysis/queue'
 import { findSameDayDuplicateCanonical } from '@/lib/lead-dedup'
@@ -159,11 +157,19 @@ export async function POST(request: NextRequest) {
       contact_type: payload.contact_type,
       tags: payload.tags,
       date_of_birth: payload.date_of_birth,
-      // Custom fields for auto glass - check multiple key formats HighLevel uses
+      // Custom fields for auto glass - check multiple key formats HighLevel uses.
+      // `service` / `vehicle` / `carrier` come from the collisionglass.co landing
+      // page form, which sends a single combined vehicle string rather than
+      // separate year/make/model fields.
       interested_in: getCustomField('interested_in') ||
                      getCustomField('Interested In:') ||
                      getCustomField('Interested In') ||
-                     getCustomField('interested in'),
+                     getCustomField('interested in') ||
+                     getCustomField('service'),
+      vehicle: getCustomField('vehicle') || getCustomField('Vehicle'),
+      insurance_carrier: getCustomField('carrier') ||
+                         getCustomField('insurance_carrier') ||
+                         getCustomField('Carrier'),
       vehicle_year: getCustomField('vehicle_year') ||
                     getCustomField('Vehicle Year') ||
                     getCustomField('vehicleYear'),
@@ -186,6 +192,13 @@ export async function POST(request: NextRequest) {
                       getCustomField('Would You Like Us To Help Navigate Your Insurance Claim For You?') ||
                       getCustomField('insurance'),
       radio_3s0t: getCustomField('radio_3s0t'),
+      // Non-Google click identifiers. There are no dedicated Lead columns for
+      // these, so keep them with the form data for attribution reference.
+      msclkid: getCustomField('msclkid'),
+      fbclid: getCustomField('fbclid'),
+      ttclid: getCustomField('ttclid'),
+      li_fat_id: getCustomField('li_fat_id'),
+      gclsrc: getCustomField('gclsrc'),
     }
 
     // Also merge any other custom fields that came through
@@ -212,9 +225,13 @@ export async function POST(request: NextRequest) {
       formData.workflow = workflow
     }
 
-    // Store raw payload for debugging (excluding sensitive data)
+    // Store raw payload for debugging (excluding sensitive data).
+    // `headers` is dropped: HighLevel forwards ~1KB of Cloudflare/Istio proxy
+    // metadata per lead that has no diagnostic value and bloats the JSON column.
+    const { headers: _proxyHeaders, ...payloadWithoutHeaders } = payload
+    void _proxyHeaders
     formData._rawPayload = {
-      ...payload,
+      ...payloadWithoutHeaders,
       // Redact any potential sensitive fields
       password: payload.password ? '[REDACTED]' : undefined,
       token: payload.token ? '[REDACTED]' : undefined,
@@ -242,11 +259,27 @@ export async function POST(request: NextRequest) {
     const utmMedium = attributionSource.utmMedium || payload.utm_medium || null
     const utmCampaign = attributionSource.campaign || attributionSource.utmCampaign || payload.utm_campaign || null
     const utmContent = attributionSource.utmContent || payload.utm_content || null
-    const utmKeyword = attributionSource.utmKeyword || attributionSource.utmTerm || payload.utm_keyword || null
+    // `utm_term` is what the landing-page form sends; `utm_keyword` is the
+    // older HighLevel-side name. Accept either.
+    const utmKeyword =
+      attributionSource.utmKeyword ||
+      attributionSource.utmTerm ||
+      payload.utm_term ||
+      payload.utm_keyword ||
+      null
     const utmMatchtype = attributionSource.utmMatchtype || payload.utm_matchtype || null
     const campaignId = attributionSource.campaignId || payload.campaign_id || null
     const adGroupId = attributionSource.adGroupId || payload.ad_group_id || null
     const adId = attributionSource.adId || payload.ad_id || null
+
+    // Landing page + referrer, sent by the landing-page form.
+    const landingPageUrl =
+      payload.landing_page ||
+      payload.page ||
+      attributionSource.url ||
+      attributionSource.landingPage ||
+      null
+    const referrerUrl = payload.referrer || attributionSource.referrer || null
 
     // Also check attribution source for GCLID/GBRAID/WBRAID if not found at root
     if (!gclid) {
@@ -349,6 +382,8 @@ export async function POST(request: NextRequest) {
         campaignId,
         adGroupId,
         adId,
+        landingPageUrl,
+        referrerUrl,
         // Other fields
         source: leadSource,
         formData: Object.keys(formData).length > 0 ? (formData as Prisma.InputJsonValue) : undefined,
@@ -405,103 +440,6 @@ export async function POST(request: NextRequest) {
     }).catch((err) => {
       console.error(`[HighLevel Webhook] Failed to send push notification:`, err)
     })
-
-    // Send Enhanced Conversion to Google Ads if we have user data (email or phone)
-    // Note: GCLID is optional - Google can match conversions via hashed user data alone
-    if (email || phone) {
-      try {
-        // Get client's Google Ads config
-        const googleAdsConfig = await prisma.clientGoogleAds.findUnique({
-          where: { clientId: client.id },
-        })
-
-        // Determine which conversion action to use based on lead source
-        const conversionActionId = leadSource === 'PHONE'
-          ? googleAdsConfig?.callConversionActionId
-          : googleAdsConfig?.formConversionActionId
-
-        console.log(`[HighLevel Webhook] Google Ads config for ${client.businessName}:`, {
-          hasConfig: !!googleAdsConfig,
-          isActive: googleAdsConfig?.isActive,
-          leadSource,
-          conversionActionId,
-          formConversionActionId: googleAdsConfig?.formConversionActionId,
-          callConversionActionId: googleAdsConfig?.callConversionActionId,
-          customerId: googleAdsConfig?.customerId,
-          hasGclid: !!gclid,
-        })
-
-        // A brand-new lead's ad click is almost always < 6 hours old, and
-        // Google rejects those as "click too recent." Defer to the sync cron,
-        // which uploads the lead once it has aged past Google's 6h minimum.
-        const clickTooRecent =
-          Date.now() - lead.createdAt.getTime() < MIN_CONVERSION_AGE_MS
-
-        if (googleAdsConfig?.isActive && conversionActionId && !clickTooRecent) {
-          const result = await sendEnhancedConversion({
-            customerId: googleAdsConfig.customerId,
-            gclid: gclid || undefined, // Optional - will be included if present
-            gbraid: gbraid || undefined,
-            wbraid: wbraid || undefined,
-            email: email || undefined,
-            phone: phone || undefined,
-            conversionAction: conversionActionId,
-            conversionDateTime: new Date(),
-            orderId: lead.id, // Unique identifier for this conversion
-          })
-
-          if (result.success) {
-            // Mark the lead as having sent enhanced conversion
-            await prisma.lead.update({
-              where: { id: lead.id },
-              data: {
-                enhancedConversionSent: true,
-                enhancedConversionSentAt: new Date(),
-                googleSyncError: null, // Clear any previous error
-              },
-            })
-            console.log(`[HighLevel Webhook] Enhanced conversion sent for lead ${lead.id} (gclid: ${gclid ? 'yes' : 'no'})`)
-          } else {
-            // Track the failure for retry
-            await prisma.lead.update({
-              where: { id: lead.id },
-              data: {
-                googleSyncError: `Enhanced conversion failed: ${result.error}`,
-              },
-            })
-            console.warn(`[HighLevel Webhook] Enhanced conversion failed for lead ${lead.id}:`, result.error)
-          }
-        } else if (googleAdsConfig?.isActive && conversionActionId && clickTooRecent) {
-          console.log(`[HighLevel Webhook] Deferring enhanced conversion for lead ${lead.id} — click too recent (<6h); the sync cron will upload it once it ages past Google's 6h minimum.`)
-        } else {
-          // Log why enhanced conversion was skipped
-          const reason = !googleAdsConfig
-            ? 'No Google Ads config for client'
-            : !googleAdsConfig.isActive
-            ? 'Google Ads config is not active'
-            : leadSource === 'PHONE'
-            ? 'No callConversionActionId configured'
-            : 'No formConversionActionId configured'
-          console.log(`[HighLevel Webhook] Enhanced conversion skipped for lead ${lead.id}: ${reason}`)
-        }
-      } catch (err) {
-        // Track the error for retry and log with context
-        const errorMessage = err instanceof Error ? err.message : String(err)
-        await prisma.lead.update({
-          where: { id: lead.id },
-          data: {
-            googleSyncError: `Enhanced conversion error: ${errorMessage}`,
-          },
-        }).catch(() => {}) // Don't fail if update fails
-
-        console.error(`[HighLevel Webhook] Enhanced conversion error:`, {
-          leadId: lead.id,
-          client: client.businessName,
-          gclid: gclid || 'none',
-          error: errorMessage,
-        })
-      }
-    }
 
     return NextResponse.json({
       success: true,
