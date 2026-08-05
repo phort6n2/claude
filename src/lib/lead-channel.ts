@@ -61,6 +61,9 @@ export interface LeadAttribution {
   utmMedium?: string | null
   utmCampaign?: string | null
   referrerUrl?: string | null
+  /** Present when HighLevel saw a real page view — the basis for calling a
+   *  form organic rather than merely untracked. */
+  landingPageUrl?: string | null
   formData?: Record<string, unknown> | null
   /** 'FORM' | 'PHONE' — decides what an absence of tracking means. */
   source?: string | null
@@ -186,15 +189,29 @@ function classify(lead: LeadAttribution): LeadChannelResult {
   //    A PHONE call is different. Calls routed through an ad platform's
   //    call-tracking pool arrive with no click id either, so silence on a call
   //    tells us nothing and we must not claim it was organic.
-  if (isFormLead(lead.source)) {
+  //    Calling a form organic requires evidence that we actually saw the visit:
+  //    a landing page URL means there was a real browser session and it carried
+  //    no ad parameters, which is genuinely informative.
+  //
+  //    Without it we know nothing. That happens when HighLevel creates the
+  //    contact from a workflow rather than a tracked page view — its
+  //    attributionSource comes through as "CRM Workflows"/"Manual" with no url,
+  //    and any gclid the landing page collected is dropped before it reaches
+  //    us. Those leads often ARE from ads, so claiming organic would be worse
+  //    than admitting we don't know.
+  if (isFormLead(lead.source) && clean(lead.landingPageUrl)) {
     return {
       channel: 'organic',
       source: null,
-      reason: 'Form submission with no ad tracking — not from a paid click',
+      reason: 'Submitted on a tracked page with no ad parameters',
     }
   }
 
-  return { channel: 'unknown', source: null, reason: 'No attribution data captured' }
+  return {
+    channel: 'unknown',
+    source: null,
+    reason: 'No attribution data captured — the ad parameters may not be reaching the app',
+  }
 }
 
 /** Anything that isn't an inbound call is treated as a form-style submission. */
