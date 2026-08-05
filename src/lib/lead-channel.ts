@@ -94,6 +94,26 @@ function hostOf(url: string | null): string | null {
 }
 
 export function getLeadChannel(lead: LeadAttribution): LeadChannelResult {
+  const result = classify(lead)
+
+  // Phone calls are only ever reported as paid or untracked.
+  //
+  // An ad-driven call and an organic call both reach us with no click id, so an
+  // absence of ad data can never prove a call was organic. Anything short of a
+  // real paid signal would be a guess dressed up as a fact, and "not from your
+  // ads" is exactly the wrong thing to guess about.
+  if (isPhoneLead(lead.source) && result.channel !== 'paid') {
+    return {
+      channel: 'unknown',
+      source: null,
+      reason: 'Call source not tracked — a call carries no click id either way',
+    }
+  }
+
+  return result
+}
+
+function classify(lead: LeadAttribution): LeadChannelResult {
   const medium = clean(lead.utmMedium)?.toLowerCase() ?? null
   const utmSource = clean(lead.utmSource)
   const campaign = clean(lead.utmCampaign)
@@ -182,6 +202,10 @@ function isFormLead(source: string | null | undefined): boolean {
   return typeof source === 'string' && source.toUpperCase() !== 'PHONE'
 }
 
+function isPhoneLead(source: string | null | undefined): boolean {
+  return typeof source === 'string' && source.toUpperCase() === 'PHONE'
+}
+
 /**
  * Channel for a lead, falling back to any same-day duplicate contact that does
  * carry attribution. A caller who filled the form earlier that day is the same
@@ -208,8 +232,12 @@ export function getLeadChannelWithDuplicates(
 
   if (own.channel !== 'unknown') return own
 
-  // Own lead told us nothing (typically a call) — take whatever a same-day
-  // contact can tell us.
+  // For a call, a same-day form's *paid* click id is real evidence and was
+  // already adopted above. Anything weaker isn't: that form was often only
+  // "organic" because it carried no tracking, and inheriting that would turn an
+  // absence of data into a claim that the call didn't come from ads.
+  if (isPhoneLead(lead.source)) return own
+
   for (const dup of duplicates) {
     const result = getLeadChannel(dup)
     if (result.channel !== 'unknown') {
