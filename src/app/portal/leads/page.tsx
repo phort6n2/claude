@@ -539,19 +539,25 @@ function getLeadDetails(lead: Lead) {
     return null
   }
 
-  const service = getField(['interested_in', 'Interested In:', 'Interested In'])
+  const service = getField(['interested_in', 'Interested In:', 'Interested In', 'service'])
   // Get individual vehicle fields
   const year = getField(['vehicle_year', 'Vehicle Year'])
   const make = getField(['vehicle_make', 'Vehicle Make'])
   const model = getField(['vehicle_model', 'Vehicle Model'])
   // Build combined vehicle string
   const vehicleParts = [year, make, model].filter(Boolean)
-  const vehicle = vehicleParts.length > 0 ? vehicleParts.join(' ') : null
+  // The landing-page form sends one combined string (e.g. "2021 Subaru Outback")
+  // instead of separate year/make/model fields.
+  const vehicle =
+    vehicleParts.length > 0
+      ? vehicleParts.join(' ')
+      : getField(['vehicle', 'Vehicle'])
   const vin = getField(['vin', 'VIN', 'Vin'])
   const zipCode = getField(['postal_code', 'postalCode'])
-  const insuranceHelp = getField(['insurance_help', 'Would You Like Us To Help Navigate Your Insurance Claim For You?', 'radio_3s0t'])
+  const insuranceHelp = getField(['insurance_help', 'Would You Like Us To Help Navigate Your Insurance Claim For You?', 'radio_3s0t', 'insurance'])
+  const insuranceCarrier = getField(['insurance_carrier', 'carrier', 'Carrier'])
 
-  return { service, vehicle, year, make, model, vin, zipCode, insuranceHelp }
+  return { service, vehicle, year, make, model, vin, zipCode, insuranceHelp, insuranceCarrier }
 }
 
 // Helper to get all form data fields for display

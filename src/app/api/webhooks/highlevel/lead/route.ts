@@ -157,11 +157,19 @@ export async function POST(request: NextRequest) {
       contact_type: payload.contact_type,
       tags: payload.tags,
       date_of_birth: payload.date_of_birth,
-      // Custom fields for auto glass - check multiple key formats HighLevel uses
+      // Custom fields for auto glass - check multiple key formats HighLevel uses.
+      // `service` / `vehicle` / `carrier` come from the collisionglass.co landing
+      // page form, which sends a single combined vehicle string rather than
+      // separate year/make/model fields.
       interested_in: getCustomField('interested_in') ||
                      getCustomField('Interested In:') ||
                      getCustomField('Interested In') ||
-                     getCustomField('interested in'),
+                     getCustomField('interested in') ||
+                     getCustomField('service'),
+      vehicle: getCustomField('vehicle') || getCustomField('Vehicle'),
+      insurance_carrier: getCustomField('carrier') ||
+                         getCustomField('insurance_carrier') ||
+                         getCustomField('Carrier'),
       vehicle_year: getCustomField('vehicle_year') ||
                     getCustomField('Vehicle Year') ||
                     getCustomField('vehicleYear'),
@@ -184,6 +192,13 @@ export async function POST(request: NextRequest) {
                       getCustomField('Would You Like Us To Help Navigate Your Insurance Claim For You?') ||
                       getCustomField('insurance'),
       radio_3s0t: getCustomField('radio_3s0t'),
+      // Non-Google click identifiers. There are no dedicated Lead columns for
+      // these, so keep them with the form data for attribution reference.
+      msclkid: getCustomField('msclkid'),
+      fbclid: getCustomField('fbclid'),
+      ttclid: getCustomField('ttclid'),
+      li_fat_id: getCustomField('li_fat_id'),
+      gclsrc: getCustomField('gclsrc'),
     }
 
     // Also merge any other custom fields that came through
@@ -210,9 +225,13 @@ export async function POST(request: NextRequest) {
       formData.workflow = workflow
     }
 
-    // Store raw payload for debugging (excluding sensitive data)
+    // Store raw payload for debugging (excluding sensitive data).
+    // `headers` is dropped: HighLevel forwards ~1KB of Cloudflare/Istio proxy
+    // metadata per lead that has no diagnostic value and bloats the JSON column.
+    const { headers: _proxyHeaders, ...payloadWithoutHeaders } = payload
+    void _proxyHeaders
     formData._rawPayload = {
-      ...payload,
+      ...payloadWithoutHeaders,
       // Redact any potential sensitive fields
       password: payload.password ? '[REDACTED]' : undefined,
       token: payload.token ? '[REDACTED]' : undefined,
@@ -240,11 +259,27 @@ export async function POST(request: NextRequest) {
     const utmMedium = attributionSource.utmMedium || payload.utm_medium || null
     const utmCampaign = attributionSource.campaign || attributionSource.utmCampaign || payload.utm_campaign || null
     const utmContent = attributionSource.utmContent || payload.utm_content || null
-    const utmKeyword = attributionSource.utmKeyword || attributionSource.utmTerm || payload.utm_keyword || null
+    // `utm_term` is what the landing-page form sends; `utm_keyword` is the
+    // older HighLevel-side name. Accept either.
+    const utmKeyword =
+      attributionSource.utmKeyword ||
+      attributionSource.utmTerm ||
+      payload.utm_term ||
+      payload.utm_keyword ||
+      null
     const utmMatchtype = attributionSource.utmMatchtype || payload.utm_matchtype || null
     const campaignId = attributionSource.campaignId || payload.campaign_id || null
     const adGroupId = attributionSource.adGroupId || payload.ad_group_id || null
     const adId = attributionSource.adId || payload.ad_id || null
+
+    // Landing page + referrer, sent by the landing-page form.
+    const landingPageUrl =
+      payload.landing_page ||
+      payload.page ||
+      attributionSource.url ||
+      attributionSource.landingPage ||
+      null
+    const referrerUrl = payload.referrer || attributionSource.referrer || null
 
     // Also check attribution source for GCLID/GBRAID/WBRAID if not found at root
     if (!gclid) {
@@ -347,6 +382,8 @@ export async function POST(request: NextRequest) {
         campaignId,
         adGroupId,
         adId,
+        landingPageUrl,
+        referrerUrl,
         // Other fields
         source: leadSource,
         formData: Object.keys(formData).length > 0 ? (formData as Prisma.InputJsonValue) : undefined,
