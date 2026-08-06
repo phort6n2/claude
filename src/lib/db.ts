@@ -35,16 +35,28 @@ export async function withRetry<T>(
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error))
 
-      // Check if it's a connection error worth retrying
+      // Check if it's a connection error worth retrying.
+      // Prisma surfaces the code on the error object rather than in the
+      // message, so check both — matching on message text alone missed P2024
+      // entirely, which is the pool-exhaustion error this app actually hits.
+      const code = (lastError as { code?: string }).code ?? ''
       const isConnectionError =
+        code === 'P1001' || // Can't reach database server
+        code === 'P1002' || // Database server timed out
+        code === 'P1008' || // Operations timed out
+        code === 'P1017' || // Server closed the connection
+        code === 'P2024' || // Timed out fetching a connection from the pool
         lastError.message.includes('connect') ||
         lastError.message.includes('Connection') ||
+        lastError.message.includes('connection pool') ||
         lastError.message.includes('ECONNREFUSED') ||
+        lastError.message.includes('ECONNRESET') ||
         lastError.message.includes('timeout') ||
-        lastError.message.includes('P1001') || // Prisma: Can't reach database server
-        lastError.message.includes('P1002') || // Prisma: Database server timed out
-        lastError.message.includes('P1008') || // Prisma: Operations timed out
-        lastError.message.includes('P1017')    // Prisma: Server closed connection
+        lastError.message.includes('P1001') ||
+        lastError.message.includes('P1002') ||
+        lastError.message.includes('P1008') ||
+        lastError.message.includes('P1017') ||
+        lastError.message.includes('P2024')
 
       if (!isConnectionError || attempt === maxRetries) {
         throw lastError

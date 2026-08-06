@@ -32,18 +32,29 @@ export function kickOffCallAnalysis(req: Request, callAnalysisId: string): void 
 
   const url = `${getBaseUrl(req)}/api/internal/process-call-analysis`
 
-  // Intentionally not awaited. Errors are swallowed; the cron recovery sweep
-  // will pick the row back up if the kick-off didn't reach the worker.
-  fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${secret}`,
-    },
-    body: JSON.stringify({ callAnalysisId }),
-    // Vercel quirk: `keepalive` lets the request survive after response is sent.
-    keepalive: true,
-  }).catch((err) => {
-    console.error('[CallAnalysis] Failed to kick off worker:', err)
-  })
+  const post = () =>
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${secret}`,
+      },
+      body: JSON.stringify({ callAnalysisId }),
+      // Vercel quirk: `keepalive` lets the request survive after response is sent.
+      keepalive: true,
+    })
+
+  // Intentionally not awaited. These kick-offs were failing outright on
+  // transient network faults (ECONNRESET / ETIMEDOUT reaching the app's own
+  // host), which left the call sitting untouched until the recovery cron ran up
+  // to 10 minutes later — and that sweep is itself best-effort. One quick retry
+  // clears the great majority of them straight away.
+  post()
+    .catch(() => new Promise((r) => setTimeout(r, 750)).then(post))
+    .catch((err) => {
+      console.error(
+        '[CallAnalysis] Failed to kick off worker after retry (recovery cron will pick it up):',
+        err
+      )
+    })
 }
