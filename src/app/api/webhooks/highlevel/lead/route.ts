@@ -88,20 +88,67 @@ export async function POST(request: NextRequest) {
     // GCLID can be in multiple locations depending on HighLevel setup
     // Check: root level, contact object, attributionSource, customFields, attribution
     const customFields = payload.customFields || payload.customData || payload.custom_fields || {}
-    let gclid =
-      payload.gclid ||
-      payload.contact?.gclid ||
-      payload.attributionSource?.gclid ||
-      payload.attribution?.gclid ||
-      customFields.gclid ||
-      null
 
-    // Filter out unresolved template strings like {{contact.gclid}}
-    if (gclid && typeof gclid === 'string' && (gclid.includes('{{') || gclid.includes('}}'))) {
-      gclid = null
+    // Helper to get a custom field from any of the places HighLevel puts them.
+    //
+    // Lookup is normalised (lowercased, non-alphanumerics stripped) because the
+    // field name is whatever the person building the HighLevel workflow typed.
+    // The same value shows up as "GBRAID", "gbraid", "UTM Campaign",
+    // "utm_campaign" or "Li Fat Id" depending on the account, and an exact
+    // match silently dropped all but one spelling.
+    const normaliseKey = (key: string) => key.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+    const normalisedLookup = new Map<string, unknown>()
+    for (const source of [customFields, payload]) {
+      if (!source || typeof source !== 'object') continue
+      for (const [key, value] of Object.entries(source as Record<string, unknown>)) {
+        const norm = normaliseKey(key)
+        // First non-empty value for a given normalised key wins.
+        const existing = normalisedLookup.get(norm)
+        if (existing === undefined || existing === null || existing === '') {
+          normalisedLookup.set(norm, value)
+        }
+      }
     }
 
-    // Log where we found GCLID for debugging
+    // Filters out unresolved template strings like {{contact.field_name}}
+    const usable = (value: unknown) => {
+      if (value === undefined || value === null || value === '') return null
+      if (typeof value === 'string') {
+        const trimmed = value.trim()
+        if (!trimmed) return null
+        if (trimmed.includes('{{') || trimmed.includes('}}')) return null // template not resolved
+        return trimmed
+      }
+      return value
+    }
+
+    const getCustomField = (fieldName: string) =>
+      usable(payload[fieldName]) ??
+      usable(customFields[fieldName]) ??
+      usable(normalisedLookup.get(normaliseKey(fieldName))) ??
+      null
+
+    // String-typed variants for the Lead columns, which are all text.
+    const asText = (value: unknown): string | null => {
+      const v = usable(value)
+      return v === null || v === undefined ? null : String(v)
+    }
+    const getText = (fieldName: string): string | null => asText(getCustomField(fieldName))
+
+    // GCLID can arrive at the root, nested in the contact/attribution objects,
+    // or as a mapped custom field under any spelling. getCustomField covers the
+    // root, customFields and the normalised names, so only the nested objects
+    // need naming explicitly here.
+    const gclid =
+      getText('gclid') ??
+      asText(payload.contact?.gclid) ??
+      asText(payload.attributionSource?.gclid) ??
+      asText(payload.contact?.attributionSource?.gclid) ??
+      asText(payload.contact?.lastAttributionSource?.gclid) ??
+      asText(payload.attribution?.gclid) ??
+      null
+
     if (gclid) {
       console.log(`[HighLevel Webhook] GCLID found: ${gclid}`)
     } else {
@@ -109,6 +156,7 @@ export async function POST(request: NextRequest) {
         root: payload.gclid,
         contact: payload.contact?.gclid,
         attributionSource: payload.attributionSource?.gclid,
+        contactAttributionSource: payload.contact?.attributionSource?.gclid,
         attribution: payload.attribution?.gclid,
         customFields: customFields.gclid,
       })
@@ -132,15 +180,6 @@ export async function POST(request: NextRequest) {
     const state = payload.state || location.state || null
     const postalCode = payload.postal_code || location.postalCode || null
 
-    // Helper to get custom field from multiple locations
-    // Filters out unresolved template strings like {{contact.field_name}}
-    const getCustomField = (fieldName: string) => {
-      const value = payload[fieldName] || customFields[fieldName] || null
-      if (value && typeof value === 'string' && (value.includes('{{') || value.includes('}}'))) {
-        return null // Template wasn't resolved
-      }
-      return value
-    }
 
     // Build form data JSON (store all extra fields for reference)
     const formData: Record<string, unknown> = {
@@ -285,39 +324,41 @@ export async function POST(request: NextRequest) {
       payload.attributionSource ||
       {}
 
-    // UTM Parameters - extract from attribution source
-    const utmSource = attributionSource.utmSource || payload.utm_source || null
-    const utmMedium = attributionSource.utmMedium || payload.utm_medium || null
-    const utmCampaign = attributionSource.campaign || attributionSource.utmCampaign || payload.utm_campaign || null
-    const utmContent = attributionSource.utmContent || payload.utm_content || null
+    // UTM parameters. HighLevel's own attributionSource wins when present (it
+    // reflects the real browser session); otherwise fall back to whatever the
+    // workflow mapped through, under any spelling.
+    const utmSource = asText(attributionSource.utmSource) ?? getText('utm_source')
+    const utmMedium = asText(attributionSource.utmMedium) ?? getText('utm_medium')
+    const utmCampaign =
+      asText(attributionSource.campaign) ??
+      asText(attributionSource.utmCampaign) ??
+      getText('utm_campaign')
+    const utmContent = asText(attributionSource.utmContent) ?? getText('utm_content')
     // `utm_term` is what the landing-page form sends; `utm_keyword` is the
     // older HighLevel-side name. Accept either.
     const utmKeyword =
-      attributionSource.utmKeyword ||
-      attributionSource.utmTerm ||
-      payload.utm_term ||
-      payload.utm_keyword ||
-      null
-    const utmMatchtype = attributionSource.utmMatchtype || payload.utm_matchtype || null
-    const campaignId = attributionSource.campaignId || payload.campaign_id || null
-    const adGroupId = attributionSource.adGroupId || payload.ad_group_id || null
-    const adId = attributionSource.adId || payload.ad_id || null
+      asText(attributionSource.utmKeyword) ??
+      asText(attributionSource.utmTerm) ??
+      getText('utm_term') ??
+      getText('utm_keyword')
+    const utmMatchtype =
+      asText(attributionSource.utmMatchtype) ?? getText('utm_matchtype')
+    const campaignId = asText(attributionSource.campaignId) ?? getText('campaign_id')
+    const adGroupId = asText(attributionSource.adGroupId) ?? getText('ad_group_id')
+    const adId = asText(attributionSource.adId) ?? getText('ad_id')
 
-    // Landing page + referrer, sent by the landing-page form.
+    // Landing page + referrer.
     const landingPageUrl =
-      payload.landing_page ||
-      payload.page ||
-      attributionSource.url ||
-      attributionSource.landingPage ||
+      getText('landing_page') ??
+      getText('page') ??
+      asText(attributionSource.url) ??
+      asText(attributionSource.landingPage) ??
       null
-    const referrerUrl = payload.referrer || attributionSource.referrer || null
+    const referrerUrl = getText('referrer') ?? asText(attributionSource.referrer) ?? null
 
-    // Also check attribution source for GCLID/GBRAID/WBRAID if not found at root
-    if (!gclid) {
-      gclid = attributionSource.gclid || null
-    }
-    const gbraid = payload.gbraid || attributionSource.gbraid || null
-    const wbraid = payload.wbraid || attributionSource.wbraid || null
+    // iOS click identifiers, same lookup treatment as gclid.
+    const gbraid = getText('gbraid') ?? asText(attributionSource.gbraid) ?? null
+    const wbraid = getText('wbraid') ?? asText(attributionSource.wbraid) ?? null
 
     // Log attribution data for debugging
     console.log(`[HighLevel Webhook] Attribution data:`, {
