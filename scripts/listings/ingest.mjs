@@ -68,6 +68,25 @@ const PLACEHOLDER = {
 // with — one agent found a lead-gen shell publishing exactly that.
 const FAKE_PHONE = /^\d{3}(5550(1\d\d|100)|5551234|0000000|1234567|1111111)$/
 
+// A confirmed lead-gen operation, verified rather than merely suspected.
+//
+// Four brands — Best Car Glass, Jacks Auto Glass, Flys Auto Glass, Faster
+// Windshields — published from one Wix template farm on default
+// admin#####.wixsite.com subdomains, claiming the same ~83 locations across
+// the same four states under names supposedly founded three years apart.
+//
+// What proved it was not the naming. It was the phone numbers: 786-707-4418
+// is "Flys" and 786-707-4419 is "Jacks"; 954-633-2196 is "Faster" and
+// 954-633-2236 is "Best Car Glass". Independent businesses in different cities
+// do not draw from one DID block. And every address we checked hosts something
+// else — a 1913 single-family house, a brewery, a roofing warehouse.
+//
+// Name repetition alone is NOT evidence: this directory holds 18 unrelated
+// "Low Price Auto Glass" shops across 16 area codes and they are real. Shared
+// telephone infrastructure is the signal.
+const FAKE_NETWORK = /^(best car glass|jacks? auto ?glass|flys? auto ?glass|faster windshields?)$/i
+const FAKE_BLOCKS = /^(786707|954633|954623|407358|727509|786522|786361|407378|941257|602535|727470)/
+
 // Claims we cannot verify and the brief forbids inventing.
 const UNVERIFIABLE = /\b\d(\.\d)?\s*(star|stars)\b|\b\d+\+?\s*(years?|yrs)\b|\b\d+\s*(reviews?|ratings?)\b|award[- ]winning|\bbest\b in|#1\b|top[- ]rated|highest[- ]rated|voted\b|guarantee[ds]?\b.*lifetime|A\+ rated/i
 
@@ -246,6 +265,8 @@ for (const r of raw) {
   if (CHAIN.test(r.name)) { rej(r, 'national chain/franchise'); continue }
   if (DISTRIBUTOR.test(r.name)) { rej(r, 'distributor, not a shop'); continue }
   if (FAKE_PHONE.test(digits(r.phone))) { rej(r, 'placeholder phone number'); continue }
+  if (FAKE_NETWORK.test(String(r.name).trim())) { rej(r, 'known lead-gen network'); continue }
+  if (FAKE_BLOCKS.test(digits(r.phone))) { rej(r, 'phone in a known lead-gen DID block'); continue }
   if (NOT_AUTOGLASS.test(r.name)) { rej(r, 'not an auto glass specialist'); continue }
 
   const state = String(r.state).toLowerCase().trim()

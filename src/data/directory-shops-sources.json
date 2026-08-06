@@ -3569,11 +3569,6 @@
   "tier": "aggregator",
   "addedAt": "2026-08-02"
  },
- "jacks-auto-glass": {
-  "source": "https://www.yellowpages.com/bradenton-fl/auto-glass-repair",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
  "auto-glass-central-washington": {
   "source": "https://www.autoglasscentraldc.com/",
   "tier": "own-site",
@@ -3770,11 +3765,6 @@
   "addedAt": "2026-08-02"
  },
  "a-tier-auto-glass": {
-  "source": "https://www.yellowpages.com/orlando-fl/auto-glass-repair",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
- "best-car-glass": {
   "source": "https://www.yellowpages.com/orlando-fl/auto-glass-repair",
   "tier": "aggregator",
   "addedAt": "2026-08-02"
@@ -4360,11 +4350,6 @@
   "addedAt": "2026-08-02"
  },
  "anytime-auto-glass-service": {
-  "source": "https://www.yellowpages.com/sanford-fl/auto-glass-repair",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
- "flys-auto-glass": {
   "source": "https://www.yellowpages.com/sanford-fl/auto-glass-repair",
   "tier": "aggregator",
   "addedAt": "2026-08-02"
@@ -5839,23 +5824,8 @@
   "tier": "own-site",
   "addedAt": "2026-08-02"
  },
- "jacks-auto-glass-north-miami-beach": {
-  "source": "https://www.yellowpages.com/north-miami-beach-fl/auto-glass-repair",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
- "best-car-glass-north-miami": {
-  "source": "https://www.yellowpages.com/north-miami-beach-fl/auto-glass-repair",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
  "sorrento-s-windshield-replacement-shop": {
   "source": "https://www.yellowpages.com/north-miami-beach-fl/auto-glass-repair",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
- "flys-auto-glass-miami": {
-  "source": "https://www.yellowpages.com/miami-beach-fl/auto-glass-repair",
   "tier": "aggregator",
   "addedAt": "2026-08-02"
  },
@@ -6482,11 +6452,6 @@
  "universal-glass": {
   "source": "https://universalglassaz.com",
   "tier": "own-site",
-  "addedAt": "2026-08-02"
- },
- "jacks-auto-glass-glendale": {
-  "source": "https://www.yellowpages.com/glendale-az/auto-glass-repair",
-  "tier": "aggregator",
   "addedAt": "2026-08-02"
  },
  "blue-line-auto-glass": {
@@ -7825,16 +7790,6 @@
   "addedAt": "2026-08-02"
  },
  "florida-mobile-glass-fort-lauderdale": {
-  "source": "https://www.yellowpages.com/fort-lauderdale-fl/glass-auto-plate-window-etc",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
- "faster-windshield-fort-lauderdale": {
-  "source": "https://www.yellowpages.com/fort-lauderdale-fl/glass-auto-plate-window-etc",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
- "flys-auto-glass-fort-lauderdale": {
   "source": "https://www.yellowpages.com/fort-lauderdale-fl/glass-auto-plate-window-etc",
   "tier": "aggregator",
   "addedAt": "2026-08-02"
