@@ -1679,11 +1679,6 @@
   "tier": "aggregator",
   "addedAt": "2026-07-27"
  },
- "abc-windshield": {
-  "source": "https://www.yellowpages.com/dearborn-mi/auto-glass-repair",
-  "tier": "aggregator",
-  "addedAt": "2026-07-27"
- },
  "all-star-auto-glass-allentown": {
   "source": "https://allstarautoglasspa.com/contact/",
   "tier": "own-site",
@@ -3554,22 +3549,12 @@
   "tier": "aggregator",
   "addedAt": "2026-08-02"
  },
- "abc-windshield-bradenton": {
-  "source": "https://www.yellowpages.com/bradenton-fl/auto-glass-repair",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
  "gulf-coast-auto-glass-service": {
   "source": "https://www.yellowpages.com/bradenton-fl/auto-glass-repair",
   "tier": "aggregator",
   "addedAt": "2026-08-02"
  },
  "quality-counts-auto-glass": {
-  "source": "https://www.yellowpages.com/bradenton-fl/auto-glass-repair",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
- "jacks-auto-glass": {
   "source": "https://www.yellowpages.com/bradenton-fl/auto-glass-repair",
   "tier": "aggregator",
   "addedAt": "2026-08-02"
@@ -3679,11 +3664,6 @@
   "tier": "aggregator",
   "addedAt": "2026-08-02"
  },
- "abc-windshield-dearborn-heights": {
-  "source": "https://www.yellowpages.com/detroit-mi/auto-glass-repair",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
  "grand-river-glass": {
   "source": "https://www.yellowpages.com/detroit-mi/auto-glass-repair",
   "tier": "aggregator",
@@ -3770,11 +3750,6 @@
   "addedAt": "2026-08-02"
  },
  "a-tier-auto-glass": {
-  "source": "https://www.yellowpages.com/orlando-fl/auto-glass-repair",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
- "best-car-glass": {
   "source": "https://www.yellowpages.com/orlando-fl/auto-glass-repair",
   "tier": "aggregator",
   "addedAt": "2026-08-02"
@@ -4364,11 +4339,6 @@
   "tier": "aggregator",
   "addedAt": "2026-08-02"
  },
- "flys-auto-glass": {
-  "source": "https://www.yellowpages.com/sanford-fl/auto-glass-repair",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
  "diamond-glass": {
   "source": "https://www.yellowpages.com/sanford-fl/auto-glass-repair",
   "tier": "aggregator",
@@ -4570,11 +4540,6 @@
   "addedAt": "2026-08-02"
  },
  "hollywood-car-glass": {
-  "source": "https://www.yellowpages.com/los-angeles-ca/auto-glass-repair",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
- "abc-windshield-los-angeles": {
   "source": "https://www.yellowpages.com/los-angeles-ca/auto-glass-repair",
   "tier": "aggregator",
   "addedAt": "2026-08-02"
@@ -4850,11 +4815,6 @@
   "addedAt": "2026-08-02"
  },
  "1-stop-glass-aurora": {
-  "source": "https://www.yellowpages.com/aurora-co/auto-glass-repair",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
- "abc-windshield-aurora": {
   "source": "https://www.yellowpages.com/aurora-co/auto-glass-repair",
   "tier": "aggregator",
   "addedAt": "2026-08-02"
@@ -5839,23 +5799,8 @@
   "tier": "own-site",
   "addedAt": "2026-08-02"
  },
- "jacks-auto-glass-north-miami-beach": {
-  "source": "https://www.yellowpages.com/north-miami-beach-fl/auto-glass-repair",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
- "best-car-glass-north-miami": {
-  "source": "https://www.yellowpages.com/north-miami-beach-fl/auto-glass-repair",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
  "sorrento-s-windshield-replacement-shop": {
   "source": "https://www.yellowpages.com/north-miami-beach-fl/auto-glass-repair",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
- "flys-auto-glass-miami": {
-  "source": "https://www.yellowpages.com/miami-beach-fl/auto-glass-repair",
   "tier": "aggregator",
   "addedAt": "2026-08-02"
  },
@@ -6389,11 +6334,6 @@
   "tier": "aggregator",
   "addedAt": "2026-08-02"
  },
- "abc-windshield-charlotte": {
-  "source": "https://www.yellowpages.com/charlotte-nc/auto-glass-repair",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
  "carolina-windshield-centers": {
   "source": "https://www.yellowpages.com/charlotte-nc/auto-glass-repair",
   "tier": "aggregator",
@@ -6482,11 +6422,6 @@
  "universal-glass": {
   "source": "https://universalglassaz.com",
   "tier": "own-site",
-  "addedAt": "2026-08-02"
- },
- "jacks-auto-glass-glendale": {
-  "source": "https://www.yellowpages.com/glendale-az/auto-glass-repair",
-  "tier": "aggregator",
   "addedAt": "2026-08-02"
  },
  "blue-line-auto-glass": {
@@ -7829,16 +7764,6 @@
   "tier": "aggregator",
   "addedAt": "2026-08-02"
  },
- "faster-windshield-fort-lauderdale": {
-  "source": "https://www.yellowpages.com/fort-lauderdale-fl/glass-auto-plate-window-etc",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
- "flys-auto-glass-fort-lauderdale": {
-  "source": "https://www.yellowpages.com/fort-lauderdale-fl/glass-auto-plate-window-etc",
-  "tier": "aggregator",
-  "addedAt": "2026-08-02"
- },
  "ms-glass-outlet-vancouver": {
   "source": "https://www.msglassoutlet.com/auto-glass-repair-vancouver-wa",
   "tier": "own-site",
@@ -8083,5 +8008,5535 @@
   "source": "https://www.yellowpages.com/dracut-ma/glass-auto-plate-window-etc",
   "tier": "aggregator",
   "addedAt": "2026-08-02"
+ },
+ "hunter-s-auto-glass-llc": {
+  "source": "https://www.huntersmobileautoglass.com/slidell",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "southern-auto-glass-inc": {
+  "source": "https://southernautoglass.net/contact-us.html",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "richard-s-auto-glass": {
+  "source": "https://www.richardsautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-repair-of-macon": {
+  "source": "https://autoglassrepairmacon.com/contact/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-4-less-riverside": {
+  "source": "https://riversideautoglass4less.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "integrity-auto-glass-nuevo": {
+  "source": "https://www.integrity-autoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "safe-auto-glass-inc-waukesha": {
+  "source": "https://www.safeautoglassinc.com/auto-glass-waukesha-wi",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-unlimited-llc": {
+  "source": "https://autoglassunlimited.net/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-guy": {
+  "source": "https://www.yellowpages.com/macon-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "crystal-clear-auto-glass": {
+  "source": "https://www.yellowpages.com/kennewick-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "big-lach-auto-glass": {
+  "source": "https://www.yellowpages.com/kennewick-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "allison-auto-glass": {
+  "source": "https://www.yellowpages.com/poughkeepsie-ny/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "safe-way-auto-glass": {
+  "source": "https://www.yellowpages.com/poughkeepsie-ny/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "palisi-auto-glass-co": {
+  "source": "https://www.yellowpages.com/poughkeepsie-ny/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mjd-windshield-repair": {
+  "source": "https://www.yellowpages.com/poughkeepsie-ny/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "aarrow-auto-glass": {
+  "source": "https://www.yellowpages.com/lancaster-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "professional-glass-and-windshields-east-petersburg": {
+  "source": "https://www.yellowpages.com/lancaster-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-masters-roswell": {
+  "source": "https://autoglassmasters.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-by-reggie": {
+  "source": "https://www.yellowpages.com/atlanta-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "chip-s-auto-glass-chamblee": {
+  "source": "https://www.yellowpages.com/atlanta-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "checkpoint-auto-glass": {
+  "source": "https://www.yellowpages.com/atlanta-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "windshield-masters-co": {
+  "source": "https://www.yellowpages.com/atlanta-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "eric-s-auto-glass": {
+  "source": "https://www.yellowpages.com/riverside-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "cheef-auto-glass": {
+  "source": "https://www.yellowpages.com/riverside-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "j-and-r-sound-and-auto-glass": {
+  "source": "https://www.yellowpages.com/riverside-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "hamner-auto-glass": {
+  "source": "https://www.yellowpages.com/riverside-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "m-g-s-auto-glass": {
+  "source": "https://www.yellowpages.com/riverside-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "yoder-s-auto-glass": {
+  "source": "https://www.yellowpages.com/goshen-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "quality-glass": {
+  "source": "https://www.yellowpages.com/elkhart-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "alpha-auto-glass-pasco": {
+  "source": "https://www.yellowpages.com/pasco-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "u-pay-less-auto-glass": {
+  "source": "https://www.yellowpages.com/pasco-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "genuine-auto-glass-pasco": {
+  "source": "https://www.yellowpages.com/pasco-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "pro-auto-glass-richland": {
+  "source": "https://www.yellowpages.com/richland-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "wisconsin-windshield-centers": {
+  "source": "https://www.yellowpages.com/brookfield-wi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "hypersonic-auto-glass-brookfield": {
+  "source": "https://www.yellowpages.com/brookfield-wi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "sameday-autoglass": {
+  "source": "https://www.yellowpages.com/brookfield-wi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mobile-power-window-repair": {
+  "source": "https://www.yellowpages.com/warner-robins-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "aaron-auto-glass-wappingers-falls": {
+  "source": "https://www.yellowpages.com/wappingers-falls-ny/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "tri-county-glass-and-doors-inc": {
+  "source": "https://www.yellowpages.com/poughkeepsie-ny/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-okay-auto-glass-llc": {
+  "source": "https://aokayautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "a-okay-auto-glass-llc-mount-joy": {
+  "source": "https://www.yellowpages.com/lancaster-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bill-s-autoglass-llc": {
+  "source": "https://www.yellowpages.com/lancaster-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mobile-auto-glass-ephrata": {
+  "source": "https://www.yellowpages.com/ephrata-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "kennedy-glass": {
+  "source": "https://www.yellowpages.com/lawrence-ks/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-jim": {
+  "source": "https://www.yellowpages.com/lawrence-ks/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "husky-glass-service": {
+  "source": "https://www.yellowpages.com/lawrence-ks/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "integrity-glass": {
+  "source": "https://www.yellowpages.com/lawrence-ks/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "the-tint-guy": {
+  "source": "https://www.yellowpages.com/lawrence-ks/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "jayhawk-glass-co": {
+  "source": "https://www.yellowpages.com/topeka-ks/jayhawk-auto-glass",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "jayhawk-body-shop-and-glass": {
+  "source": "https://www.yellowpages.com/topeka-ks/jayhawk-auto-glass",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "i-c-auto-glass": {
+  "source": "https://www.yellowpages.com/topeka-ks/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "clear-view-glass-works": {
+  "source": "https://www.yellowpages.com/slidell-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "clear-view-glass-and-oil": {
+  "source": "https://www.yellowpages.com/slidell-la/windshield-repair?page=2",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "d-and-m-glass-corp": {
+  "source": "https://www.yellowpages.com/elkhart-in/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-leprechaun": {
+  "source": "https://www.yellowpages.com/elkhart-in/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "duncan-auto-glass": {
+  "source": "https://www.yellowpages.com/elkhart-in/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "dave-s-windshield-repair": {
+  "source": "https://www.yellowpages.com/elkhart-in/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "eclipse-window-tinting": {
+  "source": "https://www.yellowpages.com/elkhart-in/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "eagles-auto-glass": {
+  "source": "https://www.yellowpages.com/kennewick-wa/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "j-and-m-windshield-of-tri-cities": {
+  "source": "https://www.yellowpages.com/kennewick-wa/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "cortes-upholstery-and-auto-glass": {
+  "source": "https://www.yellowpages.com/kennewick-wa/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "crow-s-custom-glass": {
+  "source": "https://www.yellowpages.com/macon-ga/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "gwm-commercial-auto-glass": {
+  "source": "https://www.yellowpages.com/macon-ga/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "ameri-glass": {
+  "source": "https://www.yellowpages.com/slidell-la/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "graffia-s-auto-glass": {
+  "source": "https://www.yellowpages.com/slidell-la/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "charbonnet-auto-glass": {
+  "source": "https://www.yellowpages.com/slidell-la/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "classic-auto-glass-kansas-city": {
+  "source": "https://www.yellowpages.com/kansas-city-ks/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "allied-glass-experts": {
+  "source": "https://www.yellowpages.com/kansas-city-ks/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "lansing-automotive-glass-service": {
+  "source": "https://www.yellowpages.com/kansas-city-ks/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-services-new-berlin": {
+  "source": "https://www.yellowpages.com/new-berlin-wi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "lugo-s-stronglass-llc": {
+  "source": "https://www.yellowpages.com/augusta-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "absolute-windshield-chip-repair-specialist-of-augusta-llc": {
+  "source": "https://www.yellowpages.com/augusta-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "all-clear-windshield-repair-and-headlight-restoration": {
+  "source": "https://www.yellowpages.com/augusta-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "clear-view-auto-glass": {
+  "source": "https://www.yellowpages.com/augusta-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "polaris-autoglass": {
+  "source": "https://www.yellowpages.com/fort-collins-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "cracks-and-chips-windshield-repair": {
+  "source": "https://www.yellowpages.com/fort-collins-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "experience-auto-glass": {
+  "source": "https://www.yellowpages.com/fort-collins-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "usa-windshields-fort-collins": {
+  "source": "https://www.yellowpages.com/fort-collins-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "u-s-auto-glass": {
+  "source": "https://www.yellowpages.com/ocala-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "cals-windshields-ocala": {
+  "source": "https://www.yellowpages.com/ocala-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-express-belleview": {
+  "source": "https://www.yellowpages.com/ocala-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "silver-auto-glass-services": {
+  "source": "https://www.yellowpages.com/ocala-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "big-boulder-auto-glass": {
+  "source": "https://www.yellowpages.com/boulder-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "star-glass-company": {
+  "source": "https://www.yellowpages.com/kalamazoo-mi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "postula-s-auto-glass-center": {
+  "source": "https://www.yellowpages.com/kalamazoo-mi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "active-auto-glass-kalamazoo": {
+  "source": "https://www.yellowpages.com/kalamazoo-mi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "leaders-autoglass": {
+  "source": "https://www.yellowpages.com/kalamazoo-mi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-professionals-olympia": {
+  "source": "https://www.yellowpages.com/olympia-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "dunrite-auto-glass": {
+  "source": "https://www.yellowpages.com/olympia-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "lacey-city-auto-glass": {
+  "source": "https://www.yellowpages.com/olympia-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "fix-all-types-of-auto-glass": {
+  "source": "https://www.yellowpages.com/olympia-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "lacey-mobile-glass-service": {
+  "source": "https://www.yellowpages.com/olympia-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bethel-glass": {
+  "source": "https://www.yellowpages.com/olympia-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mobile-auto-glass-plus": {
+  "source": "https://www.yellowpages.com/santa-maria-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "cal-state-auto-glass-s-m": {
+  "source": "https://www.yellowpages.com/santa-maria-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-experts-santa-maria": {
+  "source": "https://www.yellowpages.com/santa-maria-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "knight-auto-glass": {
+  "source": "https://www.yellowpages.com/saint-george-ut/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "the-chip-master": {
+  "source": "https://www.yellowpages.com/saint-george-ut/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "beards-auto-glass": {
+  "source": "https://www.yellowpages.com/state-college-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-one-auto-care-and-glass": {
+  "source": "https://www.yellowpages.com/altoona-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "laurel-glass-and-auto": {
+  "source": "https://www.yellowpages.com/altoona-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "thumpers-classic-glass": {
+  "source": "https://www.yellowpages.com/dayton-oh/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "windshield-all-day": {
+  "source": "https://www.yellowpages.com/dayton-oh/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-services-englewood": {
+  "source": "https://www.yellowpages.com/dayton-oh/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "triple-c-glass-shop-inc": {
+  "source": "https://www.yellowpages.com/dayton-oh/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "precision-auto-glass-boulder": {
+  "source": "https://www.yellowpages.com/boulder-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "pure-auto-glass": {
+  "source": "https://www.yellowpages.com/longmont-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "clear-vision-auto-glass-longmont": {
+  "source": "https://www.yellowpages.com/longmont-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "premium-auto-glass-longmont": {
+  "source": "https://www.yellowpages.com/longmont-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-and-body-of-longmont": {
+  "source": "https://www.yellowpages.com/longmont-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "red-s-auto-glass-longmont": {
+  "source": "https://www.yellowpages.com/longmont-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "anchor-auto-glass-and-tint": {
+  "source": "https://www.yellowpages.com/loveland-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "o-e-auto-glass": {
+  "source": "https://www.yellowpages.com/loveland-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "certified-auto-glass-loveland": {
+  "source": "https://www.yellowpages.com/loveland-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "sos-autoglass-people": {
+  "source": "https://www.yellowpages.com/loveland-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "2-guys-auto-glass": {
+  "source": "https://www.yellowpages.com/lompoc-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "jay-s-glass": {
+  "source": "https://www.yellowpages.com/lompoc-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "apex-auto-glass-and-tinting": {
+  "source": "https://www.yellowpages.com/santa-maria-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-new-view-auto-glass-saint-george": {
+  "source": "https://anvaglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "a-plus-quality-glass-co": {
+  "source": "https://www.yellowpages.com/saint-george-ut/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "jc-auto-glass-inc": {
+  "source": "https://www.yellowpages.com/elgin-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "o-briens-glass-inc": {
+  "source": "https://www.yellowpages.com/martinez-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-specialists-evans": {
+  "source": "https://www.yellowpages.com/martinez-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "express-auto-glass-portage": {
+  "source": "https://www.yellowpages.com/portage-mi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bobs-glass-shop": {
+  "source": "https://www.yellowpages.com/kalamazoo-mi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "windshield-brother-mattawan": {
+  "source": "https://www.yellowpages.com/kalamazoo-mi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "shope-glass-and-radiator-company": {
+  "source": "https://www.yellowpages.com/tyrone-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "diamond-glass-warriors-mark": {
+  "source": "https://www.yellowpages.com/state-college-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "rapid-auto-glass-solutions-inc": {
+  "source": "https://www.yellowpages.com/carpentersville-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-mender-inc": {
+  "source": "https://www.glassmenderinc.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "keystone-auto-glass": {
+  "source": "https://www.superpages.com/altoona-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "amera-glass-inc": {
+  "source": "https://www.superpages.com/altoona-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "centre-glass-company": {
+  "source": "https://www.superpages.com/state-college-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-inc-state-college": {
+  "source": "https://www.superpages.com/state-college-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "precision-auto-glass-st-george": {
+  "source": "https://www.superpages.com/saint-george-ut/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "red-rock-auto-glass-llc": {
+  "source": "https://www.redrockautoglassllc.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-warehouse-naples": {
+  "source": "https://www.yellowpages.com/naples-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "j-c-s-auto-glass-inc": {
+  "source": "https://www.yellowpages.com/naples-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-solutions-fort-pierce": {
+  "source": "https://www.yellowpages.com/fort-pierce-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "chauncey-s-glass-inc": {
+  "source": "https://www.yellowpages.com/fort-pierce-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "chip-s-auto-glass-fort-pierce": {
+  "source": "https://www.yellowpages.com/fort-pierce-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glareout-home-and-auto-glass-tinting": {
+  "source": "https://www.yellowpages.com/fort-pierce-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "quality-auto-glass-mobile-service-inc": {
+  "source": "https://www.yellowpages.com/fort-pierce-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "atlantic-auto-glass": {
+  "source": "https://www.yellowpages.com/fort-pierce-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "all-auto-glass-port-saint-lucie": {
+  "source": "https://www.yellowpages.com/port-saint-lucie-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-solutions-and-electronic": {
+  "source": "https://www.yellowpages.com/port-saint-lucie-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-new-view-auto-glass-l-l-c": {
+  "source": "https://www.yellowpages.com/port-saint-lucie-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "clear-view-windshield-repair": {
+  "source": "https://www.yellowpages.com/amarillo-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "clayton-s-glass": {
+  "source": "https://www.yellowpages.com/amarillo-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "wes-tex-windshields-repair": {
+  "source": "https://www.yellowpages.com/amarillo-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "fortner-auto-glass": {
+  "source": "https://www.yellowpages.com/amarillo-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "dale-s-texas-auto-glass": {
+  "source": "https://www.yellowpages.com/amarillo-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "professional-auto-glass-and-more": {
+  "source": "https://www.yellowpages.com/amarillo-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "amarillo-area-glass": {
+  "source": "https://www.yellowpages.com/amarillo-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "ric-a-shay-auto-glass": {
+  "source": "https://www.yellowpages.com/amarillo-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "johns-auto-glass": {
+  "source": "https://www.yellowpages.com/west-des-moines-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "advanced-windshield-repair": {
+  "source": "https://www.yellowpages.com/west-des-moines-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "solid-auto-glass": {
+  "source": "https://www.yellowpages.com/west-des-moines-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "r-and-b-auto-glass": {
+  "source": "https://www.yellowpages.com/des-moines-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "all-auto-glass-direct-inc": {
+  "source": "https://www.yellowpages.com/west-des-moines-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "sun-auto-glass": {
+  "source": "https://www.yellowpages.com/west-des-moines-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "c-and-j-auto-collision-parts-and-glass": {
+  "source": "https://www.yellowpages.com/salinas-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "green-lite-auto-glass": {
+  "source": "https://www.yellowpages.com/salinas-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "augie-s-glass-shop": {
+  "source": "https://www.yellowpages.com/salinas-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mobile-glass-service": {
+  "source": "https://www.yellowpages.com/salinas-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "all-auto-glass-binghamton": {
+  "source": "https://www.yellowpages.com/binghamton-ny/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-to-z-glass-and-windshields-endwell": {
+  "source": "https://www.yellowpages.com/binghamton-ny/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "competitive-glass": {
+  "source": "https://www.yellowpages.com/binghamton-ny/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "budget-auto-glass-vestal": {
+  "source": "https://www.budgetglass.net/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "california-auto-glass-monterey": {
+  "source": "https://www.yellowpages.com/monterey-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "on-site-auto-glass": {
+  "source": "https://www.yellowpages.com/monterey-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "jackson-mobile-auto-glass": {
+  "source": "https://www.yellowpages.com/visalia-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "chad-s-auto-glass": {
+  "source": "https://www.yellowpages.com/visalia-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "the-glass-shop": {
+  "source": "https://www.yellowpages.com/visalia-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "jim-s-auto-glass": {
+  "source": "https://www.yellowpages.com/visalia-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "vision-glass-werx": {
+  "source": "https://www.yellowpages.com/visalia-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "best-auto-glass-and-window-tint": {
+  "source": "https://www.yellowpages.com/visalia-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bulls-eye-windshield-repair": {
+  "source": "https://www.yellowpages.com/visalia-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "esm-glass": {
+  "source": "https://www.yellowpages.com/visalia-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "streetsmarts-windshield-repair": {
+  "source": "https://www.yellowpages.com/harlingen-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "stoneshield-windshield-repair": {
+  "source": "https://www.yellowpages.com/harlingen-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "rgv-glass": {
+  "source": "https://www.yellowpages.com/harlingen-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "valley-windshield-repair-and-auto": {
+  "source": "https://www.yellowpages.com/harlingen-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "barlow-s-quality-glass": {
+  "source": "https://www.yellowpages.com/harlingen-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mid-town-glass": {
+  "source": "https://www.yellowpages.com/iowa-city-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "iowa-auto-glass-coralville": {
+  "source": "https://www.yellowpages.com/iowa-city-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "lovetinsky-auto-glass": {
+  "source": "https://www.yellowpages.com/iowa-city-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "tanner-auto-glass": {
+  "source": "https://www.yellowpages.com/charlottesville-va/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "advantage-glass": {
+  "source": "https://www.yellowpages.com/saint-joseph-mo/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "tri-state-auto-glass-country-club": {
+  "source": "https://www.yellowpages.com/saint-joseph-mo/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "central-virginia-auto-glass": {
+  "source": "https://www.yellowpages.com/zion-crossroads-va/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "tanner-s-auto-glass": {
+  "source": "https://www.yellowpages.com/zion-crossroads-va/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-1-windshields": {
+  "source": "https://www.yellowpages.com/zion-crossroads-va/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mccoy-s-family-autoglass": {
+  "source": "https://www.yellowpages.com/zion-crossroads-va/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "dodson-glass-and-mirror-inc": {
+  "source": "https://www.yellowpages.com/charlottesville-va/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "marv-s-glass": {
+  "source": "https://www.superpages.com/iowa-city-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-in-my-town": {
+  "source": "https://www.yellowpages.com/north-liberty-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "windshield-centers-endicott-auto-glass-shop": {
+  "source": "https://www.superpages.com/binghamton-ny/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "marquez-glass": {
+  "source": "https://www.superpages.com/harlingen-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "cheap-auto-glass-co": {
+  "source": "https://www.superpages.com/harlingen-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "windshields-xpress-san-benito": {
+  "source": "https://www.superpages.com/harlingen-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "tr-auto-glass": {
+  "source": "https://www.superpages.com/harlingen-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "missouri-glass-inc": {
+  "source": "https://www.superpages.com/saint-joseph-mo/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "tri-state-auto-glass-saint-joseph": {
+  "source": "https://www.superpages.com/saint-joseph-mo/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "cville-glass": {
+  "source": "https://www.superpages.com/charlottesville-va/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "wagner-s-mobile-glass-and-mirror": {
+  "source": "https://www.yellowpages.com/palmyra-va/mip/wagners-mobile-glass-mirror-480995242",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "ace-auto-glass-stamford": {
+  "source": "https://www.yellowpages.com/stamford-ct/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "ocean-glass-company-north-billerica": {
+  "source": "https://www.oceanglasscompany.com/auto-glass-services",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "a-plus-auto-glass-scranton": {
+  "source": "https://www.yellowpages.com/scranton-pa/mip/a-plus-auto-glass-483329246",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "guardian-auto-glass": {
+  "source": "https://www.yellowpages.com/saginaw-mi/mip/guardian-auto-glass-1996886",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "trans-auto-glass-company": {
+  "source": "https://www.yellowpages.com/saginaw-mi/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "visions-auto-glass": {
+  "source": "https://www.yellowpages.com/saginaw-mi/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "first-class-auto-glass-scranton": {
+  "source": "https://www.yellowpages.com/scranton-pa/mip/first-class-auto-glass-466680113",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "advantage-auto-glass-inc-lakeville": {
+  "source": "https://www.yellowpages.com/lakeville-mn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "twin-cities-auto-glass-burnsville": {
+  "source": "https://www.tcautoglass.net/drop-off-locations/burnsville-auto-glass-repair-replacement/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "stephens-auto-glass-decatur": {
+  "source": "https://stephensautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "chuy-s-auto-glass": {
+  "source": "https://www.yellowpages.com/lancaster-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "advanced-auto-glass-lancaster": {
+  "source": "https://www.yellowpages.com/lancaster-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "best-price-auto-glass-and-tinting-lancaster": {
+  "source": "https://www.yellowpages.com/lancaster-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "s-and-m-auto-glass": {
+  "source": "https://www.yellowpages.com/lancaster-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "aaron-auto-glass-palmdale": {
+  "source": "https://www.yellowpages.com/lancaster-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "action-auto-glass-killeen": {
+  "source": "https://www.yellowpages.com/killeen-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "affiliated-auto-glass": {
+  "source": "https://affiliatedautoglassllc.com/locations/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "james-auto-glass": {
+  "source": "https://jamesautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "chip-control-autoglass": {
+  "source": "https://chipcontrolautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "k-and-n-auto-glass": {
+  "source": "https://www.yellowpages.com/athens-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "diamond-glass-athens": {
+  "source": "https://www.yellowpages.com/athens-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "chip-away-windshield-repair": {
+  "source": "https://www.yellowpages.com/athens-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "flores-auto-glass": {
+  "source": "https://www.yellowpages.com/midland-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "west-texas-windshields-midland": {
+  "source": "https://www.yellowpages.com/midland-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "tj-s-auto-glass-inc": {
+  "source": "https://www.yellowpages.com/la-crosse-wi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-on-wheels": {
+  "source": "https://www.yellowpages.com/la-crosse-wi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "clearview-dent-and-glass-repair": {
+  "source": "https://www.yellowpages.com/la-crosse-wi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bryan-vaughan-s-auto-glass": {
+  "source": "https://www.yellowpages.com/odessa-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "absolute-auto-glass-odessa": {
+  "source": "https://www.yellowpages.com/odessa-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "dirk-s-glass": {
+  "source": "https://www.yellowpages.com/ogden-ut/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "advantage-auto-glass-ogden": {
+  "source": "https://www.yellowpages.com/ogden-ut/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "hotshots-auto-glass": {
+  "source": "https://www.yellowpages.com/ogden-ut/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "superstar-autoglass": {
+  "source": "https://www.yellowpages.com/ogden-ut/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "rapidchip-mobile-repair-llc": {
+  "source": "https://www.yellowpages.com/ogden-ut/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "best-price-auto-glass-goleta": {
+  "source": "https://www.yellowpages.com/santa-barbara-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-experts-santa-barbara": {
+  "source": "https://www.yellowpages.com/santa-barbara-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "ready-auto-glass": {
+  "source": "https://www.yellowpages.com/santa-barbara-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-center": {
+  "source": "https://www.yellowpages.com/athens-ga/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "abc-auto-glass-athens": {
+  "source": "https://www.yellowpages.com/athens-ga/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "unique-auto-glass-lowell": {
+  "source": "https://www.yellowpages.com/lowell-ma/mip/unique-auto-glass-457914391",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "c-and-d-auto-glass-and-repair": {
+  "source": "https://www.yellowpages.com/lawrence-ma/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mount-zion-auto-glass": {
+  "source": "https://mtzionautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "maurhill-auto-glass-inc": {
+  "source": "https://www.yellowpages.com/apple-valley-mn/plate-window-glass-repair-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "jeffs-windshield-repair-services-l-l-c": {
+  "source": "https://www.yellowpages.com/farmington-mn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "ryan-and-gordy-s-glass": {
+  "source": "https://gordysautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "van-wert-glass": {
+  "source": "https://www.yellowpages.com/bay-city-mi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "discount-glass-auto-kawkawlin": {
+  "source": "https://www.yellowpages.com/bay-city-mi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "santa-barbara-windshield-chip-repair": {
+  "source": "https://www.yellowpages.com/goleta-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "ron-cook-windshield-crack-repair": {
+  "source": "https://www.yellowpages.com/goleta-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "tri-state-glass-pros": {
+  "source": "https://www.yellowpages.com/onalaska-wi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "coulee-region-glass": {
+  "source": "https://www.yellowpages.com/onalaska-wi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "alliance-auto-glass": {
+  "source": "https://www.yellowpages.com/midland-tx/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "amigo-s-glass-and-mirror-llc": {
+  "source": "https://www.yellowpages.com/midland-tx/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "citywide-glass": {
+  "source": "https://citywideglass.net/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "cedar-valley-auto-glass": {
+  "source": "https://www.autoglasscv.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "john-s-autobody": {
+  "source": "https://johnsautobodyllc.com/glass-window-replacement",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-solutions-inc": {
+  "source": "https://www.yellowpages.com/waterloo-ia/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-konnection": {
+  "source": "https://www.yellowpages.com/mansfield-oh/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "winter-haven-glass-repair": {
+  "source": "https://winterhavenglassrepair.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "american-auto-glass-sebastian": {
+  "source": "https://americanautoglassvero.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "gene-s-auto-glass": {
+  "source": "https://www.yellowpages.com/vero-beach-fl/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "grey-s-auto-glass-service": {
+  "source": "https://www.superpages.com/winter-haven-fl/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "jhr-auto-glass": {
+  "source": "https://www.superpages.com/haines-city-fl/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "fly-s-auto-glass": {
+  "source": "https://www.superpages.com/haines-city-fl/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "asap-auto-glass-haines-city": {
+  "source": "https://www.superpages.com/haines-city-fl/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "gunther-auto-glass-haines-city": {
+  "source": "https://www.superpages.com/haines-city-fl/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "affordable-glass-inc": {
+  "source": "https://www.yellowpages.com/tuscaloosa-al/affordable-glass",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "northstar-auto-glass": {
+  "source": "https://www.superpages.com/sioux-falls-sd/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "dakotaland-autoglass": {
+  "source": "https://www.superpages.com/sioux-falls-sd/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-express-sioux-falls": {
+  "source": "https://www.superpages.com/sioux-falls-sd/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "g-and-d-viking-glass": {
+  "source": "https://www.superpages.com/sioux-falls-sd/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "chip-doctors-of-sioux-falls": {
+  "source": "https://www.superpages.com/sioux-falls-sd/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "distinct-auto-glass-and-tires": {
+  "source": "https://www.superpages.com/sioux-falls-sd/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "north-hill-glass-and-mirror-co": {
+  "source": "https://www.superpages.com/akron-oh/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "deem-s-glass": {
+  "source": "https://www.superpages.com/akron-oh/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "tim-s-auto-glass": {
+  "source": "https://www.superpages.com/anchorage-ak/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "anchorage-auto-glass": {
+  "source": "https://www.superpages.com/anchorage-ak/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bob-s-auto-glass-anchorage": {
+  "source": "https://www.superpages.com/anchorage-ak/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "alaska-glass-co-mobile-service": {
+  "source": "https://www.superpages.com/anchorage-ak/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "united-safety-auto-glass": {
+  "source": "https://www.superpages.com/anchorage-ak/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "sun-tech-auto-glass-brownsville": {
+  "source": "https://www.superpages.com/brownsville-tx/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "hnos-rodriguez-auto-glass": {
+  "source": "https://www.superpages.com/brownsville-tx/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "browns-auto-glass-replacement": {
+  "source": "https://www.superpages.com/brownsville-tx/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "safeglassworks": {
+  "source": "https://www.superpages.com/brownsville-tx/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "frank-s-glass-and-metal": {
+  "source": "https://www.superpages.com/brownsville-tx/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mini-glass": {
+  "source": "https://www.superpages.com/brownsville-tx/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "amac-autoglass": {
+  "source": "https://www.superpages.com/kissimmee-fl/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-lady": {
+  "source": "https://www.superpages.com/kissimmee-fl/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "major-auto-glass": {
+  "source": "https://www.superpages.com/kissimmee-fl/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-unlimited": {
+  "source": "https://www.superpages.com/new-bedford-ma/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "universal-auto-glass-co": {
+  "source": "https://www.superpages.com/new-bedford-ma/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "pete-s-auto-glass": {
+  "source": "https://www.superpages.com/new-bedford-ma/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glaser-glass": {
+  "source": "https://www.superpages.com/new-bedford-ma/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "central-ohio-glass": {
+  "source": "https://www.superpages.com/mansfield-oh/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-1-glass": {
+  "source": "https://www.superpages.com/bucyrus-oh/auto-windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "accurate-auto-glass-stockton": {
+  "source": "https://www.yellowpages.com/stockton-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "cost-less-auto-glass-and-auto-repair": {
+  "source": "https://www.yellowpages.com/stockton-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-pamer-auto-glass-and-auto-body-repair": {
+  "source": "https://www.yellowpages.com/stockton-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "ap-2-auto-glass": {
+  "source": "https://www.yellowpages.com/stockton-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "g-to-auto-glass": {
+  "source": "https://www.yellowpages.com/stockton-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "classic-auto-glass-inc": {
+  "source": "https://www.yellowpages.com/canton-oh/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "lamb-s-glass-shop": {
+  "source": "https://www.yellowpages.com/canton-oh/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "richmond-hill-auto-glass": {
+  "source": "https://www.yellowpages.com/savannah-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "on-demand-windshield-repair": {
+  "source": "https://www.yellowpages.com/savannah-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "james-auto-glass-savannah": {
+  "source": "https://www.yellowpages.com/savannah-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "morey-s-windshield-repair": {
+  "source": "https://www.yellowpages.com/savannah-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "on-the-go-auto-glass": {
+  "source": "https://www.yellowpages.com/savannah-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-xpress": {
+  "source": "https://www.yellowpages.com/niagara-falls-ny/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-of-wny": {
+  "source": "https://www.yellowpages.com/niagara-falls-ny/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-collision-and-glass": {
+  "source": "https://www.yellowpages.com/niagara-falls-ny/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "arc-auto-glass-inc": {
+  "source": "https://www.yellowpages.com/niagara-falls-ny/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "asap-auto-glass-north-tonawanda": {
+  "source": "https://www.yellowpages.com/niagara-falls-ny/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "joe-s-mobile-glass-llc": {
+  "source": "https://www.yellowpages.com/medford-or/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "advantage-auto-glass-medford": {
+  "source": "https://www.yellowpages.com/medford-or/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "applegate-auto-glass": {
+  "source": "https://www.yellowpages.com/medford-or/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "independence-auto-glass": {
+  "source": "https://www.yellowpages.com/medford-or/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "budget-glass-of-medford": {
+  "source": "https://www.yellowpages.com/medford-or/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "jj-s-auto-glass-services": {
+  "source": "https://www.yellowpages.com/new-london-ct/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "brothers-auto-glass-groton": {
+  "source": "https://www.yellowpages.com/new-london-ct/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-of-new-england-inc": {
+  "source": "https://www.yellowpages.com/new-london-ct/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-connection": {
+  "source": "https://www.yellowpages.com/new-london-ct/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "payless-auto-glass-norwich": {
+  "source": "https://www.yellowpages.com/new-london-ct/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "port-city-glass": {
+  "source": "https://www.yellowpages.com/portland-me/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "onsite-auto-glass-windham": {
+  "source": "https://www.yellowpages.com/portland-me/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "good-price-auto-glass": {
+  "source": "https://www.yellowpages.com/portland-me/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "hypersonic-auto-glass-saint-charles": {
+  "source": "https://www.yellowpages.com/saint-charles-mo/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "missouri-valley-glass": {
+  "source": "https://www.yellowpages.com/saint-charles-mo/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "k-and-d-glass-specialist-llc": {
+  "source": "https://www.yellowpages.com/saint-charles-mo/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "continental-glass": {
+  "source": "https://www.yellowpages.com/baytown-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "action-glass-baytown": {
+  "source": "https://www.yellowpages.com/baytown-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "vip-glass-services": {
+  "source": "https://www.yellowpages.com/baytown-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "georges-glass-tint-and-auto": {
+  "source": "https://www.yellowpages.com/baytown-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "performance-auto-glass": {
+  "source": "https://www.yellowpages.com/johnson-city-tn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "all-american-auto-glass-inc-johnson-city": {
+  "source": "https://www.yellowpages.com/johnson-city-tn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "danny-s-auto-glass-and-upholstery": {
+  "source": "https://www.yellowpages.com/johnson-city-tn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "appalachian-auto-glass-by-rooster": {
+  "source": "https://www.yellowpages.com/johnson-city-tn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "ace-auto-glass-jonesborough": {
+  "source": "https://www.yellowpages.com/johnson-city-tn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "start-glass": {
+  "source": "https://www.yellowpages.com/massillon-oh/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "classic-auto-glass-canal-fulton": {
+  "source": "https://www.yellowpages.com/massillon-oh/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "b-and-v-auto-glass": {
+  "source": "https://www.yellowpages.com/olive-branch-ms/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mid-south-auto-glass": {
+  "source": "https://www.yellowpages.com/olive-branch-ms/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "american-auto-glass-la-porte": {
+  "source": "https://www.yellowpages.com/la-porte-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "airborne-auto-glass-and-windshield-repair-la-porte": {
+  "source": "https://www.yellowpages.com/la-porte-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "chip-away-windshield-repair-la-porte": {
+  "source": "https://www.yellowpages.com/la-porte-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "1st-choice-windshield-repair": {
+  "source": "https://www.yellowpages.com/la-porte-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bucky-s-auto-glass": {
+  "source": "https://www.yellowpages.com/portland-me/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "one-source-auto-glass": {
+  "source": "https://www.onesourceautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "adams-auto-glass": {
+  "source": "https://www.yellowpages.com/portland-me/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "all-auto-glass-tallahassee": {
+  "source": "https://www.yellowpages.com/tallahassee-fl/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "low-price-auto-glass-tallahassee": {
+  "source": "https://www.yellowpages.com/tallahassee-fl/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bill-s-glass-and-windshields": {
+  "source": "https://www.yellowpages.com/medford-or/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bill-s-glass-and-windshields-ashland": {
+  "source": "https://www.yellowpages.com/medford-or/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "guaranteed-auto-glass": {
+  "source": "https://www.yellowpages.com/norwich-ct/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "performance-auto-glass-elizabethton": {
+  "source": "https://www.yellowpages.com/elizabethton-tn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "alan-s-auto-glass": {
+  "source": "https://www.yellowpages.com/pooler-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "arc-auto-glass-inc-niagara-falls": {
+  "source": "https://www.yellowpages.com/niagara-falls-ny/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "vision-auto-and-plate": {
+  "source": "https://www.yellowpages.com/niagara-falls-ny/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "snappy-windshield-repair": {
+  "source": "https://www.yellowpages.com/southaven-ms/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "brown-s-auto-glass-olive-branch": {
+  "source": "https://www.yellowpages.com/southaven-ms/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "desoto-glass": {
+  "source": "https://www.yellowpages.com/southaven-ms/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "pinnacle-autoglass": {
+  "source": "https://www.yellowpages.com/groton-ct/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "payless-auto-glass-new-london": {
+  "source": "https://www.yellowpages.com/groton-ct/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "badazz-glass": {
+  "source": "https://www.yellowpages.com/medford-or/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "coach-auto-glass": {
+  "source": "https://www.yellowpages.com/medford-or/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-of-america": {
+  "source": "https://www.yellowpages.com/johnson-city-tn/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "sullivan-glass-repair": {
+  "source": "https://www.yellowpages.com/windham-me/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "superior-glass": {
+  "source": "https://www.yellowpages.com/windham-me/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "tints-r-us": {
+  "source": "https://www.yellowpages.com/portland-me/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "integraglass": {
+  "source": "https://www.yellowpages.com/orem-ut/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "perfection-auto-glass-pleasant-grove": {
+  "source": "https://www.yellowpages.com/springville-ut/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "rocky-mountain-glass-and-tint": {
+  "source": "https://www.yellowpages.com/springville-ut/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "affordable-auto-glass-chattanooga": {
+  "source": "https://www.yellowpages.com/chattanooga-tn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "quality-auto-glass-chattanooga": {
+  "source": "https://www.yellowpages.com/chattanooga-tn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "chattanooga-windshields": {
+  "source": "https://www.yellowpages.com/chattanooga-tn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "new-vision-auto-glass": {
+  "source": "https://www.yellowpages.com/chattanooga-tn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "chickamauga-auto-glass": {
+  "source": "https://www.yellowpages.com/chattanooga-tn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "d-and-h-auto-glass": {
+  "source": "https://www.yellowpages.com/chattanooga-tn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-technology-york": {
+  "source": "https://www.yellowpages.com/york-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "challenger-auto-glass": {
+  "source": "https://www.yellowpages.com/york-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-on-demand": {
+  "source": "https://www.yellowpages.com/hanover-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "superior-1-auto-glass": {
+  "source": "https://www.yellowpages.com/hanover-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "star-auto-glass-and-windshield": {
+  "source": "https://www.yellowpages.com/erie-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "hoffman-glass-co-inc": {
+  "source": "https://www.yellowpages.com/erie-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "star-technology-windshield-repair": {
+  "source": "https://www.yellowpages.com/erie-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "northeast-glass": {
+  "source": "https://www.yellowpages.com/erie-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "ozark-mountain-glass-inc": {
+  "source": "https://www.yellowpages.com/fayetteville-ar/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "alpha-auto-glass-fayetteville": {
+  "source": "https://www.yellowpages.com/fayetteville-ar/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "american-auto-glass-bentonville": {
+  "source": "https://www.yellowpages.com/bentonville-ar/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bentonville-glass-inc": {
+  "source": "https://www.yellowpages.com/bentonville-ar/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "abram-s-glass-inc": {
+  "source": "https://www.yellowpages.com/fayetteville-ar/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "clearview-glass-inc": {
+  "source": "https://www.yellowpages.com/springfield-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-1-cool-tint-by-sun-cool-inc": {
+  "source": "https://www.yellowpages.com/springfield-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-cutters-inc": {
+  "source": "https://www.yellowpages.com/taylorville-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "k-and-w-glass-co": {
+  "source": "https://www.yellowpages.com/chatham-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "voelkel-glass-service-inc": {
+  "source": "https://www.yellowpages.com/jacksonville-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "thoroughbred-auto-glass": {
+  "source": "https://www.yellowpages.com/jeffersonville-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "american-mobile-glass-jeffersonville": {
+  "source": "https://www.yellowpages.com/jeffersonville-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "grangier-glass-co": {
+  "source": "https://www.yellowpages.com/new-albany-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "domestic-auto-glass-corydon": {
+  "source": "https://www.yellowpages.com/corydon-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "burzette-auto-glass": {
+  "source": "https://www.yellowpages.com/rochester-mn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "westreich-glass": {
+  "source": "https://www.yellowpages.com/rochester-mn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "k-and-m-glass-corp": {
+  "source": "https://www.yellowpages.com/rochester-mn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "hentges-glass-co": {
+  "source": "https://www.yellowpages.com/rochester-mn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "j-rocks-auto-glass-llc": {
+  "source": "https://www.yellowpages.com/rochester-mn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "all-brands-auto-glass": {
+  "source": "https://www.yellowpages.com/merced-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "aaa-auto-glass-inc-merced": {
+  "source": "https://www.yellowpages.com/merced-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "don-s-mobile-glass-inc": {
+  "source": "https://www.yellowpages.com/merced-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bettis-glass": {
+  "source": "https://www.yellowpages.com/merced-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "atwater-pro-glass": {
+  "source": "https://www.yellowpages.com/merced-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "cracked-inc": {
+  "source": "https://www.yellowpages.com/jacksonville-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "gause-glass-co-inc": {
+  "source": "https://www.yellowpages.com/jacksonville-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "national-plate-glass-co": {
+  "source": "https://www.yellowpages.com/jacksonville-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "no-wait-auto-glass": {
+  "source": "https://www.yellowpages.com/los-banos-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-1-pro-auto-glass": {
+  "source": "https://www.yellowpages.com/los-banos-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "homestead-windshields": {
+  "source": "https://www.yellowpages.com/homestead-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "aaron-auto-glass-homestead": {
+  "source": "https://www.yellowpages.com/homestead-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "homestead-glass-co": {
+  "source": "https://www.yellowpages.com/homestead-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "perfection-tinting": {
+  "source": "https://www.yellowpages.com/homestead-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "2-guys-1-glass": {
+  "source": "https://www.yellowpages.com/florida-city-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "dade-auto-glass": {
+  "source": "https://www.yellowpages.com/florida-city-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "middlefield-auto-glass": {
+  "source": "https://www.yellowpages.com/florida-city-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "all-pro-auto-glass": {
+  "source": "https://www.bbb.org/us/nc/jacksonville/profile/windshield-repair/all-pro-auto-glass-0593-90285185",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "solid-state-chip-repair": {
+  "source": "https://www.yellowpages.com/jacksonville-nc/glass-repair-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "east-carolina-glass-inc": {
+  "source": "https://www.yellowpages.com/jacksonville-nc/glass-repair-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "aaa-linings-and-glass-service": {
+  "source": "https://www.yellowpages.com/jacksonville-nc/glass-repair-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "low-price-auto-glass-hammond": {
+  "source": "https://autoglasshammond.com/contact-us",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "professional-glass-and-windshields-merrillville": {
+  "source": "https://www.yellowpages.com/gary-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "c-m-auto-glass-inc": {
+  "source": "https://www.yellowpages.com/gary-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "east-chicago-auto-glass": {
+  "source": "https://www.yellowpages.com/gary-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "nicky-b-s-auto-glass": {
+  "source": "https://www.yellowpages.com/rockford-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "david-s-mobile-auto-glass-rockford": {
+  "source": "https://www.yellowpages.com/rockford-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "aaron-auto-glass-rockford": {
+  "source": "https://www.yellowpages.com/rockford-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "steve-s-auto-glass-roscoe": {
+  "source": "https://www.yellowpages.com/rockford-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-by-brad": {
+  "source": "https://www.yellowpages.com/rockford-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "uptown-auto-glass": {
+  "source": "https://www.yellowpages.com/columbus-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "stephens-auto-glass-columbus": {
+  "source": "https://www.yellowpages.com/columbus-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "asap-auto-glass-columbus": {
+  "source": "https://www.yellowpages.com/columbus-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-specialists-columbus": {
+  "source": "https://www.yellowpages.com/columbus-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mr-auto-glass-llc": {
+  "source": "https://www.yellowpages.com/columbus-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "b-a-m-auto-glass": {
+  "source": "https://www.yellowpages.com/denton-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "my-pro-auto-glass-denton": {
+  "source": "https://www.yellowpages.com/denton-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "guaranteed-auto-glass-denton": {
+  "source": "https://www.yellowpages.com/denton-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "carlo-glass": {
+  "source": "https://www.yellowpages.com/denton-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "denton-autoglass-service": {
+  "source": "https://www.yellowpages.com/denton-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "dart-auto-glass": {
+  "source": "https://www.yellowpages.com/denton-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "arc-auto-glass-inc-totowa": {
+  "source": "https://www.yellowpages.com/paterson-nj/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "steven-s-auto-glass": {
+  "source": "https://www.yellowpages.com/paterson-nj/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bloomfield-auto-glass-service": {
+  "source": "https://www.yellowpages.com/paterson-nj/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "permian-glass-company": {
+  "source": "https://www.yellowpages.com/odessa-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "west-texas-windshields-odessa": {
+  "source": "https://www.yellowpages.com/odessa-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "vaughan-s-auto-glass": {
+  "source": "https://www.yellowpages.com/odessa-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "affordable-glass": {
+  "source": "https://www.yellowpages.com/odessa-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "magic-glass": {
+  "source": "https://www.yellowpages.com/lafayette-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "1st-class-auto-glass-inc": {
+  "source": "https://www.yellowpages.com/lafayette-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "nichols-auto-glass": {
+  "source": "https://www.yellowpages.com/lafayette-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "perfection-auto-glass-muncie": {
+  "source": "https://www.yellowpages.com/muncie-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "skyview-auto-glass-muncie": {
+  "source": "https://www.yellowpages.com/muncie-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-of-indiana": {
+  "source": "https://www.yellowpages.com/muncie-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "crackmaster-windshield-repair": {
+  "source": "https://www.yellowpages.com/redding-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "all-auto-glass-redding": {
+  "source": "https://www.yellowpages.com/redding-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "clear-view-auto-glass-redding": {
+  "source": "https://www.yellowpages.com/redding-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "cogburn-auto-glass": {
+  "source": "https://www.yellowpages.com/redding-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "cypress-auto-glass": {
+  "source": "https://www.yellowpages.com/redding-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "windshields-plus": {
+  "source": "https://www.yellowpages.com/redding-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "anderson-glass": {
+  "source": "https://www.yellowpages.com/redding-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "dwyer-glass": {
+  "source": "https://www.yellowpages.com/beaver-falls-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "precision-auto-glass-aliquippa": {
+  "source": "https://www.yellowpages.com/beaver-falls-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "low-price-auto-glass-ambridge": {
+  "source": "https://www.yellowpages.com/beaver-falls-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "superior-auto-glass-zelienople": {
+  "source": "https://www.yellowpages.com/beaver-falls-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mainland-glass-co": {
+  "source": "https://www.yellowpages.com/atlantic-city-nj/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "diaz-auto-glass": {
+  "source": "https://www.yellowpages.com/atlantic-city-nj/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "diaz-auto-glass-mobile-service": {
+  "source": "https://www.yellowpages.com/atlantic-city-nj/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "skyview-auto-glass-anderson": {
+  "source": "https://www.yellowpages.com/anderson-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "brighton-glass": {
+  "source": "https://www.yellowpages.com/monaca-pa/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "steel-city-auto-glass": {
+  "source": "https://www.yellowpages.com/monaca-pa/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "frankland-windshield-repair": {
+  "source": "https://www.yellowpages.com/monaca-pa/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "d-and-r-glass-of-beaver-county": {
+  "source": "https://www.yellowpages.com/monaca-pa/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "aliquippa-glass-and-mirror-co": {
+  "source": "https://www.yellowpages.com/monaca-pa/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "gillham-s-glass-and-repair-service": {
+  "source": "https://www.superpages.com/lafayette-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "nxtshield-auto-glass": {
+  "source": "https://www.yellowpages.com/des-plaines-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auction-auto-glass": {
+  "source": "https://www.superpages.com/atlantic-city-nj/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-1-plus-auto-glass": {
+  "source": "https://www.yellowpages.com/passaic-nj/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "american-mobile-glass-of-new-jersey-inc": {
+  "source": "https://www.yellowpages.com/wayne-nj/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "1-auto-glass": {
+  "source": "https://www.yellowpages.com/paterson-nj/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "roscoe-glass-co": {
+  "source": "https://www.roscoeglass.com/auto-glass-repair-near-me/rockford-il",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "dykes-glass-inc": {
+  "source": "https://www.yellowpages.com/phenix-city-al/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "skyview-auto-glass-new-castle": {
+  "source": "https://www.yellowpages.com/new-castle-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "autoproz-auto-glass": {
+  "source": "https://www.yellowpages.com/hammonton-nj/mip/autoproz-auto-glass-554298890",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "pleasantville-auto-glass-and-upholstery-shop": {
+  "source": "https://www.yellowpages.com/mays-landing-nj/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "patriot-auto-glass-and-tinting": {
+  "source": "https://www.windshieldreplacementfinder.com/indiana/muncie/patriot-auto-glass-&-tinting-1640",
+  "tier": "other",
+  "addedAt": "2026-08-06"
+ },
+ "abquality-auto-glass": {
+  "source": "https://abqualityautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "glass-services-llc": {
+  "source": "https://www.glassservices.org/our-listings",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "glass-services-llc-bossier-city": {
+  "source": "https://www.glassservices.org/our-listings",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "action-auto-glass-santa-cruz": {
+  "source": "https://actionautoglasssc.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "miguel-s-auto-glass": {
+  "source": "https://www.autoglasswatsonville.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "lake-city-glass": {
+  "source": "https://lakecityglasscompany.com/auto-glass/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "swla-glass-and-mirror-llc": {
+  "source": "https://www.lakecharlesglassshop.com/%E2%80%8Bauto-glass",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "ray-s-affordable-auto-glass": {
+  "source": "https://www.yellowpages.com/las-cruces-nm/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "ramos-auto-glass": {
+  "source": "https://www.yellowpages.com/las-cruces-nm/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "acadiana-glass-of-moss-bluff": {
+  "source": "https://www.acadianaglass.com/auto/1962697",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "aces-glass-of-lake-charles": {
+  "source": "https://www.yellowpages.com/lake-charles-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "braud-glass-and-mirror-inc": {
+  "source": "https://www.yellowpages.com/lake-charles-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "sulphur-glass-co": {
+  "source": "https://www.yellowpages.com/lake-charles-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-1-glass-westlake": {
+  "source": "https://www.yellowpages.com/lake-charles-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "santa-cruz-windshields": {
+  "source": "https://www.yellowpages.com/santa-cruz-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "acumen-auto-glass": {
+  "source": "https://www.yellowpages.com/santa-cruz-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bill-s-auto-glass": {
+  "source": "https://www.yellowpages.com/santa-cruz-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "zamex-auto-glass": {
+  "source": "https://www.yellowpages.com/santa-cruz-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "tucker-glass-co": {
+  "source": "https://www.yellowpages.com/santa-cruz-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "flint-glass-service": {
+  "source": "https://www.yellowpages.com/flint-mi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "burton-auto-glass": {
+  "source": "https://www.yellowpages.com/flint-mi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "fenton-glass-service": {
+  "source": "https://www.yellowpages.com/flint-mi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mio-auto-glass-and-chip-repair": {
+  "source": "https://www.yellowpages.com/flint-mi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "clear-vision-auto-glass-specialist": {
+  "source": "https://www.yellowpages.com/flint-mi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mesko-glass-co": {
+  "source": "https://www.yellowpages.com/allentown-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "toms-glass-and-mirror-service": {
+  "source": "https://www.yellowpages.com/allentown-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "jack-s-glass": {
+  "source": "https://www.yellowpages.com/bethlehem-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "easton-area-glass": {
+  "source": "https://www.yellowpages.com/bethlehem-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "rick-s-auto-glass-inc": {
+  "source": "https://www.yellowpages.com/appleton-wi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bartlett-auto-glass": {
+  "source": "https://www.yellowpages.com/appleton-wi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "great-lakes-glass": {
+  "source": "https://www.yellowpages.com/appleton-wi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "tri-city-glass-and-door": {
+  "source": "https://www.yellowpages.com/appleton-wi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-solutions-inc-cedar-rapids": {
+  "source": "https://www.yellowpages.com/cedar-rapids-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "american-mobile-glass-service": {
+  "source": "https://www.yellowpages.com/cedar-rapids-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "council-bluffs-glass": {
+  "source": "https://www.yellowpages.com/council-bluffs-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-services-inc": {
+  "source": "https://www.yellowpages.com/council-bluffs-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "jerry-s-glass-company": {
+  "source": "https://www.yellowpages.com/council-bluffs-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "1-stop-glass-denver": {
+  "source": "https://www.yellowpages.com/denver-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "colorado-auto-glass": {
+  "source": "https://www.yellowpages.com/denver-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "the-colorado-windshield-company": {
+  "source": "https://www.yellowpages.com/denver-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "sky-auto-glass": {
+  "source": "https://www.yellowpages.com/denver-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "discount-auto-glass-and-glazing": {
+  "source": "https://www.yellowpages.com/santa-fe-nm/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "action-glass-and-mirror": {
+  "source": "https://www.yellowpages.com/santa-fe-nm/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "santa-fe-glass-and-mirror": {
+  "source": "https://www.yellowpages.com/santa-fe-nm/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "done-right-glass-and-mirror": {
+  "source": "https://www.yellowpages.com/santa-fe-nm/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "gamble-quality-glass-llc": {
+  "source": "https://www.yellowpages.com/shreveport-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "abc-auto-glass-shreveport": {
+  "source": "https://www.yellowpages.com/shreveport-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "farley-s-glass-company": {
+  "source": "https://www.yellowpages.com/shreveport-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "jimmy-s-glass-service": {
+  "source": "https://www.yellowpages.com/shreveport-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "star-technology-windshield-repair-shreveport": {
+  "source": "https://www.yellowpages.com/shreveport-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "car-guard-detail-and-auto-glass": {
+  "source": "https://www.carguardusa.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "blue-star-mobile-glass-service": {
+  "source": "https://www.superpages.com/cedar-rapids-ia/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "quality-auto-rebuilders-inc": {
+  "source": "https://www.superpages.com/cedar-rapids-ia/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "element-auto-glass-marion": {
+  "source": "https://elementautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-service-council-bluffs": {
+  "source": "https://www.superpages.com/council-bluffs-ia/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "universal-auto-glass": {
+  "source": "https://www.yellowpages.com/las-cruces-nm/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "premier-glass": {
+  "source": "https://www.yellowpages.com/las-cruces-nm/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "greene-glass": {
+  "source": "https://www.yellowpages.com/racine-wi/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "pro-tint-and-auto-glass": {
+  "source": "https://www.yellowpages.com/santa-fe-nm/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "ace-windshield-repair-and-replacement": {
+  "source": "https://www.yellowpages.com/santa-fe-nm/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "quick-fix-auto-glass": {
+  "source": "https://www.yellowpages.com/santa-fe-nm/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mobile-glass-and-mirror": {
+  "source": "https://www.yellowpages.com/santa-fe-nm/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "silva-s-mobile-glass": {
+  "source": "https://www.superpages.com/santa-cruz-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mobile-auto-glass-y-mas": {
+  "source": "https://www.superpages.com/santa-cruz-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "valley-glass-inc": {
+  "source": "https://www.superpages.com/appleton-wi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "kaukauna-glass-company": {
+  "source": "https://www.superpages.com/appleton-wi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "otisville-glass-and-auto": {
+  "source": "https://www.superpages.com/flint-mi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "sturtevant-glass-co": {
+  "source": "https://www.superpages.com/sturtevant-wi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "franksville-glass-repair": {
+  "source": "https://www.superpages.com/sturtevant-wi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "certified-auto-glass-replacement": {
+  "source": "https://www.yellowpages.com/harrisburg-pa/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "hometown-auto-glass": {
+  "source": "https://www.yellowpages.com/schenectady-ny/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glenville-glass": {
+  "source": "https://www.yellowpages.com/schenectady-ny/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "city-glass-company": {
+  "source": "https://www.yellowpages.com/schenectady-ny/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mr-windshield-troy": {
+  "source": "https://www.yellowpages.com/schenectady-ny/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "5-star-auto-glass-albany": {
+  "source": "https://www.yellowpages.com/schenectady-ny/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "american-auto-and-plate-glass": {
+  "source": "https://www.yellowpages.com/schenectady-ny/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "rice-s-glass-company": {
+  "source": "https://www.yellowpages.com/durham-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "pro-glass-installers": {
+  "source": "https://www.yellowpages.com/durham-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "carsten-auto-glass": {
+  "source": "https://www.yellowpages.com/springfield-mo/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "carsten-auto-glass-south": {
+  "source": "https://www.yellowpages.com/springfield-mo/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "any-car-auto-glass": {
+  "source": "https://www.yellowpages.com/springfield-mo/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "republic-glass-inc": {
+  "source": "https://www.yellowpages.com/springfield-mo/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "on-site-auto-glass-services-monroeville": {
+  "source": "https://www.yellowpages.com/monroeville-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "chester-auto-glass": {
+  "source": "https://www.yellowpages.com/pittsburgh-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "stanton-auto-glass": {
+  "source": "https://www.yellowpages.com/monroeville-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "low-price-auto-glass-west-mifflin": {
+  "source": "https://www.yellowpages.com/pittsburgh-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "chip-xperts-llc": {
+  "source": "https://www.yellowpages.com/cordova-tn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "steve-s-auto-glass-memphis": {
+  "source": "https://www.bbb.org/us/tn/bartlett/category/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "superior-mobile-windshield-repair": {
+  "source": "https://www.superpages.com/bartlett-tn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "al-s-auto-glass-lincoln": {
+  "source": "https://www.yellowpages.com/lincoln-ne/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "capital-auto-glass-lincoln": {
+  "source": "https://www.yellowpages.com/lincoln-ne/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-nation-lincoln": {
+  "source": "https://www.yellowpages.com/lincoln-ne/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "all-brands-auto-glass-oakland": {
+  "source": "https://www.yellowpages.com/berkeley-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "alpha-auto-glass-waukegan": {
+  "source": "https://www.yellowpages.com/waukegan-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-city-inc": {
+  "source": "https://www.yellowpages.com/waukegan-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "freddy-s-glass": {
+  "source": "https://www.yellowpages.com/waco-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "lonestar-windshield": {
+  "source": "https://www.yellowpages.com/waco-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "the-auto-glass-shop-inc": {
+  "source": "https://www.yellowpages.com/gurnee-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "on-site-auto-glass-services-vernon-hills": {
+  "source": "https://www.yellowpages.com/gurnee-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "on-site-auto-glass-services-lake-bluff": {
+  "source": "https://www.yellowpages.com/gurnee-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "hats-glass": {
+  "source": "https://www.yellowpages.com/spring-hill-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "pro-windshield-repair-and-replacement-tampa-bay": {
+  "source": "https://www.yellowpages.com/spring-hill-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bay-auto-glass": {
+  "source": "https://www.yellowpages.com/spring-hill-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-works-of-west-monroe-llc": {
+  "source": "https://www.yellowpages.com/monroe-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "aaa-glass-inc": {
+  "source": "https://www.yellowpages.com/monroe-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "magic-glass-and-tint": {
+  "source": "https://www.yellowpages.com/monroe-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "rr-auto-glass": {
+  "source": "https://www.yellowpages.com/sault-sainte-marie-mi/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "carolina-glass-of-greenville": {
+  "source": "https://www.yellowpages.com/greenville-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "eastern-auto-glass": {
+  "source": "https://www.yellowpages.com/greenville-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "k-c-autoglass": {
+  "source": "https://www.yellowpages.com/independence-mo/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "five-star-auto-glass": {
+  "source": "https://www.yellowpages.com/independence-mo/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "stephens-auto-glass-normal": {
+  "source": "https://www.yellowpages.com/bloomington-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-specialty": {
+  "source": "https://www.yellowpages.com/bloomington-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-specialty-normal": {
+  "source": "https://www.yellowpages.com/bloomington-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "d-and-d-autoglass": {
+  "source": "https://www.yellowpages.com/blue-springs-mo/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "yager-auto-glass": {
+  "source": "https://www.yellowpages.com/brooksville-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "k-and-k-glass": {
+  "source": "https://www.yellowpages.com/brooksville-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-surgeons-of-nc-windshield-repair": {
+  "source": "https://www.yellowpages.com/greenville-nc/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "greenville-glass-co": {
+  "source": "https://www.yellowpages.com/greenville-nc/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "port-city-glass-monroe": {
+  "source": "https://www.pcgcglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "k-and-j-auto-glass-and-tint-llc-waco": {
+  "source": "https://www.yellowpages.com/waco-tx/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "premier-auto-glass-waco": {
+  "source": "https://www.yellowpages.com/waco-tx/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-phoenix": {
+  "source": "https://www.yellowpages.com/waco-tx/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "central-illinois-autoglass": {
+  "source": "https://www.yellowpages.com/bloomington-il/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "twin-city-glass-and-mirror": {
+  "source": "https://www.yellowpages.com/bloomington-il/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "windy-s-auto-glass-shop": {
+  "source": "https://www.yellowpages.com/lincoln-ne/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-plus-auto-glass-of-lincoln": {
+  "source": "https://www.yellowpages.com/lincoln-ne/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "truck-glass-inc": {
+  "source": "https://www.yellowpages.com/lincoln-ne/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "acme-glass-and-mirror-co-inc": {
+  "source": "https://www.yellowpages.com/monroe-la/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-pros": {
+  "source": "https://www.yellowpages.com/monroe-la/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "tornado-glass-and-mirror": {
+  "source": "https://www.yellowpages.com/monroe-la/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "winn-trim-and-glass-co": {
+  "source": "https://www.yellowpages.com/monroe-la/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "santa-fe-glass-co-inc": {
+  "source": "https://www.yellowpages.com/independence-mo/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-team-glass-inc-independence": {
+  "source": "https://www.yellowpages.com/independence-mo/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-express-blue-springs": {
+  "source": "https://www.yellowpages.com/independence-mo/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "pasco-auto-glass-and-tint-inc": {
+  "source": "https://www.yellowpages.com/hudson-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "prestige-auto-and-truck-glass-port-richey": {
+  "source": "https://www.yellowpages.com/hudson-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "pacific-auto-glass-albany": {
+  "source": "https://www.yellowpages.com/albany-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "interstate-glass-inc": {
+  "source": "https://www.superpages.com/greenville-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "east-bay-auto-glass": {
+  "source": "https://www.yellowpages.com/rumford-ri/mip/east-bay-auto-glass-475360406",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "absolute-auto-glass-north-smithfield": {
+  "source": "https://www.yellowpages.com/north-smithfield-ri/mip/absolute-auto-glass-12820739",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "kleer-vue-auto-glass": {
+  "source": "https://www.yellowpages.com/cranston-ri/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "supreme-auto-glass-llc": {
+  "source": "https://nextdoor.com/pages/supreme-auto-glass-llc-belleville-nj/",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "abe-s-auto-glass-and-more": {
+  "source": "https://www.yellowpages.com/toledo-oh/mip/abes-auto-glass-461756923",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "cherry-auto-glass": {
+  "source": "https://www.yellowpages.com/toledo-oh/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "trifer-auto-glass-and-tint": {
+  "source": "https://www.eugenewindowtinting.com/auto-glass-replacement.html",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "a-1-auto-glass-eugene": {
+  "source": "https://www.a-1autoglass.com/a1_location/eugene/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "westside-glass-inc": {
+  "source": "https://www.yellowpages.com/eugene-or/mip/westside-glass-514702156",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mover-auto-glass": {
+  "source": "https://autoglasseugene.com/contact/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "extreme-auto-glass": {
+  "source": "https://www.extremeautoglassqc.com/contact",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "moline-glass-company": {
+  "source": "https://molineglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "bcs-auto-glass-bcs-car-care": {
+  "source": "https://bcscarcare.com/automotive-glass-experts/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "acme-glass-downtown-bryan": {
+  "source": "https://acmeglass.com/locations/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "acme-glass-college-station": {
+  "source": "https://acmeglass.com/locations/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "caffey-s-auto-glass": {
+  "source": "https://www.yellowpages.com/abilene-tx/mip/caffeys-auto-glass-547753027",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "amazing-glazing-auto-glass-and-mirror": {
+  "source": "https://www.yellowpages.com/yuma-az/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "master-auto-glass-yuma": {
+  "source": "https://www.yellowpages.com/yuma-az/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-and-a-auto-glass-yuma": {
+  "source": "https://www.yellowpages.com/yuma-az/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "see-n-clear-auto-glass": {
+  "source": "https://www.yellowpages.com/yuma-az/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-touch-of-glass-of-yuma-inc": {
+  "source": "https://www.yellowpages.com/yuma-az/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "express-window-tint-and-auto-glass": {
+  "source": "https://www.yellowpages.com/yuma-az/mip/express-window-tint-auto-glass-495842687",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "all-phase-auto-glass-llc": {
+  "source": "https://www.yellowpages.com/yuma-az/mip/all-phase-auto-glass-569901394",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "american-glass-co-wichita-falls": {
+  "source": "https://www.yellowpages.com/wichita-falls-tx/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "clark-windshield-glass-and-mirror": {
+  "source": "https://www.yellowpages.com/wichita-falls-tx/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "ciag": {
+  "source": "https://www.yellowpages.com/wichita-falls-tx/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "kwik-autoglas": {
+  "source": "https://www.yellowpages.com/wichita-falls-tx/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "city-glass-and-mirror": {
+  "source": "https://www.yellowpages.com/wichita-falls-tx/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "advance-auto-glass-victorville": {
+  "source": "https://www.yellowpages.com/victorville-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "soto-s-auto-glass-victorville": {
+  "source": "https://www.yellowpages.com/victorville-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "discount-auto-glass-victorville": {
+  "source": "https://www.yellowpages.com/victorville-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "martinez-new-and-used-auto-glass": {
+  "source": "https://www.yellowpages.com/victorville-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "ace-glass-co": {
+  "source": "https://www.yellowpages.com/victorville-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mvp-auto-glass-repair": {
+  "source": "https://www.yellowpages.com/hesperia-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "clearview-autoglass": {
+  "source": "https://www.yellowpages.com/hesperia-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "ab-s-auto-glass": {
+  "source": "https://www.yellowpages.com/hesperia-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "accurate-auto-glass-of-america-green-bay": {
+  "source": "https://www.superpages.com/green-bay-wi/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "klein-dickert-auto-glass": {
+  "source": "https://www.superpages.com/green-bay-wi/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "green-bay-glass-center": {
+  "source": "https://www.superpages.com/green-bay-wi/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "tri-city-glass-and-door-green-bay": {
+  "source": "https://www.superpages.com/green-bay-wi/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-service-center": {
+  "source": "https://www.superpages.com/rock-island-il/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-solutions-inc-moline": {
+  "source": "https://www.superpages.com/rock-island-il/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-center-moline": {
+  "source": "https://www.superpages.com/rock-island-il/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "the-acri-company": {
+  "source": "https://www.superpages.com/rock-island-il/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "big-country-glass-and-mirror": {
+  "source": "https://www.superpages.com/abilene-tx/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "west-texas-glass-and-mirror": {
+  "source": "https://www.superpages.com/abilene-tx/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "ocean-auto-glass-providence": {
+  "source": "https://www.superpages.com/providence-ri/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "tech-auto-glass": {
+  "source": "https://www.superpages.com/providence-ri/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "fournier-and-coleman-auto-glass": {
+  "source": "https://www.superpages.com/providence-ri/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "apex-auto-glass": {
+  "source": "https://www.superpages.com/alexandria-va/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-clearview-auto-glass": {
+  "source": "https://www.superpages.com/alexandria-va/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "force-auto-glass": {
+  "source": "https://www.superpages.com/alexandria-va/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "del-ray-glass-company-inc": {
+  "source": "https://www.superpages.com/alexandria-va/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "north-star-auto-glass": {
+  "source": "https://www.superpages.com/newark-nj/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "b-k-classic-auto-glass": {
+  "source": "https://www.superpages.com/newark-nj/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "route-10-auto-glass": {
+  "source": "https://www.superpages.com/newark-nj/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "davis-auto-glass-inc": {
+  "source": "https://www.superpages.com/eugene-or/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "lane-county-glass-inc": {
+  "source": "https://www.superpages.com/eugene-or/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mckenzie-glass": {
+  "source": "https://www.superpages.com/eugene-or/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-masters-toledo": {
+  "source": "https://www.superpages.com/toledo-oh/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "eureka-auto-glass": {
+  "source": "https://www.superpages.com/toledo-oh/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "ag-glass": {
+  "source": "https://www.superpages.com/bryan-tx/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "low-price-auto-glass-bryan": {
+  "source": "https://www.superpages.com/bryan-tx/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "brazos-glassworks": {
+  "source": "https://www.superpages.com/bryan-tx/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "d-and-d-glass": {
+  "source": "https://www.superpages.com/de-pere-wi/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "champion-auto-glass-new-franken": {
+  "source": "https://www.superpages.com/de-pere-wi/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "brown-county-glass": {
+  "source": "https://www.superpages.com/de-pere-wi/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "area-wide-glass-and-mirror-llc": {
+  "source": "https://www.superpages.com/wichita-falls-tx/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-and-e-glass-and-mirror": {
+  "source": "https://www.superpages.com/wichita-falls-tx/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "rosales-auto-glass": {
+  "source": "https://www.yellowpages.com/abilene-tx/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glassmasters-auto-glass": {
+  "source": "https://www.yellowpages.com/abilene-tx/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "big-dog-auto-glass": {
+  "source": "https://www.yellowpages.com/abilene-tx/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "abilene-glass-and-mirror": {
+  "source": "https://www.yellowpages.com/abilene-tx/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "hampton-roads-autoglass-llc": {
+  "source": "https://opencorpdata.com/us-va/11405632",
+  "tier": "other",
+  "addedAt": "2026-08-06"
+ },
+ "certified-auto-glass-springfield": {
+  "source": "https://www.yellowpages.com/springfield-ma/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "affordable-auto-glass-inc": {
+  "source": "https://www.yellowpages.com/west-springfield-ma/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "abc-glass-springfield": {
+  "source": "https://www.yellowpages.com/springfield-ma/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-and-d-collision-and-glass": {
+  "source": "https://adcollisioninc.com/glass-quote/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "allstate-glass": {
+  "source": "https://www.allstateglass.com/fayetteville-nc",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "papas-auto-glass": {
+  "source": "https://www.yellowpages.com/fayetteville-nc/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "certified-glass-co": {
+  "source": "https://www.yellowpages.com/fayetteville-nc/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "wills-auto-glass": {
+  "source": "https://www.yellowpages.com/montgomery-al/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "c-and-s-auto-glass": {
+  "source": "https://www.yellowpages.com/montgomery-al/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "affordable-auto-glass-montgomery": {
+  "source": "https://www.yellowpages.com/montgomery-al/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "american-auto-glass-montgomery": {
+  "source": "https://www.yellowpages.com/montgomery-al/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "l-and-j-windshield-repair": {
+  "source": "https://www.yellowpages.com/montgomery-al/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "independent-glass-co-inc": {
+  "source": "https://www.yellowpages.com/montgomery-al/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "big-dog-auto-glass-west-fargo": {
+  "source": "https://www.bigdogautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "windshield-doctor": {
+  "source": "https://www.yellowpages.com/fargo-nd/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-mend-mobile-windshield": {
+  "source": "https://www.yellowpages.com/fargo-nd/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "west-fargo-auto-body-and-glass": {
+  "source": "https://www.yellowpages.com/fargo-nd/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "advanced-auto-body-and-glass": {
+  "source": "https://www.advancedautobody.net/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "straight-line-detailing": {
+  "source": "https://www.straightlinedetailing.com/windshield-repair-and-replacement",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "vallejo-glass-co": {
+  "source": "https://www.yellowpages.com/vallejo-ca/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "amigos-auto-glass": {
+  "source": "https://www.yellowpages.com/vallejo-ca/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bobby-s-auto-glass-shop": {
+  "source": "https://www.yellowpages.com/fairfield-ca/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "jvd-auto-glass-specialist": {
+  "source": "https://www.yellowpages.com/american-canyon-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "low-price-auto-glass-specialists": {
+  "source": "https://www.yellowpages.com/fairfield-ca/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "high-quality-auto-glass-svc": {
+  "source": "https://www.yellowpages.com/fairfield-ca/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "valueglass": {
+  "source": "https://www.kitsapvalueglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-plus": {
+  "source": "https://www.autoglass-plus.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-plus-poulsbo": {
+  "source": "https://www.autoglass-plus.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "go-mobile-auto-glass": {
+  "source": "https://gomobileautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "the-autoglass-clinic-and-mobile-radio": {
+  "source": "https://www.theautoglassclinic.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "the-autoglass-clinic-and-mobile-radio-poulsbo": {
+  "source": "https://www.theautoglassclinic.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "door-4-auto-glass-llc": {
+  "source": "https://www.yellowpages.com/bremerton-wa/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bremerton-mobile-glass-service": {
+  "source": "https://www.yellowpages.com/bremerton-wa/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "eagle-1-autoglass-llc": {
+  "source": "https://eagle1autoglass.net/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "arnold-s-auto-glass": {
+  "source": "https://www.yellowpages.com/muskegon-mi/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "arnold-s-auto-glass-sherman-blvd": {
+  "source": "https://www.yellowpages.com/muskegon-mi/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-complete-auto-glass": {
+  "source": "https://www.yellowpages.com/muskegon-mi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "action-glass-muskegon": {
+  "source": "https://www.yellowpages.com/muskegon-mi/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "w-and-d-glass-inc": {
+  "source": "https://www.yellowpages.com/muskegon-mi/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "complete-auto-glass-norton-shores": {
+  "source": "https://www.yellowpages.com/norton-shores-mi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "arnold-s-auto-glass-pine-st": {
+  "source": "https://www.yellowpages.com/muskegon-mi/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "lawton-glass-and-mirror": {
+  "source": "https://www.yellowpages.com/lawton-ok/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "gangsters-of-glass": {
+  "source": "https://www.yellowpages.com/lawton-ok/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "avenue-c-glass-llc": {
+  "source": "https://www.yellowpages.com/lawton-ok/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "cache-road-glass-screen-and-mirror": {
+  "source": "https://www.yellowpages.com/lawton-ok/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "dunaway-glass-gulfport-downtown": {
+  "source": "https://www.dunawayglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "dunaway-glass-orange-grove": {
+  "source": "https://www.dunawayglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "dunaway-glass-d-iberville": {
+  "source": "https://www.dunawayglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "3-d-glass-company": {
+  "source": "https://www.yellowpages.com/gulfport-ms/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "american-glass-services": {
+  "source": "https://www.yellowpages.com/gulfport-ms/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "performance-auto-upholstery-and-glass": {
+  "source": "https://www.yellowpages.com/gulfport-ms/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "astro-mobile-windshield-repair": {
+  "source": "https://www.yellowpages.com/gulfport-ms/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "hwy-57-glass": {
+  "source": "https://www.yellowpages.com/biloxi-ms/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "accent-glass-services": {
+  "source": "https://www.yellowpages.com/norman-ok/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "jem-glass-and-service-co": {
+  "source": "https://www.yellowpages.com/norman-ok/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "clouse-s-glass-and-mirror": {
+  "source": "https://www.yellowpages.com/norman-ok/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "stan-s-auto-body-and-glass-inc": {
+  "source": "https://www.yellowpages.com/springfield-ma/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "automobile-glass-specialists": {
+  "source": "https://www.yellowpages.com/springfield-ma/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "hope-mills-glass": {
+  "source": "https://www.yellowpages.com/hope-mills-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "scott-s-glass": {
+  "source": "https://www.yellowpages.com/hope-mills-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "advanced-auto-glass-raeford": {
+  "source": "https://www.yellowpages.com/hope-mills-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "aaa-5-star-auto-glass": {
+  "source": "https://www.yellowpages.com/norman-ok/glass-auto-plate-window-etc",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-man-auto-glass-hero": {
+  "source": "https://www.yellowpages.com/montgomery-al/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "innovation-auto-glass-llc": {
+  "source": "https://www.innovationautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "guardian-auto-glass-roanoke": {
+  "source": "https://www.yellowpages.com/roanoke-va/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "diverse-auto-glass-llc": {
+  "source": "https://www.yellowpages.com/roanoke-va/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "accent-autoglass-inc": {
+  "source": "https://www.yellowpages.com/roanoke-va/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "tmg-auto-glass-inc": {
+  "source": "https://www.yellowpages.com/roanoke-va/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "salem-auto-glass": {
+  "source": "https://www.yellowpages.com/salem-va/mip/salem-auto-glass-563921432",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "windshield-solutions": {
+  "source": "https://www.yellowpages.com/roanoke-va/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "asap-auto-glass-bridgeport": {
+  "source": "https://www.yellowpages.com/bridgeport-ct/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mission-auto-glass-llc": {
+  "source": "https://contractors.tydl.io/biz/mission-auto-glass-llc/1104041/",
+  "tier": "other",
+  "addedAt": "2026-08-06"
+ },
+ "livingstons-auto-glass": {
+  "source": "https://www.yellowpages.com/charleston-sc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "cracks-away-rockchip-repair": {
+  "source": "https://www.yellowpages.com/little-rock-ar/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "coleman-auto-glass": {
+  "source": "https://www.yellowpages.com/little-rock-ar/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "wizard-auto-glass-llc": {
+  "source": "https://www.yellowpages.com/little-rock-ar/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "ppa-auto-glass": {
+  "source": "https://www.yellowpages.com/little-rock-ar/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-back-glasse": {
+  "source": "https://www.yellowpages.com/south-bend-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "windshield-repair-now": {
+  "source": "https://www.yellowpages.com/south-bend-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-on-demand-elkhart": {
+  "source": "https://www.yellowpages.com/south-bend-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-service-elkhart": {
+  "source": "https://www.yellowpages.com/mishawaka-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "windshield-guyz-buchanan": {
+  "source": "https://www.yellowpages.com/mishawaka-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "vistar-auto-glass-newark": {
+  "source": "https://www.yellowpages.com/newark-de/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "pro-bond-auto-glass": {
+  "source": "https://www.yellowpages.com/wilmington-de/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "b-and-g-glass-co-inc": {
+  "source": "https://www.yellowpages.com/newark-de/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "parag-s-glass-co": {
+  "source": "https://www.yellowpages.com/newark-de/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-specialists-of-pasadena": {
+  "source": "https://www.yellowpages.com/pasadena-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "allan-auto-glass": {
+  "source": "https://www.yellowpages.com/pasadena-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "doctor-auto-glass": {
+  "source": "https://www.yellowpages.com/arcadia-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "one-stop-glass-arcadia": {
+  "source": "https://www.yellowpages.com/arcadia-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "b-auto-glass": {
+  "source": "https://www.yellowpages.com/arcadia-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "steve-s-auto-glass-arcadia": {
+  "source": "https://www.yellowpages.com/arcadia-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bourret-glass-and-upholstery": {
+  "source": "https://www.yellowpages.com/arcadia-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "native-auto-glass": {
+  "source": "https://www.yellowpages.com/greeley-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "front-range-mobile-glass": {
+  "source": "https://www.yellowpages.com/greeley-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "patriot-auto-glass-llc": {
+  "source": "https://www.patriotautoglassco.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "a-colorado-glass-man": {
+  "source": "https://www.yellowpages.com/greeley-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "american-pride-auto-glass": {
+  "source": "https://www.yellowpages.com/greeley-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "pro-glass-and-paint-llp": {
+  "source": "https://www.yellowpages.com/greeley-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "twin-cities-auto-glass-st-cloud": {
+  "source": "https://www.yellowpages.com/saint-cloud-mn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "integrity-auto-glass-sauk-rapids": {
+  "source": "https://www.yellowpages.com/saint-cloud-mn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-service-waite-park": {
+  "source": "https://www.yellowpages.com/sartell-mn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "straight-line-auto-glass": {
+  "source": "https://www.yellowpages.com/sartell-mn/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "american-eagle-auto-glass-bloomington": {
+  "source": "https://www.americaneagleautoglass.com/shops/bloomington-in",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "monroe-county-glass": {
+  "source": "https://www.yellowpages.com/bloomington-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "trimble-auto-glass": {
+  "source": "https://www.yellowpages.com/bloomington-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "eds-auto-glass": {
+  "source": "https://www.yellowpages.com/bedford-in/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "midwest-mobile-glass": {
+  "source": "https://www.yellowpages.com/sioux-city-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "hawkeye-mobile-glass": {
+  "source": "https://www.yellowpages.com/sioux-city-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "dave-s-glass-co": {
+  "source": "https://www.yellowpages.com/sioux-city-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "south-side-glass": {
+  "source": "https://www.yellowpages.com/sioux-city-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "four-star-glass": {
+  "source": "https://www.yellowpages.com/sioux-city-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "vistar-auto-glass-annapolis": {
+  "source": "https://www.yellowpages.com/annapolis-md/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "windshield-replacement-on-site": {
+  "source": "https://www.yellowpages.com/annapolis-md/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "aspect-auto-glass-service": {
+  "source": "https://www.yellowpages.com/severna-park-md/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "wizards-and-waterfowl-auto-glass": {
+  "source": "https://www.yellowpages.com/severna-park-md/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "abc-auto-glass-crofton": {
+  "source": "https://www.yellowpages.com/severna-park-md/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-to-z-glass-and-windshields-glen-burnie": {
+  "source": "https://www.yellowpages.com/glen-burnie-md/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "kryger-glass-sioux-city": {
+  "source": "https://www.yellowpages.com/sioux-city-ia/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bloomington-auto-glass": {
+  "source": "https://www.yellowpages.com/bloomington-in/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "city-glass-of-bloomington-inc": {
+  "source": "https://www.yellowpages.com/bloomington-in/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-on-wheels-eaton": {
+  "source": "https://www.yellowpages.com/greeley-co/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "moffat-glass": {
+  "source": "https://www.yellowpages.com/greeley-co/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mike-nelson-auto-glass-inc": {
+  "source": "https://www.yellowpages.com/saint-cloud-mn/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "foley-auto-glass": {
+  "source": "https://www.yellowpages.com/saint-cloud-mn/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "east-side-glass": {
+  "source": "https://www.yellowpages.com/saint-cloud-mn/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "arrow-auto-glass-wilmington": {
+  "source": "https://www.yellowpages.com/wilmington-de/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "us-auto-glass": {
+  "source": "https://www.yellowpages.com/wilmington-de/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "b-and-l-auto-glass-and-mirror-co": {
+  "source": "https://www.yellowpages.com/roanoke-va/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-mobile-service": {
+  "source": "https://www.yellowpages.com/roanoke-va/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-of-new-england": {
+  "source": "https://www.yellowpages.com/bridgeport-ct/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-unlimited-stratford": {
+  "source": "https://www.yellowpages.com/bridgeport-ct/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "comerika-auto-glass": {
+  "source": "https://comerikaautoglass.godaddysites.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "mobile-glass-medic-ann-arbor": {
+  "source": "https://www.yellowpages.com/ann-arbor-mi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "jackson-auto-glass-shop": {
+  "source": "https://www.yellowpages.com/ann-arbor-mi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "aaa-auto-glass-inc-pensacola": {
+  "source": "https://www.yellowpages.com/pensacola-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-atlantic": {
+  "source": "https://www.yellowpages.com/pensacola-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "warrior-glass-repair": {
+  "source": "https://www.yellowpages.com/pensacola-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glasstar-auto-glass": {
+  "source": "https://www.yellowpages.com/pensacola-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "precision-windshield-repair": {
+  "source": "https://www.yellowpages.com/pensacola-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "wayne-s-glass": {
+  "source": "https://www.yellowpages.com/manchester-nh/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "clear-vision-glass": {
+  "source": "https://www.yellowpages.com/wilmington-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "alan-s-auto-glass-of-the-monterey-peninsula-inc": {
+  "source": "https://www.yellowpages.com/monterey-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "eagle-auto-glass-tyler": {
+  "source": "https://www.yellowpages.com/tyler-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glassmaster": {
+  "source": "https://www.yellowpages.com/tyler-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bo-s-truck-glass-replacement": {
+  "source": "https://www.yellowpages.com/tyler-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "super-saver-auto-glass": {
+  "source": "https://www.yellowpages.com/tyler-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "windshield-medic": {
+  "source": "https://www.yellowpages.com/tyler-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "personal-touch-auto-glass": {
+  "source": "https://www.yellowpages.com/tyler-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "clearvu-windshield-repair": {
+  "source": "https://www.yellowpages.com/tyler-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "windshield-doctor-chandler": {
+  "source": "https://www.yellowpages.com/tyler-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "affordable-auto-glass-panama-city": {
+  "source": "https://www.yellowpages.com/panama-city-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "wisefly-auto-glass": {
+  "source": "https://www.yellowpages.com/panama-city-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "windshields-direct": {
+  "source": "https://www.yellowpages.com/panama-city-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "carolina-windshield-centers-hickory": {
+  "source": "https://www.yellowpages.com/hickory-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-experts-hickory": {
+  "source": "https://www.theautoglassexperts.com/hickory-auto-glass-repair",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "a-team-auto-glass-eau-claire": {
+  "source": "https://www.yellowpages.com/eau-claire-wi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "packerland-auto-glass": {
+  "source": "https://www.yellowpages.com/chippewa-falls-wi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "clear-view-auto-glass-bloomer": {
+  "source": "https://www.yellowpages.com/chippewa-falls-wi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "arrow-auto-glass-manchester": {
+  "source": "https://www.yellowpages.com/bedford-nh/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "white-wash-auto-glass": {
+  "source": "https://www.yellowpages.com/bedford-nh/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "the-windshield-tech": {
+  "source": "https://www.yellowpages.com/bedford-nh/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "derry-auto-glass-discounters": {
+  "source": "https://www.yellowpages.com/bedford-nh/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glassgo-inc": {
+  "source": "https://www.yellowpages.com/bedford-nh/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "the-glass-guy": {
+  "source": "https://www.yellowpages.com/leland-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "clear-vision-auto-glass-and-tint": {
+  "source": "https://www.yellowpages.com/leland-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "doug-s-fleet-and-auto-glass": {
+  "source": "https://www.dougsfleetandautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "same-day-auto-glass-repair-miami-beach": {
+  "source": "https://www.yellowpages.com/miami-beach-fl/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "lee-and-cates-glass": {
+  "source": "https://www.yellowpages.com/lynn-haven-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "streamline-auto-glass-repair": {
+  "source": "https://streamlineautoglassrepair.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "california-auto-glass-marina": {
+  "source": "https://www.yellowpages.com/seaside-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "abe-s-discount-windshields": {
+  "source": "https://www.yellowpages.com/seaside-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "milton-glass-co-inc": {
+  "source": "https://www.yellowpages.com/milton-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mvp-auto-glass": {
+  "source": "https://www.yellowpages.com/glastonbury-ct/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-dynamics": {
+  "source": "https://www.autoglassdynamics.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "enfield-auto-trim-and-glass-co": {
+  "source": "https://www.yellowpages.com/enfield-ct/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "j-and-s-auto-glass": {
+  "source": "https://www.yellowpages.com/hampstead-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "griffeth-auto-glass-inc": {
+  "source": "https://www.yellowpages.com/hampstead-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "pensacola-glass-co": {
+  "source": "https://www.yellowpages.com/gulf-breeze-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-by-pfaff-s": {
+  "source": "https://www.superpages.com/hickory-nc/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "diamond-glass-hickory": {
+  "source": "https://www.superpages.com/hickory-nc/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "arrow-glass-company": {
+  "source": "https://www.superpages.com/urbana-il/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "c-u-glass": {
+  "source": "https://www.superpages.com/urbana-il/auto-glass-retail",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "all-american-glass-co": {
+  "source": "https://allamericanglasscopalmbayfl.com/index.html",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "professional-glass-and-windshields-melbourne": {
+  "source": "https://www.yellowpages.com/melbourne-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mobile-auto-glass-master-s": {
+  "source": "https://www.yellowpages.com/melbourne-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "cals-windshields-palm-bay": {
+  "source": "https://www.yellowpages.com/melbourne-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "givens-auto-glass": {
+  "source": "https://ezlocal.com/fl/gainesville/auto-glass-shop/0917909923",
+  "tier": "other",
+  "addedAt": "2026-08-06"
+ },
+ "quality-glass-troy": {
+  "source": "https://www.yellowpages.com/albany-ny/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "arrow-auto-glass-castleton-on-hudson": {
+  "source": "https://www.yellowpages.com/albany-ny/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mark-s-mobile-glass-inc": {
+  "source": "https://www.yellowpages.com/columbia-mo/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "machens-mobile-glass": {
+  "source": "https://www.yellowpages.com/columbia-mo/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "classic-glass-and-upholstery": {
+  "source": "https://www.yellowpages.com/hagerstown-md/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "independent-glass-werx": {
+  "source": "https://www.yellowpages.com/hagerstown-md/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "precise-auto-glass": {
+  "source": "https://www.yellowpages.com/hagerstown-md/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "preferred-autoglass": {
+  "source": "https://www.yellowpages.com/hagerstown-md/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "american-mobile-auto-glass": {
+  "source": "https://www.yellowpages.com/belleville-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "martin-glass-co": {
+  "source": "https://www.yellowpages.com/belleville-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "maxx-auto-glass": {
+  "source": "https://www.yellowpages.com/belleville-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "freeburg-glass-inc": {
+  "source": "https://www.yellowpages.com/belleville-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-c-stone-auto-glass": {
+  "source": "https://www.yellowpages.com/belleville-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "discount-auto-glass-santa-rosa": {
+  "source": "https://www.yellowpages.com/santa-rosa-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "grey-automotive-glass-llc": {
+  "source": "https://www.yellowpages.com/santa-rosa-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "priceless-auto-glass": {
+  "source": "https://www.yellowpages.com/santa-rosa-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "j-t-auto-glass": {
+  "source": "https://www.yellowpages.com/santa-rosa-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "west-coast-auto-glass-santa-rosa": {
+  "source": "https://www.yellowpages.com/santa-rosa-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "graingers-auto-glass": {
+  "source": "https://www.yellowpages.com/santa-rosa-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "van-koonse-glass-company": {
+  "source": "https://www.yellowpages.com/santa-rosa-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "all-brands-auto-glass-cotati": {
+  "source": "https://www.yellowpages.com/santa-rosa-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-quality-auto-glass": {
+  "source": "https://www.yellowpages.com/spartanburg-sc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "hub-city-auto-glass": {
+  "source": "https://www.yellowpages.com/spartanburg-sc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "brown-s-body-shop-and-auto-glass": {
+  "source": "https://www.yellowpages.com/spartanburg-sc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "the-tint-shoppe": {
+  "source": "https://www.yellowpages.com/wilkes-barre-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "steve-and-sons-auto-glass": {
+  "source": "https://www.yellowpages.com/pueblo-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "rockstar-windshield-repair-llc": {
+  "source": "https://www.yellowpages.com/pueblo-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "affordable-auto-glass-pueblo-west": {
+  "source": "https://www.yellowpages.com/pueblo-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mountain-west-glass-inc": {
+  "source": "https://www.yellowpages.com/pueblo-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "the-pit-doctor": {
+  "source": "https://www.yellowpages.com/pueblo-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-force-inc": {
+  "source": "https://www.yellowpages.com/pueblo-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "normz-auto-glass": {
+  "source": "https://www.yellowpages.com/pueblo-co/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "louis-auto-glass": {
+  "source": "https://www.yellowpages.com/bellingham-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "louis-auto-glass-lynden": {
+  "source": "https://www.yellowpages.com/bellingham-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "todhunter-brothers-glass": {
+  "source": "https://www.yellowpages.com/bellingham-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bellingham-detail-and-glass": {
+  "source": "https://www.yellowpages.com/bellingham-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mt-baker-auto-glass": {
+  "source": "https://www.yellowpages.com/bellingham-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "1st-choice-auto-glass": {
+  "source": "https://www.yellowpages.com/bellingham-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-1-automotive-glass": {
+  "source": "https://www.yellowpages.com/albany-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "albany-used-parts-and-auto-glass": {
+  "source": "https://www.yellowpages.com/albany-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "doyle-taylor-glass": {
+  "source": "https://www.yellowpages.com/albany-ga/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mesko-glass-and-mirror-inc": {
+  "source": "https://safewindshields.agsc.org/stores/mesko-glass-mirror-inc-3/",
+  "tier": "other",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-shop-hazleton": {
+  "source": "https://www.hazletonautoglass.com",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "abc-auto-glass-hazleton": {
+  "source": "https://www.yellowpages.com/hazleton-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-act-windshield-repair": {
+  "source": "https://www.yellowpages.com/pittston-pa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mauldin-s-auto-glass-inc": {
+  "source": "https://www.yellowpages.com/gainesville-fl/mobile-windshield-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "aaron-auto-glass-gainesville": {
+  "source": "https://www.yellowpages.com/gainesville-fl/mobile-windshield-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "knights-auto-glass": {
+  "source": "https://www.yellowpages.com/martinsburg-wv/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "h-and-r-auto-body-and-glass": {
+  "source": "https://www.yellowpages.com/martinsburg-wv/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "discount-auto-glass-and-muffler": {
+  "source": "https://www.yellowpages.com/moberly-mo/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "jb-s-glass-and-tint": {
+  "source": "https://www.yellowpages.com/moberly-mo/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-and-muffler-center": {
+  "source": "https://www.yellowpages.com/moberly-mo/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mark-s-mobile-glass": {
+  "source": "https://www.yellowpages.com/boonville-mo/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "pro-tec-auto-glass": {
+  "source": "https://www.yellowpages.com/rockledge-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "all-low-price-auto-glass": {
+  "source": "https://www.yellowpages.com/rockledge-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-on-the-run-cocoa": {
+  "source": "https://www.yellowpages.com/rockledge-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "brevard-glass-tinting-inc": {
+  "source": "https://www.yellowpages.com/rockledge-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "farmland-auto-glass": {
+  "source": "https://www.yellowpages.com/o-fallon-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "accurate-glass-co": {
+  "source": "https://www.yellowpages.com/o-fallon-il/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-mend-mobile-windshield-repair": {
+  "source": "https://www.yellowpages.com/ferndale-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "ncf-auto-glass": {
+  "source": "https://ncfautoglassflorida.com/newberry/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "glass-service-center-albany": {
+  "source": "https://www.yellowpages.com/albany-ga/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "dougherty-county-glass-co": {
+  "source": "https://www.yellowpages.com/albany-ga/auto-glass-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "dean-s-glass-and-mirror": {
+  "source": "https://www.yellowpages.com/albany-ga/mobile-windshield-replacement",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "sunblock-tint-shop": {
+  "source": "https://www.yellowpages.com/albany-ga/window-tinting",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "nick-s-window-tinting": {
+  "source": "https://www.yellowpages.com/albany-ga/window-tinting",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-clear-view-window-tinting": {
+  "source": "https://www.yellowpages.com/spartanburg-sc/window-tinting",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "upstate-auto-styling": {
+  "source": "https://www.yellowpages.com/spartanburg-sc/window-tinting",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bon-will-custom-glass": {
+  "source": "https://www.yellowpages.com/gainesville-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "premier-glass-tinting": {
+  "source": "https://www.yellowpages.com/gainesville-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "k2-tint-and-clear-bra": {
+  "source": "https://www.yellowpages.com/wilkes-barre-pa/window-tinting",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "cardinal-glass-co": {
+  "source": "https://www.cardinalglass.net/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "action-glass-company": {
+  "source": "https://www.yellowpages.com/beaumont-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-1-glass-co": {
+  "source": "https://www.yellowpages.com/beaumont-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "golden-triangle-glass-co": {
+  "source": "https://www.yellowpages.com/beaumont-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "best-auto-glass": {
+  "source": "https://www.yellowpages.com/beaumont-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-specialty": {
+  "source": "https://www.yellowpages.com/beaumont-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "call-the-glass-man": {
+  "source": "https://www.yellowpages.com/beaumont-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "alamo-glass": {
+  "source": "https://www.yellowpages.com/beaumont-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "romero-s-glass-co": {
+  "source": "https://www.yellowpages.com/beaumont-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "advanced-glass-of-southeast-texas": {
+  "source": "https://www.yellowpages.com/beaumont-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "honolulu-auto-glass": {
+  "source": "https://www.yellowpages.com/honolulu-hi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "baba-s-auto-gloss": {
+  "source": "https://www.yellowpages.com/honolulu-hi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "pearl-city-glass-shop-inc": {
+  "source": "https://www.yellowpages.com/honolulu-hi/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "triple-crown-auto-glass": {
+  "source": "https://www.yellowpages.com/lexington-ky/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "triple-crown-auto-glass-nicholasville": {
+  "source": "https://www.yellowpages.com/lexington-ky/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "sharp-auto-glass": {
+  "source": "https://www.yellowpages.com/lexington-ky/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "trufit-auto-glass": {
+  "source": "https://www.yellowpages.com/lexington-ky/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "arrow-auto-glass-lexington": {
+  "source": "https://www.yellowpages.com/lexington-ky/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "quick-fix-auto-glass-repair-and-replacement": {
+  "source": "https://www.yellowpages.com/palm-springs-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "jimmy-s-auto-glass": {
+  "source": "https://www.yellowpages.com/palm-springs-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "windshield-pros-palm-desert": {
+  "source": "https://www.yellowpages.com/palm-springs-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "valley-glass-company": {
+  "source": "https://www.yellowpages.com/palm-springs-ca/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "budget-auto-glass-inc-fort-myers": {
+  "source": "https://www.yellowpages.com/fort-myers-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-rite-glass": {
+  "source": "https://www.yellowpages.com/fort-myers-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "same-day-windshield": {
+  "source": "https://www.yellowpages.com/fort-myers-fl/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "tipton-auto-glass": {
+  "source": "https://www.yellowpages.com/salem-or/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "state-auto-glass-inc": {
+  "source": "https://www.yellowpages.com/salem-or/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "action-auto-glass-salem": {
+  "source": "https://www.yellowpages.com/salem-or/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mobile-glass-medic-salem": {
+  "source": "https://www.yellowpages.com/salem-or/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "jt-glass": {
+  "source": "https://www.yellowpages.com/salem-or/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "3d-autoglass": {
+  "source": "https://www.yellowpages.com/salem-or/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-o-k-windshields-inc": {
+  "source": "https://www.yellowpages.com/lafayette-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "fournet-s-windshield-repair": {
+  "source": "https://www.yellowpages.com/lafayette-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "alamo-glass-company-inc": {
+  "source": "https://www.yellowpages.com/lafayette-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-experts-llc": {
+  "source": "https://www.yellowpages.com/lafayette-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "abigail-s-auto-glass": {
+  "source": "https://www.yellowpages.com/lafayette-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-plus-glass": {
+  "source": "https://www.yellowpages.com/lafayette-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "kingdom-auto-glass-llc": {
+  "source": "https://www.yellowpages.com/lafayette-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "cecelia-auto-glass": {
+  "source": "https://www.yellowpages.com/lafayette-la/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "crystal-glass-co": {
+  "source": "https://www.yellowpages.com/asheville-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "doug-s-discount-windshield-repair": {
+  "source": "https://www.yellowpages.com/asheville-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "smith-glass-company": {
+  "source": "https://www.yellowpages.com/asheville-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-experts-enka": {
+  "source": "https://www.yellowpages.com/asheville-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-experts-weaverville": {
+  "source": "https://www.yellowpages.com/asheville-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-pro-shop": {
+  "source": "https://www.yellowpages.com/asheville-nc/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-team-and-glass": {
+  "source": "https://www.yellowpages.com/charleston-wv/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "rick-s-auto-glass-and-window-tinting": {
+  "source": "https://www.yellowpages.com/charleston-wv/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mountaineer-glass-inc": {
+  "source": "https://www.yellowpages.com/charleston-wv/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "holstein-s-auto-body-and-glass": {
+  "source": "https://www.yellowpages.com/charleston-wv/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mckinney-glass": {
+  "source": "https://www.yellowpages.com/yakima-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "mckinney-glass-union-gap": {
+  "source": "https://www.yellowpages.com/yakima-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "genuine-auto-glass-yakima": {
+  "source": "https://www.yellowpages.com/yakima-wa/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "g-a-auto-glass-of-san-angelo": {
+  "source": "https://www.yellowpages.com/san-angelo-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "three-rivers-glass-and-accessories": {
+  "source": "https://www.yellowpages.com/san-angelo-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "glass-magic": {
+  "source": "https://www.yellowpages.com/san-angelo-tx/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-1-auto-glass-idaho-falls": {
+  "source": "https://www.yellowpages.com/idaho-falls-id/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "cag-auto-glass-performance": {
+  "source": "https://www.yellowpages.com/idaho-falls-id/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "colvin-s-glass": {
+  "source": "https://www.yellowpages.com/idaho-falls-id/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "windshield-rescue-idaho-falls": {
+  "source": "https://www.yellowpages.com/idaho-falls-id/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "sunrise-auto-glass-idaho-falls": {
+  "source": "https://www.yellowpages.com/idaho-falls-id/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "legacy-auto-glass": {
+  "source": "https://www.yellowpages.com/idaho-falls-id/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a1-windshield-inc": {
+  "source": "https://www.yellowpages.com/idaho-falls-id/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "victory-rock-chip": {
+  "source": "https://www.yellowpages.com/idaho-falls-id/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bingham-glass-service": {
+  "source": "https://www.yellowpages.com/idaho-falls-id/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "american-window-tinting-and-auto-glass": {
+  "source": "https://www.namesandnumbers.com/l/san-angelo-tx/glass-automobile",
+  "tier": "other",
+  "addedAt": "2026-08-06"
+ },
+ "wanier-windshield-repair": {
+  "source": "https://www.namesandnumbers.com/l/san-angelo-tx/glass-automobile",
+  "tier": "other",
+  "addedAt": "2026-08-06"
+ },
+ "oesterle-auto-glass-and-paint": {
+  "source": "https://oesauto.com/contact-us/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "sutton-s-mobile-glass": {
+  "source": "https://www.yellowpages.com/parkersburg-wv/mip/suttons-mobile-glass-service-20368370",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "west-virginia-auto-glass": {
+  "source": "https://wvautoglass.com/",
+  "tier": "own-site",
+  "addedAt": "2026-08-06"
+ },
+ "b-and-b-auto-glass": {
+  "source": "https://www.yellowpages.com/beckley-wv/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "king-s-auto-glass-moundsville": {
+  "source": "https://www.yellowpages.com/wheeling-wv/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "marvil-glass-co": {
+  "source": "https://www.yellowpages.com/seaford-de/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "j-and-j-auto-glass-and-mechanic": {
+  "source": "https://www.yellowpages.com/seaford-de/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "nelson-auto-glass": {
+  "source": "https://www.yellowpages.com/gillette-wy/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "jb-auto-glass-llc": {
+  "source": "https://www.yellowpages.com/gillette-wy/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "windshield-paramedic": {
+  "source": "https://www.yellowpages.com/gillette-wy/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "307-auto-glass": {
+  "source": "https://www.yellowpages.com/sheridan-wy/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-1-professional-windshield": {
+  "source": "https://www.yellowpages.com/laramie-wy/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "p-m-auto-glass-inc": {
+  "source": "https://www.yellowpages.com/rock-springs-wy/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "park-county-glass-inc": {
+  "source": "https://www.yellowpages.com/cody-wy/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "big-horn-glass": {
+  "source": "https://www.yellowpages.com/cody-wy/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "rocky-mountain-windshield-co": {
+  "source": "https://www.yellowpages.com/cody-wy/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "emerald-glass": {
+  "source": "https://www.yellowpages.com/juneau-ak/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "juneau-glass": {
+  "source": "https://www.yellowpages.com/juneau-ak/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "gator-glass-co": {
+  "source": "https://www.yellowpages.com/wasilla-ak/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "randy-s-glass-inc": {
+  "source": "https://www.yellowpages.com/kenai-ak/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "nicks-auto-glass-and-home-windows": {
+  "source": "https://www.yellowpages.com/kenai-ak/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "eds-auto-glass-and-detailing": {
+  "source": "https://www.yellowpages.com/kenai-ak/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "all-america-city-glass": {
+  "source": "https://www.yellowpages.com/minot-nd/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "choice-auto-glass-inc": {
+  "source": "https://www.yellowpages.com/minot-nd/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "j-and-l-auto-glass": {
+  "source": "https://www.yellowpages.com/williston-nd/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "tricounty-glass": {
+  "source": "https://www.yellowpages.com/williston-nd/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "choice-automobile-glass": {
+  "source": "https://www.yellowpages.com/williston-nd/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "right-choice-auto-glass-dickinson": {
+  "source": "https://www.yellowpages.com/dickinson-nd/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "viking-glass-of-nd-inc": {
+  "source": "https://www.yellowpages.com/dickinson-nd/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "larrys-auto-glass-inc": {
+  "source": "https://www.yellowpages.com/jamestown-nd/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "stutsman-county-glass": {
+  "source": "https://www.yellowpages.com/jamestown-nd/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-to-z-glass-and-windshields-smithfield": {
+  "source": "https://www.yellowpages.com/woonsocket-ri/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "all-time-auto-glass": {
+  "source": "https://www.yellowpages.com/newport-ri/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "newport-glass": {
+  "source": "https://www.yellowpages.com/newport-ri/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "aloha-auto-glass": {
+  "source": "https://www.yellowpages.com/hilo-hi/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "precision-auto-glass-hilo": {
+  "source": "https://www.yellowpages.com/hilo-hi/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "a-a-auto-and-glass": {
+  "source": "https://www.yellowpages.com/kahului-hi/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "pacific-windshields-lihue": {
+  "source": "https://www.yellowpages.com/lihue-hi/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "aloha-auto-glass-kailua-kona": {
+  "source": "https://www.yellowpages.com/kailua-kona-hi/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "wiki-auto-glass-inc": {
+  "source": "https://www.yellowpages.com/kapolei-hi/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "808-auto-glass": {
+  "source": "https://www.yellowpages.com/kapolei-hi/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "the-windshield-tech-barre": {
+  "source": "https://www.yellowpages.com/barre-vt/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "champion-auto-glass-new-haven": {
+  "source": "https://www.yellowpages.com/middlebury-vt/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "desabrais-r-j-and-sons-glass-service": {
+  "source": "https://www.yellowpages.com/middlebury-vt/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "dee-s-glass": {
+  "source": "https://www.yellowpages.com/saint-albans-vt/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "the-glass-connection-inc": {
+  "source": "https://www.yellowpages.com/saint-albans-vt/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "big-sky-auto-glass": {
+  "source": "https://www.yellowpages.com/helena-mt/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "clear-choice-auto-glass-helena": {
+  "source": "https://www.yellowpages.com/helena-mt/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "stonefly-windshield-repair-llc": {
+  "source": "https://www.yellowpages.com/helena-mt/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "jako-auto-glass": {
+  "source": "https://www.yellowpages.com/kalispell-mt/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "andy-s-auto-glass": {
+  "source": "https://www.yellowpages.com/kalispell-mt/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "empire-auto-glass-llc": {
+  "source": "https://www.yellowpages.com/kalispell-mt/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "top-end-auto-glass": {
+  "source": "https://www.yellowpages.com/bozeman-mt/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "j-r-s-auto-glass": {
+  "source": "https://www.yellowpages.com/lewiston-me/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "bartlett-glass-llc": {
+  "source": "https://www.yellowpages.com/lewiston-me/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "wes-s-glass": {
+  "source": "https://www.yellowpages.com/rockland-me/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "loren-s-windshield-repair": {
+  "source": "https://www.yellowpages.com/spearfish-sd/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "spearfish-glass": {
+  "source": "https://www.yellowpages.com/spearfish-sd/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "superior-windshields": {
+  "source": "https://www.yellowpages.com/spearfish-sd/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "frontier-glass-of-belle": {
+  "source": "https://www.yellowpages.com/spearfish-sd/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "midwest-glass": {
+  "source": "https://www.yellowpages.com/brookings-sd/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "sioux-valley-auto-body-and-glass": {
+  "source": "https://www.yellowpages.com/brookings-sd/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "brian-s-glass-and-door-inc": {
+  "source": "https://www.yellowpages.com/watertown-sd/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "auto-glass-solutions-aberdeen": {
+  "source": "https://www.yellowpages.com/aberdeen-sd/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "first-class-glass": {
+  "source": "https://www.yellowpages.com/nashua-nh/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "butte-glass": {
+  "source": "https://www.yellowpages.com/butte-mt/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "cabby-glass": {
+  "source": "https://www.yellowpages.com/newport-vt/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "new-england-auto-glass": {
+  "source": "https://www.yellowpages.com/morrisville-vt/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "the-windshield-tech-newport": {
+  "source": "https://www.yellowpages.com/newport-vt/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "american-auto-glass-claremont": {
+  "source": "https://www.yellowpages.com/springfield-vt/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "viking-glass-company-inc": {
+  "source": "https://www.yellowpages.com/bangor-me/windshield-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
+ },
+ "eagle-glass-company": {
+  "source": "https://www.yellowpages.com/dover-de/auto-glass-repair",
+  "tier": "aggregator",
+  "addedAt": "2026-08-06"
  }
 }
