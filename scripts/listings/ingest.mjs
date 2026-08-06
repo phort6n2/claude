@@ -84,8 +84,17 @@ const FAKE_PHONE = /^\d{3}(5550(1\d\d|100)|5551234|0000000|1234567|1111111)$/
 // Name repetition alone is NOT evidence: this directory holds 18 unrelated
 // "Low Price Auto Glass" shops across 16 area codes and they are real. Shared
 // telephone infrastructure is the signal.
-const FAKE_NETWORK = /^(best car glass|jacks? auto ?glass|flys? auto ?glass|faster windshields?)$/i
-const FAKE_BLOCKS = /^(786707|954633|954623|407358|727509|786522|786361|407378|941257|602535|727470)/
+// ABC Windshield and Time Windshield came out of sweeping the phone blocks
+// above, not from a new report. ABC publishes from the same Wix farm
+// (admin489088.wixsite.com/abcwindshield) and claims 61 locations in 15
+// states; its Dearborn Heights address is The BoneYard Bar-B-Q, a restaurant
+// trading there since 1972.
+//
+// ABC also had a real custom domain, abcwindshield.com, serving a near-empty
+// page — a citation token existing only to fill the "website" field. So a
+// website is not evidence either way; only what is behind it counts.
+const FAKE_NETWORK = /^(best car glass|jacks? auto ?glass|flys? auto ?glass|faster windshields?|abc windshields?|time windshields?)$/i
+const FAKE_BLOCKS = /^(786707|954633|954623|407358|727509|786522|786361|407378|941257|602535|727470|313736|323203|303731|704837)/
 
 // Claims we cannot verify and the brief forbids inventing.
 const UNVERIFIABLE = /\b\d(\.\d)?\s*(star|stars)\b|\b\d+\+?\s*(years?|yrs)\b|\b\d+\s*(reviews?|ratings?)\b|award[- ]winning|\bbest\b in|#1\b|top[- ]rated|highest[- ]rated|voted\b|guarantee[ds]?\b.*lifetime|A\+ rated/i
