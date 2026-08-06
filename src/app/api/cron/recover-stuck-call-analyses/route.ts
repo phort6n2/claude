@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { prisma, withRetry } from '@/lib/db'
 import { runCallAnalysisPipeline } from '@/lib/call-analysis/pipeline'
 
 export const dynamic = 'force-dynamic'
@@ -29,23 +29,28 @@ async function handle(request: NextRequest) {
   const stuckBefore = new Date(Date.now() - 10 * 60 * 1000) // 10 min
   const failedAfter = new Date(Date.now() - 24 * 60 * 60 * 1000) // last 24h
 
-  const stuck = await prisma.callAnalysis.findMany({
-    where: {
-      OR: [
-        {
-          status: { in: ['PENDING', 'DOWNLOADING', 'TRANSCRIBING', 'ANALYZING'] },
-          updatedAt: { lt: stuckBefore },
-        },
-        {
-          status: 'FAILED',
-          updatedAt: { gt: failedAfter, lt: stuckBefore },
-        },
-      ],
-    },
-    orderBy: { updatedAt: 'asc' },
-    take: 5,
-    select: { id: true, status: true },
-  })
+  // Retried: this sweep is the safety net for calls whose kick-off or pipeline
+  // failed, so it must not be taken out by the same database blip that stranded
+  // them in the first place.
+  const stuck = await withRetry(() =>
+    prisma.callAnalysis.findMany({
+      where: {
+        OR: [
+          {
+            status: { in: ['PENDING', 'DOWNLOADING', 'TRANSCRIBING', 'ANALYZING'] },
+            updatedAt: { lt: stuckBefore },
+          },
+          {
+            status: 'FAILED',
+            updatedAt: { gt: failedAfter, lt: stuckBefore },
+          },
+        ],
+      },
+      orderBy: { updatedAt: 'asc' },
+      take: 5,
+      select: { id: true, status: true },
+    })
+  )
 
   const results: Array<{ id: string; ok: boolean }> = []
   for (const row of stuck) {

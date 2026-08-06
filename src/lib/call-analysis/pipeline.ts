@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createClient as createDeepgramClient } from '@deepgram/sdk'
 import { Prisma } from '@prisma/client'
 
-import { prisma } from '@/lib/db'
+import { prisma, withRetry } from '@/lib/db'
 import { computeAudioMetrics } from './audio-metrics'
 import { buildCoachingPrompt } from './coaching-prompt'
 
@@ -21,7 +21,10 @@ interface CoachingAnalysis {
     transcript_quote: string
     timestamp: string
     what_should_have_happened: string
+    /** Code from the FOCUS_AREAS taxonomy; drives the per-client top 3. */
+    focus_area?: string
   }>
+  deductions_applied?: Array<{ reason: string; points: number }>
   did_well: string[]
   coaching_note: string
   sentiment: {
@@ -38,10 +41,12 @@ function parseJsonResponse(text: string): CoachingAnalysis {
 }
 
 async function markFailed(id: string, message: string) {
-  await prisma.callAnalysis.update({
-    where: { id },
-    data: { status: 'FAILED', errorMessage: message.slice(0, 4000) },
-  }).catch(() => {})
+  await withRetry(() =>
+    prisma.callAnalysis.update({
+      where: { id },
+      data: { status: 'FAILED', errorMessage: message.slice(0, 4000) },
+    })
+  ).catch(() => {})
 }
 
 /**
@@ -182,18 +187,26 @@ export async function runCallAnalysisPipeline(callAnalysisId: string): Promise<b
       return false
     }
 
-    // Step 4: Persist final results
-    await prisma.callAnalysis.update({
-      where: { id: callAnalysisId },
-      data: {
-        status: 'COMPLETE',
-        analysis: analysis as unknown as Prisma.InputJsonValue,
-        score: analysis.score,
-        outcome: analysis.outcome,
-        completedAt: new Date(),
-        errorMessage: null,
-      },
-    })
+    // Step 4: Persist final results.
+    //
+    // Retried hard: by this point transcription and the Claude analysis have
+    // both been paid for, so losing the write to a momentary pool timeout
+    // throws away the whole call's work and leaves the row stuck mid-pipeline.
+    await withRetry(
+      () =>
+        prisma.callAnalysis.update({
+          where: { id: callAnalysisId },
+          data: {
+            status: 'COMPLETE',
+            analysis: analysis as unknown as Prisma.InputJsonValue,
+            score: analysis.score,
+            outcome: analysis.outcome,
+            completedAt: new Date(),
+            errorMessage: null,
+          },
+        }),
+      { maxRetries: 5, delayMs: 500 }
+    )
 
     return true
   } catch (err) {
