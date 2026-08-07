@@ -27,7 +27,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
-import { getLeadDisplayName, displayNameIsPhone, formatPhoneDisplay } from '@/lib/lead-display'
+import { getLeadDisplayName, displayNameIsPhone, formatPhoneDisplay, formatFieldValue } from '@/lib/lead-display'
 import { ChannelBadge } from '@/components/leads/ChannelBadge'
 import { LeadSourceDetails } from '@/components/leads/LeadSourceDetails'
 import { useLeadStream } from '@/hooks/useLeadStream'
@@ -666,14 +666,22 @@ function getLeadDetails(lead: Lead) {
     return null
   }
 
-  const service = getField(['interested_in', 'Interested In:', 'Interested In', 'service'])
+  // Form controls submit their slug value ("door-side-glass"), not the
+  // text the visitor saw. Applied only to the human-facing answers —
+  // vehicle, VIN and zip are already prose or identifiers.
+  const toDisplay = (keys: string[]): string | null => {
+    const raw = getField(keys)
+    return raw ? formatFieldValue(raw) : null
+  }
+
+  const service = toDisplay(['interested_in', 'Interested In:', 'Interested In', 'service'])
   const year = getField(['vehicle_year', 'Vehicle Year'])
   const make = getField(['vehicle_make', 'Vehicle Make'])
   const model = getField(['vehicle_model', 'Vehicle Model'])
   const vin = getField(['vin', 'VIN', 'Vin'])
   const zipCode = getField(['postal_code', 'postalCode'])
-  const insuranceHelp = getField(['insurance_help', 'Would You Like Us To Help Navigate Your Insurance Claim For You?', 'radio_3s0t', 'insurance'])
-  const insuranceCarrier = getField(['insurance_carrier', 'carrier', 'Carrier'])
+  const insuranceHelp = toDisplay(['insurance_help', 'Would You Like Us To Help Navigate Your Insurance Claim For You?', 'radio_3s0t', 'insurance'])
+  const insuranceCarrier = toDisplay(['insurance_carrier', 'carrier', 'Carrier'])
 
   const vehicleParts = [year, make, model].filter(Boolean)
   // The landing-page form sends one combined string (e.g. "2021 Subaru Outback")
@@ -725,7 +733,9 @@ function getAllFormFields(lead: Lead): Array<{ label: string; value: string }> {
 
     fields.push({
       label: formatLabel(key),
-      value: String(value)
+      // Form controls submit their slug value ("door-side-glass"), not the text
+      // the visitor actually saw.
+      value: formatFieldValue(value),
     })
   }
 

@@ -80,3 +80,77 @@ export function displayNameIsPhone(lead: LeadDisplayFields): boolean {
   if (name || lead.email?.trim()) return false
   return !!formatPhoneDisplay(lead.phone)
 }
+
+/**
+ * Slug vocabularies from the landing-page forms and HighLevel surveys, where a
+ * generic humanisation would read awkwardly or lose meaning — "Chip Crack
+ * Repair" instead of "Chip / crack repair".
+ *
+ * Anything not listed still gets tidied by formatFieldValue; this map is only
+ * for the cases where mechanical title-casing isn't good enough.
+ */
+const VALUE_LABELS: Record<string, string> = {
+  'chip-crack-repair': 'Chip / crack repair',
+  'rock-chip-repair': 'Rock chip repair',
+  'door-side-glass': 'Door / side glass',
+  'side-window': 'Side window',
+  'back-glass': 'Back glass',
+  'adas-calibration': 'ADAS calibration',
+  'not-sure': 'Not sure',
+  'yes': 'Yes',
+  'no': 'No',
+}
+
+/**
+ * Turn a raw form value into something readable.
+ *
+ * Form controls submit their `value` attribute, so leads arrive carrying
+ * `door-side-glass` and `not-sure` where the visitor saw "Door / Side Glass"
+ * and "Not sure". Those slugs were being rendered verbatim in every lead view.
+ *
+ * The conservative part matters more than the pretty part: this is applied to
+ * every field of every payload, which includes click identifiers, VINs, URLs
+ * and template placeholders that must survive completely untouched. So it only
+ * rewrites values that actually look like slugs, and returns everything else
+ * exactly as it came in.
+ */
+export function formatFieldValue(value: unknown): string {
+  const raw = typeof value === 'string' ? value.trim() : String(value ?? '').trim()
+  if (!raw) return ''
+
+  const mapped = VALUE_LABELS[raw.toLowerCase()]
+  if (mapped) return mapped
+
+  // Already prose ("2025 Kia Telluride", "State Farm") — nothing to do.
+  if (/\s/.test(raw)) return raw
+  // Emails and URLs must not be touched.
+  if (raw.includes('@') || /^https?:\/\//i.test(raw)) return raw
+
+  // Digit strings that are really phone numbers get the standard treatment;
+  // formatPhoneDisplay returns its input unchanged for anything else, so a zip
+  // code passes straight through.
+  if (/^[+\d()\-.\s]+$/.test(raw)) return formatPhoneDisplay(raw)
+
+  // "landing:collision-portland-metro" — the namespace is for machines.
+  const withoutNamespace = raw.includes(':') ? raw.slice(raw.indexOf(':') + 1) : raw
+
+  // Only touch things shaped like a slug: lowercase WORDS joined by - or _.
+  //
+  // The word test is doing real work. Matching "letters and digits joined by a
+  // separator" is far too loose — a gclid ("…EgKL9vD_BwE"), a gbraid
+  // ("0AAAAADjipJCDrVyiwBwcoaDozP8-0FbsW") and a UUID all satisfy it, and this
+  // would happily mangle every one of them into title-cased nonsense. Requiring
+  // each segment to be either a plain lowercase word or a plain number rejects
+  // all three, since random identifiers mix cases and interleave digits inside
+  // segments.
+  const segments = withoutNamespace.split(/[-_]+/)
+  const looksLikeSlug =
+    withoutNamespace.length <= 40 &&
+    segments.length > 1 &&
+    segments.every((segment) => /^[a-z]{2,}$/.test(segment) || /^\d+$/.test(segment))
+  if (!looksLikeSlug) return raw
+
+  return segments
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
