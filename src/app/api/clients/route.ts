@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma, withRetry } from '@/lib/db'
 import { generateSlug } from '@/lib/utils'
+import { normalizeAllowedOrigins } from '@/lib/webhook-forwarding'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
@@ -39,6 +40,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const { origins: allowedOrigins, invalid: invalidOrigins } = normalizeAllowedOrigins(
+      data.allowedOrigins
+    )
+    if (invalidOrigins.length > 0) {
+      return NextResponse.json(
+        { error: `Invalid origin(s): ${invalidOrigins.join(', ')}` },
+        { status: 400 }
+      )
+    }
+
     const client = await prisma.client.create({
       data: {
         slug,
@@ -67,6 +78,7 @@ export async function POST(request: NextRequest) {
         secondaryColor: data.secondaryColor || '#3b82f6',
         accentColor: data.accentColor || '#f59e0b',
         timezone: data.timezone || 'America/Denver',
+        allowedOrigins,
         status: 'ACTIVE',
       },
     })

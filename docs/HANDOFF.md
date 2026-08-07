@@ -142,6 +142,35 @@ write throws away the whole call.
 
 ---
 
+## 5a. Lead forwarding (webhook fan-out)
+
+**`src/lib/webhook-forwarding.ts`**, configured per client in the admin client
+editor under **Lead Forwarding**.
+
+The app is the single ingestion point for forms; each client can have any
+number of outbound webhook destinations (typically their HighLevel inbound
+webhook). After a lead is stored, the original payload is forwarded verbatim,
+server-side, to every enabled destination. Ordering matters: the lead is saved
+first, delivery rows are created second, actual POSTs run after the response is
+sent — so forwarding can never fail lead capture.
+
+Deliveries are persisted (`WebhookDelivery`) with status and attempt count.
+`/api/cron/retry-webhook-deliveries` retries failed or unattempted deliveries
+every 15 minutes, up to 6 attempts within 24 hours — an outage delays a
+forward, it doesn't lose it. Each destination has a **Test** button in the
+admin that sends a clearly-marked test contact synchronously.
+
+The same section manages the client's **allowed browser origins** (CORS) for
+forms that post directly from the page — see §8.
+
+Migration path for a form currently posting to two hardcoded URLs: add the
+HighLevel URL as a destination, verify with Test, watch relayed deliveries for
+a few days (double delivery during transition is fine — HighLevel dedups
+contacts and this app dedups leads), then remove the HighLevel URL from the
+form so it posts only here.
+
+---
+
 ## 6. Who can see what
 
 **Client portal** (`/portal/leads`) — magic-link email or a per-client password.
@@ -208,9 +237,11 @@ HighLevel; it stops being tolerable as more landing pages post directly, since
 the URL is then visible in page source. The fix is rate limiting plus the origin
 allowlist — not a shared secret, which a browser can't hold.
 
-**CORS origins are hardcoded.** `ALLOWED_BROWSER_ORIGINS` in the webhook route.
-Every new client site needs a code change and a deploy to let that client's own
-domain post. Should live on the `Client` record.
+**CORS origins now live on the `Client` record** (`allowedOrigins`, managed in
+the admin client editor under Lead Forwarding). The hardcoded list in the
+webhook route remains as a fallback floor — unioned with the database list — so
+a DB outage can't lock out a site that's already posting. Adding a new client
+site is an admin edit, not a deploy.
 
 **No migrations.** There is no `prisma/migrations` directory and the build runs
 only `prisma generate`. Schema changes are applied by hand with `db push`.
@@ -247,8 +278,8 @@ Live and required:
 | `ENCRYPTION_KEY` | Encrypted client fields |
 | `APP_URL` | Internal worker callback |
 
-Cron: `/api/cron/recover-stuck-call-analyses` every 15 minutes. That is the only
-one left.
+Crons: `/api/cron/recover-stuck-call-analyses` and
+`/api/cron/retry-webhook-deliveries`, both every 15 minutes.
 
 ---
 
@@ -294,8 +325,8 @@ sub-account.
 Ship it in shadow mode: explicit slug always wins, log whether the number lookup
 *would* have agreed, watch for a few days, then cut one client over.
 
-**Move CORS origins onto the `Client` record.** Same shape of change; kills the
-code-change-per-client-site problem.
+~~**Move CORS origins onto the `Client` record.**~~ Done — see §5a and the
+Lead Forwarding section of the client editor.
 
 ### Bigger, worth deciding on deliberately
 

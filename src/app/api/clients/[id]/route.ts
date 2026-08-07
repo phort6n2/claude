@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { normalizeAllowedOrigins } from '@/lib/webhook-forwarding'
 export const dynamic = 'force-dynamic'
 
 interface RouteContext {
@@ -40,6 +41,16 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 })
     }
 
+    const { origins: allowedOrigins, invalid: invalidOrigins } = normalizeAllowedOrigins(
+      data.allowedOrigins ?? existing.allowedOrigins
+    )
+    if (invalidOrigins.length > 0) {
+      return NextResponse.json(
+        { error: `Invalid origin(s): ${invalidOrigins.join(', ')}` },
+        { status: 400 }
+      )
+    }
+
     const client = await prisma.client.update({
       where: { id },
       data: {
@@ -69,6 +80,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         secondaryColor: data.secondaryColor,
         accentColor: data.accentColor,
         timezone: data.timezone,
+        allowedOrigins,
         status: data.status || existing.status,
         // Call coaching toggle
         callCoachingEnabled: data.callCoachingEnabled ?? existing.callCoachingEnabled,

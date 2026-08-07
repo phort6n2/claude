@@ -13,6 +13,10 @@
     {
       "path": "/api/cron/recover-stuck-call-analyses",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/retry-webhook-deliveries",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

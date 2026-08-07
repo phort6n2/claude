@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { after } from 'next/server'
 import { prisma } from '@/lib/db'
 import { notifyNewLead } from '@/lib/push-notifications'
 import { kickOffCallAnalysis } from '@/lib/call-analysis/queue'
 import { findSameDayDuplicateCanonical } from '@/lib/lead-dedup'
+import { createDeliveriesForLead, attemptDelivery } from '@/lib/webhook-forwarding'
 import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -23,11 +25,13 @@ export const dynamic = 'force-dynamic'
  * entirely. Anyone who knows a client slug can still post directly. Rate
  * limiting is what would address that, and it isn't built yet.
  *
- * Add an entry per client landing page as each one starts posting here. Both
- * apex and www are needed when both resolve, because the browser sends the
- * exact origin it loaded the page from.
+ * Per-client origins live on `Client.allowedOrigins`, managed in the admin UI.
+ * This hardcoded set is the fallback floor, unioned with the database list, so
+ * a DB outage (or a deploy that beats the SQL) can never lock out a site that
+ * is already posting. Both apex and www are needed when both resolve, because
+ * the browser sends the exact origin it loaded the page from.
  */
-const ALLOWED_BROWSER_ORIGINS = new Set([
+const FALLBACK_BROWSER_ORIGINS = new Set([
   // Collision Auto Glass & Calibration — landing site
   'https://collisionglass.co',
   'https://www.collisionglass.co',
@@ -39,8 +43,33 @@ const ALLOWED_BROWSER_ORIGINS = new Set([
   'https://www.collisionautoglass.com',
 ])
 
-function corsHeaders(origin: string | null): Record<string, string> {
-  if (!origin || !ALLOWED_BROWSER_ORIGINS.has(origin)) return {}
+/**
+ * True when `origin` may post for the client in the query string: either in
+ * the hardcoded fallback set or in that client's configured allowedOrigins.
+ * Database problems degrade to the fallback set instead of failing the
+ * preflight.
+ */
+async function isAllowedOrigin(origin: string | null, clientSlug: string | null): Promise<boolean> {
+  if (!origin) return false
+  if (FALLBACK_BROWSER_ORIGINS.has(origin)) return true
+  if (!clientSlug) return false
+  try {
+    const client = await prisma.client.findUnique({
+      where: { slug: clientSlug },
+      select: { allowedOrigins: true },
+    })
+    const normalized = origin.replace(/\/$/, '').toLowerCase()
+    return !!client?.allowedOrigins?.some(
+      (o) => o.replace(/\/$/, '').toLowerCase() === normalized
+    )
+  } catch (err) {
+    console.warn('[HighLevel Webhook] Origin lookup failed, using fallback list only:', err)
+    return false
+  }
+}
+
+function corsHeaders(origin: string | null, allowed: boolean): Record<string, string> {
+  if (!origin || !allowed) return {}
   return {
     'Access-Control-Allow-Origin': origin,
     // The response differs per origin, so it must not be cached under one key.
@@ -53,7 +82,9 @@ function corsHeaders(origin: string | null): Record<string, string> {
 
 /** CORS preflight. Unknown origins get no headers, so the browser blocks. */
 export async function OPTIONS(request: NextRequest) {
-  const headers = corsHeaders(request.headers.get('origin'))
+  const origin = request.headers.get('origin')
+  const clientSlug = new URL(request.url).searchParams.get('client')
+  const headers = corsHeaders(origin, await isAllowedOrigin(origin, clientSlug))
   return new NextResponse(null, {
     status: Object.keys(headers).length ? 204 : 403,
     headers,
@@ -77,7 +108,11 @@ export async function POST(request: NextRequest) {
   // Attach CORS headers to whatever the handler returned. Without them a
   // browser-initiated POST succeeds server-side but the fetch() still rejects,
   // which would look to the page like a failed submission.
-  for (const [key, value] of Object.entries(corsHeaders(request.headers.get('origin')))) {
+  const origin = request.headers.get('origin')
+  const clientSlug = new URL(request.url).searchParams.get('client')
+  for (const [key, value] of Object.entries(
+    corsHeaders(origin, await isAllowedOrigin(origin, clientSlug))
+  )) {
     response.headers.set(key, value)
   }
   return response
@@ -539,6 +574,32 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
         duplicateOfLeadId ? ` (duplicate of ${duplicateOfLeadId})` : ''
       }`
     )
+
+    // Forward the original payload to the client's configured outbound
+    // webhooks (e.g. their HighLevel inbound webhook). The lead is already
+    // saved, so this is strictly additive: delivery rows are created now
+    // (fast insert), the actual POSTs run after the response is sent, and
+    // anything that fails is retried by the cron sweep. A client with no
+    // destinations configured skips all of this.
+    try {
+      const deliveryIds = await createDeliveriesForLead(
+        client.id,
+        lead.id,
+        payloadWithoutHeaders
+      )
+      if (deliveryIds.length > 0) {
+        console.log(
+          `[HighLevel Webhook] Queued ${deliveryIds.length} outbound deliveries for lead ${lead.id}`
+        )
+        after(async () => {
+          for (const id of deliveryIds) {
+            await attemptDelivery(id)
+          }
+        })
+      }
+    } catch (err) {
+      console.error('[HighLevel Webhook] Failed to queue outbound deliveries:', err)
+    }
 
     // If this is a phone lead with a recording URL, kick off call coaching
     // analysis (only when the client has the feature enabled). Stays a

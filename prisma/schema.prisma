@@ -76,6 +76,11 @@ model Client {
   // Client Portal
   portalPassword String? // Encrypted
 
+  // Browser origins allowed to POST leads directly to the webhook (CORS).
+  // Managed in the admin UI; unioned with the hardcoded fallback list in the
+  // webhook route so an empty database can never lock out a known site.
+  allowedOrigins String[] @default([])
+
   // Google Places / Maps
   googlePlaceId String? // Google Places API place_id
   googleMapsUrl String? // Direct link to Google Maps
@@ -99,6 +104,9 @@ model Client {
   leads        Lead[]
   clientUsers  ClientUser[]
   callAnalyses CallAnalysis[]
+
+  // Outbound lead forwarding (webhook fan-out)
+  webhookDestinations WebhookDestination[]
 
   // Admin Push Notification Subscriptions
   adminPushSubscriptions AdminPushSubscriptionClient[]
@@ -170,6 +178,9 @@ model Lead {
   // Phone Call Data
   callRecordingUrl String? // URL to call recording from HighLevel
   callAnalyses     CallAnalysis[]
+
+  // Outbound webhook deliveries created for this lead
+  webhookDeliveries WebhookDelivery[]
 
   // Lead Status (updated by client)
   status          LeadStatus @default(NEW)
@@ -335,6 +346,62 @@ model AdminPushSubscriptionClient {
   @@index([clientId])
 }
 
+
+// ============================================
+// OUTBOUND WEBHOOK FORWARDING
+//
+// The app is the single ingestion point for lead forms; each client can
+// configure destination webhooks (e.g. their HighLevel inbound webhook) in
+// the admin UI. After a lead is stored, the original payload is forwarded
+// server-side to every enabled destination. Deliveries are persisted so a
+// failed forward is retried by cron instead of lost.
+// ============================================
+
+model WebhookDestination {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  label   String // e.g. "HighLevel — Collision workflow"
+  url     String // https destination the lead payload is POSTed to
+  enabled Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deliveries WebhookDelivery[]
+
+  @@index([clientId])
+}
+
+model WebhookDelivery {
+  id            String             @id @default(cuid())
+  destinationId String
+  destination   WebhookDestination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  leadId        String?
+  lead          Lead?              @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  payload Json // the original inbound payload, forwarded verbatim
+
+  status         WebhookDeliveryStatus @default(PENDING)
+  attempts       Int                   @default(0)
+  lastAttemptAt  DateTime?
+  responseStatus Int? // HTTP status of the last attempt
+  lastError      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, updatedAt])
+  @@index([destinationId, createdAt])
+  @@index([leadId])
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
 
 // ============================================
 // CALL ANALYSIS (Coaching reports for phone leads)
