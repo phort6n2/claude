@@ -8,16 +8,10 @@ import {
   AlertCircle,
   RefreshCw,
   Zap,
-  Cloud,
   Mic,
-  Share2,
-  Image as ImageIcon,
   MapPin,
-  Video,
   Bot,
   ExternalLink,
-  Search,
-  Megaphone,
 } from 'lucide-react'
 
 interface IntegrationStatus {
@@ -31,28 +25,14 @@ interface IntegrationStatus {
 
 const INTEGRATION_ICONS: Record<string, React.ReactNode> = {
   'ANTHROPIC_API_KEY': <Bot className="h-5 w-5" />,
-  'NANO_BANANA_API_KEY': <ImageIcon className="h-5 w-5" />,
-  'AUTOCONTENT_API_KEY': <Mic className="h-5 w-5" />,
-  'GETLATE_API_KEY': <Share2 className="h-5 w-5" />,
-  'PODBEAN_CLIENT_SECRET': <Mic className="h-5 w-5" />,
+  'DEEPGRAM_API_KEY': <Mic className="h-5 w-5" />,
   'GOOGLE_PLACES_API_KEY': <MapPin className="h-5 w-5" />,
-  'GOOGLE_CLOUD_CREDENTIALS': <Cloud className="h-5 w-5" />,
-  'CREATIFY_API_KEY': <Video className="h-5 w-5" />,
-  'DATAFORSEO_PASSWORD': <Search className="h-5 w-5" />,
-  'GOOGLE_ADS': <Megaphone className="h-5 w-5" />,
 }
 
 const INTEGRATION_DESCRIPTIONS: Record<string, string> = {
-  'ANTHROPIC_API_KEY': 'AI content generation for blogs, social posts, and descriptions',
-  'NANO_BANANA_API_KEY': 'AI image generation using Google Gemini',
-  'AUTOCONTENT_API_KEY': 'Podcast audio generation from blog content',
-  'GETLATE_API_KEY': 'Social media scheduling and publishing',
-  'PODBEAN_CLIENT_SECRET': 'Podcast episode publishing and hosting',
+  'ANTHROPIC_API_KEY': 'Call analysis and coaching notes (Claude)',
+  'DEEPGRAM_API_KEY': 'Call recording transcription',
   'GOOGLE_PLACES_API_KEY': 'Business lookup and address autocomplete',
-  'GOOGLE_CLOUD_CREDENTIALS': 'Media file storage (images, audio, video)',
-  'CREATIFY_API_KEY': 'AI video creation and lip-sync',
-  'DATAFORSEO_PASSWORD': 'Fetch People Also Ask questions from Google',
-  'GOOGLE_ADS': 'Conversion tracking and offline conversion import',
 }
 
 export default function ApiStatusPage() {

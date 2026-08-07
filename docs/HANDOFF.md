@@ -24,8 +24,8 @@ Each client gets a rolling "three things to work on" derived from patterns
 across their own calls.
 
 It used to do a fourth thing — generate and publish marketing content — and a
-fifth — push conversions back to Google Ads. Both are gone or switched off. See
-§7.
+fifth — push conversions back to Google Ads. Both have been physically removed
+from the codebase. See §7.
 
 ---
 
@@ -157,19 +157,34 @@ delivers nothing: see §8.
 
 ---
 
-## 7. Switched off, but still in the repo
+## 7. Removed systems
+
+All of the following have been physically deleted from the codebase. The code
+is gone; the corresponding database tables/columns are dropped separately with
+`docs/db-cleanup-2026-08.sql`, which must run *after* the code deploy — see §8
+on ordering.
 
 **Content generation.** Blog posts, social, podcasts, video, GBP posts, press
-releases — roughly 37 files plus a large slice of the schema. Gated behind
-`CONTENT_ENABLED` (default off); middleware returns 410 for its APIs and
-redirects its pages. Dead weight, not a hazard.
+releases, PAA library, WordPress/Podbean/Creatify/GetLate/DataForSEO
+integrations, the `CONTENT_ENABLED` gate, and the middleware that enforced it.
+The content models (ContentItem, BlogPost, SocialPost, GBPPost, StandardPAA,
+ServiceLocation, and friends) are out of the Prisma schema.
 
-**Google Ads.** Removed entirely. The `Lead` table still carries
-`enhancedConversionSent`, `offlineConversionSent` and `googleSyncError`, which
-nothing reads. Google handles conversions natively now.
+**Google Ads.** The `GoogleAdsConfig` / `ClientGoogleAds` models and the
+`Lead` sync columns (`enhancedConversionSent`, `offlineConversionSent`,
+`googleSyncError` and their timestamps) are gone. Google handles conversions
+natively now.
 
-**`/admin/settings/wrhq`.** Configured publishing to the old WordPress
-windshieldrepairhq.com, which no longer exists.
+**`/admin/settings/wrhq`.** Deleted along with the rest of the WRHQ publishing
+configuration.
+
+**The eleven one-off migration routes** (`add-quote-value-column`,
+`migrate-timezone`, `backfill-lead-dedup`, `generate-vapid-keys`, etc.) under
+`/api/admin/`. They could mutate production schema and data and are no longer
+reachable.
+
+The old content portal at `/portal/[slug]` is also gone; clients use
+`/portal/leads`.
 
 ---
 
@@ -197,20 +212,14 @@ allowlist — not a shared secret, which a browser can't hold.
 Every new client site needs a code change and a deploy to let that client's own
 domain post. Should live on the `Client` record.
 
-**Eleven one-off migration routes are still shipped.** `add-quote-value-column`,
-`migrate-timezone`, `backfill-lead-dedup` and friends under `/api/admin/`. They
-were throwaway scripts. They mutate schema and data and are still reachable.
-
 **No migrations.** There is no `prisma/migrations` directory and the build runs
 only `prisma generate`. Schema changes are applied by hand with `db push`.
 **Order matters absolutely**: Prisma selects all scalar columns, so shipping code
 that declares a column before the column exists takes down every query touching
-that table. Database first, deploy second. Prefer explicit SQL over `db push`,
-which diffs the whole schema and may propose dropping things.
-
-**`prisma/seed.ts` has drifted.** It references `collision-auto-glass`, which
-doesn't exist in production. Running it against a real database would create a
-duplicate, wrong client.
+that table. For *additions*: database first, deploy second. For *removals* (like
+the §7 cleanup): deploy first, drop the tables/columns second. Prefer explicit
+SQL over `db push`, which diffs the whole schema and may propose dropping
+things.
 
 ---
 
@@ -237,8 +246,6 @@ Live and required:
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `ADMIN_EMAIL` | Web push |
 | `ENCRYPTION_KEY` | Encrypted client fields |
 | `APP_URL` | Internal worker callback |
-
-`CONTENT_ENABLED` is unset (off) and should stay that way.
 
 Cron: `/api/cron/recover-stuck-call-analyses` every 15 minutes. That is the only
 one left.
@@ -299,13 +306,6 @@ HighLevel.
 
 **Rate limiting on the webhook.** Needed before many more public landing pages
 post directly.
-
-**Delete the content system.** Roughly 37 files and a large slice of schema for
-something switched off. Removing it makes everything else easier to reason
-about. Nothing depends on it.
-
-**Remove the one-off migration routes.** Eleven throwaway scripts that can
-mutate production.
 
 ### Considered and rejected
 

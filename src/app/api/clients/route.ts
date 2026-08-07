@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma, withRetry } from '@/lib/db'
 import { generateSlug } from '@/lib/utils'
-import { encrypt } from '@/lib/encryption'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
@@ -40,12 +39,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Encrypt WordPress password if provided
-    let encryptedPassword = null
-    if (data.wordpressAppPassword) {
-      encryptedPassword = encrypt(data.wordpressAppPassword)
-    }
-
     const client = await prisma.client.create({
       data: {
         slug,
@@ -59,7 +52,6 @@ export async function POST(request: NextRequest) {
         postalCode: data.postalCode,
         googlePlaceId: data.googlePlaceId || null,
         googleMapsUrl: data.googleMapsUrl || null,
-        wrhqDirectoryUrl: data.wrhqDirectoryUrl || null,
         hasShopLocation: data.hasShopLocation ?? true,
         offersMobileService: data.offersMobileService ?? false,
         offersWindshieldRepair: data.offersWindshieldRepair ?? true,
@@ -74,23 +66,7 @@ export async function POST(request: NextRequest) {
         primaryColor: data.primaryColor || '#1e40af',
         secondaryColor: data.secondaryColor || '#3b82f6',
         accentColor: data.accentColor || '#f59e0b',
-        brandVoice: data.brandVoice || 'Professional, helpful, and knowledgeable',
-        wordpressUrl: data.wordpressUrl || null,
-        wordpressUsername: data.wordpressUsername || null,
-        wordpressAppPassword: encryptedPassword,
-        wordpressConnected: false,
-        ctaText: data.ctaText || 'Get a Free Quote',
-        ctaUrl: data.ctaUrl || null,
-        creatifyTemplateId: data.creatifyTemplateId || null,
-        preferredPublishTime: data.preferredPublishTime || '09:00',
         timezone: data.timezone || 'America/Denver',
-        socialPlatforms: data.socialPlatforms || [],
-        socialAccountIds: data.socialAccountIds || null,
-        podbeanPodcastId: data.podbeanPodcastId || null,
-        podbeanPodcastTitle: data.podbeanPodcastTitle || null,
-        podbeanPodcastUrl: data.podbeanPodcastUrl || null,
-        wrhqYoutubePlaylistId: data.wrhqYoutubePlaylistId || null,
-        wrhqYoutubePlaylistTitle: data.wrhqYoutubePlaylistTitle || null,
         status: 'ACTIVE',
       },
     })

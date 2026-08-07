@@ -10,79 +10,27 @@ import {
   Plus,
   RefreshCw,
   Users,
-  TrendingUp,
-  Sparkles,
   Activity,
 } from 'lucide-react'
 import ClientsListView from '@/components/admin/ClientsListView'
 
 async function getClients() {
-  const clients = await prisma.client.findMany({
+  return prisma.client.findMany({
     orderBy: { createdAt: 'desc' },
-    include: {
-      _count: {
-        select: {
-          contentItems: {
-            where: {
-              status: 'PUBLISHED',
-              publishedAt: {
-                gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-              },
-            },
-          },
-        },
-      },
-      contentItems: {
-        where: {
-          status: { in: ['SCHEDULED', 'GENERATING'] },
-          scheduledDate: { gte: new Date() },
-        },
-        orderBy: { scheduledDate: 'asc' },
-        take: 1,
-        select: { scheduledDate: true, status: true },
-      },
-    },
   })
-
-  // Get scheduled counts separately since Prisma doesn't support multiple _count conditions
-  const scheduledCounts = await prisma.contentItem.groupBy({
-    by: ['clientId'],
-    where: {
-      status: {
-        in: ['DRAFT', 'SCHEDULED'],
-      },
-    },
-    _count: { id: true },
-  })
-
-  const countMap = new Map(scheduledCounts.map(c => [c.clientId, c._count.id]))
-
-  return clients.map(client => ({
-    ...client,
-    scheduledCount: countMap.get(client.id) || 0,
-  }))
 }
 
 async function getStats() {
-  const [total, active, autoEnabled, postsThisMonth] = await Promise.all([
+  const [total, active] = await Promise.all([
     prisma.client.count(),
     prisma.client.count({ where: { status: 'ACTIVE' } }),
-    prisma.client.count({ where: { autoScheduleEnabled: true } }),
-    prisma.contentItem.count({
-      where: {
-        status: 'PUBLISHED',
-        publishedAt: {
-          gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-        },
-      },
-    }),
   ])
-  return { total, active, autoEnabled, postsThisMonth }
+  return { total, active }
 }
 
-function StatsBar({ stats }: { stats: { total: number; active: number; autoEnabled: number; postsThisMonth: number } }) {
+function StatsBar({ stats }: { stats: { total: number; active: number } }) {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-2 gap-4 mb-6">
       <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white shadow-lg shadow-blue-500/25">
         <div className="flex items-center justify-between">
           <div>
@@ -105,28 +53,6 @@ function StatsBar({ stats }: { stats: { total: number; active: number; autoEnabl
           </div>
         </div>
       </div>
-      <div className="bg-gradient-to-br from-violet-500 to-violet-600 rounded-2xl p-4 text-white shadow-lg shadow-violet-500/25">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-violet-100 text-sm font-medium">On Autopilot</p>
-            <p className="text-3xl font-bold mt-1">{stats.autoEnabled}</p>
-          </div>
-          <div className="bg-white/20 rounded-xl p-3">
-            <Sparkles className="h-6 w-6" />
-          </div>
-        </div>
-      </div>
-      <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl p-4 text-white shadow-lg shadow-amber-500/25">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-amber-100 text-sm font-medium">Posts This Month</p>
-            <p className="text-3xl font-bold mt-1">{stats.postsThisMonth}</p>
-          </div>
-          <div className="bg-white/20 rounded-xl p-3">
-            <TrendingUp className="h-6 w-6" />
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
@@ -145,7 +71,7 @@ async function ClientsContent() {
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No clients yet</h3>
             <p className="text-gray-500 mb-6 text-center max-w-md">
-              Get started by adding your first auto glass shop client. You&apos;ll be able to manage their content, social media, and more.
+              Get started by adding your first auto glass shop client. You&apos;ll be able to manage their leads and call coaching.
             </p>
             <Link href="/admin/clients/new">
               <Button size="lg" className="shadow-lg shadow-blue-500/25">
@@ -164,12 +90,6 @@ async function ClientsContent() {
     ...client,
     createdAt: client.createdAt.toISOString(),
     updatedAt: client.updatedAt.toISOString(),
-    calendarGeneratedAt: client.calendarGeneratedAt?.toISOString() || null,
-    calendarEndDate: client.calendarEndDate?.toISOString() || null,
-    contentItems: client.contentItems.map(item => ({
-      ...item,
-      scheduledDate: item.scheduledDate.toISOString(),
-    })),
   }))
 
   return (

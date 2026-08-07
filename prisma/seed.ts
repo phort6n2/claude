@@ -23,43 +23,9 @@ async function main() {
 
   console.log('Created admin user:', admin.email)
 
-  // Create sample client
-  const client = await prisma.client.upsert({
-    where: { slug: 'collision-auto-glass' },
-    update: {},
-    create: {
-      slug: 'collision-auto-glass',
-      businessName: 'Collision Auto Glass & Calibration',
-      contactPerson: 'John Smith',
-      phone: '(503) 555-0123',
-      email: 'info@collisionautoglass.com',
-      streetAddress: '123 Main St',
-      city: 'Portland',
-      state: 'OR',
-      postalCode: '97201',
-      hasShopLocation: true,
-      offersMobileService: true,
-      offersWindshieldRepair: true,
-      offersWindshieldReplacement: true,
-      offersSideWindowRepair: true,
-      offersBackWindowRepair: true,
-      offersSunroofRepair: true,
-      offersRockChipRepair: true,
-      offersAdasCalibration: true,
-      serviceAreas: ['Portland', 'Beaverton', 'Lake Oswego', 'Tigard', 'Gresham'],
-      primaryColor: '#1e40af',
-      secondaryColor: '#3b82f6',
-      accentColor: '#f59e0b',
-      brandVoice: 'Professional, helpful, and knowledgeable. We emphasize our ADAS expertise and mobile service convenience.',
-      ctaText: 'Get a Free Quote',
-      preferredPublishTime: '09:00',
-      timezone: 'America/Denver',
-      socialPlatforms: ['facebook', 'instagram', 'linkedin'],
-      status: 'ACTIVE',
-    },
-  })
-
-  console.log('Created sample client:', client.businessName)
+  // No sample client: clients are created through the admin UI. The old sample
+  // used a slug that doesn't exist in production and would have created a
+  // duplicate, wrong client if run against a real database.
 }
 
 main()

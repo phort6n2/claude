@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { encrypt } from '@/lib/encryption'
 export const dynamic = 'force-dynamic'
 
 interface RouteContext {
@@ -12,27 +11,13 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     const { id } = await params
     const client = await prisma.client.findUnique({
       where: { id },
-      include: {
-        _count: {
-          select: {
-            contentItems: true,
-            blogPosts: true,
-          },
-        },
-      },
     })
 
     if (!client) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 })
     }
 
-    // Don't send encrypted password to frontend - just indicate if one exists
-    const { wordpressAppPassword, ...clientWithoutPassword } = client
-    return NextResponse.json({
-      ...clientWithoutPassword,
-      wordpressAppPassword: null, // Never send encrypted password to client
-      hasWordPressPassword: !!wordpressAppPassword,
-    })
+    return NextResponse.json(client)
   } catch (error) {
     console.error('Failed to fetch client:', error)
     return NextResponse.json(
@@ -55,24 +40,6 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 })
     }
 
-    // Encrypt WordPress password if changed
-    let encryptedPassword = existing.wordpressAppPassword
-    const hasNewPassword = data.wordpressAppPassword && data.wordpressAppPassword !== ''
-    console.log('[Client Update] Password handling:', {
-      businessName: existing.businessName,
-      hasNewPasswordFromForm: hasNewPassword,
-      newPasswordLength: hasNewPassword ? data.wordpressAppPassword.length : 0,
-      hasExistingPassword: !!existing.wordpressAppPassword,
-      existingPasswordPrefix: existing.wordpressAppPassword?.substring(0, 10),
-    })
-    if (hasNewPassword) {
-      encryptedPassword = encrypt(data.wordpressAppPassword)
-      console.log('[Client Update] Encrypted new password:', {
-        encryptedPrefix: encryptedPassword?.substring(0, 10),
-        encryptedLength: encryptedPassword?.length,
-      })
-    }
-
     const client = await prisma.client.update({
       where: { id },
       data: {
@@ -87,7 +54,6 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         country: data.country || existing.country || 'US',
         googlePlaceId: data.googlePlaceId || null,
         googleMapsUrl: data.googleMapsUrl || null,
-        wrhqDirectoryUrl: data.wrhqDirectoryUrl || null,
         hasShopLocation: data.hasShopLocation ?? true,
         offersMobileService: data.offersMobileService ?? false,
         offersWindshieldRepair: data.offersWindshieldRepair ?? existing.offersWindshieldRepair,
@@ -102,52 +68,14 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         primaryColor: data.primaryColor,
         secondaryColor: data.secondaryColor,
         accentColor: data.accentColor,
-        brandVoice: data.brandVoice,
-        wordpressUrl: data.wordpressUrl || null,
-        wordpressUsername: data.wordpressUsername || null,
-        wordpressAppPassword: encryptedPassword,
-        ctaText: data.ctaText,
-        ctaUrl: data.ctaUrl || null,
-        creatifyTemplateId: data.creatifyTemplateId || null,
-        preferredPublishTime: data.preferredPublishTime,
         timezone: data.timezone,
-        socialPlatforms: data.socialPlatforms || [],
-        socialAccountIds: data.socialAccountIds || null,
-        podbeanPodcastId: data.podbeanPodcastId || null,
-        podbeanPodcastTitle: data.podbeanPodcastTitle || null,
-        podbeanPodcastUrl: data.podbeanPodcastUrl || null,
-        wrhqYoutubePlaylistId: data.wrhqYoutubePlaylistId || null,
-        wrhqYoutubePlaylistTitle: data.wrhqYoutubePlaylistTitle || null,
         status: data.status || existing.status,
-        // Creatify video settings
-        creatifyAvatarId: data.creatifyAvatarId || null,
-        creatifyVoiceId: data.creatifyVoiceId || null,
-        creatifyVisualStyle: data.creatifyVisualStyle || null,
-        creatifyScriptStyle: data.creatifyScriptStyle || null,
-        creatifyModelVersion: data.creatifyModelVersion || null,
-        creatifyVideoLength: data.creatifyVideoLength || null,
-        creatifyNoCta: data.creatifyNoCta ?? existing.creatifyNoCta ?? false,
-        // Automation settings
-        autoScheduleEnabled: data.autoScheduleEnabled ?? existing.autoScheduleEnabled,
-        autoScheduleFrequency: data.autoScheduleFrequency ?? existing.autoScheduleFrequency,
         // Call coaching toggle
         callCoachingEnabled: data.callCoachingEnabled ?? existing.callCoachingEnabled,
       },
     })
 
-    console.log('[Client Update] Saved successfully:', {
-      businessName: client.businessName,
-      hasPasswordAfterSave: !!client.wordpressAppPassword,
-      savedPasswordPrefix: client.wordpressAppPassword?.substring(0, 10),
-    })
-
-    // Don't send encrypted password to frontend
-    const { wordpressAppPassword: _, ...clientWithoutPassword } = client
-    return NextResponse.json({
-      ...clientWithoutPassword,
-      wordpressAppPassword: null,
-      hasWordPressPassword: !!client.wordpressAppPassword,
-    })
+    return NextResponse.json(client)
   } catch (error) {
     console.error('Failed to update client:', error)
     return NextResponse.json(

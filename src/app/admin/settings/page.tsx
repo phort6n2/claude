@@ -2,11 +2,7 @@ import Link from 'next/link'
 import {
   Key,
   ChevronRight,
-  Building2,
-  FileQuestion,
-  Settings,
   Shield,
-  Zap,
 } from 'lucide-react'
 import {
   PageContainer,
@@ -15,20 +11,6 @@ import {
 } from '@/components/ui/theme'
 
 const settingsSections = [
-  {
-    title: 'Standard PAA Questions',
-    description: 'Manage default PAA questions used by all clients (100+ templates)',
-    href: '/admin/settings/standard-paas',
-    icon: FileQuestion,
-    color: 'blue',
-  },
-  {
-    title: 'WRHQ Settings',
-    description: 'Windshield Repair HQ directory site configuration for dual publishing',
-    href: '/admin/settings/wrhq',
-    icon: Building2,
-    color: 'violet',
-  },
   {
     title: 'API Settings',
     description: 'Configure external API keys and integrations',
@@ -39,29 +21,11 @@ const settingsSections = [
 ]
 
 const colorStyles: Record<string, { bg: string; iconBg: string; iconColor: string; hover: string }> = {
-  blue: {
-    bg: 'bg-gradient-to-br from-blue-50 to-white',
-    iconBg: 'bg-blue-100',
-    iconColor: 'text-blue-600',
-    hover: 'hover:border-blue-200 hover:shadow-blue-100',
-  },
-  violet: {
-    bg: 'bg-gradient-to-br from-violet-50 to-white',
-    iconBg: 'bg-violet-100',
-    iconColor: 'text-violet-600',
-    hover: 'hover:border-violet-200 hover:shadow-violet-100',
-  },
   amber: {
     bg: 'bg-gradient-to-br from-amber-50 to-white',
     iconBg: 'bg-amber-100',
     iconColor: 'text-amber-600',
     hover: 'hover:border-amber-200 hover:shadow-amber-100',
-  },
-  green: {
-    bg: 'bg-gradient-to-br from-green-50 to-white',
-    iconBg: 'bg-green-100',
-    iconColor: 'text-green-600',
-    hover: 'hover:border-green-200 hover:shadow-green-100',
   },
 }
 
@@ -121,45 +85,6 @@ export default function SettingsPage() {
             </div>
           </div>
         </ContentCard>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="mt-6 max-w-4xl">
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Zap className="h-4 w-4 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Active Integrations</p>
-                <p className="text-lg font-semibold text-gray-900">8+</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Settings className="h-4 w-4 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">System Status</p>
-                <p className="text-lg font-semibold text-green-600">Healthy</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-violet-100 rounded-lg">
-                <FileQuestion className="h-4 w-4 text-violet-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">PAA Questions</p>
-                <p className="text-lg font-semibold text-gray-900">100+</p>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </PageContainer>
   )
