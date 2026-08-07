@@ -28,8 +28,15 @@ export const dynamic = 'force-dynamic'
  * exact origin it loaded the page from.
  */
 const ALLOWED_BROWSER_ORIGINS = new Set([
+  // Collision Auto Glass & Calibration — landing site
   'https://collisionglass.co',
   'https://www.collisionglass.co',
+  // Collision Auto Glass & Calibration — main WordPress site. Both hosts are
+  // required: WordPress redirects between apex and www depending on its
+  // canonical setting, and the browser sends whichever host actually served
+  // the page, so listing one leaves a coin-flip failure.
+  'https://collisionautoglass.com',
+  'https://www.collisionautoglass.com',
 ])
 
 function corsHeaders(origin: string | null): Record<string, string> {
