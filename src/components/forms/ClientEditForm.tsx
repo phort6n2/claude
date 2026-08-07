@@ -1066,6 +1066,36 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
               )}
             </div>
 
+            {!isNewClient && client?.slug && (
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-medium text-gray-900 mb-1">Quote Widget Embed</h4>
+                <p className="text-sm text-gray-500 mb-3">
+                  Paste this on any page of the client&apos;s website. Add a{' '}
+                  <code className="bg-gray-100 px-1 rounded">&lt;div data-glassleads-widget&gt;&lt;/div&gt;</code>{' '}
+                  where the form should appear inline; without one, a floating
+                  &quot;Free Quote&quot; button shows in the corner. The site&apos;s domain must be
+                  listed in Allowed Browser Origins below or submissions will be blocked.
+                </p>
+                <div className="flex items-start gap-2">
+                  <code className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-mono text-gray-700 whitespace-pre-wrap break-all">
+                    {`<script src="https://glassleads.app/widget.js" data-client="${client.slug}" async></script>`}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(
+                        `<script src="https://glassleads.app/widget.js" data-client="${client.slug}" async></script>`
+                      )
+                    }}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
+                    title="Copy embed code"
+                  >
+                    <Copy className="h-4 w-4 text-gray-500" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="border-t pt-4">
               <h4 className="text-sm font-medium text-gray-900 mb-1">Allowed Browser Origins</h4>
               <p className="text-sm text-gray-500 mb-3">

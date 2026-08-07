@@ -165,6 +165,15 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
 
     // Parse the webhook payload
     const payload = await request.json()
+
+    // Honeypot: the embeddable widget includes a visually-hidden field that
+    // only bots fill in (sent as `_hp`). Answer with success so the bot moves
+    // on, but store nothing.
+    if (typeof payload._hp === 'string' && payload._hp.trim() !== '') {
+      console.warn(`[HighLevel Webhook] Honeypot tripped for ${client.businessName} — dropping submission`)
+      return NextResponse.json({ success: true, message: 'Lead captured successfully' })
+    }
+
     console.log(`[HighLevel Webhook] Received for ${client.businessName}:`, JSON.stringify(payload, null, 2))
 
     // HighLevel sends data at root level with underscores:
@@ -561,7 +570,7 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
         // Other fields
         source: leadSource,
         formData: Object.keys(formData).length > 0 ? (formData as Prisma.InputJsonValue) : undefined,
-        formName: workflow.name || campaign.name || null,
+        formName: workflow.name || campaign.name || asText(payload.form_name) || null,
         highlevelContactId,
         callRecordingUrl,
         status: 'NEW',
