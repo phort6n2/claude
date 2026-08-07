@@ -4,9 +4,51 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
+/**
+ * Connection-pool tuning, applied to the connection string at startup.
+ *
+ * Prisma configures its pool through query parameters on DATABASE_URL, and
+ * this project's DATABASE_URL is owned by the Prisma Postgres integration —
+ * Vercel renders integration-managed variables read-only, so there is nowhere
+ * in the dashboard to append them. Doing it here is the only place left.
+ *
+ * `pool_timeout` is the one that addresses a real failure we've seen: P2024
+ * ("timed out fetching a connection from the pool") is a query giving up after
+ * the 10s default, and it was silently discarding call analyses that had
+ * already paid for transcription and a Claude call.
+ *
+ * `connection_limit` is raised only modestly on purpose. Every warm serverless
+ * instance holds its own pool, so the database sees roughly
+ * instances × connection_limit sockets; pushing this high just trades pool
+ * timeouts for the server refusing connections outright.
+ */
+const POOL_DEFAULTS: Record<string, string> = {
+  connection_limit: '10',
+  pool_timeout: '20',
+}
+
+function withPoolSettings(rawUrl: string | undefined): string | undefined {
+  if (!rawUrl) return undefined
+  try {
+    const url = new URL(rawUrl)
+    for (const [key, value] of Object.entries(POOL_DEFAULTS)) {
+      // An explicit value in the environment always wins — this only fills gaps.
+      if (!url.searchParams.has(key)) url.searchParams.set(key, value)
+    }
+    return url.toString()
+  } catch {
+    // Unparseable connection string. Hand it back untouched and let Prisma
+    // report the real problem rather than failing over a tuning parameter.
+    return rawUrl
+  }
+}
+
+const datasourceUrl = withPoolSettings(process.env.DATABASE_URL)
+
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
+    ...(datasourceUrl ? { datasourceUrl } : {}),
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   })
 

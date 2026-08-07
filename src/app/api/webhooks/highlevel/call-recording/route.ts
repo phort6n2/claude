@@ -20,7 +20,6 @@ export async function POST(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const clientSlug = searchParams.get('client')
-    const webhookKey = searchParams.get('key')
 
     if (!clientSlug) {
       console.error('[CallRecording Webhook] Missing client parameter')
@@ -30,14 +29,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Soft-warn on key mismatch (matches the lead webhook's lenient behavior so
-    // legitimate HighLevel deliveries keep flowing if the secret drifts).
-    const expectedKey = process.env.HIGHLEVEL_WEBHOOK_SECRET
-    if (expectedKey && webhookKey !== expectedKey) {
-      console.warn(
-        '[CallRecording Webhook] Webhook key mismatch — accepting anyway.'
-      )
-    }
+    // No secret check, matching the lead webhook. The `key` query parameter is
+    // still accepted in the URL but is not verified — see the lead route for
+    // the reasoning and for what would need to replace it.
 
     const client = await prisma.client.findUnique({
       where: { slug: clientSlug },
