@@ -39,6 +39,12 @@ model Client {
   slug   String       @unique
   status ClientStatus @default(ACTIVE)
 
+  // Short subdomain for the hosted site (e.g. "collision" →
+  // collision.glassleads.app). Provisioned via the admin: creates the
+  // Cloudflare CNAME and attaches the domain to the Vercel project. The
+  // site also always answers on {slug}.glassleads.app and /sites/{slug}.
+  siteSubdomain String? @unique
+
   // Business Info
   businessName  String
   contactPerson String?

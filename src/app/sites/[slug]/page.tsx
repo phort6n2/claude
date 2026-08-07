@@ -43,11 +43,13 @@ interface PageProps {
 }
 
 async function getClient(slug: string) {
-  return prisma.client.findUnique({
-    where: { slug },
+  // The label in the URL may be the full slug or the short siteSubdomain.
+  return prisma.client.findFirst({
+    where: { OR: [{ slug }, { siteSubdomain: slug }] },
     select: {
       id: true,
       slug: true,
+      siteSubdomain: true,
       status: true,
       businessName: true,
       phone: true,
@@ -102,7 +104,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title,
     description,
     openGraph: { title, description, type: 'website' },
-    alternates: { canonical: `https://${client.slug}.glassleads.app/` },
+    alternates: { canonical: `https://${client.siteSubdomain || client.slug}.glassleads.app/` },
   }
 }
 
@@ -127,7 +129,7 @@ export default async function ClientSitePage({ params }: PageProps) {
     name: client.businessName,
     telephone: client.phone,
     email: client.email,
-    url: `https://${client.slug}.glassleads.app/`,
+    url: `https://${client.siteSubdomain || client.slug}.glassleads.app/`,
     address: {
       '@type': 'PostalAddress',
       streetAddress: client.streetAddress,

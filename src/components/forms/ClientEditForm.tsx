@@ -65,6 +65,8 @@ interface ClientData {
   timezone: string
   // Browser origins allowed to POST leads directly to the webhook (CORS)
   allowedOrigins: string[]
+  // Short subdomain for the hosted site (collision → collision.glassleads.app)
+  siteSubdomain?: string | null
   // Call Coaching feature toggle
   callCoachingEnabled?: boolean
 }
@@ -114,7 +116,7 @@ const TIMEZONE_OPTIONS = [
   { value: 'America/Los_Angeles', label: 'Pacific (America/Los_Angeles)' },
 ]
 
-type SectionKey = 'business' | 'location' | 'branding' | 'leadForwarding' | 'callCoaching'
+type SectionKey = 'business' | 'location' | 'branding' | 'website' | 'leadForwarding' | 'callCoaching'
 
 interface WebhookDestinationRow {
   id: string
@@ -401,9 +403,47 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [expandedSections, setExpandedSections] = useState<Set<SectionKey>>(
-    new Set(['business', 'location', 'branding', 'leadForwarding', 'callCoaching'])
+    new Set(['business', 'location', 'branding', 'website', 'leadForwarding', 'callCoaching'])
   )
   const [reviewsMessage, setReviewsMessage] = useState<string | null>(null)
+
+  // Subdomain provisioning state
+  const [subdomainInput, setSubdomainInput] = useState(client?.siteSubdomain || '')
+  const [provisioning, setProvisioning] = useState(false)
+  const [provisionMessage, setProvisionMessage] = useState<{ ok: boolean; text: string } | null>(null)
+
+  async function connectSubdomain() {
+    if (!subdomainInput.trim() || isNewClient) return
+    setProvisioning(true)
+    setProvisionMessage(null)
+    try {
+      const res = await fetch(`/api/clients/${client!.id}/provision-subdomain`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subdomain: subdomainInput }),
+      })
+      const data = await res.json()
+      if (data.error) {
+        setProvisionMessage({ ok: false, text: data.error })
+      } else {
+        const failed = (data.steps || []).filter((s: { ok: boolean }) => !s.ok)
+        setProvisionMessage(
+          data.ok
+            ? { ok: true, text: `Connected — https://${data.domain} will be live within a few minutes.` }
+            : {
+                ok: false,
+                text: failed
+                  .map((s: { step: string; detail: string }) => `${s.step}: ${s.detail}`)
+                  .join(' · '),
+              }
+        )
+      }
+    } catch {
+      setProvisionMessage({ ok: false, text: 'Provisioning failed' })
+    } finally {
+      setProvisioning(false)
+    }
+  }
 
   // Google Places search state
   const [placeSearch, setPlaceSearch] = useState('')
@@ -1069,6 +1109,86 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Website */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <SectionHeader
+          section="website"
+          icon={Globe}
+          title="Hosted Website"
+          subtitle={
+            client?.siteSubdomain
+              ? `Live at ${client.siteSubdomain}.glassleads.app`
+              : 'Landing site rendered from this client record'
+          }
+        />
+        {expandedSections.has('website') && (
+          <div className="p-6 space-y-4">
+            {isNewClient ? (
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                Save the client first, then connect a subdomain here.
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-gray-500">
+                  The site is always available at{' '}
+                  <a
+                    href={`/sites/${client!.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2 text-blue-600"
+                  >
+                    /sites/{client!.slug}
+                  </a>
+                  . Connecting a short subdomain creates the Cloudflare DNS record and
+                  attaches the domain to Vercel automatically.
+                </p>
+                <div className="flex items-end gap-2 flex-wrap">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Short subdomain</label>
+                    <div className="flex items-center">
+                      <input
+                        type="text"
+                        value={subdomainInput}
+                        onChange={(e) => setSubdomainInput(e.target.value.toLowerCase())}
+                        placeholder="collision"
+                        className="w-44 px-3 py-2 border rounded-l-md text-sm focus:ring-2 focus:ring-blue-500"
+                      />
+                      <span className="px-3 py-2 border border-l-0 rounded-r-md bg-gray-50 text-sm text-gray-500">
+                        .glassleads.app
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={connectSubdomain}
+                    disabled={provisioning || !subdomainInput.trim()}
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {provisioning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+                    {client?.siteSubdomain ? 'Reconnect' : 'Connect'}
+                  </button>
+                  {client?.siteSubdomain && (
+                    <a
+                      href={`https://${client.siteSubdomain}.glassleads.app`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                    >
+                      Open site ↗
+                    </a>
+                  )}
+                </div>
+                {provisionMessage && (
+                  <p className={`text-sm ${provisionMessage.ok ? 'text-green-600' : 'text-red-600'}`}>
+                    {provisionMessage.text}
+                  </p>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>
