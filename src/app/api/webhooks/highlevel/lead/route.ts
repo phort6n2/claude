@@ -8,14 +8,75 @@ import { Prisma } from '@prisma/client'
 export const dynamic = 'force-dynamic'
 
 /**
+ * Origins allowed to POST here directly from a visitor's browser.
+ *
+ * Client landing pages submit their quote form with a client-side fetch, which
+ * makes this a cross-origin request. `Content-Type: application/json` is not a
+ * CORS-simple content type, so the browser sends a preflight first and refuses
+ * to deliver the POST unless both the preflight and the response carry
+ * matching headers.
+ *
+ * Be clear about what this list is and isn't. It stops an arbitrary website
+ * from posting leads using a visitor's browser, which is the realistic abuse
+ * route once the endpoint URL is visible in page source. It is not a security
+ * boundary: CORS is enforced by browsers, so curl or a script ignores it
+ * entirely. Anyone who knows a client slug can still post directly. Rate
+ * limiting is what would address that, and it isn't built yet.
+ *
+ * Add an entry per client landing page as each one starts posting here. Both
+ * apex and www are needed when both resolve, because the browser sends the
+ * exact origin it loaded the page from.
+ */
+const ALLOWED_BROWSER_ORIGINS = new Set([
+  'https://collisionglass.co',
+  'https://www.collisionglass.co',
+])
+
+function corsHeaders(origin: string | null): Record<string, string> {
+  if (!origin || !ALLOWED_BROWSER_ORIGINS.has(origin)) return {}
+  return {
+    'Access-Control-Allow-Origin': origin,
+    // The response differs per origin, so it must not be cached under one key.
+    Vary: 'Origin',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '86400',
+  }
+}
+
+/** CORS preflight. Unknown origins get no headers, so the browser blocks. */
+export async function OPTIONS(request: NextRequest) {
+  const headers = corsHeaders(request.headers.get('origin'))
+  return new NextResponse(null, {
+    status: Object.keys(headers).length ? 204 : 403,
+    headers,
+  })
+}
+
+/**
  * HighLevel Webhook for Lead Capture
  *
  * URL Format: /api/webhooks/highlevel/lead?client=CLIENT_SLUG&key=SECRET_KEY
  *
  * HighLevel sends form submission data in the request body.
  * We extract contact info, GCLID, UTM params, and create a Lead record.
+ *
+ * Landing pages may also post here directly from the browser, sending the same
+ * flat JSON payload — every field is read from the payload root before any
+ * HighLevel-specific nesting is consulted, so the two paths converge.
  */
 export async function POST(request: NextRequest) {
+  const response = await handleLeadPost(request)
+  // Attach CORS headers to whatever the handler returned. Without them a
+  // browser-initiated POST succeeds server-side but the fetch() still rejects,
+  // which would look to the page like a failed submission.
+  for (const [key, value] of Object.entries(corsHeaders(request.headers.get('origin')))) {
+    response.headers.set(key, value)
+  }
+  return response
+}
+
+async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url)
     const clientSlug = searchParams.get('client')
