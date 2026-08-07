@@ -171,6 +171,31 @@ form so it posts only here.
 
 ---
 
+## 5b. Quote widget and hosted landing pages
+
+**`src/app/widget.js/route.ts`** — the embeddable quote widget. One script tag
+on any site renders a branded quote form (inline in a
+`[data-glassleads-widget]` container, floating button otherwise). It persists
+click IDs and UTMs in localStorage for 90 days, so a lead submitted pages or
+days after the ad click still carries full attribution. Submissions speak the
+webhook's existing flat-JSON dialect; a hidden honeypot field (`_hp`) makes
+the webhook silently drop bot submissions. The embed snippet is shown per
+client in the admin's Lead Forwarding section; the site's origin must be in
+the client's allowed origins.
+
+**`src/app/sites/[slug]/page.tsx` — hosted landing pages.** Every ACTIVE
+client has a full landing page at `/sites/{slug}`, rendered entirely from the
+Client record (name, phone, colors, services, service areas, Places link) with
+the widget embedded same-origin (no CORS involvement at all). `src/middleware.ts`
+rewrites `{slug}.glassleads.app` → `/sites/{slug}`, so each client can have
+their page on a subdomain — one-time setup: add the wildcard domain
+`*.glassleads.app` to the Vercel project. Pages carry per-client SEO metadata
+and AutoRepair JSON-LD, and render with ISR (5-minute revalidate, nothing
+prerendered at build — the WRHQ 4,300-page build-time lesson applies).
+Template improvements ship to every client site on the next deploy.
+
+---
+
 ## 6. Who can see what
 
 **Client portal** (`/portal/leads`) — magic-link email or a per-client password.

@@ -22,6 +22,7 @@ import {
   Send,
   Plus,
   Trash2,
+  Globe,
 } from 'lucide-react'
 
 interface PlacePrediction {
@@ -625,6 +626,17 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
               <Users className="h-4 w-4" />
               Users
             </Link>
+            {client?.slug && (
+              <a
+                href={`/sites/${client.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                <Globe className="h-4 w-4" />
+                Landing Page
+              </a>
+            )}
           </div>
         )}
 

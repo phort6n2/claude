@@ -20,7 +20,7 @@ const display = Inter_Tight({
 
 export const metadata: Metadata = {
   title: "Auto Glass Marketing Pros Command Center",
-  description: "Content automation platform for auto glass shops",
+  description: "Leads and call coaching platform for auto glass shops",
 };
 
 export default function RootLayout({
