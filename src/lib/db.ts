@@ -23,7 +23,7 @@ const globalForPrisma = globalThis as unknown as {
  * timeouts for the server refusing connections outright.
  */
 const POOL_DEFAULTS: Record<string, string> = {
-  connection_limit: '10',
+  connection_limit: '5',
   pool_timeout: '20',
 }
 
@@ -43,7 +43,30 @@ function withPoolSettings(rawUrl: string | undefined): string | undefined {
   }
 }
 
-const datasourceUrl = withPoolSettings(process.env.DATABASE_URL)
+/**
+ * Connection-string selection.
+ *
+ * Prisma Postgres provides two kinds of URL: a POOLED one
+ * (prisma+postgres://..., exposed as PRISMA_DATABASE_URL) that routes through
+ * Prisma's connection pooler, and a DIRECT TCP one whose server-side role has
+ * a small connection cap intended for migrations and CLI tools — its role is
+ * literally named "prisma_migration".
+ *
+ * Production ran on the direct URL. Every warm serverless instance held its
+ * own pool (instances × connection_limit sockets), and as traffic grew the
+ * database started refusing connections outright — P2037 "too many
+ * connections for role prisma_migration" — which took out the lead list, the
+ * master-leads stats, and the SSE stream while lead WRITES mostly survived.
+ *
+ * Fix: prefer the pooled URL whenever it is present. Pool query parameters
+ * only apply to direct URLs, so they are appended only on the fallback path.
+ */
+const pooledUrl = process.env.PRISMA_DATABASE_URL
+const usePooled = !!pooledUrl && pooledUrl.startsWith('prisma')
+
+const datasourceUrl = usePooled
+  ? pooledUrl
+  : withPoolSettings(process.env.DATABASE_URL)
 
 export const prisma =
   globalForPrisma.prisma ??
@@ -88,6 +111,7 @@ export async function withRetry<T>(
         code === 'P1008' || // Operations timed out
         code === 'P1017' || // Server closed the connection
         code === 'P2024' || // Timed out fetching a connection from the pool
+        code === 'P2037' || // Too many database connections opened (server-side)
         lastError.message.includes('connect') ||
         lastError.message.includes('Connection') ||
         lastError.message.includes('connection pool') ||
