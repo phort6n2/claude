@@ -19,7 +19,9 @@ const APP_HOSTS = new Set(['glassleads.app', 'www.glassleads.app'])
 
 export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
-  if (pathname !== '/') return NextResponse.next()
+  if (pathname !== '/' && !pathname.startsWith('/services/')) {
+    return NextResponse.next()
+  }
 
   const host = (req.headers.get('host') || '').split(':')[0].toLowerCase()
   if (!host.endsWith('.glassleads.app') || APP_HOSTS.has(host)) {
@@ -30,10 +32,10 @@ export default function middleware(req: NextRequest) {
   if (!slug || slug === 'www' || slug.includes('.')) return NextResponse.next()
 
   const url = req.nextUrl.clone()
-  url.pathname = `/sites/${slug}`
+  url.pathname = pathname === '/' ? `/sites/${slug}` : `/sites/${slug}${pathname}`
   return NextResponse.rewrite(url)
 }
 
 export const config = {
-  matcher: ['/'],
+  matcher: ['/', '/services/:path*'],
 }

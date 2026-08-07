@@ -183,6 +183,24 @@ the webhook silently drop bot submissions. The embed snippet is shown per
 client in the admin's Lead Forwarding section; the site's origin must be in
 the client's allowed origins.
 
+**GBP reviews on hosted sites.** `src/lib/gbp-reviews.ts` fetches rating /
+review count / top quotes from the Places Details API using the client's
+`googlePlaceId`, caches them in `ClientGbpReviews`, and refreshes daily via
+`/api/cron/refresh-gbp-reviews` (plus a Refresh button on the client editor).
+Two rules ported from the landing-template repo: data is cached only when the
+Place ID resolves to a name that plausibly matches the client (a wrong Place
+ID returns perfectly plausible numbers for someone else's shop), and pages
+render rating bands / `aggregateRating` only from live cached data — stripped
+entirely when absent, never fabricated.
+
+**Per-service pages.** `/sites/{slug}/services/{service}` (and
+`{slug}.glassleads.app/services/{service}`), generated from
+`src/lib/site-services.ts` — copy there is generic to the trade and never
+asserts facts about a specific business. Pages render only for services the
+client's flags enable. Setting a client to PAUSED replaces their whole site
+with a neutral "temporarily unavailable" page (the non-payment kill switch)
+within the 5-minute ISR window.
+
 **`src/app/sites/[slug]/page.tsx` — hosted landing pages.** Every ACTIVE
 client has a full landing page at `/sites/{slug}`, rendered entirely from the
 Client record (name, phone, colors, services, service areas, Places link) with

@@ -17,6 +17,10 @@
     {
       "path": "/api/cron/retry-webhook-deliveries",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/refresh-gbp-reviews",
+      "schedule": "0 9 * * *"
     }
   ]
 }

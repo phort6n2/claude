@@ -2,6 +2,17 @@ import { notFound } from 'next/navigation'
 import Script from 'next/script'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
+import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
+import {
+  SiteHeader,
+  SiteFooter,
+  MobileCallBar,
+  ReviewsBand,
+  SiteUnavailable,
+  telHrefFor,
+  type ReviewsData,
+  type ReviewQuote,
+} from '@/components/sites/shared'
 import {
   Phone,
   MapPin,
@@ -10,6 +21,7 @@ import {
   Star,
   CheckCircle2,
   Clock,
+  ArrowRight,
 } from 'lucide-react'
 
 /**
@@ -17,9 +29,11 @@ import {
  *
  * Served at {slug}.glassleads.app (middleware rewrite) and directly at
  * /sites/{slug} for previewing before DNS is set up. Everything on the page —
- * name, phone, colors, services, service areas — renders from the Client
- * record, so improving this template improves every client's site on the next
- * deploy. Regenerated at most every 5 minutes (ISR), never at build time.
+ * name, phone, colors, services, service areas, reviews — renders from the
+ * database, so improving this template improves every client's site on the
+ * next deploy. Rating claims render only from live cached GBP data and are
+ * stripped entirely when absent. Regenerated at most every 5 minutes (ISR),
+ * never at build time.
  */
 
 export const revalidate = 300
@@ -61,6 +75,21 @@ async function getClient(slug: string) {
   })
 }
 
+async function getReviews(clientId: string): Promise<ReviewsData | null> {
+  try {
+    const row = await prisma.clientGbpReviews.findUnique({ where: { clientId } })
+    if (!row) return null
+    return {
+      rating: row.rating,
+      reviewCount: row.reviewCount,
+      quotes: (row.reviews as unknown as ReviewQuote[]) || [],
+    }
+  } catch {
+    // Table may not exist yet; the band is simply stripped.
+    return null
+  }
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params
   const client = await getClient(slug)
@@ -77,68 +106,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-const SERVICES: Array<{
-  flag:
-    | 'offersWindshieldReplacement'
-    | 'offersWindshieldRepair'
-    | 'offersRockChipRepair'
-    | 'offersSideWindowRepair'
-    | 'offersBackWindowRepair'
-    | 'offersSunroofRepair'
-    | 'offersAdasCalibration'
-  name: string
-  blurb: string
-}> = [
-  {
-    flag: 'offersWindshieldReplacement',
-    name: 'Windshield Replacement',
-    blurb: 'OEM-quality glass, professionally installed and ready to drive fast.',
-  },
-  {
-    flag: 'offersWindshieldRepair',
-    name: 'Windshield Repair',
-    blurb: 'Stop cracks before they spread and save your original windshield.',
-  },
-  {
-    flag: 'offersRockChipRepair',
-    name: 'Rock Chip Repair',
-    blurb: 'Quick chip repairs — often covered 100% by insurance.',
-  },
-  {
-    flag: 'offersSideWindowRepair',
-    name: 'Side Window Replacement',
-    blurb: 'Broken door glass replaced quickly, with full cleanup.',
-  },
-  {
-    flag: 'offersBackWindowRepair',
-    name: 'Back Glass Replacement',
-    blurb: 'Rear windshield and defroster grid replacement.',
-  },
-  {
-    flag: 'offersSunroofRepair',
-    name: 'Sunroof Repair',
-    blurb: 'Sunroof and moonroof glass repair and replacement.',
-  },
-  {
-    flag: 'offersAdasCalibration',
-    name: 'ADAS Calibration',
-    blurb: 'Camera and sensor recalibration after windshield replacement — required on most newer vehicles.',
-  },
-]
-
 export default async function ClientSitePage({ params }: PageProps) {
   const { slug } = await params
   const client = await getClient(slug)
 
-  if (!client || client.status !== 'ACTIVE') {
-    notFound()
-  }
+  if (!client) notFound()
+  if (client.status !== 'ACTIVE') return <SiteUnavailable />
 
+  const reviews = await getReviews(client.id)
   const primary = client.primaryColor || '#1e40af'
   const accent = client.accentColor || '#f59e0b'
-  const services = SERVICES.filter((s) => client[s.flag])
-  const telHref = `tel:${client.phone.replace(/[^+\d]/g, '')}`
+  const services = servicesForClient(client as Record<ServiceFlag, boolean>)
+  const telHref = telHrefFor(client.phone)
   const areas = client.serviceAreas || []
+  const basePath = `/sites/${client.slug}`
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -158,6 +139,16 @@ export default async function ClientSitePage({ params }: PageProps) {
     areaServed: areas.map((a) => ({ '@type': 'City', name: a })),
     ...(client.googleMapsUrl ? { hasMap: client.googleMapsUrl } : {}),
     ...(client.logoUrl ? { image: client.logoUrl } : {}),
+    // Emitted ONLY from live cached review data, never fabricated.
+    ...(reviews
+      ? {
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: reviews.rating,
+            reviewCount: reviews.reviewCount,
+          },
+        }
+      : {}),
   }
 
   return (
@@ -167,37 +158,7 @@ export default async function ClientSitePage({ params }: PageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Top bar */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            {client.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={client.logoUrl}
-                alt={client.businessName}
-                className="h-10 w-10 rounded-full object-cover shrink-0"
-              />
-            ) : (
-              <div
-                className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold shrink-0"
-                style={{ backgroundColor: primary }}
-              >
-                {client.businessName[0]}
-              </div>
-            )}
-            <span className="font-bold truncate">{client.businessName}</span>
-          </div>
-          <a
-            href={telHref}
-            className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full text-white font-semibold text-sm shrink-0"
-            style={{ backgroundColor: primary }}
-          >
-            <Phone className="h-4 w-4" />
-            {client.phone}
-          </a>
-        </div>
-      </header>
+      <SiteHeader client={client} basePath={basePath} />
 
       {/* Hero */}
       <section className="relative" style={{ backgroundColor: primary }}>
@@ -221,6 +182,12 @@ export default async function ClientSitePage({ params }: PageProps) {
                 : ' fast turnaround at our local shop.'}{' '}
               Free quotes and help with your insurance claim.
             </p>
+            {reviews && (
+              <p className="mt-4 flex items-center gap-2 text-sm font-semibold">
+                <Star className="h-4 w-4" fill="currentColor" style={{ color: accent }} />
+                {reviews.rating.toFixed(1)} stars · {reviews.reviewCount} Google reviews
+              </p>
+            )}
             <div className="mt-7 flex flex-wrap gap-3">
               <a
                 href="#quote"
@@ -273,9 +240,10 @@ export default async function ClientSitePage({ params }: PageProps) {
           </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {services.map((s) => (
-              <div
-                key={s.name}
-                className="p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+              <a
+                key={s.slug}
+                href={`${basePath}/services/${s.slug}`}
+                className="group p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 transition-all"
               >
                 <div
                   className="h-10 w-10 rounded-xl flex items-center justify-center mb-4"
@@ -284,12 +252,22 @@ export default async function ClientSitePage({ params }: PageProps) {
                   <CheckCircle2 className="h-5 w-5" style={{ color: primary }} />
                 </div>
                 <h3 className="font-bold text-lg">{s.name}</h3>
-                <p className="text-gray-500 text-sm mt-1.5">{s.blurb}</p>
-              </div>
+                <p className="text-gray-500 text-sm mt-1.5">{s.short}</p>
+                <span
+                  className="mt-3 inline-flex items-center gap-1 text-sm font-semibold"
+                  style={{ color: primary }}
+                >
+                  Learn more
+                  <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </span>
+              </a>
             ))}
           </div>
         </section>
       )}
+
+      {/* Reviews (live GBP data only; stripped when absent) */}
+      <ReviewsBand reviews={reviews} client={client} />
 
       {/* Why us */}
       <section className="bg-gray-50">
@@ -379,42 +357,8 @@ export default async function ClientSitePage({ params }: PageProps) {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-100">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-gray-500">
-          <div>
-            <span className="font-semibold text-gray-700">{client.businessName}</span>
-            {client.hasShopLocation && (
-              <>
-                {' '}
-                · {client.streetAddress}, {client.city}, {client.state}{' '}
-                {client.postalCode}
-              </>
-            )}
-          </div>
-          <a href={telHref} className="font-semibold" style={{ color: primary }}>
-            {client.phone}
-          </a>
-        </div>
-      </footer>
-
-      {/* Mobile sticky call bar */}
-      <div className="sm:hidden sticky bottom-0 z-40 p-3 bg-white/95 backdrop-blur border-t border-gray-200 flex gap-2">
-        <a
-          href={telHref}
-          className="flex-1 py-3 rounded-xl font-bold text-white text-center flex items-center justify-center gap-2"
-          style={{ backgroundColor: primary }}
-        >
-          <Phone className="h-4 w-4" /> Call Now
-        </a>
-        <a
-          href="#quote"
-          className="flex-1 py-3 rounded-xl font-bold text-gray-900 text-center"
-          style={{ backgroundColor: accent }}
-        >
-          Free Quote
-        </a>
-      </div>
+      <SiteFooter client={client} />
+      <MobileCallBar client={client} quoteHref="#quote" />
 
       {/* Quote widget — relative src makes it load and submit same-origin */}
       <Script src="/widget.js" data-client={client.slug} strategy="afterInteractive" />

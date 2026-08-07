@@ -23,6 +23,7 @@ import {
   Plus,
   Trash2,
   Globe,
+  Star,
 } from 'lucide-react'
 
 interface PlacePrediction {
@@ -402,6 +403,7 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
   const [expandedSections, setExpandedSections] = useState<Set<SectionKey>>(
     new Set(['business', 'location', 'branding', 'leadForwarding', 'callCoaching'])
   )
+  const [reviewsMessage, setReviewsMessage] = useState<string | null>(null)
 
   // Google Places search state
   const [placeSearch, setPlaceSearch] = useState('')
@@ -636,6 +638,26 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
                 <Globe className="h-4 w-4" />
                 Landing Page
               </a>
+            )}
+            <button
+              type="button"
+              onClick={async () => {
+                setReviewsMessage('Refreshing…')
+                try {
+                  const res = await fetch(`/api/clients/${client!.id}/refresh-reviews`, { method: 'POST' })
+                  const data = await res.json()
+                  setReviewsMessage(data.message || data.error || 'Done')
+                } catch {
+                  setReviewsMessage('Refresh failed')
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+            >
+              <Star className="h-4 w-4" />
+              Refresh Google Reviews
+            </button>
+            {reviewsMessage && (
+              <span className="text-xs text-gray-500">{reviewsMessage}</span>
             )}
           </div>
         )}

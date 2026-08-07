@@ -108,6 +108,9 @@ model Client {
   // Outbound lead forwarding (webhook fan-out)
   webhookDestinations WebhookDestination[]
 
+  // Cached Google Business Profile reviews (hosted landing pages)
+  gbpReviews ClientGbpReviews?
+
   // Admin Push Notification Subscriptions
   adminPushSubscriptions AdminPushSubscriptionClient[]
 }
@@ -401,6 +404,34 @@ enum WebhookDeliveryStatus {
   PENDING
   SUCCESS
   FAILED
+}
+
+// ============================================
+// GBP REVIEWS CACHE (hosted landing pages)
+//
+// Rating/review data fetched from the Google Places API using the client's
+// googlePlaceId. Landing pages render the reviews band and aggregateRating
+// JSON-LD ONLY from a row here — never fabricated, stripped when absent.
+// A name-match guard refuses to cache data when the Place ID resolves to a
+// business that doesn't look like this client (a wrong Place ID returns
+// perfectly plausible numbers for someone else's shop).
+// ============================================
+
+model ClientGbpReviews {
+  id       String @id @default(cuid())
+  clientId String @unique
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  placeName   String // what the Place ID actually resolved to — shown in admin
+  rating      Float
+  reviewCount Int
+  reviews     Json // top review quotes [{author, rating, text, relativeTime}]
+
+  fetchedAt DateTime
+  lastError String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ============================================
