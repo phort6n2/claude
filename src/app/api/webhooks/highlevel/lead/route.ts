@@ -19,7 +19,6 @@ export async function POST(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const clientSlug = searchParams.get('client')
-    const webhookKey = searchParams.get('key')
 
     // Validate client parameter
     if (!clientSlug) {
@@ -30,22 +29,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate webhook secret key — soft-warn only for now.
-    // Strict rejection was causing legitimate HighLevel deliveries to fail
-    // when the key in the Vercel env var didn't match what HighLevel was
-    // sending. The branch below logs the mismatch but lets the request
-    // through so leads keep flowing; once the correct key is confirmed in
-    // both places this block can be flipped back to a hard `return`.
-    const expectedKey = process.env.HIGHLEVEL_WEBHOOK_SECRET
-    if (expectedKey && webhookKey !== expectedKey) {
-      const preview = webhookKey
-        ? `${webhookKey.slice(0, 4)}***${webhookKey.slice(-4)} (len=${webhookKey.length})`
-        : 'none'
-      console.warn(
-        `[HighLevel Webhook] Key mismatch — accepting anyway. Provided key: ${preview}. ` +
-          `Set HIGHLEVEL_WEBHOOK_SECRET to match (or remove the env var) to silence this warning.`
-      )
-    }
+    // No secret check. The `key` query parameter is still accepted so existing
+    // HighLevel webhook URLs keep working, but it is not verified against
+    // anything.
+    //
+    // This is deliberate rather than an oversight. The check had been
+    // soft-warn-only for a long time — it logged a mismatch and let the
+    // request through regardless — so the endpoint was already effectively
+    // open, while every legitimate delivery wrote a scary warning to the logs.
+    // Removing it makes the actual posture honest instead of implied.
+    //
+    // The consequence: anyone who knows a client slug can post a lead into
+    // that client's account. That is tolerable while the URL is only known to
+    // HighLevel. It stops being tolerable the moment a public landing page
+    // posts here directly, because the URL then appears in page source — at
+    // that point this needs a real gate (origin allowlist + rate limiting),
+    // not a shared secret, since a browser can't hold one.
 
     // Find the client
     const client = await prisma.client.findUnique({
