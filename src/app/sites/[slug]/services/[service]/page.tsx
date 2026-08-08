@@ -16,6 +16,7 @@ import {
   Eyebrow,
   CtaButton,
   CallButton,
+  SiteBaseStyles,
   type ReviewsData,
   type ReviewQuote,
 } from '@/components/sites/shared'
@@ -57,6 +58,8 @@ async function getClient(slug: string) {
       offersSunroofRepair: true,
       offersRockChipRepair: true,
       offersAdasCalibration: true,
+      serviceAreas: true,
+      email: true,
       googleMapsUrl: true,
     },
   })
@@ -134,9 +137,10 @@ export default async function ServicePage({ params }: PageProps) {
 
   return (
     <div
-      className="min-h-screen bg-[var(--paper)] text-[var(--tx)]"
+      className="gl-site min-h-screen bg-[var(--paper)] text-[var(--tx)] leading-[1.62]"
       style={palette as React.CSSProperties}
     >
+      <SiteBaseStyles />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -150,7 +154,15 @@ export default async function ServicePage({ params }: PageProps) {
             : `Serving ${client.city}, ${client.state} and nearby`
         }
       />
-      <SiteHeader client={client} basePath={basePath} reviews={reviews} />
+      <SiteHeader
+        client={client}
+        basePath={basePath}
+        reviews={reviews}
+        nav={otherServices.slice(0, 4).map((s) => ({
+          href: `${basePath}/services/${s.slug}`,
+          label: s.name,
+        }))}
+      />
 
       {/* Hero — light gradient, matching the home page */}
       <section
@@ -163,18 +175,18 @@ export default async function ServicePage({ params }: PageProps) {
           <Eyebrow>
             {client.city}, {client.state}
           </Eyebrow>
-          <h1 className="text-4xl sm:text-5xl font-extrabold leading-[1.08] tracking-tight max-w-3xl">
+          <h1 className="text-[clamp(1.875rem,1.35rem+2.6vw,3.4rem)] font-extrabold leading-[1.08] tracking-[-.02em] max-w-3xl">
             {page.name}
           </h1>
-          <p className="mt-4 text-[17px] leading-relaxed text-[var(--tx2)] max-w-2xl">
+          <p className="mt-4 text-[17px] leading-[1.55] text-[var(--tx2)] max-w-2xl">
             {page.heroLine}
           </p>
           <div className="mt-5">
             <RatingChip reviews={reviews} client={client} />
           </div>
-          <div className="mt-7 flex flex-wrap gap-3">
+          <div className="mt-7 max-[719px]:flex max-[719px]:flex-col max-[719px]:[&>a]:w-full flex flex-wrap gap-3">
             <CtaButton href="#quote">Get my free quote</CtaButton>
-            <CallButton client={client} />
+            <CallButton client={client} withLabel />
           </div>
         </div>
       </section>
@@ -233,7 +245,13 @@ export default async function ServicePage({ params }: PageProps) {
 
       <FinalCta client={client} quoteHref="#quote" />
 
-      <SiteFooter client={client} extras={extras} />
+      <SiteFooter
+        client={client}
+        extras={extras}
+        services={servicesForClient(client as Record<ServiceFlag, boolean>)}
+        areas={client.serviceAreas || []}
+        basePath={basePath}
+      />
       <MobileCallBar client={client} quoteHref="#quote" />
 
       <Script src="/widget.js" data-client={client.slug} strategy="afterInteractive" />

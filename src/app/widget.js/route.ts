@@ -106,6 +106,13 @@ const WIDGET_SOURCE = String.raw`(function () {
     return '#' + c((n >> 16) & 255) + c((n >> 8) & 255) + c(n & 255);
   }
 
+  function rgba(hex, a) {
+    var m = /^#([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return 'rgba(0,0,0,' + a + ')';
+    var n = parseInt(m[1], 16);
+    return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+  }
+
   function buildStyles(cfg) {
     return '' +
       ':host{all:initial}' +
@@ -115,38 +122,55 @@ const WIDGET_SOURCE = String.raw`(function () {
       '.card{background:#fff;border:1px solid #e2d8d8;border-top:4px solid ' + cfg.primaryColor + ';border-radius:20px;box-shadow:0 2px 4px rgba(20,20,20,.04),0 10px 20px -6px rgba(20,20,20,.08),0 28px 56px -18px rgba(20,20,20,.15);overflow:hidden;max-width:430px;width:100%}' +
       '.head{padding:20px 22px 0;color:#1a1a1a}' +
       '.head h3{margin:0;font-size:20px;font-weight:800;letter-spacing:-.02em}' +
-      '.head p{margin:4px 0 0;font-size:13px;color:#5c5c5c}' +
+      '.head p{margin:4px 0 0;font-size:14px;color:#5c5c5c;line-height:1.5}' +
       '.body{padding:14px 22px 22px}' +
-      '.row{display:flex;gap:10px}.row>*{flex:1;min-width:0}' +
-      '.row+.row,.row+div,div+.row{margin-top:2px}' +
-      'label{display:block;font-size:13px;font-weight:600;color:#1a1a1a;margin:12px 0 5px}' +
+      // Rows stack on narrow embeds and go two-up when the card is wide
+      // enough, like the template's 600px qc-row-2 breakpoint.
+      '.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}' +
+      '.row+.row,.row+div,div+.row{margin-top:14px}' +
+      '.field{min-width:0}' +
+      'label{display:block;font-size:14px;font-weight:600;color:#1a1a1a;margin:0 0 6px}' +
       '.req{color:' + cfg.primaryColor + ';margin-left:2px}' +
       '.opt{color:#6e6e6e;font-weight:400}' +
-      'input,select,textarea{width:100%;min-height:44px;padding:10px 12px;border:1.5px solid #8a8a8a;border-radius:12px;font-size:16px;background:#fff;color:#1a1a1a}' +
-      'textarea{min-height:72px}' +
-      'input:focus,select:focus,textarea:focus{outline:none;border-color:' + cfg.primaryColor + ';box-shadow:0 0 0 3px rgba(0,0,0,.08)}' +
-      'input.bad,select.bad{border-color:#b3261e;background:#fef2f2}' +
+      'input,select,textarea{width:100%;min-height:50px;padding:13px 14px;border:1.5px solid #7C8FA3;border-radius:14px;font-size:16.5px;line-height:1.3;background:#fff;color:#1a1a1a;appearance:none;-webkit-appearance:none;transition:border-color .12s ease,box-shadow .12s ease}' +
+      'input::placeholder,textarea::placeholder{color:#5E6D7C;opacity:1}' +
+      'input:hover,select:hover,textarea:hover{border-color:#66788B}' +
+      'textarea{min-height:96px;resize:vertical;line-height:1.5;padding-top:11px}' +
+      'select{padding-right:42px;background-repeat:no-repeat;background-position:right 14px center;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%234C5C6B\' stroke-width=\'2.2\' stroke-linecap=\'round\'%3E%3Cpath d=\'M6 9l6 6 6-6\'/%3E%3C/svg%3E")}' +
+      'input:focus,select:focus,textarea:focus{outline:none;border-color:' + cfg.primaryColor + ';box-shadow:0 0 0 3px ' + rgba(cfg.primaryColor, 0.16) + '}' +
+      'input[aria-invalid="true"],select[aria-invalid="true"]{border-color:#B3261E;background:#FEF2F2;box-shadow:0 0 0 3px rgba(179,38,30,.14)}' +
+      '.ferr{display:none;margin:6px 0 0;font-size:13.5px;font-weight:600;color:#B3261E}' +
+      '.ferr.on{display:block}' +
+      '.vin-input{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.04em}' +
+      '.hint{display:none;margin:6px 0 0;font-size:13px;color:#5c5c5c}' +
+      '.hint.on{display:block}' +
       // Progressive-disclosure drawer, per the template: VIN, insurance, and
       // notes stay optional and out of the visible form.
-      '.more-btn{width:100%;margin-top:16px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;background:#faf7f7;border:1px solid #e2d8d8;border-radius:12px;cursor:pointer;color:#1a1a1a}' +
-      '.more-t{font-size:14px;font-weight:700}' +
-      '.more-s{font-size:12px;color:#6e6e6e}' +
-      '.chev{transition:transform .15s ease;flex:0 0 auto}' +
+      '.more-btn{width:100%;min-height:52px;margin-top:16px;padding:10px 14px;display:flex;align-items:center;gap:12px;text-align:left;background:#faf7f7;border:1px solid #e2d8d8;border-radius:10px;cursor:pointer;color:#1a1a1a}' +
+      '.more-btn:hover,.more-btn[aria-expanded="true"]{background:' + rgba(cfg.primaryColor, 0.07) + '}' +
+      '.more-btn[aria-expanded="true"]{border-bottom-left-radius:0;border-bottom-right-radius:0}' +
+      '.more-t{font-size:15px;font-weight:600}' +
+      '.more-s{font-size:13px;color:#6e6e6e}' +
+      '.chev{margin-left:auto;flex:0 0 auto;color:#6e6e6e;transition:transform .18s ease}' +
       '.more-btn[aria-expanded="true"] .chev{transform:rotate(180deg)}' +
-      '.radios{border:0;margin:12px 0 0;padding:0}' +
-      '.radios legend{font-size:13px;font-weight:600;color:#1a1a1a;padding:0;margin:0 0 6px}' +
-      '.radio{display:inline-flex;align-items:center;gap:6px;margin-right:14px;font-size:14px;color:#1a1a1a}' +
-      '.radio input{width:auto;min-height:0}' +
-      '.btn{width:100%;margin-top:16px;padding:14px;border:0;border-radius:14px;font-size:16px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(180deg,' + cfg.primaryColor + ',' + darken(cfg.primaryColor, 0.17) + ');box-shadow:0 6px 14px -4px rgba(0,0,0,.3)}' +
+      '.drawer{display:grid;gap:14px;padding:18px 14px;background:#faf7f7;border:1px solid #e2d8d8;border-top:0;border-radius:0 0 10px 10px}' +
+      '.drawer[hidden]{display:none}' +
+      '.radios{display:flex;flex-wrap:wrap;gap:8px;border:0;margin:0;padding:0}' +
+      '.radios legend{flex:1 1 100%;font-size:14px;font-weight:600;color:#1a1a1a;padding:0;margin:0 0 8px}' +
+      '.radio{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;background:#fff;border:1.5px solid #7C8FA3;border-radius:14px;cursor:pointer;font-size:15px;color:#1a1a1a}' +
+      '.radio input{width:18px;height:18px;min-height:0;accent-color:' + cfg.primaryColor + ';margin:0;appearance:auto;-webkit-appearance:auto}' +
+      '.radio:has(input:checked){border-color:' + cfg.primaryColor + ';background:' + rgba(cfg.primaryColor, 0.08) + ';font-weight:600}' +
+      '.btn{width:100%;min-height:56px;margin-top:18px;padding:14px;border:0;border-radius:14px;font-size:17.5px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(180deg,' + cfg.primaryColor + ',' + darken(cfg.primaryColor, 0.17) + ');box-shadow:0 6px 14px -4px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.2)}' +
       '.btn:disabled{opacity:.6;cursor:default}' +
-      '.micro{font-size:12px;color:#5c5c5c;text-align:center;margin-top:10px}' +
-      '.consent{font-size:11px;color:#8a8a8a;text-align:center;margin-top:6px;line-height:1.4}' +
+      '.micro{font-size:13px;color:#5c5c5c;text-align:center;margin-top:12px;line-height:1.5}' +
+      '.consent{font-size:12px;color:#8a8a8a;margin-top:12px;line-height:1.5}' +
       '.ok{padding:28px 22px;text-align:center}' +
-      '.ok .big{width:52px;height:52px;margin:0 auto;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;background:' + cfg.primaryColor + '}' +
-      '.ok h4{margin:12px 0 4px;font-size:18px;color:#1a1a1a}' +
-      '.ok p{margin:0;font-size:14px;color:#5c5c5c}' +
-      '.ok a{display:block;margin-top:14px;padding:13px;border-radius:12px;font-weight:700;color:#fff;text-decoration:none;background:' + cfg.primaryColor + '}' +
-      '.err{margin-top:10px;padding:9px 10px;border-radius:8px;background:#fef2f2;color:#b91c1c;font-size:13px}' +
+      '.ok .big{width:56px;height:56px;margin:0 auto;border-radius:999px;display:flex;align-items:center;justify-content:center;color:' + cfg.primaryColor + ';background:' + rgba(cfg.primaryColor, 0.1) + '}' +
+      '.ok h4{margin:14px 0 8px;font-size:18px;color:#1a1a1a}' +
+      '.ok p{margin:0;font-size:16px;color:#5c5c5c}' +
+      '.ok a{display:block;margin-top:16px;padding:14px;min-height:52px;border-radius:14px;font-weight:700;font-size:16px;color:#fff;text-decoration:none;background:linear-gradient(180deg,' + cfg.primaryColor + ',' + darken(cfg.primaryColor, 0.17) + ');box-shadow:0 6px 14px -4px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.2)}' +
+      '.err{display:none;margin-top:12px;padding:12px 14px;border-radius:10px;background:#FEF2F2;border:1px solid #E3A9A5;color:#B3261E;font-size:14px}' +
+      '.err.on{display:block}' +
       // display:none, not off-screen: Chrome profile autofill fills off-screen
       // fields but skips display:none — see the template's honeypot post-mortem.
       '.hp{display:none}' +
@@ -158,11 +182,29 @@ const WIDGET_SOURCE = String.raw`(function () {
 
   function buildForm(cfg, onSubmit) {
     var form = el('form', { novalidate: 'novalidate' });
-    function field(labelHtml, input) {
-      var wrap = el('div');
+    var fieldErrs = {};
+    function field(labelHtml, input, errKey) {
+      var wrap = el('div', { class: 'field' });
       wrap.appendChild(el('label', { html: labelHtml }));
       wrap.appendChild(input);
+      if (errKey) {
+        var p = el('p', { class: 'ferr' });
+        fieldErrs[errKey] = { p: p, input: input };
+        wrap.appendChild(p);
+      }
       return wrap;
+    }
+    function setFieldError(key, message) {
+      var f = fieldErrs[key];
+      if (!f) return;
+      if (message) {
+        f.p.textContent = message;
+        f.p.className = 'ferr on';
+        f.input.setAttribute('aria-invalid', 'true');
+      } else {
+        f.p.className = 'ferr';
+        f.input.removeAttribute('aria-invalid');
+      }
     }
     var REQ = '<span class="req" aria-hidden="true">*</span>';
 
@@ -177,7 +219,16 @@ const WIDGET_SOURCE = String.raw`(function () {
     var vehicle = el('input', { type: 'text', name: 'vehicle', autocomplete: 'off', placeholder: '2021 Toyota RAV4' });
 
     // Optional drawer: VIN, insurance, notes.
-    var vin = el('input', { type: 'text', name: 'vin', maxlength: '17', autocapitalize: 'characters', spellcheck: 'false', placeholder: 'JTMRFREV7HD000000' });
+    var vin = el('input', { type: 'text', name: 'vin', class: 'vin-input', maxlength: '17', autocapitalize: 'characters', spellcheck: 'false', placeholder: 'JTMRFREV7HD000000' });
+    var vinHint = el('p', { class: 'hint' });
+    vin.addEventListener('input', function () {
+      var v = vin.value.trim().toUpperCase();
+      if (!v) { vinHint.className = 'hint'; return; }
+      vinHint.className = 'hint on';
+      vinHint.textContent = /^[A-HJ-NPR-Z0-9]{17}$/.test(v)
+        ? '✓ Looks like a valid VIN'
+        : v.length + ' of 17 characters';
+    });
     var notes = el('textarea', { name: 'message', rows: '3', maxlength: '1000', placeholder: 'How it happened, where the damage is, anything unusual about the vehicle' });
     var carrier = el('select', { name: 'carrier' });
     carrier.appendChild(el('option', { value: '', text: 'Select your carrier' }));
@@ -204,18 +255,20 @@ const WIDGET_SOURCE = String.raw`(function () {
 
     var btn = el('button', { type: 'submit', text: 'Get my free quote' });
     btn.className = 'btn';
-    var err = el('div'); err.className = 'err'; err.style.display = 'none';
+    var err = el('div'); err.className = 'err';
 
-    var row1 = el('div', { class: 'row' }, [field('Full name' + REQ, name), field('Mobile phone' + REQ, phone)]);
-    var row2 = el('div', { class: 'row' }, [field('Email' + REQ, email), field('Service ZIP' + REQ, zip)]);
-    var row3 = el('div', { class: 'row' }, [field('What do you need?' + REQ, service), field('Vehicle' + REQ, vehicle)]);
+    var row1 = el('div', { class: 'row' }, [field('Full name' + REQ, name, 'name'), field('Mobile phone' + REQ, phone, 'phone')]);
+    var row2 = el('div', { class: 'row' }, [field('Email' + REQ, email, 'email'), field('Service ZIP' + REQ, zip, 'zip')]);
+    var row3 = el('div', { class: 'row' }, [field('What do you need?' + REQ, service), field('Vehicle' + REQ, vehicle, 'vehicle')]);
     form.appendChild(row1);
     form.appendChild(row2);
     form.appendChild(row3);
 
-    var drawer = el('div');
+    var vinField = field('VIN <span class="opt">— optional, gets us the exact glass</span>', vin);
+    vinField.appendChild(vinHint);
+    var drawer = el('div', { class: 'drawer' });
     drawer.hidden = true;
-    drawer.appendChild(field('VIN <span class="opt">— optional, gets us the exact glass</span>', vin));
+    drawer.appendChild(vinField);
     drawer.appendChild(radios);
     drawer.appendChild(carrierField);
     drawer.appendChild(field('Anything else? <span class="opt">— optional</span>', notes));
@@ -225,7 +278,11 @@ const WIDGET_SOURCE = String.raw`(function () {
       html: '<span class="more-t">Speed up my quote <span class="opt">(optional)</span></span><br>' +
         '<span class="more-s">VIN, insurance, and anything else about the damage</span>'
     }));
-    moreBtn.appendChild(el('span', { class: 'chev', 'aria-hidden': 'true', text: '⌄' }));
+    moreBtn.appendChild(el('span', {
+      class: 'chev',
+      'aria-hidden': 'true',
+      html: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>'
+    }));
     moreBtn.addEventListener('click', function () {
       var open = drawer.hidden;
       drawer.hidden = !open;
@@ -241,22 +298,23 @@ const WIDGET_SOURCE = String.raw`(function () {
 
     form.addEventListener('submit', function (e) {
       e.preventDefault();
-      err.style.display = 'none';
-      // Required per the template: everything in the visible form.
-      var missing = [];
-      function check(input, bad) {
-        input.classList.toggle('bad', bad);
-        if (bad) missing.push(input);
+      err.className = 'err';
+      // Required per the template: everything in the visible form, with a
+      // message under each failed field plus a summary box before submit.
+      var firstBad = null;
+      function check(key, input, bad, message) {
+        setFieldError(key, bad ? message : null);
+        if (bad && !firstBad) firstBad = input;
       }
-      check(name, !name.value.trim());
-      check(phone, phone.value.replace(/\D/g, '').length < 7);
-      check(email, !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim()));
-      check(zip, !/^\d{5}$/.test(zip.value.trim()));
-      check(vehicle, !vehicle.value.trim());
-      if (missing.length) {
-        err.textContent = 'Please fill in the highlighted fields.';
-        err.style.display = 'block';
-        missing[0].focus();
+      check('name', name, !name.value.trim(), 'Please enter your name.');
+      check('phone', phone, phone.value.replace(/\D/g, '').length < 7, 'Please enter a mobile number we can reach you on.');
+      check('email', email, !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim()), 'Please enter a valid email.');
+      check('zip', zip, !/^\d{5}$/.test(zip.value.trim()), 'Please enter your 5-digit ZIP.');
+      check('vehicle', vehicle, !vehicle.value.trim(), 'Tell us the year, make and model.');
+      if (firstBad) {
+        err.textContent = 'A couple of fields need attention — see the notes above.';
+        err.className = 'err on';
+        firstBad.focus();
         return;
       }
       btn.disabled = true;
@@ -278,7 +336,7 @@ const WIDGET_SOURCE = String.raw`(function () {
         btn.disabled = false;
         btn.textContent = 'Get my free quote';
         err.textContent = friendly;
-        err.style.display = 'block';
+        err.className = 'err on';
       });
     });
     return form;
@@ -326,7 +384,10 @@ const WIDGET_SOURCE = String.raw`(function () {
         body.innerHTML = '';
         var first = (data.full_name || '').split(' ')[0] || 'there';
         var ok = el('div'); ok.className = 'ok';
-        ok.appendChild(el('div', { class: 'big', text: '✓' }));
+        ok.appendChild(el('div', {
+          class: 'big',
+          html: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
+        }));
         ok.appendChild(el('h4', { text: "You're all set, " + first + '.' }));
         ok.appendChild(el('p', { text: "We've got your request. A " + cfg.businessName + ' tech will call you shortly to confirm the glass, your coverage and a time that works.' }));
         if (cfg.phone) {
