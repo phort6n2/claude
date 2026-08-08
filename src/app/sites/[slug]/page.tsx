@@ -193,14 +193,26 @@ export default async function ClientSitePage({ params }: PageProps) {
       />
       <SiteHeader client={client} basePath={basePath} reviews={reviews} />
 
-      {/* Hero — light gradient over the brand tint, form card to the right */}
+      {/* Hero — light gradient over the brand tint, form card to the right.
+          When the client has photos, the first gallery shot sits underneath
+          at low opacity: visible texture, but washed enough that the text and
+          form keep full contrast. */}
       <section
-        className="pt-6 pb-10"
+        className="relative overflow-hidden pt-6 pb-10"
         style={{
           background: 'linear-gradient(168deg, var(--tint) 0%, var(--s1) 52%, var(--paper) 100%)',
         }}
       >
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 grid lg:grid-cols-[minmax(0,1fr)_430px] gap-8 items-start">
+        {extras.galleryPhotos[0] && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={extras.galleryPhotos[0].url}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 w-full h-full object-cover opacity-[0.13] pointer-events-none select-none"
+          />
+        )}
+        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 grid lg:grid-cols-[minmax(0,1fr)_430px] gap-8 items-start">
           <div className="pt-4">
             <Eyebrow>
               {client.city}, {client.state} auto glass experts
