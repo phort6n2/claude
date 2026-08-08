@@ -20,7 +20,7 @@
     },
     {
       "path": "/api/cron/refresh-gbp-reviews",
-      "schedule": "0 9 * * *"
+      "schedule": "0 9 * * 1"
     }
   ]
 }

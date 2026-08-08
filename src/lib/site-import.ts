@@ -174,14 +174,38 @@ export function findLogo(html: string, base: URL): string | null {
   return null
 }
 
-/** Candidate photos from <img> tags: absolute https, no icons/logos/tracking. */
+/** Largest URL out of a srcset attribute value ("url1 400w, url2 1200w"). */
+function pickFromSrcset(srcset: string): string | null {
+  let best: { url: string; w: number } | null = null
+  for (const part of srcset.split(',')) {
+    const [url, size] = part.trim().split(/\s+/)
+    if (!url) continue
+    const w = size ? parseInt(size, 10) || 0 : 0
+    if (!best || w >= best.w) best = { url, w }
+  }
+  return best?.url || null
+}
+
+/**
+ * Candidate photos from <img>/<source> tags: absolute https, no
+ * icons/logos/tracking. Lazy-loading themes (WordPress especially) park the
+ * real URL in data-lazy-src / data-src / srcset and leave a placeholder in
+ * src, so every one of those is checked — src alone finds nothing there.
+ */
 export function findPhotoCandidates(html: string, base: URL): Array<{ url: string; alt: string }> {
   const out = new Map<string, { url: string; alt: string }>()
-  const re = /<img[^>]*>/gi
+  const re = /<(?:img|source)[^>]*>/gi
+  const attr = (tag: string, name: string) =>
+    new RegExp(name + '\\s*=\\s*["\']([^"\']+)["\']', 'i').exec(tag)?.[1]
   let m: RegExpExecArray | null
   while ((m = re.exec(html)) && out.size < MAX_PHOTO_CANDIDATES) {
     const tag = m[0]
-    const src = /(?:data-src|src)\s*=\s*["']([^"']+)["']/i.exec(tag)?.[1]
+    let src =
+      attr(tag, 'data-lazy-src') || attr(tag, 'data-src') || attr(tag, 'data-original') || attr(tag, 'src')
+    if (!src || src.startsWith('data:')) {
+      const srcset = attr(tag, 'data-lazy-srcset') || attr(tag, 'data-srcset') || attr(tag, 'srcset')
+      src = (srcset && pickFromSrcset(srcset)) || undefined
+    }
     if (!src || src.startsWith('data:')) continue
     let abs: URL
     try {
@@ -191,7 +215,9 @@ export function findPhotoCandidates(html: string, base: URL): Array<{ url: strin
     }
     if (abs.protocol !== 'https:') continue
     if (/\.(svg|gif|ico)(\?|$)/i.test(abs.pathname)) continue
-    if (/logo|icon|sprite|favicon|pixel|badge|avatar|placeholder/i.test(abs.toString())) continue
+    // Junk filter runs on the PATH only — hostnames like spcdn.shortpixel.ai
+    // (an image CDN half the WordPress world uses) must not trip "pixel".
+    if (/logo|icon|sprite|favicon|pixel|badge|avatar|placeholder/i.test(abs.pathname)) continue
     const alt = /alt\s*=\s*["']([^"']*)["']/i.exec(tag)?.[1] || ''
     out.set(abs.toString(), { url: abs.toString(), alt: alt.trim().slice(0, 200) })
   }
@@ -245,6 +271,11 @@ export async function importSiteContent(
   }
 
   const photoCandidates = [...photoMap.values()]
+  if (photoCandidates.length === 0) {
+    warnings.push(
+      'No photo URLs found in the page HTML — the site may render its images with JavaScript. Photos can be added manually below.'
+    )
+  }
 
   const prompt = `You are extracting content from an auto glass shop's existing website so it can pre-fill their new landing site. The business is "${business.name}" in ${business.city}, ${business.state}.
 

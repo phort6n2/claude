@@ -258,11 +258,13 @@ function SiteContentEditor({
         d.photos?.length ? `${d.photos.length} photos` : null,
         d.footerBlurb ? 'footer blurb' : null,
       ].filter(Boolean)
+      const warnings = Array.isArray(d.warnings) && d.warnings.length ? ` ${d.warnings.join(' ')}` : ''
       setMessage({
         ok: true,
-        text: found.length
-          ? `Imported draft (${found.join(', ')}) from ${d.pagesCrawled.length} page(s). Review below — nothing is live until you Save.`
-          : `Read ${d.pagesCrawled.length} page(s) but found nothing usable to import.`,
+        text:
+          (found.length
+            ? `Imported draft (${found.join(', ')}) from ${d.pagesCrawled.length} page(s). Review below — nothing is live until you Save.`
+            : `Read ${d.pagesCrawled.length} page(s) but found nothing usable to import.`) + warnings,
       })
     } catch {
       setMessage({ ok: false, text: 'Import failed' })

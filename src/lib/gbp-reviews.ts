@@ -5,9 +5,10 @@ import { Prisma } from '@prisma/client'
 /**
  * Google Business Profile reviews for hosted landing pages.
  *
- * Fetches rating / review count / top quotes from the Places Details API using
- * the client's googlePlaceId and caches them in ClientGbpReviews. Two rules
- * ported from the landing-template repo, where they were learned the hard way:
+ * Fetches rating / review count / top quotes from the Places API (New) using
+ * the client's googlePlaceId and caches them in ClientGbpReviews — the same
+ * weekly workflow as the landing-template's fetch-reviews.cjs. Two rules
+ * ported from that repo, where they were learned the hard way:
  *
  * 1. Never publish data the Place ID merely *returned* — verify it resolved to
  *    a business that looks like this client. A wrong Place ID (one typo, or a
@@ -89,66 +90,77 @@ export async function refreshGbpReviews(clientId: string): Promise<RefreshResult
       .catch(() => {})
   }
 
+  // Places API (New) — places.googleapis.com, per the landing-template's
+  // fetch-reviews.cjs. NOT the legacy maps.googleapis.com details endpoint,
+  // which newer API projects are not authorized for (REQUEST_DENIED).
   let data: {
-    status?: string
-    error_message?: string
-    result?: {
-      name?: string
+    error?: { status?: string; message?: string }
+    displayName?: { text?: string }
+    formattedAddress?: string
+    rating?: number
+    userRatingCount?: number
+    googleMapsUri?: string
+    reviews?: Array<{
       rating?: number
-      user_ratings_total?: number
-      reviews?: Array<{
-        author_name?: string
-        rating?: number
-        text?: string
-        relative_time_description?: string
-      }>
-    }
+      text?: { text?: string }
+      originalText?: { text?: string }
+      authorAttribution?: { displayName?: string }
+      relativePublishTimeDescription?: string
+    }>
   }
   try {
-    const url =
-      'https://maps.googleapis.com/maps/api/place/details/json' +
-      `?place_id=${encodeURIComponent(client.googlePlaceId)}` +
-      '&fields=name,rating,user_ratings_total,reviews' +
-      `&key=${apiKey}`
-    const response = await fetch(url, { signal: AbortSignal.timeout(10_000) })
+    const response = await fetch(
+      `https://places.googleapis.com/v1/places/${encodeURIComponent(client.googlePlaceId)}`,
+      {
+        headers: {
+          'X-Goog-Api-Key': apiKey,
+          'X-Goog-FieldMask':
+            'displayName,formattedAddress,rating,userRatingCount,googleMapsUri,reviews',
+          Accept: 'application/json',
+        },
+        signal: AbortSignal.timeout(10_000),
+      }
+    )
     data = await response.json()
+    if (!response.ok) {
+      const message = `Places API (New): ${data.error?.status || response.status}${data.error?.message ? ` — ${data.error.message}` : ''}`
+      await recordError(message)
+      return { ok: false, message }
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Places request failed'
     await recordError(message)
     return { ok: false, message }
   }
 
-  if (data.status !== 'OK' || !data.result) {
-    const message = `Places API: ${data.status || 'no result'}${data.error_message ? ` — ${data.error_message}` : ''}`
-    await recordError(message)
-    return { ok: false, message }
-  }
-
-  const placeName = data.result.name || ''
+  const placeName = data.displayName?.text || ''
   if (!placeNameMatchesClient(client.businessName, placeName)) {
     const message = `Place ID resolved to "${placeName}", which does not look like "${client.businessName}". Not caching — check the Place ID.`
     await recordError(message)
     return { ok: false, message, placeName }
   }
 
-  const rating = data.result.rating
-  const reviewCount = data.result.user_ratings_total
+  const rating = data.rating
+  const reviewCount = data.userRatingCount
   if (typeof rating !== 'number' || typeof reviewCount !== 'number') {
     const message = 'Place has no rating data'
     await recordError(message)
     return { ok: false, message, placeName }
   }
 
-  // Keep the best-rated quotes with real text, capped for page use.
-  const quotes = (data.result.reviews || [])
-    .filter((r) => typeof r.text === 'string' && r.text.trim().length > 20 && (r.rating ?? 0) >= 4)
-    .slice(0, 5)
+  // Quote selection per the template's fetch-reviews.cjs: 5-star only (no
+  // padding the wall with 4-star reviews), readable length, longest first —
+  // a substantial review is more persuasive than a two-line one.
+  const quotes = (data.reviews || [])
     .map((r) => ({
-      author: r.author_name || 'Google user',
-      rating: r.rating ?? 5,
-      text: r.text!.trim().slice(0, 400),
-      relativeTime: r.relative_time_description || '',
+      author: r.authorAttribution?.displayName || 'Google reviewer',
+      rating: r.rating ?? 0,
+      text: (r.originalText?.text || r.text?.text || '').trim(),
+      relativeTime: r.relativePublishTimeDescription || '',
     }))
+    .filter((r) => r.rating === 5 && r.text.length >= 40 && r.text.length <= 650)
+    .sort((a, b) => b.text.length - a.text.length)
+    .slice(0, 3)
 
   await prisma.clientGbpReviews.upsert({
     where: { clientId },
