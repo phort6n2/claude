@@ -20,13 +20,29 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 
   try {
     const { id } = await params
-    const [content, photos] = await Promise.all([
-      prisma.clientSiteContent.findUnique({ where: { clientId: id } }),
+    const [content, photos, chapterRow] = await Promise.all([
+      prisma.clientSiteContent.findUnique({
+        where: { clientId: id },
+        select: {
+          warrantyTitle: true,
+          warrantyText: true,
+          faq: true,
+          heroBullets: true,
+          footerBlurb: true,
+          registrationName: true,
+          registrationNumber: true,
+        },
+      }),
       prisma.clientSitePhoto.findMany({
         where: { clientId: id },
         orderBy: [{ pool: 'asc' }, { sortOrder: 'asc' }],
         select: { url: true, alt: true, pool: true },
       }),
+      // Newer column, fetched separately so a DB that predates it still
+      // serves everything else.
+      prisma.clientSiteContent
+        .findUnique({ where: { clientId: id }, select: { chapters: true } })
+        .catch(() => null),
     ])
     return NextResponse.json({
       content: content
@@ -35,6 +51,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
             warrantyText: content.warrantyText,
             faq: content.faq ?? [],
             heroBullets: content.heroBullets ?? [],
+            chapters: chapterRow?.chapters ?? [],
             footerBlurb: content.footerBlurb,
             registrationName: content.registrationName,
             registrationNumber: content.registrationNumber,
@@ -110,6 +127,23 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       })
     }
 
+    const chapters = Array.isArray(body.chapters)
+      ? body.chapters
+          .filter(
+            (c: { heading?: unknown; body?: unknown }) =>
+              typeof c?.heading === 'string' && typeof c?.body === 'string' && c.heading.trim() && c.body.trim()
+          )
+          .slice(0, 5)
+          .map((c: { heading: string; body: string; photoUrl?: string }) => ({
+            heading: c.heading.trim().slice(0, 120),
+            body: c.body.trim().slice(0, 4000),
+            photoUrl:
+              typeof c.photoUrl === 'string' && /^https:\/\//.test(c.photoUrl.trim())
+                ? c.photoUrl.trim()
+                : '',
+          }))
+      : []
+
     const contentData = {
       warrantyTitle: text(body.warrantyTitle, 120),
       warrantyText: text(body.warrantyText, 4000),
@@ -119,20 +153,38 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       registrationName: text(body.registrationName, 200),
       registrationNumber: text(body.registrationNumber, 100),
     }
+    const withChapters = { ...contentData, chapters: chapters as Prisma.InputJsonValue }
 
-    await prisma.$transaction([
-      prisma.clientSiteContent.upsert({
-        where: { clientId: id },
-        update: contentData,
-        create: { clientId: id, ...contentData },
-      }),
-      prisma.clientSitePhoto.deleteMany({ where: { clientId: id } }),
-      ...(photos.length
-        ? [prisma.clientSitePhoto.createMany({ data: photos.map((p) => ({ ...p, clientId: id })) })]
-        : []),
-    ])
+    const save = (data: typeof contentData) =>
+      prisma.$transaction([
+        prisma.clientSiteContent.upsert({
+          where: { clientId: id },
+          update: data,
+          create: { clientId: id, ...data },
+        }),
+        prisma.clientSitePhoto.deleteMany({ where: { clientId: id } }),
+        ...(photos.length
+          ? [prisma.clientSitePhoto.createMany({ data: photos.map((p) => ({ ...p, clientId: id })) })]
+          : []),
+      ])
 
-    return NextResponse.json({ success: true })
+    let chaptersSkipped = false
+    try {
+      await save(withChapters)
+    } catch (err) {
+      // The chapters column may not exist yet (ALTER not run). Save the rest
+      // rather than failing the whole request, and say so.
+      console.error('Save with chapters failed, retrying without:', err)
+      await save(contentData)
+      chaptersSkipped = chapters.length > 0
+    }
+
+    return NextResponse.json({
+      success: true,
+      ...(chaptersSkipped
+        ? { warning: 'Chapters were NOT saved — run docs/db-add-site-chapters.sql, then save again.' }
+        : {}),
+    })
   } catch (error) {
     console.error('Failed to save site content:', error)
     return NextResponse.json({ error: 'Failed to save site content' }, { status: 500 })

@@ -211,6 +211,17 @@ landing-template repo's config header — read them before writing client copy;
 in particular: no deductible offers, no invented prices or facts about the
 business, no third-party "approved/authorized" claims.
 
+**Editorial chapters.** `ClientSiteContent.chapters` (Json — run
+`docs/db-add-site-chapters.sql`; reads are a separate guarded query so deploy
+order doesn't matter, and a save against a DB without the column saves
+everything else and warns). Rendered between the hero and the services grid
+as alternating prose + photo sections, like the reference's long-form middle.
+Content is per-business — admin-written or drafted by the importer from the
+client's own site copy — never invented. The hero headline itself is derived
+from the client's flags and city (ADAS → "Auto glass and ADAS calibration
+across the {city} area", etc.), and a four-item trust strip under the hero
+renders only claims the flags can back.
+
 **Import from their current website.** The Site Content editor's Import box
 (`src/lib/site-import.ts` + `POST /api/clients/{id}/import-site`) fetches the
 URL you give it plus up to 4 same-origin pages that look like

@@ -473,6 +473,13 @@ model ClientSiteContent {
   // certifications the shop doesn't hold, no timing promises.
   heroBullets Json?
 
+  // Editorial chapters between the hero and the services grid, like the
+  // reference build's long-form middle. [{ heading, body, photoUrl }] —
+  // written per business (or drafted by the importer from the client's own
+  // site copy), never invented. Reads are defensive: pages query this column
+  // separately so a DB that predates it only loses chapters, nothing else.
+  chapters Json?
+
   // Footer one-liner about the business.
   footerBlurb String?
 

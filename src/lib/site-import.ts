@@ -23,6 +23,7 @@ export interface ImportedSiteContent {
   warrantyText: string | null
   faq: Array<{ q: string; a: string }>
   heroBullets: Array<{ lead: string; text: string }>
+  chapters: Array<{ heading: string; body: string; photoUrl: string }>
   footerBlurb: string | null
   photos: ImportedPhoto[]
   logoUrl: string | null
@@ -293,6 +294,7 @@ Return ONLY a JSON object (no prose, no markdown fence) with exactly these keys:
   "faq": [{"q": string, "a": string}], // real Q&As from the site (max 12); [] if none
   "heroBullets": [{"lead": string, "text": string}], // up to 4 short factual selling points the site itself states; "lead" is the bold first words
   "footerBlurb": string|null,          // one factual sentence about the business, from the site's own copy
+  "chapters": [{"heading": string, "body": string, "photoIndex": number|null}], // 2-4 editorial sections telling this business's story, BUILT ONLY from facts and phrasing already on their site (their history, their approach, what makes them different — in their voice). 1-3 short paragraphs each, separated by blank lines. Condensing and light editing of THEIR copy is fine; adding facts is not. photoIndex optionally pairs a candidate photo whose subject fits the section. [] if the site has no real "about" substance.
   "photos": [{"index": number, "alt": string}] // pick from the NUMBERED candidate list below BY INDEX: keep only ones whose URL/alt suggest real photos of this business or its work (vehicles, glass jobs, shop, team). Drop stock-looking, decorative, or unrelated images. Write a short factual alt from the filename/alt given — do not invent specifics. Max 12.
 }
 
@@ -354,6 +356,24 @@ ${pages.map((p) => `=== ${p.url} ===\n${p.text}`).join('\n\n')}`
           .map((f) => ({ q: (f.q as string).trim().slice(0, 300), a: (f.a as string).trim().slice(0, 2000) }))
       : []
 
+    const chapters = Array.isArray(parsed.chapters)
+      ? (parsed.chapters as Array<{ heading?: unknown; body?: unknown; photoIndex?: unknown }>)
+          .filter((c) => typeof c?.heading === 'string' && typeof c?.body === 'string' && c.heading.trim() && c.body.trim())
+          .slice(0, 4)
+          .map((c) => {
+            const idx = c.photoIndex
+            const photoUrl =
+              typeof idx === 'number' && Number.isInteger(idx) && idx >= 0 && idx < photoCandidates.length
+                ? photoCandidates[idx].url
+                : ''
+            return {
+              heading: (c.heading as string).trim().slice(0, 120),
+              body: (c.body as string).trim().slice(0, 4000),
+              photoUrl,
+            }
+          })
+      : []
+
     const heroBullets = Array.isArray(parsed.heroBullets)
       ? (parsed.heroBullets as Array<{ lead?: unknown; text?: unknown }>)
           .filter((b) => typeof b?.lead === 'string' && b.lead.trim())
@@ -375,6 +395,7 @@ ${pages.map((p) => `=== ${p.url} ===\n${p.text}`).join('\n\n')}`
         warrantyText: asStr(parsed.warrantyText, 4000),
         faq,
         heroBullets,
+        chapters,
         footerBlurb: asStr(parsed.footerBlurb, 400),
         photos,
         logoUrl,
