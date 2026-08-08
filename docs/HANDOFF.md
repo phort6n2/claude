@@ -201,6 +201,18 @@ client's flags enable. Setting a client to PAUSED replaces their whole site
 with a neutral "temporarily unavailable" page (the non-payment kill switch)
 within the 5-minute ISR window.
 
+**One shell, every page.** `src/components/sites/site-body.tsx` renders
+everything below the hero (services grid, steps, stat band, insurance,
+gallery, reviews, map, areas, warranty, FAQ, final CTA, footer). Home,
+service, and location pages all use it — each page IS the homepage with a
+different hero and lead-in chapters, the reference build's per-page model.
+
+**Location pages.** `/locations/{city-slug}` for the first 5 entries in the
+client's serviceAreas (`src/lib/site-locations.ts`, LOCATION_PAGE_LIMIT).
+City copy is flag-derived and factual (mobile unit covers the city / shop
+serves it from {home city}); the areas band and footer link to them. Adding
+a city to serviceAreas in the admin creates its page within the ISR window.
+
 **Editorial site content.** `ClientSiteContent` + `ClientSitePhoto`, edited in
 the client editor's Hosted Website section: hero bullets, warranty (always
 rendered with its full terms beside the claim), FAQ (with FAQPage JSON-LD),

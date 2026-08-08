@@ -2,7 +2,8 @@ import { notFound } from 'next/navigation'
 import Script from 'next/script'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
-import { getServicePage, servicesForClient, type ServiceFlag } from '@/lib/site-services'
+import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
+import { findLocation } from '@/lib/site-locations'
 import {
   UtilBar,
   SiteHeader,
@@ -28,19 +29,21 @@ import { getSiteExtras } from '@/lib/site-content'
 import { sitePaletteVars } from '@/lib/site-theme'
 
 /**
- * Per-service page: the full homepage shell with a service-specific hero and
- * the service's own copy as its lead-in chapters — the reference build's
- * per-page model (same template, per-page hero and body).
+ * Per-city location page — the full homepage shell with a city-specific hero.
+ * Pages exist only for cities in the client's serviceAreas (capped, see
+ * site-locations.ts), and every claim on them is flag-derived or shared real
+ * content (reviews, photos, warranty) — city copy states the relationship the
+ * data supports (mobile service to that city, or the shop serving it),
+ * nothing invented.
  */
 
 export const revalidate = 300
 
 interface PageProps {
-  params: Promise<{ slug: string; service: string }>
+  params: Promise<{ slug: string; city: string }>
 }
 
 async function getClient(slug: string) {
-  // The label in the URL may be the full slug or the short siteSubdomain.
   return prisma.client.findFirst({
     where: { OR: [{ slug }, { siteSubdomain: slug }] },
     select: {
@@ -84,36 +87,37 @@ async function getReviews(clientId: string): Promise<ReviewsData | null> {
       quotes: (row.reviews as unknown as ReviewQuote[]) || [],
     }
   } catch {
-    // Table may not exist yet; the band is simply stripped.
     return null
   }
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug, service } = await params
-  const page = getServicePage(service)
+  const { slug, city } = await params
   const client = await getClient(slug)
-  if (!page || !client || client.status !== 'ACTIVE') return { title: 'Not Found' }
+  if (!client || client.status !== 'ACTIVE') return { title: 'Not Found' }
+  const location = findLocation(client.serviceAreas || [], city)
+  if (!location) return { title: 'Not Found' }
 
-  const title = `${page.name} in ${client.city}, ${client.state} | ${client.businessName}`
-  const description = `${page.short} Free quotes from ${client.businessName} in ${client.city}. Call ${client.phone}.`
+  const title = `Auto Glass in ${location.area}, ${client.state} | ${client.businessName}`
+  const description = `Windshield repair and replacement in ${location.area}, ${client.state}${client.offersMobileService ? ' — mobile service to your home or office' : ''}. Free quotes from ${client.businessName}. Call ${client.phone}.`
   return {
     title,
     description,
     openGraph: { title, description, type: 'website' },
-    alternates: { canonical: `https://${client.siteSubdomain || client.slug}.glassleads.app/services/${page.slug}` },
+    alternates: {
+      canonical: `https://${client.siteSubdomain || client.slug}.glassleads.app/locations/${location.slug}`,
+    },
   }
 }
 
-export default async function ServicePage({ params }: PageProps) {
-  const { slug, service } = await params
-  const page = getServicePage(service)
-  if (!page) notFound()
-
+export default async function LocationPage({ params }: PageProps) {
+  const { slug, city } = await params
   const client = await getClient(slug)
   if (!client) notFound()
   if (client.status !== 'ACTIVE') return <SiteUnavailable />
-  if (!client[page.flag]) notFound()
+
+  const location = findLocation(client.serviceAreas || [], city)
+  if (!location) notFound()
 
   const [reviews, extras] = await Promise.all([
     getReviews(client.id),
@@ -127,39 +131,39 @@ export default async function ServicePage({ params }: PageProps) {
     offersMobileService: client.offersMobileService,
     offersAdasCalibration: client.offersAdasCalibration,
   }
-  const nav = prioritizeServices(services)
-    .filter((s) => s.slug !== page.slug)
-    .slice(0, 4)
-    .map((s) => ({ href: `${basePath}/services/${s.slug}`, label: s.name }))
+  const nav = prioritizeServices(services).slice(0, 4).map((s) => ({
+    href: `${basePath}/services/${s.slug}`,
+    label: s.name,
+  }))
 
+  const siteOrigin = `https://${client.siteSubdomain || client.slug}.glassleads.app`
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      {
-        '@type': 'ListItem',
-        position: 1,
-        name: client.businessName,
-        item: `https://${client.siteSubdomain || client.slug}.glassleads.app/`,
-      },
+      { '@type': 'ListItem', position: 1, name: client.businessName, item: `${siteOrigin}/` },
       {
         '@type': 'ListItem',
         position: 2,
-        name: page.name,
-        item: `https://${client.siteSubdomain || client.slug}.glassleads.app/services/${page.slug}`,
+        name: `Auto Glass in ${location.area}`,
+        item: `${siteOrigin}/locations/${location.slug}`,
       },
     ],
   }
 
+  const isHomeCity = location.area.toLowerCase() === client.city.toLowerCase()
+  // City copy states only what the flags support: mobile service driving to
+  // this city, and/or the shop that serves it.
+  const heroSub = client.offersMobileService
+    ? `Our mobile unit covers ${location.area} — windshield repair and replacement at your home, office, or roadside${
+        client.hasShopLocation && !isHomeCity ? `, or visit the shop in ${client.city}` : ''
+      }. Free quotes and help with your insurance claim.`
+    : `${client.businessName} serves ${location.area} from ${
+        client.hasShopLocation ? `our shop in ${client.city}` : `${client.city}`
+      }. Free quotes and help with your insurance claim.`
+
   const trustItems = buildTrustItems(client, flags, extras)
   const heroBullets = extras.heroBullets.length > 0 ? extras.heroBullets : defaultHeroBullets(flags)
-
-  // The service's own copy leads the page, chapter-style, with body photos.
-  const serviceChapters = page.sections.map((s) => ({
-    heading: s.heading,
-    body: s.body,
-    photoUrl: '',
-  }))
 
   return (
     <div
@@ -176,13 +180,13 @@ export default async function ServicePage({ params }: PageProps) {
         client={client}
         note={
           client.offersMobileService
-            ? `Mobile service across ${client.city} & nearby — we come to your home or workplace`
-            : `Serving ${client.city}, ${client.state} and nearby`
+            ? `Mobile service in ${location.area} — we come to your home or workplace`
+            : `Serving ${location.area}, ${client.state} and nearby`
         }
       />
       <SiteHeader client={client} basePath={basePath} reviews={reviews} nav={nav} />
 
-      {/* Hero — identical composition to the homepage, service-specific copy */}
+      {/* Hero — identical composition to the homepage, city-specific copy */}
       <section
         className="relative overflow-hidden pt-5 pb-9 lg:pt-[52px] lg:pb-[68px]"
         style={{
@@ -201,14 +205,14 @@ export default async function ServicePage({ params }: PageProps) {
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_452px] lg:grid-rows-[auto_1fr] lg:gap-x-[52px] lg:gap-y-[18px]">
           <div className="lg:col-start-1 lg:row-start-1">
             <Eyebrow>
-              {client.city}, {client.state}
+              {location.area}, {client.state}
             </Eyebrow>
             <h1 className="text-[clamp(1.875rem,1.35rem+2.6vw,3.4rem)] font-extrabold leading-[1.08] tracking-[-.02em] text-[var(--tx)]">
-              {page.name} in {client.city}
+              {client.offersAdasCalibration
+                ? `Auto glass and ADAS calibration in ${location.area}`
+                : `Windshield repair and replacement in ${location.area}`}
             </h1>
-            <p className="mt-4 text-[17px] leading-[1.55] text-[var(--tx2)] max-w-[48ch]">
-              {page.heroLine}
-            </p>
+            <p className="mt-4 text-[17px] leading-[1.55] text-[var(--tx2)] max-w-[48ch]">{heroSub}</p>
             <div className="mt-5 mb-[18px]">
               <RatingChip reviews={reviews} client={client} />
             </div>
@@ -240,9 +244,9 @@ export default async function ServicePage({ params }: PageProps) {
         <TrustRow items={trustItems} />
       </section>
 
-      {/* The service's own copy, chapter-style with body photos */}
+      {/* Business chapters give location pages the same substance as home */}
       <ChapterSections
-        chapters={serviceChapters}
+        chapters={extras.chapters}
         fallbackPhotos={extras.bodyPhotos.length ? extras.bodyPhotos : extras.galleryPhotos.slice(1)}
       />
 
@@ -254,7 +258,6 @@ export default async function ServicePage({ params }: PageProps) {
         services={services}
         areas={areas}
         basePath={basePath}
-        currentServiceSlug={page.slug}
       />
 
       <Script src="/widget.js" data-client={client.slug} strategy="afterInteractive" />

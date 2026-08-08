@@ -1,5 +1,6 @@
 import { Phone, MapPin, ShieldCheck, Check } from 'lucide-react'
 import type { SiteExtras } from '@/lib/site-content'
+import { locationPages } from '@/lib/site-locations'
 
 /**
  * Shared building blocks for hosted client sites (home + service pages),
@@ -745,8 +746,17 @@ export function MapSection({
  * the right column — no dead space beside a short list. Cities come from the
  * client's serviceAreas field; add more there and this section grows.
  */
-export function AreasBand({ client, areas }: { client: SiteClient; areas: string[] }) {
+export function AreasBand({
+  client,
+  areas,
+  basePath,
+}: {
+  client: SiteClient
+  areas: string[]
+  basePath?: string
+}) {
   if (areas.length === 0) return null
+  const pages = new Map(locationPages(areas).map((l) => [l.area, l.slug]))
   return (
     <section className="bg-[var(--dark)] text-white on-dark">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-14 lg:items-center">
@@ -765,14 +775,26 @@ export function AreasBand({ client, areas }: { client: SiteClient; areas: string
             areas.length > 8 ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'
           }`}
         >
-          {areas.map((area) => (
-            <li key={area}>
+          {areas.map((area) => {
+            const slug = pages.get(area)
+            const inner = (
               <span className="inline-flex items-center gap-2.5 text-[15px] text-[var(--on-dark-2)]">
                 <MapPin className="h-4 w-4 text-[var(--brand-light)] shrink-0" />
                 {area}
               </span>
-            </li>
-          ))}
+            )
+            return (
+              <li key={area}>
+                {slug && basePath !== undefined ? (
+                  <a href={`${basePath}/locations/${slug}`} className="no-underline hover:underline">
+                    {inner}
+                  </a>
+                ) : (
+                  inner
+                )}
+              </li>
+            )
+          })}
         </ul>
       </div>
     </section>
@@ -978,9 +1000,23 @@ export function SiteFooter({
                 {i === 0 ? 'Areas we serve' : ' '}
               </h2>
               <ul className="list-none m-0 p-0 text-sm">
-                {chunk.map((area) => (
-                  <li key={area} className="py-[5px]">{area}</li>
-                ))}
+                {chunk.map((area) => {
+                  const slug = locationPages(areas || []).find((l) => l.area === area)?.slug
+                  return (
+                    <li key={area} className="py-[5px]">
+                      {slug ? (
+                        <a
+                          href={`${basePath || ''}/locations/${slug}`}
+                          className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline"
+                        >
+                          {area}
+                        </a>
+                      ) : (
+                        area
+                      )}
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           ))}
