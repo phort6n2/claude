@@ -262,11 +262,11 @@ Return ONLY a JSON object (no prose, no markdown fence) with exactly these keys:
   "faq": [{"q": string, "a": string}], // real Q&As from the site (max 12); [] if none
   "heroBullets": [{"lead": string, "text": string}], // up to 4 short factual selling points the site itself states; "lead" is the bold first words
   "footerBlurb": string|null,          // one factual sentence about the business, from the site's own copy
-  "photos": [{"url": string, "alt": string}] // from CANDIDATE PHOTOS below: keep only ones whose URL/alt suggest real photos of this business or its work (vehicles, glass jobs, shop, team). Drop stock-looking, decorative, or unrelated images. Write a short factual alt from the filename/alt given — do not invent specifics. Max 12.
+  "photos": [{"index": number, "alt": string}] // pick from the NUMBERED candidate list below BY INDEX: keep only ones whose URL/alt suggest real photos of this business or its work (vehicles, glass jobs, shop, team). Drop stock-looking, decorative, or unrelated images. Write a short factual alt from the filename/alt given — do not invent specifics. Max 12.
 }
 
-CANDIDATE PHOTOS:
-${photoCandidates.length ? photoCandidates.map((p) => `- ${p.url}${p.alt ? ` (alt: ${p.alt})` : ''}`).join('\n') : '(none found)'}
+CANDIDATE PHOTOS (refer to these by index):
+${photoCandidates.length ? photoCandidates.map((p, i) => `[${i}] ${p.url}${p.alt ? ` (alt: ${p.alt})` : ''}`).join('\n') : '(none found)'}
 
 SITE PAGES:
 ${pages.map((p) => `=== ${p.url} ===\n${p.text}`).join('\n\n')}`
@@ -291,18 +291,30 @@ ${pages.map((p) => `=== ${p.url} ===\n${p.text}`).join('\n\n')}`
     }
     const parsed = parseModelJson(textBlock.text)
 
-    const candidateUrls = new Set(photoCandidates.map((p) => p.url))
+    // The model picks photos BY INDEX into the crawled candidate list, so it
+    // can never introduce a URL of its own — and can never lose one to a
+    // mistyped hash in a long filename (which is how an earlier echo-the-URL
+    // scheme silently dropped every photo).
+    const seenIdx = new Set<number>()
     const photos: ImportedPhoto[] = Array.isArray(parsed.photos)
-      ? (parsed.photos as Array<{ url?: unknown; alt?: unknown }>)
-          // Only URLs we actually saw on the site — the model cannot add its own.
-          .filter((p) => typeof p?.url === 'string' && candidateUrls.has(p.url))
+      ? (parsed.photos as Array<{ index?: unknown; alt?: unknown }>)
+          .filter((p) => {
+            const i = p?.index
+            if (typeof i !== 'number' || !Number.isInteger(i) || i < 0 || i >= photoCandidates.length) return false
+            if (seenIdx.has(i)) return false
+            seenIdx.add(i)
+            return true
+          })
           .slice(0, 12)
-          .map((p) => ({
-            url: p.url as string,
-            alt: typeof p.alt === 'string' ? p.alt.trim().slice(0, 200) : '',
-            pool: 'GALLERY' as const,
-          }))
+          .map((p) => {
+            const candidate = photoCandidates[p.index as number]
+            const alt = typeof p.alt === 'string' && p.alt.trim() ? p.alt.trim() : candidate.alt
+            return { url: candidate.url, alt: alt.slice(0, 200), pool: 'GALLERY' as const }
+          })
       : []
+    console.log(
+      `[SiteImport] ${photoCandidates.length} photo candidates, model kept ${photos.length}`
+    )
 
     const faq = Array.isArray(parsed.faq)
       ? (parsed.faq as Array<{ q?: unknown; a?: unknown }>)

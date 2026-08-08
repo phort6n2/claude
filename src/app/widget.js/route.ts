@@ -17,6 +17,13 @@ export const dynamic = 'force-static'
  *  3. Never break the host page: everything renders in shadow DOM, all errors
  *     are swallowed into a friendly call-us fallback.
  *
+ * The form itself follows the landing-template quote-card spec (.qc): name /
+ * phone / email / ZIP / service / vehicle all visible and required, optional
+ * details (VIN, insurance, notes) behind a "Speed up my quote" drawer, and a
+ * display:none honeypot with a name no autofill heuristic recognises — the
+ * template's hard-won lesson is that an off-screen honeypot gets filled by
+ * Chrome's profile autofill and silently eats real leads.
+ *
  * The submit posts the same flat JSON dialect the lead webhook already parses
  * for landing pages, so no server-side lead-path changes are needed. The site
  * origin must be in the client's Allowed Browser Origins (admin → client →
@@ -78,12 +85,7 @@ const WIDGET_SOURCE = String.raw`(function () {
   var attribution = captureAttribution();
 
   // ---- Widget UI ----------------------------------------------------------
-  var YEARS = (function () {
-    var out = [], y = new Date().getFullYear() + 1;
-    for (; y >= 1985; y--) out.push(y);
-    return out;
-  })();
-  var MAKES = ['Acura','Audi','BMW','Buick','Cadillac','Chevrolet','Chrysler','Dodge','Ford','GMC','Honda','Hyundai','Infiniti','Jeep','Kia','Lexus','Lincoln','Mazda','Mercedes-Benz','Mitsubishi','Nissan','Ram','Subaru','Tesla','Toyota','Volkswagen','Volvo','Other'];
+  var CARRIERS = ['State Farm', 'GEICO', 'Progressive', 'AAA', 'USAA', 'Farmers', 'Allstate', 'Mercury', 'Other'];
 
   function el(tag, attrs, children) {
     var node = document.createElement(tag);
@@ -115,101 +117,166 @@ const WIDGET_SOURCE = String.raw`(function () {
       '.head h3{margin:0;font-size:20px;font-weight:800;letter-spacing:-.02em}' +
       '.head p{margin:4px 0 0;font-size:13px;color:#5c5c5c}' +
       '.body{padding:14px 22px 22px}' +
-      '.row{display:flex;gap:10px}.row>*{flex:1}' +
+      '.row{display:flex;gap:10px}.row>*{flex:1;min-width:0}' +
+      '.row+.row,.row+div,div+.row{margin-top:2px}' +
       'label{display:block;font-size:13px;font-weight:600;color:#1a1a1a;margin:12px 0 5px}' +
+      '.req{color:' + cfg.primaryColor + ';margin-left:2px}' +
+      '.opt{color:#6e6e6e;font-weight:400}' +
       'input,select,textarea{width:100%;min-height:44px;padding:10px 12px;border:1.5px solid #8a8a8a;border-radius:12px;font-size:16px;background:#fff;color:#1a1a1a}' +
-      'textarea{min-height:56px}' +
+      'textarea{min-height:72px}' +
       'input:focus,select:focus,textarea:focus{outline:none;border-color:' + cfg.primaryColor + ';box-shadow:0 0 0 3px rgba(0,0,0,.08)}' +
+      'input.bad,select.bad{border-color:#b3261e;background:#fef2f2}' +
+      // Progressive-disclosure drawer, per the template: VIN, insurance, and
+      // notes stay optional and out of the visible form.
+      '.more-btn{width:100%;margin-top:16px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;background:#faf7f7;border:1px solid #e2d8d8;border-radius:12px;cursor:pointer;color:#1a1a1a}' +
+      '.more-t{font-size:14px;font-weight:700}' +
+      '.more-s{font-size:12px;color:#6e6e6e}' +
+      '.chev{transition:transform .15s ease;flex:0 0 auto}' +
+      '.more-btn[aria-expanded="true"] .chev{transform:rotate(180deg)}' +
+      '.radios{border:0;margin:12px 0 0;padding:0}' +
+      '.radios legend{font-size:13px;font-weight:600;color:#1a1a1a;padding:0;margin:0 0 6px}' +
+      '.radio{display:inline-flex;align-items:center;gap:6px;margin-right:14px;font-size:14px;color:#1a1a1a}' +
+      '.radio input{width:auto;min-height:0}' +
       '.btn{width:100%;margin-top:16px;padding:14px;border:0;border-radius:14px;font-size:16px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(180deg,' + cfg.primaryColor + ',' + darken(cfg.primaryColor, 0.17) + ');box-shadow:0 6px 14px -4px rgba(0,0,0,.3)}' +
       '.btn:disabled{opacity:.6;cursor:default}' +
-      '.fine{font-size:11px;color:#9ca3af;text-align:center;margin-top:8px}' +
-      '.ok{padding:28px 20px;text-align:center}' +
-      '.ok .big{font-size:34px}' +
-      '.ok h4{margin:8px 0 4px;font-size:17px;color:#111827}' +
-      '.ok p{margin:0;font-size:14px;color:#6b7280}' +
+      '.micro{font-size:12px;color:#5c5c5c;text-align:center;margin-top:10px}' +
+      '.consent{font-size:11px;color:#8a8a8a;text-align:center;margin-top:6px;line-height:1.4}' +
+      '.ok{padding:28px 22px;text-align:center}' +
+      '.ok .big{width:52px;height:52px;margin:0 auto;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;background:' + cfg.primaryColor + '}' +
+      '.ok h4{margin:12px 0 4px;font-size:18px;color:#1a1a1a}' +
+      '.ok p{margin:0;font-size:14px;color:#5c5c5c}' +
+      '.ok a{display:block;margin-top:14px;padding:13px;border-radius:12px;font-weight:700;color:#fff;text-decoration:none;background:' + cfg.primaryColor + '}' +
       '.err{margin-top:10px;padding:9px 10px;border-radius:8px;background:#fef2f2;color:#b91c1c;font-size:13px}' +
-      '.hp{position:absolute;left:-9999px;top:-9999px;height:1px;width:1px;overflow:hidden}' +
+      // display:none, not off-screen: Chrome profile autofill fills off-screen
+      // fields but skips display:none — see the template's honeypot post-mortem.
+      '.hp{display:none}' +
       '.fab{position:fixed;right:18px;bottom:18px;z-index:2147483000;display:flex;align-items:center;gap:8px;padding:13px 18px;border:0;border-radius:999px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.25);background:' + cfg.primaryColor + '}' +
-      '.overlay{position:fixed;inset:0;z-index:2147483001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px}' +
+      '.overlay{position:fixed;inset:0;z-index:2147483001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}' +
       '.close{position:absolute;top:10px;right:14px;background:none;border:0;color:#1a1a1a;font-size:22px;cursor:pointer;opacity:.7}' +
       '.headwrap{position:relative}';
   }
 
   function buildForm(cfg, onSubmit) {
     var form = el('form', { novalidate: 'novalidate' });
-    function field(labelText, input) {
+    function field(labelHtml, input) {
       var wrap = el('div');
-      wrap.appendChild(el('label', { text: labelText }));
+      wrap.appendChild(el('label', { html: labelHtml }));
       wrap.appendChild(input);
       return wrap;
     }
-    var name = el('input', { type: 'text', name: 'full_name', autocomplete: 'name', placeholder: 'Jane Smith' });
-    var phone = el('input', { type: 'tel', name: 'phone', autocomplete: 'tel', required: 'required', placeholder: '(555) 555-1234' });
-    var email = el('input', { type: 'email', name: 'email', autocomplete: 'email', placeholder: 'jane@email.com' });
+    var REQ = '<span class="req" aria-hidden="true">*</span>';
+
+    var name = el('input', { type: 'text', name: 'full_name', autocomplete: 'name', placeholder: 'Alex Ramirez' });
+    var phone = el('input', { type: 'tel', name: 'phone', inputmode: 'tel', autocomplete: 'tel', placeholder: '(714) 555-0142' });
+    var email = el('input', { type: 'email', name: 'email', inputmode: 'email', autocomplete: 'email', placeholder: 'you@example.com' });
+    var zip = el('input', { type: 'text', name: 'postal_code', autocomplete: 'postal-code', inputmode: 'numeric', maxlength: '5', placeholder: '92614' });
     var service = el('select', { name: 'service' });
-    service.appendChild(el('option', { value: '', text: 'Select a service…' }));
+    // Template spec: no placeholder option — the most common job is the default.
     (cfg.services || []).forEach(function (s) { service.appendChild(el('option', { value: s, text: s })); });
-    service.appendChild(el('option', { value: 'Not sure', text: "Not sure — I just need a quote" }));
-    var year = el('select', { name: 'vehicle_year' });
-    year.appendChild(el('option', { value: '', text: 'Year' }));
-    YEARS.forEach(function (y) { year.appendChild(el('option', { value: String(y), text: String(y) })); });
-    var make = el('select', { name: 'vehicle_make' });
-    make.appendChild(el('option', { value: '', text: 'Make' }));
-    MAKES.forEach(function (m) { make.appendChild(el('option', { value: m, text: m })); });
-    var model = el('input', { type: 'text', name: 'vehicle_model', placeholder: 'Model' });
-    var zip = el('input', { type: 'text', name: 'postal_code', autocomplete: 'postal-code', inputmode: 'numeric', placeholder: 'ZIP code' });
-    var notes = el('textarea', { name: 'message', rows: '2', placeholder: 'Anything else we should know? (optional)' });
-    var hp = el('input', { type: 'text', name: 'website', tabindex: '-1', autocomplete: 'off', 'aria-hidden': 'true' });
-    hp.className = 'hp';
-    var btn = el('button', { type: 'submit', text: 'Get My Free Quote' });
+    service.appendChild(el('option', { value: 'Not sure', text: 'Not sure — help me work it out' }));
+    var vehicle = el('input', { type: 'text', name: 'vehicle', autocomplete: 'off', placeholder: '2021 Toyota RAV4' });
+
+    // Optional drawer: VIN, insurance, notes.
+    var vin = el('input', { type: 'text', name: 'vin', maxlength: '17', autocapitalize: 'characters', spellcheck: 'false', placeholder: 'JTMRFREV7HD000000' });
+    var notes = el('textarea', { name: 'message', rows: '3', maxlength: '1000', placeholder: 'How it happened, where the damage is, anything unusual about the vehicle' });
+    var carrier = el('select', { name: 'carrier' });
+    carrier.appendChild(el('option', { value: '', text: 'Select your carrier' }));
+    CARRIERS.forEach(function (c) { carrier.appendChild(el('option', { value: c, text: c })); });
+    var carrierField = field('Your carrier', carrier);
+    carrierField.style.display = 'none';
+
+    var radios = el('fieldset', { class: 'radios' });
+    radios.appendChild(el('legend', { text: 'Filing through insurance?' }));
+    var insValue = 'not-sure';
+    [['yes', 'Yes'], ['no', 'Self-pay'], ['not-sure', 'Not sure yet']].forEach(function (pair) {
+      var input = el('input', { type: 'radio', name: 'insurance', value: pair[0] });
+      if (pair[0] === 'not-sure') input.checked = true;
+      input.addEventListener('change', function () {
+        insValue = pair[0];
+        carrierField.style.display = pair[0] === 'yes' ? '' : 'none';
+      });
+      radios.appendChild(el('label', { class: 'radio' }, [input, document.createTextNode(' ' + pair[1])]));
+    });
+
+    // Honeypot: no label, display:none, a name autofill doesn't recognise.
+    var hp = el('input', { type: 'text', name: 'hp_check', tabindex: '-1', autocomplete: 'off', 'aria-hidden': 'true' });
+    var hpWrap = el('div', { class: 'hp', 'aria-hidden': 'true' }, [hp]);
+
+    var btn = el('button', { type: 'submit', text: 'Get my free quote' });
     btn.className = 'btn';
     var err = el('div'); err.className = 'err'; err.style.display = 'none';
 
-    form.appendChild(field('Name', name));
-    var row1 = el('div'); row1.className = 'row';
-    row1.appendChild(field('Phone *', phone));
-    row1.appendChild(field('Email', email));
+    var row1 = el('div', { class: 'row' }, [field('Full name' + REQ, name), field('Mobile phone' + REQ, phone)]);
+    var row2 = el('div', { class: 'row' }, [field('Email' + REQ, email), field('Service ZIP' + REQ, zip)]);
+    var row3 = el('div', { class: 'row' }, [field('What do you need?' + REQ, service), field('Vehicle' + REQ, vehicle)]);
     form.appendChild(row1);
-    form.appendChild(field('What do you need?', service));
-    var row2 = el('div'); row2.className = 'row';
-    row2.appendChild(field('Vehicle', year));
-    row2.appendChild(field(' ', make));
-    row2.appendChild(field(' ', model));
     form.appendChild(row2);
-    form.appendChild(field('ZIP code', zip));
-    form.appendChild(field('Notes', notes));
-    form.appendChild(hp);
+    form.appendChild(row3);
+
+    var drawer = el('div');
+    drawer.hidden = true;
+    drawer.appendChild(field('VIN <span class="opt">— optional, gets us the exact glass</span>', vin));
+    drawer.appendChild(radios);
+    drawer.appendChild(carrierField);
+    drawer.appendChild(field('Anything else? <span class="opt">— optional</span>', notes));
+
+    var moreBtn = el('button', { type: 'button', class: 'more-btn', 'aria-expanded': 'false' });
+    moreBtn.appendChild(el('span', {
+      html: '<span class="more-t">Speed up my quote <span class="opt">(optional)</span></span><br>' +
+        '<span class="more-s">VIN, insurance, and anything else about the damage</span>'
+    }));
+    moreBtn.appendChild(el('span', { class: 'chev', 'aria-hidden': 'true', text: '⌄' }));
+    moreBtn.addEventListener('click', function () {
+      var open = drawer.hidden;
+      drawer.hidden = !open;
+      moreBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    form.appendChild(moreBtn);
+    form.appendChild(drawer);
+    form.appendChild(hpWrap);
     form.appendChild(err);
     form.appendChild(btn);
-    form.appendChild(el('div', { text: 'Free quote. No obligation. We never share your info.' })).className = 'fine';
+    form.appendChild(el('p', { class: 'micro', text: 'No obligation · We confirm your coverage before dispatch' }));
+    form.appendChild(el('p', { class: 'consent', text: 'By submitting this form you agree we may contact you by phone, text or email about your quote. Message rates may apply.' }));
 
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       err.style.display = 'none';
-      if (!phone.value.replace(/\D/g, '') || phone.value.replace(/\D/g, '').length < 7) {
-        err.textContent = 'Please enter a phone number so we can send your quote.';
+      // Required per the template: everything in the visible form.
+      var missing = [];
+      function check(input, bad) {
+        input.classList.toggle('bad', bad);
+        if (bad) missing.push(input);
+      }
+      check(name, !name.value.trim());
+      check(phone, phone.value.replace(/\D/g, '').length < 7);
+      check(email, !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim()));
+      check(zip, !/^\d{5}$/.test(zip.value.trim()));
+      check(vehicle, !vehicle.value.trim());
+      if (missing.length) {
+        err.textContent = 'Please fill in the highlighted fields.';
         err.style.display = 'block';
+        missing[0].focus();
         return;
       }
       btn.disabled = true;
       btn.textContent = 'Sending…';
-      var vehicle = [year.value, make.value, model.value].filter(Boolean).join(' ');
       onSubmit({
-        full_name: name.value.trim() || null,
+        full_name: name.value.trim(),
         phone: phone.value.trim(),
-        email: email.value.trim() || null,
+        email: email.value.trim(),
         service: service.value || null,
-        vehicle: vehicle || null,
-        vehicle_year: year.value || null,
-        vehicle_make: make.value || null,
-        vehicle_model: model.value.trim() || null,
-        postal_code: zip.value.trim() || null,
+        vehicle: vehicle.value.trim(),
+        postal_code: zip.value.trim(),
+        vin: vin.value.trim() || null,
+        insurance: insValue,
+        insurance_carrier: insValue === 'yes' ? carrier.value || null : null,
         message: notes.value.trim() || null,
-        website: hp.value || ''
+        hp: hp.value || ''
       }, function (ok, friendly) {
         if (ok) return;
         btn.disabled = false;
-        btn.textContent = 'Get My Free Quote';
+        btn.textContent = 'Get my free quote';
         err.textContent = friendly;
         err.style.display = 'block';
       });
@@ -221,8 +288,8 @@ const WIDGET_SOURCE = String.raw`(function () {
     var card = el('div'); card.className = 'card';
     var headwrap = el('div'); headwrap.className = 'headwrap';
     var head = el('div'); head.className = 'head';
-    head.appendChild(el('h3', { text: 'Get a Free Auto Glass Quote' }));
-    head.appendChild(el('p', { text: cfg.businessName + (cfg.offersMobileService ? ' — mobile service available' : '') }));
+    head.appendChild(el('h3', { text: 'Get your free quote' }));
+    head.appendChild(el('p', { text: "Takes about 30 seconds. We'll confirm your glass and your coverage before anyone is dispatched." }));
     headwrap.appendChild(head);
     card.appendChild(headwrap);
     var body = el('div'); body.className = 'body';
@@ -237,16 +304,16 @@ const WIDGET_SOURCE = String.raw`(function () {
         email: data.email,
         service: data.service,
         vehicle: data.vehicle,
-        vehicle_year: data.vehicle_year,
-        vehicle_make: data.vehicle_make,
-        vehicle_model: data.vehicle_model,
         postal_code: data.postal_code,
+        vin: data.vin,
+        insurance: data.insurance,
+        insurance_carrier: data.insurance_carrier,
         message: data.message,
         form_name: 'glassleads-widget',
         landing_page: stored.landing_page || window.location.href.split('#')[0],
         referrer: stored.referrer || document.referrer || null,
         page: window.location.href.split('#')[0],
-        _hp: data.website
+        _hp: data.hp
       };
       CLICK_IDS.concat(UTM_KEYS).forEach(function (k) { if (stored[k]) payload[k] = stored[k]; });
 
@@ -257,10 +324,14 @@ const WIDGET_SOURCE = String.raw`(function () {
       }).then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
         body.innerHTML = '';
+        var first = (data.full_name || '').split(' ')[0] || 'there';
         var ok = el('div'); ok.className = 'ok';
-        ok.appendChild(el('div', { text: '✅' })).className = 'big';
-        ok.appendChild(el('h4', { text: 'Got it — quote on the way!' }));
-        ok.appendChild(el('p', { text: cfg.businessName + ' will call or text you shortly.' }));
+        ok.appendChild(el('div', { class: 'big', text: '✓' }));
+        ok.appendChild(el('h4', { text: "You're all set, " + first + '.' }));
+        ok.appendChild(el('p', { text: "We've got your request. A " + cfg.businessName + ' tech will call you shortly to confirm the glass, your coverage and a time that works.' }));
+        if (cfg.phone) {
+          ok.appendChild(el('a', { href: 'tel:' + cfg.phone.replace(/[^+\d]/g, ''), text: 'Call us now — ' + cfg.phone }));
+        }
         body.appendChild(ok);
         if (onDone) onDone();
       }).catch(function () {
