@@ -162,7 +162,24 @@ export default async function ClientSitePage({ params }: PageProps) {
   const basePath = `/sites/${client.slug}`
   const faqLd = faqJsonLd(extras)
   const palette = sitePaletteVars(client.primaryColor, client.accentColor)
-  const nav = services.slice(0, 4).map((s) => ({
+
+  // The services GRID caps at 6 cards so the last row is always full, like
+  // the reference. Highest-value services first; the mobile-service card
+  // takes one slot when offered. The footer still lists every service.
+  const GRID_PRIORITY = [
+    'windshield-replacement',
+    'windshield-repair',
+    'adas-calibration',
+    'side-window-replacement',
+    'back-glass-replacement',
+    'rock-chip-repair',
+    'sunroof-repair',
+  ]
+  const prioritized = [...services].sort(
+    (a, b) => GRID_PRIORITY.indexOf(a.slug) - GRID_PRIORITY.indexOf(b.slug)
+  )
+  const gridServices = prioritized.slice(0, client.offersMobileService ? 5 : 6)
+  const nav = prioritized.slice(0, 4).map((s) => ({
     href: `${basePath}/services/${s.slug}`,
     label: s.name,
   }))
@@ -340,8 +357,9 @@ export default async function ClientSitePage({ params }: PageProps) {
         fallbackPhotos={extras.bodyPhotos.length ? extras.bodyPhotos : extras.galleryPhotos.slice(1)}
       />
 
-      {/* Services — on paper, per the reference rhythm */}
-      {services.length > 0 && (
+      {/* Services — on paper, per the reference rhythm; capped at 6 cards so
+          the grid never leaves an open gap */}
+      {gridServices.length > 0 && (
         <section className="border-t border-[var(--line)]">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
             <SectionHead
@@ -350,7 +368,7 @@ export default async function ClientSitePage({ params }: PageProps) {
               lead="Every job backed by professional installation and quality glass."
             />
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {services.map((s) => {
+              {gridServices.map((s) => {
                 const Icon = SERVICE_ICONS[s.slug] || CheckCircle2
                 return (
                   <a
@@ -413,7 +431,12 @@ export default async function ClientSitePage({ params }: PageProps) {
       <ReviewsBand reviews={reviews} />
 
       {/* Map + Google listing (shop locations only) */}
-      <MapSection client={client} reviews={reviews} />
+      <MapSection
+        client={client}
+        reviews={reviews}
+        areas={areas}
+        offersMobileService={client.offersMobileService}
+      />
 
       {/* Service areas — dark coverage band */}
       <AreasBand client={client} areas={areas} />

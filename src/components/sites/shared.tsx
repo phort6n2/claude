@@ -360,7 +360,7 @@ export function ReviewsBand({ reviews }: { reviews: ReviewsData | null }) {
         <SectionHead
           eyebrow="Reviews"
           title="What customers say"
-          lead={`Real reviews from Google — ${reviews.rating.toFixed(1)} stars across ${reviews.reviewCount} of them.`}
+          lead="Pulled straight from our Google listing — real customers, real jobs."
         />
         {reviews.quotes.length > 0 && (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -547,12 +547,17 @@ export function WarrantyBand({ extras }: { extras: SiteExtras | null }) {
   if (!extras?.warrantyText) return null
   return (
     <section className="bg-[var(--tint)] border-y border-[var(--line)]">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
-        <SectionHead
-          eyebrow="Our warranty"
-          title={extras.warrantyTitle || 'What the warranty covers'}
-        />
-        <div className="bg-white rounded-[20px] border border-[var(--line-card)] shadow-sm p-6 md:p-8 max-w-3xl">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-12 lg:items-center">
+        <div>
+          <Eyebrow>Our warranty</Eyebrow>
+          <h2 className="text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight text-[var(--tx)] m-0">
+            {extras.warrantyTitle || 'What the warranty covers'}
+          </h2>
+          <p className="mt-3 mb-0 text-[17px] leading-[1.55] text-[var(--tx2)]">
+            In writing, in full, right here — not a claim with the terms hidden somewhere else.
+          </p>
+        </div>
+        <div className="bg-white rounded-[20px] border border-[var(--line-card)] shadow-sm p-6 md:p-8">
           <ShieldCheck className="h-8 w-8 mb-3 text-[var(--brand)]" />
           <p className="m-0 text-[15px] text-[var(--tx2)] leading-relaxed whitespace-pre-line">
             {extras.warrantyText}
@@ -603,11 +608,23 @@ export function GalleryGrid({ extras }: { extras: SiteExtras | null }) {
 }
 
 /**
- * Map + Google listing section. Rendered only for clients with a real shop
- * location; the embed derives from the DB address, and the score card renders
- * only from live cached review data.
+ * Map + Google listing section, reference composition: a "Verified on
+ * Google" head carrying the live review claim, the map beside a fully
+ * furnished listing card (rating block, labeled shop address and service
+ * area, listing button). Rendered only for clients with a real shop
+ * location; every number comes from live cached review data or the DB.
  */
-export function MapSection({ client, reviews }: { client: SiteClient; reviews: ReviewsData | null }) {
+export function MapSection({
+  client,
+  reviews,
+  areas,
+  offersMobileService,
+}: {
+  client: SiteClient
+  reviews: ReviewsData | null
+  areas?: string[]
+  offersMobileService?: boolean
+}) {
   if (!client.hasShopLocation) return null
   const query = encodeURIComponent(
     `${client.businessName}, ${client.streetAddress}, ${client.city}, ${client.state} ${client.postalCode}`
@@ -615,39 +632,80 @@ export function MapSection({ client, reviews }: { client: SiteClient; reviews: R
   return (
     <section className="border-t border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
-        <SectionHead
-          center
-          eyebrow="Find us"
-          title={`Visit the shop in ${client.city}`}
-        />
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-stretch">
+        <div className="max-w-[60ch] mx-auto text-center mb-9">
+          <p className="text-[13px] font-bold uppercase tracking-[.09em] mb-2.5 text-[var(--brand)]">
+            <span className="block w-[26px] h-[3px] rounded-sm mb-3 bg-[var(--cta)] mx-auto" />
+            {reviews ? (
+              <>
+                <span className="inline-block align-[-3px] mr-1.5">
+                  <GoogleG size={15} />
+                </span>
+                Verified on Google
+              </>
+            ) : (
+              'Find us'
+            )}
+          </p>
+          <h2 className="text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight text-[var(--tx)]">
+            {reviews
+              ? `${reviews.rating.toFixed(1)} stars from ${reviews.reviewCount} Google reviews`
+              : `Visit the shop in ${client.city}`}
+          </h2>
+          {reviews && (
+            <div className="mt-2.5 flex justify-center">
+              <StarRow rating={reviews.rating} size={22} />
+            </div>
+          )}
+        </div>
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_380px] gap-6 items-stretch">
           <iframe
             title={`Map to ${client.businessName}`}
             src={`https://maps.google.com/maps?q=${query}&output=embed`}
-            className="w-full min-h-[320px] rounded-[20px] border border-[var(--line-card)]"
+            className="w-full min-h-[360px] h-full rounded-[20px] border border-[var(--line-card)]"
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
           />
           <div className="bg-white rounded-[20px] border border-[var(--line-card)] shadow-sm p-6 flex flex-col gap-4">
             {reviews && (
-              <div className="flex items-center gap-3">
-                <GoogleG size={22} />
-                <span className="text-3xl font-extrabold tabular-nums">{reviews.rating.toFixed(1)}</span>
-                <span className="flex flex-col leading-tight">
-                  <StarRow rating={reviews.rating} size={14} />
-                  <span className="text-xs text-[var(--tx-muted)]">
-                    {reviews.reviewCount} Google reviews
+              <>
+                <div className="flex items-center gap-2 text-[13px] font-bold tracking-[.02em] text-[var(--tx2)]">
+                  <GoogleG size={18} />
+                  Google Reviews
+                </div>
+                <div className="flex items-center gap-3.5">
+                  <span className="text-4xl font-extrabold tabular-nums leading-none">
+                    {reviews.rating.toFixed(1)}
                   </span>
-                </span>
+                  <span className="flex flex-col gap-0.5 leading-tight">
+                    <StarRow rating={reviews.rating} size={15} />
+                    <span className="text-[13px] text-[var(--tx-muted)]">
+                      {reviews.reviewCount} reviews
+                    </span>
+                  </span>
+                </div>
+              </>
+            )}
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-[.09em] text-[var(--tx-muted)] mb-1">
+                {client.city} shop
+              </div>
+              <div className="text-sm text-[var(--tx2)] leading-relaxed">
+                {client.streetAddress}
+                <br />
+                {client.city}, {client.state} {client.postalCode}
+              </div>
+            </div>
+            {areas && areas.length > 0 && (
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-[.09em] text-[var(--tx-muted)] mb-1">
+                  Service area
+                </div>
+                <div className="text-sm text-[var(--tx2)] leading-relaxed">
+                  {areas.join(', ')}
+                  {offersMobileService ? ' — shop and mobile' : ''}
+                </div>
               </div>
             )}
-            <div className="text-sm text-[var(--tx2)] leading-relaxed">
-              <span className="font-bold text-[var(--tx)]">{client.businessName}</span>
-              <br />
-              {client.streetAddress}
-              <br />
-              {client.city}, {client.state} {client.postalCode}
-            </div>
             {client.googleMapsUrl && (
               <a
                 href={client.googleMapsUrl}
@@ -677,9 +735,11 @@ export function AreasBand({ client, areas }: { client: SiteClient; areas: string
           title="Areas we serve"
           lead={`${client.city} and the surrounding communities — if you’re close but don’t see your city, call and ask.`}
         />
-        <ul className="columns-2 md:columns-3 lg:columns-4 gap-6 list-none m-0 p-0">
+        {/* Flowing list, not spread columns — a short city list must read as
+            a compact group instead of floating across the full band width. */}
+        <ul className="flex flex-wrap gap-x-10 gap-y-3 list-none m-0 p-0 max-w-4xl">
           {areas.map((area) => (
-            <li key={area} className="mb-2.5 break-inside-avoid">
+            <li key={area}>
               <span className="inline-flex items-center gap-2 text-[15px] text-[var(--on-dark-2)]">
                 <MapPin className="h-3.5 w-3.5 text-[var(--brand-light)] shrink-0" />
                 {area}
