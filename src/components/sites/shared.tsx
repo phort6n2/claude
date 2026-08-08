@@ -432,7 +432,10 @@ export function StatBand({
       className="text-white on-dark"
       style={{ background: 'radial-gradient(120% 120% at 50% 0%, var(--dark-3), var(--dark))' }}
     >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 grid grid-cols-2 lg:grid-cols-4 gap-6">
+      <div
+        className="max-w-6xl mx-auto px-4 sm:px-6 py-12 grid grid-cols-2 gap-6 lg:[grid-template-columns:var(--stat-cols)]"
+        style={{ '--stat-cols': `repeat(${stats.length}, minmax(0,1fr))` } as React.CSSProperties}
+      >
         {stats.map((s) => (
           <div
             key={s.label}
@@ -567,7 +570,13 @@ export function GalleryGrid({ extras }: { extras: SiteExtras | null }) {
     <section className="border-t border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
         <SectionHead eyebrow="Recent jobs" title="Real vehicles, real work" />
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {/* Even photo counts that don't fill three columns read better 2-up —
+            no orphan card on the last row. */}
+        <div
+          className={`grid grid-cols-2 gap-4 ${
+            extras.galleryPhotos.slice(0, 6).length % 3 === 1 ? 'md:grid-cols-2' : 'md:grid-cols-3'
+          }`}
+        >
           {extras.galleryPhotos.slice(0, 6).map((photo) => (
             <figure
               key={photo.url}
@@ -767,12 +776,18 @@ export function SiteFooter({
   services,
   areas,
   basePath,
+  reviews,
+  offersMobileService,
+  offersAdasCalibration,
 }: {
   client: SiteClient
   extras?: SiteExtras | null
   services?: Array<{ slug: string; name: string }>
   areas?: string[]
   basePath?: string
+  reviews?: ReviewsData | null
+  offersMobileService?: boolean
+  offersAdasCalibration?: boolean
 }) {
   const year = new Date().getFullYear()
   const areaSplit: string[][] = []
@@ -781,53 +796,87 @@ export function SiteFooter({
     areaSplit.push(areas.slice(0, half))
     if (areas.length > half) areaSplit.push(areas.slice(half))
   }
+  // Identity-bar trust items: restate claims made further up the page —
+  // every one data-backed, never a third-party mark.
+  const barTrust = [
+    ...(reviews
+      ? [{
+          icon: <GoogleG size={18} />,
+          b: `${reviews.rating.toFixed(1)} out of 5 on Google`,
+          s: `${reviews.reviewCount} reviews`,
+        }]
+      : []),
+    ...(extras?.warrantyText
+      ? [{
+          icon: <ShieldCheck className="h-[18px] w-[18px] text-[var(--brand-light)]" />,
+          b: extras.warrantyTitle || 'Workmanship warranty',
+          s: 'Full terms on this page',
+        }]
+      : []),
+    ...(offersMobileService
+      ? [{
+          icon: <MapPin className="h-[18px] w-[18px] text-[var(--brand-light)]" />,
+          b: 'Mobile service',
+          s: 'Across our service area',
+        }]
+      : []),
+    ...(offersAdasCalibration
+      ? [{
+          icon: <Check className="h-[18px] w-[18px] text-[var(--brand-light)]" />,
+          b: 'ADAS calibration',
+          s: 'After windshield replacement',
+        }]
+      : []),
+  ].slice(0, 4)
+
   return (
-    <footer className="bg-[var(--dark-2)] text-[var(--on-dark-2)] on-dark">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
-        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
+    <footer className="bg-[var(--dark-2)] text-[var(--on-dark-2)] on-dark pt-11 pb-6 text-[15px]">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-[1.9fr_1fr_1fr_1.2fr] lg:gap-9">
           <div>
             {client.logoUrl ? (
+              // Plain on the dark band, like the reference — no white chip.
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={client.logoUrl}
                 alt={client.businessName}
-                className="h-10 w-auto max-w-[200px] object-contain mb-4 bg-white rounded-lg p-1"
+                className="h-10 w-auto max-w-[220px] object-contain mb-3.5"
               />
             ) : (
               <div className="font-bold text-white text-lg mb-3">{client.businessName}</div>
             )}
-            {extras?.footerBlurb && <p className="text-sm leading-relaxed m-0 mb-4">{extras.footerBlurb}</p>}
-            <div className="text-sm space-y-1">
-              {/* Kept as a plain, un-swapped text instance so call-asset
-                  verification can always read the real number. */}
-              <div>
-                <a href={telHrefFor(client.phone)} className="font-bold no-underline text-[var(--gold-on-dark)]">
-                  {client.phone}
-                </a>
-              </div>
+            {extras?.footerBlurb && (
+              <p className="text-sm leading-[1.6] m-0 mb-3">{extras.footerBlurb}</p>
+            )}
+            <p className="m-0 text-sm leading-[1.6]">
+              <a
+                href={telHrefFor(client.phone)}
+                className="font-bold no-underline text-[var(--gold-on-dark)] text-[17px] inline-block py-1"
+              >
+                {client.phone}
+              </a>
               {client.email && (
-                <div>
-                  <a href={`mailto:${client.email}`} className="no-underline text-[var(--on-dark-2)] hover:text-white">
+                <>
+                  <br />
+                  <a
+                    href={`mailto:${client.email}`}
+                    className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-1"
+                  >
                     {client.email}
                   </a>
-                </div>
+                </>
               )}
-              {client.hasShopLocation && (
-                <div>
-                  {client.streetAddress}, {client.city}, {client.state} {client.postalCode}
-                </div>
-              )}
-            </div>
+            </p>
           </div>
           {services && services.length > 0 && (
             <div>
-              <h3 className="text-white font-bold text-sm uppercase tracking-wider mb-3">Services</h3>
-              <ul className="list-none m-0 p-0 space-y-2 text-sm">
+              <h2 className="text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5">Services</h2>
+              <ul className="list-none m-0 p-0 text-sm">
                 {services.map((s) => (
-                  <li key={s.slug}>
+                  <li key={s.slug} className="mb-0.5">
                     <a
                       href={`${basePath || ''}/services/${s.slug}`}
-                      className="no-underline text-[var(--on-dark-2)] hover:text-white"
+                      className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-[5px]"
                     >
                       {s.name}
                     </a>
@@ -838,28 +887,71 @@ export function SiteFooter({
           )}
           {areaSplit.map((chunk, i) => (
             <div key={i}>
-              <h3 className="text-white font-bold text-sm uppercase tracking-wider mb-3">
+              <h2 className="text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5">
                 {i === 0 ? 'Areas we serve' : ' '}
-              </h3>
-              <ul className="list-none m-0 p-0 space-y-2 text-sm">
+              </h2>
+              <ul className="list-none m-0 p-0 text-sm">
                 {chunk.map((area) => (
-                  <li key={area}>{area}</li>
+                  <li key={area} className="py-[5px]">{area}</li>
                 ))}
               </ul>
             </div>
           ))}
         </div>
-        {/* Regulator line — rendered only when a registration number is set.
-            Some licensed trades must show this in internet advertising
-            (California auto glass: 16 CCR § 3371.2). */}
-        {extras?.registrationNumber && (
-          <p className="mt-8 mb-0 text-xs opacity-70">
-            {extras.registrationName || client.businessName} · Registration No.{' '}
-            {extras.registrationNumber}
-          </p>
-        )}
-        <div className="mt-4 pt-4 border-t border-[var(--line-on-dark)] text-xs opacity-80">
-          © {year} {client.businessName}. All rights reserved.
+        {/* Identity bar — who the business is and how to reach it, with a
+            data-backed trust grid beside it. The phone here is a plain,
+            un-swapped instance so call-asset verification can always read
+            the real number, and the regulator registration line lives here
+            (16 CCR § 3371.2-style requirements), rendered only when set. */}
+        <div className="mt-6 p-5 rounded-[10px] bg-[var(--dark-3)] border border-[var(--line-on-dark)] text-[13px] leading-[1.6] grid gap-4 lg:grid-cols-[minmax(240px,1fr)_minmax(0,1.5fr)] lg:items-center lg:gap-8 lg:px-6">
+          <div>
+            <b className="text-white">{client.businessName}</b>
+            <br />
+            Serving {client.city}, {client.state} and nearby:{' '}
+            <a
+              href={telHrefFor(client.phone)}
+              className="font-bold no-underline text-[var(--gold-on-dark)]"
+            >
+              {client.phone}
+            </a>
+            {client.hasShopLocation && (
+              <>
+                <br />
+                {client.streetAddress}, {client.city}, {client.state} {client.postalCode}
+              </>
+            )}
+            {extras?.registrationNumber && (
+              <>
+                <br />
+                <span className="opacity-80">
+                  {extras.registrationName || client.businessName} · Registration No.{' '}
+                  {extras.registrationNumber}
+                </span>
+              </>
+            )}
+          </div>
+          {barTrust.length > 0 && (
+            <div className="grid gap-3 pt-4 border-t border-white/15 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-4 lg:pt-0 lg:pl-8 lg:border-t-0 lg:border-l lg:border-white/15">
+              {barTrust.map((item) => (
+                <div key={item.b} className="grid grid-cols-[auto_minmax(0,1fr)] gap-2.5 items-center">
+                  <span className="shrink-0">{item.icon}</span>
+                  <span>
+                    <b className="block text-white leading-[1.35]">{item.b}</b>
+                    <span className="block text-xs leading-[1.4]">{item.s}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-8 pt-5 border-t border-[var(--line-on-dark)] text-[12.5px] leading-[1.6] grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div>© {year} {client.businessName}. All rights reserved.</div>
+          <div className="flex flex-wrap gap-4">
+            <a href={basePath || '/'} className="underline text-[var(--on-dark-2)] hover:text-white">
+              Home
+            </a>
+          </div>
         </div>
       </div>
     </footer>
