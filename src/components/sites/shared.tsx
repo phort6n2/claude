@@ -1,12 +1,12 @@
-import { Phone, MapPin, ShieldCheck } from 'lucide-react'
+import { Phone, MapPin, ShieldCheck, Check } from 'lucide-react'
 import type { SiteExtras } from '@/lib/site-content'
 
 /**
  * Shared building blocks for hosted client sites (home + service pages),
  * styled after the landing-template reference build (collisionglass.co):
  * light theme on brand-tinted surfaces, brand-gradient CTAs, gold stroked
- * stars, dark bands for warranty/footer. All colors come from the CSS
- * variables emitted by sitePaletteVars() on the page root.
+ * stars, dark bands for stats/areas/final, tinted warranty band. All colors
+ * come from the CSS variables emitted by sitePaletteVars() on the page root.
  * Server components only — no client JS beyond the quote widget.
  */
 
@@ -14,6 +14,7 @@ export interface SiteClient {
   slug: string
   businessName: string
   phone: string
+  email?: string | null
   streetAddress: string
   city: string
   state: string
@@ -38,8 +39,34 @@ export interface ReviewsData {
   quotes: ReviewQuote[]
 }
 
+export interface SiteNavLink {
+  href: string
+  label: string
+}
+
 export function telHrefFor(phone: string) {
   return `tel:${phone.replace(/[^+\d]/g, '')}`
+}
+
+/**
+ * Page-level base rules the reference sets on bare elements: visible focus
+ * ring, link underline metrics, balanced headings, and a scroll-driven header
+ * shadow (progressive enhancement — browsers without scroll timelines simply
+ * keep the flat header).
+ */
+const SITE_BASE_CSS = `
+.gl-site :focus-visible{outline:3px solid var(--ring);outline-offset:2px;border-radius:6px}
+.gl-site .on-dark :focus-visible{outline-color:#fff}
+.gl-site a{text-decoration-thickness:1.5px;text-underline-offset:3px}
+.gl-site h1,.gl-site h2,.gl-site h3{text-wrap:balance}
+@supports (animation-timeline: scroll()) {
+  .gl-site .site-hdr{animation:gl-hdr-shadow linear both;animation-timeline:scroll();animation-range:0 60px}
+  @keyframes gl-hdr-shadow{to{background:#fff;box-shadow:0 2px 4px -1px rgba(11,27,43,.06),0 6px 14px -3px rgba(11,27,43,.09)}}
+}
+`
+
+export function SiteBaseStyles() {
+  return <style dangerouslySetInnerHTML={{ __html: SITE_BASE_CSS }} />
 }
 
 /* ------------------------------------------------------------------ atoms */
@@ -60,8 +87,44 @@ export function Eyebrow({ children, center, onDark }: { children: React.ReactNod
   )
 }
 
-/** Gold stars with a dark stroke so the rating is never color-only. */
+/** Left-aligned section head: eyebrow + h2 + optional lead, per .sec-head. */
+export function SectionHead({
+  eyebrow,
+  title,
+  lead,
+  center,
+  onDark,
+}: {
+  eyebrow: string
+  title: string
+  lead?: string
+  center?: boolean
+  onDark?: boolean
+}) {
+  return (
+    <div className={`max-w-[60ch] mb-8 ${center ? 'mx-auto text-center' : ''}`}>
+      <Eyebrow center={center} onDark={onDark}>
+        {eyebrow}
+      </Eyebrow>
+      <h2
+        className={`text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight ${
+          onDark ? 'text-white' : 'text-[var(--tx)]'
+        }`}
+      >
+        {title}
+      </h2>
+      {lead && (
+        <p className={`mt-3 text-[17px] leading-[1.55] ${onDark ? 'text-[var(--on-dark-2)]' : 'text-[var(--tx2)]'}`}>
+          {lead}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/** Gold stars with a size-scaled dark stroke so the rating is never color-only. */
 export function StarRow({ rating, size = 16, className }: { rating: number; size?: number; className?: string }) {
+  const stroke = (size * 0.056).toFixed(2)
   return (
     <span
       className={`inline-flex gap-px leading-none ${className || ''}`}
@@ -74,8 +137,9 @@ export function StarRow({ rating, size = 16, className }: { rating: number; size
           aria-hidden="true"
           style={{
             color: 'var(--gold)',
-            WebkitTextStroke: '0.9px var(--gold-stroke)',
-            opacity: i <= Math.round(rating) ? 1 : 0.35,
+            WebkitTextStroke: `${stroke}px var(--gold-stroke)`,
+            paintOrder: 'stroke fill',
+            opacity: i <= Math.round(rating) ? 1 : 0.55,
           }}
         >
           ★
@@ -85,7 +149,7 @@ export function StarRow({ rating, size = 16, className }: { rating: number; size
   )
 }
 
-function GoogleG({ size = 20 }: { size?: number }) {
+export function GoogleG({ size = 20 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
       <path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.3-2.2H12v4.1h6.5c-.1 1.1-.8 2.7-2.4 3.8l-.1.2 3.5 2.7h.2c2.2-2 3.5-5 3.5-8.6z" />
@@ -96,15 +160,18 @@ function GoogleG({ size = 20 }: { size?: number }) {
   )
 }
 
-/** Brand-gradient primary action button. */
+/** Brand-gradient primary action button with the brand-tinted CTA shadow. */
 export function CtaButton({ href, children, block }: { href: string; children: React.ReactNode; block?: boolean }) {
   return (
     <a
       href={href}
-      className={`inline-flex items-center justify-center gap-2.5 min-h-[52px] px-6 rounded-[14px] font-bold text-[17px] text-white shadow-lg hover:-translate-y-px transition-transform ${
+      className={`inline-flex items-center justify-center gap-2.5 min-h-[52px] px-6 rounded-[14px] font-bold text-[17px] text-white no-underline hover:-translate-y-px transition-transform ${
         block ? 'flex w-full' : ''
       }`}
-      style={{ background: 'linear-gradient(180deg, var(--cta), var(--cta-b))' }}
+      style={{
+        background: 'linear-gradient(180deg, var(--cta), var(--cta-b))',
+        boxShadow: 'var(--sh-cta), inset 0 1px 0 rgba(255,255,255,.2)',
+      }}
     >
       {children}
     </a>
@@ -112,31 +179,55 @@ export function CtaButton({ href, children, block }: { href: string; children: R
 }
 
 /** Call button — solid brand on light surfaces, inverted white on dark bands. */
-export function CallButton({ client, onDark, block }: { client: SiteClient; onDark?: boolean; block?: boolean }) {
+export function CallButton({
+  client,
+  onDark,
+  block,
+  withLabel,
+}: {
+  client: SiteClient
+  onDark?: boolean
+  block?: boolean
+  withLabel?: boolean
+}) {
   return (
     <a
       href={telHrefFor(client.phone)}
-      className={`inline-flex items-center justify-center gap-2.5 min-h-[52px] px-6 rounded-[14px] font-bold text-[17px] shadow ${
-        onDark ? 'bg-white text-[var(--cta)]' : 'text-white bg-[var(--cta)]'
+      className={`inline-flex items-center justify-center gap-2.5 min-h-[52px] px-6 rounded-[14px] font-bold text-[17px] no-underline shadow-[0_1px_2px_rgba(11,27,43,.16)] transition-colors ${
+        onDark
+          ? 'bg-white text-[var(--cta)] border-[1.5px] border-white'
+          : 'text-white bg-[var(--cta)] border-[1.5px] border-[var(--cta)] hover:bg-[var(--cta-b)] hover:border-[var(--cta-b)]'
       } ${block ? 'flex w-full' : ''}`}
     >
-      <Phone className="h-4 w-4" />
-      {client.phone}
+      <Phone className="h-[18px] w-[18px]" />
+      {withLabel ? `Call ${client.phone}` : client.phone}
     </a>
   )
 }
 
 /* -------------------------------------------------------------- top bars */
 
-/** Thin dark strip above the header: one factual note + the phone number. */
+/**
+ * Thin dark strip above the header. The note's tail (after " — ") drops on
+ * phones so small screens get a complete short sentence instead of an
+ * ellipsis mid-thought; the call block never reflows.
+ */
 export function UtilBar({ client, note }: { client: SiteClient; note: string }) {
+  const [noteHead, ...noteRest] = note.split(' — ')
+  const noteTail = noteRest.length ? ` — ${noteRest.join(' — ')}` : ''
   return (
-    <div className="bg-[var(--dark)] text-[var(--on-dark-2)] text-[13px]">
+    <div className="max-[359px]:hidden bg-[var(--dark)] text-[var(--on-dark-2)] text-[13px] on-dark">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 min-h-[34px] py-1.5 flex items-center justify-between gap-4">
-        <span className="flex-1 min-w-0 truncate">{note}</span>
+        <span className="flex-1 min-w-0 truncate">
+          {noteHead}
+          {noteTail && <span className="hidden sm:inline">{noteTail}</span>}
+        </span>
         <span className="flex items-center gap-1.5 whitespace-nowrap shrink-0">
-          <span className="hidden sm:inline">Call</span>
-          <a href={telHrefFor(client.phone)} className="font-bold no-underline text-[var(--gold-on-dark)]">
+          <span>Call</span>
+          <a
+            href={telHrefFor(client.phone)}
+            className="font-bold no-underline hover:underline text-[var(--gold-on-dark)]"
+          >
             {client.phone}
           </a>
         </span>
@@ -146,46 +237,60 @@ export function UtilBar({ client, note }: { client: SiteClient; note: string }) 
 }
 
 /**
- * Sticky header: logo/name, live rating in the middle (only when cached GBP
- * data exists — never fabricated), solid brand call button.
+ * Sticky header: logo (natural aspect, name text only when there is no
+ * wordmark), desktop nav from the client's live service pages, live rating on
+ * mobile (only when cached GBP data exists — never fabricated), solid brand
+ * call button. Scroll shadow comes from SiteBaseStyles.
  */
 export function SiteHeader({
   client,
   basePath,
   reviews,
+  nav,
 }: {
   client: SiteClient
   basePath: string
   reviews?: ReviewsData | null
+  nav?: SiteNavLink[]
 }) {
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-[var(--line)]">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 min-h-[64px] flex items-center gap-4">
-        <a href={basePath || '/'} className="flex items-center gap-3 min-w-0 no-underline">
+    <header className="site-hdr sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-[var(--line)]">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 min-h-[64px] lg:min-h-[72px] flex items-center gap-4">
+        <a href={basePath || '/'} className="flex items-center gap-3 min-w-0 no-underline shrink-0">
           {client.logoUrl ? (
-            // Natural aspect at 44px tall, like the template's .brand img —
-            // wordmark logos must never be cropped into a circle.
+            // Natural aspect, like the template's .brand img — wordmark logos
+            // must never be cropped into a circle, and they already carry the
+            // name, so no text beside them.
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={client.logoUrl}
               alt={client.businessName}
-              className="h-11 w-auto max-w-[220px] object-contain shrink-0"
+              className="h-[52px] w-auto max-w-[240px] object-contain"
             />
           ) : (
-            <div className="h-11 w-11 rounded-full flex items-center justify-center text-white font-bold shrink-0 bg-[var(--brand)]">
-              {client.businessName[0]}
-            </div>
+            <>
+              <div className="h-11 w-11 rounded-full flex items-center justify-center text-white font-bold shrink-0 bg-[var(--brand)]">
+                {client.businessName[0]}
+              </div>
+              <span className="font-bold truncate text-[var(--tx)]">{client.businessName}</span>
+            </>
           )}
-          {/* A wordmark logo already carries the name — show the text only
-              when the logo is a mark or missing. Heuristic: always render on
-              small screens where the logo is capped anyway, hide beside wide
-              logos via the truncate cap. */}
-          <span className={`font-bold truncate text-[var(--tx)] ${client.logoUrl ? 'hidden min-[480px]:inline' : ''}`}>
-            {client.businessName}
-          </span>
         </a>
+        {nav && nav.length > 0 && (
+          <nav className="hidden lg:flex gap-[22px] ml-auto" aria-label="Services">
+            {nav.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="text-[15px] font-semibold text-[var(--tx2)] no-underline whitespace-nowrap py-1.5 hover:text-[var(--tx)] hover:shadow-[inset_0_-2px_0_var(--cta)]"
+              >
+                {link.label}
+              </a>
+            ))}
+          </nav>
+        )}
         {reviews && (
-          <div className="mx-auto hidden min-[380px]:flex flex-col items-center leading-none gap-0.5">
+          <div className="mx-auto lg:hidden hidden min-[340px]:flex flex-col items-center leading-none gap-0.5">
             <span className="flex items-center gap-1.5">
               <GoogleG size={14} />
               <span className="text-[15px] font-extrabold text-[var(--tx)] tabular-nums">
@@ -193,14 +298,14 @@ export function SiteHeader({
               </span>
               <StarRow rating={reviews.rating} size={11} />
             </span>
-            <span className="text-[10px] font-semibold text-[var(--tx-muted)] whitespace-nowrap">
+            <span className="hidden min-[390px]:inline text-[10px] font-semibold text-[var(--tx-muted)] whitespace-nowrap">
               {reviews.reviewCount} Google reviews
             </span>
           </div>
         )}
         <a
           href={telHrefFor(client.phone)}
-          className={`${reviews ? '' : 'ml-auto '}inline-flex items-center gap-2 min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] text-white shrink-0 no-underline bg-[var(--cta)] shadow-sm`}
+          className={`${nav && nav.length > 0 ? 'lg:ml-4 ' : ''}${reviews ? '' : 'ml-auto '}inline-flex items-center gap-2 min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] text-white shrink-0 no-underline bg-[var(--cta)] border-[1.5px] border-[var(--cta)] shadow-[0_1px_2px_rgba(11,27,43,.16)] hover:bg-[var(--cta-b)] hover:border-[var(--cta-b)] transition-colors`}
         >
           <Phone className="h-4 w-4" />
           <span className="hidden sm:inline">{client.phone}</span>
@@ -226,9 +331,9 @@ export function RatingChip({ reviews, client }: { reviews: ReviewsData | null; c
         {reviews.rating.toFixed(1)}
       </span>
       <span className="flex flex-col gap-0.5 leading-tight">
-        <StarRow rating={reviews.rating} size={14} />
+        <StarRow rating={reviews.rating} size={16} />
         <span className="text-[13px] text-[var(--tx-muted)]">
-          from {reviews.reviewCount} Google reviews
+          {reviews.reviewCount} Google reviews
         </span>
       </span>
     </>
@@ -244,36 +349,45 @@ export function RatingChip({ reviews, client }: { reviews: ReviewsData | null; c
   )
 }
 
+const AVATAR_COLORS = ['#0B57D0', '#B3261E', '#146C2E', '#7B4397', '#B26A00']
+
 /** "What customers say" band on the s2 tint. Stripped without live data. */
 export function ReviewsBand({ reviews }: { reviews: ReviewsData | null }) {
   if (!reviews) return null
   return (
     <section className="bg-[var(--s2)] border-t border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
-        <div className="text-center max-w-xl mx-auto">
-          <Eyebrow center>What customers say</Eyebrow>
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--tx)]">
-            {reviews.rating.toFixed(1)} stars from {reviews.reviewCount} Google reviews
-          </h2>
-          <div className="mt-3 flex justify-center">
-            <StarRow rating={reviews.rating} size={22} />
-          </div>
-        </div>
+        <SectionHead
+          eyebrow="Reviews"
+          title="What customers say"
+          lead={`Real reviews from Google — ${reviews.rating.toFixed(1)} stars across ${reviews.reviewCount} of them.`}
+        />
         {reviews.quotes.length > 0 && (
-          <div className="mt-9 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {reviews.quotes.slice(0, 3).map((q, i) => (
               <figure
                 key={i}
                 className="p-5 rounded-[20px] border border-[var(--line-card)] shadow-sm bg-white flex flex-col m-0"
               >
+                <div className="flex items-center gap-3 mb-3">
+                  <span
+                    className="h-9 w-9 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0"
+                    style={{ backgroundColor: AVATAR_COLORS[i % AVATAR_COLORS.length] }}
+                  >
+                    {(q.author || 'G')[0].toUpperCase()}
+                  </span>
+                  <span className="flex flex-col leading-tight min-w-0 flex-1">
+                    <span className="text-sm font-bold text-[var(--tx)] truncate">{q.author}</span>
+                    {q.relativeTime && (
+                      <span className="text-xs text-[var(--tx-muted)]">{q.relativeTime}</span>
+                    )}
+                  </span>
+                  <GoogleG size={16} />
+                </div>
                 <StarRow rating={q.rating} size={13} className="mb-2" />
                 <blockquote className="m-0 text-sm text-[var(--tx2)] flex-1 leading-relaxed">
                   “{q.text.length > 220 ? q.text.slice(0, 220).trimEnd() + '…' : q.text}”
                 </blockquote>
-                <figcaption className="mt-3 text-xs font-semibold text-[var(--tx-muted)]">
-                  {q.author}
-                  {q.relativeTime ? ` · ${q.relativeTime}` : ''}
-                </figcaption>
               </figure>
             ))}
           </div>
@@ -284,53 +398,100 @@ export function ReviewsBand({ reviews }: { reviews: ReviewsData | null }) {
 }
 
 /**
- * Warranty on a dark brand band, template-style. Rendered only when warranty
- * text exists, and always shows the definition in full beside the claim — a
- * warranty headline without its terms is the compliance failure the
- * landing-template rules exist to prevent.
+ * Dark stat band, template-style. Every figure is data-derived; stats without
+ * data strip, and the whole band strips below two stats.
  */
-export function WarrantyBand({ extras }: { extras: SiteExtras | null }) {
-  if (!extras?.warrantyText) return null
+export function StatBand({
+  reviews,
+  areasCount,
+  servicesCount,
+}: {
+  reviews: ReviewsData | null
+  areasCount: number
+  servicesCount: number
+}) {
+  const stats: Array<{ big: React.ReactNode; label: string }> = []
+  if (reviews) {
+    stats.push({
+      big: (
+        <span className="inline-flex items-center gap-2">
+          {reviews.rating.toFixed(1)}
+          <StarRow rating={reviews.rating} size={16} />
+        </span>
+      ),
+      label: 'Google rating',
+    })
+    stats.push({ big: String(reviews.reviewCount), label: 'Google reviews' })
+  }
+  if (areasCount > 1) stats.push({ big: String(areasCount), label: 'cities covered' })
+  if (servicesCount > 1) stats.push({ big: String(servicesCount), label: 'glass services' })
+  if (stats.length < 2) return null
+
   return (
-    <section className="bg-[var(--dark)] text-white">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-14 text-center">
-        <ShieldCheck className="h-10 w-10 mx-auto mb-3 text-[var(--brand-light)]" />
-        <Eyebrow center onDark>
-          Our warranty
-        </Eyebrow>
-        <h2 className="text-3xl font-extrabold tracking-tight">
-          {extras.warrantyTitle || 'What the warranty covers'}
-        </h2>
-        <p className="mt-4 text-[var(--on-dark-2)] text-[15px] leading-relaxed whitespace-pre-line">
-          {extras.warrantyText}
-        </p>
+    <section
+      className="text-white on-dark"
+      style={{ background: 'radial-gradient(120% 120% at 50% 0%, var(--dark-3), var(--dark))' }}
+    >
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 grid grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((s) => (
+          <div
+            key={s.label}
+            className="text-center rounded-[14px] border border-[var(--line-on-dark)] bg-white/[.04] py-6 px-3"
+          >
+            <div className="text-3xl font-extrabold tabular-nums">{s.big}</div>
+            <div className="mt-1.5 text-[13px] font-semibold text-[var(--on-dark-2)] uppercase tracking-wider">
+              {s.label}
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   )
 }
 
-/** "Range of work" photo grid. Stripped entirely when no photos exist. */
-export function GalleryGrid({ extras }: { extras: SiteExtras | null }) {
-  if (!extras || extras.galleryPhotos.length === 0) return null
+/** Numbered three-step process on the s2 tint, generic to the trade. */
+export function ProcessSection({ client, offersMobileService }: { client: SiteClient; offersMobileService: boolean }) {
+  const steps = [
+    {
+      title: 'Tell us what broke',
+      body: 'Fill out the quote form or call — year, make, model, and which glass. Photos help but aren’t required.',
+    },
+    {
+      title: 'We confirm glass and price',
+      body: 'We match the exact glass for your vehicle and confirm your price — and your insurance coverage if you’re filing a claim — before anything is scheduled.',
+    },
+    offersMobileService
+      ? {
+          title: 'We come to you',
+          body: `Home, office, or roadside anywhere we serve — or visit the shop if you prefer. Most jobs are done the same or next day.`,
+        }
+      : {
+          title: 'Drop in and drive off',
+          body: 'Bring the vehicle to the shop — most windshields are replaced the same or next day, ready to drive when the adhesive sets.',
+        },
+  ]
   return (
-    <section className="border-t border-[var(--line)]">
+    <section className="bg-[var(--s2)] border-t border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
-        <div className="text-center max-w-xl mx-auto mb-9">
-          <Eyebrow center>Recent jobs</Eyebrow>
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--tx)]">
-            Real vehicles, real work
-          </h2>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {extras.galleryPhotos.slice(0, 6).map((photo) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={photo.url}
-              src={photo.url}
-              alt={photo.alt}
-              loading="lazy"
-              className="w-full aspect-[4/3] object-cover rounded-[14px] border border-[var(--line-card)]"
-            />
+        <SectionHead
+          eyebrow="How it works"
+          title={offersMobileService ? 'Three steps, no shop visit' : 'Three simple steps'}
+        />
+        <div className="grid md:grid-cols-3 gap-8">
+          {steps.map((step, i) => (
+            <div key={step.title}>
+              <div
+                className={`h-12 w-12 rounded-full flex items-center justify-center text-white text-xl font-extrabold mb-4 ${
+                  i === steps.length - 1 ? 'bg-[var(--cta)]' : 'bg-[var(--dark-3)]'
+                }`}
+              >
+                {i + 1}
+              </div>
+              <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold m-0">
+                {step.title}
+              </h3>
+              <p className="mt-2 mb-0 text-sm text-[var(--tx-muted)] leading-relaxed">{step.body}</p>
+            </div>
           ))}
         </div>
       </div>
@@ -338,31 +499,215 @@ export function GalleryGrid({ extras }: { extras: SiteExtras | null }) {
   )
 }
 
-/** FAQ accordion. Stripped when the client has no FAQ content. */
+/** Insurance band on the warm tint: left head, two claim cards, disclaimer. */
+export function InsuranceBand() {
+  return (
+    <section className="bg-[var(--tint-warm)] border-y border-[var(--line)]">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
+        <SectionHead
+          eyebrow="Insurance"
+          title="We handle the claim with your carrier"
+          lead="Glass coverage is usually part of the comprehensive portion of your policy — and we do the paperwork."
+        />
+        <div className="grid md:grid-cols-2 gap-5">
+          <div className="bg-white rounded-[20px] border border-[var(--line-card)] shadow-sm p-6">
+            <h3 className="font-bold text-lg m-0">Filing through insurance</h3>
+            <p className="mt-2 mb-0 text-sm text-[var(--tx2)] leading-relaxed">
+              We work with your insurance company directly and help you navigate the claim — many
+              repairs cost you nothing out of pocket, and you don’t spend your afternoon on hold.
+            </p>
+          </div>
+          <div className="bg-white rounded-[20px] border border-[var(--line-card)] shadow-sm p-6">
+            <h3 className="font-bold text-lg m-0">Paying cash</h3>
+            <p className="mt-2 mb-0 text-sm text-[var(--tx2)] leading-relaxed">
+              Not going through insurance? You get a straight price up front, before any work
+              starts — no surprises when the job is done.
+            </p>
+          </div>
+        </div>
+        <p className="mt-5 mb-0 text-xs text-[var(--tx-muted)]">
+          We are an independent glass shop and are not affiliated with or endorsed by any insurance
+          company. Your choice of repair shop is yours to make.
+        </p>
+      </div>
+    </section>
+  )
+}
+
+/**
+ * Warranty band on the accent tint with the terms in a card. Rendered only
+ * when warranty text exists, and always shows the definition in full beside
+ * the claim — a warranty headline without its terms is the compliance failure
+ * the landing-template rules exist to prevent.
+ */
+export function WarrantyBand({ extras }: { extras: SiteExtras | null }) {
+  if (!extras?.warrantyText) return null
+  return (
+    <section className="bg-[var(--tint)] border-y border-[var(--line)]">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
+        <SectionHead
+          eyebrow="Our warranty"
+          title={extras.warrantyTitle || 'What the warranty covers'}
+        />
+        <div className="bg-white rounded-[20px] border border-[var(--line-card)] shadow-sm p-6 md:p-8 max-w-3xl">
+          <ShieldCheck className="h-8 w-8 mb-3 text-[var(--brand)]" />
+          <p className="m-0 text-[15px] text-[var(--tx2)] leading-relaxed whitespace-pre-line">
+            {extras.warrantyText}
+          </p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/** "Range of work" photo grid as captioned figures. Stripped when empty. */
+export function GalleryGrid({ extras }: { extras: SiteExtras | null }) {
+  if (!extras || extras.galleryPhotos.length === 0) return null
+  return (
+    <section className="border-t border-[var(--line)]">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
+        <SectionHead eyebrow="Recent jobs" title="Real vehicles, real work" />
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {extras.galleryPhotos.slice(0, 6).map((photo) => (
+            <figure
+              key={photo.url}
+              className="m-0 rounded-[20px] border border-[var(--line-card)] bg-white shadow-sm overflow-hidden"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photo.url}
+                alt={photo.alt}
+                loading="lazy"
+                className="w-full aspect-[4/3] object-cover"
+              />
+              {photo.alt && (
+                <figcaption className="px-4 py-3 text-[13px] text-[var(--tx-muted)] leading-snug">
+                  {photo.alt}
+                </figcaption>
+              )}
+            </figure>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/**
+ * Map + Google listing section. Rendered only for clients with a real shop
+ * location; the embed derives from the DB address, and the score card renders
+ * only from live cached review data.
+ */
+export function MapSection({ client, reviews }: { client: SiteClient; reviews: ReviewsData | null }) {
+  if (!client.hasShopLocation) return null
+  const query = encodeURIComponent(
+    `${client.businessName}, ${client.streetAddress}, ${client.city}, ${client.state} ${client.postalCode}`
+  )
+  return (
+    <section className="border-t border-[var(--line)]">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
+        <SectionHead
+          center
+          eyebrow="Find us"
+          title={`Visit the shop in ${client.city}`}
+        />
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-stretch">
+          <iframe
+            title={`Map to ${client.businessName}`}
+            src={`https://maps.google.com/maps?q=${query}&output=embed`}
+            className="w-full min-h-[320px] rounded-[20px] border border-[var(--line-card)]"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+          <div className="bg-white rounded-[20px] border border-[var(--line-card)] shadow-sm p-6 flex flex-col gap-4">
+            {reviews && (
+              <div className="flex items-center gap-3">
+                <GoogleG size={22} />
+                <span className="text-3xl font-extrabold tabular-nums">{reviews.rating.toFixed(1)}</span>
+                <span className="flex flex-col leading-tight">
+                  <StarRow rating={reviews.rating} size={14} />
+                  <span className="text-xs text-[var(--tx-muted)]">
+                    {reviews.reviewCount} Google reviews
+                  </span>
+                </span>
+              </div>
+            )}
+            <div className="text-sm text-[var(--tx2)] leading-relaxed">
+              <span className="font-bold text-[var(--tx)]">{client.businessName}</span>
+              <br />
+              {client.streetAddress}
+              <br />
+              {client.city}, {client.state} {client.postalCode}
+            </div>
+            {client.googleMapsUrl && (
+              <a
+                href={client.googleMapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-auto inline-flex items-center justify-center min-h-[48px] px-5 rounded-[14px] font-bold text-[15px] no-underline text-[var(--tx)] bg-white border-[1.5px] border-[var(--line-strong)] hover:bg-[var(--s1)]"
+              >
+                View our Google listing
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/** Service areas as a dark coverage band with city lists in columns. */
+export function AreasBand({ client, areas }: { client: SiteClient; areas: string[] }) {
+  if (areas.length === 0) return null
+  return (
+    <section className="bg-[var(--dark)] text-white on-dark">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
+        <SectionHead
+          onDark
+          eyebrow="Where we go"
+          title="Areas we serve"
+          lead={`${client.city} and the surrounding communities — if you’re close but don’t see your city, call and ask.`}
+        />
+        <ul className="columns-2 md:columns-3 lg:columns-4 gap-6 list-none m-0 p-0">
+          {areas.map((area) => (
+            <li key={area} className="mb-2.5 break-inside-avoid">
+              <span className="inline-flex items-center gap-2 text-[15px] text-[var(--on-dark-2)]">
+                <MapPin className="h-3.5 w-3.5 text-[var(--brand-light)] shrink-0" />
+                {area}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  )
+}
+
+/** FAQ as hairline-divided rows in a reading column. Stripped when empty. */
 export function FaqSection({ extras }: { extras: SiteExtras | null }) {
   if (!extras || extras.faq.length === 0) return null
   return (
     <section className="border-t border-[var(--line)]">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-14">
-        <div className="text-center mb-8">
-          <Eyebrow center>Good to know</Eyebrow>
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--tx)]">
-            Frequently asked
-          </h2>
-        </div>
-        <div className="space-y-3">
+      <div className="max-w-[80ch] mx-auto px-4 sm:px-6 py-14">
+        <SectionHead center eyebrow="Questions" title="Frequently asked" />
+        <div>
           {extras.faq.map((item) => (
-            <details
-              key={item.q}
-              className="group rounded-[14px] border border-[var(--line-card)] bg-white px-5 py-4 shadow-sm"
-            >
+            <details key={item.q} className="group border-t border-[var(--line)] py-4 last:border-b">
               <summary className="font-bold cursor-pointer list-none flex items-center justify-between gap-3 text-[var(--tx)]">
                 {item.q}
-                <span className="text-[var(--tx-muted)] group-open:rotate-45 transition-transform text-xl leading-none">
-                  +
-                </span>
+                <svg
+                  className="h-5 w-5 shrink-0 text-[var(--tx-muted)] group-open:rotate-180 transition-transform"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  aria-hidden="true"
+                >
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
               </summary>
-              <p className="mt-3 text-sm text-[var(--tx2)] leading-relaxed">{item.a}</p>
+              <p className="mt-3 mb-0 text-sm text-[var(--tx2)] leading-relaxed max-w-[68ch]">{item.a}</p>
             </details>
           ))}
         </div>
@@ -385,18 +730,18 @@ export function faqJsonLd(extras: SiteExtras | null): object | null {
   }
 }
 
-/** Closing dark CTA band. */
+/** Closing dark CTA band with the reference's top-centered radial wash. */
 export function FinalCta({ client, quoteHref }: { client: SiteClient; quoteHref: string }) {
   return (
     <section
-      className="text-white"
-      style={{ background: 'linear-gradient(160deg, var(--dark-3), var(--dark-2))' }}
+      className="text-white on-dark"
+      style={{ background: 'radial-gradient(120% 90% at 50% 0%, var(--dark-3), var(--dark-2))' }}
     >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16 text-center">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 text-center">
         <Eyebrow center onDark>
-          Free quote · No obligation
+          Ready when you are
         </Eyebrow>
-        <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+        <h2 className="text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight">
           Ready to fix that glass?
         </h2>
         <p className="mt-3 text-[var(--on-dark-2)]">
@@ -404,66 +749,146 @@ export function FinalCta({ client, quoteHref }: { client: SiteClient; quoteHref:
         </p>
         <div className="mt-7 flex flex-wrap justify-center gap-3">
           <CtaButton href={quoteHref}>Get my free quote</CtaButton>
-          <CallButton client={client} onDark />
+          <CallButton client={client} onDark withLabel />
         </div>
       </div>
     </section>
   )
 }
 
-export function SiteFooter({ client, extras }: { client: SiteClient; extras?: SiteExtras | null }) {
+/**
+ * Footer, template-style: brand column (logo, blurb, contact), services
+ * links, service-area columns, then registration + legal line. Columns render
+ * only when their data exists.
+ */
+export function SiteFooter({
+  client,
+  extras,
+  services,
+  areas,
+  basePath,
+}: {
+  client: SiteClient
+  extras?: SiteExtras | null
+  services?: Array<{ slug: string; name: string }>
+  areas?: string[]
+  basePath?: string
+}) {
+  const year = new Date().getFullYear()
+  const areaSplit: string[][] = []
+  if (areas && areas.length > 0) {
+    const half = Math.ceil(areas.length / 2)
+    areaSplit.push(areas.slice(0, half))
+    if (areas.length > half) areaSplit.push(areas.slice(half))
+  }
   return (
-    <footer className="bg-[var(--dark-2)] text-[var(--on-dark-2)]">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-4 text-sm">
-        {extras?.footerBlurb && <p className="max-w-3xl m-0">{extras.footerBlurb}</p>}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[var(--line-on-dark)] pt-4">
+    <footer className="bg-[var(--dark-2)] text-[var(--on-dark-2)] on-dark">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
+        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div>
-            <span className="font-bold text-white">{client.businessName}</span>
-            {client.hasShopLocation && (
-              <>
-                {' '}
-                · {client.streetAddress}, {client.city}, {client.state} {client.postalCode}
-              </>
+            {client.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={client.logoUrl}
+                alt={client.businessName}
+                className="h-10 w-auto max-w-[200px] object-contain mb-4 bg-white rounded-lg p-1"
+              />
+            ) : (
+              <div className="font-bold text-white text-lg mb-3">{client.businessName}</div>
             )}
+            {extras?.footerBlurb && <p className="text-sm leading-relaxed m-0 mb-4">{extras.footerBlurb}</p>}
+            <div className="text-sm space-y-1">
+              {/* Kept as a plain, un-swapped text instance so call-asset
+                  verification can always read the real number. */}
+              <div>
+                <a href={telHrefFor(client.phone)} className="font-bold no-underline text-[var(--gold-on-dark)]">
+                  {client.phone}
+                </a>
+              </div>
+              {client.email && (
+                <div>
+                  <a href={`mailto:${client.email}`} className="no-underline text-[var(--on-dark-2)] hover:text-white">
+                    {client.email}
+                  </a>
+                </div>
+              )}
+              {client.hasShopLocation && (
+                <div>
+                  {client.streetAddress}, {client.city}, {client.state} {client.postalCode}
+                </div>
+              )}
+            </div>
           </div>
-          {/* Kept as a plain, un-swapped text instance so call-asset verification
-              can always read the real number, per the landing-template rule. */}
-          <a href={telHrefFor(client.phone)} className="font-bold no-underline text-[var(--gold-on-dark)]">
-            {client.phone}
-          </a>
+          {services && services.length > 0 && (
+            <div>
+              <h3 className="text-white font-bold text-sm uppercase tracking-wider mb-3">Services</h3>
+              <ul className="list-none m-0 p-0 space-y-2 text-sm">
+                {services.map((s) => (
+                  <li key={s.slug}>
+                    <a
+                      href={`${basePath || ''}/services/${s.slug}`}
+                      className="no-underline text-[var(--on-dark-2)] hover:text-white"
+                    >
+                      {s.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {areaSplit.map((chunk, i) => (
+            <div key={i}>
+              <h3 className="text-white font-bold text-sm uppercase tracking-wider mb-3">
+                {i === 0 ? 'Areas we serve' : ' '}
+              </h3>
+              <ul className="list-none m-0 p-0 space-y-2 text-sm">
+                {chunk.map((area) => (
+                  <li key={area}>{area}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
         {/* Regulator line — rendered only when a registration number is set.
             Some licensed trades must show this in internet advertising
             (California auto glass: 16 CCR § 3371.2). */}
         {extras?.registrationNumber && (
-          <p className="text-xs opacity-70 m-0">
+          <p className="mt-8 mb-0 text-xs opacity-70">
             {extras.registrationName || client.businessName} · Registration No.{' '}
             {extras.registrationNumber}
           </p>
         )}
+        <div className="mt-4 pt-4 border-t border-[var(--line-on-dark)] text-xs opacity-80">
+          © {year} {client.businessName}. All rights reserved.
+        </div>
       </div>
     </footer>
   )
 }
 
+/** Sticky mobile action bar: loud call button, quiet ghost quote button. */
 export function MobileCallBar({ client, quoteHref }: { client: SiteClient; quoteHref: string }) {
   return (
-    <div className="sm:hidden sticky bottom-0 z-40 p-3 bg-white/95 backdrop-blur border-t border-[var(--line-card)] flex gap-2">
+    <div className="lg:hidden sticky bottom-0 z-40 grid grid-cols-[1.15fr_1fr] gap-2.5 px-4 pt-2.5 pb-[calc(10px+env(safe-area-inset-bottom))] bg-white/95 backdrop-blur border-t border-[var(--line)]">
       <a
         href={telHrefFor(client.phone)}
-        className="flex-1 py-3 rounded-[14px] font-bold text-white text-center flex items-center justify-center gap-2 no-underline"
-        style={{ background: 'linear-gradient(180deg, var(--cta), var(--cta-b))' }}
+        className="min-h-[50px] rounded-[14px] font-bold text-base text-white text-center flex items-center justify-center gap-2 no-underline bg-[var(--cta)] hover:bg-[var(--cta-b)]"
       >
         <Phone className="h-4 w-4" /> Call Now
       </a>
       <a
         href={quoteHref}
-        className="flex-1 py-3 rounded-[14px] font-bold text-center no-underline text-[var(--cta)] bg-white border-[1.5px] border-[var(--cta)] flex items-center justify-center"
+        className="min-h-[50px] rounded-[14px] font-bold text-base text-center no-underline text-[var(--tx)] bg-white border-[1.5px] border-[var(--line-strong)] shadow-sm flex items-center justify-center"
       >
-        Free Quote
+        Get quote
       </a>
     </div>
   )
+}
+
+/** Hero bullet checkmark — plain stroke check per the reference, not circled. */
+export function BulletCheck() {
+  return <Check className="h-[19px] w-[19px] mt-[3px] shrink-0 text-[var(--success)]" strokeWidth={2.6} />
 }
 
 export function SiteUnavailable() {

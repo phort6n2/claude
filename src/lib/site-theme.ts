@@ -68,6 +68,39 @@ function withLightness(c: Rgb, l: number): Rgb {
   return { r: (rgb[0] + m) * 255, g: (rgb[1] + m) * 255, b: (rgb[2] + m) * 255 }
 }
 
+function hslOf(c: Rgb): { h: number; s: number; l: number } {
+  const r = c.r / 255
+  const g = c.g / 255
+  const b = c.b / 255
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const l = (max + min) / 2
+  const d = max - min
+  if (d === 0) return { h: 0, s: 0, l }
+  const s = d / (1 - Math.abs(2 * l - 1))
+  let h = 0
+  if (max === r) h = ((g - b) / d) % 6
+  else if (max === g) h = (b - r) / d + 2
+  else h = (r - g) / d + 4
+  h *= 60
+  if (h < 0) h += 360
+  return { h, s, l }
+}
+
+function fromHsl(h: number, s: number, l: number): Rgb {
+  const c = (1 - Math.abs(2 * l - 1)) * s
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
+  const m = l - c / 2
+  let rgb: [number, number, number]
+  if (h < 60) rgb = [c, x, 0]
+  else if (h < 120) rgb = [x, c, 0]
+  else if (h < 180) rgb = [0, c, x]
+  else if (h < 240) rgb = [0, x, c]
+  else if (h < 300) rgb = [x, 0, c]
+  else rgb = [c, 0, x]
+  return { r: (rgb[0] + m) * 255, g: (rgb[1] + m) * 255, b: (rgb[2] + m) * 255 }
+}
+
 const WHITE: Rgb = { r: 255, g: 255, b: 255 }
 const BLACK: Rgb = { r: 0, g: 0, b: 0 }
 
@@ -89,23 +122,37 @@ export function sitePaletteVars(
   // pair holds up — the template's "darkened until white text passes AA" rule.
   const cta = lightness(brand) > 0.45 ? withLightness(brand, 0.38) : brand
 
+  // Tinted grays (lines, muted text, dark-band text) carry only the brand's
+  // HUE at a low fixed saturation — mixing the fully saturated brand reads
+  // pink/garish as the base lightens. S/L pairs are sampled from the
+  // reference build; saturation scales down for weakly saturated brands.
+  const brandHsl = hslOf(brand)
+  const satScale = Math.min(1, brandHsl.s / 0.75)
+  const hueTint = (l: number, s: number) => fromHsl(brandHsl.h, s * satScale, l)
+
+  // The warm accent band only works with a warm accent; a cool or red accent
+  // would collapse into the other tints, so fall back to the reference sand.
+  const accentHsl = hslOf(accent)
+  const warmOk = accentHsl.h >= 20 && accentHsl.h <= 60 && accentHsl.s > 0.2
+  const tintWarm = warmOk ? mix(WHITE, accent, 0.09) : parseHex('#FBF3EC')!
+
   const vars: Record<string, [Rgb, Rgb, number] | Rgb> = {
     '--paper': WHITE,
     '--s1': [WHITE, brand, 0.035],
     '--s2': [WHITE, brand, 0.065],
     '--tint': [WHITE, brand, 0.105],
-    '--tint-warm': [WHITE, accent, 0.09],
+    '--tint-warm': tintWarm,
     '--dark': [{ r: 20, g: 20, b: 20 }, brand, 0.08],
     '--dark-2': [{ r: 13, g: 13, b: 13 }, brand, 0.05],
-    '--dark-3': [{ r: 28, g: 28, b: 28 }, brand, 0.17],
+    '--dark-3': hueTint(0.16, 0.245),
     '--tx': [{ r: 18, g: 18, b: 18 }, brand, 0.055],
     '--tx2': [{ r: 46, g: 46, b: 46 }, brand, 0.12],
-    '--tx-muted': [{ r: 74, g: 74, b: 74 }, brand, 0.19],
-    '--on-dark-2': [{ r: 206, g: 206, b: 206 }, brand, 0.1],
-    '--line': [WHITE, brand, 0.125],
-    '--line-card': [WHITE, brand, 0.2],
-    '--line-strong': [WHITE, brand, 0.35],
-    '--line-on-dark': [{ r: 40, g: 40, b: 40 }, brand, 0.25],
+    '--tx-muted': hueTint(0.33, 0.11),
+    '--on-dark-2': hueTint(0.82, 0.17),
+    '--line': hueTint(0.91, 0.29),
+    '--line-card': hueTint(0.85, 0.24),
+    '--line-strong': hueTint(0.73, 0.15),
+    '--line-on-dark': hueTint(0.21, 0.21),
     '--brand': brand,
     '--brand-deep': [brand, BLACK, 0.17],
     '--cta': cta,
@@ -126,5 +173,9 @@ export function sitePaletteVars(
   out['--gold-on-dark'] = '#FFC53D'
   out['--success'] = '#0F7A3D'
   out['--on-dark'] = '#FFFFFF'
+  // Focus ring color and the brand-tinted CTA shadow, per the reference.
+  out['--ring'] = out['--tx']
+  const ctaRgb = `${Math.round(cta.r)},${Math.round(cta.g)},${Math.round(cta.b)}`
+  out['--sh-cta'] = `0 1px 1px rgba(0,0,0,.18), 0 6px 14px -4px rgba(${ctaRgb},.34)`
   return out
 }
