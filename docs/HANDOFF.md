@@ -211,6 +211,28 @@ landing-template repo's config header — read them before writing client copy;
 in particular: no deductible offers, no invented prices or facts about the
 business, no third-party "approved/authorized" claims.
 
+**Import from their current website.** The Site Content editor's Import box
+(`src/lib/site-import.ts` + `POST /api/clients/{id}/import-site`) fetches the
+URL you give it plus up to 4 same-origin pages that look like
+warranty/FAQ/about pages (SSRF-guarded like webhook destinations: https-only,
+private hosts blocked, re-checked after redirects), collects candidate photo
+URLs from `<img>` tags, and has Claude (`claude-opus-5`, same
+`ANTHROPIC_API_KEY` as call coaching) extract ONLY what the site actually
+says — warranty verbatim, real FAQs, footer blurb, bullet candidates; the
+prompt forbids inventing and drops deductible-offer copy. Photos the model
+returns are filtered against the crawled candidate list so it can't add its
+own URLs. The result only pre-fills the editor as a draft — nothing is live
+until an admin reviews and saves.
+
+**Site design system.** Hosted pages follow the landing-template look:
+`src/lib/site-theme.ts` derives the entire palette (tinted surfaces, lines,
+dark bands, CTA gradient) from the client's primary color at the mix ratios
+sampled from the reference build, emitted as CSS variables on the page root;
+`src/components/sites/shared.tsx` holds the template-style components (util
+bar, sticky header with live rating, eyebrow labels, gold stroked stars,
+Google rating chip, dark warranty band and footer). The widget card mirrors
+the template's quote card (white, 4px brand top border).
+
 **`src/app/sites/[slug]/page.tsx` — hosted landing pages.** Every ACTIVE
 client has a full landing page at `/sites/{slug}`, rendered entirely from the
 Client record (name, phone, colors, services, service areas, Places link) with

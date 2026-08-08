@@ -4,18 +4,24 @@ import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
 import { getServicePage, servicesForClient, type ServiceFlag } from '@/lib/site-services'
 import {
+  UtilBar,
   SiteHeader,
   SiteFooter,
   MobileCallBar,
   ReviewsBand,
+  RatingChip,
   SiteUnavailable,
   GalleryGrid,
-  telHrefFor,
+  FinalCta,
+  Eyebrow,
+  CtaButton,
+  CallButton,
   type ReviewsData,
   type ReviewQuote,
 } from '@/components/sites/shared'
 import { getSiteExtras } from '@/lib/site-content'
-import { Phone, CheckCircle2 } from 'lucide-react'
+import { sitePaletteVars } from '@/lib/site-theme'
+import { CheckCircle2 } from 'lucide-react'
 
 export const revalidate = 300
 
@@ -101,12 +107,11 @@ export default async function ServicePage({ params }: PageProps) {
     getReviews(client.id),
     getSiteExtras(client.id),
   ])
-  const primary = client.primaryColor || '#1e40af'
-  const accent = client.accentColor || '#f59e0b'
   const basePath = `/sites/${client.slug}`
   const otherServices = servicesForClient(client as Record<ServiceFlag, boolean>).filter(
     (s) => s.slug !== page.slug
   )
+  const palette = sitePaletteVars(client.primaryColor, client.accentColor)
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -128,42 +133,48 @@ export default async function ServicePage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-white text-gray-900">
+    <div
+      className="min-h-screen bg-[var(--paper)] text-[var(--tx)]"
+      style={palette as React.CSSProperties}
+    >
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <SiteHeader client={client} basePath={basePath} />
+      <UtilBar
+        client={client}
+        note={
+          client.offersMobileService
+            ? `Mobile service across ${client.city} & nearby — we come to you`
+            : `Serving ${client.city}, ${client.state} and nearby`
+        }
+      />
+      <SiteHeader client={client} basePath={basePath} reviews={reviews} />
 
-      {/* Hero */}
-      <section style={{ backgroundColor: primary }}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 text-white">
-          <p
-            className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-4"
-            style={{ backgroundColor: accent, color: '#1f2937' }}
-          >
+      {/* Hero — light gradient, matching the home page */}
+      <section
+        className="pt-8 pb-10"
+        style={{
+          background: 'linear-gradient(168deg, var(--tint) 0%, var(--s1) 52%, var(--paper) 100%)',
+        }}
+      >
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <Eyebrow>
             {client.city}, {client.state}
-          </p>
-          <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight max-w-3xl">
+          </Eyebrow>
+          <h1 className="text-4xl sm:text-5xl font-extrabold leading-[1.08] tracking-tight max-w-3xl">
             {page.name}
           </h1>
-          <p className="mt-4 text-lg opacity-90 max-w-2xl">{page.heroLine}</p>
+          <p className="mt-4 text-[17px] leading-relaxed text-[var(--tx2)] max-w-2xl">
+            {page.heroLine}
+          </p>
+          <div className="mt-5">
+            <RatingChip reviews={reviews} client={client} />
+          </div>
           <div className="mt-7 flex flex-wrap gap-3">
-            <a
-              href="#quote"
-              className="px-6 py-3.5 rounded-xl font-bold text-gray-900 shadow-lg"
-              style={{ backgroundColor: accent }}
-            >
-              Get My Free Quote
-            </a>
-            <a
-              href={telHrefFor(client.phone)}
-              className="px-6 py-3.5 rounded-xl font-bold bg-white/15 ring-1 ring-white/40 flex items-center gap-2"
-            >
-              <Phone className="h-4 w-4" />
-              {client.phone}
-            </a>
+            <CtaButton href="#quote">Get my free quote</CtaButton>
+            <CallButton client={client} />
           </div>
         </div>
       </section>
@@ -175,15 +186,15 @@ export default async function ServicePage({ params }: PageProps) {
             const photo = extras.bodyPhotos[Math.floor(index / 2)]
             return (
               <div key={s.heading}>
-                <h2 className="text-2xl font-extrabold">{s.heading}</h2>
-                <p className="mt-3 text-gray-600 leading-relaxed">{s.body}</p>
+                <h2 className="text-2xl font-extrabold tracking-tight m-0">{s.heading}</h2>
+                <p className="mt-3 mb-0 text-[var(--tx2)] leading-relaxed">{s.body}</p>
                 {index % 2 === 0 && photo && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={photo.url}
                     alt={photo.alt}
                     loading="lazy"
-                    className="mt-6 w-full aspect-[16/9] object-cover rounded-2xl border border-gray-100"
+                    className="mt-6 w-full aspect-[16/9] object-cover rounded-[20px] border border-[var(--line-card)]"
                   />
                 )}
               </div>
@@ -191,8 +202,8 @@ export default async function ServicePage({ params }: PageProps) {
           })}
 
           {otherServices.length > 0 && (
-            <div className="pt-4 border-t border-gray-100">
-              <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">
+            <div className="pt-4 border-t border-[var(--line)]">
+              <h3 className="text-sm font-bold text-[var(--tx-muted)] uppercase tracking-wider mb-3">
                 Also from {client.businessName}
               </h3>
               <div className="flex flex-wrap gap-2">
@@ -200,9 +211,9 @@ export default async function ServicePage({ params }: PageProps) {
                   <a
                     key={s.slug}
                     href={`${basePath}/services/${s.slug}`}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-gray-200 text-sm font-medium text-gray-700 hover:border-gray-300"
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-[var(--line-card)] bg-white text-sm font-semibold text-[var(--tx2)] no-underline hover:border-[var(--line-strong)]"
                   >
-                    <CheckCircle2 className="h-3.5 w-3.5" style={{ color: primary }} />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-[var(--brand)]" />
                     {s.name}
                   </a>
                 ))}
@@ -216,9 +227,11 @@ export default async function ServicePage({ params }: PageProps) {
         </div>
       </section>
 
-      <ReviewsBand reviews={reviews} client={client} />
+      <ReviewsBand reviews={reviews} />
 
       <GalleryGrid extras={extras} />
+
+      <FinalCta client={client} quoteHref="#quote" />
 
       <SiteFooter client={client} extras={extras} />
       <MobileCallBar client={client} quoteHref="#quote" />

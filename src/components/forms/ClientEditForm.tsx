@@ -159,6 +159,8 @@ function SiteContentEditor({ clientId }: { clientId: string }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const [importUrl, setImportUrl] = useState('')
+  const [importing, setImporting] = useState(false)
   const [warrantyTitle, setWarrantyTitle] = useState('')
   const [warrantyText, setWarrantyText] = useState('')
   const [footerBlurb, setFooterBlurb] = useState('')
@@ -219,6 +221,48 @@ function SiteContentEditor({ clientId }: { clientId: string }) {
     }
   }
 
+  async function importFromSite() {
+    if (!importUrl.trim() || importing) return
+    setImporting(true)
+    setMessage(null)
+    try {
+      const res = await fetch(`/api/clients/${clientId}/import-site`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: importUrl }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setMessage({ ok: false, text: data.error || 'Import failed' })
+        return
+      }
+      const d = data.draft
+      if (d.warrantyTitle) setWarrantyTitle(d.warrantyTitle)
+      if (d.warrantyText) setWarrantyText(d.warrantyText)
+      if (d.footerBlurb) setFooterBlurb(d.footerBlurb)
+      if (Array.isArray(d.faq) && d.faq.length) setFaq(d.faq)
+      if (Array.isArray(d.heroBullets) && d.heroBullets.length) setBullets(d.heroBullets)
+      if (Array.isArray(d.photos) && d.photos.length) setPhotos(d.photos)
+      const found = [
+        d.warrantyText ? 'warranty' : null,
+        d.faq?.length ? `${d.faq.length} FAQs` : null,
+        d.heroBullets?.length ? `${d.heroBullets.length} bullets` : null,
+        d.photos?.length ? `${d.photos.length} photos` : null,
+        d.footerBlurb ? 'footer blurb' : null,
+      ].filter(Boolean)
+      setMessage({
+        ok: true,
+        text: found.length
+          ? `Imported draft (${found.join(', ')}) from ${d.pagesCrawled.length} page(s). Review below — nothing is live until you Save.`
+          : `Read ${d.pagesCrawled.length} page(s) but found nothing usable to import.`,
+      })
+    } catch {
+      setMessage({ ok: false, text: 'Import failed' })
+    } finally {
+      setImporting(false)
+    }
+  }
+
   if (loading) return <div className="py-4 text-sm text-gray-500">Loading site content…</div>
 
   const inputCls = 'w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500'
@@ -226,6 +270,36 @@ function SiteContentEditor({ clientId }: { clientId: string }) {
   return (
     <div className="space-y-6 border-t pt-4">
       <h4 className="text-sm font-medium text-gray-900">Site Content</h4>
+
+      {/* Import from existing website */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <label className="block text-xs font-semibold text-gray-700 mb-1">
+          Import from their current website
+        </label>
+        <p className="text-xs text-gray-500 mb-2">
+          Reads their site (plus warranty/FAQ/about pages) and pre-fills the fields below with
+          what it actually says — photos, warranty wording, FAQs. Everything lands here as a
+          draft for you to review; nothing goes live until you hit Save.
+        </p>
+        <div className="flex gap-2">
+          <input
+            className={inputCls}
+            placeholder="https://theircurrentsite.com"
+            value={importUrl}
+            onChange={(e) => setImportUrl(e.target.value)}
+            disabled={importing}
+          />
+          <button
+            type="button"
+            onClick={importFromSite}
+            disabled={importing || !importUrl.trim()}
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+          >
+            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+            {importing ? 'Reading site…' : 'Import'}
+          </button>
+        </div>
+      </div>
 
       {/* Hero bullets */}
       <div>
