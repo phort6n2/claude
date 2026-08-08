@@ -163,18 +163,26 @@ export function SiteHeader({
       <div className="max-w-6xl mx-auto px-4 sm:px-6 min-h-[64px] flex items-center gap-4">
         <a href={basePath || '/'} className="flex items-center gap-3 min-w-0 no-underline">
           {client.logoUrl ? (
+            // Natural aspect at 44px tall, like the template's .brand img —
+            // wordmark logos must never be cropped into a circle.
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={client.logoUrl}
               alt={client.businessName}
-              className="h-11 w-11 rounded-full object-cover shrink-0"
+              className="h-11 w-auto max-w-[220px] object-contain shrink-0"
             />
           ) : (
             <div className="h-11 w-11 rounded-full flex items-center justify-center text-white font-bold shrink-0 bg-[var(--brand)]">
               {client.businessName[0]}
             </div>
           )}
-          <span className="font-bold truncate text-[var(--tx)]">{client.businessName}</span>
+          {/* A wordmark logo already carries the name — show the text only
+              when the logo is a mark or missing. Heuristic: always render on
+              small screens where the logo is capped anyway, hide beside wide
+              logos via the truncate cap. */}
+          <span className={`font-bold truncate text-[var(--tx)] ${client.logoUrl ? 'hidden min-[480px]:inline' : ''}`}>
+            {client.businessName}
+          </span>
         </a>
         {reviews && (
           <div className="mx-auto hidden min-[380px]:flex flex-col items-center leading-none gap-0.5">

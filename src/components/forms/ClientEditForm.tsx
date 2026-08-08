@@ -155,7 +155,13 @@ interface BulletRow {
  * by this data disappears when its content is empty — so an untouched editor
  * simply means a leaner site, never a broken one.
  */
-function SiteContentEditor({ clientId }: { clientId: string }) {
+function SiteContentEditor({
+  clientId,
+  onLogoFound,
+}: {
+  clientId: string
+  onLogoFound?: (url: string) => void
+}) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
@@ -243,7 +249,9 @@ function SiteContentEditor({ clientId }: { clientId: string }) {
       if (Array.isArray(d.faq) && d.faq.length) setFaq(d.faq)
       if (Array.isArray(d.heroBullets) && d.heroBullets.length) setBullets(d.heroBullets)
       if (Array.isArray(d.photos) && d.photos.length) setPhotos(d.photos)
+      if (d.logoUrl && onLogoFound) onLogoFound(d.logoUrl)
       const found = [
+        d.logoUrl ? 'logo (set in Branding above — hit the main Save)' : null,
         d.warrantyText ? 'warranty' : null,
         d.faq?.length ? `${d.faq.length} FAQs` : null,
         d.heroBullets?.length ? `${d.heroBullets.length} bullets` : null,
@@ -1585,7 +1593,10 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
                     {provisionMessage.text}
                   </p>
                 )}
-                <SiteContentEditor clientId={client!.id} />
+                <SiteContentEditor
+                  clientId={client!.id}
+                  onLogoFound={(url) => updateField('logoUrl', url)}
+                />
               </>
             )}
           </div>
