@@ -194,7 +194,11 @@ export function SiteBody({
       )}
 
       {/* How it works — numbered steps on the s2 tint */}
-      <ProcessSection client={client} offersMobileService={flags.offersMobileService} />
+      <ProcessSection
+        client={client}
+        offersMobileService={flags.offersMobileService}
+        offersAdasCalibration={flags.offersAdasCalibration}
+      />
 
       {/* Stat band — dark, data-derived, strips without enough data */}
       <StatBand reviews={reviews} areasCount={areas.length} servicesCount={services.length} />

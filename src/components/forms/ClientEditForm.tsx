@@ -164,9 +164,11 @@ interface ChapterRow {
 function SiteContentEditor({
   clientId,
   onLogoFound,
+  onAreasFound,
 }: {
   clientId: string
   onLogoFound?: (url: string) => void
+  onAreasFound?: (areas: string[]) => void
 }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -263,8 +265,14 @@ function SiteContentEditor({
       if (Array.isArray(d.chapters) && d.chapters.length) setChapters(d.chapters)
       if (Array.isArray(d.photos) && d.photos.length) setPhotos(d.photos)
       if (d.logoUrl && onLogoFound) onLogoFound(d.logoUrl)
+      if (Array.isArray(d.serviceAreas) && d.serviceAreas.length && onAreasFound) {
+        onAreasFound(d.serviceAreas)
+      }
       const found = [
         d.logoUrl ? 'logo (set in Branding above — hit the main Save)' : null,
+        d.serviceAreas?.length
+          ? `${d.serviceAreas.length} service-area cities (merged into Location above — hit the main Save)`
+          : null,
         d.warrantyText ? 'warranty' : null,
         d.chapters?.length ? `${d.chapters.length} story sections` : null,
         d.faq?.length ? `${d.faq.length} FAQs` : null,
@@ -1671,6 +1679,14 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
                 <SiteContentEditor
                   clientId={client!.id}
                   onLogoFound={(url) => updateField('logoUrl', url)}
+                  onAreasFound={(found) => {
+                    // Union with what's already set — the import adds cities,
+                    // never removes ones the admin entered.
+                    const existing = formData.serviceAreas || []
+                    const lower = new Set(existing.map((a) => a.toLowerCase()))
+                    const merged = [...existing, ...found.filter((a) => !lower.has(a.toLowerCase()))]
+                    updateField('serviceAreas', merged)
+                  }}
                 />
               </>
             )}

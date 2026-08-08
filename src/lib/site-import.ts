@@ -27,6 +27,7 @@ export interface ImportedSiteContent {
   footerBlurb: string | null
   photos: ImportedPhoto[]
   logoUrl: string | null
+  serviceAreas: string[]
   pagesCrawled: string[]
   warnings: string[]
 }
@@ -295,6 +296,7 @@ Return ONLY a JSON object (no prose, no markdown fence) with exactly these keys:
   "heroBullets": [{"lead": string, "text": string}], // up to 4 short factual selling points the site itself states; "lead" is the bold first words
   "footerBlurb": string|null,          // one factual sentence about the business, from the site's own copy
   "chapters": [{"heading": string, "body": string, "photoIndex": number|null}], // 2-4 editorial sections telling this business's story, BUILT ONLY from facts and phrasing already on their site (their history, their approach, what makes them different — in their voice). 1-3 short paragraphs each, separated by blank lines. Condensing and light editing of THEIR copy is fine; adding facts is not. photoIndex optionally pairs a candidate photo whose subject fits the section. [] if the site has no real "about" substance.
+  "serviceAreas": [string], // city/town names the site EXPLICITLY says they serve (coverage lists, footer links, "areas we serve"). Proper city names only — no regions like "the Westside" or "the metro", no states, no neighborhoods unless the site treats them as service cities. Max 10; [] if the site doesn't name cities.
   "photos": [{"index": number, "alt": string}] // pick from the NUMBERED candidate list below BY INDEX: keep only ones whose URL/alt suggest real photos of this business or its work (vehicles, glass jobs, shop, team). Drop stock-looking, decorative, or unrelated images. Write a short factual alt from the filename/alt given — do not invent specifics. Max 12.
 }
 
@@ -374,6 +376,20 @@ ${pages.map((p) => `=== ${p.url} ===\n${p.text}`).join('\n\n')}`
           })
       : []
 
+    const seenAreas = new Set<string>()
+    const serviceAreas = Array.isArray(parsed.serviceAreas)
+      ? (parsed.serviceAreas as unknown[])
+          .filter((a): a is string => typeof a === 'string' && !!a.trim())
+          .map((a) => a.trim().slice(0, 60))
+          .filter((a) => {
+            const key = a.toLowerCase()
+            if (seenAreas.has(key)) return false
+            seenAreas.add(key)
+            return true
+          })
+          .slice(0, 10)
+      : []
+
     const heroBullets = Array.isArray(parsed.heroBullets)
       ? (parsed.heroBullets as Array<{ lead?: unknown; text?: unknown }>)
           .filter((b) => typeof b?.lead === 'string' && b.lead.trim())
@@ -399,6 +415,7 @@ ${pages.map((p) => `=== ${p.url} ===\n${p.text}`).join('\n\n')}`
         footerBlurb: asStr(parsed.footerBlurb, 400),
         photos,
         logoUrl,
+        serviceAreas,
         pagesCrawled: pages.map((p) => p.url),
         warnings,
       },
