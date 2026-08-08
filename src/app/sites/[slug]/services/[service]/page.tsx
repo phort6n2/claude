@@ -9,10 +9,12 @@ import {
   MobileCallBar,
   ReviewsBand,
   SiteUnavailable,
+  GalleryGrid,
   telHrefFor,
   type ReviewsData,
   type ReviewQuote,
 } from '@/components/sites/shared'
+import { getSiteExtras } from '@/lib/site-content'
 import { Phone, CheckCircle2 } from 'lucide-react'
 
 export const revalidate = 300
@@ -95,7 +97,10 @@ export default async function ServicePage({ params }: PageProps) {
   if (client.status !== 'ACTIVE') return <SiteUnavailable />
   if (!client[page.flag]) notFound()
 
-  const reviews = await getReviews(client.id)
+  const [reviews, extras] = await Promise.all([
+    getReviews(client.id),
+    getSiteExtras(client.id),
+  ])
   const primary = client.primaryColor || '#1e40af'
   const accent = client.accentColor || '#f59e0b'
   const basePath = `/sites/${client.slug}`
@@ -166,12 +171,24 @@ export default async function ServicePage({ params }: PageProps) {
       {/* Body + quote form */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-14 grid lg:grid-cols-[1fr_400px] gap-10 items-start">
         <div className="space-y-10">
-          {page.sections.map((s) => (
-            <div key={s.heading}>
-              <h2 className="text-2xl font-extrabold">{s.heading}</h2>
-              <p className="mt-3 text-gray-600 leading-relaxed">{s.body}</p>
-            </div>
-          ))}
+          {page.sections.map((s, index) => {
+            const photo = extras.bodyPhotos[Math.floor(index / 2)]
+            return (
+              <div key={s.heading}>
+                <h2 className="text-2xl font-extrabold">{s.heading}</h2>
+                <p className="mt-3 text-gray-600 leading-relaxed">{s.body}</p>
+                {index % 2 === 0 && photo && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={photo.url}
+                    alt={photo.alt}
+                    loading="lazy"
+                    className="mt-6 w-full aspect-[16/9] object-cover rounded-2xl border border-gray-100"
+                  />
+                )}
+              </div>
+            )
+          })}
 
           {otherServices.length > 0 && (
             <div className="pt-4 border-t border-gray-100">
@@ -201,7 +218,9 @@ export default async function ServicePage({ params }: PageProps) {
 
       <ReviewsBand reviews={reviews} client={client} />
 
-      <SiteFooter client={client} />
+      <GalleryGrid extras={extras} />
+
+      <SiteFooter client={client} extras={extras} />
       <MobileCallBar client={client} quoteHref="#quote" />
 
       <Script src="/widget.js" data-client={client.slug} strategy="afterInteractive" />

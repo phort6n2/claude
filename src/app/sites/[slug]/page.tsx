@@ -9,10 +9,15 @@ import {
   MobileCallBar,
   ReviewsBand,
   SiteUnavailable,
+  WarrantyBand,
+  GalleryGrid,
+  FaqSection,
+  faqJsonLd,
   telHrefFor,
   type ReviewsData,
   type ReviewQuote,
 } from '@/components/sites/shared'
+import { getSiteExtras } from '@/lib/site-content'
 import {
   Phone,
   MapPin,
@@ -115,13 +120,17 @@ export default async function ClientSitePage({ params }: PageProps) {
   if (!client) notFound()
   if (client.status !== 'ACTIVE') return <SiteUnavailable />
 
-  const reviews = await getReviews(client.id)
+  const [reviews, extras] = await Promise.all([
+    getReviews(client.id),
+    getSiteExtras(client.id),
+  ])
   const primary = client.primaryColor || '#1e40af'
   const accent = client.accentColor || '#f59e0b'
   const services = servicesForClient(client as Record<ServiceFlag, boolean>)
   const telHref = telHrefFor(client.phone)
   const areas = client.serviceAreas || []
   const basePath = `/sites/${client.slug}`
+  const faqLd = faqJsonLd(extras)
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -159,6 +168,12 @@ export default async function ClientSitePage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      {faqLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
+        />
+      )}
 
       <SiteHeader client={client} basePath={basePath} />
 
@@ -206,24 +221,38 @@ export default async function ClientSitePage({ params }: PageProps) {
                 {client.phone}
               </a>
             </div>
-            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm opacity-90">
-              {client.offersMobileService && (
+            {extras.heroBullets.length > 0 ? (
+              <ul className="mt-8 space-y-2 text-sm opacity-95 max-w-xl">
+                {extras.heroBullets.map((b) => (
+                  <li key={b.lead} className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>
+                      <strong>{b.lead}</strong>
+                      {b.text ? ` ${b.text}` : ''}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm opacity-90">
+                {client.offersMobileService && (
+                  <span className="flex items-center gap-1.5">
+                    <Truck className="h-4 w-4" /> Mobile service available
+                  </span>
+                )}
+                {client.offersAdasCalibration && (
+                  <span className="flex items-center gap-1.5">
+                    <ShieldCheck className="h-4 w-4" /> ADAS calibration
+                  </span>
+                )}
                 <span className="flex items-center gap-1.5">
-                  <Truck className="h-4 w-4" /> Mobile service available
+                  <CheckCircle2 className="h-4 w-4" /> Insurance claims handled
                 </span>
-              )}
-              {client.offersAdasCalibration && (
                 <span className="flex items-center gap-1.5">
-                  <ShieldCheck className="h-4 w-4" /> ADAS calibration
+                  <Clock className="h-4 w-4" /> Fast scheduling
                 </span>
-              )}
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4" /> Insurance claims handled
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Clock className="h-4 w-4" /> Fast scheduling
-              </span>
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Quote widget, above the fold on desktop */}
@@ -271,6 +300,9 @@ export default async function ClientSitePage({ params }: PageProps) {
       {/* Reviews (live GBP data only; stripped when absent) */}
       <ReviewsBand reviews={reviews} client={client} />
 
+      {/* Range-of-work gallery (stripped when no photos) */}
+      <GalleryGrid extras={extras} />
+
       {/* Why us */}
       <section className="bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 grid md:grid-cols-3 gap-8 text-center">
@@ -315,6 +347,9 @@ export default async function ClientSitePage({ params }: PageProps) {
         </div>
       </section>
 
+      {/* Warranty (rendered only when defined in full) */}
+      <WarrantyBand extras={extras} client={client} />
+
       {/* Service areas */}
       {areas.length > 0 && (
         <section className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
@@ -332,6 +367,9 @@ export default async function ClientSitePage({ params }: PageProps) {
           </div>
         </section>
       )}
+
+      {/* FAQ (stripped when empty) */}
+      <FaqSection extras={extras} />
 
       {/* Bottom CTA */}
       <section className="text-white" style={{ backgroundColor: primary }}>
@@ -359,7 +397,7 @@ export default async function ClientSitePage({ params }: PageProps) {
         </div>
       </section>
 
-      <SiteFooter client={client} />
+      <SiteFooter client={client} extras={extras} />
       <MobileCallBar client={client} quoteHref="#quote" />
 
       {/* Quote widget — relative src makes it load and submit same-origin */}

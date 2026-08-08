@@ -1,4 +1,5 @@
-import { Phone, Star, MapPin } from 'lucide-react'
+import { Phone, Star, MapPin, ShieldCheck } from 'lucide-react'
+import type { SiteExtras } from '@/lib/site-content'
 
 /**
  * Shared building blocks for hosted client sites (home + service pages).
@@ -148,28 +149,130 @@ export function ReviewsBand({
   )
 }
 
-export function SiteFooter({ client }: { client: SiteClient }) {
+export function SiteFooter({ client, extras }: { client: SiteClient; extras?: SiteExtras | null }) {
   const primary = client.primaryColor || '#1e40af'
   return (
     <footer className="border-t border-gray-100">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-gray-500">
-        <div>
-          <span className="font-semibold text-gray-700">{client.businessName}</span>
-          {client.hasShopLocation && (
-            <>
-              {' '}
-              · {client.streetAddress}, {client.city}, {client.state} {client.postalCode}
-            </>
-          )}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-3">
+        {extras?.footerBlurb && (
+          <p className="text-sm text-gray-500 max-w-3xl">{extras.footerBlurb}</p>
+        )}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-gray-500">
+          <div>
+            <span className="font-semibold text-gray-700">{client.businessName}</span>
+            {client.hasShopLocation && (
+              <>
+                {' '}
+                · {client.streetAddress}, {client.city}, {client.state} {client.postalCode}
+              </>
+            )}
+          </div>
+          {/* Kept as a plain, un-swapped text instance so call-asset verification
+              can always read the real number, per the landing-template rule. */}
+          <a href={telHrefFor(client.phone)} className="font-semibold" style={{ color: primary }}>
+            {client.phone}
+          </a>
         </div>
-        {/* Kept as a plain, un-swapped text instance so call-asset verification
-            can always read the real number, per the landing-template rule. */}
-        <a href={telHrefFor(client.phone)} className="font-semibold" style={{ color: primary }}>
-          {client.phone}
-        </a>
+        {/* Regulator line — rendered only when a registration number is set.
+            Some licensed trades must show this in internet advertising
+            (California auto glass: 16 CCR § 3371.2). */}
+        {extras?.registrationNumber && (
+          <p className="text-xs text-gray-400">
+            {extras.registrationName || client.businessName} · Registration No.{' '}
+            {extras.registrationNumber}
+          </p>
+        )}
       </div>
     </footer>
   )
+}
+
+/**
+ * Warranty band. Rendered only when warranty text exists, and always shows the
+ * definition in full beside the claim — a warranty headline without its terms
+ * is the compliance failure the landing-template rules exist to prevent.
+ */
+export function WarrantyBand({ extras, client }: { extras: SiteExtras | null; client: SiteClient }) {
+  if (!extras?.warrantyText) return null
+  const primary = client.primaryColor || '#1e40af'
+  return (
+    <section className="bg-gray-50">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 text-center">
+        <ShieldCheck className="h-10 w-10 mx-auto mb-3" style={{ color: primary }} />
+        <h2 className="text-2xl font-extrabold">
+          {extras.warrantyTitle || 'Our Warranty'}
+        </h2>
+        <p className="mt-3 text-gray-600 text-sm leading-relaxed whitespace-pre-line">
+          {extras.warrantyText}
+        </p>
+      </div>
+    </section>
+  )
+}
+
+/** "Range of work" photo grid. Stripped entirely when no photos exist. */
+export function GalleryGrid({ extras }: { extras: SiteExtras | null }) {
+  if (!extras || extras.galleryPhotos.length === 0) return null
+  return (
+    <section className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
+      <h2 className="text-3xl font-extrabold text-center">Our Work</h2>
+      <p className="text-gray-500 text-center mt-2 mb-8">
+        Real jobs, not stock photos.
+      </p>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {extras.galleryPhotos.slice(0, 6).map((photo) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={photo.url}
+            src={photo.url}
+            alt={photo.alt}
+            loading="lazy"
+            className="w-full aspect-[4/3] object-cover rounded-xl border border-gray-100"
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/** FAQ accordion. Stripped when the client has no FAQ content. */
+export function FaqSection({ extras }: { extras: SiteExtras | null }) {
+  if (!extras || extras.faq.length === 0) return null
+  return (
+    <section className="max-w-3xl mx-auto px-4 sm:px-6 py-14">
+      <h2 className="text-3xl font-extrabold text-center mb-8">Common Questions</h2>
+      <div className="space-y-3">
+        {extras.faq.map((item) => (
+          <details
+            key={item.q}
+            className="group rounded-xl border border-gray-200 px-5 py-4"
+          >
+            <summary className="font-semibold cursor-pointer list-none flex items-center justify-between gap-3">
+              {item.q}
+              <span className="text-gray-400 group-open:rotate-45 transition-transform text-xl leading-none">
+                +
+              </span>
+            </summary>
+            <p className="mt-3 text-sm text-gray-600 leading-relaxed">{item.a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/** FAQPage JSON-LD — emitted only when FAQ content exists. */
+export function faqJsonLd(extras: SiteExtras | null): object | null {
+  if (!extras || extras.faq.length === 0) return null
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: extras.faq.map((item) => ({
+      '@type': 'Question',
+      name: item.q,
+      acceptedAnswer: { '@type': 'Answer', text: item.a },
+    })),
+  }
 }
 
 export function MobileCallBar({ client, quoteHref }: { client: SiteClient; quoteHref: string }) {

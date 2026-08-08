@@ -117,6 +117,10 @@ model Client {
   // Cached Google Business Profile reviews (hosted landing pages)
   gbpReviews ClientGbpReviews?
 
+  // Editorial content + photos for the hosted site
+  siteContent ClientSiteContent?
+  sitePhotos  ClientSitePhoto[]
+
   // Admin Push Notification Subscriptions
   adminPushSubscriptions AdminPushSubscriptionClient[]
 }
@@ -438,6 +442,68 @@ model ClientGbpReviews {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// HOSTED SITE CONTENT (editorial fields + photos)
+//
+// Everything here is optional, and every site section backed by it is
+// REMOVED when its content is empty — never rendered as an empty shell,
+// never filled with invented facts. This ports the landing-template rules:
+// a lifetime warranty is defined on-page in full beside the claim, the
+// registration line renders only when a number is set, FAQs and photos are
+// per-client editorial content entered in the admin, not generated.
+// ============================================
+
+model ClientSiteContent {
+  id       String @id @default(cuid())
+  clientId String @unique
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Warranty band. Rendered only when set, and always in full — a warranty
+  // claim without its definition beside it is a compliance failure.
+  warrantyTitle String? // e.g. "Lifetime Workmanship Warranty"
+  warrantyText  String? @db.Text
+
+  // FAQ section + FAQPage JSON-LD. [{ q, a }]
+  faq Json?
+
+  // Hero bullets — the claims under the H1. [{ lead, text }]. When absent the
+  // page falls back to its generic trust chips. No carrier names, no
+  // certifications the shop doesn't hold, no timing promises.
+  heroBullets Json?
+
+  // Footer one-liner about the business.
+  footerBlurb String?
+
+  // Regulator line (e.g. California ARD: 16 CCR § 3371.2 requires the
+  // registered name and number in internet advertising). Renders only when
+  // number is set.
+  registrationName   String?
+  registrationNumber String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum SitePhotoPool {
+  GALLERY // the "range of work" grid
+  BODY    // process/detail shots beside prose on service pages
+}
+
+model ClientSitePhoto {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  url       String
+  alt       String // plain-text description; also the accessibility text
+  pool      SitePhotoPool @default(GALLERY)
+  sortOrder Int           @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([clientId, pool, sortOrder])
 }
 
 // ============================================

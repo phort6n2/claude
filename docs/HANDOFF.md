@@ -201,6 +201,16 @@ client's flags enable. Setting a client to PAUSED replaces their whole site
 with a neutral "temporarily unavailable" page (the non-payment kill switch)
 within the 5-minute ISR window.
 
+**Editorial site content.** `ClientSiteContent` + `ClientSitePhoto`, edited in
+the client editor's Hosted Website section: hero bullets, warranty (always
+rendered with its full terms beside the claim), FAQ (with FAQPage JSON-LD),
+gallery and body photos (https URLs; real photos of the business only),
+footer blurb, and the regulator registration line. Every section strips
+entirely when its content is empty. The compliance rules come from the
+landing-template repo's config header — read them before writing client copy;
+in particular: no deductible offers, no invented prices or facts about the
+business, no third-party "approved/authorized" claims.
+
 **`src/app/sites/[slug]/page.tsx` — hosted landing pages.** Every ACTIVE
 client has a full landing page at `/sites/{slug}`, rendered entirely from the
 Client record (name, phone, colors, services, service areas, Places link) with
