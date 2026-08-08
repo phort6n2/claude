@@ -432,6 +432,9 @@ export default async function ClientSitePage({ params }: PageProps) {
         services={services}
         areas={areas}
         basePath={basePath}
+        reviews={reviews}
+        offersMobileService={client.offersMobileService}
+        offersAdasCalibration={client.offersAdasCalibration}
       />
       <MobileCallBar client={client} quoteHref="#quote" />
 

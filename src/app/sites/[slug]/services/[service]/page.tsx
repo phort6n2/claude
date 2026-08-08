@@ -251,6 +251,9 @@ export default async function ServicePage({ params }: PageProps) {
         services={servicesForClient(client as Record<ServiceFlag, boolean>)}
         areas={client.serviceAreas || []}
         basePath={basePath}
+        reviews={reviews}
+        offersMobileService={client.offersMobileService}
+        offersAdasCalibration={client.offersAdasCalibration}
       />
       <MobileCallBar client={client} quoteHref="#quote" />
 
