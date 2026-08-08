@@ -73,7 +73,7 @@ const SITE_BASE_CSS = `
 .gl-step::after{content:"";position:absolute;background:var(--line-strong);pointer-events:none;left:23px;top:56px;width:2px;bottom:-22px;transform-origin:top left}
 .gl-step:last-child::after{content:none}
 @media (min-width:768px){
-  .gl-step::after{left:58px;top:23px;height:2px;width:auto;right:-22px;bottom:auto}
+  .gl-step::after{left:58px;top:23px;height:2px;width:auto;right:-38px;bottom:auto}
 }
 @supports (animation-timeline: view()) {
   .gl-step::after{animation:gl-step-draw ease both;animation-timeline:view();animation-range:entry 30% entry 90%}
@@ -468,25 +468,38 @@ export function StatBand({
   )
 }
 
-/** Numbered three-step process on the s2 tint, generic to the trade. */
-export function ProcessSection({ client, offersMobileService }: { client: SiteClient; offersMobileService: boolean }) {
+/**
+ * Numbered three-step process on the s2 tint, .co composition: discs on top
+ * with the connector running between them at disc height, text below. Copy is
+ * generic to the trade, conditioned only on flags the client actually has.
+ */
+export function ProcessSection({
+  client,
+  offersMobileService,
+  offersAdasCalibration,
+}: {
+  client: SiteClient
+  offersMobileService: boolean
+  offersAdasCalibration?: boolean
+}) {
+  const fitLine = `We fit the glass${offersAdasCalibration ? ', recalibrate the camera if there is one,' : ''} and tell you when it's safe to drive.`
   const steps = [
     {
       title: 'Tell us what broke',
-      body: 'Fill out the quote form or call — year, make, model, and which glass. Photos help but aren’t required.',
+      body: 'Send the form or call. Your VIN or plate gets us the exact glass for your vehicle, including whether it carries a camera, rain sensor or heating element.',
     },
     {
-      title: 'We confirm glass and price',
-      body: 'We match the exact glass for your vehicle and confirm your price — and your insurance coverage if you’re filing a claim — before anything is scheduled.',
+      title: 'We check your coverage first',
+      body: 'Before anything is scheduled we confirm what your policy covers — or give you a straight cash price — so the price you hear is the price you pay. No claim is filed until you say go.',
     },
     offersMobileService
       ? {
           title: 'We come to you',
-          body: `Home, office, or roadside anywhere we serve — or visit the shop if you prefer. Most jobs are done the same or next day.`,
+          body: `Your driveway, your office lot, your job site — wherever the vehicle is. ${fitLine}`,
         }
       : {
           title: 'Drop in and drive off',
-          body: 'Bring the vehicle to the shop — most windshields are replaced the same or next day, ready to drive when the adhesive sets.',
+          body: `Bring the vehicle to the shop. ${fitLine}`,
         },
   ]
   return (
@@ -498,7 +511,12 @@ export function ProcessSection({ client, offersMobileService }: { client: SiteCl
         />
         <div className="grid md:grid-cols-3 gap-8 md:gap-x-12">
           {steps.map((step, i) => (
-            <div key={step.title} className="gl-step grid grid-cols-[48px_minmax(0,1fr)] gap-4 items-start">
+            // Mobile: disc beside the text so the vertical connector stays in
+            // its own gutter. Desktop: disc on top, text below — the .co look.
+            <div
+              key={step.title}
+              className="gl-step grid grid-cols-[48px_minmax(0,1fr)] gap-4 items-start md:block"
+            >
               <div
                 className={`gl-step-n h-12 w-12 rounded-full flex items-center justify-center text-white text-lg font-extrabold tabular-nums ${
                   i === steps.length - 1 ? 'bg-[var(--cta)]' : 'bg-[var(--dark)]'
@@ -506,8 +524,8 @@ export function ProcessSection({ client, offersMobileService }: { client: SiteCl
               >
                 {i + 1}
               </div>
-              <div>
-                <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold m-0">
+              <div className="md:mt-7">
+                <h3 className="m-0 text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold">
                   {step.title}
                 </h3>
                 <p className="mt-1.5 mb-0 text-sm text-[var(--tx2)] leading-relaxed">{step.body}</p>
