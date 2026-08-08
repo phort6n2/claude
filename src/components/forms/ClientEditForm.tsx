@@ -149,6 +149,12 @@ interface BulletRow {
   text: string
 }
 
+interface ChapterRow {
+  heading: string
+  body: string
+  photoUrl: string
+}
+
 /**
  * Editorial content for the hosted site: warranty, FAQ, hero bullets, footer
  * blurb, registration line, and photo URLs. Every section on the site backed
@@ -174,6 +180,7 @@ function SiteContentEditor({
   const [registrationNumber, setRegistrationNumber] = useState('')
   const [faq, setFaq] = useState<FaqRow[]>([])
   const [bullets, setBullets] = useState<BulletRow[]>([])
+  const [chapters, setChapters] = useState<ChapterRow[]>([])
   const [photos, setPhotos] = useState<SitePhotoRow[]>([])
 
   useEffect(() => {
@@ -189,6 +196,7 @@ function SiteContentEditor({
           setRegistrationNumber(c.registrationNumber || '')
           setFaq(Array.isArray(c.faq) ? c.faq : [])
           setBullets(Array.isArray(c.heroBullets) ? c.heroBullets : [])
+          setChapters(Array.isArray(c.chapters) ? c.chapters : [])
         }
         if (Array.isArray(data.photos)) setPhotos(data.photos)
       })
@@ -211,13 +219,17 @@ function SiteContentEditor({
           registrationNumber,
           faq,
           heroBullets: bullets,
+          chapters,
           photos,
         }),
       })
       const data = await res.json()
       setMessage(
         res.ok
-          ? { ok: true, text: 'Site content saved — live within about 5 minutes.' }
+          ? {
+              ok: !data.warning,
+              text: data.warning || 'Site content saved — live within about 5 minutes.',
+            }
           : { ok: false, text: data.error || 'Failed to save' }
       )
     } catch {
@@ -248,11 +260,13 @@ function SiteContentEditor({
       if (d.footerBlurb) setFooterBlurb(d.footerBlurb)
       if (Array.isArray(d.faq) && d.faq.length) setFaq(d.faq)
       if (Array.isArray(d.heroBullets) && d.heroBullets.length) setBullets(d.heroBullets)
+      if (Array.isArray(d.chapters) && d.chapters.length) setChapters(d.chapters)
       if (Array.isArray(d.photos) && d.photos.length) setPhotos(d.photos)
       if (d.logoUrl && onLogoFound) onLogoFound(d.logoUrl)
       const found = [
         d.logoUrl ? 'logo (set in Branding above — hit the main Save)' : null,
         d.warrantyText ? 'warranty' : null,
+        d.chapters?.length ? `${d.chapters.length} story sections` : null,
         d.faq?.length ? `${d.faq.length} FAQs` : null,
         d.heroBullets?.length ? `${d.heroBullets.length} bullets` : null,
         d.photos?.length ? `${d.photos.length} photos` : null,
@@ -355,6 +369,65 @@ function SiteContentEditor({
             className="text-sm text-blue-600 font-medium"
           >
             + Add bullet
+          </button>
+        )}
+      </div>
+
+      {/* Editorial chapters */}
+      <div>
+        <label className="block text-xs font-semibold text-gray-600 mb-1">
+          Story sections (between hero and services; max 5)
+        </label>
+        <p className="text-xs text-gray-400 mb-2">
+          The long-form middle of the site — their history, their approach, what makes them
+          different. In the client&apos;s own words and facts only; the importer drafts these from
+          their existing site. Blank line = new paragraph. Optional photo shows beside the text.
+        </p>
+        {chapters.map((ch, i) => (
+          <div key={i} className="border border-gray-200 rounded-lg p-3 mb-2 space-y-2">
+            <div className="flex gap-2">
+              <input
+                className={inputCls}
+                placeholder="Section heading"
+                value={ch.heading}
+                onChange={(e) =>
+                  setChapters((prev) => prev.map((x, j) => (j === i ? { ...x, heading: e.target.value } : x)))
+                }
+              />
+              <button
+                type="button"
+                onClick={() => setChapters((prev) => prev.filter((_, j) => j !== i))}
+                className="p-2 text-gray-400 hover:text-red-600 shrink-0"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+            <textarea
+              className={inputCls}
+              rows={4}
+              placeholder="Section text — 1-3 short paragraphs"
+              value={ch.body}
+              onChange={(e) =>
+                setChapters((prev) => prev.map((x, j) => (j === i ? { ...x, body: e.target.value } : x)))
+              }
+            />
+            <input
+              className={inputCls}
+              placeholder="Photo URL (optional, https)"
+              value={ch.photoUrl}
+              onChange={(e) =>
+                setChapters((prev) => prev.map((x, j) => (j === i ? { ...x, photoUrl: e.target.value } : x)))
+              }
+            />
+          </div>
+        ))}
+        {chapters.length < 5 && (
+          <button
+            type="button"
+            onClick={() => setChapters((prev) => [...prev, { heading: '', body: '', photoUrl: '' }])}
+            className="text-sm text-blue-600 font-medium"
+          >
+            + Add section
           </button>
         )}
       </div>

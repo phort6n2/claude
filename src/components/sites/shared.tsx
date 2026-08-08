@@ -891,6 +891,95 @@ export function BulletCheck() {
   return <Check className="h-[19px] w-[19px] mt-[3px] shrink-0 text-[var(--success)]" strokeWidth={2.6} />
 }
 
+export interface TrustItem {
+  icon: React.ReactNode
+  title: string
+  text: string
+}
+
+/**
+ * The reference's .tb strip under the hero: a hairline-divided grid of four
+ * short, factual claims. Items come from the client's flags — never claims
+ * the data can't back.
+ */
+export function TrustRow({ items }: { items: TrustItem[] }) {
+  if (items.length === 0) return null
+  return (
+    <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 mt-[26px]">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-[var(--line-card)] border border-[var(--line-card)] rounded-[14px] overflow-hidden">
+        {items.slice(0, 4).map((item) => (
+          <div key={item.title} className="bg-white px-4 py-3.5 flex items-start gap-2.5 min-w-0">
+            <span className="shrink-0 mt-0.5 text-[var(--brand)]">{item.icon}</span>
+            <span className="min-w-0">
+              <b className="block text-sm text-[var(--tx)]">{item.title}</b>
+              <span className="text-[13px] text-[var(--tx-muted)]">{item.text}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Editorial chapters between the hero and the services grid — the reference
+ * build's long-form middle. Content is per-business (admin-written or drafted
+ * by the importer from the client's own site); photos alternate sides.
+ * Stripped entirely when no chapters exist.
+ */
+export function ChapterSections({
+  chapters,
+  fallbackPhotos,
+}: {
+  chapters: Array<{ heading: string; body: string; photoUrl: string }>
+  fallbackPhotos: Array<{ url: string; alt: string }>
+}) {
+  if (chapters.length === 0) return null
+  return (
+    <section className="bg-[var(--s1)] border-t border-[var(--line)]">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 space-y-14">
+        {chapters.map((chapter, i) => {
+          const photo = chapter.photoUrl
+            ? { url: chapter.photoUrl, alt: chapter.heading }
+            : fallbackPhotos[i] || null
+          const paragraphs = chapter.body.split(/\n\s*\n/).filter((p) => p.trim())
+          return (
+            <div
+              key={chapter.heading}
+              className={`grid gap-8 items-start ${photo ? 'lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]' : ''}`}
+            >
+              <div className={photo && i % 2 === 1 ? 'lg:order-2' : ''}>
+                <h2 className="text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight m-0">
+                  {chapter.heading}
+                </h2>
+                {paragraphs.map((p, j) => (
+                  <p key={j} className="mt-4 mb-0 text-[15px] text-[var(--tx2)] leading-relaxed max-w-[62ch]">
+                    {p.trim()}
+                  </p>
+                ))}
+              </div>
+              {photo && (
+                <figure className={`m-0 ${i % 2 === 1 ? 'lg:order-1' : ''}`}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={photo.url}
+                    alt={photo.alt}
+                    loading="lazy"
+                    className="w-full aspect-[4/3] object-cover rounded-[20px] border border-[var(--line-card)] shadow-sm"
+                  />
+                  {photo.alt && photo.alt !== chapter.heading && (
+                    <figcaption className="mt-2 text-[13px] text-[var(--tx-muted)]">{photo.alt}</figcaption>
+                  )}
+                </figure>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
 export function SiteUnavailable() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-6">

@@ -25,6 +25,8 @@ import {
   AreasBand,
   BulletCheck,
   SiteBaseStyles,
+  TrustRow,
+  ChapterSections,
   faqJsonLd,
   type ReviewsData,
   type ReviewQuote,
@@ -41,6 +43,10 @@ import {
   Sun,
   ScanLine,
   CheckCircle2,
+  Truck,
+  ShieldCheck,
+  BadgeCheck,
+  Clock,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -191,6 +197,28 @@ export default async function ClientSitePage({ params }: PageProps) {
       : {}),
   }
 
+  // Headline names the location and the highest-value service the client
+  // actually offers, like the reference — never a generic slogan.
+  const heroTitle = client.offersAdasCalibration
+    ? `Auto glass and ADAS calibration across the ${client.city} area`
+    : client.offersMobileService
+      ? `Auto glass repair and replacement — we come to you in ${client.city}`
+      : `Windshield repair and replacement in ${client.city}`
+
+  const trustItems = [
+    ...(client.offersMobileService
+      ? [{ icon: <Truck className="h-5 w-5" />, title: 'Mobile service', text: 'We come to your home or work' }]
+      : []),
+    ...(client.offersAdasCalibration
+      ? [{ icon: <ScanLine className="h-5 w-5" />, title: 'ADAS calibration', text: 'Cameras recalibrated after replacement' }]
+      : []),
+    { icon: <ShieldCheck className="h-5 w-5" />, title: 'Insurance claims handled', text: 'We work with your carrier directly' },
+    ...(extras.warrantyText
+      ? [{ icon: <BadgeCheck className="h-5 w-5" />, title: extras.warrantyTitle || 'Workmanship warranty', text: 'Full terms further down this page' }]
+      : []),
+    { icon: <Clock className="h-5 w-5" />, title: 'Fast scheduling', text: 'Most jobs done same or next day' },
+  ].slice(0, 4)
+
   const heroBullets =
     extras.heroBullets.length > 0
       ? extras.heroBullets
@@ -258,9 +286,7 @@ export default async function ClientSitePage({ params }: PageProps) {
               {client.city}, {client.state} auto glass experts
             </Eyebrow>
             <h1 className="text-[clamp(1.875rem,1.35rem+2.6vw,3.4rem)] font-extrabold leading-[1.08] tracking-[-.02em] text-[var(--tx)]">
-              Cracked windshield?
-              <br />
-              Fixed fast. Done right.
+              {heroTitle}
             </h1>
             <p className="mt-4 text-[17px] leading-[1.55] text-[var(--tx2)] max-w-[48ch]">
               Windshield repair and replacement in {client.city}
@@ -302,7 +328,17 @@ export default async function ClientSitePage({ params }: PageProps) {
             </div>
           </div>
         </div>
+
+        {/* Reference's .tb strip: four short factual claims under the hero */}
+        <TrustRow items={trustItems} />
       </section>
+
+      {/* Editorial chapters — the reference's long-form middle. Stripped
+          entirely when the client has none. */}
+      <ChapterSections
+        chapters={extras.chapters}
+        fallbackPhotos={extras.bodyPhotos.length ? extras.bodyPhotos : extras.galleryPhotos.slice(1)}
+      />
 
       {/* Services — on paper, per the reference rhythm */}
       {services.length > 0 && (
@@ -336,6 +372,26 @@ export default async function ClientSitePage({ params }: PageProps) {
                   </a>
                 )
               })}
+              {client.offersMobileService && (
+                <a
+                  href="#quote"
+                  className="group p-6 rounded-[20px] border border-[var(--line-card)] bg-white shadow-sm hover:shadow-md hover:border-[var(--line-strong)] hover:-translate-y-0.5 transition-all no-underline"
+                >
+                  <div className="h-10 w-10 rounded-[14px] flex items-center justify-center mb-4 bg-[var(--tint)]">
+                    <Truck className="h-5 w-5 text-[var(--brand)]" />
+                  </div>
+                  <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold text-[var(--tx)] m-0">
+                    Mobile Service
+                  </h3>
+                  <p className="text-[var(--tx-muted)] text-sm mt-1.5 mb-0">
+                    Home, office, or roadside — the shop comes to you.
+                  </p>
+                  <span className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-[var(--brand)]">
+                    Get a quote
+                    <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
+                </a>
+              )}
             </div>
           </div>
         </section>

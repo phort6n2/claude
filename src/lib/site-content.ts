@@ -17,11 +17,18 @@ export interface HeroBullet {
   text: string
 }
 
+export interface SiteChapter {
+  heading: string
+  body: string
+  photoUrl: string
+}
+
 export interface SiteExtras {
   warrantyTitle: string | null
   warrantyText: string | null
   faq: FaqItem[]
   heroBullets: HeroBullet[]
+  chapters: SiteChapter[]
   footerBlurb: string | null
   registrationName: string | null
   registrationNumber: string | null
@@ -34,11 +41,31 @@ const EMPTY_EXTRAS: SiteExtras = {
   warrantyText: null,
   faq: [],
   heroBullets: [],
+  chapters: [],
   footerBlurb: null,
   registrationName: null,
   registrationNumber: null,
   galleryPhotos: [],
   bodyPhotos: [],
+}
+
+export function asChapters(value: unknown): SiteChapter[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter(
+      (item): item is SiteChapter =>
+        !!item &&
+        typeof (item as SiteChapter).heading === 'string' &&
+        typeof (item as SiteChapter).body === 'string' &&
+        (item as SiteChapter).heading.trim() !== '' &&
+        (item as SiteChapter).body.trim() !== ''
+    )
+    .map((c) => ({
+      heading: c.heading,
+      body: c.body,
+      photoUrl: typeof c.photoUrl === 'string' ? c.photoUrl : '',
+    }))
+    .slice(0, 5)
 }
 
 function asFaq(value: unknown): FaqItem[] {
@@ -70,12 +97,29 @@ function asBullets(value: unknown): HeroBullet[] {
 
 export async function getSiteExtras(clientId: string): Promise<SiteExtras> {
   try {
-    const [content, photos] = await Promise.all([
-      prisma.clientSiteContent.findUnique({ where: { clientId } }),
+    // The main query names its columns so a DB that predates a newer column
+    // never fails it; each newer column is fetched in its own guarded query
+    // and simply strips when the ALTER hasn't run yet.
+    const [content, photos, chapterRow] = await Promise.all([
+      prisma.clientSiteContent.findUnique({
+        where: { clientId },
+        select: {
+          warrantyTitle: true,
+          warrantyText: true,
+          faq: true,
+          heroBullets: true,
+          footerBlurb: true,
+          registrationName: true,
+          registrationNumber: true,
+        },
+      }),
       prisma.clientSitePhoto.findMany({
         where: { clientId },
         orderBy: [{ pool: 'asc' }, { sortOrder: 'asc' }],
       }),
+      prisma.clientSiteContent
+        .findUnique({ where: { clientId }, select: { chapters: true } })
+        .catch(() => null),
     ])
 
     return {
@@ -83,6 +127,7 @@ export async function getSiteExtras(clientId: string): Promise<SiteExtras> {
       warrantyText: content?.warrantyText || null,
       faq: asFaq(content?.faq),
       heroBullets: asBullets(content?.heroBullets),
+      chapters: asChapters(chapterRow?.chapters),
       footerBlurb: content?.footerBlurb || null,
       registrationName: content?.registrationName || null,
       registrationNumber: content?.registrationNumber || null,
