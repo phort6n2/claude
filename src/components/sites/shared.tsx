@@ -63,6 +63,21 @@ const SITE_BASE_CSS = `
   .gl-site .site-hdr{animation:gl-hdr-shadow linear both;animation-timeline:scroll();animation-range:0 60px}
   @keyframes gl-hdr-shadow{to{background:#fff;box-shadow:0 2px 4px -1px rgba(11,27,43,.06),0 6px 14px -3px rgba(11,27,43,.09)}}
 }
+/* How-it-works connector: a line from disc to disc — vertical when the steps
+   stack, horizontal when they sit three-up. The drawn state is the DEFAULT;
+   the scroll animation only adds motion, so a decoration failure can never
+   remove the thing it decorates (the template's rule). */
+.gl-step{position:relative}
+.gl-step-n{position:relative;z-index:1}
+.gl-step::after{content:"";position:absolute;background:var(--line-strong);pointer-events:none;left:23px;top:56px;width:2px;bottom:-22px;transform-origin:top left}
+.gl-step:last-child::after{content:none}
+@media (min-width:768px){
+  .gl-step::after{left:58px;top:23px;height:2px;width:auto;right:-22px;bottom:auto}
+}
+@supports (animation-timeline: view()) {
+  .gl-step::after{animation:gl-step-draw ease both;animation-timeline:view();animation-range:entry 30% entry 90%}
+  @keyframes gl-step-draw{from{transform:scale(0)}to{transform:scale(1)}}
+}
 `
 
 export function SiteBaseStyles() {
@@ -480,20 +495,22 @@ export function ProcessSection({ client, offersMobileService }: { client: SiteCl
           eyebrow="How it works"
           title={offersMobileService ? 'Three steps, no shop visit' : 'Three simple steps'}
         />
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-3 gap-8 md:gap-x-12">
           {steps.map((step, i) => (
-            <div key={step.title}>
+            <div key={step.title} className="gl-step grid grid-cols-[48px_minmax(0,1fr)] gap-4 items-start">
               <div
-                className={`h-12 w-12 rounded-full flex items-center justify-center text-white text-xl font-extrabold mb-4 ${
-                  i === steps.length - 1 ? 'bg-[var(--cta)]' : 'bg-[var(--dark-3)]'
+                className={`gl-step-n h-12 w-12 rounded-full flex items-center justify-center text-white text-lg font-extrabold tabular-nums ${
+                  i === steps.length - 1 ? 'bg-[var(--cta)]' : 'bg-[var(--dark)]'
                 }`}
               >
                 {i + 1}
               </div>
-              <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold m-0">
-                {step.title}
-              </h3>
-              <p className="mt-2 mb-0 text-sm text-[var(--tx-muted)] leading-relaxed">{step.body}</p>
+              <div>
+                <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold m-0">
+                  {step.title}
+                </h3>
+                <p className="mt-1.5 mb-0 text-sm text-[var(--tx2)] leading-relaxed">{step.body}</p>
+              </div>
             </div>
           ))}
         </div>
@@ -723,25 +740,35 @@ export function MapSection({
   )
 }
 
-/** Service areas as a dark coverage band with city lists in columns. */
+/**
+ * Service areas as a dark coverage band: head on the left, city list filling
+ * the right column — no dead space beside a short list. Cities come from the
+ * client's serviceAreas field; add more there and this section grows.
+ */
 export function AreasBand({ client, areas }: { client: SiteClient; areas: string[] }) {
   if (areas.length === 0) return null
   return (
     <section className="bg-[var(--dark)] text-white on-dark">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
-        <SectionHead
-          onDark
-          eyebrow="Where we go"
-          title="Areas we serve"
-          lead={`${client.city} and the surrounding communities — if you’re close but don’t see your city, call and ask.`}
-        />
-        {/* Flowing list, not spread columns — a short city list must read as
-            a compact group instead of floating across the full band width. */}
-        <ul className="flex flex-wrap gap-x-10 gap-y-3 list-none m-0 p-0 max-w-4xl">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-14 lg:items-center">
+        <div>
+          <Eyebrow onDark>Where we go</Eyebrow>
+          <h2 className="text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight m-0">
+            Areas we serve
+          </h2>
+          <p className="mt-3 mb-0 text-[17px] leading-[1.55] text-[var(--on-dark-2)]">
+            {client.city} and the surrounding communities — if you’re close but don’t see your
+            city, call and ask.
+          </p>
+        </div>
+        <ul
+          className={`list-none m-0 p-0 grid gap-x-8 gap-y-3 content-center ${
+            areas.length > 8 ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'
+          }`}
+        >
           {areas.map((area) => (
             <li key={area}>
-              <span className="inline-flex items-center gap-2 text-[15px] text-[var(--on-dark-2)]">
-                <MapPin className="h-3.5 w-3.5 text-[var(--brand-light)] shrink-0" />
+              <span className="inline-flex items-center gap-2.5 text-[15px] text-[var(--on-dark-2)]">
+                <MapPin className="h-4 w-4 text-[var(--brand-light)] shrink-0" />
                 {area}
               </span>
             </li>
