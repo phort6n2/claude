@@ -25,6 +25,7 @@ export interface ImportedSiteContent {
   heroBullets: Array<{ lead: string; text: string }>
   footerBlurb: string | null
   photos: ImportedPhoto[]
+  logoUrl: string | null
   pagesCrawled: string[]
   warnings: string[]
 }
@@ -140,8 +141,41 @@ function findContentLinks(html: string, base: URL): URL[] {
   return [...out.values()].slice(0, MAX_EXTRA_PAGES)
 }
 
+/**
+ * The site's logo: first <img> whose filename/alt/class says "logo"
+ * (mechanical — the logo is excluded from photo candidates by the same
+ * keyword, so the two never overlap), falling back to og:image.
+ */
+export function findLogo(html: string, base: URL): string | null {
+  const re = /<img[^>]*>/gi
+  let m: RegExpExecArray | null
+  while ((m = re.exec(html))) {
+    const tag = m[0]
+    if (!/logo/i.test(tag)) continue
+    const src = /(?:data-src|src)\s*=\s*["']([^"']+)["']/i.exec(tag)?.[1]
+    if (!src || src.startsWith('data:')) continue
+    try {
+      const abs = new URL(src, base)
+      if (abs.protocol === 'https:') return abs.toString()
+    } catch {
+      /* keep scanning */
+    }
+  }
+  const og = /<meta[^>]+property\s*=\s*["']og:image["'][^>]+content\s*=\s*["']([^"']+)["']/i.exec(html)
+    || /<meta[^>]+content\s*=\s*["']([^"']+)["'][^>]+property\s*=\s*["']og:image["']/i.exec(html)
+  if (og) {
+    try {
+      const abs = new URL(og[1], base)
+      if (abs.protocol === 'https:') return abs.toString()
+    } catch {
+      /* fall through */
+    }
+  }
+  return null
+}
+
 /** Candidate photos from <img> tags: absolute https, no icons/logos/tracking. */
-function findPhotoCandidates(html: string, base: URL): Array<{ url: string; alt: string }> {
+export function findPhotoCandidates(html: string, base: URL): Array<{ url: string; alt: string }> {
   const out = new Map<string, { url: string; alt: string }>()
   const re = /<img[^>]*>/gi
   let m: RegExpExecArray | null
@@ -188,6 +222,7 @@ export async function importSiteContent(
   }
 
   const warnings: string[] = []
+  const logoUrl = findLogo(mainHtml, check.url)
   const pages: Array<{ url: string; text: string }> = [
     { url: check.url.toString(), text: htmlToText(mainHtml) },
   ]
@@ -299,6 +334,7 @@ ${pages.map((p) => `=== ${p.url} ===\n${p.text}`).join('\n\n')}`
         heroBullets,
         footerBlurb: asStr(parsed.footerBlurb, 400),
         photos,
+        logoUrl,
         pagesCrawled: pages.map((p) => p.url),
         warnings,
       },
