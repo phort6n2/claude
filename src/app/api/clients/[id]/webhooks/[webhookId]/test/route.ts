@@ -50,11 +50,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       last_name: 'Lead',
       full_name: 'Test Lead',
       phone: '+15555550100',
+      phone_formatted: '(555) 555-0100',
       email: 'webhook-test@glassleads.app',
 
       // The job — the fields a shop actually dispatches on. A workflow mapped
       // without these looks fine on the test and loses the job on real leads.
-      service: 'windshield-replacement',
+      service: 'Windshield Replacement',
       vehicle: '2020 Hyundai Santa Fe',
       postal_code: '97132',
       vin: '',
@@ -62,12 +63,23 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       insurance_carrier: '',
       message: `Test delivery from glassleads.app for ${destination.client.businessName}. Safe to ignore or delete.`,
 
+      // Readable companions and the template sites' aliases. Same keys the
+      // widget sends, so one CRM mapping covers both form types.
+      service_label: 'Windshield Replacement',
+      insurance_label: 'Not sure yet about insurance',
+      carrier: '',
+      notes: '',
+      source_label: 'Landing page',
+      lead_summary: 'Test Lead needs windshield replacement on a 2020 Hyundai Santa Fe.',
+
       // Origin
       form_name: 'glassleads-widget',
       contact_source: 'glassleads.app webhook test',
       page: `${site}/`,
+      page_path: '/',
       landing_page: `${site}/`,
       referrer: '',
+      paid_click: 'no',
 
       // Ad attribution. Sent empty rather than omitted so every one of them
       // shows up as a mappable field — a real paid lead fills these in, and
