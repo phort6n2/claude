@@ -471,12 +471,21 @@ model ClientAdsTracking {
   /* "AW-123456789". The whole feature is gated on this being present. */
   conversionId String?
 
-  /* Conversion action labels, the part after the slash in "AW-xxx/LABEL". */
+  /* Conversion action labels, the part after the slash in "AW-xxx/LABEL".
+   * Both are extracted from the snippet the operator pastes rather than typed,
+   * so there is no chance of splitting the pair at the wrong place. */
   leadConversionLabel String?
-  /* Optional and deliberately separate. Leave it empty when calls are
-   * reported by HighLevel's Number Pool Calling instead — both reporting the
-   * same call is how an account ends up double-counting. */
+  /* Value carried by the lead conversion, when the action defines one. */
+  leadValue    Float?
+  leadCurrency String?
+
+  /* "Calls from a website". Google swaps callPhoneNumber on the page for a
+   * forwarding number and reports calls over the configured duration, so the
+   * number has to be stored exactly as the snippet gives it. Optional and
+   * deliberately separate — leave it unset when HighLevel's Number Pool
+   * Calling is doing the swap, because two swap systems on one number fight. */
   callConversionLabel String?
+  callPhoneNumber     String?
 
   /* Send hashed email/phone with the conversion. Google does the hashing in
    * the tag; nothing identifiable is stored here. */
