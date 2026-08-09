@@ -36,11 +36,18 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  const locations = await prisma.clientLocation.findMany({
-    where: { clientId: id },
-    orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
-  })
-  return NextResponse.json({ locations })
+  // The table ships as hand-run SQL, so an environment can be running this
+  // code before the migration. An empty list is the honest answer there —
+  // better than a 500 on a tab that has nothing to do with shops.
+  try {
+    const locations = await prisma.clientLocation.findMany({
+      where: { clientId: id },
+      orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
+    })
+    return NextResponse.json({ locations })
+  } catch {
+    return NextResponse.json({ locations: [] })
+  }
 }
 
 /**
@@ -97,8 +104,48 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
   const requestedPrimary = incoming.findIndex((row) => row.isPrimary)
   const primaryIndex = requestedPrimary >= 0 ? requestedPrimary : 0
 
+  try {
+    return NextResponse.json({
+      locations: await reconcile(id, client.slug, cleaned, primaryIndex),
+    })
+  } catch (error) {
+    // Same migration caveat as GET, but here silence would look like a
+    // successful save. Say what is actually wrong.
+    console.error('Failed to save client locations:', error)
+    return NextResponse.json(
+      {
+        error:
+          'Could not save shops. If this is a fresh deploy, docs/db-setup-client-locations.sql has not been run against this database yet.',
+      },
+      { status: 503 }
+    )
+  }
+}
+
+type CleanedLocation = {
+  id: string | null
+  label: string
+  streetAddress: string
+  city: string
+  state: string
+  postalCode: string
+  country: string
+  phone: string | null
+  hours: string | null
+  googlePlaceId: string | null
+  googleMapsUrl: string | null
+  sortOrder: number
+}
+
+/** Make the stored set match the submitted set, then return it in display order. */
+async function reconcile(
+  clientId: string,
+  slug: string,
+  cleaned: CleanedLocation[],
+  primaryIndex: number
+) {
   const existing = await prisma.clientLocation.findMany({
-    where: { clientId: id },
+    where: { clientId },
     select: { id: true },
   })
   const keptIds = new Set(cleaned.map((row) => row.id).filter(Boolean) as string[])
@@ -106,7 +153,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
 
   await prisma.$transaction(async (tx) => {
     if (removedIds.length) {
-      await tx.clientLocation.deleteMany({ where: { id: { in: removedIds }, clientId: id } })
+      await tx.clientLocation.deleteMany({ where: { id: { in: removedIds }, clientId } })
     }
     for (const [i, row] of cleaned.entries()) {
       const data = {
@@ -126,19 +173,18 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       if (row.id) {
         // clientId in the filter keeps one client's payload from touching
         // another client's row by guessing an id.
-        await tx.clientLocation.updateMany({ where: { id: row.id, clientId: id }, data })
+        await tx.clientLocation.updateMany({ where: { id: row.id, clientId }, data })
       } else {
-        await tx.clientLocation.create({ data: { ...data, clientId: id } })
+        await tx.clientLocation.create({ data: { ...data, clientId } })
       }
     }
   })
 
   // The address is on every page of the site, not just the home page.
-  revalidatePath(`/sites/${client.slug}`, 'layout')
+  revalidatePath(`/sites/${slug}`, 'layout')
 
-  const locations = await prisma.clientLocation.findMany({
-    where: { clientId: id },
+  return prisma.clientLocation.findMany({
+    where: { clientId },
     orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
   })
-  return NextResponse.json({ locations })
 }
