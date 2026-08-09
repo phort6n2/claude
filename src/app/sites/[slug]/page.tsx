@@ -14,7 +14,6 @@ import {
   SkipLink,
   TrustRow,
   ChapterSections,
-  faqJsonLd,
   type ReviewsData,
   type ReviewQuote,
 } from '@/components/sites/shared'
@@ -29,6 +28,7 @@ import {
 } from '@/components/sites/site-body'
 import { getSiteExtras } from '@/lib/site-content'
 import { sitePaletteVars } from '@/lib/site-theme'
+import { homeJsonLd } from '@/lib/site-schema'
 
 /**
  * Hosted client landing page, styled after the landing-template reference
@@ -67,6 +67,7 @@ async function getClient(slug: string) {
       city: true,
       state: true,
       postalCode: true,
+      country: true,
       logoUrl: true,
       primaryColor: true,
       secondaryColor: true,
@@ -131,7 +132,6 @@ export default async function ClientSitePage({ params }: PageProps) {
   const services = servicesForClient(client as Record<ServiceFlag, boolean>)
   const areas = client.serviceAreas || []
   const basePath = `/sites/${client.slug}`
-  const faqLd = faqJsonLd(extras)
   const palette = sitePaletteVars(client.primaryColor, client.accentColor)
   const flags = {
     offersMobileService: client.offersMobileService,
@@ -142,35 +142,13 @@ export default async function ClientSitePage({ params }: PageProps) {
     label: s.name,
   }))
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'AutoRepair',
-    name: client.businessName,
-    telephone: client.phone,
-    email: client.email,
-    url: `https://${client.siteSubdomain || client.slug}.glassleads.app/`,
-    address: {
-      '@type': 'PostalAddress',
-      streetAddress: client.streetAddress,
-      addressLocality: client.city,
-      addressRegion: client.state,
-      postalCode: client.postalCode,
-      addressCountry: 'US',
-    },
-    areaServed: areas.map((a) => ({ '@type': 'City', name: a })),
-    ...(client.googleMapsUrl ? { hasMap: client.googleMapsUrl } : {}),
-    ...(client.logoUrl ? { image: client.logoUrl } : {}),
-    // Emitted ONLY from live cached review data, never fabricated.
-    ...(reviews
-      ? {
-          aggregateRating: {
-            '@type': 'AggregateRating',
-            ratingValue: reviews.rating,
-            reviewCount: reviews.reviewCount,
-          },
-        }
-      : {}),
-  }
+  const siteOrigin = `https://${client.siteSubdomain || client.slug}.glassleads.app`
+  const jsonLd = homeJsonLd({
+    origin: siteOrigin,
+    client,
+    services: services.map((s) => ({ slug: s.slug, name: s.name })),
+    extras,
+  })
 
   // Headline names the location and the highest-value service the client
   // actually offers, like the reference — never a generic slogan.
@@ -193,12 +171,6 @@ export default async function ClientSitePage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      {faqLd && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
-        />
-      )}
 
       <SkipLink />
       <UtilBar
