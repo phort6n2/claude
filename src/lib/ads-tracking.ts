@@ -25,6 +25,10 @@ export interface AdsTracking {
   callSendTo: string | null
   callPhoneNumber: string | null
   enhancedConversions: boolean
+  /** Microsoft Advertising UET tag id, when Bing is configured. */
+  bingUetTagId: string | null
+  /** Event goal action name that Microsoft matches the lead against. */
+  bingLeadEventAction: string | null
 }
 
 /** "AW-123456789" — anything else is a typo we refuse to emit. */
@@ -36,10 +40,33 @@ export async function getAdsTracking(clientId: string): Promise<AdsTracking | nu
   // The table ships as hand-run SQL; a missing table means no tracking, not a
   // broken page.
   const row = await prisma.clientAdsTracking.findUnique({ where: { clientId } }).catch(() => null)
-  if (!row?.conversionId) return null
+  if (!row) return null
+
+  // Microsoft stands alone: a client can run Bing without Google, so this is
+  // resolved independently of the Google block below.
+  const bingUetTagId = /^\d{6,12}$/.test((row.bingUetTagId || '').trim())
+    ? (row.bingUetTagId as string).trim()
+    : null
+  const bingLeadEventAction = bingUetTagId
+    ? (row.bingLeadEventAction || '').trim() || 'submit_lead_form'
+    : null
+
+  const empty = {
+    conversionId: '',
+    leadSendTo: null,
+    leadValue: null,
+    leadCurrency: null,
+    callSendTo: null,
+    callPhoneNumber: null,
+    enhancedConversions: row.enhancedConversions,
+    bingUetTagId,
+    bingLeadEventAction,
+  }
+
+  if (!row.conversionId) return bingUetTagId ? empty : null
 
   const conversionId = row.conversionId.trim()
-  if (!isConversionId(conversionId)) return null
+  if (!isConversionId(conversionId)) return bingUetTagId ? empty : null
 
   const label = (value: string | null) => {
     const trimmed = (value || '').trim()
@@ -54,7 +81,7 @@ export async function getAdsTracking(clientId: string): Promise<AdsTracking | nu
   // An ID with no lead label can still legitimately exist — a client who only
   // reports calls from the page — but an ID with neither has nothing to
   // report, so there is no reason to load the tag at all.
-  if (!leadSendTo && !callSendTo) return null
+  if (!leadSendTo && !callSendTo) return bingUetTagId ? empty : null
 
   return {
     conversionId,
@@ -64,5 +91,7 @@ export async function getAdsTracking(clientId: string): Promise<AdsTracking | nu
     callSendTo,
     callPhoneNumber: callSendTo ? row.callPhoneNumber : null,
     enhancedConversions: row.enhancedConversions,
+    bingUetTagId,
+    bingLeadEventAction,
   }
 }

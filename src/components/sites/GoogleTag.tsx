@@ -32,9 +32,59 @@ import type { AdsTracking } from '@/lib/ads-tracking'
 export function GoogleTag({ tracking }: { tracking: AdsTracking | null }) {
   if (!tracking) return null
 
-  const { conversionId, leadSendTo, leadValue, leadCurrency, callSendTo, callPhoneNumber, enhancedConversions } =
-    tracking
+  const {
+    conversionId,
+    leadSendTo,
+    leadValue,
+    leadCurrency,
+    callSendTo,
+    callPhoneNumber,
+    enhancedConversions,
+    bingUetTagId,
+    bingLeadEventAction,
+  } = tracking
 
+  return (
+    <>
+      {bingUetTagId && (
+        <BingUetTag
+          tagId={bingUetTagId}
+          eventAction={bingLeadEventAction || 'submit_lead_form'}
+          enhanced={enhancedConversions}
+        />
+      )}
+      {conversionId ? (
+        <GoogleAdsTag
+          conversionId={conversionId}
+          leadSendTo={leadSendTo}
+          leadValue={leadValue}
+          leadCurrency={leadCurrency}
+          callSendTo={callSendTo}
+          callPhoneNumber={callPhoneNumber}
+          enhancedConversions={enhancedConversions}
+        />
+      ) : null}
+    </>
+  )
+}
+
+function GoogleAdsTag({
+  conversionId,
+  leadSendTo,
+  leadValue,
+  leadCurrency,
+  callSendTo,
+  callPhoneNumber,
+  enhancedConversions,
+}: {
+  conversionId: string
+  leadSendTo: string | null
+  leadValue: number | null
+  leadCurrency: string | null
+  callSendTo: string | null
+  callPhoneNumber: string | null
+  enhancedConversions: boolean
+}) {
   return (
     <>
       <Script
@@ -108,5 +158,75 @@ gtag('config', ${JSON.stringify(callSendTo)}, { phone_conversion_number: ${JSON.
         `}
       </Script>
     </>
+  )
+}
+
+/**
+ * Microsoft Advertising (Bing) UET tag.
+ *
+ * UET is Microsoft's equivalent of the Google tag: one numeric tag installed
+ * site-wide, after which conversions are "event goals" matched by ACTION
+ * NAME. That matching is string equality — the action pushed here and the one
+ * typed into the goal have to agree exactly, which is why the action is
+ * configured rather than hardcoded, and why the admin shows the value it will
+ * push.
+ *
+ * The same shadow-DOM problem applies as for Google, and the same
+ * `glassleads:lead` event solves it.
+ *
+ * Enhanced conversions differ from Google's in one way worth knowing:
+ * Microsoft accepts plaintext and hashes it in the browser, but the phone
+ * number must already be in E.164 — which is exactly what the widget now
+ * sends, so it is passed straight through.
+ */
+function BingUetTag({
+  tagId,
+  eventAction,
+  enhanced,
+}: {
+  tagId: string
+  eventAction: string
+  enhanced: boolean
+}) {
+  return (
+    <Script id="gl-uet" strategy="afterInteractive">
+      {`
+(function (w, d, t, r, u) {
+  var f, n, i;
+  w[u] = w[u] || [];
+  f = function () {
+    var o = { ti: ${JSON.stringify(tagId)}, enableAutoSpaTracking: true };
+    o.q = w[u];
+    w[u] = new UET(o);
+    w[u].push('pageLoad');
+  };
+  n = d.createElement(t); n.src = r; n.async = 1;
+  n.onload = n.onreadystatechange = function () {
+    var s = this.readyState;
+    if (!s || s === 'loaded' || s === 'complete') { f(); n.onload = n.onreadystatechange = null; }
+  };
+  i = d.getElementsByTagName(t)[0];
+  i.parentNode.insertBefore(n, i);
+})(window, document, 'script', '//bat.bing.com/bat.js', 'uetq');
+
+(function () {
+  var ACTION = ${JSON.stringify(eventAction)};
+  var ENHANCED = ${enhanced ? 'true' : 'false'};
+
+  window.addEventListener('glassleads:lead', function (event) {
+    var detail = (event && event.detail) || {};
+    try {
+      window.uetq = window.uetq || [];
+      // Microsoft hashes these itself; the phone has to arrive already
+      // formatted E.164, which is what the widget sends.
+      var params = ENHANCED
+        ? { pid: { em: detail.email || '', ph: detail.phone || '' } }
+        : {};
+      window.uetq.push('event', ACTION, params);
+    } catch (e) {}
+  });
+})();
+      `}
+    </Script>
   )
 }

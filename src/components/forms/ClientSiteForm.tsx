@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Loader2, Check, AlertCircle, Star } from 'lucide-react'
 import SiteContentEditor from '@/components/admin/SiteContentEditor'
-import AdsTrackingCard from '@/components/admin/AdsTrackingCard'
+import CustomDomainsCard from '@/components/admin/CustomDomainsCard'
 
 /**
  * "Website" tab — the client's hosted site: which address it lives at, and
@@ -142,12 +142,15 @@ export default function ClientSiteForm({
 
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
         <div className="px-6 pt-5 pb-1">
-          <h2 className="font-semibold text-gray-900">Google Ads conversion tracking</h2>
+          <h2 className="font-semibold text-gray-900">Custom domain</h2>
           <p className="text-sm text-gray-500">
-            What this site reports back to the client&apos;s Ads account
+            The client&apos;s own domain, pointed at this site
           </p>
         </div>
-        <AdsTrackingCard clientId={client.id} />
+        <CustomDomainsCard
+          clientId={client.id}
+          subdomain={`${client.siteSubdomain || client.slug}.glassleads.app`}
+        />
       </section>
 
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
