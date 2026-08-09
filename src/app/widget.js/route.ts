@@ -113,6 +113,17 @@ const WIDGET_SOURCE = String.raw`(function () {
     return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
   }
 
+  // White button text needs a dark enough fill — darken light brand colors,
+  // same rule the host site's palette applies.
+  function ensureDark(hex) {
+    var m = /^#([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return hex;
+    var n = parseInt(m[1], 16);
+    var r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    var l = (Math.max(r, g, b) + Math.min(r, g, b)) / 510;
+    return l > 0.45 ? darken(hex, 0.35) : hex;
+  }
+
   function buildStyles(cfg) {
     return '' +
       ':host{all:initial}' +
@@ -137,7 +148,7 @@ const WIDGET_SOURCE = String.raw`(function () {
       'input:hover,select:hover,textarea:hover{border-color:#66788B}' +
       'textarea{min-height:96px;resize:vertical;line-height:1.5;padding-top:11px}' +
       'select{padding-right:42px;background-repeat:no-repeat;background-position:right 14px center;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%234C5C6B\' stroke-width=\'2.2\' stroke-linecap=\'round\'%3E%3Cpath d=\'M6 9l6 6 6-6\'/%3E%3C/svg%3E")}' +
-      'input:focus,select:focus,textarea:focus{outline:none;border-color:' + cfg.primaryColor + ';box-shadow:0 0 0 3px ' + rgba(cfg.primaryColor, 0.16) + '}' +
+      'input:focus,select:focus,textarea:focus{outline:none;border-color:' + cfg.primaryColor + ';box-shadow:0 0 0 3px ' + rgba(cfg.primaryColor, 0.4) + '}' +
       'input[aria-invalid="true"],select[aria-invalid="true"]{border-color:#B3261E;background:#FEF2F2;box-shadow:0 0 0 3px rgba(179,38,30,.14)}' +
       '.ferr{display:none;margin:6px 0 0;font-size:13.5px;font-weight:600;color:#B3261E}' +
       '.ferr.on{display:block}' +
@@ -163,7 +174,7 @@ const WIDGET_SOURCE = String.raw`(function () {
       '.btn{width:100%;min-height:56px;margin-top:18px;padding:14px;border:0;border-radius:14px;font-size:17.5px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(180deg,' + cfg.primaryColor + ',' + darken(cfg.primaryColor, 0.17) + ');box-shadow:0 6px 14px -4px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.2)}' +
       '.btn:disabled{opacity:.6;cursor:default}' +
       '.micro{font-size:13px;color:#5c5c5c;text-align:center;margin-top:12px;line-height:1.5}' +
-      '.consent{font-size:12px;color:#8a8a8a;margin-top:12px;line-height:1.5}' +
+      '.consent{font-size:12px;color:#6e6e6e;margin-top:12px;line-height:1.5}' +
       '.ok{padding:28px 22px;text-align:center}' +
       '.ok .big{width:56px;height:56px;margin:0 auto;border-radius:999px;display:flex;align-items:center;justify-content:center;color:' + cfg.primaryColor + ';background:' + rgba(cfg.primaryColor, 0.1) + '}' +
       '.ok h4{margin:14px 0 8px;font-size:18px;color:#1a1a1a}' +
@@ -177,18 +188,38 @@ const WIDGET_SOURCE = String.raw`(function () {
       '.fab{position:fixed;right:18px;bottom:18px;z-index:2147483000;display:flex;align-items:center;gap:8px;padding:13px 18px;border:0;border-radius:999px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.25);background:' + cfg.primaryColor + '}' +
       '.overlay{position:fixed;inset:0;z-index:2147483001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}' +
       '.close{position:absolute;top:10px;right:14px;background:none;border:0;color:#1a1a1a;font-size:22px;cursor:pointer;opacity:.7}' +
-      '.headwrap{position:relative}';
+      '.headwrap{position:relative}' +
+      // Short desktop viewports (1366x768 laptops): compress so the submit
+      // button stays above the fold — the template's height media queries.
+      '@media (min-width:900px) and (max-height:820px){' +
+      '.head{padding-top:16px}.head p{margin-bottom:0}.body{padding-top:10px}' +
+      '.row+.row,.row+div,div+.row{margin-top:10px}.more-btn{margin-top:12px;min-height:46px}' +
+      '.btn{margin-top:14px}' +
+      '}' +
+      '@media (min-width:900px) and (max-height:720px){' +
+      '.head p{display:none}' +
+      'input,select{min-height:44px;padding:10px 12px}' +
+      '.row{gap:10px}.row+.row,.row+div,div+.row{margin-top:8px}' +
+      '.btn{min-height:50px;margin-top:12px}.consent{display:none}' +
+      '}';
   }
 
+  var uid = 0;
   function buildForm(cfg, onSubmit) {
     var form = el('form', { novalidate: 'novalidate' });
     var fieldErrs = {};
     function field(labelHtml, input, errKey) {
       var wrap = el('div', { class: 'field' });
-      wrap.appendChild(el('label', { html: labelHtml }));
+      // Programmatic label association: label[for] -> input#id, so taps focus
+      // the field and screen readers announce it.
+      var id = input.id || ('gl-f' + (++uid));
+      input.id = id;
+      var label = el('label', { html: labelHtml });
+      label.setAttribute('for', id);
+      wrap.appendChild(label);
       wrap.appendChild(input);
       if (errKey) {
-        var p = el('p', { class: 'ferr' });
+        var p = el('p', { class: 'ferr', id: id + '-err' });
         fieldErrs[errKey] = { p: p, input: input };
         wrap.appendChild(p);
       }
@@ -201,9 +232,11 @@ const WIDGET_SOURCE = String.raw`(function () {
         f.p.textContent = message;
         f.p.className = 'ferr on';
         f.input.setAttribute('aria-invalid', 'true');
+        f.input.setAttribute('aria-describedby', f.p.id);
       } else {
         f.p.className = 'ferr';
         f.input.removeAttribute('aria-invalid');
+        f.input.removeAttribute('aria-describedby');
       }
     }
     var REQ = '<span class="req" aria-hidden="true">*</span>';
@@ -255,7 +288,7 @@ const WIDGET_SOURCE = String.raw`(function () {
 
     var btn = el('button', { type: 'submit', text: 'Get my free quote' });
     btn.className = 'btn';
-    var err = el('div'); err.className = 'err';
+    var err = el('div', { role: 'alert' }); err.className = 'err';
 
     var row1 = el('div', { class: 'row' }, [field('Full name' + REQ, name, 'name'), field('Mobile phone' + REQ, phone, 'phone')]);
     var row2 = el('div', { class: 'row' }, [field('Email' + REQ, email, 'email'), field('Service ZIP' + REQ, zip, 'zip')]);
@@ -383,17 +416,19 @@ const WIDGET_SOURCE = String.raw`(function () {
         if (!res.ok) throw new Error('HTTP ' + res.status);
         body.innerHTML = '';
         var first = (data.full_name || '').split(' ')[0] || 'there';
-        var ok = el('div'); ok.className = 'ok';
+        var ok = el('div', { role: 'status', 'aria-live': 'polite' }); ok.className = 'ok';
         ok.appendChild(el('div', {
           class: 'big',
           html: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
         }));
-        ok.appendChild(el('h4', { text: "You're all set, " + first + '.' }));
+        var okHead = el('h4', { text: "You're all set, " + first + '.', tabindex: '-1' });
+        ok.appendChild(okHead);
         ok.appendChild(el('p', { text: "We've got your request. A " + cfg.businessName + ' tech will call you shortly to confirm the glass, your coverage and a time that works.' }));
         if (cfg.phone) {
           ok.appendChild(el('a', { href: 'tel:' + cfg.phone.replace(/[^+\d]/g, ''), text: 'Call us now — ' + cfg.phone }));
         }
         body.appendChild(ok);
+        try { okHead.focus(); } catch (e) {}
         if (onDone) onDone();
       }).catch(function () {
         fail(false, 'Something went wrong sending your request. Please call us at ' + (cfg.phone || 'the number on this page') + '.');
@@ -406,12 +441,55 @@ const WIDGET_SOURCE = String.raw`(function () {
   }
 
   function mountInline(container, cfg) {
+    // Clear the server-rendered loading skeleton before mounting the card.
+    container.textContent = '';
     var host = el('div');
     container.appendChild(host);
     var shadow = host.attachShadow({ mode: 'open' });
     var style = el('style', { text: buildStyles(cfg) });
     shadow.appendChild(style);
-    shadow.appendChild(buildCard(cfg, null).card);
+    var built = buildCard(cfg, null);
+    // Message-match: a service page names its service on the container and
+    // the select starts there instead of the global default.
+    var wanted = container.getAttribute('data-service');
+    if (wanted) {
+      var select = built.card.querySelector('select[name="service"]');
+      if (select) {
+        for (var i = 0; i < select.options.length; i++) {
+          if (select.options[i].value.toLowerCase() === wanted.toLowerCase()) {
+            select.selectedIndex = i;
+            break;
+          }
+        }
+      }
+    }
+    shadow.appendChild(built.card);
+    watchStickyBar(container, shadow);
+  }
+
+  // Hide the page's sticky call bar while any quote form is on screen or
+  // being typed into — it must never compete with the form or sit over the
+  // keyboard. Drawn-by-default: no JS support, no observer → bar stays.
+  var stickyState = { vis: 0, focus: 0 };
+  function applyStickyBar() {
+    var bar = document.querySelector('[data-gl-mobilebar]');
+    if (bar) bar.style.display = stickyState.vis > 0 || stickyState.focus > 0 ? 'none' : '';
+  }
+  function watchStickyBar(container, shadow) {
+    if (!document.querySelector('[data-gl-mobilebar]') || !('IntersectionObserver' in window)) return;
+    var wasVisible = false;
+    try {
+      new IntersectionObserver(function (entries) {
+        var nowVisible = entries[0] ? entries[0].isIntersecting : false;
+        if (nowVisible !== wasVisible) {
+          stickyState.vis += nowVisible ? 1 : -1;
+          wasVisible = nowVisible;
+          applyStickyBar();
+        }
+      }, { threshold: 0.15 }).observe(container);
+      shadow.addEventListener('focusin', function () { stickyState.focus++; applyStickyBar(); });
+      shadow.addEventListener('focusout', function () { stickyState.focus = Math.max(0, stickyState.focus - 1); applyStickyBar(); });
+    } catch (e) {}
   }
 
   function mountFloating(cfg) {
@@ -429,28 +507,70 @@ const WIDGET_SOURCE = String.raw`(function () {
       var built = buildCard(cfg, function () {
         setTimeout(function () { overlay.style.display = 'none'; }, 2500);
       });
-      var close = el('button', { type: 'button', text: '×' });
+      var close = el('button', { type: 'button', text: '×', 'aria-label': 'Close quote form' });
       close.className = 'close';
       close.addEventListener('click', function () { overlay.style.display = 'none'; });
       built.headwrap.appendChild(close);
+      built.card.setAttribute('role', 'dialog');
+      built.card.setAttribute('aria-modal', 'true');
+      built.card.setAttribute('aria-label', 'Get your free quote');
       overlay.appendChild(built.card);
       overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.style.display = 'none'; });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && overlay && overlay.style.display !== 'none') overlay.style.display = 'none';
+      });
       shadow.appendChild(overlay);
     });
   }
 
+  function mountAll(cfg) {
+    cfg.primaryColor = ensureDark(cfg.primaryColor);
+    var containers = document.querySelectorAll('[data-glassleads-widget]');
+    if (containers.length > 0) {
+      for (var i = 0; i < containers.length; i++) mountInline(containers[i], cfg);
+    } else {
+      mountFloating(cfg);
+    }
+  }
+
+  // If the widget can't build (blocked fetch, flaky network), the quote
+  // targets must not dead-end into an empty box: replace the container with
+  // a plain call card so the page still converts by phone.
+  function mountFallback() {
+    var phone = script.getAttribute('data-phone');
+    var containers = document.querySelectorAll('[data-glassleads-widget]');
+    for (var i = 0; i < containers.length; i++) {
+      var c = containers[i];
+      c.textContent = '';
+      var card = el('div');
+      card.style.cssText = 'background:#fff;border:1px solid #e2d8d8;border-radius:20px;padding:24px;text-align:center;font-family:sans-serif;box-shadow:0 10px 20px -6px rgba(20,20,20,.08)';
+      card.appendChild(el('p', { text: 'Call for your free quote — it takes about a minute.' }));
+      if (phone) {
+        var a = el('a', { href: 'tel:' + phone.replace(/[^+\d]/g, ''), text: 'Call ' + phone });
+        a.style.cssText = 'display:block;margin-top:10px;padding:14px;border-radius:12px;background:#1a1a1a;color:#fff;font-weight:700;text-decoration:none';
+        card.appendChild(a);
+      }
+      c.appendChild(card);
+    }
+  }
+
   function init() {
+    // The host site inlines the config so the form renders without a round
+    // trip; third-party embeds fall back to fetching it.
+    var inline = script.getAttribute('data-config');
+    if (inline) {
+      try {
+        mountAll(JSON.parse(inline));
+        return;
+      } catch (e) { /* fall through to fetch */ }
+    }
     fetch(BASE + '/api/widget/config?client=' + encodeURIComponent(CLIENT))
       .then(function (res) { if (!res.ok) throw new Error('config ' + res.status); return res.json(); })
-      .then(function (cfg) {
-        var containers = document.querySelectorAll('[data-glassleads-widget]');
-        if (containers.length > 0) {
-          for (var i = 0; i < containers.length; i++) mountInline(containers[i], cfg);
-        } else {
-          mountFloating(cfg);
-        }
-      })
-      .catch(function (err) { console.warn('[glassleads] widget failed to load:', err); });
+      .then(mountAll)
+      .catch(function (err) {
+        console.warn('[glassleads] widget failed to load:', err);
+        mountFallback();
+      });
   }
 
   if (document.readyState === 'loading') {

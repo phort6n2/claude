@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation'
-import Script from 'next/script'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
 import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
@@ -12,6 +11,7 @@ import {
   BulletCheck,
   CallButton,
   SiteBaseStyles,
+  SkipLink,
   TrustRow,
   ChapterSections,
   faqJsonLd,
@@ -20,6 +20,9 @@ import {
 } from '@/components/sites/shared'
 import {
   SiteBody,
+  SiteChrome,
+  WidgetMount,
+  WidgetScript,
   buildTrustItems,
   defaultHeroBullets,
   prioritizeServices,
@@ -197,6 +200,7 @@ export default async function ClientSitePage({ params }: PageProps) {
         />
       )}
 
+      <SkipLink />
       <UtilBar
         client={client}
         note={
@@ -207,6 +211,7 @@ export default async function ClientSitePage({ params }: PageProps) {
       />
       <SiteHeader client={client} basePath={basePath} reviews={reviews} nav={nav} />
 
+      <main id="main">
       {/* Hero — light gradient over the brand tint. Mobile order is the
           conversion spec from the reference: headline, then the FORM, then
           the supporting bullets; on desktop the form spans both rows on the
@@ -224,6 +229,8 @@ export default async function ClientSitePage({ params }: PageProps) {
             src={extras.galleryPhotos[0].url}
             alt=""
             aria-hidden="true"
+            fetchPriority="low"
+            decoding="async"
             className="absolute inset-0 w-full h-full object-cover opacity-[0.13] pointer-events-none select-none"
           />
         )}
@@ -247,7 +254,7 @@ export default async function ClientSitePage({ params }: PageProps) {
               </span>
               <span className="min-[600px]:hidden">.</span>
             </p>
-            <div className="mt-5 mb-[18px]">
+            <div className="mt-5 mb-[18px] hidden lg:block">
               <RatingChip reviews={reviews} client={client} />
             </div>
           </div>
@@ -255,7 +262,7 @@ export default async function ClientSitePage({ params }: PageProps) {
           {/* Quote widget — above the fold on desktop, right under the
               headline on mobile */}
           <div id="quote" className="w-full scroll-mt-24 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:justify-self-end">
-            <div data-glassleads-widget></div>
+            <WidgetMount client={client} />
           </div>
 
           <div className="lg:col-start-1 lg:row-start-2">
@@ -283,6 +290,7 @@ export default async function ClientSitePage({ params }: PageProps) {
       {/* Editorial chapters — the reference's long-form middle. Stripped
           entirely when the client has none. */}
       <ChapterSections
+        client={client}
         chapters={extras.chapters}
         fallbackPhotos={extras.bodyPhotos.length ? extras.bodyPhotos : extras.galleryPhotos.slice(1)}
       />
@@ -296,9 +304,19 @@ export default async function ClientSitePage({ params }: PageProps) {
         areas={areas}
         basePath={basePath}
       />
+      </main>
 
-      {/* Quote widget — relative src makes it load and submit same-origin */}
-      <Script src="/widget.js" data-client={client.slug} strategy="afterInteractive" />
+      <SiteChrome
+        client={client}
+        flags={flags}
+        reviews={reviews}
+        extras={extras}
+        services={services}
+        areas={areas}
+        basePath={basePath}
+      />
+
+      <WidgetScript client={client} />
     </div>
   )
 }

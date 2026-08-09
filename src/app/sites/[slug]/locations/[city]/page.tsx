@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation'
-import Script from 'next/script'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
 import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
@@ -14,6 +13,7 @@ import {
   CallButton,
   CtaButton,
   SiteBaseStyles,
+  SkipLink,
   TrustRow,
   ChapterSections,
   type ReviewsData,
@@ -21,6 +21,9 @@ import {
 } from '@/components/sites/shared'
 import {
   SiteBody,
+  SiteChrome,
+  WidgetMount,
+  WidgetScript,
   buildTrustItems,
   defaultHeroBullets,
   prioritizeServices,
@@ -176,6 +179,7 @@ export default async function LocationPage({ params }: PageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
+      <SkipLink />
       <UtilBar
         client={client}
         note={
@@ -186,6 +190,7 @@ export default async function LocationPage({ params }: PageProps) {
       />
       <SiteHeader client={client} basePath={basePath} reviews={reviews} nav={nav} />
 
+      <main id="main">
       {/* Hero — identical composition to the homepage, city-specific copy */}
       <section
         className="relative overflow-hidden pt-5 pb-9 lg:pt-[52px] lg:pb-[68px]"
@@ -199,6 +204,8 @@ export default async function LocationPage({ params }: PageProps) {
             src={extras.galleryPhotos[0].url}
             alt=""
             aria-hidden="true"
+            fetchPriority="low"
+            decoding="async"
             className="absolute inset-0 w-full h-full object-cover opacity-[0.13] pointer-events-none select-none"
           />
         )}
@@ -213,13 +220,13 @@ export default async function LocationPage({ params }: PageProps) {
                 : `Windshield repair and replacement in ${location.area}`}
             </h1>
             <p className="mt-4 text-[17px] leading-[1.55] text-[var(--tx2)] max-w-[48ch]">{heroSub}</p>
-            <div className="mt-5 mb-[18px]">
+            <div className="mt-5 mb-[18px] hidden lg:block">
               <RatingChip reviews={reviews} client={client} />
             </div>
           </div>
 
           <div id="quote" className="w-full scroll-mt-24 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:justify-self-end">
-            <div data-glassleads-widget></div>
+            <WidgetMount client={client} />
           </div>
 
           <div className="lg:col-start-1 lg:row-start-2">
@@ -246,6 +253,7 @@ export default async function LocationPage({ params }: PageProps) {
 
       {/* Business chapters give location pages the same substance as home */}
       <ChapterSections
+        client={client}
         chapters={extras.chapters}
         fallbackPhotos={extras.bodyPhotos.length ? extras.bodyPhotos : extras.galleryPhotos.slice(1)}
       />
@@ -259,8 +267,19 @@ export default async function LocationPage({ params }: PageProps) {
         areas={areas}
         basePath={basePath}
       />
+      </main>
 
-      <Script src="/widget.js" data-client={client.slug} strategy="afterInteractive" />
+      <SiteChrome
+        client={client}
+        flags={flags}
+        reviews={reviews}
+        extras={extras}
+        services={services}
+        areas={areas}
+        basePath={basePath}
+      />
+
+      <WidgetScript client={client} />
     </div>
   )
 }
