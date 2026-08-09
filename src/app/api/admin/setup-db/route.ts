@@ -83,6 +83,26 @@ const STATEMENTS: Array<{ table: string; sql: string[] }> = [
     ],
   },
   {
+    table: 'ClientCityContent',
+    sql: [
+      `CREATE TABLE IF NOT EXISTS "ClientCityContent" (
+         "id"        TEXT NOT NULL,
+         "clientId"  TEXT NOT NULL,
+         "city"      TEXT NOT NULL,
+         "heading"   TEXT,
+         "body"      TEXT,
+         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+         "updatedAt" TIMESTAMP(3) NOT NULL,
+         CONSTRAINT "ClientCityContent_pkey" PRIMARY KEY ("id"),
+         CONSTRAINT "ClientCityContent_clientId_fkey"
+           FOREIGN KEY ("clientId") REFERENCES "Client"("id")
+           ON DELETE CASCADE ON UPDATE CASCADE
+       )`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS "ClientCityContent_clientId_city_key" ON "ClientCityContent"("clientId", "city")`,
+      `CREATE INDEX IF NOT EXISTS "ClientCityContent_clientId_idx" ON "ClientCityContent"("clientId")`,
+    ],
+  },
+  {
     table: 'ClientAdsTracking',
     sql: [
       `CREATE TABLE IF NOT EXISTS "ClientAdsTracking" (
@@ -164,6 +184,7 @@ async function run() {
     visible.ClientLocation = await prisma.clientLocation.count()
     visible.ClientAdsTracking = await prisma.clientAdsTracking.count()
     visible.ClientDomain = await prisma.clientDomain.count()
+    visible.ClientCityContent = await prisma.clientCityContent.count()
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     return NextResponse.json(

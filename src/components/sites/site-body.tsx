@@ -209,6 +209,7 @@ export function SiteBody({
   currentServiceSlug,
   locations = [],
   activeCity,
+  linkableCities,
 }: {
   client: SiteClient
   flags: SiteFlags
@@ -224,6 +225,8 @@ export function SiteBody({
   locations?: SiteLocation[]
   /** City this page is about, so the shop in it leads the map section. */
   activeCity?: string | null
+  /** Cities whose page is substantial enough to link to. */
+  linkableCities?: Set<string>
 }) {
   const prioritized = prioritizeServices(services)
   const gridServices = prioritized.slice(0, flags.offersMobileService ? 5 : 6)
@@ -320,7 +323,7 @@ export function SiteBody({
       />
 
       {/* Service areas — dark coverage band */}
-      <AreasBand client={client} areas={areas} basePath={basePath} />
+      <AreasBand client={client} areas={areas} basePath={basePath} linkableCities={linkableCities} />
 
       {/* FAQ (stripped when empty) */}
       <FaqSection extras={extras} />
@@ -340,6 +343,7 @@ export function SiteChrome({
   areas,
   basePath,
   locations = [],
+  linkableCities,
 }: {
   client: SiteClient
   flags: SiteFlags
@@ -349,6 +353,7 @@ export function SiteChrome({
   areas: string[]
   basePath: string
   locations?: SiteLocation[]
+  linkableCities?: Set<string>
 }) {
   return (
     <>
@@ -362,6 +367,7 @@ export function SiteChrome({
         offersMobileService={flags.offersMobileService}
         offersAdasCalibration={flags.offersAdasCalibration}
         locations={locations}
+        linkableCities={linkableCities}
       />
       <MobileCallBar client={client} quoteHref="#quote" />
     </>

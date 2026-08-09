@@ -127,6 +127,9 @@ model Client {
   // The client's own domains pointed at their hosted site
   domains ClientDomain[]
 
+  // Per-city copy that makes a location page worth indexing
+  cityContent ClientCityContent[]
+
   // Editorial content + photos for the hosted site
   siteContent ClientSiteContent?
   sitePhotos  ClientSitePhoto[]
@@ -452,6 +455,39 @@ model ClientGbpReviews {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// PER-CITY PAGE CONTENT
+//
+// The thing that makes a location page a real page rather than a doorway.
+// Without a row here a city page says nothing another city's page doesn't:
+// the same services, the same warranty, the same reviews, with the city name
+// swapped. Google calls that a doorway page and it is an account-level risk,
+// not a ranking nitpick.
+//
+// A city with a row is indexable and listed. A city without one is still
+// served — an ad pointing at it must not 404 — but carries noindex and is
+// kept out of the sitemap and the internal links.
+// ============================================
+
+model ClientCityContent {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  /* Matched case-insensitively against the service-area name. */
+  city String
+
+  /* The client's own words about working in this city. */
+  heading String?
+  body    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([clientId, city])
+  @@index([clientId])
 }
 
 // ============================================

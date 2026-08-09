@@ -1004,13 +1004,24 @@ export function AreasBand({
   client,
   areas,
   basePath,
+  linkableCities,
 }: {
   client: SiteClient
   areas: string[]
   basePath?: string
+  /**
+   * Cities whose page is worth linking. A city we cover but have nothing
+   * specific to say about is still listed — the coverage is true — it just
+   * isn't a link, because linking a noindexed page advertises it.
+   */
+  linkableCities?: Set<string>
 }) {
   if (areas.length === 0) return null
-  const pages = new Map(locationPages(areas).map((l) => [l.area, l.slug]))
+  const pages = new Map(
+    locationPages(areas)
+      .filter((l) => !linkableCities || linkableCities.has(l.area.trim().toLowerCase()))
+      .map((l) => [l.area, l.slug])
+  )
   return (
     <section className="bg-[var(--dark)] text-white on-dark">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-14 lg:items-center">
@@ -1146,6 +1157,7 @@ export function SiteFooter({
   offersMobileService,
   offersAdasCalibration,
   locations = [],
+  linkableCities,
 }: {
   client: SiteClient
   extras?: SiteExtras | null
@@ -1156,6 +1168,7 @@ export function SiteFooter({
   offersMobileService?: boolean
   offersAdasCalibration?: boolean
   locations?: SiteLocation[]
+  linkableCities?: Set<string>
 }) {
   const year = new Date().getFullYear()
   const areaSplit: string[][] = []
@@ -1264,7 +1277,11 @@ export function SiteFooter({
               )}
               <ul className="list-none m-0 p-0 text-sm">
                 {chunk.map((area) => {
-                  const slug = locationPages(areas || []).find((l) => l.area === area)?.slug
+                  const slug = linkableCities
+                    ? locationPages(areas || []).find(
+                        (l) => l.area === area && linkableCities.has(l.area.trim().toLowerCase())
+                      )?.slug
+                    : locationPages(areas || []).find((l) => l.area === area)?.slug
                   return (
                     <li key={area} className="py-[5px]">
                       {slug ? (

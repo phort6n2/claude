@@ -31,6 +31,7 @@ import {
 import { getSiteExtras } from '@/lib/site-content'
 import { sitePaletteVars } from '@/lib/site-theme'
 import { getClientLocations } from '@/lib/client-locations'
+import { cityIsIndexable, getCityContent } from '@/lib/city-content'
 import { hostStanceFor, siteOriginFor } from '@/lib/site-origin'
 import { getAdsTracking } from '@/lib/ads-tracking'
 import { GoogleTag } from '@/components/sites/GoogleTag'
@@ -147,11 +148,12 @@ export default async function ServicePage({ params }: PageProps) {
   if (client.status !== 'ACTIVE') return <SiteUnavailable />
   if (!client[page.flag]) notFound()
 
-  const [reviews, extras, locations, adsTracking] = await Promise.all([
+  const [reviews, extras, locations, adsTracking, cityContent] = await Promise.all([
     getReviews(client.id),
     getSiteExtras(client.id),
     getClientLocations(client.id, client),
     getAdsTracking(client.id),
+    getCityContent(client.id),
   ])
   const services = servicesForClient(client as Record<ServiceFlag, boolean>)
   // Shop cities are part of the coverage list and lead the location pages —
@@ -174,6 +176,14 @@ export default async function ServicePage({ params }: PageProps) {
     client,
     service: { slug: page.slug, name: page.name },
   })
+
+  // Cities the site is willing to link to: a shop is there, or the client has
+  // written something specific about it.
+  const linkableCities = new Set(
+    areas
+      .filter((area) => cityIsIndexable(area, cityContent, locations.map((l) => l.city)))
+      .map((area) => area.trim().toLowerCase())
+  )
 
   const trustItems = buildTrustItems(client, flags, extras)
   const heroBullets = extras.heroBullets.length > 0 ? extras.heroBullets : defaultHeroBullets(flags)
@@ -287,6 +297,7 @@ export default async function ServicePage({ params }: PageProps) {
         basePath={basePath}
         currentServiceSlug={page.slug}
         locations={locations}
+        linkableCities={linkableCities}
       />
       </main>
 
@@ -299,6 +310,7 @@ export default async function ServicePage({ params }: PageProps) {
         areas={areas}
         basePath={basePath}
         locations={locations}
+        linkableCities={linkableCities}
       />
 
       <WidgetScript client={client} basePath={basePath} />

@@ -32,6 +32,7 @@ import {
 import { getSiteExtras } from '@/lib/site-content'
 import { sitePaletteVars } from '@/lib/site-theme'
 import { getClientLocations } from '@/lib/client-locations'
+import { cityIsIndexable, faqForCity, getCityContent } from '@/lib/city-content'
 import { hostStanceFor, siteOriginFor } from '@/lib/site-origin'
 import { getAdsTracking } from '@/lib/ads-tracking'
 import { GoogleTag } from '@/components/sites/GoogleTag'
@@ -124,7 +125,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // The two are kept apart deliberately — see src/lib/site-origin.ts.
   const stance = hostStanceFor(client, (await headers()).get('host'))
   const siteRoot = stance.canonicalOrigin
-  const robots = stance.isCanonicalHost ? undefined : { index: false, follow: true }
+  // A city page with nothing city-specific to say is served but not indexed —
+  // see src/lib/city-content.ts for why it is not simply 404'd.
+  const cityContent = await getCityContent(client.id)
+  const indexable =
+    stance.isCanonicalHost &&
+    cityIsIndexable(location.area, cityContent, locations.map((l) => l.city))
+  const robots = indexable ? undefined : { index: false, follow: true }
   const title = `Auto Glass in ${location.area}, ${client.state} | ${client.businessName}`
   const description = `Windshield repair and replacement in ${location.area}, ${client.state}${client.offersMobileService ? ' — mobile service to your home or office' : ''}. Free quotes from ${client.businessName}. Call ${client.phone}.`
   return {
@@ -151,11 +158,12 @@ export default async function LocationPage({ params }: PageProps) {
   if (!client) notFound()
   if (client.status !== 'ACTIVE') return <SiteUnavailable />
 
-  const [reviews, extras, locations, adsTracking] = await Promise.all([
+  const [reviews, extras, locations, adsTracking, cityContent] = await Promise.all([
     getReviews(client.id),
     getSiteExtras(client.id),
     getClientLocations(client.id, client),
     getAdsTracking(client.id),
+    getCityContent(client.id),
   ])
 
   // Shop cities are part of the coverage list and lead the location pages —
@@ -204,8 +212,36 @@ export default async function LocationPage({ params }: PageProps) {
       ? `${client.businessName} is in ${location.area} at ${shopInCity.streetAddress}. Free quotes and help with your insurance claim.`
       : `${client.businessName} serves ${location.area} and the surrounding area. Free quotes and help with your insurance claim.`
 
+  // Cities the site is willing to link to: a shop is there, or the client has
+  // written something specific about it.
+  const linkableCities = new Set(
+    areas
+      .filter((area) => cityIsIndexable(area, cityContent, locations.map((l) => l.city)))
+      .map((area) => area.trim().toLowerCase())
+  )
+
   const trustItems = buildTrustItems(client, flags, extras)
   const heroBullets = extras.heroBullets.length > 0 ? extras.heroBullets : defaultHeroBullets(flags)
+
+  // The client's own words about this city lead the page when they exist, and
+  // are what makes it an indexable page rather than the template renamed.
+  const cityCopy = cityContent.get(location.area.trim().toLowerCase())
+  const cityChapters = cityCopy?.body
+    ? [
+        {
+          heading: cityCopy.heading || `${client.businessName} in ${location.area}`,
+          body: cityCopy.body,
+          photoUrl: '',
+        },
+      ]
+    : []
+
+  // Questions written about another city are dropped rather than rewritten —
+  // rewriting would invent an answer the client never gave for this city.
+  const cityExtras = {
+    ...extras,
+    faq: faqForCity(extras.faq, location.area, [client.city, ...areas]),
+  }
 
   return (
     <div
@@ -291,10 +327,10 @@ export default async function LocationPage({ params }: PageProps) {
         <TrustRow items={trustItems} />
       </section>
 
-      {/* Business chapters give location pages the same substance as home */}
+      {/* The city's own copy first, then the shared business chapters. */}
       <ChapterSections
         client={client}
-        chapters={extras.chapters}
+        chapters={[...cityChapters, ...extras.chapters]}
         fallbackPhotos={extras.bodyPhotos.length ? extras.bodyPhotos : extras.galleryPhotos.slice(1)}
       />
 
@@ -302,11 +338,12 @@ export default async function LocationPage({ params }: PageProps) {
         client={client}
         flags={flags}
         reviews={reviews}
-        extras={extras}
+        extras={cityExtras}
         services={services}
         areas={areas}
         basePath={basePath}
         locations={locations}
+        linkableCities={linkableCities}
         activeCity={location.area}
       />
       </main>
@@ -320,6 +357,7 @@ export default async function LocationPage({ params }: PageProps) {
         areas={areas}
         basePath={basePath}
         locations={locations}
+        linkableCities={linkableCities}
       />
 
       <WidgetScript client={client} basePath={basePath} />
