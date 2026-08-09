@@ -515,6 +515,27 @@ const WIDGET_SOURCE = String.raw`(function () {
         body: JSON.stringify(payload)
       }).then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
+
+        /* Announce the lead to the host page.
+           This form lives in a shadow root, which Google's automatic event
+           detection cannot see into — without this event a page-level tag has
+           no way to know a conversion happened. The detail carries what
+           enhanced conversions needs (Google hashes it in the tag; nothing
+           identifiable leaves as plaintext beyond this same-page event) and a
+           transaction id so a refresh cannot report the same lead twice.
+           Client sites can listen for this too. */
+        try {
+          window.dispatchEvent(new CustomEvent('glassleads:lead', {
+            detail: {
+              transaction_id: payload.submitted_at + '-' + (payload.phone || payload.email || ''),
+              email: payload.email || '',
+              phone: payload.phone || '',
+              service: payload.service || '',
+              paid_click: payload.paid_click
+            }
+          }));
+        } catch (e) {}
+
         body.innerHTML = '';
         var first = (data.full_name || '').split(' ')[0] || 'there';
         var ok = el('div', { role: 'status', 'aria-live': 'polite' }); ok.className = 'ok';

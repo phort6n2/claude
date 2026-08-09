@@ -30,6 +30,8 @@ import {
 import { getSiteExtras } from '@/lib/site-content'
 import { sitePaletteVars } from '@/lib/site-theme'
 import { getClientLocations } from '@/lib/client-locations'
+import { getAdsTracking } from '@/lib/ads-tracking'
+import { GoogleTag } from '@/components/sites/GoogleTag'
 import { mergeServiceAreas } from '@/lib/site-locations'
 import { serviceJsonLd } from '@/lib/site-schema'
 
@@ -133,10 +135,11 @@ export default async function ServicePage({ params }: PageProps) {
   if (client.status !== 'ACTIVE') return <SiteUnavailable />
   if (!client[page.flag]) notFound()
 
-  const [reviews, extras, locations] = await Promise.all([
+  const [reviews, extras, locations, adsTracking] = await Promise.all([
     getReviews(client.id),
     getSiteExtras(client.id),
     getClientLocations(client.id, client),
+    getAdsTracking(client.id),
   ])
   const services = servicesForClient(client as Record<ServiceFlag, boolean>)
   // Shop cities are part of the coverage list and lead the location pages —
@@ -177,6 +180,7 @@ export default async function ServicePage({ params }: PageProps) {
       style={palette as React.CSSProperties}
     >
       <SiteBaseStyles />
+      <GoogleTag tracking={adsTracking} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

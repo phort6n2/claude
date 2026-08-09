@@ -121,6 +121,9 @@ model Client {
   // address fields above; rows here take over as soon as any exist.
   locations ClientLocation[]
 
+  // Google Ads conversion tracking for the hosted site
+  adsTracking ClientAdsTracking?
+
   // Editorial content + photos for the hosted site
   siteContent ClientSiteContent?
   sitePhotos  ClientSitePhoto[]
@@ -443,6 +446,41 @@ model ClientGbpReviews {
 
   fetchedAt DateTime
   lastError String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// GOOGLE ADS CONVERSION TRACKING (hosted landing pages)
+//
+// Nothing is emitted without a row here and a conversion ID in it: no row,
+// no gtag, no third-party script on the client's page. That is deliberate —
+// a tag firing to the wrong account is worse than no tag.
+//
+// Kept out of Client on purpose. A new table is order-independent against the
+// deploy (reads are guarded), whereas adding scalar columns to Client breaks
+// every query on that table if the code ships before the SQL.
+// ============================================
+
+model ClientAdsTracking {
+  id       String @id @default(cuid())
+  clientId String @unique
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  /* "AW-123456789". The whole feature is gated on this being present. */
+  conversionId String?
+
+  /* Conversion action labels, the part after the slash in "AW-xxx/LABEL". */
+  leadConversionLabel String?
+  /* Optional and deliberately separate. Leave it empty when calls are
+   * reported by HighLevel's Number Pool Calling instead — both reporting the
+   * same call is how an account ends up double-counting. */
+  callConversionLabel String?
+
+  /* Send hashed email/phone with the conversion. Google does the hashing in
+   * the tag; nothing identifiable is stored here. */
+  enhancedConversions Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
