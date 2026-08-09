@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
 import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
-import { findLocation } from '@/lib/site-locations'
+import { findLocation, mergeServiceAreas } from '@/lib/site-locations'
 import {
   UtilBar,
   SiteHeader,
@@ -30,6 +30,7 @@ import {
 } from '@/components/sites/site-body'
 import { getSiteExtras } from '@/lib/site-content'
 import { sitePaletteVars } from '@/lib/site-theme'
+import { getClientLocations } from '@/lib/client-locations'
 import { locationJsonLd } from '@/lib/site-schema'
 
 /**
@@ -100,7 +101,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug, city } = await params
   const client = await getClient(slug)
   if (!client || client.status !== 'ACTIVE') return { title: 'Not Found' }
-  const location = findLocation(client.serviceAreas || [], city)
+  const locations = await getClientLocations(client.id, client)
+  const location = findLocation(
+    mergeServiceAreas(client.serviceAreas || [], locations.map((l) => l.city)),
+    city
+  )
   if (!location) return { title: 'Not Found' }
 
   // Same origin as the page itself, and the same host the canonical names — a
@@ -132,15 +137,20 @@ export default async function LocationPage({ params }: PageProps) {
   if (!client) notFound()
   if (client.status !== 'ACTIVE') return <SiteUnavailable />
 
-  const location = findLocation(client.serviceAreas || [], city)
-  if (!location) notFound()
-
-  const [reviews, extras] = await Promise.all([
+  const [reviews, extras, locations] = await Promise.all([
     getReviews(client.id),
     getSiteExtras(client.id),
+    getClientLocations(client.id, client),
   ])
+
+  // Shop cities are part of the coverage list and lead the location pages —
+  // a city we have an address in outranks one we only drive to. The page set
+  // is resolved from the merged list, so a second shop always has a page.
+  const areas = mergeServiceAreas(client.serviceAreas || [], locations.map((l) => l.city))
+  const location = findLocation(areas, city)
+  if (!location) notFound()
+
   const services = servicesForClient(client as Record<ServiceFlag, boolean>)
-  const areas = client.serviceAreas || []
   const basePath = `/sites/${client.slug}`
   const palette = sitePaletteVars(client.primaryColor, client.accentColor)
   const flags = {
@@ -153,21 +163,31 @@ export default async function LocationPage({ params }: PageProps) {
   }))
 
   const siteOrigin = `https://${client.siteSubdomain || client.slug}.glassleads.app`
+  // A shop physically in this city, if the client has one. Naming it is the
+  // difference between a page about a place and a page about coverage.
+  const shopInCity =
+    locations.find(
+      (shop) => shop.city.trim().toLowerCase() === location.area.trim().toLowerCase()
+    ) || null
   const jsonLd = locationJsonLd({
     origin: siteOrigin,
     client,
     area: location.area,
     slug: location.slug,
+    shop: shopInCity,
   })
 
-  // City copy states only what the data supports. It deliberately does NOT
-  // name a shop city: we store a single address, but a client may run several
-  // shops, and telling a Tualatin visitor to "visit the shop in Portland"
-  // contradicts the client's own copy further down the page and sends them to
-  // the wrong place. The map section shows the real address instead.
+  // City copy states only what the data supports. A shop is named here ONLY
+  // when one is genuinely in this city — telling a Tualatin visitor to "visit
+  // the shop in Portland" because Portland is the address we happen to store
+  // contradicts the rest of the page and sends them to the wrong door. When no
+  // shop sits in the city, the map section shows the real addresses instead.
+  const shopClause = shopInCity ? `, or visit our ${shopInCity.label} shop at ${shopInCity.streetAddress}` : ''
   const heroSub = client.offersMobileService
-    ? `Our mobile unit covers ${location.area} — windshield repair and replacement at your home, office, or roadside. Free quotes and help with your insurance claim.`
-    : `${client.businessName} serves ${location.area} and the surrounding area. Free quotes and help with your insurance claim.`
+    ? `Our mobile unit covers ${location.area} — windshield repair and replacement at your home, office, or roadside${shopClause}. Free quotes and help with your insurance claim.`
+    : shopInCity
+      ? `${client.businessName} is in ${location.area} at ${shopInCity.streetAddress}. Free quotes and help with your insurance claim.`
+      : `${client.businessName} serves ${location.area} and the surrounding area. Free quotes and help with your insurance claim.`
 
   const trustItems = buildTrustItems(client, flags, extras)
   const heroBullets = extras.heroBullets.length > 0 ? extras.heroBullets : defaultHeroBullets(flags)
@@ -270,6 +290,8 @@ export default async function LocationPage({ params }: PageProps) {
         services={services}
         areas={areas}
         basePath={basePath}
+        locations={locations}
+        activeCity={location.area}
       />
       </main>
 
@@ -281,6 +303,7 @@ export default async function LocationPage({ params }: PageProps) {
         services={services}
         areas={areas}
         basePath={basePath}
+        locations={locations}
       />
 
       <WidgetScript client={client} basePath={basePath} />

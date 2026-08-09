@@ -28,6 +28,8 @@ import {
 } from '@/components/sites/site-body'
 import { getSiteExtras } from '@/lib/site-content'
 import { sitePaletteVars } from '@/lib/site-theme'
+import { getClientLocations } from '@/lib/client-locations'
+import { mergeServiceAreas } from '@/lib/site-locations'
 import { homeJsonLd } from '@/lib/site-schema'
 
 /**
@@ -136,12 +138,15 @@ export default async function ClientSitePage({ params }: PageProps) {
   if (!client) notFound()
   if (client.status !== 'ACTIVE') return <SiteUnavailable />
 
-  const [reviews, extras] = await Promise.all([
+  const [reviews, extras, locations] = await Promise.all([
     getReviews(client.id),
     getSiteExtras(client.id),
+    getClientLocations(client.id, client),
   ])
   const services = servicesForClient(client as Record<ServiceFlag, boolean>)
-  const areas = client.serviceAreas || []
+  // Shop cities are part of the coverage list and lead the location pages —
+  // a city we have an address in outranks one we only drive to.
+  const areas = mergeServiceAreas(client.serviceAreas || [], locations.map((l) => l.city))
   const basePath = `/sites/${client.slug}`
   const palette = sitePaletteVars(client.primaryColor, client.accentColor)
   const flags = {
@@ -159,6 +164,7 @@ export default async function ClientSitePage({ params }: PageProps) {
     client,
     services: services.map((s) => ({ slug: s.slug, name: s.name })),
     extras,
+    locations,
   })
 
   // Headline names the location and the highest-value service the client
@@ -286,6 +292,7 @@ export default async function ClientSitePage({ params }: PageProps) {
         services={services}
         areas={areas}
         basePath={basePath}
+        locations={locations}
       />
       </main>
 
@@ -297,6 +304,7 @@ export default async function ClientSitePage({ params }: PageProps) {
         services={services}
         areas={areas}
         basePath={basePath}
+        locations={locations}
       />
 
       <WidgetScript client={client} basePath={basePath} />

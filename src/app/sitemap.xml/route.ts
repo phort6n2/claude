@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
-import { locationPages } from '@/lib/site-locations'
+import { locationPages, mergeServiceAreas } from '@/lib/site-locations'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
   const client = await prisma.client.findFirst({
     where: { OR: [{ slug: label }, { siteSubdomain: label }], status: 'ACTIVE' },
     select: {
+      id: true,
       slug: true,
       siteSubdomain: true,
       updatedAt: true,
@@ -52,6 +53,13 @@ export async function GET(request: NextRequest) {
   })
   if (!client) return xml('')
 
+  // Shop cities get pages ahead of coverage-only cities, so the sitemap has
+  // to resolve the same merged list the router does.
+  const shopCities = await prisma.clientLocation
+    .findMany({ where: { clientId: client.id }, select: { city: true } })
+    .catch(() => [])
+  const areas = mergeServiceAreas(client.serviceAreas || [], shopCities.map((s) => s.city))
+
   const origin = `https://${host}`
   const lastmod = client.updatedAt.toISOString()
   const entry = (path: string, priority: string, freq: string) =>
@@ -62,7 +70,7 @@ export async function GET(request: NextRequest) {
     ...servicesForClient(client as unknown as Record<ServiceFlag, boolean>).map((s) =>
       entry(`/services/${s.slug}`, '0.8', 'monthly')
     ),
-    ...locationPages(client.serviceAreas || []).map((l) =>
+    ...locationPages(areas).map((l) =>
       entry(`/locations/${l.slug}`, '0.7', 'monthly')
     ),
     entry('/privacy', '0.1', 'yearly'),

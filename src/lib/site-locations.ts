@@ -15,6 +15,29 @@ export function citySlug(area: string): string {
     .replace(/\s+/g, '-')
 }
 
+/**
+ * Cities where the client actually has a shop, merged ahead of their coverage
+ * cities into one list.
+ *
+ * Shop cities lead because a city with a real address, real hours, and its
+ * own map makes the strongest page the site can have — stronger than the
+ * sixth coverage-only city — and the page cap below takes from the end.
+ * Doing the merge once, at the page level, is what keeps the footer links,
+ * the coverage band, the sitemap, and the router all agreeing on which pages
+ * exist.
+ */
+export function mergeServiceAreas(areas: string[], shopCities: string[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const area of [...shopCities, ...areas]) {
+    const key = area.trim().toLowerCase()
+    if (!key || seen.has(key)) continue
+    seen.add(key)
+    out.push(area.trim())
+  }
+  return out
+}
+
 /** The areas that get pages (first N), with their slugs. */
 export function locationPages(areas: string[]): Array<{ area: string; slug: string }> {
   const seen = new Set<string>()
