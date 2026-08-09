@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Inbox, Globe } from 'lucide-react'
+import { Home, Inbox, Globe, Image as ImageIcon } from 'lucide-react'
 
 /**
  * Portal navigation, named the way a shop owner talks. Bottom tab bar on a
@@ -11,6 +11,7 @@ import { Home, Inbox, Globe } from 'lucide-react'
 const TABS = [
   { href: '/portal', label: 'Home', icon: Home, exact: true },
   { href: '/portal/leads', label: 'Leads', icon: Inbox },
+  { href: '/portal/photos', label: 'Photos', icon: ImageIcon },
   { href: '/portal/website', label: 'My Website', icon: Globe },
 ]
 

@@ -5,6 +5,7 @@ import { Loader2, Check, AlertCircle, Star } from 'lucide-react'
 import SiteContentEditor from '@/components/admin/SiteContentEditor'
 import CustomDomainsCard from '@/components/admin/CustomDomainsCard'
 import CityContentEditor from '@/components/admin/CityContentEditor'
+import PhotoManager from '@/components/admin/PhotoManager'
 
 /**
  * "Website" tab — the client's hosted site: which address it lives at, and
@@ -151,6 +152,23 @@ export default function ClientSiteForm({
         <CustomDomainsCard
           clientId={client.id}
           subdomain={`${client.siteSubdomain || client.slug}.glassleads.app`}
+        />
+      </section>
+
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+        <div className="px-6 pt-5 pb-1">
+          <h2 className="font-semibold text-gray-900">Photos</h2>
+          <p className="text-sm text-gray-500">
+            Real photos of the shop and the work, watermarked with the logo
+          </p>
+        </div>
+        <PhotoManager
+          listUrl={`/api/clients/${client.id}/photos`}
+          uploadUrl={`/api/clients/${client.id}/photos`}
+          deleteUrl={(photoId) => `/api/clients/${client.id}/photos?photoId=${photoId}`}
+          patchUrl={`/api/clients/${client.id}/photos`}
+          hasLogo={!!(pendingLogo || client.logoUrl)}
+          emptyHint="The first photo becomes the washed background behind the hero; the rest fill the gallery. Photos of the actual van, bay and vehicles beat stock every time."
         />
       </section>
 
