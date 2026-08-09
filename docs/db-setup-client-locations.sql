@@ -1,5 +1,10 @@
 -- Multi-location clients (several shops, several Google Business Profiles).
 --
+-- APPLIED TO PRODUCTION 2026-08-09. Kept as the record of what the table is
+-- and for any other environment that still needs it. Run it as the direct
+-- (prisma_migration) role — the pooled role the app runs on cannot create
+-- tables; see "DDL needs the DIRECT url" in docs/HANDOFF.md §8.
+--
 -- Purely additive — one new table, no changes to existing tables — and every
 -- read of it is wrapped in a catch, so ORDER DOES NOT MATTER. Run it before
 -- or after deploying: until the table exists, getClientLocations() falls back
