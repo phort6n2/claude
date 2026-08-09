@@ -350,6 +350,18 @@ the §7 cleanup): deploy first, drop the tables/columns second. Prefer explicit
 SQL over `db push`, which diffs the whole schema and may propose dropping
 things.
 
+**DDL needs the DIRECT url, not the pooled one.** The app runs on
+`PRISMA_DATABASE_URL` (see §9), whose role has no rights on `schema public` —
+raw DDL through it fails with `42501 permission denied for schema public`. The
+direct URL's role (`prisma_migration`) owns the schema. When applying SQL from
+inside the app rather than a CLI, open a short-lived `PrismaClient` on
+`DIRECT_URL` for the DDL, disconnect immediately (that role's connection cap is
+small), then verify by reading the new table through the pooled client — "the
+migration role created it" and "the app can see it" are different claims.
+`src/app/api/admin/setup-client-locations/route.ts`, in the history at
+`67c3b93`, is the worked example; that pattern is worth copying the next time a
+table has to be created against production.
+
 ---
 
 ## 9. Environment
