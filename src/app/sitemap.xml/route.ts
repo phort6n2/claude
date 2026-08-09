@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
 import { locationPages, mergeServiceAreas } from '@/lib/site-locations'
 import { canonicalHostFor } from '@/lib/site-origin'
+import { cityIsIndexable, getCityContent } from '@/lib/city-content'
 
 export const dynamic = 'force-dynamic'
 
@@ -74,6 +75,7 @@ export async function GET(request: NextRequest) {
     .findMany({ where: { clientId: client.id }, select: { city: true } })
     .catch(() => [])
   const areas = mergeServiceAreas(client.serviceAreas || [], shopCities.map((s) => s.city))
+  const cityContent = await getCityContent(client.id)
 
   const origin = `https://${host}`
   const lastmod = client.updatedAt.toISOString()
@@ -85,9 +87,12 @@ export async function GET(request: NextRequest) {
     ...servicesForClient(client as unknown as Record<ServiceFlag, boolean>).map((s) =>
       entry(`/services/${s.slug}`, '0.8', 'monthly')
     ),
-    ...locationPages(areas).map((l) =>
-      entry(`/locations/${l.slug}`, '0.7', 'monthly')
-    ),
+    // Only cities the page can say something specific about. A sitemap entry
+    // for a page carrying noindex asks the crawler to index what the page
+    // tells it not to.
+    ...locationPages(areas)
+      .filter((l) => cityIsIndexable(l.area, cityContent, shopCities.map((s) => s.city)))
+      .map((l) => entry(`/locations/${l.slug}`, '0.7', 'monthly')),
     entry('/privacy', '0.1', 'yearly'),
     entry('/terms', '0.1', 'yearly'),
   ]
