@@ -14,7 +14,7 @@ const MAX_PHOTOS = 24
 /** GET — current editorial content + photos for the client's hosted site. */
 export async function GET(request: NextRequest, { params }: RouteContext) {
   const session = await auth()
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 /** PUT — replace editorial content and the photo list. */
 export async function PUT(request: NextRequest, { params }: RouteContext) {
   const session = await auth()
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

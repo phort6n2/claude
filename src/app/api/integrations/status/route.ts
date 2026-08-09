@@ -97,7 +97,7 @@ async function testGooglePlaces(apiKey: string): Promise<{ success: boolean; mes
 // GET - Return status of all integrations (quick check, no live testing)
 export async function GET() {
   const session = await auth()
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -141,7 +141,7 @@ export async function GET() {
 // POST - Test a specific integration
 export async function POST(request: Request) {
   const session = await auth()
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
