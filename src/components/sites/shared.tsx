@@ -1289,7 +1289,15 @@ export function SiteFooter({
             un-swapped instance so call-asset verification can always read
             the real number, and the regulator registration line lives here
             (16 CCR § 3371.2-style requirements), rendered only when set. */}
-        <div className="mt-6 p-5 rounded-[10px] bg-[var(--dark-3)] border border-[var(--line-on-dark)] text-[13px] leading-[1.6] grid gap-4 lg:grid-cols-[minmax(240px,1fr)_minmax(0,1.5fr)] lg:items-center lg:gap-8 lg:px-6">
+        <div
+          className={`mt-6 p-5 rounded-[10px] bg-[var(--dark-3)] border border-[var(--line-on-dark)] text-[13px] leading-[1.6] grid gap-4 lg:gap-8 lg:px-6 ${
+            // Two address blocks need room; at the single-shop column width
+            // they wrap mid-street.
+            locations.length > 1
+              ? 'lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start'
+              : 'lg:grid-cols-[minmax(240px,1fr)_minmax(0,1.5fr)] lg:items-center'
+          }`}
+        >
           <div>
             <b className="text-white">{client.businessName}</b>
             <br />
@@ -1301,18 +1309,47 @@ export function SiteFooter({
               {client.phone}
             </a>
             {/* Every shop, not just the head office — the footer is where a
-                customer checks which one is closest to them. */}
+                customer checks which one is closest to them. Several shops get
+                separated blocks rather than one run-on paragraph: repeating
+                the business name on each line and wrapping addresses mid-street
+                made a two-shop footer genuinely hard to read. */}
             {client.hasShopLocation &&
-              (locations.length > 0 ? (
-                locations.map((location) => (
-                  <span key={location.id} className="block">
-                    {locations.length > 1 && (
-                      <span className="text-white font-semibold">{location.label}: </span>
-                    )}
-                    {location.streetAddress}, {location.city}, {location.state}{' '}
-                    {location.postalCode}
-                  </span>
-                ))
+              (locations.length > 1 ? (
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {locations.map((location) => (
+                    <div
+                      key={location.id}
+                      className="pl-3 border-l-2 border-[var(--line-on-dark)]"
+                    >
+                      <div className="text-white font-semibold">{location.label}</div>
+                      <address className="not-italic">
+                        {location.streetAddress}
+                        <br />
+                        {location.city}, {location.state} {location.postalCode}
+                      </address>
+                      {location.hours && (
+                        <div className="opacity-75">{location.hours}</div>
+                      )}
+                      {/* Only when this shop has its own line. Repeating the
+                          main number under every address just reprints the
+                          line directly above it. */}
+                      {location.phone !== client.phone && (
+                        <a
+                          href={telHrefFor(location.phone)}
+                          className="no-underline text-[var(--gold-on-dark)]"
+                        >
+                          {location.phone}
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : locations.length === 1 ? (
+                <>
+                  <br />
+                  {locations[0].streetAddress}, {locations[0].city}, {locations[0].state}{' '}
+                  {locations[0].postalCode}
+                </>
               ) : (
                 <>
                   <br />

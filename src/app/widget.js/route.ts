@@ -45,6 +45,75 @@ const WIDGET_SOURCE = String.raw`(function () {
   var CLICK_IDS = ['gclid', 'gbraid', 'wbraid', 'msclkid', 'fbclid', 'ttclid', 'li_fat_id'];
   var UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
 
+  // ---- Readable companions to the raw values -------------------------------
+  // Ported from the landing-template's form so a shop running both a template
+  // site and this widget can use ONE HighLevel mapping. The raw keys keep
+  // their exact values; these are strictly additive, and exist so the CRM's
+  // email template needs no conditionals to render English.
+
+  var INSURANCE_LABEL = {
+    'yes': 'Filing through insurance',
+    'no': 'Paying out of pocket',
+    'not-sure': 'Not sure yet about insurance'
+  };
+
+  function phDigits(v) { return (v || '').replace(/\D/g, ''); }
+
+  /* E.164 for the machine. The playbook is explicit that this matches far more
+     reliably than a formatted string, for both the CRM and enhanced
+     conversions. A number we can't confidently qualify is passed through as
+     typed rather than given a country code we're guessing at. */
+  function phE164(v) {
+    var d = phDigits(v);
+    if (d.length === 10) return '+1' + d;
+    if (d.length === 11 && d.charAt(0) === '1') return '+' + d;
+    return (v || '').trim();
+  }
+
+  /* (xxx) xxx-xxxx for the human reading the CRM record. */
+  function phPretty(v) {
+    var d = phDigits(v);
+    if (d.length === 11 && d.charAt(0) === '1') d = d.slice(1);
+    if (d.length !== 10) return (v || '').trim();
+    return '(' + d.slice(0, 3) + ') ' + d.slice(3, 6) + '-' + d.slice(6);
+  }
+
+  /* Fold a service name into mid-sentence case.
+     Our service names are Title Case ("Windshield Replacement"), not the
+     template's sentence case, so lowering only the first character leaves
+     "windshield Replacement". Every word is lowered EXCEPT initialisms —
+     "ADAS Calibration" has to stay "ADAS calibration", never "adas". */
+  function lowerLabel(s) {
+    if (!s) return '';
+    return s
+      .split(' ')
+      .map(function (word) {
+        var isInitialism = word.length > 1 && word === word.toUpperCase() && /[A-Z]/.test(word);
+        return isInitialism ? word : word.toLowerCase();
+      })
+      .join(' ');
+  }
+
+  /* "Not sure" is a conversation, not a service: pasting it in produces
+     "needs not sure — help me work it out". That one gets its own phrase. */
+  function servicePhrase(label) {
+    if (!label || /^not sure/i.test(label)) return 'needs help working out which glass';
+    return 'needs ' + lowerLabel(label);
+  }
+
+  /* One English sentence, assembled from whatever is present. Every optional
+     clause drops out cleanly, so a submission carrying only the required
+     fields still reads as a sentence rather than trailing a dangling "VIN:". */
+  function leadSummary(d) {
+    return [
+      d.name,
+      servicePhrase(d.serviceLabel),
+      d.vehicle ? 'on a ' + d.vehicle : '',
+      d.vin ? '(VIN ' + d.vin + ')' : '',
+      d.carrier ? '— insured with ' + d.carrier : ''
+    ].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim() + '.';
+  }
+
   // ---- Attribution capture (runs on every page load, not just form pages) --
   function readStored() {
     try {
@@ -400,7 +469,8 @@ const WIDGET_SOURCE = String.raw`(function () {
         first_name: (data.full_name || '').split(' ')[0] || null,
         last_name: (data.full_name || '').split(' ').slice(1).join(' ') || null,
         full_name: data.full_name,
-        phone: data.phone,
+        phone: phE164(data.phone),
+        phone_formatted: phPretty(data.phone),
         email: data.email,
         service: data.service,
         vehicle: data.vehicle,
@@ -409,10 +479,32 @@ const WIDGET_SOURCE = String.raw`(function () {
         insurance: data.insurance,
         insurance_carrier: data.insurance_carrier,
         message: data.message,
+
+        // Readable companions + aliases for the template sites' key names, so
+        // one CRM mapping covers both form types. Additive only.
+        service_label: data.service || '',
+        insurance_label: INSURANCE_LABEL[data.insurance] || '',
+        carrier: data.insurance_carrier || '',
+        notes: data.message || '',
+        source_label: window.location.host === new URL(BASE).host ? 'Landing page' : 'Website',
+        lead_summary: leadSummary({
+          name: data.full_name,
+          serviceLabel: data.service,
+          vehicle: data.vehicle,
+          vin: data.vin,
+          carrier: data.insurance_carrier
+        }),
+
         form_name: 'glassleads-widget',
         landing_page: stored.landing_page || window.location.href.split('#')[0],
         referrer: stored.referrer || document.referrer || null,
         page: window.location.href.split('#')[0],
+        page_path: window.location.pathname,
+        // contact_source says what this DOMAIN is for; paid_click says whether
+        // this particular visitor actually arrived on an ad click. The two
+        // disagree for direct traffic, and only this one can tell you so.
+        paid_click: stored.gclid || stored.gbraid || stored.wbraid ? 'yes' : 'no',
+        submitted_at: new Date().toISOString(),
         _hp: data.hp
       };
       CLICK_IDS.concat(UTM_KEYS).forEach(function (k) { if (stored[k]) payload[k] = stored[k]; });
