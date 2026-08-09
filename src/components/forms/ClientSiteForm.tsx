@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Loader2, Check, AlertCircle, Star } from 'lucide-react'
 import SiteContentEditor from '@/components/admin/SiteContentEditor'
+import AdsTrackingCard from '@/components/admin/AdsTrackingCard'
 
 /**
  * "Website" tab — the client's hosted site: which address it lives at, and
@@ -137,6 +138,16 @@ export default function ClientSiteForm({
           )}
           {reviewsMessage && <p className="text-sm text-gray-600">{reviewsMessage}</p>}
         </div>
+      </section>
+
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+        <div className="px-6 pt-5 pb-1">
+          <h2 className="font-semibold text-gray-900">Google Ads conversion tracking</h2>
+          <p className="text-sm text-gray-500">
+            What this site reports back to the client&apos;s Ads account
+          </p>
+        </div>
+        <AdsTrackingCard clientId={client.id} />
       </section>
 
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
