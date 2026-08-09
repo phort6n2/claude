@@ -5,6 +5,8 @@ import { notifyNewLead } from '@/lib/push-notifications'
 import { kickOffCallAnalysis } from '@/lib/call-analysis/queue'
 import { findSameDayDuplicateCanonical } from '@/lib/lead-dedup'
 import { createDeliveriesForLead, attemptDelivery } from '@/lib/webhook-forwarding'
+// Aliased: push-notifications already exports a notifyNewLead (admin web push).
+import { notifyNewLead as notifyLeadRecipients } from '@/lib/lead-notifications'
 import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -609,6 +611,36 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
     } catch (err) {
       console.error('[HighLevel Webhook] Failed to queue outbound deliveries:', err)
     }
+
+    // Tell whoever the shop nominated. Runs AFTER the response is sent, for
+    // the same reason the deliveries do: a captured lead is worth far more
+    // than an alert about it, and a slow Resend or Twilio call must never
+    // delay — or fail — the webhook that captured it.
+    after(async () => {
+      try {
+        const result = await notifyLeadRecipients(client.id, client.businessName, {
+          name: String(payload.full_name || payload.first_name || '').trim(),
+          phone: String(payload.phone || '').trim(),
+          email: String(payload.email || '').trim(),
+          service: String(payload.service_label || payload.service || '').trim(),
+          vehicle: String(payload.vehicle || '').trim(),
+          postalCode: String(payload.postal_code || '').trim(),
+          message: String(payload.notes || payload.message || '').trim(),
+          source: String(payload.source_label || payload.contact_source || '').trim(),
+          leadUrl: `${process.env.APP_URL || 'https://glassleads.app'}/admin/leads/${lead.id}`,
+        })
+        if (result.emailSent || result.smsSent) {
+          console.log(
+            `[HighLevel Webhook] Notified ${result.emailSent} email / ${result.smsSent} SMS for lead ${lead.id}`
+          )
+        }
+        if (result.errors.length) {
+          console.error('[HighLevel Webhook] Notification errors:', result.errors.join(' | '))
+        }
+      } catch (err) {
+        console.error('[HighLevel Webhook] Notification failed:', err)
+      }
+    })
 
     // If this is a phone lead with a recording URL, kick off call coaching
     // analysis (only when the client has the feature enabled). Stays a

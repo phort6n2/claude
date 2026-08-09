@@ -7,11 +7,21 @@ import { encrypt, decrypt } from '@/lib/encryption'
 const SENSITIVE_KEYS = [
   'ANTHROPIC_API_KEY',
   'GOOGLE_PLACES_API_KEY',
+  'RESEND_API_KEY',
+  'TWILIO_ACCOUNT_SID',
+  'TWILIO_AUTH_TOKEN',
 ]
 
+// The from-address and from-number are not secrets — they are shown in full
+// so it is obvious at a glance which sender clients' alerts come from.
 const ALL_KEYS = [
   'ANTHROPIC_API_KEY',
   'GOOGLE_PLACES_API_KEY',
+  'RESEND_API_KEY',
+  'RESEND_FROM',
+  'TWILIO_ACCOUNT_SID',
+  'TWILIO_AUTH_TOKEN',
+  'TWILIO_FROM_NUMBER',
 ]
 
 export async function GET() {

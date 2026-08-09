@@ -5,6 +5,7 @@ import { useDirtyForm, confirmDiscard } from '@/hooks/useDirtyForm'
 import SaveBar from '@/components/forms/SaveBar'
 import WebhookDestinationsManager from '@/components/admin/WebhookDestinationsManager'
 import CopyField from '@/components/admin/CopyField'
+import LeadNotificationsCard from '@/components/admin/LeadNotificationsCard'
 
 /**
  * "Lead delivery" tab — everything touched when a client says "I stopped
@@ -61,6 +62,16 @@ export default function ClientLeadsForm({
 
   return (
     <div className="space-y-4">
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+        <div className="px-6 pt-5 pb-1">
+          <h2 className="font-semibold text-gray-900">Lead alerts</h2>
+          <p className="text-sm text-gray-500">
+            Who hears about a lead, and how fast
+          </p>
+        </div>
+        <LeadNotificationsCard clientId={client.id} />
+      </section>
+
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
         <div className="px-6 pt-5 pb-1">
           <h2 className="font-semibold text-gray-900">Where leads go</h2>
