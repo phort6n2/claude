@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getPortalSession } from '@/lib/portal-auth'
+import { requirePortalSession } from '@/lib/portal-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,10 +64,9 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
  * PATCH /api/portal/leads/[id] - Update a lead (status, sale info)
  */
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  const session = await getPortalSession()
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const guard = await requirePortalSession({ mutating: true })
+  if ('response' in guard) return guard.response
+  const session = guard.session
 
   const { id } = await params
   const data = await request.json()

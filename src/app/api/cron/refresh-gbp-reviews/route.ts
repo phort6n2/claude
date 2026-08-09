@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
 /**
- * GET/POST /api/cron/refresh-gbp-reviews (daily)
+ * GET/POST /api/cron/refresh-gbp-reviews (weekly)
  *
  * Refreshes the cached GBP rating data for every ACTIVE client that has a
  * Place ID, serially. Failures are recorded per client (lastError) and never
@@ -31,10 +31,16 @@ async function handle(request: NextRequest) {
       select: { id: true, slug: true },
     })
 
-    const results: Array<{ slug: string; ok: boolean; message: string }> = []
+    const results: Array<{ slug: string; ok: boolean; skipped?: boolean; message: string }> = []
     for (const client of clients) {
       const result = await refreshGbpReviews(client.id)
-      results.push({ slug: client.slug, ok: result.ok, message: result.message })
+      // rateLimited is the expected steady state, not a failure worth alerting on.
+      results.push({
+        slug: client.slug,
+        ok: result.ok,
+        skipped: !!result.rateLimited,
+        message: result.message,
+      })
     }
     return NextResponse.json({ processed: results.length, results })
   } catch (error) {

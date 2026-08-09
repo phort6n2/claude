@@ -15,6 +15,7 @@ import {
   AlertCircle,
   CheckCircle,
   Key,
+  Eye,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 
@@ -36,6 +37,7 @@ interface Client {
 export default function ClientUsersPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [client, setClient] = useState<Client | null>(null)
+  const [impersonating, setImpersonating] = useState<string | null>(null)
   const [users, setUsers] = useState<ClientUser[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -166,6 +168,28 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
       )
     } catch (err) {
       console.error('Toggle failed:', err)
+    }
+  }
+
+  /** Open the client portal as this user — read-only, 30 minutes, banner shown. */
+  async function handleViewAs(userId: string) {
+    setImpersonating(userId)
+    try {
+      const res = await fetch(`/api/admin/clients/${id}/impersonate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientUserId: userId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        alert(data.error || 'Could not start viewing as this user')
+        return
+      }
+      window.location.href = '/portal'
+    } catch {
+      alert('Could not start viewing as this user')
+    } finally {
+      setImpersonating(null)
     }
   }
 
@@ -423,6 +447,20 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
                           {user.hasPassword ? 'Reset' : 'Set'} Password
                         </Button>
                       )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewAs(user.id)}
+                        disabled={impersonating === user.id || !user.isActive}
+                        title="Open the client portal as this user (read-only)"
+                      >
+                        {impersonating === user.id ? (
+                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        ) : (
+                          <Eye className="h-4 w-4 mr-1" />
+                        )}
+                        View as
+                      </Button>
                       <button
                         onClick={() => handleToggleActive(user.id, user.isActive)}
                         className="p-2 hover:bg-gray-100 rounded-lg transition-colors"

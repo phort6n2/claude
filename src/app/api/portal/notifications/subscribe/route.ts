@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { prisma } from '@/lib/db'
+import { requirePortalSession } from '@/lib/portal-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,21 +9,13 @@ export const dynamic = 'force-dynamic'
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get portal session from cookie
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('portal_session')
-
-    if (!sessionCookie?.value) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
-    }
-
-    // Parse session
-    let session: { clientUserId: string; clientId: string }
-    try {
-      session = JSON.parse(sessionCookie.value)
-    } catch {
-      return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
-    }
+    // Verified session only — this route used to JSON.parse the raw cookie,
+    // which trusted whatever the browser sent. Mutating, so impersonated
+    // sessions are refused (a push subscription would bind the admin's own
+    // browser to the client's notifications).
+    const guard = await requirePortalSession({ mutating: true })
+    if ('response' in guard) return guard.response
+    const session = guard.session
 
     const { subscription, userAgent } = await request.json()
 
@@ -46,7 +38,7 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date(),
       },
       create: {
-        clientUserId: session.clientUserId,
+        clientUserId: session.userId,
         endpoint: subscription.endpoint,
         p256dh: subscription.keys.p256dh,
         auth: subscription.keys.auth,
@@ -72,13 +64,9 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    // Get portal session from cookie
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('portal_session')
-
-    if (!sessionCookie?.value) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
-    }
+    const guard = await requirePortalSession({ mutating: true })
+    if ('response' in guard) return guard.response
+    const session = guard.session
 
     const { endpoint } = await request.json()
 
@@ -89,9 +77,10 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Mark subscription as inactive (soft delete)
+    // Soft delete, scoped to the caller's own subscriptions — an endpoint
+    // alone must not be enough to silence someone else's notifications.
     await prisma.pushSubscription.updateMany({
-      where: { endpoint },
+      where: { endpoint, clientUserId: session.userId },
       data: { isActive: false },
     })
 
@@ -110,25 +99,14 @@ export async function DELETE(request: NextRequest) {
  */
 export async function GET() {
   try {
-    // Get portal session from cookie
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('portal_session')
-
-    if (!sessionCookie?.value) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
-    }
-
-    let session: { clientUserId: string }
-    try {
-      session = JSON.parse(sessionCookie.value)
-    } catch {
-      return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
-    }
+    const guard = await requirePortalSession()
+    if ('response' in guard) return guard.response
+    const session = guard.session
 
     // Get active subscriptions count for this user
     const count = await prisma.pushSubscription.count({
       where: {
-        clientUserId: session.clientUserId,
+        clientUserId: session.userId,
         isActive: true,
       },
     })
