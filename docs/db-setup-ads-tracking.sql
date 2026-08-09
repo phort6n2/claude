@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS "ClientAdsTracking" (
   "callConversionLabel" TEXT,
   "callPhoneNumber"     TEXT,
   "enhancedConversions" BOOLEAN NOT NULL DEFAULT true,
+  "bingUetTagId"        TEXT,
+  "bingLeadEventAction" TEXT,
   "createdAt"           TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt"           TIMESTAMP(3) NOT NULL,
   CONSTRAINT "ClientAdsTracking_pkey" PRIMARY KEY ("id"),

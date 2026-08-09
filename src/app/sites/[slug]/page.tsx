@@ -29,6 +29,7 @@ import {
 import { getSiteExtras } from '@/lib/site-content'
 import { sitePaletteVars } from '@/lib/site-theme'
 import { getClientLocations } from '@/lib/client-locations'
+import { siteOriginFor } from '@/lib/site-origin'
 import { getAdsTracking } from '@/lib/ads-tracking'
 import { GoogleTag } from '@/components/sites/GoogleTag'
 import { mergeServiceAreas } from '@/lib/site-locations'
@@ -58,11 +59,14 @@ interface PageProps {
 async function getClient(slug: string) {
   // The label in the URL may be the full slug or the short siteSubdomain.
   return prisma.client.findFirst({
-    where: { OR: [{ slug }, { siteSubdomain: slug }] },
+    // The label may be the full slug, the short subdomain, or — when the
+    // client has pointed their own domain here — the hostname itself.
+    where: { OR: [{ slug }, { siteSubdomain: slug }, { domains: { some: { domain: slug } } }] },
     select: {
       id: true,
       slug: true,
       siteSubdomain: true,
+      domains: { where: { isPrimary: true }, select: { domain: true }, take: 1 },
       status: true,
       businessName: true,
       phone: true,
@@ -114,7 +118,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // Same origin as the page itself, and the same host the canonical names — a
   // share card served from a different host than the page it describes gets
   // dropped by some scrapers.
-  const siteRoot = `https://${client.siteSubdomain || client.slug}.glassleads.app`
+  const siteRoot = siteOriginFor(client)
   const title = `${client.businessName} | Auto Glass Repair & Replacement in ${client.city}, ${client.state}`
   const description = `Fast, professional windshield repair and replacement in ${client.city}, ${client.state}. Free quotes, insurance assistance${client.offersMobileService ? ', mobile service to your home or office' : ''}. Call ${client.phone}.`
 
@@ -129,7 +133,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       images: [`${siteRoot}/api/site-og/${client.slug}`],
     },
     twitter: { card: 'summary_large_image', title, description, images: [`${siteRoot}/api/site-og/${client.slug}`] },
-    alternates: { canonical: `https://${client.siteSubdomain || client.slug}.glassleads.app/` },
+    alternates: { canonical: `${siteOriginFor(client)}/` },
   }
 }
 
@@ -161,7 +165,7 @@ export default async function ClientSitePage({ params }: PageProps) {
     label: s.name,
   }))
 
-  const siteOrigin = `https://${client.siteSubdomain || client.slug}.glassleads.app`
+  const siteOrigin = siteOriginFor(client)
   const jsonLd = homeJsonLd({
     origin: siteOrigin,
     client,

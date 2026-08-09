@@ -124,6 +124,9 @@ model Client {
   // Google Ads conversion tracking for the hosted site
   adsTracking ClientAdsTracking?
 
+  // The client's own domains pointed at their hosted site
+  domains ClientDomain[]
+
   // Editorial content + photos for the hosted site
   siteContent ClientSiteContent?
   sitePhotos  ClientSitePhoto[]
@@ -452,6 +455,45 @@ model ClientGbpReviews {
 }
 
 // ============================================
+// CUSTOM DOMAINS (hosted landing pages)
+//
+// A client's own domain serving their hosted site. The site always keeps
+// answering on {label}.glassleads.app as well — a custom domain is an
+// addition, never a replacement, so a DNS mistake can never take the site
+// off the internet.
+//
+// isPrimary picks the host used for canonical URLs, share cards and the
+// sitemap. Search engines need one answer to "where does this page live",
+// and serving the same page on two hosts without saying which is canonical
+// splits the ranking signal between them.
+// ============================================
+
+model ClientDomain {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  /* Bare hostname, lowercase, no scheme: "collisionautoglass.com". */
+  domain String @unique
+
+  /* The host canonical URLs point at. Exactly one per client, enforced when
+   * the set is written. */
+  isPrimary Boolean @default(false)
+
+  /* Last known state from Vercel. Cached so the admin list renders without
+   * an API call per row; the detail view refreshes it on demand. */
+  verified      Boolean   @default(false)
+  misconfigured Boolean   @default(true)
+  lastCheckedAt DateTime?
+  lastError     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+}
+
+// ============================================
 // GOOGLE ADS CONVERSION TRACKING (hosted landing pages)
 //
 // Nothing is emitted without a row here and a conversion ID in it: no row,
@@ -487,9 +529,18 @@ model ClientAdsTracking {
   callConversionLabel String?
   callPhoneNumber     String?
 
-  /* Send hashed email/phone with the conversion. Google does the hashing in
-   * the tag; nothing identifiable is stored here. */
+  /* Send hashed email/phone with the conversion. Both networks hash in the
+   * browser; nothing identifiable is stored here. Applies to Google and
+   * Microsoft alike — the same lead, reported to whichever is configured. */
   enhancedConversions Boolean @default(true)
+
+  /* --- Microsoft Advertising (Bing) ---
+   * UET is Microsoft's equivalent of the Google tag: one numeric tag id per
+   * advertiser, installed once. Conversions are then "event goals" matched by
+   * action name, which is why the action is stored rather than assumed — it
+   * has to be typed identically in the goal and here or the goal never fires. */
+  bingUetTagId        String?
+  bingLeadEventAction String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -9,11 +9,26 @@ import { NextResponse, type NextRequest } from 'next/server'
  * subdomain is a fully working origin — the embedded widget loads and posts
  * same-origin, no CORS involved.
  *
- * Only `*.glassleads.app` subdomains are treated as client sites. The apex,
- * www, localhost, and Vercel preview hosts all fall through to the normal app.
- * A slug that doesn't exist 404s at the page level, not here — the middleware
- * stays database-free and Edge-safe.
+ * A client's OWN domain works the same way: the host itself is used as the
+ * label, so `collisionautoglass.com/services/x` rewrites to
+ * `/sites/collisionautoglass.com/services/x` and the page resolves the client
+ * by domain. That keeps the middleware database-free and Edge-safe — it never
+ * needs to know which domains exist, because a host that matches no client
+ * 404s at the page level exactly as an unknown slug does.
+ *
+ * The apex, www, localhost, and Vercel preview hosts all fall through to the
+ * normal app.
  */
+
+/** Hosts that are the ADMIN app, never a client site. */
+function isAppHost(host: string): boolean {
+  if (APP_HOSTS.has(host)) return true
+  if (host === 'localhost' || host.startsWith('localhost:') || host.startsWith('127.0.0.1')) {
+    return true
+  }
+  // Preview deployments and the project's own vercel.app hosts.
+  return host.endsWith('.vercel.app')
+}
 
 const APP_HOSTS = new Set(['glassleads.app', 'www.glassleads.app'])
 
@@ -30,15 +45,21 @@ export default function middleware(req: NextRequest) {
   }
 
   const host = (req.headers.get('host') || '').split(':')[0].toLowerCase()
-  if (!host.endsWith('.glassleads.app') || APP_HOSTS.has(host)) {
-    return NextResponse.next()
+  if (isAppHost(host)) return NextResponse.next()
+
+  let label: string
+  if (host.endsWith('.glassleads.app')) {
+    const subdomain = host.slice(0, -'.glassleads.app'.length)
+    if (!subdomain || subdomain === 'www' || subdomain.includes('.')) return NextResponse.next()
+    label = subdomain
+  } else {
+    // A client's own domain. The host IS the label; getClient() matches it
+    // against ClientDomain.
+    label = host
   }
 
-  const slug = host.slice(0, -'.glassleads.app'.length)
-  if (!slug || slug === 'www' || slug.includes('.')) return NextResponse.next()
-
   const url = req.nextUrl.clone()
-  url.pathname = pathname === '/' ? `/sites/${slug}` : `/sites/${slug}${pathname}`
+  url.pathname = pathname === '/' ? `/sites/${label}` : `/sites/${label}${pathname}`
   return NextResponse.rewrite(url)
 }
 

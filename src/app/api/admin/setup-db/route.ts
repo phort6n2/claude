@@ -60,6 +60,29 @@ const STATEMENTS: Array<{ table: string; sql: string[] }> = [
     ],
   },
   {
+    table: 'ClientDomain',
+    sql: [
+      `CREATE TABLE IF NOT EXISTS "ClientDomain" (
+         "id"            TEXT NOT NULL,
+         "clientId"      TEXT NOT NULL,
+         "domain"        TEXT NOT NULL,
+         "isPrimary"     BOOLEAN NOT NULL DEFAULT false,
+         "verified"      BOOLEAN NOT NULL DEFAULT false,
+         "misconfigured" BOOLEAN NOT NULL DEFAULT true,
+         "lastCheckedAt" TIMESTAMP(3),
+         "lastError"     TEXT,
+         "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+         "updatedAt"     TIMESTAMP(3) NOT NULL,
+         CONSTRAINT "ClientDomain_pkey" PRIMARY KEY ("id"),
+         CONSTRAINT "ClientDomain_clientId_fkey"
+           FOREIGN KEY ("clientId") REFERENCES "Client"("id")
+           ON DELETE CASCADE ON UPDATE CASCADE
+       )`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS "ClientDomain_domain_key" ON "ClientDomain"("domain")`,
+      `CREATE INDEX IF NOT EXISTS "ClientDomain_clientId_idx" ON "ClientDomain"("clientId")`,
+    ],
+  },
+  {
     table: 'ClientAdsTracking',
     sql: [
       `CREATE TABLE IF NOT EXISTS "ClientAdsTracking" (
@@ -72,6 +95,8 @@ const STATEMENTS: Array<{ table: string; sql: string[] }> = [
          "callConversionLabel" TEXT,
          "callPhoneNumber"     TEXT,
          "enhancedConversions" BOOLEAN NOT NULL DEFAULT true,
+         "bingUetTagId"        TEXT,
+         "bingLeadEventAction" TEXT,
          "createdAt"           TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
          "updatedAt"           TIMESTAMP(3) NOT NULL,
          CONSTRAINT "ClientAdsTracking_pkey" PRIMARY KEY ("id"),
@@ -80,6 +105,13 @@ const STATEMENTS: Array<{ table: string; sql: string[] }> = [
            ON DELETE CASCADE ON UPDATE CASCADE
        )`,
       `CREATE UNIQUE INDEX IF NOT EXISTS "ClientAdsTracking_clientId_key" ON "ClientAdsTracking"("clientId")`,
+      // Columns added after the table first shipped. ADD COLUMN IF NOT EXISTS
+      // keeps this idempotent for databases that already ran the first version.
+      `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "leadValue" DOUBLE PRECISION`,
+      `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "leadCurrency" TEXT`,
+      `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "callPhoneNumber" TEXT`,
+      `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "bingUetTagId" TEXT`,
+      `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "bingLeadEventAction" TEXT`,
     ],
   },
 ]
@@ -131,6 +163,7 @@ async function run() {
   try {
     visible.ClientLocation = await prisma.clientLocation.count()
     visible.ClientAdsTracking = await prisma.clientAdsTracking.count()
+    visible.ClientDomain = await prisma.clientDomain.count()
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     return NextResponse.json(

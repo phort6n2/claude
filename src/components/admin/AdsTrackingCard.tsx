@@ -23,7 +23,12 @@ interface Parsed {
   callConversionLabel: string
   callPhoneNumber: string
   enhancedConversions: boolean
+  bingUetTagId: string
+  bingLeadEventAction: string
 }
+
+/** The action name pushed to Microsoft when none is configured. */
+const DEFAULT_BING_ACTION = 'submit_lead_form'
 
 function Steps({
   title,
@@ -51,12 +56,21 @@ function Steps({
   )
 }
 
-export default function AdsTrackingCard({ clientId }: { clientId: string }) {
+export default function AdsTrackingCard({
+  clientId,
+  clientPhone,
+}: {
+  clientId: string
+  /** Shown in the calls instructions so the number to enter is unambiguous. */
+  clientPhone?: string
+}) {
   const [current, setCurrent] = useState<Parsed | null>(null)
   const [unavailable, setUnavailable] = useState(false)
   const [leadSnippet, setLeadSnippet] = useState('')
   const [callSnippet, setCallSnippet] = useState('')
   const [enhanced, setEnhanced] = useState(true)
+  const [bingTagId, setBingTagId] = useState('')
+  const [bingAction, setBingAction] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
@@ -71,6 +85,8 @@ export default function AdsTrackingCard({ clientId }: { clientId: string }) {
         if (data.tracking) {
           setCurrent(data.tracking)
           setEnhanced(data.tracking.enhancedConversions)
+          setBingTagId(data.tracking.bingUetTagId || '')
+          setBingAction(data.tracking.bingLeadEventAction || '')
         }
         setLoading(false)
       })
@@ -87,11 +103,18 @@ export default function AdsTrackingCard({ clientId }: { clientId: string }) {
       const res = await fetch(`/api/clients/${clientId}/ads-tracking`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadSnippet, callSnippet, enhancedConversions: enhanced }),
+        body: JSON.stringify({
+          leadSnippet,
+          callSnippet,
+          enhancedConversions: enhanced,
+          bingUetTagId: bingTagId,
+          bingLeadEventAction: bingAction,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to save')
       setCurrent({ ...(data.parsed || {}), enhancedConversions: enhanced })
+      if (data.parsed?.bingLeadEventAction) setBingAction(data.parsed.bingLeadEventAction)
       setLeadSnippet('')
       setCallSnippet('')
       setMessage({ ok: true, text: 'Saved. The tag updates on the site within about 5 minutes.' })
@@ -112,6 +135,7 @@ export default function AdsTrackingCard({ clientId }: { clientId: string }) {
 
   const leadLive = !!current?.leadConversionLabel
   const callLive = !!current?.callConversionLabel && !!current?.callPhoneNumber
+  const bingLive = !!current?.bingUetTagId
 
   return (
     <div className="p-6 pt-4 space-y-5">
@@ -289,11 +313,137 @@ export default function AdsTrackingCard({ clientId }: { clientId: string }) {
         </span>
       </label>
 
+      {/* ---- Recommended: calls from ads ---- */}
+      <Steps title="Recommended: also turn on “Calls from ads” (no tag needed)">
+        <p>
+          This one is separate from everything above and needs nothing installed — Google reports
+          it itself. It counts calls placed straight from the ad, before anyone reaches the site,
+          which is a large share of the calls this trade gets on mobile.
+        </p>
+        <ol className="list-decimal ml-5 space-y-1.5">
+          <li>
+            In the campaign, add a <strong>Call asset</strong> (Assets → Calls) with the main
+            number{clientPhone ? <> — <code className="font-mono text-xs">{clientPhone}</code></> : null}.
+          </li>
+          <li>
+            Turn on <strong>call reporting</strong> on the asset. Google then shows a forwarding
+            number in the ad and can measure the call.
+          </li>
+          <li>
+            Goals → Conversions → <strong>+ New conversion action</strong> →{' '}
+            <strong>Phone calls</strong> → <strong>Calls from ads</strong>.
+          </li>
+          <li>Set the minimum call length that counts — 60 seconds pairs well with the website one.</li>
+          <li>
+            Create it. There is no snippet and nothing to paste here: the ad does the reporting.
+          </li>
+        </ol>
+        <p className="rounded border border-gray-300 bg-white p-2">
+          Worth knowing: the number on a call asset must appear on the website too, and Google
+          verifies that by looking for it. Keep it visible and unswapped — which is exactly why
+          the site&apos;s footer prints one plain, un-rewritten copy of the main number.
+        </p>
+      </Steps>
+
+      {/* ---- Microsoft Advertising ---- */}
+      <div className="space-y-2 border-t border-gray-200 pt-5">
+        <div className="flex items-center gap-2">
+          <h3 className="font-medium text-gray-900">Microsoft Advertising (Bing)</h3>
+          {bingLive && (
+            <span className="text-[11px] font-bold uppercase tracking-wide text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5">
+              Live
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-gray-600">
+          Microsoft installs one tag per advertiser (UET) and then counts conversions as{' '}
+          <em>event goals</em> matched by action name. Two fields, and the order matters: create
+          the tag, then the goal.
+        </p>
+        <Steps title="How to set it up in Microsoft Advertising" defaultOpen={!bingLive}>
+          <p className="font-medium text-gray-900">1. Create the UET tag</p>
+          <ol className="list-decimal ml-5 space-y-1.5">
+            <li>
+              In Microsoft Advertising, hover <strong>Conversions</strong> in the left menu and
+              select <strong>UET tag</strong>.
+            </li>
+            <li>
+              <strong>Create</strong>, name it (the client&apos;s business name is fine), and set{' '}
+              <strong>Industry</strong> to <strong>Autos</strong>.
+            </li>
+            <li>
+              <strong>Save</strong>. In <em>View UET tag tracking code</em>, copy the code — or
+              just the tag ID, which is the 8–9 digit number in it.
+            </li>
+            <li>Paste either one below. There is no need to install it anywhere: this app does that.</li>
+          </ol>
+          <p className="font-medium text-gray-900 mt-3">2. Create the conversion goal</p>
+          <ol className="list-decimal ml-5 space-y-1.5">
+            <li>
+              <strong>Conversions → Conversion goals → Create</strong>.
+            </li>
+            <li>
+              Kind: <strong>Website</strong>. Category: <strong>Submit lead form</strong>. Goal
+              type: <strong>Event</strong>.
+            </li>
+            <li>
+              Turn on <strong>Enhanced conversions</strong> while you are in this screen if you
+              want the improved matching — it can only be enabled here, not later from the tag.
+            </li>
+            <li>
+              In the event details, set <strong>Action</strong> to exactly{' '}
+              <code className="font-mono text-xs">{bingAction.trim() || DEFAULT_BING_ACTION}</code>
+              . Leave Category, Label and Value empty. This has to match character for character —
+              Microsoft matches the goal to the event by string, so a stray capital means the goal
+              never fires.
+            </li>
+            <li>Set the goal to count <strong>one</strong> conversion per interaction, then save.</li>
+          </ol>
+          <p className="rounded border border-gray-300 bg-white p-2 mt-2">
+            Microsoft has no equivalent of Google&apos;s &ldquo;calls from a website&rdquo; number
+            swap. To measure calls on Bing, add a <strong>Call extension</strong> to the campaign
+            with call reporting on — the same idea as Google&apos;s calls-from-ads, reported by
+            Microsoft with nothing to install.
+          </p>
+        </Steps>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              UET tag ID or tracking code
+            </label>
+            <textarea
+              value={bingTagId}
+              onChange={(e) => setBingTagId(e.target.value)}
+              rows={2}
+              spellCheck={false}
+              placeholder="12345678 — or paste the whole UET tracking code"
+              className="w-full px-3 py-2 border rounded-md font-mono text-xs focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Event action name
+            </label>
+            <input
+              type="text"
+              value={bingAction}
+              onChange={(e) => setBingAction(e.target.value)}
+              placeholder={DEFAULT_BING_ACTION}
+              className="w-full px-3 py-2 border rounded-md font-mono text-sm focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Must match the goal&apos;s Action exactly. Leave blank to use{' '}
+              <code className="font-mono">{DEFAULT_BING_ACTION}</code>.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={save}
-          disabled={saving || (!leadSnippet.trim() && !callSnippet.trim() && !current)}
+          disabled={saving}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60"
         >
           {saving && <Loader2 size={15} className="animate-spin" />}

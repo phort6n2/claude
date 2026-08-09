@@ -29,6 +29,8 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
         callConversionLabel: row?.callConversionLabel || '',
         callPhoneNumber: row?.callPhoneNumber || '',
         enhancedConversions: row?.enhancedConversions ?? true,
+        bingUetTagId: row?.bingUetTagId || '',
+        bingLeadEventAction: row?.bingLeadEventAction || '',
       },
     })
   } catch {
@@ -59,6 +61,24 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
   const callInput = str(body.callSnippet)
   const enhancedConversions = body.enhancedConversions !== false
 
+  // Microsoft: accept the whole UET tracking code or just the id. The id is
+  // the `ti` field in the snippet, and pasting the block is easier than
+  // finding the number inside it.
+  const bingRaw = str(body.bingUetTagId)
+  const bingUetTagId = bingRaw
+    ? (bingRaw.match(/ti\s*:\s*["']?(\d{6,12})["']?/)?.[1] ?? bingRaw.match(/^\d{6,12}$/)?.[0] ?? null)
+    : null
+  if (bingRaw && !bingUetTagId) {
+    return NextResponse.json(
+      {
+        error:
+          'No UET tag ID found. Paste the whole tracking code, or just the 8–9 digit tag ID from Microsoft Advertising.',
+      },
+      { status: 400 }
+    )
+  }
+  const bingLeadEventAction = bingUetTagId ? str(body.bingLeadEventAction) || 'submit_lead_form' : null
+
   const data: {
     conversionId: string | null
     leadConversionLabel: string | null
@@ -67,6 +87,8 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     callConversionLabel: string | null
     callPhoneNumber: string | null
     enhancedConversions: boolean
+    bingUetTagId: string | null
+    bingLeadEventAction: string | null
   } = {
     conversionId: null,
     leadConversionLabel: null,
@@ -75,6 +97,8 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     callConversionLabel: null,
     callPhoneNumber: null,
     enhancedConversions,
+    bingUetTagId,
+    bingLeadEventAction,
   }
 
   if (leadInput) {
@@ -137,6 +161,8 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       leadCurrency: data.leadCurrency,
       callConversionLabel: data.callConversionLabel,
       callPhoneNumber: data.callPhoneNumber,
+      bingUetTagId: data.bingUetTagId,
+      bingLeadEventAction: data.bingLeadEventAction,
     },
   })
 }
