@@ -117,6 +117,10 @@ model Client {
   // Cached Google Business Profile reviews (hosted landing pages)
   gbpReviews ClientGbpReviews?
 
+  // Additional shops. A client with one location keeps using the scalar
+  // address fields above; rows here take over as soon as any exist.
+  locations ClientLocation[]
+
   // Editorial content + photos for the hosted site
   siteContent ClientSiteContent?
   sitePhotos  ClientSitePhoto[]
@@ -442,6 +446,59 @@ model ClientGbpReviews {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// ADDITIONAL SHOP LOCATIONS (multi-GBP clients)
+//
+// A client with one shop needs no rows here — the Client scalar address is
+// the location, and getClientLocations() synthesizes a single row from it.
+// A client with several shops (several Google Business Profiles) gets one
+// row per shop, and from that point the rows are the truth: the map section,
+// the footer, the location pages, and the JSON-LD all read from them.
+//
+// Each row carries its own Place ID so its rating is that shop's rating.
+// Ratings are NEVER averaged across shops — a blended number is a number no
+// Business Profile actually shows.
+// ============================================
+
+model ClientLocation {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // How the shop is referred to on the page ("NW Portland", "Tualatin").
+  label         String
+  streetAddress String
+  city          String
+  state         String
+  postalCode    String
+  country       String  @default("US")
+  // Blank means the shop uses the client's main number.
+  phone         String?
+  // Free text ("Mon–Fri 8–5, Sat 9–2") — rendered verbatim, never parsed.
+  hours         String?
+
+  googlePlaceId String?
+  googleMapsUrl String?
+
+  // Cached Google Business Profile data for THIS shop's profile. Same rules
+  // as ClientGbpReviews: written only after a name-match guard passes, and
+  // the site strips the rating entirely when absent.
+  gbpPlaceName   String?
+  gbpRating      Float?
+  gbpReviewCount Int?
+  gbpFetchedAt   DateTime?
+  gbpLastError   String?
+
+  // The shop the site leads with when no city context narrows it down.
+  isPrimary Boolean @default(false)
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
 }
 
 // ============================================

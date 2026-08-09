@@ -1,6 +1,7 @@
 import { Phone, MapPin, ShieldCheck, Check } from 'lucide-react'
 import type { SiteExtras } from '@/lib/site-content'
 import { locationPages } from '@/lib/site-locations'
+import { orderLocationsForCity, mapQuery, type SiteLocation } from '@/lib/client-locations'
 
 /**
  * Shared building blocks for hosted client sites (home + service pages),
@@ -688,16 +689,41 @@ export function MapSection({
   reviews,
   areas,
   offersMobileService,
+  locations = [],
+  activeCity,
 }: {
   client: SiteClient
   reviews: ReviewsData | null
   areas?: string[]
   offersMobileService?: boolean
+  /** Every shop the client runs. One shop renders the reference composition. */
+  locations?: SiteLocation[]
+  /** City this page is about, so the shop in it leads. */
+  activeCity?: string | null
 }) {
-  if (!client.hasShopLocation) return null
-  const query = encodeURIComponent(
-    `${client.businessName}, ${client.streetAddress}, ${client.city}, ${client.state} ${client.postalCode}`
-  )
+  // A stored shop is proof of a shop, whatever the legacy flag says.
+  if (!client.hasShopLocation && locations.length === 0) return null
+  const ordered = orderLocationsForCity(locations, activeCity)
+  // Multi-shop clients get their own composition; a client with one shop
+  // keeps the reference layout exactly, which was tuned against it.
+  if (ordered.length > 1) {
+    return (
+      <MultiLocationSection
+        client={client}
+        reviews={reviews}
+        locations={ordered}
+        areas={areas}
+        offersMobileService={offersMobileService}
+        activeCity={activeCity}
+      />
+    )
+  }
+  const lead = ordered[0]
+  const query = lead
+    ? mapQuery(client.businessName, lead)
+    : encodeURIComponent(
+        `${client.businessName}, ${client.streetAddress}, ${client.city}, ${client.state} ${client.postalCode}`
+      )
   return (
     <section className="border-t border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
@@ -718,7 +744,7 @@ export function MapSection({
           <h2 className="text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight text-[var(--tx)]">
             {reviews
               ? `${reviews.rating.toFixed(1)} stars from ${reviews.reviewCount} Google reviews`
-              : `Visit the shop in ${client.city}`}
+              : `Visit the shop in ${lead?.city || client.city}`}
           </h2>
           {reviews && (
             <div className="mt-2.5 flex justify-center">
@@ -756,12 +782,19 @@ export function MapSection({
             )}
             <div>
               <div className="text-[11px] font-bold uppercase tracking-[.09em] text-[var(--tx-muted)] mb-1">
-                {client.city} shop
+                {lead?.label || client.city} shop
               </div>
               <div className="text-sm text-[var(--tx2)] leading-relaxed">
-                {client.streetAddress}
+                {lead?.streetAddress || client.streetAddress}
                 <br />
-                {client.city}, {client.state} {client.postalCode}
+                {lead?.city || client.city}, {lead?.state || client.state}{' '}
+                {lead?.postalCode || client.postalCode}
+                {lead?.hours && (
+                  <>
+                    <br />
+                    <span className="text-[var(--tx-muted)]">{lead.hours}</span>
+                  </>
+                )}
               </div>
             </div>
             {areas && areas.length > 0 && (
@@ -775,9 +808,9 @@ export function MapSection({
                 </div>
               </div>
             )}
-            {client.googleMapsUrl && (
+            {(lead?.googleMapsUrl || client.googleMapsUrl) && (
               <a
-                href={client.googleMapsUrl}
+                href={lead?.googleMapsUrl || client.googleMapsUrl || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-auto inline-flex items-center justify-center min-h-[48px] px-5 rounded-[14px] font-bold text-[15px] no-underline text-[var(--tx)] bg-white border-[1.5px] border-[var(--line-strong)] hover:bg-[var(--s1)]"
@@ -790,6 +823,176 @@ export function MapSection({
       </div>
     </section>
   )
+}
+
+/**
+ * Map section for a client with more than one shop.
+ *
+ * The single-shop layout puts one address in a card beside the map, which
+ * stops working the moment there are two: a visitor on the Tualatin page
+ * needs to see the Tualatin shop, and a visitor anywhere needs to see that
+ * the choice exists. So the map shows the shop for this page and the column
+ * beside it lists every shop, the relevant one first and marked — one list,
+ * no second row of orphaned cards, and the whole choice visible at once.
+ *
+ * Ratings shown per shop come from that shop's own Business Profile. They are
+ * never averaged: a blended number is a number no profile actually shows.
+ */
+function MultiLocationSection({
+  client,
+  reviews,
+  locations,
+  areas,
+  offersMobileService,
+  activeCity,
+}: {
+  client: SiteClient
+  reviews: ReviewsData | null
+  locations: SiteLocation[]
+  areas?: string[]
+  offersMobileService?: boolean
+  activeCity?: string | null
+}) {
+  const lead = locations[0]
+  const others = locations.slice(1)
+  // On a city page where we actually have a shop, say so plainly; that is the
+  // single most useful sentence on the page.
+  const leadIsInActiveCity =
+    !!activeCity && lead.city.trim().toLowerCase() === activeCity.trim().toLowerCase()
+  return (
+    <section className="border-t border-[var(--line)]">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
+        <div className="max-w-[60ch] mx-auto text-center mb-8">
+          <p className="text-[13px] font-bold uppercase tracking-[.09em] mb-2.5 text-[var(--brand)]">
+            <span className="block w-[26px] h-[3px] rounded-sm mb-3 bg-[var(--cta)] mx-auto" />
+            {reviews ? (
+              <>
+                <span className="inline-block align-[-3px] mr-1.5">
+                  <GoogleG size={15} />
+                </span>
+                Verified on Google
+              </>
+            ) : (
+              'Find us'
+            )}
+          </p>
+          <h2 className="text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight text-[var(--tx)]">
+            {leadIsInActiveCity
+              ? `Our shop is right here in ${activeCity}`
+              : `${locations.length} shops: ${listSentence(locations.map((l) => l.label))}`}
+          </h2>
+          {reviews && (
+            <div className="mt-2.5 flex justify-center">
+              <StarRow rating={reviews.rating} size={22} />
+            </div>
+          )}
+        </div>
+
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_380px] gap-6 items-stretch">
+          <iframe
+            title={`Map to ${client.businessName}, ${lead.label}`}
+            src={`https://maps.google.com/maps?q=${mapQuery(client.businessName, lead)}&output=embed`}
+            className="w-full min-h-[360px] h-full rounded-[20px] border border-[var(--line-card)]"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+          {/* Past three shops the column would outgrow the map, so it scrolls
+              rather than stretching the section to an awkward height. */}
+          <div
+            className={`flex flex-col gap-4 ${
+              locations.length > 3 ? 'lg:max-h-[520px] lg:overflow-y-auto lg:pr-1' : ''
+            }`}
+          >
+            <LocationCard client={client} location={lead} highlight />
+            {others.map((location) => (
+              <LocationCard key={location.id} client={client} location={location} />
+            ))}
+          </div>
+        </div>
+
+        {areas && areas.length > 0 && (
+          <p className="mt-6 text-sm text-[var(--tx-muted)] text-center max-w-[70ch] mx-auto">
+            Between them these shops serve {areas.join(', ')}
+            {offersMobileService ? ' — in the shop or mobile to you' : ''}.
+          </p>
+        )}
+      </div>
+    </section>
+  )
+}
+
+/** One shop: name, address, hours, its own rating, its own directions link. */
+function LocationCard({
+  client,
+  location,
+  highlight = false,
+}: {
+  client: SiteClient
+  location: SiteLocation
+  highlight?: boolean
+}) {
+  return (
+    <div
+      className={`bg-white rounded-[20px] border shadow-sm p-6 flex flex-col gap-3 ${
+        highlight ? 'border-[var(--cta)]' : 'border-[var(--line-card)]'
+      }`}
+    >
+      <div className="text-[11px] font-bold uppercase tracking-[.09em] text-[var(--tx-muted)]">
+        {location.label} shop
+      </div>
+      {location.rating !== null && location.reviewCount !== null && (
+        <div className="flex items-center gap-2.5">
+          <GoogleG size={16} />
+          <span className="text-lg font-extrabold tabular-nums leading-none">
+            {location.rating.toFixed(1)}
+          </span>
+          <StarRow rating={location.rating} size={13} />
+          <span className="text-[13px] text-[var(--tx-muted)]">
+            ({location.reviewCount})
+          </span>
+        </div>
+      )}
+      <address className="not-italic text-sm text-[var(--tx2)] leading-relaxed">
+        {location.streetAddress}
+        <br />
+        {location.city}, {location.state} {location.postalCode}
+        {location.hours && (
+          <>
+            <br />
+            <span className="text-[var(--tx-muted)]">{location.hours}</span>
+          </>
+        )}
+      </address>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <a
+          href={telHrefFor(location.phone)}
+          className="inline-flex items-center gap-1.5 text-sm font-bold no-underline text-[var(--brand)] hover:underline"
+        >
+          <Phone className="h-3.5 w-3.5" />
+          {location.phone}
+        </a>
+        <a
+          href={
+            location.googleMapsUrl ||
+            `https://maps.google.com/maps?q=${mapQuery(client.businessName, location)}`
+          }
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-sm font-bold no-underline text-[var(--brand)] hover:underline"
+        >
+          <MapPin className="h-3.5 w-3.5" />
+          Directions
+        </a>
+      </div>
+    </div>
+  )
+}
+
+/** "A and B" / "A, B, and C" — for naming shops in a sentence. */
+function listSentence(items: string[]): string {
+  if (items.length <= 1) return items[0] || ''
+  if (items.length === 2) return `${items[0]} and ${items[1]}`
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`
 }
 
 /**
@@ -942,6 +1145,7 @@ export function SiteFooter({
   reviews,
   offersMobileService,
   offersAdasCalibration,
+  locations = [],
 }: {
   client: SiteClient
   extras?: SiteExtras | null
@@ -951,6 +1155,7 @@ export function SiteFooter({
   reviews?: ReviewsData | null
   offersMobileService?: boolean
   offersAdasCalibration?: boolean
+  locations?: SiteLocation[]
 }) {
   const year = new Date().getFullYear()
   const areaSplit: string[][] = []
@@ -1095,12 +1300,25 @@ export function SiteFooter({
             >
               {client.phone}
             </a>
-            {client.hasShopLocation && (
-              <>
-                <br />
-                {client.streetAddress}, {client.city}, {client.state} {client.postalCode}
-              </>
-            )}
+            {/* Every shop, not just the head office — the footer is where a
+                customer checks which one is closest to them. */}
+            {client.hasShopLocation &&
+              (locations.length > 0 ? (
+                locations.map((location) => (
+                  <span key={location.id} className="block">
+                    {locations.length > 1 && (
+                      <span className="text-white font-semibold">{location.label}: </span>
+                    )}
+                    {location.streetAddress}, {location.city}, {location.state}{' '}
+                    {location.postalCode}
+                  </span>
+                ))
+              ) : (
+                <>
+                  <br />
+                  {client.streetAddress}, {client.city}, {client.state} {client.postalCode}
+                </>
+              ))}
             {extras?.registrationNumber && (
               <>
                 <br />

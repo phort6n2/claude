@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Search, Loader2, X } from 'lucide-react'
 import { useDirtyForm, confirmDiscard } from '@/hooks/useDirtyForm'
 import SaveBar from '@/components/forms/SaveBar'
+import ClientLocationsManager from '@/components/admin/ClientLocationsManager'
 
 /**
  * "Business" tab — the facts about the shop: identity, address, what they
@@ -447,6 +448,22 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
               </div>
             </div>
         </div>
+      </section>
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+        <div className="px-6 pt-5 pb-1">
+          <h2 className="font-semibold text-gray-900">Shops</h2>
+          <p className="text-sm text-gray-500">
+            For clients who run more than one location, each with its own Google Business Profile
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            Saved separately from the rest of this tab. Each shop&apos;s city gets its own location
+            page with its own map.
+          </p>
+        </div>
+        <ClientLocationsManager
+          clientId={client.id}
+          fallbackAddress={`${formData.streetAddress}, ${formData.city}, ${formData.state} ${formData.postalCode}`}
+        />
       </section>
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
         <div className="px-6 pt-5 pb-1">

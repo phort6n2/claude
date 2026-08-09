@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { refreshGbpReviews } from '@/lib/gbp-reviews'
+import { refreshGbpReviews, refreshLocationGbpReviews } from '@/lib/gbp-reviews'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -42,6 +42,25 @@ async function handle(request: NextRequest) {
         message: result.message,
       })
     }
+
+    // Extra shops carry their own Business Profiles, so each needs its own
+    // call. Same floor, same failure handling.
+    const locations = await prisma.clientLocation
+      .findMany({
+        where: { googlePlaceId: { not: null }, client: { status: 'ACTIVE' } },
+        select: { id: true, label: true, client: { select: { slug: true } } },
+      })
+      .catch(() => [])
+    for (const location of locations) {
+      const result = await refreshLocationGbpReviews(location.id)
+      results.push({
+        slug: `${location.client.slug} / ${location.label}`,
+        ok: result.ok,
+        skipped: !!result.rateLimited,
+        message: result.message,
+      })
+    }
+
     return NextResponse.json({ processed: results.length, results })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)

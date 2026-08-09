@@ -19,6 +19,12 @@ import type { SiteExtras } from '@/lib/site-content'
  *    splits the business signal; inventing a per-city entity would fabricate
  *    NAP data, since a service-area city is not a branch.
  *
+ *    A client's *real* second shop is different: it has its own address and
+ *    its own Business Profile, so it is emitted as its own entity with
+ *    `branchOf` pointing at the canonical one. That distinction — a branch is
+ *    a place, a service area is coverage — is the whole reason the two are
+ *    modeled differently here.
+ *
  * Every property is omitted when its source field is empty — nothing here is
  * invented.
  */
@@ -55,27 +61,83 @@ export function schemaPhone(phone: string): string {
 
 const businessId = (origin: string) => `${origin}/#business`
 const websiteId = (origin: string) => `${origin}/#website`
+const branchId = (origin: string, id: string) => `${origin}/#location-${id}`
+
+/** One physical shop, as passed in from getClientLocations(). */
+export interface SchemaLocation {
+  id: string
+  label: string
+  streetAddress: string
+  city: string
+  state: string
+  postalCode: string
+  country: string
+  phone: string
+  hours: string | null
+  googleMapsUrl: string | null
+  isPrimary: boolean
+  isSynthetic: boolean
+}
+
+/**
+ * Branch entities for the client's other shops.
+ *
+ * The primary shop IS the canonical business entity, so it isn't repeated
+ * here. Everything else is a real place with its own address and profile, and
+ * gets an entity of its own linked back with `branchOf` — the markup Google
+ * documents for a multi-location business.
+ */
+function branchEntities(origin: string, businessName: string, locations: SchemaLocation[]) {
+  return locations
+    .filter((l) => !l.isSynthetic && !l.isPrimary)
+    .map((l) => {
+      const entity: Record<string, unknown> = {
+        '@type': 'AutoRepair',
+        '@id': branchId(origin, l.id),
+        name: `${businessName} — ${l.label}`,
+        branchOf: { '@id': businessId(origin) },
+        telephone: schemaPhone(l.phone),
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: l.streetAddress,
+          addressLocality: l.city,
+          addressRegion: l.state,
+          postalCode: l.postalCode,
+          addressCountry: l.country || 'US',
+        },
+      }
+      if (l.googleMapsUrl) {
+        entity.sameAs = [l.googleMapsUrl]
+        entity.hasMap = l.googleMapsUrl
+      }
+      return entity
+    })
+}
 
 /** The full business entity — emitted ONLY on the home page. */
 function businessEntity(
   origin: string,
   client: SchemaClient,
   services: SchemaService[],
-  photos: Array<{ url: string; alt: string }>
+  photos: Array<{ url: string; alt: string }>,
+  locations: SchemaLocation[] = []
 ) {
+  // When the client has stored shops, the primary one is the canonical
+  // address — the scalar Client address may be stale head-office data.
+  const primary = locations.find((l) => l.isPrimary && !l.isSynthetic) || null
   const entity: Record<string, unknown> = {
     '@type': 'AutoRepair',
     '@id': businessId(origin),
     name: client.businessName,
     url: `${origin}/`,
-    telephone: schemaPhone(client.phone),
+    telephone: schemaPhone(primary?.phone || client.phone),
     address: {
       '@type': 'PostalAddress',
-      streetAddress: client.streetAddress,
-      addressLocality: client.city,
-      addressRegion: client.state,
-      postalCode: client.postalCode,
-      addressCountry: client.country || 'US',
+      streetAddress: primary?.streetAddress || client.streetAddress,
+      addressLocality: primary?.city || client.city,
+      addressRegion: primary?.state || client.state,
+      postalCode: primary?.postalCode || client.postalCode,
+      addressCountry: primary?.country || client.country || 'US',
     },
   }
   if (client.email) entity.email = client.email
@@ -120,11 +182,13 @@ export function homeJsonLd({
   client,
   services,
   extras,
+  locations = [],
 }: {
   origin: string
   client: SchemaClient
   services: SchemaService[]
   extras: SiteExtras
+  locations?: SchemaLocation[]
 }) {
   const graph: Record<string, unknown>[] = [
     {
@@ -134,7 +198,8 @@ export function homeJsonLd({
       name: client.businessName,
       publisher: { '@id': businessId(origin) },
     },
-    businessEntity(origin, client, services, extras.galleryPhotos),
+    businessEntity(origin, client, services, extras.galleryPhotos, locations),
+    ...branchEntities(origin, client.businessName, locations),
   ]
   if (extras.faq.length) {
     graph.push({
@@ -194,13 +259,20 @@ export function locationJsonLd({
   client,
   area,
   slug,
+  shop = null,
 }: {
   origin: string
   client: SchemaClient
   area: string
   slug: string
+  /** A real shop physically in this city, if the client has one. */
+  shop?: SchemaLocation | null
 }) {
   const url = `${origin}/locations/${slug}`
+  // A shop in this city is a place; reference that place. Absent one, the
+  // city is coverage — the one business, plus the area it serves.
+  const subjectId =
+    shop && !shop.isSynthetic && !shop.isPrimary ? branchId(origin, shop.id) : businessId(origin)
   return {
     '@context': 'https://schema.org',
     '@graph': [
@@ -209,13 +281,11 @@ export function locationJsonLd({
         '@id': url,
         name: `Auto Glass in ${area}`,
         isPartOf: { '@id': websiteId(origin) },
-        about: { '@id': businessId(origin) },
+        about: { '@id': subjectId },
       },
-      // A service-area city is coverage, not a second location: reference the
-      // one business and state the area it serves.
       {
         '@type': 'AutoRepair',
-        '@id': businessId(origin),
+        '@id': subjectId,
         areaServed: { '@type': 'City', name: area },
       },
       {

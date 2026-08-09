@@ -34,6 +34,7 @@ import {
   type TrustItem,
 } from '@/components/sites/shared'
 import type { SiteExtras } from '@/lib/site-content'
+import type { SiteLocation } from '@/lib/client-locations'
 
 /**
  * The shared body of every hosted-site page — everything between the hero
@@ -206,6 +207,8 @@ export function SiteBody({
   areas,
   basePath,
   currentServiceSlug,
+  locations = [],
+  activeCity,
 }: {
   client: SiteClient
   flags: SiteFlags
@@ -217,6 +220,10 @@ export function SiteBody({
   /** On a service page, that service's card links stay but the grid heading
       shifts to "everything else we handle". */
   currentServiceSlug?: string
+  /** Every shop the client runs; one entry for a single-shop client. */
+  locations?: SiteLocation[]
+  /** City this page is about, so the shop in it leads the map section. */
+  activeCity?: string | null
 }) {
   const prioritized = prioritizeServices(services)
   const gridServices = prioritized.slice(0, flags.offersMobileService ? 5 : 6)
@@ -308,6 +315,8 @@ export function SiteBody({
         reviews={reviews}
         areas={areas}
         offersMobileService={flags.offersMobileService}
+        locations={locations}
+        activeCity={activeCity}
       />
 
       {/* Service areas — dark coverage band */}
@@ -330,6 +339,7 @@ export function SiteChrome({
   services,
   areas,
   basePath,
+  locations = [],
 }: {
   client: SiteClient
   flags: SiteFlags
@@ -338,6 +348,7 @@ export function SiteChrome({
   services: Array<{ slug: string; name: string; short: string }>
   areas: string[]
   basePath: string
+  locations?: SiteLocation[]
 }) {
   return (
     <>
@@ -350,6 +361,7 @@ export function SiteChrome({
         reviews={reviews}
         offersMobileService={flags.offersMobileService}
         offersAdasCalibration={flags.offersAdasCalibration}
+        locations={locations}
       />
       <MobileCallBar client={client} quoteHref="#quote" />
     </>

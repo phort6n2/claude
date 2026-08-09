@@ -213,3 +213,125 @@ export async function refreshGbpReviews(clientId: string): Promise<RefreshResult
 
   return { ok: true, message: `Cached ${rating}★ (${reviewCount} reviews) from "${placeName}"`, placeName, rating, reviewCount }
 }
+
+/**
+ * Same refresh, for one shop of a multi-location client.
+ *
+ * Each shop has its own Business Profile and therefore its own rating, and
+ * the site shows them side by side rather than averaging — an average is a
+ * number no profile actually displays. The 168-hour floor, the name-match
+ * guard, and "no data means show nothing" all carry over unchanged; only the
+ * row being written differs.
+ */
+export async function refreshLocationGbpReviews(locationId: string): Promise<RefreshResult> {
+  const location = await prisma.clientLocation
+    .findUnique({
+      where: { id: locationId },
+      select: {
+        id: true,
+        label: true,
+        googlePlaceId: true,
+        gbpFetchedAt: true,
+        gbpRating: true,
+        gbpReviewCount: true,
+        client: { select: { businessName: true } },
+      },
+    })
+    .catch(() => null)
+  if (!location) return { ok: false, message: 'Location not found' }
+  if (!location.googlePlaceId) {
+    return { ok: false, message: `No Google Place ID set for the ${location.label} shop` }
+  }
+
+  if (location.gbpFetchedAt) {
+    const hoursSince = (Date.now() - new Date(location.gbpFetchedAt).getTime()) / 3_600_000
+    if (hoursSince < REVIEW_REFRESH_MIN_HOURS) {
+      const hoursLeft = Math.ceil(REVIEW_REFRESH_MIN_HOURS - hoursSince)
+      const daysLeft = Math.floor(hoursLeft / 24)
+      const wait =
+        daysLeft >= 1
+          ? `${daysLeft} day${daysLeft === 1 ? '' : 's'}`
+          : `${hoursLeft} hour${hoursLeft === 1 ? '' : 's'}`
+      return {
+        ok: false,
+        rateLimited: true,
+        message: `The ${location.label} shop was refreshed ${Math.floor(hoursSince)}h ago. Google reviews update at most once a week — next refresh available in about ${wait}.`,
+        rating: location.gbpRating ?? undefined,
+        reviewCount: location.gbpReviewCount ?? undefined,
+      }
+    }
+  }
+
+  const apiKey = await getPlacesApiKey()
+  if (!apiKey) return { ok: false, message: 'Google Places API key is not configured' }
+
+  const recordError = async (message: string) => {
+    await prisma.clientLocation
+      .update({ where: { id: locationId }, data: { gbpLastError: message } })
+      .catch(() => {})
+  }
+
+  let data: {
+    error?: { status?: string; message?: string }
+    displayName?: { text?: string }
+    rating?: number
+    userRatingCount?: number
+  }
+  try {
+    const response = await fetch(
+      `https://places.googleapis.com/v1/places/${encodeURIComponent(location.googlePlaceId)}`,
+      {
+        headers: {
+          'X-Goog-Api-Key': apiKey,
+          'X-Goog-FieldMask': 'displayName,rating,userRatingCount',
+          Accept: 'application/json',
+        },
+        signal: AbortSignal.timeout(10_000),
+      }
+    )
+    data = await response.json()
+    if (!response.ok) {
+      const message = `Places API (New): ${data.error?.status || response.status}${data.error?.message ? ` — ${data.error.message}` : ''}`
+      await recordError(message)
+      return { ok: false, message }
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Places request failed'
+    await recordError(message)
+    return { ok: false, message }
+  }
+
+  const placeName = data.displayName?.text || ''
+  if (!placeNameMatchesClient(location.client.businessName, placeName)) {
+    const message = `Place ID resolved to "${placeName}", which does not look like "${location.client.businessName}". Not caching — check the Place ID.`
+    await recordError(message)
+    return { ok: false, message, placeName }
+  }
+
+  const rating = data.rating
+  const reviewCount = data.userRatingCount
+  if (typeof rating !== 'number' || typeof reviewCount !== 'number') {
+    const message = 'Place has no rating data'
+    await recordError(message)
+    return { ok: false, message, placeName }
+  }
+
+  await prisma.clientLocation.update({
+    where: { id: locationId },
+    data: {
+      gbpPlaceName: placeName,
+      gbpRating: rating,
+      gbpReviewCount: reviewCount,
+      gbpFetchedAt: new Date(),
+      gbpLastError: null,
+    },
+  })
+
+  return {
+    ok: true,
+    message: `Cached ${rating}★ (${reviewCount} reviews) for the ${location.label} shop`,
+    placeName,
+    rating,
+    reviewCount,
+  }
+}
