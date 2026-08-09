@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
+import { parseCallSnippet, parseLeadSnippet } from '@/lib/ads-snippet'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,7 +12,7 @@ interface RouteContext {
 
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
 
-/** GET — the client's Ads conversion settings, or empty defaults. */
+/** GET — what is configured now, in the shape the card renders. */
 export async function GET(_request: NextRequest, { params }: RouteContext) {
   const denied = await requireAdmin()
   if (denied) return denied
@@ -23,29 +24,27 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
       tracking: {
         conversionId: row?.conversionId || '',
         leadConversionLabel: row?.leadConversionLabel || '',
+        leadValue: row?.leadValue ?? null,
+        leadCurrency: row?.leadCurrency || '',
         callConversionLabel: row?.callConversionLabel || '',
+        callPhoneNumber: row?.callPhoneNumber || '',
         enhancedConversions: row?.enhancedConversions ?? true,
       },
     })
   } catch {
     // Table not created yet — same shape, all empty.
-    return NextResponse.json({
-      tracking: {
-        conversionId: '',
-        leadConversionLabel: '',
-        callConversionLabel: '',
-        enhancedConversions: true,
-      },
-    })
+    return NextResponse.json({ tracking: null, unavailable: true })
   }
 }
 
 /**
- * PUT — save the settings.
+ * PUT — save from the snippets Google Ads produced.
  *
- * The conversion ID is validated rather than trusted. A malformed ID means a
- * tag that loads and reports nothing, which looks identical to "no leads yet"
- * for however long it takes someone to check — far worse than being told now.
+ * The operator pastes blocks of JavaScript; this pulls the conversion out of
+ * them. Nothing is inferred: a snippet that doesn't contain a conversion is
+ * rejected with what was wrong, because a tag that loads and silently reports
+ * nothing is indistinguishable from "no leads yet" until somebody thinks to
+ * check.
  */
 export async function PUT(request: NextRequest, { params }: RouteContext) {
   const denied = await requireAdmin()
@@ -56,37 +55,57 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
   if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
 
   const body = await request.json().catch(() => ({}))
-  const conversionId = str(body.conversionId)
-  const leadConversionLabel = str(body.leadConversionLabel)
-  const callConversionLabel = str(body.callConversionLabel)
+  const leadInput = str(body.leadSnippet)
+  const callInput = str(body.callSnippet)
   const enhancedConversions = body.enhancedConversions !== false
 
-  if (conversionId && !/^AW-[0-9]+$/.test(conversionId)) {
-    return NextResponse.json(
-      { error: 'Conversion ID must look like AW-123456789.' },
-      { status: 400 }
-    )
-  }
-  // A label without an ID has nowhere to send; an ID with no label reports
-  // nothing. Both are almost certainly a half-finished paste.
-  if (!conversionId && (leadConversionLabel || callConversionLabel)) {
-    return NextResponse.json(
-      { error: 'Add the conversion ID (AW-…) as well as the label.' },
-      { status: 400 }
-    )
-  }
-  if (conversionId && !leadConversionLabel && !callConversionLabel) {
-    return NextResponse.json(
-      { error: 'Add at least one conversion label, otherwise the tag has nothing to report.' },
-      { status: 400 }
-    )
+  const data: {
+    conversionId: string | null
+    leadConversionLabel: string | null
+    leadValue: number | null
+    leadCurrency: string | null
+    callConversionLabel: string | null
+    callPhoneNumber: string | null
+    enhancedConversions: boolean
+  } = {
+    conversionId: null,
+    leadConversionLabel: null,
+    leadValue: null,
+    leadCurrency: null,
+    callConversionLabel: null,
+    callPhoneNumber: null,
+    enhancedConversions,
   }
 
-  const data = {
-    conversionId: conversionId || null,
-    leadConversionLabel: leadConversionLabel || null,
-    callConversionLabel: callConversionLabel || null,
-    enhancedConversions,
+  if (leadInput) {
+    const parsed = parseLeadSnippet(leadInput)
+    if (!parsed.ok || !parsed.value) {
+      return NextResponse.json({ error: `Lead snippet: ${parsed.error}` }, { status: 400 })
+    }
+    data.conversionId = parsed.value.conversionId
+    data.leadConversionLabel = parsed.value.leadConversionLabel
+    data.leadValue = parsed.value.value
+    data.leadCurrency = parsed.value.currency
+  }
+
+  if (callInput) {
+    const parsed = parseCallSnippet(callInput)
+    if (!parsed.ok || !parsed.value) {
+      return NextResponse.json({ error: `Call snippet: ${parsed.error}` }, { status: 400 })
+    }
+    // Both actions live in one Ads account. Two different accounts in one
+    // site's tag would mean one of them silently never receives anything.
+    if (data.conversionId && data.conversionId !== parsed.value.conversionId) {
+      return NextResponse.json(
+        {
+          error: `Those snippets are from two different Ads accounts (${data.conversionId} and ${parsed.value.conversionId}). Both conversions have to come from the same account.`,
+        },
+        { status: 400 }
+      )
+    }
+    data.conversionId = parsed.value.conversionId
+    data.callConversionLabel = parsed.value.callConversionLabel
+    data.callPhoneNumber = parsed.value.phoneNumber
   }
 
   try {
@@ -108,5 +127,16 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
 
   // The tag is rendered server-side on every page of the site.
   revalidatePath(`/sites/${client.slug}`, 'layout')
-  return NextResponse.json({ ok: true })
+
+  return NextResponse.json({
+    ok: true,
+    parsed: {
+      conversionId: data.conversionId,
+      leadConversionLabel: data.leadConversionLabel,
+      leadValue: data.leadValue,
+      leadCurrency: data.leadCurrency,
+      callConversionLabel: data.callConversionLabel,
+      callPhoneNumber: data.callPhoneNumber,
+    },
+  })
 }
