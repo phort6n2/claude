@@ -327,7 +327,12 @@ const WIDGET_SOURCE = String.raw`(function () {
     form.appendChild(err);
     form.appendChild(btn);
     form.appendChild(el('p', { class: 'micro', text: 'No obligation · We confirm your coverage before dispatch' }));
-    form.appendChild(el('p', { class: 'consent', text: 'By submitting this form you agree we may contact you by phone, text or email about your quote. Message rates may apply.' }));
+    var consent = el('p', { class: 'consent', text: 'By submitting this form you agree we may contact you by phone, text or email about your quote. Message rates may apply. ' });
+    if (cfg.privacyUrl) {
+      consent.appendChild(el('a', { href: cfg.privacyUrl, text: 'Privacy Policy', style: 'color:#6e6e6e' }));
+      consent.appendChild(document.createTextNode('.'));
+    }
+    form.appendChild(consent);
 
     form.addEventListener('submit', function (e) {
       e.preventDefault();

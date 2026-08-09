@@ -276,7 +276,7 @@ export default async function ServicePage({ params }: PageProps) {
         basePath={basePath}
       />
 
-      <WidgetScript client={client} />
+      <WidgetScript client={client} basePath={basePath} />
     </div>
   )
 }

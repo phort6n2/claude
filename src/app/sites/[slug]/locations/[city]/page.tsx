@@ -279,7 +279,7 @@ export default async function LocationPage({ params }: PageProps) {
         basePath={basePath}
       />
 
-      <WidgetScript client={client} />
+      <WidgetScript client={client} basePath={basePath} />
     </div>
   )
 }

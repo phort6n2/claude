@@ -65,7 +65,7 @@ interface WidgetClient extends SiteClient {
  * hosted pages can inline it — the form renders without hydration-gating or
  * a config round trip. Third-party embeds still fetch.
  */
-export function buildWidgetConfig(client: WidgetClient) {
+export function buildWidgetConfig(client: WidgetClient, privacyUrl?: string) {
   const services: string[] = []
   if (client.offersWindshieldReplacement) services.push('Windshield Replacement')
   if (client.offersWindshieldRepair) services.push('Windshield Repair')
@@ -81,6 +81,7 @@ export function buildWidgetConfig(client: WidgetClient) {
     secondaryColor: client.secondaryColor || '#3b82f6',
     services,
     offersMobileService: !!client.offersMobileService,
+    ...(privacyUrl ? { privacyUrl } : {}),
   }
 }
 
@@ -120,14 +121,14 @@ export function WidgetMount({ client, service }: { client: SiteClient; service?:
  * pre-hydration DOM mutation makes React re-render the body and wipe the
  * mounted form (hydration mismatch).
  */
-export function WidgetScript({ client }: { client: WidgetClient }) {
+export function WidgetScript({ client, basePath }: { client: WidgetClient; basePath?: string }) {
   return (
     <Script
       src="/widget.js"
       strategy="afterInteractive"
       data-client={client.slug}
       data-phone={client.phone}
-      data-config={JSON.stringify(buildWidgetConfig(client))}
+      data-config={JSON.stringify(buildWidgetConfig(client, `${basePath || ''}/privacy`))}
     />
   )
 }
