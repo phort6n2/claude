@@ -43,10 +43,18 @@ export default function SiteContentEditor({
   clientId,
   onLogoFound,
   onAreasFound,
+  persistClientFields,
 }: {
   clientId: string
   onLogoFound?: (url: string) => void
   onAreasFound?: (areas: string[]) => void
+  /**
+   * Persists the fields the importer finds that live on the CLIENT record
+   * (logo, service areas). Called as part of THIS editor's save so one button
+   * commits everything the import produced — a second save button is exactly
+   * how imported data used to be lost.
+   */
+  persistClientFields?: () => Promise<void>
 }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -88,6 +96,9 @@ export default function SiteContentEditor({
     setSaving(true)
     setMessage(null)
     try {
+      // Client-record fields first: if this fails the operator must know
+      // before we report success on the content half.
+      if (persistClientFields) await persistClientFields()
       const res = await fetch(`/api/clients/${clientId}/site-content`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -108,7 +119,7 @@ export default function SiteContentEditor({
         res.ok
           ? {
               ok: !data.warning,
-              text: data.warning || 'Site content saved — live within about 5 minutes.',
+              text: data.warning || 'Saved — the site updates within about 5 minutes.',
             }
           : { ok: false, text: data.error || 'Failed to save' }
       )

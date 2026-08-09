@@ -11,7 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
  * silently — hence the dirty set, the browser unload guard, and the
  * confirm-on-navigate helper below.
  */
-export function useDirtyForm<T extends Record<string, unknown>>(initial: T) {
+export function useDirtyForm<T extends object>(initial: T) {
   const [values, setValues] = useState<T>(initial)
   const baseline = useRef<T>(initial)
 
@@ -19,8 +19,8 @@ export function useDirtyForm<T extends Record<string, unknown>>(initial: T) {
 
   const dirtyFields = useMemo(() => {
     const out = new Set<string>()
-    for (const key of Object.keys(values)) {
-      if (!isEqual(values[key], baseline.current[key])) out.add(key)
+    for (const key of Object.keys(values) as Array<keyof T>) {
+      if (!isEqual(values[key], baseline.current[key])) out.add(String(key))
     }
     return out
   }, [values])
@@ -34,7 +34,7 @@ export function useDirtyForm<T extends Record<string, unknown>>(initial: T) {
   /** Only the changed keys — what a partial PATCH should send. */
   const changedPayload = useCallback(() => {
     const out: Record<string, unknown> = {}
-    for (const key of dirtyFields) out[key] = values[key]
+    for (const key of dirtyFields) out[key] = (values as Record<string, unknown>)[key]
     return out
   }, [dirtyFields, values])
 

@@ -29,8 +29,8 @@ export default function SaveBar({
   if (!show) return null
 
   return (
-    <div className="sticky bottom-0 z-20 mt-6 -mx-2">
-      <div className="mx-2 rounded-2xl border border-gray-200 bg-white/95 backdrop-blur shadow-lg px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+    <div className="sticky bottom-0 z-[60] mt-6 -mx-2">
+      <div className="mx-2 mb-2 rounded-2xl border border-gray-200 bg-white/95 backdrop-blur shadow-lg px-4 py-3 pr-4 sm:pr-52 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-sm min-w-0">
           {saving ? (
             <>
