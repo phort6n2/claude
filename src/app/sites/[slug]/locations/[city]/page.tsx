@@ -1,3 +1,4 @@
+import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
@@ -31,7 +32,7 @@ import {
 import { getSiteExtras } from '@/lib/site-content'
 import { sitePaletteVars } from '@/lib/site-theme'
 import { getClientLocations } from '@/lib/client-locations'
-import { siteOriginFor } from '@/lib/site-origin'
+import { hostStanceFor, siteOriginFor } from '@/lib/site-origin'
 import { getAdsTracking } from '@/lib/ads-tracking'
 import { GoogleTag } from '@/components/sites/GoogleTag'
 import { locationJsonLd } from '@/lib/site-schema'
@@ -60,7 +61,11 @@ async function getClient(slug: string) {
       id: true,
       slug: true,
       siteSubdomain: true,
-      domains: { where: { isPrimary: true }, select: { domain: true }, take: 1 },
+      domains: {
+        where: { isPrimary: true },
+        select: { domain: true, verified: true, misconfigured: true },
+        take: 1,
+      },
       status: true,
       businessName: true,
       phone: true,
@@ -114,10 +119,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   )
   if (!location) return { title: 'Not Found' }
 
-  // Same origin as the page itself, and the same host the canonical names — a
-  // share card served from a different host than the page it describes gets
-  // dropped by some scrapers.
-  const siteRoot = siteOriginFor(client)
+  // Which host is this request on? Only the canonical one may be indexed;
+  // every other host self-canonicalises and asks to stay out of the index.
+  // The two are kept apart deliberately — see src/lib/site-origin.ts.
+  const stance = hostStanceFor(client, (await headers()).get('host'))
+  const siteRoot = stance.canonicalOrigin
+  const robots = stance.isCanonicalHost ? undefined : { index: false, follow: true }
   const title = `Auto Glass in ${location.area}, ${client.state} | ${client.businessName}`
   const description = `Windshield repair and replacement in ${location.area}, ${client.state}${client.offersMobileService ? ' — mobile service to your home or office' : ''}. Free quotes from ${client.businessName}. Call ${client.phone}.`
   return {
@@ -131,8 +138,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       images: [`${siteRoot}/api/site-og/${client.slug}`],
     },
     twitter: { card: 'summary_large_image', title, description, images: [`${siteRoot}/api/site-og/${client.slug}`] },
+    ...(robots ? { robots } : {}),
     alternates: {
-      canonical: `${siteOriginFor(client)}/locations/${location.slug}`,
+      canonical: `${stance.canonicalOrigin}/locations/${location.slug}`,
     },
   }
 }
