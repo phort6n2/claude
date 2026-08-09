@@ -316,7 +316,7 @@ export default async function ClientSitePage({ params }: PageProps) {
         basePath={basePath}
       />
 
-      <WidgetScript client={client} />
+      <WidgetScript client={client} basePath={basePath} />
     </div>
   )
 }

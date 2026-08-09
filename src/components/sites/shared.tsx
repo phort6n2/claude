@@ -902,41 +902,26 @@ export function faqJsonLd(extras: SiteExtras | null): object | null {
   }
 }
 
-/**
- * Closing dark CTA band with the reference's top-centered radial wash. Hosts
- * its own quote-form container so a reader persuaded by the whole page can
- * convert in place instead of scrolling back to the hero (the widget mounts
- * into every [data-glassleads-widget] container).
- */
+/** Closing dark CTA band with the reference's top-centered radial wash. */
 export function FinalCta({ client }: { client: SiteClient; quoteHref?: string }) {
   return (
     <section
       className="text-white on-dark"
       style={{ background: 'radial-gradient(120% 90% at 50% 0%, var(--dark-3), var(--dark-2))' }}
     >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
-        <div className="text-center">
-          <Eyebrow center onDark>
-            Ready when you are
-          </Eyebrow>
-          <h2 className="text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight">
-            Get your glass sorted this week
-          </h2>
-          <p className="mt-3 text-[var(--on-dark-2)]">
-            Tell us what broke — we&apos;ll confirm the glass, your coverage, and a time that works.
-          </p>
-        </div>
-        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_452px] lg:items-center">
-          <div className="text-center lg:text-left lg:justify-self-end lg:order-2 w-full max-w-[452px] mx-auto">
-            <div data-glassleads-widget></div>
-          </div>
-          <div className="flex flex-col items-center lg:items-start gap-4 lg:order-1 lg:pl-2">
-            <p className="m-0 text-[var(--on-dark-2)] text-[15px] max-w-[40ch] text-center lg:text-left">
-              Prefer to talk it through? Call and you&apos;ll get a real person at the shop, not a
-              call center.
-            </p>
-            <CallButton client={client} onDark withLabel />
-          </div>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 text-center">
+        <Eyebrow center onDark>
+          Ready when you are
+        </Eyebrow>
+        <h2 className="text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight">
+          Get your glass sorted this week
+        </h2>
+        <p className="mt-3 text-[var(--on-dark-2)]">
+          Tell us what broke — we&apos;ll confirm the glass, your coverage, and a time that works.
+        </p>
+        <div className="mt-7 flex flex-wrap justify-center gap-3">
+          <CtaButton href="#quote">Get my free quote</CtaButton>
+          <CallButton client={client} onDark withLabel />
         </div>
       </div>
     </section>
@@ -1144,6 +1129,18 @@ export function SiteFooter({
         <div className="mt-8 pt-5 border-t border-[var(--line-on-dark)] text-[12.5px] leading-[1.6] grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div>© {year} {client.businessName}. All rights reserved.</div>
           <div className="flex flex-wrap gap-4">
+            <a
+              href={`${basePath || ''}/privacy`}
+              className="underline text-[var(--on-dark-2)] hover:text-white"
+            >
+              Privacy Policy
+            </a>
+            <a
+              href={`${basePath || ''}/terms`}
+              className="underline text-[var(--on-dark-2)] hover:text-white"
+            >
+              Terms
+            </a>
             <a href={basePath || '/'} className="underline text-[var(--on-dark-2)] hover:text-white">
               Home
             </a>

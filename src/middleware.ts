@@ -19,7 +19,13 @@ const APP_HOSTS = new Set(['glassleads.app', 'www.glassleads.app'])
 
 export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
-  if (pathname !== '/' && !pathname.startsWith('/services/') && !pathname.startsWith('/locations/')) {
+  if (
+    pathname !== '/' &&
+    !pathname.startsWith('/services/') &&
+    !pathname.startsWith('/locations/') &&
+    pathname !== '/privacy' &&
+    pathname !== '/terms'
+  ) {
     return NextResponse.next()
   }
 
@@ -37,5 +43,5 @@ export default function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/services/:path*', '/locations/:path*'],
+  matcher: ['/', '/services/:path*', '/locations/:path*', '/privacy', '/terms'],
 }
