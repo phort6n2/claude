@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { PrismaClient } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
@@ -7,10 +8,21 @@ export const dynamic = 'force-dynamic'
 /**
  * One-off setup for the ClientLocation table (multi-shop clients).
  *
- * The production DATABASE_URL is integration-managed and read-only in the
- * Vercel dashboard, so there is no psql to point at it. This runs the exact
- * statements in docs/db-setup-client-locations.sql, in the same transaction
- * shape, from inside the app that already holds the connection.
+ * The production database URLs are integration-managed and read-only in the
+ * Vercel dashboard, so there is no psql to point at them. This runs the exact
+ * statements in docs/db-setup-client-locations.sql from inside the app.
+ *
+ * It cannot use the app's own client. Prisma Postgres hands out two URLs and
+ * the app deliberately runs on the POOLED one (PRISMA_DATABASE_URL) — that
+ * role has no rights on schema public, so DDL through it comes back as
+ * "permission denied for schema public" (42501). The DIRECT URL's role
+ * (prisma_migration) is the one that owns the schema; it has a small
+ * connection cap, which is fine for a single short-lived client we disconnect
+ * immediately.
+ *
+ * The table is then read back through the POOLED client, because "the
+ * migration role created it" and "the app can see it" are two different
+ * claims and only the second one matters.
  *
  * Admin session required — no shared key, so nothing needs to be handed
  * around. Idempotent (IF NOT EXISTS throughout), so running it twice is a
@@ -64,14 +76,40 @@ async function run() {
     return NextResponse.json({ error: 'Admins only' }, { status: 403 })
   }
 
+  // The direct URL. DIRECT_URL is what schema.prisma names it; in this
+  // project's Vercel environment the same direct connection string is the one
+  // sitting in DATABASE_URL (the app itself runs on PRISMA_DATABASE_URL).
+  const directUrl = process.env.DIRECT_URL || process.env.DATABASE_URL
+  if (!directUrl || directUrl.startsWith('prisma')) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          'No direct database URL available. DDL needs DIRECT_URL (or a non-pooled DATABASE_URL); the pooled prisma+postgres:// role cannot create tables.',
+      },
+      { status: 500 }
+    )
+  }
+
   const applied: string[] = []
+  const ddl = new PrismaClient({ datasourceUrl: directUrl })
   try {
     for (const statement of STATEMENTS) {
-      await prisma.$executeRawUnsafe(statement)
+      await ddl.$executeRawUnsafe(statement)
       applied.push(statement.trim().split('\n')[0].trim())
     }
-    // Prove it: if this count succeeds, the table is really there and the
-    // Prisma client can see it.
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error('setup-client-locations DDL failed:', message)
+    return NextResponse.json({ ok: false, applied, error: message }, { status: 500 })
+  } finally {
+    // The migration role's connection cap is small; don't hold one open.
+    await ddl.$disconnect().catch(() => {})
+  }
+
+  try {
+    // Read through the pooled client the app actually uses. If this succeeds,
+    // the table exists AND the runtime role can see it.
     const count = await prisma.clientLocation.count()
     return NextResponse.json({
       ok: true,
@@ -81,7 +119,14 @@ async function run() {
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    console.error('setup-client-locations failed:', message)
-    return NextResponse.json({ ok: false, applied, error: message }, { status: 500 })
+    console.error('setup-client-locations verify failed:', message)
+    return NextResponse.json(
+      {
+        ok: false,
+        applied,
+        error: `Table created, but the app's pooled connection cannot read it: ${message}`,
+      },
+      { status: 500 }
+    )
   }
 }
