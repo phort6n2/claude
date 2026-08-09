@@ -51,40 +51,62 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       )
     }
 
+    /**
+     * PARTIAL patch: only keys actually present in the payload are written.
+     * The editor is split across routes that each save their own fields, so a
+     * payload that omits a field must LEAVE IT ALONE — writing `undefined`
+     * from an absent key is how a tab-scoped save silently wipes another
+     * tab's data.
+     */
+    const patch: Record<string, unknown> = {}
+    const has = (key: string) => Object.prototype.hasOwnProperty.call(data, key)
+    const setIf = (key: string, value: unknown) => {
+      if (has(key)) patch[key] = value
+    }
+
+    // Text fields that may be blanked to null.
+    for (const key of ['contactPerson', 'googlePlaceId', 'googleMapsUrl', 'logoUrl'] as const) {
+      setIf(key, data[key] || null)
+    }
+    // Plain scalars, written as given.
+    for (const key of [
+      'businessName',
+      'phone',
+      'email',
+      'streetAddress',
+      'city',
+      'state',
+      'postalCode',
+      'primaryColor',
+      'secondaryColor',
+      'accentColor',
+      'timezone',
+      'status',
+    ] as const) {
+      setIf(key, data[key])
+    }
+    // Booleans.
+    for (const key of [
+      'hasShopLocation',
+      'offersMobileService',
+      'offersWindshieldRepair',
+      'offersWindshieldReplacement',
+      'offersSideWindowRepair',
+      'offersBackWindowRepair',
+      'offersSunroofRepair',
+      'offersRockChipRepair',
+      'offersAdasCalibration',
+      'callCoachingEnabled',
+    ] as const) {
+      if (has(key)) patch[key] = !!data[key]
+    }
+    if (has('country')) patch.country = data.country || 'US'
+    if (has('serviceAreas')) patch.serviceAreas = Array.isArray(data.serviceAreas) ? data.serviceAreas : []
+    if (has('allowedOrigins')) patch.allowedOrigins = allowedOrigins
+
     const client = await prisma.client.update({
       where: { id },
-      data: {
-        businessName: data.businessName,
-        contactPerson: data.contactPerson || null,
-        phone: data.phone,
-        email: data.email,
-        streetAddress: data.streetAddress,
-        city: data.city,
-        state: data.state,
-        postalCode: data.postalCode,
-        country: data.country || existing.country || 'US',
-        googlePlaceId: data.googlePlaceId || null,
-        googleMapsUrl: data.googleMapsUrl || null,
-        hasShopLocation: data.hasShopLocation ?? true,
-        offersMobileService: data.offersMobileService ?? false,
-        offersWindshieldRepair: data.offersWindshieldRepair ?? existing.offersWindshieldRepair,
-        offersWindshieldReplacement: data.offersWindshieldReplacement ?? existing.offersWindshieldReplacement,
-        offersSideWindowRepair: data.offersSideWindowRepair ?? existing.offersSideWindowRepair,
-        offersBackWindowRepair: data.offersBackWindowRepair ?? existing.offersBackWindowRepair,
-        offersSunroofRepair: data.offersSunroofRepair ?? existing.offersSunroofRepair,
-        offersRockChipRepair: data.offersRockChipRepair ?? existing.offersRockChipRepair,
-        offersAdasCalibration: data.offersAdasCalibration ?? existing.offersAdasCalibration,
-        serviceAreas: data.serviceAreas || [],
-        logoUrl: data.logoUrl || null,
-        primaryColor: data.primaryColor,
-        secondaryColor: data.secondaryColor,
-        accentColor: data.accentColor,
-        timezone: data.timezone,
-        allowedOrigins,
-        status: data.status || existing.status,
-        // Call coaching toggle
-        callCoachingEnabled: data.callCoachingEnabled ?? existing.callCoachingEnabled,
-      },
+      data: patch,
     })
 
     return NextResponse.json(client)

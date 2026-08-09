@@ -7,6 +7,60 @@ const PORTAL_SESSION_COOKIE = 'portal_session'
 const SESSION_DURATION_DAYS = 30
 
 /**
+ * Portal session cookies are HMAC-signed.
+ *
+ * They used to be plain base64 JSON containing the ClientUser id, which
+ * getPortalSession() then trusted outright — so any client could edit their
+ * own cookie to another shop's user id and read that shop's leads. The
+ * signature below is what makes the id trustworthy; never read a claim out of
+ * this cookie without verifying it first.
+ */
+function sessionSecret(): string {
+  const secret =
+    process.env.PORTAL_SESSION_SECRET ||
+    process.env.NEXTAUTH_SECRET ||
+    process.env.AUTH_SECRET
+  if (!secret) {
+    // Fail closed: without a secret we cannot authenticate anyone.
+    throw new Error('PORTAL_SESSION_SECRET (or NEXTAUTH_SECRET) must be set')
+  }
+  return secret
+}
+
+interface PortalSessionClaims {
+  userId: string
+  createdAt: number
+  /** Admin impersonation — set only by the admin impersonate route. */
+  imp?: boolean
+  impBy?: string
+  impEmail?: string
+  /** Absolute expiry (ms epoch); used to give impersonation a short life. */
+  exp?: number
+}
+
+function signClaims(claims: PortalSessionClaims): string {
+  const payload = Buffer.from(JSON.stringify(claims)).toString('base64url')
+  const sig = crypto.createHmac('sha256', sessionSecret()).update(payload).digest('base64url')
+  return `${payload}.${sig}`
+}
+
+function verifyCookie(value: string): PortalSessionClaims | null {
+  const dot = value.lastIndexOf('.')
+  if (dot < 1) return null
+  const payload = value.slice(0, dot)
+  const sig = value.slice(dot + 1)
+  const expected = crypto.createHmac('sha256', sessionSecret()).update(payload).digest('base64url')
+  const a = Buffer.from(sig)
+  const b = Buffer.from(expected)
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null
+  try {
+    return JSON.parse(Buffer.from(payload, 'base64url').toString('utf-8')) as PortalSessionClaims
+  } catch {
+    return null
+  }
+}
+
+/**
  * Generate a secure random token
  */
 export function generateToken(): string {
@@ -196,30 +250,37 @@ export async function verifyMagicLink(token: string): Promise<{
 /**
  * Create a session cookie for the client user
  */
-export async function createPortalSession(clientUserId: string): Promise<string> {
-  const sessionToken = generateToken()
-
-  // Store session token (we could use a Session table, but for simplicity we'll encode in cookie)
-  // In production, you'd want a proper session store
+export async function createPortalSession(
+  clientUserId: string,
+  options?: { impersonatedBy?: string; adminEmail?: string; ttlMinutes?: number }
+): Promise<string> {
   const cookieStore = await cookies()
-  const sessionData = JSON.stringify({
+  const now = Date.now()
+  const claims: PortalSessionClaims = {
     userId: clientUserId,
-    token: sessionToken,
-    createdAt: Date.now(),
-  })
+    createdAt: now,
+    ...(options?.impersonatedBy
+      ? {
+          imp: true,
+          impBy: options.impersonatedBy,
+          impEmail: options.adminEmail,
+          exp: now + (options.ttlMinutes ?? 30) * 60 * 1000,
+        }
+      : {}),
+  }
+  const value = signClaims(claims)
 
-  // Base64 encode the session data
-  const encoded = Buffer.from(sessionData).toString('base64')
-
-  cookieStore.set(PORTAL_SESSION_COOKIE, encoded, {
+  cookieStore.set(PORTAL_SESSION_COOKIE, value, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: SESSION_DURATION_DAYS * 24 * 60 * 60,
+    maxAge: options?.impersonatedBy
+      ? (options.ttlMinutes ?? 30) * 60
+      : SESSION_DURATION_DAYS * 24 * 60 * 60,
     path: '/',
   })
 
-  return sessionToken
+  return value
 }
 
 /**
@@ -234,6 +295,9 @@ export async function getPortalSession(): Promise<{
   timezone: string
   logoUrl: string | null
   primaryColor: string | null
+  isImpersonating: boolean
+  impersonatedBy?: string
+  impersonationExpiresAt?: number
 } | null> {
   const cookieStore = await cookies()
   const sessionCookie = cookieStore.get(PORTAL_SESSION_COOKIE)
@@ -243,13 +307,18 @@ export async function getPortalSession(): Promise<{
   }
 
   try {
-    const decoded = Buffer.from(sessionCookie.value, 'base64').toString('utf-8')
-    const sessionData = JSON.parse(decoded)
+    // Signature first — an unsigned or tampered cookie is not a session.
+    const sessionData = verifyCookie(sessionCookie.value)
+    if (!sessionData) return null
 
     // Check session age
     const sessionAge = Date.now() - sessionData.createdAt
     const maxAge = SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000
     if (sessionAge > maxAge) {
+      return null
+    }
+    // Impersonation sessions carry a short absolute expiry.
+    if (sessionData.exp && Date.now() > sessionData.exp) {
       return null
     }
 
@@ -276,6 +345,9 @@ export async function getPortalSession(): Promise<{
       timezone: clientUser.client.timezone,
       logoUrl: clientUser.client.logoUrl,
       primaryColor: clientUser.client.primaryColor,
+      isImpersonating: !!sessionData.imp,
+      impersonatedBy: sessionData.impEmail,
+      impersonationExpiresAt: sessionData.exp,
     }
   } catch {
     return null
