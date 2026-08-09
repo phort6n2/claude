@@ -103,6 +103,31 @@ const STATEMENTS: Array<{ table: string; sql: string[] }> = [
     ],
   },
   {
+    table: 'ClientNotification',
+    sql: [
+      `CREATE TABLE IF NOT EXISTS "ClientNotification" (
+         "id"           TEXT NOT NULL,
+         "clientId"     TEXT NOT NULL,
+         "emailEnabled" BOOLEAN NOT NULL DEFAULT false,
+         "emailTo"      TEXT[] DEFAULT ARRAY[]::TEXT[],
+         "smsEnabled"   BOOLEAN NOT NULL DEFAULT false,
+         "smsTo"        TEXT[] DEFAULT ARRAY[]::TEXT[],
+         "smsActivatedAt" TIMESTAMP(3),
+         "smsComplimentary" BOOLEAN NOT NULL DEFAULT false,
+         "smsNote"      TEXT,
+         "lastSentAt"   TIMESTAMP(3),
+         "lastError"    TEXT,
+         "createdAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+         "updatedAt"    TIMESTAMP(3) NOT NULL,
+         CONSTRAINT "ClientNotification_pkey" PRIMARY KEY ("id"),
+         CONSTRAINT "ClientNotification_clientId_fkey"
+           FOREIGN KEY ("clientId") REFERENCES "Client"("id")
+           ON DELETE CASCADE ON UPDATE CASCADE
+       )`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS "ClientNotification_clientId_key" ON "ClientNotification"("clientId")`,
+    ],
+  },
+  {
     table: 'ClientAdsTracking',
     sql: [
       `CREATE TABLE IF NOT EXISTS "ClientAdsTracking" (
@@ -185,6 +210,7 @@ async function run() {
     visible.ClientAdsTracking = await prisma.clientAdsTracking.count()
     visible.ClientDomain = await prisma.clientDomain.count()
     visible.ClientCityContent = await prisma.clientCityContent.count()
+    visible.ClientNotification = await prisma.clientNotification.count()
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     return NextResponse.json(

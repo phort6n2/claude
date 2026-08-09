@@ -27,6 +27,35 @@ const API_KEYS: ApiKeyConfig[] = [
     description: 'Used for business search and auto-populating client info',
     testable: true,
   },
+  // Lead notifications send from OUR accounts, not the client's. One Resend
+  // key and one Twilio number cover every client; nobody signs up for
+  // anything, and turning a client's alerts on is a switch, not an
+  // onboarding.
+  {
+    key: 'RESEND_API_KEY',
+    label: 'Resend API Key',
+    description: 'Sends lead-alert emails for every client. Included free with their plan.',
+  },
+  {
+    key: 'RESEND_FROM',
+    label: 'Lead alert "from" address',
+    description: 'e.g. GlassLeads <leads@glassleads.app>. The domain must be verified in Resend.',
+  },
+  {
+    key: 'TWILIO_ACCOUNT_SID',
+    label: 'Twilio Account SID',
+    description: 'Sends lead-alert texts. Billed to clients as the $15/mo SMS add-on.',
+  },
+  {
+    key: 'TWILIO_AUTH_TOKEN',
+    label: 'Twilio Auth Token',
+    description: 'Paired with the SID above.',
+  },
+  {
+    key: 'TWILIO_FROM_NUMBER',
+    label: 'Twilio sending number',
+    description: 'Your existing approved number, in +15035550100 form. Every client texts from it.',
+  },
 ]
 
 interface SettingState {

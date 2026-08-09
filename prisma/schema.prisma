@@ -130,6 +130,9 @@ model Client {
   // Per-city copy that makes a location page worth indexing
   cityContent ClientCityContent[]
 
+  // Who gets told when a lead arrives
+  notification ClientNotification?
+
   // Editorial content + photos for the hosted site
   siteContent ClientSiteContent?
   sitePhotos  ClientSitePhoto[]
@@ -452,6 +455,53 @@ model ClientGbpReviews {
 
   fetchedAt DateTime
   lastError String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// LEAD NOTIFICATIONS (email + SMS)
+//
+// Speed to first contact decides whether a glass lead converts — the shop
+// that calls back in two minutes beats the one that calls back in thirty. So
+// notifications go out the moment a lead lands, to whoever the shop says.
+//
+// Recipients are stored per client rather than derived from the client's own
+// email, because the person who should be woken by a lead is rarely the
+// person the business is registered to: it's the dispatcher, or two techs'
+// mobiles.
+// ============================================
+
+model ClientNotification {
+  id       String @id @default(cuid())
+  clientId String @unique
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  emailEnabled Boolean  @default(false)
+  emailTo      String[] @default([])
+
+  /* The paid add-on. Off by default and switchable only by an admin — email
+   * is included with every plan, SMS is billed monthly, so turning it on is a
+   * commercial decision rather than a client preference.
+   *
+   * Nothing here charges anyone. It is a record of what was switched on and
+   * whether it is meant to be invoiced, which is why an existing client can
+   * be given it for nothing without pretending they paid. */
+  smsEnabled       Boolean   @default(false)
+  smsTo            String[]  @default([])
+  /* When the add-on was last switched on, so billing has a date rather than
+   * someone's memory. */
+  smsActivatedAt   DateTime?
+  /* Comped: on, but not to be invoiced. */
+  smsComplimentary Boolean   @default(false)
+  /* Free-text note for why — "grandfathered", "trial to March", a person. */
+  smsNote          String?
+
+  /* Last attempt, so the admin can see it working — or not — without
+   * digging through logs. */
+  lastSentAt DateTime?
+  lastError  String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

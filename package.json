@@ -27,9 +27,11 @@
     "next-auth": "^5.0.0-beta.30",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "resend": "^6.18.1",
     "sharp": "^0.35.3",
     "slugify": "^1.6.6",
     "tailwind-merge": "^3.4.0",
+    "twilio": "^6.0.2",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
