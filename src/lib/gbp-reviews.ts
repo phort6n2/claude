@@ -69,7 +69,16 @@ export interface RefreshResult {
   placeName?: string
   rating?: number
   reviewCount?: number
+  /** True when the call was skipped by the 168-hour floor, not by an error. */
+  rateLimited?: boolean
 }
+
+/**
+ * Hard floor between Places API calls for one client — 168 hours.
+ * Applies to the manual Refresh button too, not just the weekly cron: every
+ * call costs money, and review counts don't move fast enough to justify more.
+ */
+export const REVIEW_REFRESH_MIN_HOURS = 168
 
 export async function refreshGbpReviews(clientId: string): Promise<RefreshResult> {
   const client = await prisma.client.findUnique({
@@ -79,6 +88,26 @@ export async function refreshGbpReviews(clientId: string): Promise<RefreshResult
   if (!client) return { ok: false, message: 'Client not found' }
   if (!client.googlePlaceId) {
     return { ok: false, message: 'No Google Place ID set for this client' }
+  }
+
+  // Rate limit before any network call.
+  const existing = await prisma.clientGbpReviews
+    .findUnique({ where: { clientId }, select: { fetchedAt: true, rating: true, reviewCount: true } })
+    .catch(() => null)
+  if (existing?.fetchedAt) {
+    const hoursSince = (Date.now() - new Date(existing.fetchedAt).getTime()) / 3_600_000
+    if (hoursSince < REVIEW_REFRESH_MIN_HOURS) {
+      const hoursLeft = Math.ceil(REVIEW_REFRESH_MIN_HOURS - hoursSince)
+      const daysLeft = Math.floor(hoursLeft / 24)
+      const wait = daysLeft >= 1 ? `${daysLeft} day${daysLeft === 1 ? '' : 's'}` : `${hoursLeft} hour${hoursLeft === 1 ? '' : 's'}`
+      return {
+        ok: false,
+        rateLimited: true,
+        message: `Reviews were refreshed ${Math.floor(hoursSince)}h ago. Google reviews update at most once a week — next refresh available in about ${wait}.`,
+        rating: existing.rating,
+        reviewCount: existing.reviewCount,
+      }
+    }
   }
 
   const apiKey = await getPlacesApiKey()
