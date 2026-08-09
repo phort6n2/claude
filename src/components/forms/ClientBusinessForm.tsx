@@ -462,7 +462,16 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
         </div>
         <ClientLocationsManager
           clientId={client.id}
-          fallbackAddress={`${formData.streetAddress}, ${formData.city}, ${formData.state} ${formData.postalCode}`}
+          fallback={{
+            streetAddress: formData.streetAddress,
+            city: formData.city,
+            state: formData.state,
+            postalCode: formData.postalCode,
+            country: formData.country || 'US',
+            phone: formData.phone,
+            googlePlaceId: formData.googlePlaceId,
+            googleMapsUrl: formData.googleMapsUrl,
+          }}
         />
       </section>
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Loader2, Plus, RefreshCw, Star, Trash2 } from 'lucide-react'
+import { AlertTriangle, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import GbpPicker, { type PlaceDetails } from '@/components/admin/GbpPicker'
 
 /**
@@ -16,7 +16,25 @@ import GbpPicker, { type PlaceDetails } from '@/components/admin/GbpPicker'
  *
  * The whole list saves as a unit, because "which shop is primary" only has a
  * sensible answer when the set is written together.
+ *
+ * The dangerous moment is the FIRST row. Until one exists the site renders the
+ * Client address; the instant one does, the rows are the whole truth. So an
+ * admin who opens this to "add the second shop" and adds only that shop has
+ * silently deleted the first one from the site. The editor therefore starts a
+ * client with no rows off with their existing address already filled in as the
+ * main shop, and warns when a saved list has lost track of it.
  */
+
+export interface FallbackAddress {
+  streetAddress: string
+  city: string
+  state: string
+  postalCode: string
+  country: string
+  phone: string
+  googlePlaceId: string | null
+  googleMapsUrl: string | null
+}
 
 export interface LocationRow {
   id: string
@@ -53,25 +71,56 @@ const blank = (): LocationRow => ({
   isPrimary: false,
 })
 
+/** The Business-tab address as an unsaved first row. */
+function rowFromFallback(fallback: FallbackAddress): LocationRow {
+  return {
+    ...blank(),
+    label: fallback.city,
+    streetAddress: fallback.streetAddress,
+    city: fallback.city,
+    state: fallback.state,
+    postalCode: fallback.postalCode,
+    country: fallback.country || 'US',
+    phone: '',
+    googlePlaceId: fallback.googlePlaceId || '',
+    googleMapsUrl: fallback.googleMapsUrl || '',
+    isPrimary: true,
+  }
+}
+
+const sameAddress = (a: string, b: string) =>
+  a.trim().toLowerCase().replace(/\s+/g, ' ') === b.trim().toLowerCase().replace(/\s+/g, ' ')
+
 export default function ClientLocationsManager({
   clientId,
-  fallbackAddress,
+  fallback,
 }: {
   clientId: string
-  /** The single address on the Business tab, shown when there are no rows. */
-  fallbackAddress: string
+  /** The single address on the Business tab — the site's address until rows exist. */
+  fallback: FallbackAddress
 }) {
   const [rows, setRows] = useState<LocationRow[] | null>(null)
   const [saving, setSaving] = useState(false)
   const [refreshingId, setRefreshingId] = useState<string | null>(null)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  // True while the list is the unsaved seed rather than something stored.
+  const [seeded, setSeeded] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     fetch(`/api/clients/${clientId}/locations`)
       .then((res) => res.json())
       .then((data) => {
-        if (!cancelled) setRows(data.locations || [])
+        if (cancelled) return
+        const stored: LocationRow[] = data.locations || []
+        if (stored.length === 0 && fallback.streetAddress) {
+          // Start from the address the site is already showing, so adding a
+          // second shop is an addition and not a swap.
+          setRows([rowFromFallback(fallback)])
+          setSeeded(true)
+        } else {
+          setRows(stored)
+        }
       })
       .catch(() => {
         if (!cancelled) setRows([])
@@ -79,7 +128,10 @@ export default function ClientLocationsManager({
     return () => {
       cancelled = true
     }
-  }, [clientId])
+    // Depend on the address itself, not the object literal the parent rebuilds
+    // on every keystroke — otherwise this refetches while the admin types.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId, fallback.streetAddress, fallback.city])
 
   const update = (index: number, patch: Partial<LocationRow>) => {
     setRows((prev) => (prev || []).map((row, i) => (i === index ? { ...row, ...patch } : row)))
@@ -115,6 +167,7 @@ export default function ClientLocationsManager({
     setMessage(null)
   }
 
+  /** Exactly one main shop, chosen here rather than inferred from row order. */
   const makePrimary = (index: number) => {
     setRows((prev) => (prev || []).map((row, i) => ({ ...row, isPrimary: i === index })))
     setMessage(null)
@@ -139,6 +192,7 @@ export default function ClientLocationsManager({
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to save locations')
       setRows(data.locations || [])
+      setSeeded(false)
       setMessage({ ok: true, text: 'Saved. The site updates within about 5 minutes.' })
       setTimeout(() => setMessage(null), 4000)
     } catch (err) {
@@ -176,16 +230,55 @@ export default function ClientLocationsManager({
     )
   }
 
+  // A saved list that doesn't include the Business-tab address means that
+  // address has silently stopped appearing on the site. Usually it means
+  // someone added the second shop and not the first.
+  const missingFallback =
+    !seeded &&
+    rows.length > 0 &&
+    !!fallback.streetAddress &&
+    !rows.some((row) => sameAddress(row.streetAddress, fallback.streetAddress))
+
   return (
     <div className="p-6 pt-4 space-y-4">
+      {seeded && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+          <p className="font-medium">This client has one shop, and it is filled in below.</p>
+          <p className="mt-1">
+            Nothing is saved here yet. Add the second shop, pick which one is the main shop, then
+            Save. Once a shop list exists the site uses <em>only</em> these addresses — which is why
+            the existing one starts in the list rather than waiting to be re-typed.
+          </p>
+        </div>
+      )}
+
+      {missingFallback && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          <p className="font-medium flex items-center gap-2">
+            <AlertTriangle size={16} />
+            The address on this tab is not in the shop list
+          </p>
+          <p className="mt-1">
+            {fallback.streetAddress}, {fallback.city}, {fallback.state} {fallback.postalCode} — the
+            site is no longer showing it anywhere, because the shops below have taken over. Add it
+            back if that shop is still open.
+          </p>
+          <button
+            type="button"
+            onClick={() => setRows([...(rows || []), { ...rowFromFallback(fallback), isPrimary: false }])}
+            className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-amber-400 bg-white text-sm font-medium hover:bg-amber-100"
+          >
+            <Plus size={14} /> Add it as a shop
+          </button>
+        </div>
+      )}
+
       {rows.length === 0 && (
         <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600">
-          <p className="font-medium text-gray-800">One shop, using the address on this tab</p>
-          <p className="mt-1">{fallbackAddress}</p>
+          <p className="font-medium text-gray-800">No shops listed</p>
           <p className="mt-2 text-gray-500">
-            Add shops below only if this client runs more than one. As soon as there is a row here,
-            the site uses these addresses instead of the one above — so add <em>every</em> shop,
-            including this one.
+            The site is showing the address on this tab. Add rows only for a client that runs more
+            than one shop — and add <em>every</em> shop, including the one above.
           </p>
         </div>
       )}
@@ -210,19 +303,26 @@ export default function ClientLocationsManager({
               />
             </div>
             <div className="flex items-center gap-2 pt-6">
-              <button
-                type="button"
-                onClick={() => makePrimary(i)}
-                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm border ${
+              {/* A radio, not a toggle: "main" is one choice across the whole
+                  list, and a per-row button that reads "Main shop" when it is
+                  already main looks disabled rather than chosen. */}
+              <label
+                className={`inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm border cursor-pointer select-none ${
                   row.isPrimary
-                    ? 'bg-amber-50 border-amber-300 text-amber-800'
+                    ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium'
                     : 'border-gray-300 text-gray-600 hover:bg-gray-50'
                 }`}
                 title="The shop the site leads with when no city narrows it down"
               >
-                <Star size={14} className={row.isPrimary ? 'fill-amber-400 text-amber-500' : ''} />
-                {row.isPrimary ? 'Main shop' : 'Make main'}
-              </button>
+                <input
+                  type="radio"
+                  name="main-shop"
+                  checked={row.isPrimary}
+                  onChange={() => makePrimary(i)}
+                  className="accent-amber-500"
+                />
+                Main shop
+              </label>
               <button
                 type="button"
                 onClick={() => remove(i)}
