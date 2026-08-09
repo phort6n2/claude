@@ -17,7 +17,7 @@ interface RouteContext {
  */
 export async function POST(_request: NextRequest, { params }: RouteContext) {
   const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id, locationId } = await params
   // The location must belong to the client in the URL; otherwise an id from

@@ -12,7 +12,7 @@ interface RouteContext {
 /** List a client's outbound webhook destinations with their latest delivery. */
 export async function GET(request: NextRequest, { params }: RouteContext) {
   const session = await auth()
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 /** Add a destination. */
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const session = await auth()
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

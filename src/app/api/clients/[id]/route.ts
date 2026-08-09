@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { normalizeAllowedOrigins } from '@/lib/webhook-forwarding'
+import { requireAdmin, scrubClient } from '@/lib/admin-guard'
 export const dynamic = 'force-dynamic'
 
 interface RouteContext {
@@ -8,6 +9,9 @@ interface RouteContext {
 }
 
 export async function GET(request: NextRequest, { params }: RouteContext) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
   try {
     const { id } = await params
     const client = await prisma.client.findUnique({
@@ -18,7 +22,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 })
     }
 
-    return NextResponse.json(client)
+    return NextResponse.json(scrubClient(client))
   } catch (error) {
     console.error('Failed to fetch client:', error)
     return NextResponse.json(
@@ -29,6 +33,9 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 }
 
 export async function PUT(request: NextRequest, { params }: RouteContext) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
   try {
     const { id } = await params
     const data = await request.json()
@@ -120,6 +127,9 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
 }
 
 export async function DELETE(request: NextRequest, { params }: RouteContext) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
   try {
     const { id } = await params
 

@@ -33,7 +33,7 @@ const nullable = (v: unknown) => {
 /** GET /api/clients/[id]/locations — every shop, in display order. */
 export async function GET(_request: NextRequest, { params }: RouteContext) {
   const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
   // The table ships as hand-run SQL, so an environment can be running this
@@ -61,7 +61,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
  */
 export async function PUT(request: NextRequest, { params }: RouteContext) {
   const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
   const client = await prisma.client.findUnique({ where: { id }, select: { id: true, slug: true } })

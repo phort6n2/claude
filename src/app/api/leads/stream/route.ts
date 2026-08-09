@@ -25,7 +25,7 @@ const CLOSE_AFTER_MS = 55000
  */
 export async function GET(request: NextRequest) {
   const session = await auth()
-  if (!session) {
+  if (!session?.user) {
     return new Response('Unauthorized', { status: 401 })
   }
 

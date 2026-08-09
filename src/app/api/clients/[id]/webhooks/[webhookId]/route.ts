@@ -12,7 +12,7 @@ interface RouteContext {
 /** Update a destination (label, url, enabled). */
 export async function PUT(request: NextRequest, { params }: RouteContext) {
   const session = await auth()
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -65,7 +65,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
 /** Delete a destination (its delivery history goes with it). */
 export async function DELETE(request: NextRequest, { params }: RouteContext) {
   const session = await auth()
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

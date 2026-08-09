@@ -70,7 +70,7 @@ async function testGooglePlaces(apiKey: string): Promise<{ success: boolean; mes
 
 export async function POST(request: Request) {
   const session = await auth()
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

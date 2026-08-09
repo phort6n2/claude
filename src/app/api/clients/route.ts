@@ -2,16 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma, withRetry } from '@/lib/db'
 import { generateSlug } from '@/lib/utils'
 import { normalizeAllowedOrigins } from '@/lib/webhook-forwarding'
+import { requireAdmin, scrubClient } from '@/lib/admin-guard'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
   try {
     const clients = await withRetry(() =>
       prisma.client.findMany({
         orderBy: { createdAt: 'desc' },
       })
     )
-    return NextResponse.json(clients)
+    return NextResponse.json(clients.map(scrubClient))
   } catch (error) {
     console.error('Failed to fetch clients:', error)
     return NextResponse.json(
@@ -22,6 +26,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
   try {
     const data = await request.json()
 

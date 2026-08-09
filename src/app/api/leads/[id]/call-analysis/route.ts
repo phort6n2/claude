@@ -16,7 +16,7 @@ interface RouteContext {
  */
 export async function GET(_req: NextRequest, { params }: RouteContext) {
   const session = await auth()
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

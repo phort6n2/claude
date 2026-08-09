@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Loader2, Plus, RefreshCw, Star, Trash2 } from 'lucide-react'
+import GbpPicker, { type PlaceDetails } from '@/components/admin/GbpPicker'
 
 /**
  * Shop locations for a multi-GBP client.
@@ -85,6 +86,35 @@ export default function ClientLocationsManager({
     setMessage(null)
   }
 
+  /**
+   * Apply a picked Business Profile to a row.
+   *
+   * The label is the one field a human should still own — Google returns the
+   * full legal name for every shop, which makes two rows read identically —
+   * so it is only seeded when blank, and the city is the useful default.
+   */
+  const applyPlace = (index: number, details: PlaceDetails) => {
+    setRows((prev) =>
+      (prev || []).map((row, i) =>
+        i === index
+          ? {
+              ...row,
+              label: row.label || details.city || details.businessName,
+              streetAddress: details.streetAddress || row.streetAddress,
+              city: details.city || row.city,
+              state: details.state || row.state,
+              postalCode: details.postalCode || row.postalCode,
+              country: details.country || row.country || 'US',
+              phone: details.phone || row.phone,
+              googlePlaceId: details.placeId,
+              googleMapsUrl: details.googleMapsUrl || row.googleMapsUrl,
+            }
+          : row
+      )
+    )
+    setMessage(null)
+  }
+
   const makePrimary = (index: number) => {
     setRows((prev) => (prev || []).map((row, i) => ({ ...row, isPrimary: i === index })))
     setMessage(null)
@@ -162,6 +192,10 @@ export default function ClientLocationsManager({
 
       {rows.map((row, i) => (
         <div key={row.id || `new-${i}`} className="rounded-xl border border-gray-200 p-4 space-y-3">
+          <GbpPicker
+            label={`Find ${row.label || 'this shop'} on Google`}
+            onSelect={(details) => applyPlace(i, details)}
+          />
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1">
               <label className="block text-xs font-medium text-gray-500 mb-1">
