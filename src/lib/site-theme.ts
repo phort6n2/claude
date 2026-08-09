@@ -158,7 +158,10 @@ export function sitePaletteVars(
     '--cta': cta,
     '--cta-b': [cta, BLACK, 0.17],
     '--cta-active': [cta, BLACK, 0.35],
-    '--brand-light': withLightness(brand, 0.62),
+    // Light brand accent for dark bands. Hue-tinted like the other derived
+    // tints (full-saturation lightening reads neon); L/S chosen so 13px bold
+    // eyebrow text clears 4.5:1 on --dark-3.
+    '--brand-light': hueTint(0.72, 0.5),
     '--brand-pale': [WHITE, brand, 0.18],
   }
 

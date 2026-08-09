@@ -60,9 +60,17 @@ const SITE_BASE_CSS = `
 .gl-site .on-dark :focus-visible{outline-color:#fff}
 .gl-site a{text-decoration-thickness:1.5px;text-underline-offset:3px}
 .gl-site h1,.gl-site h2,.gl-site h3{text-wrap:balance}
-@supports (animation-timeline: scroll()) {
-  .gl-site .site-hdr{animation:gl-hdr-shadow linear both;animation-timeline:scroll();animation-range:0 60px}
-  @keyframes gl-hdr-shadow{to{background:#fff;box-shadow:0 2px 4px -1px rgba(11,27,43,.06),0 6px 14px -3px rgba(11,27,43,.09)}}
+/* Skip link: visually hidden until keyboard focus. */
+.gl-skip{position:absolute;left:-9999px;top:0;z-index:100;background:var(--cta);color:#fff;font-weight:700;padding:12px 18px;border-radius:0 0 10px 0;text-decoration:none}
+.gl-skip:focus{left:0}
+/* Header scroll shadow paints on a compositable ::after opacity layer, and
+   all scroll-driven motion respects prefers-reduced-motion. */
+.gl-site .site-hdr::after{content:"";position:absolute;inset:0;z-index:-1;background:#fff;box-shadow:0 2px 4px -1px rgba(11,27,43,.06),0 6px 14px -3px rgba(11,27,43,.09);opacity:0;pointer-events:none}
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: scroll()) {
+    .gl-site .site-hdr::after{animation:gl-hdr-shadow linear both;animation-timeline:scroll();animation-range:0 60px}
+    @keyframes gl-hdr-shadow{to{opacity:1}}
+  }
 }
 /* How-it-works connector: a line from disc to disc — vertical when the steps
    stack, horizontal when they sit three-up. The drawn state is the DEFAULT;
@@ -75,11 +83,22 @@ const SITE_BASE_CSS = `
 @media (min-width:768px){
   .gl-step::after{left:58px;top:23px;height:2px;width:auto;right:-38px;bottom:auto}
 }
-@supports (animation-timeline: view()) {
-  .gl-step::after{animation:gl-step-draw ease both;animation-timeline:view();animation-range:entry 30% entry 90%}
-  @keyframes gl-step-draw{from{transform:scale(0)}to{transform:scale(1)}}
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .gl-step::after{animation:gl-step-draw ease both;animation-timeline:view();animation-range:entry 30% entry 90%}
+    @keyframes gl-step-draw{from{transform:scale(0)}to{transform:scale(1)}}
+  }
 }
 `
+
+/** Keyboard users jump straight to the quote form. */
+export function SkipLink() {
+  return (
+    <a href="#quote" className="gl-skip">
+      Skip to quote form
+    </a>
+  )
+}
 
 export function SiteBaseStyles() {
   return <style dangerouslySetInnerHTML={{ __html: SITE_BASE_CSS }} />
@@ -144,6 +163,7 @@ export function StarRow({ rating, size = 16, className }: { rating: number; size
   return (
     <span
       className={`inline-flex gap-px leading-none ${className || ''}`}
+      role="img"
       aria-label={`${rating} out of 5 stars`}
       style={{ fontSize: size }}
     >
@@ -240,9 +260,10 @@ export function UtilBar({ client, note }: { client: SiteClient; note: string }) 
         </span>
         <span className="flex items-center gap-1.5 whitespace-nowrap shrink-0">
           <span>Call</span>
+          {/* 44px hit area without growing the visual bar */}
           <a
             href={telHrefFor(client.phone)}
-            className="font-bold no-underline hover:underline text-[var(--gold-on-dark)]"
+            className="font-bold no-underline hover:underline text-[var(--gold-on-dark)] inline-flex items-center min-h-[44px] -my-2 px-1"
           >
             {client.phone}
           </a>
@@ -314,14 +335,23 @@ export function SiteHeader({
               </span>
               <StarRow rating={reviews.rating} size={11} />
             </span>
-            <span className="hidden min-[390px]:inline text-[10px] font-semibold text-[var(--tx-muted)] whitespace-nowrap">
+            <span className="hidden min-[390px]:inline text-[11px] font-semibold text-[var(--tx-muted)] whitespace-nowrap">
               {reviews.reviewCount} Google reviews
             </span>
           </div>
         )}
+        {/* Desktop keeps a quote CTA reachable at every scroll depth — the
+            sticky mobile bar covers phones. */}
+        <a
+          href="#quote"
+          className={`${nav && nav.length > 0 ? 'lg:ml-4 ' : ''}${reviews ? '' : 'lg:ml-auto '}hidden lg:inline-flex items-center min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] text-white shrink-0 no-underline`}
+          style={{ background: 'linear-gradient(180deg, var(--cta), var(--cta-b))', boxShadow: 'var(--sh-cta), inset 0 1px 0 rgba(255,255,255,.2)' }}
+        >
+          Get my free quote
+        </a>
         <a
           href={telHrefFor(client.phone)}
-          className={`${nav && nav.length > 0 ? 'lg:ml-4 ' : ''}${reviews ? '' : 'ml-auto '}inline-flex items-center gap-2 min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] text-white shrink-0 no-underline bg-[var(--cta)] border-[1.5px] border-[var(--cta)] shadow-[0_1px_2px_rgba(11,27,43,.16)] hover:bg-[var(--cta-b)] hover:border-[var(--cta-b)] transition-colors`}
+          className={`${reviews ? '' : 'ml-auto lg:ml-0 '}inline-flex items-center gap-2 min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] shrink-0 no-underline bg-white text-[var(--cta)] border-[1.5px] border-[var(--cta)] shadow-[0_1px_2px_rgba(11,27,43,.16)] hover:bg-[var(--s1)] transition-colors max-lg:bg-[var(--cta)] max-lg:text-white`}
         >
           <Phone className="h-4 w-4" />
           <span className="hidden sm:inline">{client.phone}</span>
@@ -439,8 +469,10 @@ export function StatBand({
     })
     stats.push({ big: String(reviews.reviewCount), label: 'Google reviews' })
   }
-  if (areasCount > 1) stats.push({ big: String(areasCount), label: 'cities covered' })
-  if (servicesCount > 1) stats.push({ big: String(servicesCount), label: 'glass services' })
+  // Only outward-facing numbers: menu size dilutes the review proof, and a
+  // short city list isn't a stat.
+  if (areasCount > 5) stats.push({ big: String(areasCount), label: 'cities covered' })
+  void servicesCount
   if (stats.length < 2) return null
 
   return (
@@ -449,7 +481,7 @@ export function StatBand({
       style={{ background: 'radial-gradient(120% 120% at 50% 0%, var(--dark-3), var(--dark))' }}
     >
       <div
-        className="max-w-6xl mx-auto px-4 sm:px-6 py-12 grid grid-cols-2 gap-6 lg:[grid-template-columns:var(--stat-cols)]"
+        className="max-w-6xl mx-auto px-4 sm:px-6 py-14 grid grid-cols-2 gap-6 lg:[grid-template-columns:var(--stat-cols)]"
         style={{ '--stat-cols': `repeat(${stats.length}, minmax(0,1fr))` } as React.CSSProperties}
       >
         {stats.map((s) => (
@@ -541,7 +573,7 @@ export function ProcessSection({
 /** Insurance band on the warm tint: left head, two claim cards, disclaimer. */
 export function InsuranceBand() {
   return (
-    <section className="bg-[var(--tint-warm)] border-y border-[var(--line)]">
+    <section className="bg-[var(--tint-warm)] border-b border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
         <SectionHead
           eyebrow="Insurance"
@@ -550,14 +582,14 @@ export function InsuranceBand() {
         />
         <div className="grid md:grid-cols-2 gap-5">
           <div className="bg-white rounded-[20px] border border-[var(--line-card)] shadow-sm p-6">
-            <h3 className="font-bold text-lg m-0">Filing through insurance</h3>
+            <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold m-0">Filing through insurance</h3>
             <p className="mt-2 mb-0 text-sm text-[var(--tx2)] leading-relaxed">
               We work with your insurance company directly and help you navigate the claim — many
               repairs cost you nothing out of pocket, and you don’t spend your afternoon on hold.
             </p>
           </div>
           <div className="bg-white rounded-[20px] border border-[var(--line-card)] shadow-sm p-6">
-            <h3 className="font-bold text-lg m-0">Paying cash</h3>
+            <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold m-0">Paying cash</h3>
             <p className="mt-2 mb-0 text-sm text-[var(--tx2)] leading-relaxed">
               Not going through insurance? You get a straight price up front, before any work
               starts — no surprises when the job is done.
@@ -582,7 +614,7 @@ export function InsuranceBand() {
 export function WarrantyBand({ extras }: { extras: SiteExtras | null }) {
   if (!extras?.warrantyText) return null
   return (
-    <section className="bg-[var(--tint)] border-y border-[var(--line)]">
+    <section className="bg-[var(--tint)] border-b border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-12 lg:items-center">
         <div>
           <Eyebrow>Our warranty</Eyebrow>
@@ -614,7 +646,7 @@ export function GalleryGrid({ extras }: { extras: SiteExtras | null }) {
         {/* Even photo counts that don't fill three columns read better 2-up —
             no orphan card on the last row. */}
         <div
-          className={`grid grid-cols-2 gap-4 ${
+          className={`grid grid-cols-2 gap-5 ${
             extras.galleryPhotos.slice(0, 6).length % 3 === 1 ? 'md:grid-cols-2' : 'md:grid-cols-3'
           }`}
         >
@@ -626,8 +658,9 @@ export function GalleryGrid({ extras }: { extras: SiteExtras | null }) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={photo.url}
-                alt={photo.alt}
+                alt={photo.alt ? '' : 'Job photo'}
                 loading="lazy"
+                decoding="async"
                 className="w-full aspect-[4/3] object-cover"
               />
               {photo.alt && (
@@ -668,7 +701,7 @@ export function MapSection({
   return (
     <section className="border-t border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
-        <div className="max-w-[60ch] mx-auto text-center mb-9">
+        <div className="max-w-[60ch] mx-auto text-center mb-8">
           <p className="text-[13px] font-bold uppercase tracking-[.09em] mb-2.5 text-[var(--brand)]">
             <span className="block w-[26px] h-[3px] rounded-sm mb-3 bg-[var(--cta)] mx-auto" />
             {reviews ? (
@@ -709,7 +742,7 @@ export function MapSection({
                   Google Reviews
                 </div>
                 <div className="flex items-center gap-3.5">
-                  <span className="text-4xl font-extrabold tabular-nums leading-none">
+                  <span className="text-3xl font-extrabold tabular-nums leading-none">
                     {reviews.rating.toFixed(1)}
                   </span>
                   <span className="flex flex-col gap-0.5 leading-tight">
@@ -804,7 +837,10 @@ export function AreasBand({
             return (
               <li key={area}>
                 {slug && basePath !== undefined ? (
-                  <a href={`${basePath}/locations/${slug}`} className="no-underline hover:underline">
+                  <a
+                    href={`${basePath}/locations/${slug}`}
+                    className="underline decoration-[var(--line-on-dark)] underline-offset-[3px] hover:decoration-white"
+                  >
                     {inner}
                   </a>
                 ) : (
@@ -866,26 +902,41 @@ export function faqJsonLd(extras: SiteExtras | null): object | null {
   }
 }
 
-/** Closing dark CTA band with the reference's top-centered radial wash. */
-export function FinalCta({ client, quoteHref }: { client: SiteClient; quoteHref: string }) {
+/**
+ * Closing dark CTA band with the reference's top-centered radial wash. Hosts
+ * its own quote-form container so a reader persuaded by the whole page can
+ * convert in place instead of scrolling back to the hero (the widget mounts
+ * into every [data-glassleads-widget] container).
+ */
+export function FinalCta({ client }: { client: SiteClient; quoteHref?: string }) {
   return (
     <section
       className="text-white on-dark"
       style={{ background: 'radial-gradient(120% 90% at 50% 0%, var(--dark-3), var(--dark-2))' }}
     >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 text-center">
-        <Eyebrow center onDark>
-          Ready when you are
-        </Eyebrow>
-        <h2 className="text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight">
-          Ready to fix that glass?
-        </h2>
-        <p className="mt-3 text-[var(--on-dark-2)]">
-          Get a free quote in minutes — or call and talk to a real person now.
-        </p>
-        <div className="mt-7 flex flex-wrap justify-center gap-3">
-          <CtaButton href={quoteHref}>Get my free quote</CtaButton>
-          <CallButton client={client} onDark withLabel />
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
+        <div className="text-center">
+          <Eyebrow center onDark>
+            Ready when you are
+          </Eyebrow>
+          <h2 className="text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight">
+            Get your glass sorted this week
+          </h2>
+          <p className="mt-3 text-[var(--on-dark-2)]">
+            Tell us what broke — we&apos;ll confirm the glass, your coverage, and a time that works.
+          </p>
+        </div>
+        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_452px] lg:items-center">
+          <div className="text-center lg:text-left lg:justify-self-end lg:order-2 w-full max-w-[452px] mx-auto">
+            <div data-glassleads-widget></div>
+          </div>
+          <div className="flex flex-col items-center lg:items-start gap-4 lg:order-1 lg:pl-2">
+            <p className="m-0 text-[var(--on-dark-2)] text-[15px] max-w-[40ch] text-center lg:text-left">
+              Prefer to talk it through? Call and you&apos;ll get a real person at the shop, not a
+              call center.
+            </p>
+            <CallButton client={client} onDark withLabel />
+          </div>
         </div>
       </div>
     </section>
@@ -1014,9 +1065,13 @@ export function SiteFooter({
           )}
           {areaSplit.map((chunk, i) => (
             <div key={i}>
-              <h2 className="text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5">
-                {i === 0 ? 'Areas we serve' : ' '}
-              </h2>
+              {i === 0 ? (
+                <h2 className="text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5">
+                  Areas we serve
+                </h2>
+              ) : (
+                <div aria-hidden="true" className="hidden lg:block mb-3.5 text-[13px] leading-normal font-bold">&nbsp;</div>
+              )}
               <ul className="list-none m-0 p-0 text-sm">
                 {chunk.map((area) => {
                   const slug = locationPages(areas || []).find((l) => l.area === area)?.slug
@@ -1102,7 +1157,7 @@ export function SiteFooter({
 /** Sticky mobile action bar: loud call button, quiet ghost quote button. */
 export function MobileCallBar({ client, quoteHref }: { client: SiteClient; quoteHref: string }) {
   return (
-    <div className="lg:hidden sticky bottom-0 z-40 grid grid-cols-[1.15fr_1fr] gap-2.5 px-4 pt-2.5 pb-[calc(10px+env(safe-area-inset-bottom))] bg-white/95 backdrop-blur border-t border-[var(--line)]">
+    <div data-gl-mobilebar className="lg:hidden sticky bottom-0 z-40 grid grid-cols-[1.15fr_1fr] gap-2.5 px-4 pt-2.5 pb-[calc(10px+env(safe-area-inset-bottom))] bg-white/95 backdrop-blur border-t border-[var(--line)]">
       <a
         href={telHrefFor(client.phone)}
         className="min-h-[50px] rounded-[14px] font-bold text-base text-white text-center flex items-center justify-center gap-2 no-underline bg-[var(--cta)] hover:bg-[var(--cta-b)]"
@@ -1163,9 +1218,13 @@ export function TrustRow({ items }: { items: TrustItem[] }) {
 export function ChapterSections({
   chapters,
   fallbackPhotos,
+  client,
 }: {
   chapters: Array<{ heading: string; body: string; photoUrl: string }>
   fallbackPhotos: Array<{ url: string; alt: string }>
+  /** When provided, a CTA row closes the block so the story the reader just
+      finished has somewhere to convert. */
+  client?: SiteClient
 }) {
   if (chapters.length === 0) return null
   return (
@@ -1198,6 +1257,7 @@ export function ChapterSections({
                     src={photo.url}
                     alt={photo.alt}
                     loading="lazy"
+                    decoding="async"
                     className="w-full aspect-[4/3] object-cover rounded-[20px] border border-[var(--line-card)] shadow-sm"
                   />
                   {photo.alt && photo.alt !== chapter.heading && (
@@ -1208,6 +1268,12 @@ export function ChapterSections({
             </div>
           )
         })}
+        {client && (
+          <div className="flex flex-wrap gap-3 pt-2 max-[719px]:flex-col max-[719px]:[&>a]:w-full">
+            <CtaButton href="#quote">Get my free quote</CtaButton>
+            <CallButton client={client} withLabel />
+          </div>
+        )}
       </div>
     </section>
   )

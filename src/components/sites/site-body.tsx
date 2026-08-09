@@ -1,3 +1,4 @@
+import Script from 'next/script'
 import {
   ArrowRight,
   Car,
@@ -44,6 +45,91 @@ import type { SiteExtras } from '@/lib/site-content'
 export interface SiteFlags {
   offersMobileService: boolean
   offersAdasCalibration: boolean
+}
+
+interface WidgetClient extends SiteClient {
+  slug: string
+  secondaryColor?: string | null
+  offersWindshieldReplacement?: boolean
+  offersWindshieldRepair?: boolean
+  offersRockChipRepair?: boolean
+  offersSideWindowRepair?: boolean
+  offersBackWindowRepair?: boolean
+  offersSunroofRepair?: boolean
+  offersAdasCalibration?: boolean
+  offersMobileService?: boolean
+}
+
+/**
+ * The exact payload /api/widget/config serves, built server-side so the
+ * hosted pages can inline it — the form renders without hydration-gating or
+ * a config round trip. Third-party embeds still fetch.
+ */
+export function buildWidgetConfig(client: WidgetClient) {
+  const services: string[] = []
+  if (client.offersWindshieldReplacement) services.push('Windshield Replacement')
+  if (client.offersWindshieldRepair) services.push('Windshield Repair')
+  if (client.offersRockChipRepair) services.push('Rock Chip Repair')
+  if (client.offersSideWindowRepair) services.push('Side Window Repair')
+  if (client.offersBackWindowRepair) services.push('Back Window Repair')
+  if (client.offersSunroofRepair) services.push('Sunroof Repair')
+  if (client.offersAdasCalibration) services.push('ADAS Calibration')
+  return {
+    businessName: client.businessName,
+    phone: client.phone,
+    primaryColor: client.primaryColor || '#1e40af',
+    secondaryColor: client.secondaryColor || '#3b82f6',
+    services,
+    offersMobileService: !!client.offersMobileService,
+  }
+}
+
+/**
+ * The hero quote-form container: server-rendered skeleton reserves the card's
+ * space (no CLS, no pop-in) and carries a call path until — or in case — the
+ * widget mounts and replaces it. `service` preselects the form on service
+ * pages so the ad → page → form scent stays unbroken.
+ */
+export function WidgetMount({ client, service }: { client: SiteClient; service?: string }) {
+  return (
+    <div
+      data-glassleads-widget
+      {...(service ? { 'data-service': service } : {})}
+      className="min-h-[540px] lg:min-h-[600px]"
+    >
+      <div className="bg-white rounded-[20px] border-t-4 border-t-[var(--cta)] border border-[var(--line-card)] shadow-lg p-6">
+        <p className="m-0 text-xl font-extrabold tracking-tight text-[var(--tx)]">Get your free quote</p>
+        <p className="mt-1.5 mb-0 text-sm text-[var(--tx-muted)]">
+          Takes about 30 seconds — loading the form…
+        </p>
+        <a
+          href={`tel:${client.phone.replace(/[^+\d]/g, '')}`}
+          className="mt-5 flex items-center justify-center min-h-[52px] rounded-[14px] font-bold text-white no-underline"
+          style={{ background: 'linear-gradient(180deg, var(--cta), var(--cta-b))' }}
+        >
+          Or call {client.phone}
+        </a>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The widget script with the config inlined so no config round trip is
+ * needed. Loaded afterInteractive: mounting must wait for hydration — a
+ * pre-hydration DOM mutation makes React re-render the body and wipe the
+ * mounted form (hydration mismatch).
+ */
+export function WidgetScript({ client }: { client: WidgetClient }) {
+  return (
+    <Script
+      src="/widget.js"
+      strategy="afterInteractive"
+      data-client={client.slug}
+      data-phone={client.phone}
+      data-config={JSON.stringify(buildWidgetConfig(client))}
+    />
+  )
 }
 
 const SERVICE_ICONS: Record<string, LucideIcon> = {
@@ -203,8 +289,11 @@ export function SiteBody({
       {/* Stat band — dark, data-derived, strips without enough data */}
       <StatBand reviews={reviews} areasCount={areas.length} servicesCount={services.length} />
 
-      {/* Insurance — the warm band */}
+      {/* Insurance — the warm band; the warranty follows immediately so the
+          price/risk question the insurance copy raises gets answered while
+          it's fresh */}
       <InsuranceBand />
+      <WarrantyBand extras={extras} />
 
       {/* Range-of-work gallery (stripped when no photos) */}
       <GalleryGrid extras={extras} />
@@ -223,14 +312,34 @@ export function SiteBody({
       {/* Service areas — dark coverage band */}
       <AreasBand client={client} areas={areas} basePath={basePath} />
 
-      {/* Warranty (rendered only when defined in full) */}
-      <WarrantyBand extras={extras} />
-
       {/* FAQ (stripped when empty) */}
       <FaqSection extras={extras} />
 
-      <FinalCta client={client} quoteHref="#quote" />
+      <FinalCta client={client} />
+    </>
+  )
+}
 
+/** Footer + sticky bar, rendered by pages AFTER the main landmark. */
+export function SiteChrome({
+  client,
+  flags,
+  reviews,
+  extras,
+  services,
+  areas,
+  basePath,
+}: {
+  client: SiteClient
+  flags: SiteFlags
+  reviews: ReviewsData | null
+  extras: SiteExtras
+  services: Array<{ slug: string; name: string; short: string }>
+  areas: string[]
+  basePath: string
+}) {
+  return (
+    <>
       <SiteFooter
         client={client}
         extras={extras}
