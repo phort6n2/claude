@@ -30,6 +30,7 @@ import {
 } from '@/components/sites/site-body'
 import { getSiteExtras } from '@/lib/site-content'
 import { sitePaletteVars } from '@/lib/site-theme'
+import { locationJsonLd } from '@/lib/site-schema'
 
 /**
  * Per-city location page — the full homepage shell with a city-specific hero.
@@ -61,6 +62,7 @@ async function getClient(slug: string) {
       city: true,
       state: true,
       postalCode: true,
+      country: true,
       logoUrl: true,
       primaryColor: true,
       secondaryColor: true,
@@ -140,19 +142,12 @@ export default async function LocationPage({ params }: PageProps) {
   }))
 
   const siteOrigin = `https://${client.siteSubdomain || client.slug}.glassleads.app`
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: client.businessName, item: `${siteOrigin}/` },
-      {
-        '@type': 'ListItem',
-        position: 2,
-        name: `Auto Glass in ${location.area}`,
-        item: `${siteOrigin}/locations/${location.slug}`,
-      },
-    ],
-  }
+  const jsonLd = locationJsonLd({
+    origin: siteOrigin,
+    client,
+    area: location.area,
+    slug: location.slug,
+  })
 
   const isHomeCity = location.area.toLowerCase() === client.city.toLowerCase()
   // City copy states only what the flags support: mobile service driving to

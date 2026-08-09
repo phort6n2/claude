@@ -29,6 +29,7 @@ import {
 } from '@/components/sites/site-body'
 import { getSiteExtras } from '@/lib/site-content'
 import { sitePaletteVars } from '@/lib/site-theme'
+import { serviceJsonLd } from '@/lib/site-schema'
 
 /**
  * Per-service page: the full homepage shell with a service-specific hero and
@@ -58,6 +59,7 @@ async function getClient(slug: string) {
       city: true,
       state: true,
       postalCode: true,
+      country: true,
       logoUrl: true,
       primaryColor: true,
       secondaryColor: true,
@@ -135,24 +137,12 @@ export default async function ServicePage({ params }: PageProps) {
     .slice(0, 4)
     .map((s) => ({ href: `${basePath}/services/${s.slug}`, label: s.name }))
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      {
-        '@type': 'ListItem',
-        position: 1,
-        name: client.businessName,
-        item: `https://${client.siteSubdomain || client.slug}.glassleads.app/`,
-      },
-      {
-        '@type': 'ListItem',
-        position: 2,
-        name: page.name,
-        item: `https://${client.siteSubdomain || client.slug}.glassleads.app/services/${page.slug}`,
-      },
-    ],
-  }
+  const siteOrigin = `https://${client.siteSubdomain || client.slug}.glassleads.app`
+  const jsonLd = serviceJsonLd({
+    origin: siteOrigin,
+    client,
+    service: { slug: page.slug, name: page.name },
+  })
 
   const trustItems = buildTrustItems(client, flags, extras)
   const heroBullets = extras.heroBullets.length > 0 ? extras.heroBullets : defaultHeroBullets(flags)
