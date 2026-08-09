@@ -42,7 +42,11 @@ export async function renderSiteIcon(slug: string, px: number) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: brand,
+          // A logo carries its own colors and is usually drawn for a light
+          // ground; putting it on the brand color muddies both. The monogram
+          // is the opposite case — it IS the brand color.
+          background: logo ? '#ffffff' : brand,
+          padding: logo ? Math.round(px * 0.06) : 0,
           color: '#ffffff',
           fontSize: Math.round(px * 0.62),
           fontWeight: 800,
@@ -56,7 +60,7 @@ export async function renderSiteIcon(slug: string, px: number) {
             alt=""
             width={px}
             height={px}
-            style={{ width: px, height: px, objectFit: 'contain' }}
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
           />
         ) : (
           initial
