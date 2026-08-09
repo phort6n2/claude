@@ -100,12 +100,23 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const client = await getClient(slug)
   if (!page || !client || client.status !== 'ACTIVE') return { title: 'Not Found' }
 
+  // Same origin as the page itself, and the same host the canonical names — a
+  // share card served from a different host than the page it describes gets
+  // dropped by some scrapers.
+  const siteRoot = `https://${client.siteSubdomain || client.slug}.glassleads.app`
   const title = `${page.name} in ${client.city}, ${client.state} | ${client.businessName}`
   const description = `${page.short} Free quotes from ${client.businessName} in ${client.city}. Call ${client.phone}.`
   return {
     title,
     description,
-    openGraph: { title, description, type: 'website' },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      siteName: client.businessName,
+      images: [`${siteRoot}/api/site-og/${client.slug}`],
+    },
+    twitter: { card: 'summary_large_image', title, description, images: [`${siteRoot}/api/site-og/${client.slug}`] },
     alternates: { canonical: `https://${client.siteSubdomain || client.slug}.glassleads.app/services/${page.slug}` },
   }
 }
@@ -148,11 +159,12 @@ export default async function ServicePage({ params }: PageProps) {
   const heroBullets = extras.heroBullets.length > 0 ? extras.heroBullets : defaultHeroBullets(flags)
 
   // The service's own copy leads the page, chapter-style, with body photos.
-  const serviceChapters = page.sections.map((s) => ({
-    heading: s.heading,
-    body: s.body,
-    photoUrl: '',
-  }))
+  // The service's own copy leads, then the client's real story follows: the
+  // highest-intent page should carry MORE proof than the home page, not less.
+  const serviceChapters = [
+    ...page.sections.map((s) => ({ heading: s.heading, body: s.body, photoUrl: '' })),
+    ...extras.chapters,
+  ]
 
   return (
     <div

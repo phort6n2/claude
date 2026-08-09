@@ -200,7 +200,11 @@ const WIDGET_SOURCE = String.raw`(function () {
       '.head p{display:none}' +
       'input,select{min-height:44px;padding:10px 12px}' +
       '.row{gap:10px}.row+.row,.row+div,div+.row{margin-top:8px}' +
-      '.btn{min-height:50px;margin-top:12px}.consent{display:none}' +
+      '.btn{min-height:50px;margin-top:12px}' +
+      // Never hide the consent line or its privacy link — this form collects a
+      // mobile number and asks for text permission, so the disclosure has to
+      // stay adjacent to the submit control at every viewport. Shrink, don't drop.
+      '.consent{font-size:11px;margin-top:8px;line-height:1.4}.micro{margin-top:8px}' +
       '}';
   }
 
