@@ -30,6 +30,19 @@ interface Parsed {
 /** The action name pushed to Microsoft when none is configured. */
 const DEFAULT_BING_ACTION = 'submit_lead_form'
 
+/**
+ * One entry per ad network.
+ *
+ * Kept as data rather than hardcoded markup so adding a third network is a
+ * panel and a row here, not a rewrite of the tab bar.
+ */
+const NETWORKS = [
+  { id: 'google', label: 'Google Ads' },
+  { id: 'microsoft', label: 'Microsoft Advertising' },
+] as const
+
+type NetworkId = (typeof NETWORKS)[number]['id']
+
 function Steps({
   title,
   children,
@@ -74,6 +87,7 @@ export default function AdsTrackingCard({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const [network, setNetwork] = useState<NetworkId>('google')
 
   useEffect(() => {
     let cancelled = false
@@ -149,7 +163,39 @@ export default function AdsTrackingCard({
         </div>
       )}
 
-      {/* Current state, in plain terms. */}
+      {/* One panel per network. Their setups share nothing but the enhanced-
+          conversions switch, and each carries a page of instructions, so
+          stacking them made the tab unreadable. */}
+      <div className="flex gap-1 border-b border-gray-200 -mb-px" role="tablist">
+        {NETWORKS.map((net) => {
+          const live = net.id === 'google' ? leadLive || callLive : bingLive
+          const active = network === net.id
+          return (
+            <button
+              key={net.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setNetwork(net.id)}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                active
+                  ? 'border-blue-600 text-blue-700'
+                  : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300'
+              }`}
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${live ? 'bg-green-500' : 'bg-gray-300'}`}
+                aria-hidden="true"
+              />
+              {net.label}
+              <span className="sr-only">{live ? '(reporting)' : '(not set up)'}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {network === 'google' && (
+        <>
       <div className="rounded-lg border border-gray-200 divide-y divide-gray-200 text-sm">
         <div className="flex items-start gap-2 p-3">
           {leadLive ? (
@@ -294,25 +340,6 @@ export default function AdsTrackingCard({
         />
       </div>
 
-      <label className="flex items-start gap-2 text-sm text-gray-700">
-        <input
-          type="checkbox"
-          checked={enhanced}
-          onChange={(e) => setEnhanced(e.target.checked)}
-          className="mt-1"
-        />
-        <span>
-          Enhanced conversions
-          <span className="block text-xs text-gray-500">
-            Sends the lead&apos;s email and phone with the conversion so Google can match it back
-            to the click, which recovers conversions that would otherwise go unattributed. Google
-            hashes both inside the tag — nothing identifiable is stored here or sent in the clear.
-            Turn it on in the Ads account too: Goals → Settings → Enhanced conversions for leads,
-            and accept the customer-data terms.
-          </span>
-        </span>
-      </label>
-
       {/* ---- Recommended: calls from ads ---- */}
       <Steps title="Recommended: also turn on “Calls from ads” (no tag needed)">
         <p>
@@ -345,16 +372,11 @@ export default function AdsTrackingCard({
         </p>
       </Steps>
 
-      {/* ---- Microsoft Advertising ---- */}
-      <div className="space-y-2 border-t border-gray-200 pt-5">
-        <div className="flex items-center gap-2">
-          <h3 className="font-medium text-gray-900">Microsoft Advertising (Bing)</h3>
-          {bingLive && (
-            <span className="text-[11px] font-bold uppercase tracking-wide text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5">
-              Live
-            </span>
-          )}
-        </div>
+        </>
+      )}
+
+      {network === 'microsoft' && (
+      <div className="space-y-2">
         <p className="text-sm text-gray-600">
           Microsoft installs one tag per advertiser (UET) and then counts conversions as{' '}
           <em>event goals</em> matched by action name. Two fields, and the order matters: create
@@ -438,8 +460,31 @@ export default function AdsTrackingCard({
           </div>
         </div>
       </div>
+      )}
 
-      <div className="flex flex-wrap items-center gap-3">
+      {/* Applies to whichever networks are configured — one switch, because it
+          is one decision about what leaves the page, not a per-network dial. */}
+      <label className="flex items-start gap-2 text-sm text-gray-700 border-t border-gray-200 pt-4">
+        <input
+          type="checkbox"
+          checked={enhanced}
+          onChange={(e) => setEnhanced(e.target.checked)}
+          className="mt-1"
+        />
+        <span>
+          Enhanced conversions <span className="text-gray-400">— applies to both networks</span>
+          <span className="block text-xs text-gray-500">
+            Sends the lead&apos;s email and phone with the conversion so the network can match it
+            back to the click, recovering conversions that would otherwise go unattributed. Both
+            hash it in the browser — nothing identifiable is stored here or sent in the clear.
+            It also has to be enabled in each account: in Google, Goals → Settings → Enhanced
+            conversions for leads (and accept the customer-data terms); in Microsoft, on the
+            conversion goal itself, which is the only place it can be switched on.
+          </span>
+        </span>
+      </label>
+
+      <div className="flex flex-wrap items-center gap-3 border-t border-gray-200 pt-4">
         <button
           type="button"
           onClick={save}

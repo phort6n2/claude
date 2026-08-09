@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
 import { locationPages, mergeServiceAreas } from '@/lib/site-locations'
+import { canonicalHostFor } from '@/lib/site-origin'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,6 +24,7 @@ function clientLabelFromHost(host: string): string | null {
 
 export async function GET(request: NextRequest) {
   const host = request.headers.get('host') || ''
+  const bare = host.split(':')[0].toLowerCase()
   const label = clientLabelFromHost(host)
 
   const xml = (body: string) =>
@@ -31,13 +33,21 @@ export async function GET(request: NextRequest) {
       { headers: { 'Content-Type': 'application/xml', 'Cache-Control': 'public, max-age=3600' } }
     )
 
-  if (!label) return xml('')
+  // A custom domain has no label; it is resolved by hostname instead.
+  if (!label && !bare.includes('.')) return xml('')
 
   const client = await prisma.client.findFirst({
-    where: { OR: [{ slug: label }, { siteSubdomain: label }], status: 'ACTIVE' },
+    where: label
+      ? { OR: [{ slug: label }, { siteSubdomain: label }], status: 'ACTIVE' }
+      : { domains: { some: { domain: bare } }, status: 'ACTIVE' },
     select: {
       id: true,
       slug: true,
+      domains: {
+        where: { isPrimary: true },
+        select: { domain: true, verified: true, misconfigured: true },
+        take: 1,
+      },
       siteSubdomain: true,
       updatedAt: true,
       serviceAreas: true,
@@ -52,6 +62,11 @@ export async function GET(request: NextRequest) {
     },
   })
   if (!client) return xml('')
+
+  // Only the canonical host lists URLs. A sitemap on a host whose pages carry
+  // noindex asks the crawler to index what the pages tell it not to, which is
+  // a contradiction it resolves by trusting neither.
+  if (bare !== canonicalHostFor(client)) return xml('')
 
   // Shop cities get pages ahead of coverage-only cities, so the sitemap has
   // to resolve the same merged list the router does.
