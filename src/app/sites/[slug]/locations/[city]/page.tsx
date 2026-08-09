@@ -103,12 +103,23 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const location = findLocation(client.serviceAreas || [], city)
   if (!location) return { title: 'Not Found' }
 
+  // Same origin as the page itself, and the same host the canonical names — a
+  // share card served from a different host than the page it describes gets
+  // dropped by some scrapers.
+  const siteRoot = `https://${client.siteSubdomain || client.slug}.glassleads.app`
   const title = `Auto Glass in ${location.area}, ${client.state} | ${client.businessName}`
   const description = `Windshield repair and replacement in ${location.area}, ${client.state}${client.offersMobileService ? ' — mobile service to your home or office' : ''}. Free quotes from ${client.businessName}. Call ${client.phone}.`
   return {
     title,
     description,
-    openGraph: { title, description, type: 'website' },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      siteName: client.businessName,
+      images: [`${siteRoot}/api/site-og/${client.slug}`],
+    },
+    twitter: { card: 'summary_large_image', title, description, images: [`${siteRoot}/api/site-og/${client.slug}`] },
     alternates: {
       canonical: `https://${client.siteSubdomain || client.slug}.glassleads.app/locations/${location.slug}`,
     },
@@ -149,16 +160,14 @@ export default async function LocationPage({ params }: PageProps) {
     slug: location.slug,
   })
 
-  const isHomeCity = location.area.toLowerCase() === client.city.toLowerCase()
-  // City copy states only what the flags support: mobile service driving to
-  // this city, and/or the shop that serves it.
+  // City copy states only what the data supports. It deliberately does NOT
+  // name a shop city: we store a single address, but a client may run several
+  // shops, and telling a Tualatin visitor to "visit the shop in Portland"
+  // contradicts the client's own copy further down the page and sends them to
+  // the wrong place. The map section shows the real address instead.
   const heroSub = client.offersMobileService
-    ? `Our mobile unit covers ${location.area} — windshield repair and replacement at your home, office, or roadside${
-        client.hasShopLocation && !isHomeCity ? `, or visit the shop in ${client.city}` : ''
-      }. Free quotes and help with your insurance claim.`
-    : `${client.businessName} serves ${location.area} from ${
-        client.hasShopLocation ? `our shop in ${client.city}` : `${client.city}`
-      }. Free quotes and help with your insurance claim.`
+    ? `Our mobile unit covers ${location.area} — windshield repair and replacement at your home, office, or roadside. Free quotes and help with your insurance claim.`
+    : `${client.businessName} serves ${location.area} and the surrounding area. Free quotes and help with your insurance claim.`
 
   const trustItems = buildTrustItems(client, flags, extras)
   const heroBullets = extras.heroBullets.length > 0 ? extras.heroBullets : defaultHeroBullets(flags)

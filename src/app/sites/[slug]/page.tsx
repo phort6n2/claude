@@ -107,13 +107,24 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const client = await getClient(slug)
   if (!client || client.status !== 'ACTIVE') return { title: 'Not Found' }
 
+  // Same origin as the page itself, and the same host the canonical names — a
+  // share card served from a different host than the page it describes gets
+  // dropped by some scrapers.
+  const siteRoot = `https://${client.siteSubdomain || client.slug}.glassleads.app`
   const title = `${client.businessName} | Auto Glass Repair & Replacement in ${client.city}, ${client.state}`
   const description = `Fast, professional windshield repair and replacement in ${client.city}, ${client.state}. Free quotes, insurance assistance${client.offersMobileService ? ', mobile service to your home or office' : ''}. Call ${client.phone}.`
 
   return {
     title,
     description,
-    openGraph: { title, description, type: 'website' },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      siteName: client.businessName,
+      images: [`${siteRoot}/api/site-og/${client.slug}`],
+    },
+    twitter: { card: 'summary_large_image', title, description, images: [`${siteRoot}/api/site-og/${client.slug}`] },
     alternates: { canonical: `https://${client.siteSubdomain || client.slug}.glassleads.app/` },
   }
 }
