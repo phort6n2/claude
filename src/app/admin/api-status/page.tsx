@@ -1,326 +1,184 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import {
-  Activity,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+  MinusCircle,
   RefreshCw,
-  Zap,
-  Mic,
-  MapPin,
-  Bot,
-  ExternalLink,
+  XCircle,
 } from 'lucide-react'
+import Header from '@/components/admin/Header'
+import type { IntegrationCheck } from '@/lib/integration-checks'
 
-interface IntegrationStatus {
-  name: string
-  key: string
-  configured: boolean
-  status: 'connected' | 'error' | 'not_configured' | 'testing'
-  message: string
-  lastTested?: string
-}
+/**
+ * "Is anything broken right now?"
+ *
+ * Ordered by blast radius rather than alphabetically, and every row says what
+ * stops working while that service is down. A vendor name and a red dot is
+ * not information — knowing that leads are still being captured but nobody is
+ * being emailed about them is.
+ *
+ * Every check runs live on load. The old page showed "configured" from the
+ * database without calling anything, which reported a revoked key as healthy.
+ */
 
-const INTEGRATION_ICONS: Record<string, React.ReactNode> = {
-  'ANTHROPIC_API_KEY': <Bot className="h-5 w-5" />,
-  'DEEPGRAM_API_KEY': <Mic className="h-5 w-5" />,
-  'GOOGLE_PLACES_API_KEY': <MapPin className="h-5 w-5" />,
-}
-
-const INTEGRATION_DESCRIPTIONS: Record<string, string> = {
-  'ANTHROPIC_API_KEY': 'Call analysis and coaching notes (Claude)',
-  'DEEPGRAM_API_KEY': 'Call recording transcription',
-  'GOOGLE_PLACES_API_KEY': 'Business lookup and address autocomplete',
+const SEVERITY: Record<string, { label: string; blurb: string }> = {
+  critical: { label: 'Critical', blurb: 'Leads are lost or sites are down while these are broken' },
+  degraded: { label: 'Feature', blurb: 'Leads still arrive and sites still serve; a feature is off' },
+  optional: { label: 'Setup only', blurb: 'Used when provisioning or checking, not on the lead path' },
 }
 
 export default function ApiStatusPage() {
-  const [integrations, setIntegrations] = useState<IntegrationStatus[]>([])
+  const [checks, setChecks] = useState<IntegrationCheck[] | null>(null)
+  const [checkedAt, setCheckedAt] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [testingKey, setTestingKey] = useState<string | null>(null)
-  const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
 
-  async function fetchStatus() {
+  const load = useCallback(async () => {
+    setLoading(true)
     try {
-      const response = await fetch('/api/integrations/status')
-      const data = await response.json()
-      setIntegrations(data.integrations || [])
-      setLastRefresh(new Date())
-    } catch (error) {
-      console.error('Failed to fetch status:', error)
+      const data = await (await fetch('/api/integrations/status')).json()
+      setChecks(data.checks || [])
+      setCheckedAt(data.checkedAt || null)
+    } catch {
+      setChecks([])
     } finally {
       setLoading(false)
     }
-  }
-
-  async function testIntegration(key: string) {
-    setTestingKey(key)
-
-    // Update local state to show testing
-    setIntegrations(prev =>
-      prev.map(i =>
-        i.key === key ? { ...i, status: 'testing' as const, message: 'Testing...' } : i
-      )
-    )
-
-    try {
-      const response = await fetch('/api/integrations/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key }),
-      })
-      const result = await response.json()
-
-      setIntegrations(prev =>
-        prev.map(i =>
-          i.key === key
-            ? {
-                ...i,
-                status: result.status,
-                message: result.message,
-                lastTested: result.lastTested,
-              }
-            : i
-        )
-      )
-    } catch (error) {
-      setIntegrations(prev =>
-        prev.map(i =>
-          i.key === key
-            ? { ...i, status: 'error' as const, message: 'Test failed' }
-            : i
-        )
-      )
-    } finally {
-      setTestingKey(null)
-    }
-  }
-
-  async function testAllIntegrations() {
-    const configuredIntegrations = integrations.filter(i => i.configured)
-    for (const integration of configuredIntegrations) {
-      await testIntegration(integration.key)
-    }
-  }
-
-  useEffect(() => {
-    fetchStatus()
   }, [])
 
-  const configuredCount = integrations.filter(i => i.configured).length
-  const connectedCount = integrations.filter(i => i.status === 'connected').length
-  const errorCount = integrations.filter(i => i.status === 'error').length
+  useEffect(() => {
+    load()
+  }, [load])
 
-  function getStatusIcon(status: string) {
-    switch (status) {
-      case 'connected':
-        return <CheckCircle className="h-5 w-5 text-green-500" />
-      case 'error':
-        return <XCircle className="h-5 w-5 text-red-500" />
-      case 'testing':
-        return <RefreshCw className="h-5 w-5 text-blue-500 animate-spin" />
-      default:
-        return <AlertCircle className="h-5 w-5 text-gray-400" />
-    }
-  }
-
-  function getStatusBadge(status: string) {
-    switch (status) {
-      case 'connected':
-        return (
-          <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
-            Connected
-          </span>
-        )
-      case 'error':
-        return (
-          <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700">
-            Error
-          </span>
-        )
-      case 'testing':
-        return (
-          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
-            Testing...
-          </span>
-        )
-      default:
-        return (
-          <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
-            Not Configured
-          </span>
-        )
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="p-8">
-        <div className="flex items-center justify-center py-12">
-          <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
-        </div>
-      </div>
-    )
-  }
+  const down = (checks || []).filter((c) => c.configured && !c.ok)
+  const criticalDown = down.filter((c) => c.severity === 'critical')
+  const unconfigured = (checks || []).filter((c) => !c.configured)
 
   return (
-    <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <Activity className="h-7 w-7 text-blue-600" />
-            API Status
-          </h1>
-          <p className="text-gray-500 mt-1">
-            Monitor and test your API integrations
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {lastRefresh && (
+    <div className="flex flex-col h-full">
+      <Header title="Integration status" subtitle="Every outside service, and what breaks without it" />
+      <div className="flex-1 p-6 overflow-auto bg-gradient-to-br from-slate-50 via-white to-slate-50">
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <button
+            type="button"
+            onClick={load}
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-60"
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            Re-check everything
+          </button>
+          {checkedAt && !loading && (
             <span className="text-sm text-gray-500">
-              Last refresh: {lastRefresh.toLocaleTimeString()}
+              Checked {new Date(checkedAt).toLocaleTimeString()}
             </span>
           )}
-          <button
-            onClick={fetchStatus}
-            className="px-4 py-2 text-gray-700 bg-white border rounded-lg hover:bg-gray-50 flex items-center gap-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </button>
-          <button
-            onClick={testAllIntegrations}
-            disabled={testingKey !== null}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-          >
-            <Zap className="h-4 w-4" />
-            Test All
-          </button>
         </div>
-      </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Configured</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {configuredCount} / {integrations.length}
-              </p>
-            </div>
-            <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-              <Activity className="h-6 w-6 text-blue-600" />
-            </div>
+        {loading && !checks && (
+          <div className="p-6 text-sm text-gray-500 flex items-center gap-2">
+            <Loader2 size={16} className="animate-spin" /> Calling every service…
           </div>
-        </div>
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Connected</p>
-              <p className="text-2xl font-bold text-green-600">{connectedCount}</p>
-            </div>
-            <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
-              <CheckCircle className="h-6 w-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Errors</p>
-              <p className="text-2xl font-bold text-red-600">{errorCount}</p>
-            </div>
-            <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
-              <XCircle className="h-6 w-6 text-red-600" />
-            </div>
-          </div>
-        </div>
-      </div>
+        )}
 
-      {/* Integration Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {integrations.map((integration) => (
+        {checks && !loading && (
           <div
-            key={integration.key}
-            className={`bg-white rounded-2xl border shadow-sm p-5 ${
-              integration.status === 'error' ? 'border-red-200' :
-              integration.status === 'connected' ? 'border-green-200' :
-              'border-gray-200'
+            className={`mb-5 rounded-xl border p-4 text-sm ${
+              criticalDown.length
+                ? 'border-red-300 bg-red-50 text-red-900'
+                : down.length
+                  ? 'border-amber-300 bg-amber-50 text-amber-900'
+                  : 'border-green-300 bg-green-50 text-green-900'
             }`}
           >
-            <div className="flex items-start justify-between">
-              <div className="flex items-start gap-3">
-                <div className={`p-2 rounded-lg ${
-                  integration.configured ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'
-                }`}>
-                  {INTEGRATION_ICONS[integration.key] || <Activity className="h-5 w-5" />}
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">{integration.name}</h3>
-                  <p className="text-sm text-gray-500 mt-0.5">
-                    {INTEGRATION_DESCRIPTIONS[integration.key]}
-                  </p>
-                </div>
-              </div>
-              {getStatusIcon(integration.status)}
-            </div>
-
-            <div className="mt-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {getStatusBadge(integration.status)}
-                <span className="text-sm text-gray-500">{integration.message}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {integration.configured ? (
-                  <button
-                    onClick={() => testIntegration(integration.key)}
-                    disabled={testingKey === integration.key}
-                    className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50 flex items-center gap-1"
-                  >
-                    {testingKey === integration.key ? (
-                      <RefreshCw className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Zap className="h-3 w-3" />
-                    )}
-                    Test
-                  </button>
-                ) : (
-                  <a
-                    href="/admin/settings/api"
-                    className="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 flex items-center gap-1"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    Configure
-                  </a>
+            {criticalDown.length ? (
+              <>
+                <strong>{criticalDown.length} critical integration down.</strong>{' '}
+                {criticalDown.map((c) => c.impact).join(' ')}
+              </>
+            ) : down.length ? (
+              <>
+                <strong>Everything on the lead path is working.</strong> {down.length} other
+                integration{down.length === 1 ? '' : 's'} need attention.
+              </>
+            ) : (
+              <>
+                <strong>Everything configured is responding.</strong>
+                {/* Said out loud, because a green banner above a column of
+                    "Not configured" rows otherwise reads as "all good". */}
+                {unconfigured.length > 0 && (
+                  <>
+                    {' '}
+                    {unconfigured.length} service{unconfigured.length === 1 ? ' is' : 's are'} not
+                    set up at all: {unconfigured.map((c) => c.name).join(', ')}.
+                  </>
                 )}
-              </div>
-            </div>
-
-            {integration.lastTested && (
-              <p className="mt-2 text-xs text-gray-400">
-                Last tested: {new Date(integration.lastTested).toLocaleString()}
-              </p>
+              </>
             )}
           </div>
-        ))}
-      </div>
+        )}
 
-      {/* Help Section */}
-      <div className="mt-8 bg-blue-50 border border-blue-200 rounded-2xl shadow-sm p-4">
-        <h3 className="font-medium text-blue-900 flex items-center gap-2">
-          <AlertCircle className="h-5 w-5" />
-          Need to configure an API?
-        </h3>
-        <p className="text-sm text-blue-700 mt-1">
-          Go to{' '}
-          <a href="/admin/settings/api" className="underline font-medium">
-            Settings &rarr; API Keys
-          </a>{' '}
-          to add or update your API credentials.
-        </p>
+        {(['critical', 'degraded', 'optional'] as const).map((severity) => {
+          const group = (checks || []).filter((c) => c.severity === severity)
+          if (group.length === 0) return null
+          return (
+            <section key={severity} className="mb-5">
+              <h2 className="text-sm font-bold text-gray-900">{SEVERITY[severity].label}</h2>
+              <p className="text-xs text-gray-500 mb-2">{SEVERITY[severity].blurb}</p>
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm divide-y divide-gray-100">
+                {group.map((check) => (
+                  <div key={check.id} className="p-4 flex items-start gap-3">
+                    {!check.configured ? (
+                      <MinusCircle className="h-5 w-5 mt-0.5 shrink-0 text-gray-300" />
+                    ) : check.ok ? (
+                      <CheckCircle2 className="h-5 w-5 mt-0.5 shrink-0 text-green-600" />
+                    ) : severity === 'critical' ? (
+                      <XCircle className="h-5 w-5 mt-0.5 shrink-0 text-red-500" />
+                    ) : (
+                      <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0 text-amber-500" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-baseline gap-x-2">
+                        <span className="font-semibold text-gray-900">{check.name}</span>
+                        <span className="text-xs text-gray-500">{check.purpose}</span>
+                      </div>
+                      <p
+                        className={`text-sm ${
+                          !check.configured
+                            ? 'text-gray-400'
+                            : check.ok
+                              ? 'text-gray-600'
+                              : 'text-red-700'
+                        }`}
+                      >
+                        {check.message}
+                      </p>
+                      {/* Only worth saying when it is actually down. */}
+                      {check.configured && !check.ok && (
+                        <p className="text-xs text-gray-600 mt-0.5">{check.impact}</p>
+                      )}
+                    </div>
+                    {check.href && !check.ok && (
+                      <Link
+                        href={check.href}
+                        className="text-sm font-semibold text-blue-600 hover:text-blue-700 shrink-0"
+                      >
+                        Fix
+                      </Link>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )
+        })}
       </div>
     </div>
   )
