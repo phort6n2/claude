@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { CheckCircle2, Loader2, MapPin, TriangleAlert } from 'lucide-react'
+import { CheckCircle2, Loader2, MapPin, Sparkles, TriangleAlert } from 'lucide-react'
 
 /**
  * Per-city copy for the location pages.
@@ -32,6 +32,7 @@ export default function CityContentEditor({ clientId }: { clientId: string }) {
   const [minWords, setMinWords] = useState(60)
   const [unavailable, setUnavailable] = useState(false)
   const [saving, setSaving] = useState<string | null>(null)
+  const [drafting, setDrafting] = useState<string | null>(null)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
 
   const load = useCallback(async () => {
@@ -54,6 +55,36 @@ export default function CityContentEditor({ clientId }: { clientId: string }) {
       (prev || []).map((row) => (row.city === city ? { ...row, ...patch } : row))
     )
     setMessage(null)
+  }
+
+  /**
+   * Ask Claude for a draft, and put it in the box — unsaved.
+   *
+   * It is never written straight to the site: the model knows only what the
+   * client record says, and a fluent paragraph about a business is exactly
+   * the kind of thing that reads true and isn't.
+   */
+  async function draft(row: CityRow) {
+    setDrafting(row.city)
+    setMessage(null)
+    try {
+      const res = await fetch(`/api/clients/${clientId}/city-content/draft`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ city: row.city }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Draft failed')
+      edit(row.city, { heading: data.draft.heading, body: data.draft.body })
+      setMessage({
+        ok: true,
+        text: `Draft ready for ${row.city}. Read it, fix anything that isn't true, then save.`,
+      })
+    } catch (err) {
+      setMessage({ ok: false, text: err instanceof Error ? err.message : 'Draft failed' })
+    } finally {
+      setDrafting(null)
+    }
   }
 
   async function save(row: CityRow) {
@@ -126,7 +157,8 @@ export default function CityContentEditor({ clientId }: { clientId: string }) {
                 They still work and still take ad traffic, but they carry noindex and aren&apos;t
                 linked or in the sitemap — a set of near-identical city pages is what Google calls
                 a doorway, and the penalty lands on the whole account, not one page. About{' '}
-                {minWords} words of something true about working in that city is enough.
+                {minWords} words of something true about working in that city is enough — press
+                <strong> Write a draft</strong> on any city and correct what comes back.
               </span>
             </span>
           )}
@@ -175,6 +207,19 @@ export default function CityContentEditor({ clientId }: { clientId: string }) {
             className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
           />
           <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => draft(row)}
+              disabled={drafting === row.city}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-300 text-sm hover:bg-gray-50 disabled:opacity-60"
+            >
+              {drafting === row.city ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Sparkles size={14} />
+              )}
+              {row.body ? 'Redraft' : 'Write a draft'}
+            </button>
             <button
               type="button"
               onClick={() => save(row)}

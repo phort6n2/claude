@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ImagePlus, Loader2, Trash2, TriangleAlert } from 'lucide-react'
+import { ImagePlus, Loader2, Star, Trash2, TriangleAlert } from 'lucide-react'
 
 /**
  * Photo upload and management, shared by the admin and the client portal.
@@ -100,6 +100,18 @@ export default function PhotoManager({
     }
   }
 
+  async function makeHero(photo: PhotoRow) {
+    if (!patchUrl) return
+    setBusy(photo.id)
+    await fetch(patchUrl, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photoId: photo.id, action: 'hero' }),
+    }).catch(() => {})
+    await load()
+    setBusy(null)
+  }
+
   async function saveAlt(photo: PhotoRow, alt: string) {
     if (!patchUrl || alt === photo.alt) return
     await fetch(patchUrl, {
@@ -133,8 +145,17 @@ export default function PhotoManager({
 
       {photos.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {photos.map((photo) => (
-            <div key={photo.id} className="rounded-xl border border-gray-200 overflow-hidden">
+          {photos.map((photo, index) => {
+            // The hero is whatever sits first in the gallery pool — the same
+            // rule the page uses, so what is marked here is what renders.
+            const isHero = photo.pool === 'GALLERY' && index === 0
+            return (
+            <div
+              key={photo.id}
+              className={`rounded-xl border overflow-hidden ${
+                isHero ? 'border-amber-300 ring-2 ring-amber-100' : 'border-gray-200'
+              }`}
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={photo.url}
@@ -143,6 +164,11 @@ export default function PhotoManager({
                 loading="lazy"
               />
               <div className="p-3 space-y-2">
+                {isHero && (
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700 flex items-center gap-1">
+                    <Star size={12} className="fill-amber-400 text-amber-500" /> Hero background
+                  </p>
+                )}
                 {patchUrl ? (
                   <input
                     type="text"
@@ -154,22 +180,35 @@ export default function PhotoManager({
                 ) : (
                   photo.alt && <p className="text-sm text-gray-600">{photo.alt}</p>
                 )}
-                <button
-                  type="button"
-                  onClick={() => remove(photo)}
-                  disabled={busy === photo.id}
-                  className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-600"
-                >
-                  {busy === photo.id ? (
-                    <Loader2 size={13} className="animate-spin" />
-                  ) : (
-                    <Trash2 size={13} />
+                <div className="flex items-center gap-4">
+                  {patchUrl && !isHero && photo.pool === 'GALLERY' && (
+                    <button
+                      type="button"
+                      onClick={() => makeHero(photo)}
+                      disabled={busy === photo.id}
+                      className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-amber-700"
+                    >
+                      <Star size={13} /> Use as hero
+                    </button>
                   )}
-                  Remove
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => remove(photo)}
+                    disabled={busy === photo.id}
+                    className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-600"
+                  >
+                    {busy === photo.id ? (
+                      <Loader2 size={13} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={13} />
+                    )}
+                    Remove
+                  </button>
+                </div>
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

@@ -92,7 +92,14 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
   return NextResponse.json({ ok: true })
 }
 
-/** PATCH — update the alt text, which is also the accessibility text. */
+/**
+ * PATCH — update the alt text, or promote a photo to the hero slot.
+ *
+ * The hero is the first GALLERY photo rather than a flag on the row, so
+ * "make this the hero" is a reorder: the chosen photo takes position 0 and
+ * everything else shifts down. One source of truth for order beats an
+ * isHero column that can disagree with it.
+ */
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const denied = await requireAdmin()
   if (denied) return denied
@@ -103,10 +110,25 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const photo = await prisma.clientSitePhoto.findFirst({ where: { id: photoId, clientId: id } })
   if (!photo) return NextResponse.json({ error: 'Photo not found' }, { status: 404 })
 
-  await prisma.clientSitePhoto.update({
-    where: { id: photo.id },
-    data: { alt: String(body.alt || '').trim().slice(0, 160) },
-  })
+  if (body.action === 'hero') {
+    const pool = photo.pool
+    const others = await prisma.clientSitePhoto.findMany({
+      where: { clientId: id, pool, NOT: { id: photo.id } },
+      orderBy: { sortOrder: 'asc' },
+      select: { id: true },
+    })
+    await prisma.$transaction([
+      prisma.clientSitePhoto.update({ where: { id: photo.id }, data: { sortOrder: 0 } }),
+      ...others.map((row, index) =>
+        prisma.clientSitePhoto.update({ where: { id: row.id }, data: { sortOrder: index + 1 } })
+      ),
+    ])
+  } else {
+    await prisma.clientSitePhoto.update({
+      where: { id: photo.id },
+      data: { alt: String(body.alt || '').trim().slice(0, 160) },
+    })
+  }
 
   const client = await prisma.client.findUnique({ where: { id }, select: { slug: true } })
   if (client) revalidatePath(`/sites/${client.slug}`, 'layout')
