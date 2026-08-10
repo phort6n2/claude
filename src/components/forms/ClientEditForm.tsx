@@ -1752,12 +1752,16 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
             )}
 
             <div className="border-t pt-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-1">Allowed Browser Origins</h4>
+              <h4 className="text-sm font-medium text-gray-900 mb-1">
+                Outside Websites Allowed To Send Leads
+              </h4>
               <p className="text-sm text-gray-500 mb-3">
-                Websites allowed to post leads to the webhook directly from a visitor&apos;s
-                browser (CORS). One per line, e.g.{' '}
-                <code className="bg-gray-100 px-1 rounded">https://collisionglass.co</code>.
-                List both the www and non-www versions of a domain. Saved with the Save button.
+                Only pages this app serves can send leads. The hosted site and any custom domain
+                pointed here already work and must not be listed. Add an origin only to embed the
+                widget on a site we did not build — one per line, e.g.{' '}
+                <code className="bg-gray-100 px-1 rounded">https://example.com</code>, listing both
+                the www and non-www versions. Anything listed here can post leads into this
+                client&apos;s account. Saved with the Save button.
               </p>
               <textarea
                 value={(formData.allowedOrigins || []).join('\n')}
