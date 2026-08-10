@@ -616,7 +616,20 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
     // the same reason the deliveries do: a captured lead is worth far more
     // than an alert about it, and a slow Resend or Twilio call must never
     // delay — or fail — the webhook that captured it.
+    //
+    // NOT for same-day duplicates. The dedup above has already decided this
+    // is the same person contacting us again today, and the whole point of
+    // that decision is that it is one enquiry. Alerting on every row turns a
+    // form submitted twice — or a webhook delivered twice, which happens on
+    // any retry — into two identical emails and two texts to the shop, for a
+    // customer they have already been told about.
     after(async () => {
+      if (duplicateOfLeadId) {
+        console.log(
+          `[HighLevel Webhook] Skipping alerts for lead ${lead.id} — same-day duplicate of ${duplicateOfLeadId}`
+        )
+        return
+      }
       try {
         const result = await notifyLeadRecipients(client.id, client.businessName, {
           name: String(payload.full_name || payload.first_name || '').trim(),
@@ -673,14 +686,16 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // Send push notification to client users (non-blocking)
-    notifyNewLead(client.id, {
-      firstName: finalFirstName,
-      phone,
-      source: leadSource,
-    }).catch((err) => {
-      console.error(`[HighLevel Webhook] Failed to send push notification:`, err)
-    })
+    // Push, same rule as the email and SMS above: one enquiry, one buzz.
+    if (!duplicateOfLeadId) {
+      notifyNewLead(client.id, {
+        firstName: finalFirstName,
+        phone,
+        source: leadSource,
+      }).catch((err) => {
+        console.error(`[HighLevel Webhook] Failed to send push notification:`, err)
+      })
+    }
 
     return NextResponse.json({
       success: true,
