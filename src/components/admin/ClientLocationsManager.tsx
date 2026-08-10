@@ -205,11 +205,18 @@ export default function ClientLocationsManager({
     }
   }
 
-  async function refreshReviews(row: LocationRow) {
+  /**
+   * Pull this shop's address, phone, hours, maps link and rating from Google.
+   *
+   * Reloads the whole list afterwards, which is the point — the server row is
+   * now the truth. Anything typed and not saved before pressing this is
+   * replaced, so the button warns before it runs when the editor is dirty.
+   */
+  async function refreshFromGoogle(row: LocationRow) {
     setRefreshingId(row.id)
     setMessage(null)
     try {
-      const res = await fetch(`/api/clients/${clientId}/locations/${row.id}/refresh-reviews`, {
+      const res = await fetch(`/api/clients/${clientId}/locations/${row.id}/refresh`, {
         method: 'POST',
       })
       const data = await res.json()
@@ -452,8 +459,13 @@ export default function ClientLocationsManager({
               )}
               <button
                 type="button"
-                onClick={() => refreshReviews(row)}
+                onClick={() => refreshFromGoogle(row)}
                 disabled={!row.googlePlaceId || refreshingId === row.id}
+                title={
+                  row.googlePlaceId
+                    ? 'Pulls address, phone, hours, maps link and rating. Once a week per shop.'
+                    : 'Set a Google Place ID for this shop first.'
+                }
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
               >
                 {refreshingId === row.id ? (
@@ -461,7 +473,7 @@ export default function ClientLocationsManager({
                 ) : (
                   <RefreshCw size={12} />
                 )}
-                Refresh reviews
+                Refresh from Google
               </button>
               {row.gbpLastError && <span className="text-red-600">{row.gbpLastError}</span>}
             </div>

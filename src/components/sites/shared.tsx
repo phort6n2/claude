@@ -2,6 +2,13 @@ import { Phone, MapPin, ShieldCheck, Check } from 'lucide-react'
 import type { SiteExtras } from '@/lib/site-content'
 import { locationPages } from '@/lib/site-locations'
 import { orderLocationsForCity, mapQuery, type SiteLocation } from '@/lib/client-locations'
+import {
+  CHIP_DEDUCTIBLE_NOTE,
+  CHIP_REPAIRABLE_NOTE,
+  insuranceForState,
+  insuranceHeadingFor,
+  stateNameFor,
+} from '@/lib/insurance-rules'
 
 /**
  * Shared building blocks for hosted client sites (home + service pages),
@@ -572,21 +579,48 @@ export function ProcessSection({
 }
 
 /** Insurance band on the warm tint: left head, two claim cards, disclaimer. */
-export function InsuranceBand() {
+/**
+ * Insurance band, now answering the state-specific version of the question.
+ *
+ * "Do you take insurance" is not what the caller means. They mean "what is
+ * this going to cost me", and the answer turns on their state's deductible
+ * rule and on whether the damage is repairable. Answering it here is the
+ * cheapest conversion work available: it is the question shops spend the most
+ * phone time on, and the one competitors leave unanswered.
+ *
+ * The copy is deliberately conditional — see src/lib/insurance-rules.ts for
+ * why every line says "if you carry comprehensive" and none of them say
+ * "free".
+ */
+export function InsuranceBand({ state }: { state?: string | null }) {
+  const rule = insuranceForState(state)
+  const stateName = stateNameFor(state)
+
   return (
     <section className="bg-[var(--tint-warm)] border-b border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
         <SectionHead
           eyebrow="Insurance"
-          title="We handle the claim with your carrier"
-          lead="Glass coverage is usually part of the comprehensive portion of your policy — and we do the paperwork."
+          title={
+            rule.rule === 'automatic' && stateName
+              ? `${stateName} law is on your side here`
+              : 'We handle the claim with your carrier'
+          }
+          lead="Glass coverage sits in the comprehensive part of your policy — and we do the paperwork."
         />
         <div className="grid md:grid-cols-2 gap-5">
           <div className="bg-white rounded-[20px] border border-[var(--line-card)] shadow-sm p-6">
-            <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold m-0">Filing through insurance</h3>
-            <p className="mt-2 mb-0 text-sm text-[var(--tx2)] leading-relaxed">
-              We work with your insurance company directly and help you navigate the claim — many
-              repairs cost you nothing out of pocket, and you don’t spend your afternoon on hold.
+            <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold m-0">
+              {insuranceHeadingFor(state)}
+            </h3>
+            <p className="mt-2 mb-0 text-sm text-[var(--tx2)] leading-relaxed">{rule.summary}</p>
+            {rule.note && (
+              <p className="mt-2 mb-0 text-sm text-[var(--tx2)] leading-relaxed">{rule.note}</p>
+            )}
+            <p className="mt-3 mb-0 text-sm text-[var(--tx2)] leading-relaxed">
+              We file the claim with your carrier and deal with them directly, so you are not on
+              hold for an afternoon. Call us with your policy number and we will check your
+              coverage with you before you commit to anything.
             </p>
           </div>
           <div className="bg-white rounded-[20px] border border-[var(--line-card)] shadow-sm p-6">
@@ -595,11 +629,25 @@ export function InsuranceBand() {
               Not going through insurance? You get a straight price up front, before any work
               starts — no surprises when the job is done.
             </p>
+            {/* The chip-repair point is the one that changes behaviour: it is
+                cheap and it expires when the chip spreads. The deductible half
+                is dropped in statutory-waiver states, where it only restates
+                what the card opposite already said. */}
+            {rule.rule !== 'automatic' && (
+              <p className="mt-2 mb-0 text-sm text-[var(--tx2)] leading-relaxed">
+                {CHIP_DEDUCTIBLE_NOTE}
+              </p>
+            )}
+            <p className="mt-2 mb-0 text-sm text-[var(--tx2)] leading-relaxed">
+              {CHIP_REPAIRABLE_NOTE}
+            </p>
           </div>
         </div>
         <p className="mt-5 mb-0 text-xs text-[var(--tx-muted)]">
-          We are an independent glass shop and are not affiliated with or endorsed by any insurance
-          company. Your choice of repair shop is yours to make.
+          General information only, not advice about your policy — coverage depends on the policy
+          you hold, so check with your carrier. We are an independent glass shop and are not
+          affiliated with or endorsed by any insurance company. Your choice of repair shop is
+          yours to make.
         </p>
       </div>
     </section>
