@@ -25,6 +25,12 @@ interface Parsed {
   enhancedConversions: boolean
   bingUetTagId: string
   bingLeadEventAction: string
+  googleAdsCustomerId: string
+}
+
+interface AdsAccount {
+  customerId: string
+  name: string
 }
 
 /** The action name pushed to Microsoft when none is configured. */
@@ -84,6 +90,9 @@ export default function AdsTrackingCard({
   const [enhanced, setEnhanced] = useState(true)
   const [bingTagId, setBingTagId] = useState('')
   const [bingAction, setBingAction] = useState('')
+  const [customerId, setCustomerId] = useState('')
+  const [accounts, setAccounts] = useState<AdsAccount[]>([])
+  const [accountsError, setAccountsError] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
@@ -106,6 +115,7 @@ export default function AdsTrackingCard({
           setEnhanced(data.tracking.enhancedConversions)
           setBingTagId(data.tracking.bingUetTagId || '')
           setBingAction(data.tracking.bingLeadEventAction || '')
+          setCustomerId(data.tracking.googleAdsCustomerId || '')
         }
         setLoading(false)
       })
@@ -114,6 +124,24 @@ export default function AdsTrackingCard({
       cancelled = true
     }
   }, [clientId])
+
+  // The accounts under our manager account. Absent credentials this returns an
+  // explanation rather than an error, and the select falls back to nothing —
+  // conversions still work, only the "is Google counting?" check goes quiet.
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/admin/google-ads/accounts')
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return
+        setAccounts(data.accounts || [])
+        setAccountsError(data.error || '')
+      })
+      .catch(() => !cancelled && setAccountsError('Could not load the account list.'))
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   async function save() {
     setSaving(true)
@@ -128,6 +156,7 @@ export default function AdsTrackingCard({
           enhancedConversions: enhanced,
           bingUetTagId: bingTagId,
           bingLeadEventAction: bingAction,
+          googleAdsCustomerId: customerId,
         }),
       })
       const data = await res.json()
@@ -265,6 +294,37 @@ export default function AdsTrackingCard({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ---- Which Ads account, for the live conversion check ---- */}
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700" htmlFor="ads-account">
+          Google Ads account <span className="font-normal text-gray-400">— optional</span>
+        </label>
+        <select
+          id="ads-account"
+          value={customerId}
+          onChange={(e) => setCustomerId(e.target.value)}
+          disabled={accounts.length === 0}
+          className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+        >
+          <option value="">Not selected</option>
+          {/* A previously saved account that no longer appears under the
+              manager still has to be shown, or saving would silently clear it. */}
+          {!accounts.some((a) => a.customerId === customerId) && customerId && (
+            <option value={customerId}>{customerId} (no longer under the manager account)</option>
+          )}
+          {accounts.map((account) => (
+            <option key={account.customerId} value={account.customerId}>
+              {account.name} · {account.customerId}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-gray-500">
+          {accountsError
+            ? `${accountsError} Set this up under Settings → API keys; without it, “Check the live site” can only confirm the tag is installed, not that Google is counting.`
+            : 'Lets the check below ask Google whether the conversion action exists, is enabled, and has recorded anything. The client adds nothing.'}
+        </p>
       </div>
 
       {/* ---- Form leads ---- */}

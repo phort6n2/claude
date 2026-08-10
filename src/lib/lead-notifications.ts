@@ -164,8 +164,14 @@ export async function notifyNewLead(
     const sid = await secret('TWILIO_ACCOUNT_SID')
     const token = await secret('TWILIO_AUTH_TOKEN')
     const fromNumber = await secret('TWILIO_FROM_NUMBER')
-    if (!sid || !token || !fromNumber) {
-      result.errors.push('Twilio is not fully configured (SID, auth token and from-number)')
+    // A2P 10DLC attaches the registered campaign to a Messaging Service, not
+    // to the bare number, and Twilio routes better when you send through the
+    // service. Prefer it when one is set; fall back to the number.
+    const messagingServiceSid = await secret('TWILIO_MESSAGING_SERVICE_SID')
+    if (!sid || !token || !(fromNumber || messagingServiceSid)) {
+      result.errors.push(
+        'Twilio is not fully configured (SID, auth token, and either a from-number or a Messaging Service SID)'
+      )
     } else {
       try {
         const twilio = (await import('twilio')).default
@@ -180,7 +186,13 @@ export async function notifyNewLead(
             continue
           }
           try {
-            await clientApi.messages.create({ to, from: fromNumber, body })
+            await clientApi.messages.create({
+              to,
+              body,
+              ...(messagingServiceSid
+                ? { messagingServiceSid }
+                : { from: fromNumber as string }),
+            })
             result.smsSent += 1
           } catch (error) {
             result.errors.push(`SMS to ${raw}: ${error instanceof Error ? error.message : 'failed'}`)
