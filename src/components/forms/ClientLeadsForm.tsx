@@ -97,10 +97,13 @@ export default function ClientLeadsForm({
           <CopyField label="Widget embed snippet" value={embed} multiline />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Allowed browser origins
+              Outside websites allowed to send leads
             </label>
             <p className="text-xs text-gray-400 mb-2">
-              One per line. The hosted site posts same-origin and never needs listing here.
+              Only pages this app serves can send leads — the hosted site and any custom domain
+              pointed here work automatically and must not be listed. Add an origin here only to
+              embed the widget on a site we did not build, such as an existing WordPress site.
+              Anything listed here can post leads into this client&apos;s account.
             </p>
             <textarea
               value={(formData.allowedOrigins || []).join('\n')}

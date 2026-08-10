@@ -7,69 +7,23 @@ import { findSameDayDuplicateCanonical } from '@/lib/lead-dedup'
 import { createDeliveriesForLead, attemptDelivery } from '@/lib/webhook-forwarding'
 // Aliased: push-notifications already exports a notifyNewLead (admin web push).
 import { notifyNewLead as notifyLeadRecipients } from '@/lib/lead-notifications'
+import { decideOrigin, requestHost } from '@/lib/lead-origin-policy'
 import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * Origins allowed to POST here directly from a visitor's browser.
+ * Who is allowed to post here from a browser, and why the rule is what it is,
+ * lives in lead-origin-policy.ts. The short version: pages this app served,
+ * plus whatever the admin has explicitly opted in per client.
  *
- * Client landing pages submit their quote form with a client-side fetch, which
- * makes this a cross-origin request. `Content-Type: application/json` is not a
- * CORS-simple content type, so the browser sends a preflight first and refuses
- * to deliver the POST unless both the preflight and the response carry
- * matching headers.
- *
- * Be clear about what this list is and isn't. It stops an arbitrary website
- * from posting leads using a visitor's browser, which is the realistic abuse
- * route once the endpoint URL is visible in page source. It is not a security
- * boundary: CORS is enforced by browsers, so curl or a script ignores it
- * entirely. Anyone who knows a client slug can still post directly. Rate
- * limiting is what would address that, and it isn't built yet.
- *
- * Per-client origins live on `Client.allowedOrigins`, managed in the admin UI.
- * This hardcoded set is the fallback floor, unioned with the database list, so
- * a DB outage (or a deploy that beats the SQL) can never lock out a site that
- * is already posting. Both apex and www are needed when both resolve, because
- * the browser sends the exact origin it loaded the page from.
+ * The mechanics on this side are CORS. A landing page submits with a
+ * client-side fetch; `Content-Type: application/json` is not a CORS-simple
+ * content type, so the browser preflights and refuses to deliver the POST
+ * unless the preflight and the response both carry matching headers. That
+ * makes the header set and the accept/reject decision the same decision, so
+ * they are taken together.
  */
-const FALLBACK_BROWSER_ORIGINS = new Set([
-  // Collision Auto Glass & Calibration — landing site
-  'https://collisionglass.co',
-  'https://www.collisionglass.co',
-  // Collision Auto Glass & Calibration — main WordPress site. Both hosts are
-  // required: WordPress redirects between apex and www depending on its
-  // canonical setting, and the browser sends whichever host actually served
-  // the page, so listing one leaves a coin-flip failure.
-  'https://collisionautoglass.com',
-  'https://www.collisionautoglass.com',
-])
-
-/**
- * True when `origin` may post for the client in the query string: either in
- * the hardcoded fallback set or in that client's configured allowedOrigins.
- * Database problems degrade to the fallback set instead of failing the
- * preflight.
- */
-async function isAllowedOrigin(origin: string | null, clientSlug: string | null): Promise<boolean> {
-  if (!origin) return false
-  if (FALLBACK_BROWSER_ORIGINS.has(origin)) return true
-  if (!clientSlug) return false
-  try {
-    const client = await prisma.client.findUnique({
-      where: { slug: clientSlug },
-      select: { allowedOrigins: true },
-    })
-    const normalized = origin.replace(/\/$/, '').toLowerCase()
-    return !!client?.allowedOrigins?.some(
-      (o) => o.replace(/\/$/, '').toLowerCase() === normalized
-    )
-  } catch (err) {
-    console.warn('[HighLevel Webhook] Origin lookup failed, using fallback list only:', err)
-    return false
-  }
-}
-
 function corsHeaders(origin: string | null, allowed: boolean): Record<string, string> {
   if (!origin || !allowed) return {}
   return {
@@ -86,9 +40,10 @@ function corsHeaders(origin: string | null, allowed: boolean): Record<string, st
 export async function OPTIONS(request: NextRequest) {
   const origin = request.headers.get('origin')
   const clientSlug = new URL(request.url).searchParams.get('client')
-  const headers = corsHeaders(origin, await isAllowedOrigin(origin, clientSlug))
+  const decision = await decideOrigin(origin, requestHost(request.headers), clientSlug)
+  const headers = corsHeaders(origin, decision.allowed)
   return new NextResponse(null, {
-    status: Object.keys(headers).length ? 204 : 403,
+    status: decision.allowed ? 204 : 403,
     headers,
   })
 }
@@ -106,15 +61,32 @@ export async function OPTIONS(request: NextRequest) {
  * HighLevel-specific nesting is consulted, so the two paths converge.
  */
 export async function POST(request: NextRequest) {
+  const origin = request.headers.get('origin')
+  const clientSlug = new URL(request.url).searchParams.get('client')
+  const decision = await decideOrigin(origin, requestHost(request.headers), clientSlug)
+
+  // Refused before the lead is written, not just left without CORS headers.
+  // Missing headers only make the browser hide the response — the lead would
+  // still land, still alert the shop, still be forwarded. The point of the
+  // rule is that it does not land at all.
+  if (!decision.allowed) {
+    console.warn(
+      `[HighLevel Webhook] Rejected lead from ${origin} for client=${clientSlug ?? 'none'} — not a page this app served, and not in that client's allowed origins`
+    )
+    return NextResponse.json(
+      {
+        error: 'This site is not authorised to submit leads for this client.',
+        origin,
+      },
+      { status: 403 }
+    )
+  }
+
   const response = await handleLeadPost(request)
   // Attach CORS headers to whatever the handler returned. Without them a
   // browser-initiated POST succeeds server-side but the fetch() still rejects,
   // which would look to the page like a failed submission.
-  const origin = request.headers.get('origin')
-  const clientSlug = new URL(request.url).searchParams.get('client')
-  for (const [key, value] of Object.entries(
-    corsHeaders(origin, await isAllowedOrigin(origin, clientSlug))
-  )) {
+  for (const [key, value] of Object.entries(corsHeaders(origin, true))) {
     response.headers.set(key, value)
   }
   return response
