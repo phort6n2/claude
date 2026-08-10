@@ -22,8 +22,8 @@
  * failure is a client's live site.
  */
 
-const VERCEL_PROJECT_ID = process.env.VERCEL_SITES_PROJECT_ID || 'prj_ippcpQAys3gDB9FMk11ufiy3B0Vf'
-const VERCEL_TEAM_ID = process.env.VERCEL_SITES_TEAM_ID || 'team_i0q8dHvyszgaaysrJ4pkWoHL'
+import { VERCEL_PROJECT_ID, VERCEL_TEAM_ID } from '@/lib/vercel-config'
+
 const API = 'https://api.vercel.com'
 
 export interface DnsRecord {

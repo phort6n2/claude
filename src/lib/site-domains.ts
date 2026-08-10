@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { VERCEL_PROJECT_ID, VERCEL_TEAM_ID } from '@/lib/vercel-config'
 
 /**
  * Automated provisioning of short client subdomains
@@ -19,8 +20,6 @@ import { prisma } from '@/lib/db'
  */
 
 const ROOT_DOMAIN = 'glassleads.app'
-const VERCEL_PROJECT_ID = process.env.VERCEL_SITES_PROJECT_ID || 'prj_ippcpQAys3gDB9FMk11ufiy3B0Vf'
-const VERCEL_TEAM_ID = process.env.VERCEL_SITES_TEAM_ID || 'team_i0q8dHvyszgaaysrJ4pkWoHL'
 
 /** Subdomains that must never become client sites. */
 const RESERVED = new Set([

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { decrypt } from '@/lib/encryption'
+import { VERCEL_PROJECT_ID, VERCEL_TEAM_ID, vercelToken } from '@/lib/vercel-config'
 
 /**
  * Live health for every outside service the platform depends on.
@@ -232,23 +233,25 @@ export async function runIntegrationChecks(): Promise<IntegrationCheck[]> {
       : undefined,
   })
 
-  const vercelToken = process.env.VERCEL_TOKEN
-  const vercelProject = process.env.VERCEL_SITES_PROJECT_ID
+  // Only the token is required. The project and team IDs come from the same
+  // module the provisioning code uses, which defaults them — so this must not
+  // invent a requirement that code does not have, or it reports a working
+  // feature as broken.
+  const vercelTok = vercelToken()
   push({
     id: 'vercel',
     name: 'Vercel domains API',
     purpose: 'Attaching client subdomains and custom domains',
     impact: 'Live sites are unaffected. New domains cannot be attached or verified.',
     severity: 'optional',
-    configured: !!(vercelToken && vercelProject),
-    missing: `Missing ${[!vercelToken && 'VERCEL_TOKEN', !vercelProject && 'VERCEL_SITES_PROJECT_ID'].filter(Boolean).join(' and ')}. These are set by hand in Vercel → Settings → Environment Variables, and only reach deployments built afterwards.`,
-    result:
-      vercelToken && vercelProject
-        ? await probe(async () => {
-            const team = process.env.VERCEL_SITES_TEAM_ID
+    configured: !!vercelTok,
+    missing:
+      'No VERCEL_TOKEN in this deployment. Set it in Vercel → Settings → Environment Variables and redeploy; the project and team IDs are already defaulted.',
+    result: vercelTok
+      ? await probe(async () => {
             const res = await fetch(
-              `https://api.vercel.com/v9/projects/${vercelProject}${team ? `?teamId=${team}` : ''}`,
-              { headers: { Authorization: `Bearer ${vercelToken}` }, signal: timeout() }
+              `https://api.vercel.com/v9/projects/${VERCEL_PROJECT_ID}?teamId=${VERCEL_TEAM_ID}`,
+              { headers: { Authorization: `Bearer ${vercelTok}` }, signal: timeout() }
             )
             if (res.status === 401 || res.status === 403) {
               return { ok: false, message: 'Token rejected or lacks access to that project' }
@@ -257,7 +260,7 @@ export async function runIntegrationChecks(): Promise<IntegrationCheck[]> {
             const data = await res.json()
             return { ok: true, message: `Project "${data.name}" reachable` }
           })
-        : undefined,
+      : undefined,
   })
 
   const cfToken = process.env.CLOUDFLARE_API_TOKEN
