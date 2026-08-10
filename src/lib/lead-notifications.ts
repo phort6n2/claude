@@ -25,6 +25,14 @@ export interface LeadSummary {
   message: string
   source: string
   leadUrl: string | null
+  /* Everything else the form captured. The alert used to carry a fixed
+   * subset, so the shop got an email missing the VIN and the insurance
+   * details — the two things that decide whether the job is bookable and what
+   * it is worth. Optional because a phone lead has none of them. */
+  vin?: string
+  insurance?: string
+  carrier?: string
+  landingPage?: string
 }
 
 async function secret(key: string): Promise<string | null> {
@@ -55,15 +63,26 @@ function toE164(raw: string): string | null {
   return null
 }
 
+/**
+ * Every captured field that has a value, in the order a dispatcher reads
+ * them: what the job is, what it is on, then how to reach them.
+ *
+ * Empty fields are dropped rather than shown blank — a phone lead has no VIN,
+ * and a row of "VIN: —" trains people to skim past the ones that do matter.
+ */
 function plainLines(lead: LeadSummary): string[] {
   return [
     lead.service && `Job: ${lead.service}`,
     lead.vehicle && `Vehicle: ${lead.vehicle}`,
+    lead.vin && `VIN: ${lead.vin}`,
+    lead.insurance && `Insurance: ${lead.insurance}`,
+    lead.carrier && `Carrier: ${lead.carrier}`,
     lead.postalCode && `ZIP: ${lead.postalCode}`,
     lead.phone && `Phone: ${lead.phone}`,
     lead.email && `Email: ${lead.email}`,
     lead.message && `Notes: ${lead.message}`,
     lead.source && `Source: ${lead.source}`,
+    lead.landingPage && `Page: ${lead.landingPage}`,
   ].filter(Boolean) as string[]
 }
 

@@ -640,6 +640,10 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
           postalCode: String(payload.postal_code || '').trim(),
           message: String(payload.notes || payload.message || '').trim(),
           source: String(payload.source_label || payload.contact_source || '').trim(),
+          vin: String(payload.vin || '').trim(),
+          insurance: String(payload.insurance_label || payload.insurance || '').trim(),
+          carrier: String(payload.carrier || payload.insurance_carrier || '').trim(),
+          landingPage: String(payload.landing_page || payload.page || '').trim(),
           leadUrl: `${process.env.APP_URL || 'https://glassleads.app'}/admin/leads/${lead.id}`,
         })
         if (result.emailSent || result.smsSent) {
