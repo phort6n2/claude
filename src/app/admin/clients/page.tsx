@@ -13,6 +13,7 @@ import {
   Activity,
 } from 'lucide-react'
 import ClientsListView from '@/components/admin/ClientsListView'
+import { requireAdminPage } from '@/lib/admin-guard'
 
 async function getClients() {
   return prisma.client.findMany({
@@ -117,7 +118,9 @@ function LoadingSkeleton() {
   )
 }
 
-export default function ClientsPage() {
+export default async function ClientsPage() {
+  await requireAdminPage()
+
   return (
     <div className="flex flex-col h-full bg-gradient-to-br from-slate-50 via-white to-slate-50">
       <Header

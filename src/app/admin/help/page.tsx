@@ -9,8 +9,11 @@ import {
   Bell,
   Shield,
 } from 'lucide-react'
+import { requireAdminPage } from '@/lib/admin-guard'
 
-export default function HelpPage() {
+export default async function HelpPage() {
+  await requireAdminPage()
+
   return (
     <div className="flex flex-col h-full">
       <Header title="Help & Documentation" subtitle="How the leads and call coaching platform works" />
