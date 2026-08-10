@@ -158,6 +158,9 @@ export default function ClientLocationsManager({
               postalCode: details.postalCode || row.postalCode,
               country: details.country || row.country || 'US',
               phone: details.phone || row.phone,
+              // Google's hours beat retyping them, but never overwrite hours
+              // someone has already corrected by hand.
+              hours: row.hours || details.hours || '',
               googlePlaceId: details.placeId,
               googleMapsUrl: details.googleMapsUrl || row.googleMapsUrl,
             }

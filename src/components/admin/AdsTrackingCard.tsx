@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CheckCircle2, ChevronDown, ChevronRight, Loader2, TriangleAlert } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronRight, Loader2, Stethoscope, TriangleAlert, XCircle } from 'lucide-react'
 
 /**
  * Google Ads conversion tracking for one client's hosted site.
@@ -88,6 +88,11 @@ export default function AdsTrackingCard({
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
   const [network, setNetwork] = useState<NetworkId>('google')
+  const [verifying, setVerifying] = useState(false)
+  const [checks, setChecks] = useState<Array<{ label: string; ok: boolean; detail: string }> | null>(
+    null
+  )
+  const [checkedHost, setCheckedHost] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -136,6 +141,32 @@ export default function AdsTrackingCard({
       setMessage({ ok: false, text: err instanceof Error ? err.message : 'Failed to save' })
     } finally {
       setSaving(false)
+    }
+  }
+
+  /**
+   * Fetch the live page and look for the tags.
+   *
+   * This proves installation, not receipt. Everything that goes wrong on our
+   * side — saved but not deployed, a cached page, an ID in the wrong field, a
+   * call number that isn't printed anywhere for Google to swap — shows up
+   * here. Whether the network is crediting the conversions is a question only
+   * that network's UI can answer, and the result says so.
+   */
+  async function verify() {
+    setVerifying(true)
+    setChecks(null)
+    setMessage(null)
+    try {
+      const res = await fetch(`/api/clients/${clientId}/ads-tracking/verify`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Check failed')
+      setChecks(data.checks || [])
+      setCheckedHost(data.host || '')
+    } catch (err) {
+      setMessage({ ok: false, text: err instanceof Error ? err.message : 'Check failed' })
+    } finally {
+      setVerifying(false)
     }
   }
 
@@ -484,6 +515,33 @@ export default function AdsTrackingCard({
         </span>
       </label>
 
+      {checks && (
+        <div className="rounded-lg border border-gray-200 divide-y divide-gray-200 text-sm">
+          <div className="px-3 py-2 text-xs text-gray-500">
+            Checked the live page at {checkedHost || 'the site'}
+          </div>
+          {checks.map((check) => (
+            <div key={check.label} className="flex items-start gap-2 p-3">
+              {check.ok ? (
+                <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-green-600" />
+              ) : (
+                <XCircle size={16} className="mt-0.5 shrink-0 text-red-500" />
+              )}
+              <div>
+                <div className="font-medium text-gray-900">{check.label}</div>
+                <div className="text-gray-600">{check.detail}</div>
+              </div>
+            </div>
+          ))}
+          <p className="px-3 py-2 text-xs text-gray-500">
+            This confirms the tags are on the page. Whether conversions are being credited can
+            only be seen in the ad network itself — Google Ads shows it under Goals → Conversions
+            (&ldquo;Recording conversions&rdquo; against the action), Microsoft under Conversions →
+            Conversion goals.
+          </p>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-3 border-t border-gray-200 pt-4">
         <button
           type="button"
@@ -493,6 +551,19 @@ export default function AdsTrackingCard({
         >
           {saving && <Loader2 size={15} className="animate-spin" />}
           Save tracking
+        </button>
+        <button
+          type="button"
+          onClick={verify}
+          disabled={verifying}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-gray-300 text-sm hover:bg-gray-50 disabled:opacity-60"
+        >
+          {verifying ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <Stethoscope size={14} />
+          )}
+          Check the live site
         </button>
         <span className="text-xs text-gray-500">
           Saving replaces what&apos;s configured. Leave a box empty to clear that conversion.

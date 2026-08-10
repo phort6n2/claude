@@ -29,6 +29,8 @@ export interface PlaceDetails {
   postalCode: string
   country: string
   googleMapsUrl: string
+  /** Google's own schedule, condensed to one line. May be absent. */
+  hours?: string
 }
 
 export default function GbpPicker({
@@ -141,8 +143,8 @@ export default function GbpPicker({
       </div>
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
       <p className="mt-2 text-xs text-blue-800">
-        Fills the address, phone, hours link, and this shop&apos;s Place ID — which is what the
-        per-shop rating refresh reads.
+        Fills the address, phone, opening hours and this shop&apos;s Place ID — which is what the
+        per-shop rating refresh reads. Everything stays editable afterwards.
       </p>
     </div>
   )
