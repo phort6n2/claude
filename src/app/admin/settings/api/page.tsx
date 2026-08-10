@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Header from '@/components/admin/Header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -12,6 +12,7 @@ import {
   Loader2,
   ChevronDown,
   ChevronRight,
+  Copy,
   ExternalLink,
 } from 'lucide-react'
 
@@ -188,6 +189,9 @@ interface SettingState {
   masked: string
   hasValue: boolean
   visible: boolean
+  /** The real value, fetched on demand and cleared when hidden again. */
+  revealed: string
+  revealing: boolean
   editing: boolean
   newValue: string
   testing: boolean
@@ -203,6 +207,15 @@ export default function ApiSettingsPage() {
   // is set you never read the steps again, and thirteen expanded lists would
   // bury the fields themselves.
   const [openSteps, setOpenSteps] = useState<Record<string, boolean>>({})
+  const [copied, setCopied] = useState<string | null>(null)
+  // Auto-hide timers, one per revealed key. In a ref so re-renders don't lose
+  // them and leave a value on screen indefinitely.
+  const hideTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+
+  useEffect(() => {
+    const timers = hideTimers.current
+    return () => Object.values(timers).forEach(clearTimeout)
+  }, [])
 
   useEffect(() => {
     fetchSettings()
@@ -221,6 +234,8 @@ export default function ApiSettingsPage() {
           masked: setting.masked,
           hasValue: setting.hasValue,
           visible: false,
+          revealed: '',
+          revealing: false,
           editing: false,
           newValue: '',
           testing: false,
@@ -234,11 +249,58 @@ export default function ApiSettingsPage() {
     }
   }
 
-  function toggleVisibility(key: string) {
-    setSettings(prev => ({
-      ...prev,
-      [key]: { ...prev[key], visible: !prev[key].visible },
-    }))
+  /**
+   * Show the real stored value, not the mask.
+   *
+   * The list endpoint never sends sensitive values to the browser, so a
+   * reveal is a separate fetch for that one key. It auto-hides after a minute
+   * — a credential left on screen on an unlocked laptop is the actual risk
+   * here, not the fetch.
+   */
+  async function toggleVisibility(key: string) {
+    const current = settings[key]
+    if (current.visible) {
+      if (hideTimers.current[key]) clearTimeout(hideTimers.current[key])
+      setSettings(prev => ({ ...prev, [key]: { ...prev[key], visible: false, revealed: '' } }))
+      return
+    }
+
+    setSettings(prev => ({ ...prev, [key]: { ...prev[key], revealing: true } }))
+    try {
+      const res = await fetch('/api/settings/reveal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not read that value')
+      setSettings(prev => ({
+        ...prev,
+        [key]: { ...prev[key], visible: true, revealed: data.value, revealing: false },
+      }))
+      hideTimers.current[key] = setTimeout(() => {
+        setSettings(prev =>
+          prev[key] ? { ...prev, [key]: { ...prev[key], visible: false, revealed: '' } } : prev
+        )
+      }, 60_000)
+    } catch (err) {
+      setSettings(prev => ({ ...prev, [key]: { ...prev[key], revealing: false } }))
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Could not reveal' })
+      setTimeout(() => setMessage(null), 5000)
+    }
+  }
+
+  async function copyValue(key: string) {
+    const value = settings[key]?.revealed
+    if (!value) return
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopied(key)
+      setTimeout(() => setCopied(null), 1800)
+    } catch {
+      setMessage({ type: 'error', text: 'Clipboard blocked — select the text and copy it manually.' })
+      setTimeout(() => setMessage(null), 5000)
+    }
   }
 
   function startEditing(key: string) {
@@ -444,19 +506,39 @@ export default function ApiSettingsPage() {
                       <div className="flex items-center gap-3">
                         {setting.hasValue ? (
                           <>
-                            <code className="bg-gray-100 px-3 py-1.5 rounded font-mono text-sm">
-                              {setting.visible ? setting.masked : '••••••••••••'}
+                            <code className="bg-gray-100 px-3 py-1.5 rounded font-mono text-sm break-all max-w-xl">
+                              {setting.visible ? setting.revealed || setting.masked : '••••••••••••'}
                             </code>
                             <button
                               onClick={() => toggleVisibility(config.key)}
-                              className="text-gray-400 hover:text-gray-600"
+                              disabled={setting.revealing}
+                              title={setting.visible ? 'Hide' : 'Show the real value'}
+                              className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
                             >
-                              {setting.visible ? (
+                              {setting.revealing ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : setting.visible ? (
                                 <EyeOff className="h-4 w-4" />
                               ) : (
                                 <Eye className="h-4 w-4" />
                               )}
                             </button>
+                            {setting.visible && setting.revealed && (
+                              <>
+                                <button
+                                  onClick={() => copyValue(config.key)}
+                                  title="Copy to clipboard"
+                                  className="text-gray-400 hover:text-gray-600"
+                                >
+                                  {copied === config.key ? (
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                  ) : (
+                                    <Copy className="h-4 w-4" />
+                                  )}
+                                </button>
+                                <span className="text-xs text-gray-400">hides in a minute</span>
+                              </>
+                            )}
                           </>
                         ) : (
                           <span className="text-gray-400 italic">Not configured</span>

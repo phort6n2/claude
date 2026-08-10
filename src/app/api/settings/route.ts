@@ -2,37 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma, withRetry } from '@/lib/db'
 import { encrypt, decrypt } from '@/lib/encryption'
-
-// API keys that should be stored encrypted
-const SENSITIVE_KEYS = [
-  'ANTHROPIC_API_KEY',
-  'GOOGLE_PLACES_API_KEY',
-  'RESEND_API_KEY',
-  'TWILIO_ACCOUNT_SID',
-  'TWILIO_AUTH_TOKEN',
-  'GOOGLE_ADS_DEVELOPER_TOKEN',
-  'GOOGLE_ADS_CLIENT_ID',
-  'GOOGLE_ADS_CLIENT_SECRET',
-  'GOOGLE_ADS_REFRESH_TOKEN',
-]
-
-// The from-address and from-number are not secrets — they are shown in full
-// so it is obvious at a glance which sender clients' alerts come from.
-const ALL_KEYS = [
-  'ANTHROPIC_API_KEY',
-  'GOOGLE_PLACES_API_KEY',
-  'RESEND_API_KEY',
-  'RESEND_FROM',
-  'TWILIO_ACCOUNT_SID',
-  'TWILIO_AUTH_TOKEN',
-  'TWILIO_FROM_NUMBER',
-  'TWILIO_MESSAGING_SERVICE_SID',
-  'GOOGLE_ADS_DEVELOPER_TOKEN',
-  'GOOGLE_ADS_CLIENT_ID',
-  'GOOGLE_ADS_CLIENT_SECRET',
-  'GOOGLE_ADS_REFRESH_TOKEN',
-  'GOOGLE_ADS_LOGIN_CUSTOMER_ID',
-]
+import { ALL_KEYS, isSensitiveKey } from '@/lib/setting-keys'
 
 export async function GET() {
   const session = await auth()
@@ -57,7 +27,7 @@ export async function GET() {
         const decrypted = decrypt(setting.value)
         value = decrypted ?? ''
       }
-      const isSensitive = SENSITIVE_KEYS.includes(key)
+      const isSensitive = isSensitiveKey(key)
       result[key] = {
         value: isSensitive ? '' : value, // Don't send actual sensitive values to client
         masked: value ? (isSensitive ? '••••••••' + value.slice(-4) : value) : '',
@@ -90,7 +60,7 @@ export async function PUT(request: Request) {
     if (!ALL_KEYS.includes(key)) continue
     if (!value || value.trim() === '') continue // Skip empty values
 
-    const isSensitive = SENSITIVE_KEYS.includes(key)
+    const isSensitive = isSensitiveKey(key)
     const storedValue = isSensitive ? encrypt(value) : value
 
     await prisma.setting.upsert({
