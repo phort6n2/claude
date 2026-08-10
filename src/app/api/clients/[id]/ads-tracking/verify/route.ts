@@ -31,6 +31,13 @@ interface Check {
   label: string
   ok: boolean
   detail: string
+  /**
+   * True when this check did not run and that is a legitimate configuration,
+   * not a fault. Only some clients' Ads accounts sit under our manager
+   * account; the rest can only ever get the page-level checks, and marking
+   * that with a red cross would train the operator to ignore red crosses.
+   */
+  info?: boolean
 }
 
 export async function POST(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -191,14 +198,20 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
       checks.push({
         label: 'Google is counting them',
         ok: false,
+        info: true,
         detail:
           'Not checked — no Google Ads API credentials in Settings → API keys. Google Ads → Goals → Conversions shows this under the action’s status.',
       })
     } else if (!customerId) {
+      // The common, permanent case for a client whose Ads account is their
+      // own. Everything above still verified the tag is installed and firing
+      // correctly; only the "did Google receive it" half is unavailable.
       checks.push({
         label: 'Google is counting them',
         ok: false,
-        detail: 'Not checked — pick this client’s Google Ads account above first.',
+        info: true,
+        detail:
+          'Not checked — this client has no Google Ads account selected, which is expected when their account is not under your manager account. The tag checks above still apply; only Google’s own count is unavailable. To see it, either link their account to your MCC or check Goals → Conversions in their account.',
       })
     } else {
       const result = await listConversionActions(customerId)

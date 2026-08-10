@@ -89,6 +89,7 @@ export default async function ClientLayout({
             checks={readiness.checks}
             requiredOpen={readiness.requiredOpen}
             recommendedOpen={readiness.recommendedOpen}
+            opportunityOpen={readiness.opportunityOpen}
           />
           <a
             href={siteUrl}

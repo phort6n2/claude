@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { CheckCircle2, ChevronDown, Circle, TriangleAlert } from 'lucide-react'
+import { CheckCircle2, ChevronDown, Circle, TrendingUp, TriangleAlert } from 'lucide-react'
 import type { ReadinessCheck } from '@/lib/client-readiness'
 
 /**
@@ -21,10 +21,12 @@ export default function ClientReadinessBadge({
   checks,
   requiredOpen,
   recommendedOpen,
+  opportunityOpen,
 }: {
   checks: ReadinessCheck[]
   requiredOpen: number
   recommendedOpen: number
+  opportunityOpen: number
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -45,10 +47,21 @@ export default function ClientReadinessBadge({
     }
   }, [open])
 
-  const tone = requiredOpen > 0 ? 'bad' : recommendedOpen > 0 ? 'warn' : 'ok'
+  // Opportunities only surface on the chip once the actual work is done —
+  // "sell them something" under a list of things you haven't finished is the
+  // wrong order, and setup problems are what lose the account.
+  const tone =
+    requiredOpen > 0
+      ? 'bad'
+      : recommendedOpen > 0
+        ? 'warn'
+        : opportunityOpen > 0
+          ? 'opp'
+          : 'ok'
   const styles = {
     bad: 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100',
     warn: 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100',
+    opp: 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100',
     ok: 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100',
   }[tone]
 
@@ -57,9 +70,12 @@ export default function ClientReadinessBadge({
       ? `${requiredOpen} to finish`
       : recommendedOpen > 0
         ? `${recommendedOpen} to improve`
-        : 'Fully set up'
+        : opportunityOpen > 0
+          ? `Set up · ${opportunityOpen} opportunity`
+          : 'Fully set up'
 
-  const open_ = checks.filter((c) => !c.ok)
+  const open_ = checks.filter((c) => !c.ok && c.severity !== 'opportunity')
+  const opportunities = checks.filter((c) => !c.ok && c.severity === 'opportunity')
   const done = checks.filter((c) => c.ok)
 
   return (
@@ -70,7 +86,13 @@ export default function ClientReadinessBadge({
         aria-expanded={open}
         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold transition-colors ${styles}`}
       >
-        {tone === 'ok' ? <CheckCircle2 className="h-3.5 w-3.5" /> : <TriangleAlert className="h-3.5 w-3.5" />}
+        {tone === 'ok' ? (
+          <CheckCircle2 className="h-3.5 w-3.5" />
+        ) : tone === 'opp' ? (
+          <TrendingUp className="h-3.5 w-3.5" />
+        ) : (
+          <TriangleAlert className="h-3.5 w-3.5" />
+        )}
         {label}
         <ChevronDown className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -83,6 +105,30 @@ export default function ClientReadinessBadge({
                 Everything on the checklist is done. Nothing is waiting on you.
               </p>
             )}
+
+            {/* Opportunities lead, when there is no outstanding work. Nothing
+                is broken here, so it is the most useful thing on the list. */}
+            {opportunities.map((check) => (
+              <Link
+                key={check.id}
+                href={check.href}
+                onClick={() => setOpen(false)}
+                className="block p-3 bg-emerald-50/60 hover:bg-emerald-50"
+              >
+                <div className="flex items-start gap-2">
+                  <TrendingUp className="h-4 w-4 mt-0.5 shrink-0 text-emerald-600" />
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-gray-900">
+                      {check.label}
+                      <span className="ml-1.5 font-normal text-xs text-emerald-700">
+                        opportunity
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-600">{check.detail}</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
 
             {open_.map((check) => (
               <Link

@@ -1,7 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CheckCircle2, ChevronDown, ChevronRight, Loader2, Stethoscope, TriangleAlert, XCircle } from 'lucide-react'
+import {
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  MinusCircle,
+  Stethoscope,
+  TriangleAlert,
+  XCircle,
+} from 'lucide-react'
 
 /**
  * Google Ads conversion tracking for one client's hosted site.
@@ -98,9 +107,13 @@ export default function AdsTrackingCard({
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
   const [network, setNetwork] = useState<NetworkId>('google')
   const [verifying, setVerifying] = useState(false)
-  const [checks, setChecks] = useState<Array<{ label: string; ok: boolean; detail: string }> | null>(
-    null
-  )
+  const [checks, setChecks] = useState<Array<{
+    label: string
+    ok: boolean
+    detail: string
+    /** Didn't run, and that's a valid configuration — not a failure. */
+    info?: boolean
+  }> | null>(null)
   const [checkedHost, setCheckedHost] = useState('')
 
   useEffect(() => {
@@ -323,7 +336,7 @@ export default function AdsTrackingCard({
         <p className="text-xs text-gray-500">
           {accountsError
             ? `${accountsError} Set this up under Settings → API keys; without it, “Check the live site” can only confirm the tag is installed, not that Google is counting.`
-            : 'Lets the check below ask Google whether the conversion action exists, is enabled, and has recorded anything. The client adds nothing.'}
+            : 'Only accounts under your manager account appear here. Leave it unselected if this client runs their own — everything else still works, and the check simply reports the tag rather than Google’s own count.'}
         </p>
       </div>
 
@@ -584,6 +597,8 @@ export default function AdsTrackingCard({
             <div key={check.label} className="flex items-start gap-2 p-3">
               {check.ok ? (
                 <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-green-600" />
+              ) : check.info ? (
+                <MinusCircle size={16} className="mt-0.5 shrink-0 text-gray-400" />
               ) : (
                 <XCircle size={16} className="mt-0.5 shrink-0 text-red-500" />
               )}
