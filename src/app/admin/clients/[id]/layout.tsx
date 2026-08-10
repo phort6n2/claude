@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { getClientReadiness } from '@/lib/client-readiness'
 import ClientTabs from '@/components/admin/ClientTabs'
 import ClientReadinessBadge from '@/components/admin/ClientReadinessBadge'
+import ViewAsClientButton from '@/components/admin/ViewAsClientButton'
 import { requireAdminPage } from '@/lib/admin-guard'
 
 /**
@@ -94,15 +95,18 @@ export default async function ClientLayout({
             recommendedOpen={readiness.recommendedOpen}
             opportunityOpen={readiness.opportunityOpen}
           />
-          <a
-            href={siteUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ml-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <ExternalLink className="h-4 w-4" />
-            View site
-          </a>
+          <div className="ml-auto flex items-center gap-2">
+            <ViewAsClientButton clientId={client.id} />
+            <a
+              href={siteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <ExternalLink className="h-4 w-4" />
+              View site
+            </a>
+          </div>
         </div>
 
         <ClientTabs clientId={client.id} />

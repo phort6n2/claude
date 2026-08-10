@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { createPortalSession } from '@/lib/portal-auth'
+import { createPortalSession, createClientPreviewSession } from '@/lib/portal-auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,11 +33,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           orderBy: { createdAt: 'asc' },
         })
 
+    // No portal user is the normal case, not an error. Most clients never get
+    // a login, and "add a real credential before you can look" is a bad price
+    // for a read-only preview — the credential outlives the look.
     if (!clientUser) {
-      return NextResponse.json(
-        { error: 'This client has no portal user to view as. Add one first.' },
-        { status: 404 }
+      const client = await prisma.client.findUnique({ where: { id }, select: { businessName: true } })
+      if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+
+      await createClientPreviewSession(id, {
+        impersonatedBy: session.user.id,
+        adminEmail: session.user.email || 'admin',
+        ttlMinutes: 30,
+      })
+      console.warn(
+        `[Impersonation] START admin=${session.user.email} clientId=${id} clientUser=(none) at=${new Date().toISOString()}`
       )
+      return NextResponse.json({ ok: true, email: null, businessName: client.businessName })
     }
 
     await createPortalSession(clientUser.id, {
