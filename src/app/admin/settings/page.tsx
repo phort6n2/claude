@@ -9,6 +9,7 @@ import {
   PageHeader,
   ContentCard,
 } from '@/components/ui/theme'
+import { requireAdminPage } from '@/lib/admin-guard'
 
 const settingsSections = [
   {
@@ -29,7 +30,9 @@ const colorStyles: Record<string, { bg: string; iconBg: string; iconColor: strin
   },
 }
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  await requireAdminPage()
+
   return (
     <PageContainer>
       <PageHeader

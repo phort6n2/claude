@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import Header from '@/components/admin/Header'
 import ConversionHealthTable from '@/components/admin/ConversionHealthTable'
+import { requireAdminPage } from '@/lib/admin-guard'
 
 /**
  * "Where is money leaking?" — conversion setup for every client at once.
@@ -11,7 +12,9 @@ import ConversionHealthTable from '@/components/admin/ConversionHealthTable'
  * a tag that was never pasted, or one that stopped reporting. Nobody notices
  * that by clicking through fifteen tabs, so nobody does.
  */
-export default function ConversionHealthPage() {
+export default async function ConversionHealthPage() {
+  await requireAdminPage()
+
   return (
     <div className="flex flex-col h-full">
       <Header

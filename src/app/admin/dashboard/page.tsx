@@ -26,6 +26,7 @@ import {
   EmptyState,
   DashboardSkeleton,
 } from '@/components/ui/theme'
+import { requireAdminPage } from '@/lib/admin-guard'
 
 async function getStats() {
   const startOfToday = new Date(new Date().setHours(0, 0, 0, 0))
@@ -310,7 +311,9 @@ function LoadingSkeleton() {
   return <DashboardSkeleton />
 }
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  await requireAdminPage()
+
   return (
     <Suspense fallback={<LoadingSkeleton />}>
       <DashboardContent />

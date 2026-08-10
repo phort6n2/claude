@@ -14,6 +14,7 @@ import {
 import { prisma } from '@/lib/db'
 import { getSiteExtras } from '@/lib/site-content'
 import CopyField from '@/components/admin/CopyField'
+import { requireAdminPage } from '@/lib/admin-guard'
 
 /**
  * Client overview — "is this client OK, and where do I go?".
@@ -82,6 +83,8 @@ function Card({
 }
 
 export default async function ClientOverviewPage({ params }: PageProps) {
+  await requireAdminPage()
+
   const { id } = await params
   const client = await prisma.client.findUnique({ where: { id } })
   if (!client) notFound()

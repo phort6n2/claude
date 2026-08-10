@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { getClientReadiness } from '@/lib/client-readiness'
 import ClientTabs from '@/components/admin/ClientTabs'
 import ClientReadinessBadge from '@/components/admin/ClientReadinessBadge'
+import { requireAdminPage } from '@/lib/admin-guard'
 
 /**
  * Shell for everything under a single client: identity header, live-site
@@ -18,6 +19,8 @@ export default async function ClientLayout({
   children: React.ReactNode
   params: Promise<{ id: string }>
 }) {
+  await requireAdminPage()
+
   const { id } = await params
   const client = await prisma.client.findUnique({
     where: { id },

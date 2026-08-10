@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import AdsTrackingCard from '@/components/admin/AdsTrackingCard'
+import { requireAdminPage } from '@/lib/admin-guard'
 
 /**
  * "Advertising" tab: everything the site reports back to an ad network.
@@ -13,6 +14,8 @@ import AdsTrackingCard from '@/components/admin/AdsTrackingCard'
  * carries its own step-by-step instructions.
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdminPage()
+
   const { id } = await params
   const client = await prisma.client.findUnique({
     where: { id },
