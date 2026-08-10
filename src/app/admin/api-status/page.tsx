@@ -34,6 +34,7 @@ const SEVERITY: Record<string, { label: string; blurb: string }> = {
 export default function ApiStatusPage() {
   const [checks, setChecks] = useState<IntegrationCheck[] | null>(null)
   const [checkedAt, setCheckedAt] = useState<string | null>(null)
+  const [environment, setEnvironment] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -42,6 +43,7 @@ export default function ApiStatusPage() {
       const data = await (await fetch('/api/integrations/status')).json()
       setChecks(data.checks || [])
       setCheckedAt(data.checkedAt || null)
+      setEnvironment(data.environment || null)
     } catch {
       setChecks([])
     } finally {
@@ -78,6 +80,17 @@ export default function ApiStatusPage() {
           {checkedAt && !loading && (
             <span className="text-sm text-gray-500">
               Checked {new Date(checkedAt).toLocaleTimeString()}
+            </span>
+          )}
+          {environment && !loading && (
+            <span
+              className={`text-xs font-bold uppercase tracking-wide px-2 py-1 rounded border ${
+                environment === 'production'
+                  ? 'bg-gray-900 text-white border-gray-900'
+                  : 'bg-amber-100 text-amber-900 border-amber-300'
+              }`}
+            >
+              {environment}
             </span>
           )}
         </div>

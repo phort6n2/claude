@@ -25,6 +25,10 @@ export async function GET() {
   return NextResponse.json({
     checks,
     checkedAt: new Date().toISOString(),
+    // Named on the page. A screenshot of this list is meaningless without it —
+    // a local run has none of the production credentials and reports almost
+    // everything as unconfigured, which reads as a catastrophic outage.
+    environment: process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown',
     // Only failures that can actually cost a lead are worth a headline.
     criticalDown: checks.filter((c) => c.severity === 'critical' && c.configured && !c.ok).length,
   })

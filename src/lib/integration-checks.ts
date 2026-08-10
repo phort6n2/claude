@@ -84,13 +84,15 @@ export async function runIntegrationChecks(): Promise<IntegrationCheck[]> {
     c: Omit<IntegrationCheck, 'ok' | 'message' | 'configured'> & {
       configured: boolean
       result?: { ok: boolean; message: string }
+      /** Said instead of a bare "Not configured" when the credential is absent. */
+      missing?: string
     }
   ) => {
-    const { result, ...rest } = c
+    const { result, missing, ...rest } = c
     checks.push({
       ...rest,
       ok: !!result?.ok,
-      message: result?.message ?? 'Not configured',
+      message: result?.message ?? missing ?? 'Not configured',
     })
   }
 
@@ -216,6 +218,11 @@ export async function runIntegrationChecks(): Promise<IntegrationCheck[]> {
     impact: 'Photo uploads fail. Photos already uploaded keep serving.',
     severity: 'degraded',
     configured: !!blobToken,
+    // Env vars only reach deployments built AFTER they were added, so a store
+    // connected since the last deploy is invisible to the running one. That
+    // looks identical to never having set it up.
+    missing:
+      'No BLOB_READ_WRITE_TOKEN in this deployment. Connecting a Blob store adds it automatically, but only to deployments built afterwards — if you connected it recently, redeploy.',
     result: blobToken
       ? await probe(async () => {
           const { list } = await import('@vercel/blob')
@@ -234,6 +241,7 @@ export async function runIntegrationChecks(): Promise<IntegrationCheck[]> {
     impact: 'Live sites are unaffected. New domains cannot be attached or verified.',
     severity: 'optional',
     configured: !!(vercelToken && vercelProject),
+    missing: `Missing ${[!vercelToken && 'VERCEL_TOKEN', !vercelProject && 'VERCEL_SITES_PROJECT_ID'].filter(Boolean).join(' and ')}. These are set by hand in Vercel → Settings → Environment Variables, and only reach deployments built afterwards.`,
     result:
       vercelToken && vercelProject
         ? await probe(async () => {
@@ -260,6 +268,8 @@ export async function runIntegrationChecks(): Promise<IntegrationCheck[]> {
     impact: 'Existing subdomains keep resolving. New ones cannot be provisioned.',
     severity: 'optional',
     configured: !!cfToken,
+    missing:
+      'No CLOUDFLARE_API_TOKEN in this deployment. Set in Vercel → Settings → Environment Variables; redeploy after adding.',
     result: cfToken
       ? await probe(async () => {
           const res = await fetch('https://api.cloudflare.com/client/v4/user/tokens/verify', {
