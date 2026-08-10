@@ -30,6 +30,8 @@ interface ApiKeyConfig {
   description: string
   isTextarea?: boolean
   testable?: boolean
+  /** Overrides "Test Connection" when the test covers more than this one key. */
+  testLabel?: string
   /** Numbered walkthrough, shown behind "Where do I get this?". */
   steps?: SetupStep[]
   /** Shown after the steps — the thing that bites if you skip it. */
@@ -190,7 +192,10 @@ const API_KEYS: ApiKeyConfig[] = [
   {
     key: 'GOOGLE_ADS_LOGIN_CUSTOMER_ID',
     label: 'Manager (MCC) customer ID',
-    description: 'The 10-digit ID of the manager account the client accounts sit under.',
+    description:
+      'The 10-digit ID of the manager account the client accounts sit under. Test here once all five Google Ads fields are saved — the test exercises the whole set.',
+    testable: true,
+    testLabel: 'Test Google Ads connection',
     steps: [
       { text: 'Shown top-right in Google Ads while the manager account is selected.', href: 'https://ads.google.com', linkLabel: 'Google Ads' },
       { text: 'Digits only — dashes are stripped automatically.' },
@@ -509,7 +514,7 @@ export default function ApiSettingsPage() {
                                 Testing...
                               </>
                             ) : (
-                              'Test Connection'
+                              config.testLabel || 'Test Connection'
                             )}
                           </Button>
                         )}
@@ -572,7 +577,7 @@ export default function ApiSettingsPage() {
                                 Testing...
                               </>
                             ) : (
-                              'Test Connection'
+                              config.testLabel || 'Test Connection'
                             )}
                           </Button>
                         )}
@@ -589,18 +594,18 @@ export default function ApiSettingsPage() {
 
                   {setting.testResult && (
                     <div
-                      className={`mt-3 p-3 rounded-md flex items-center gap-2 ${
+                      className={`mt-3 p-3 rounded-md flex items-start gap-2 text-sm ${
                         setting.testResult.success
                           ? 'bg-green-50 text-green-800'
                           : 'bg-red-50 text-red-800'
                       }`}
                     >
                       {setting.testResult.success ? (
-                        <CheckCircle className="h-4 w-4" />
+                        <CheckCircle className="h-4 w-4 mt-0.5 shrink-0" />
                       ) : (
-                        <XCircle className="h-4 w-4" />
+                        <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
                       )}
-                      {setting.testResult.message}
+                      <span className="min-w-0">{setting.testResult.message}</span>
                     </div>
                   )}
 

@@ -68,8 +68,26 @@ export async function getAdsCredentials(): Promise<AdsCredentials | null> {
  *  doesn't mint one per request. */
 let cachedToken: { token: string; expiresAt: number } | null = null
 
-async function accessToken(creds: AdsCredentials): Promise<string | null> {
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) return cachedToken.token
+/**
+ * Drop the cached access token.
+ *
+ * The test button needs this. An access token minted from a refresh token
+ * that has since expired keeps working for its full hour, so without clearing
+ * the cache a "test" could pass on a credential that is already dead — which
+ * is the one thing a test button must never do.
+ */
+export function clearAdsTokenCache(): void {
+  cachedToken = null
+}
+
+/**
+ * Exchange the refresh token, reporting WHY it failed rather than just that
+ * it did. Google's two error codes here mean very different things and point
+ * at different fields.
+ */
+async function mintAccessToken(
+  creds: AdsCredentials
+): Promise<{ ok: true; token: string } | { ok: false; error: string }> {
   try {
     const res = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -84,18 +102,38 @@ async function accessToken(creds: AdsCredentials): Promise<string | null> {
     })
     const data = await res.json()
     if (!res.ok || !data.access_token) {
-      console.error('Google Ads token refresh failed:', data.error_description || data.error)
-      return null
+      const code = String(data.error || '')
+      const detail = data.error_description ? ` (${data.error_description})` : ''
+      if (code === 'invalid_grant') {
+        return {
+          ok: false,
+          error:
+            'The refresh token is expired or revoked. The usual cause: it was generated while the consent screen was still in "Testing", which expires tokens after 7 days. Publish the app under Google Auth Platform → Audience, then generate a new one.',
+        }
+      }
+      if (code === 'invalid_client') {
+        return { ok: false, error: 'The OAuth client ID or client secret is wrong.' }
+      }
+      return { ok: false, error: `Token refresh failed: ${code || 'unknown error'}${detail}` }
     }
     cachedToken = {
       token: data.access_token,
       expiresAt: Date.now() + (data.expires_in ?? 3600) * 1000,
     }
-    return cachedToken.token
+    return { ok: true, token: data.access_token }
   } catch (error) {
-    console.error('Google Ads token refresh threw:', error)
+    return { ok: false, error: error instanceof Error ? error.message : 'Token request failed' }
+  }
+}
+
+async function accessToken(creds: AdsCredentials): Promise<string | null> {
+  if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) return cachedToken.token
+  const result = await mintAccessToken(creds)
+  if (!result.ok) {
+    console.error('Google Ads token refresh failed:', result.error)
     return null
   }
+  return result.token
 }
 
 async function search(
@@ -282,4 +320,86 @@ export async function findConversionAction(
   const result = await listConversionActions(customerId)
   if (!result.ok) return result
   return { ok: true, action: result.actions.find((a) => a.sendTo.includes(sendTo)) || null }
+}
+
+/**
+ * Prove the whole chain works, and say which link broke when it doesn't.
+ *
+ * Five credentials have to be right together, and every failure mode looks
+ * identical from the outside: an empty account dropdown. So this walks them
+ * in dependency order — credentials present, refresh token exchanges, the
+ * developer token is accepted, the manager account is reachable — and stops
+ * at the first thing that is actually wrong.
+ *
+ * Deliberately reads only. The heaviest thing it does is list the accounts
+ * under the manager, which doubles as the useful part of the answer: seeing
+ * your own client names come back is what proves it is the right MCC, in a
+ * way that "Connected successfully" never could.
+ */
+export async function testAdsConnection(): Promise<{
+  success: boolean
+  message: string
+  accounts?: AdsAccount[]
+}> {
+  const creds = await getAdsCredentials()
+  if (!creds) {
+    return {
+      success: false,
+      message:
+        'Missing one of: developer token, client ID, client secret, refresh token. Save all four, then test again.',
+    }
+  }
+  if (!creds.loginCustomerId) {
+    return { success: false, message: 'Add the manager (MCC) customer ID — the 10-digit one.' }
+  }
+
+  // A cached token from an earlier refresh would let a dead credential pass.
+  clearAdsTokenCache()
+
+  const token = await mintAccessToken(creds)
+  if (!token.ok) return { success: false, message: token.error }
+
+  const result = await listManagedAccounts()
+  if (!result.ok) {
+    // Map Google's codes to the field that is actually wrong. Left raw, these
+    // read as infrastructure failures rather than "you typed the wrong thing".
+    const raw = result.error
+    const says = (needle: string) => raw.toUpperCase().includes(needle)
+    if (says('DEVELOPER_TOKEN_NOT_APPROVED') || says('DEVELOPER_TOKEN_PROHIBITED')) {
+      return {
+        success: false,
+        message: `The developer token is not approved for production accounts — that is Test access. Check the access level in Google Ads → Tools → API Center. (${raw})`,
+      }
+    }
+    if (says('DEVELOPER_TOKEN_INVALID') || says('INVALID_DEVELOPER_TOKEN')) {
+      return { success: false, message: `The developer token is not valid. (${raw})` }
+    }
+    if (says('CUSTOMER_NOT_FOUND') || says('CUSTOMER_NOT_ENABLED')) {
+      return {
+        success: false,
+        message: `No account found for manager ID ${creds.loginCustomerId}. Check the 10-digit ID is the MANAGER account, not a client account. (${raw})`,
+      }
+    }
+    if (says('USER_PERMISSION_DENIED') || says('NOT_ADS_USER')) {
+      return {
+        success: false,
+        message: `The Google account you authorised does not have access to manager ${creds.loginCustomerId}. Re-generate the refresh token while signed in as the manager-account owner. (${raw})`,
+      }
+    }
+    return { success: false, message: raw }
+  }
+
+  const names = result.accounts.slice(0, 3).map((a) => a.name).join(', ')
+  if (result.accounts.length === 0) {
+    return {
+      success: true,
+      message: `Connected to manager ${creds.loginCustomerId}, but it has no enabled client accounts under it. Check this is the right MCC.`,
+      accounts: [],
+    }
+  }
+  return {
+    success: true,
+    message: `Connected. ${result.accounts.length} account${result.accounts.length === 1 ? '' : 's'} under manager ${creds.loginCustomerId}: ${names}${result.accounts.length > 3 ? ', …' : ''}`,
+    accounts: result.accounts,
+  }
 }

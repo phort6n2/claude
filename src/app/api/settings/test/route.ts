@@ -76,6 +76,14 @@ export async function POST(request: Request) {
 
   const { key, value } = await request.json()
 
+  // Google Ads is the odd one out: five credentials that only mean anything
+  // together, so there is no single "apiKey" to hand to a tester. It tests the
+  // saved set rather than an unsaved box — save first, then test.
+  if (key.startsWith('GOOGLE_ADS_')) {
+    const { testAdsConnection } = await import('@/lib/google-ads')
+    return NextResponse.json(await testAdsConnection())
+  }
+
   // Use provided value or fetch from database/env
   let apiKey = value
   if (!apiKey) {
