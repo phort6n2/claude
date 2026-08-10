@@ -366,6 +366,12 @@ export interface ShopRefreshResult extends RefreshResult {
   updated?: string[]
 }
 
+/**
+ * Floor when the shop is missing data Google could supply — an hour, not a
+ * week. See the comment at the check for why it isn't simply unlimited.
+ */
+export const MISSING_DATA_MIN_HOURS = 1
+
 export async function refreshLocationFromGoogle(locationId: string): Promise<ShopRefreshResult> {
   const location = await prisma.clientLocation
     .findUnique({
@@ -396,10 +402,24 @@ export async function refreshLocationFromGoogle(locationId: string): Promise<Sho
     }
   }
 
+  // A shop with no hours at all is a different situation from a shop whose
+  // hours might have changed. The weekly floor exists to stop us re-asking
+  // Google for data we already have; it should not stand between a shop and
+  // data it has never had. Every existing shop is in exactly this state — the
+  // old button only ever pulled the rating — so a week's wait to fill in a
+  // blank field is the floor working against its own purpose.
+  //
+  // The short floor still applies, because Google can legitimately return no
+  // hours at all. Without it, a profile with no hours published would leave
+  // the field empty, keep qualifying for the bypass, and let the button be
+  // pressed at Places prices indefinitely.
+  const missingHours = !location.hours?.trim()
+  const floor = missingHours ? MISSING_DATA_MIN_HOURS : REVIEW_REFRESH_MIN_HOURS
+
   if (location.gbpFetchedAt) {
     const hoursSince = (Date.now() - new Date(location.gbpFetchedAt).getTime()) / 3_600_000
-    if (hoursSince < REVIEW_REFRESH_MIN_HOURS) {
-      const hoursLeft = Math.ceil(REVIEW_REFRESH_MIN_HOURS - hoursSince)
+    if (hoursSince < floor) {
+      const hoursLeft = Math.ceil(floor - hoursSince)
       const daysLeft = Math.floor(hoursLeft / 24)
       const wait =
         daysLeft >= 1
@@ -408,7 +428,9 @@ export async function refreshLocationFromGoogle(locationId: string): Promise<Sho
       return {
         ok: false,
         rateLimited: true,
-        message: `Already refreshed ${Math.floor(hoursSince)}h ago. Google data doesn't move faster than weekly — next refresh in about ${wait}.`,
+        message: missingHours
+          ? `Just asked Google and it returned no opening hours for this shop. Try again in about ${wait}, or type the hours in by hand — if the Business Profile has none published, there is nothing to pull.`
+          : `Already refreshed ${Math.floor(hoursSince)}h ago. Google data doesn't move faster than weekly — next refresh in about ${wait}.`,
         rating: location.gbpRating ?? undefined,
         reviewCount: location.gbpReviewCount ?? undefined,
       }
@@ -519,14 +541,22 @@ export async function refreshLocationFromGoogle(locationId: string): Promise<Sho
 
   await prisma.clientLocation.update({ where: { id: locationId }, data: changes })
 
+  // Asked for hours, Google had none. Say that plainly rather than "nothing
+  // to change" — the operator pressed this button specifically to fill a
+  // blank field, and needs to know the blank is Google's, not ours.
+  const stillNoHours = missingHours && !hours
+  const summary = updated.length
+    ? `Updated ${updated.join(', ')} from Google.`
+    : 'Everything already matched Google — nothing to change.'
+
   return {
     ok: true,
     placeName,
     rating: data.rating,
     reviewCount: data.userRatingCount,
     updated,
-    message: updated.length
-      ? `Updated ${updated.join(', ')} from Google.`
-      : 'Everything already matched Google — nothing to change.',
+    message: stillNoHours
+      ? `${summary} No opening hours are published on this shop's Business Profile, so there were none to pull — add them there, or type them in below.`
+      : summary,
   }
 }

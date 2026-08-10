@@ -462,18 +462,27 @@ export default function ClientLocationsManager({
                 onClick={() => refreshFromGoogle(row)}
                 disabled={!row.googlePlaceId || refreshingId === row.id}
                 title={
-                  row.googlePlaceId
-                    ? 'Pulls address, phone, hours, maps link and rating. Once a week per shop.'
-                    : 'Set a Google Place ID for this shop first.'
+                  !row.googlePlaceId
+                    ? 'Set a Google Place ID for this shop first.'
+                    : row.hours?.trim()
+                      ? 'Pulls address, phone, hours, maps link and rating. Once a week per shop.'
+                      : 'This shop has no hours yet — pulling them does not have to wait for the weekly limit.'
                 }
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded border disabled:opacity-50 ${
+                  row.googlePlaceId && !row.hours?.trim()
+                    ? 'border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium'
+                    : 'border-gray-300 hover:bg-gray-50'
+                }`}
               >
                 {refreshingId === row.id ? (
                   <Loader2 size={12} className="animate-spin" />
                 ) : (
                   <RefreshCw size={12} />
                 )}
-                Refresh from Google
+                {/* Named for what it does in this state. "Refresh" implies
+                    replacing something that's already there; a shop with no
+                    hours needs "get". */}
+                {row.hours?.trim() ? 'Refresh from Google' : 'Get hours from Google'}
               </button>
               {row.gbpLastError && <span className="text-red-600">{row.gbpLastError}</span>}
             </div>
