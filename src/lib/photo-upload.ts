@@ -1,4 +1,4 @@
-import { put, del } from '@vercel/blob'
+import { put, del, list } from '@vercel/blob'
 import sharp, { type Sharp, type Metadata } from 'sharp'
 
 /**
@@ -177,8 +177,69 @@ export async function processAndStorePhoto({
  * Only files we uploaded are deleted — a photo imported from the client's own
  * website is just a URL we reference, and deleting is not ours to do.
  */
-export async function deleteStoredPhoto(url: string): Promise<void> {
-  if (!blobConfigured()) return
-  if (!/^https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com\//i.test(url)) return
-  await del(url).catch((error) => console.error('Blob delete failed:', error))
+export interface BlobDeleteResult {
+  /** The object is gone from storage. */
+  deleted: boolean
+  /** Nothing to do — not a file we host. */
+  skipped?: boolean
+  error?: string
+}
+
+export async function deleteStoredPhoto(url: string): Promise<BlobDeleteResult> {
+  // Reported rather than swallowed. This used to return void and eat its own
+  // errors, which meant a caller counting successful deletes was counting
+  // calls, not deletions — and would cheerfully report "deleted 14 photos"
+  // while all fourteen were still in storage being billed for.
+  if (!blobConfigured()) {
+    return { deleted: false, error: 'BLOB_READ_WRITE_TOKEN is not set in this deployment' }
+  }
+  if (!/^https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com\//i.test(url)) {
+    return { deleted: false, skipped: true }
+  }
+  try {
+    await del(url)
+    return { deleted: true }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Blob delete failed'
+    console.error('Blob delete failed:', message)
+    return { deleted: false, error: message }
+  }
+}
+
+/**
+ * Delete everything stored under one client's folder.
+ *
+ * Uploads land at `sites/{slug}/…`, so the folder is the complete set of
+ * objects we hold for that client — including any whose database row has
+ * already gone. Deleting row by row can only ever remove what is still
+ * referenced, and an object that outlived its row is exactly the one nobody
+ * will ever notice paying for.
+ */
+export async function purgeClientPhotoFolder(
+  clientSlug: string
+): Promise<{ deleted: number; error?: string }> {
+  if (!blobConfigured()) {
+    return { deleted: 0, error: 'BLOB_READ_WRITE_TOKEN is not set in this deployment' }
+  }
+  const prefix = `sites/${clientSlug}/`
+  let deleted = 0
+  let cursor: string | undefined
+
+  try {
+    do {
+      const page = await list({ prefix, cursor, limit: 1000 })
+      const urls = page.blobs.map((b) => b.url)
+      if (urls.length > 0) {
+        await del(urls)
+        deleted += urls.length
+      }
+      cursor = page.hasMore ? page.cursor : undefined
+    } while (cursor)
+    return { deleted }
+  } catch (error) {
+    return {
+      deleted,
+      error: error instanceof Error ? error.message : 'Could not list or delete the folder',
+    }
+  }
 }

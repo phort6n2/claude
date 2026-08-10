@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
 import { detachDomain } from '@/lib/custom-domains'
-import { deleteStoredPhoto } from '@/lib/photo-upload'
+import { purgeClientPhotoFolder } from '@/lib/photo-upload'
 
 /**
  * Removing a client, including the parts that do not live in the database.
@@ -102,6 +102,7 @@ export async function deleteClientCompletely(clientId: string): Promise<Teardown
     where: { id: clientId },
     select: {
       businessName: true,
+      slug: true,
       siteSubdomain: true,
       domains: { select: { domain: true } },
       sitePhotos: { select: { url: true } },
@@ -124,19 +125,35 @@ export async function deleteClientCompletely(clientId: string): Promise<Teardown
     else warnings.push(`Could not detach ${host} from Vercel: ${result.error}. Remove it by hand.`)
   }
 
-  // ---- 2. Release the photos ----
-  // Sequential on purpose: this is a rare operation and a burst of parallel
-  // deletes against Blob buys nothing but a rate limit.
-  let deletedPhotos = 0
-  for (const photo of client.sitePhotos) {
-    try {
-      await deleteStoredPhoto(photo.url)
-      deletedPhotos += 1
-    } catch {
-      warnings.push(`Could not delete a stored photo: ${photo.url}`)
-    }
+  // ---- 2. Release the storage ----
+  //
+  // By folder, not row by row. Row-by-row can only remove objects still
+  // referenced by a surviving database row, and an object that outlived its
+  // row is precisely the one that gets billed forever without anyone noticing.
+  // Everything for a client lives under sites/{slug}/, so the folder is the
+  // complete set.
+  const purge = await purgeClientPhotoFolder(client.slug)
+  if (purge.error) {
+    warnings.push(
+      `Storage NOT freed: ${purge.error}. Delete the sites/${client.slug}/ folder in Vercel → Storage → Blob, or you will keep paying for it.`
+    )
+  } else {
+    steps.push(
+      purge.deleted > 0
+        ? `Deleted ${purge.deleted} file${purge.deleted === 1 ? '' : 's'} from storage (sites/${client.slug}/)`
+        : 'No stored files to delete'
+    )
   }
-  if (deletedPhotos) steps.push(`Deleted ${deletedPhotos} stored photo${deletedPhotos === 1 ? '' : 's'}`)
+
+  // Photos referenced from somewhere other than our own storage — imported
+  // from the client's old site — are counted so the numbers add up, but there
+  // is nothing of ours to delete and nothing being billed.
+  const external = client.sitePhotos.filter(
+    (p) => !/^https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com\//i.test(p.url)
+  ).length
+  if (external > 0) {
+    steps.push(`${external} photo${external === 1 ? ' was' : 's were'} hosted elsewhere — nothing to delete`)
+  }
 
   // ---- 3. Delete the record; the schema cascades the rest ----
   try {
