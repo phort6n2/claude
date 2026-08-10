@@ -303,7 +303,7 @@ export function SiteBody({
       {/* Insurance — the warm band; the warranty follows immediately so the
           price/risk question the insurance copy raises gets answered while
           it's fresh */}
-      <InsuranceBand />
+      <InsuranceBand state={client.state} />
       <WarrantyBand extras={extras} />
 
       {/* Range-of-work gallery (stripped when no photos) */}
