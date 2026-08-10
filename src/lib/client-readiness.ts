@@ -321,9 +321,9 @@ export async function getClientReadiness(clientId: string): Promise<ReadinessRep
   // clients already getting leads from the site are the ones most likely to
   // pay to have the ads run properly.
   //
-  // Inferred from MCC linkage rather than known. It reads as "not managed by
-  // us" and will be exactly right until a client is linked for some other
-  // reason; a real plan field would make it certain.
+  // MCC linkage IS the tier, not a proxy for it: an account only sits under
+  // the manager account because we run its ads. So this is a fact about the
+  // client's plan, not a guess, and it needs no separate plan field.
   const adsCredentialsExist = !!(await getAdsCredentials())
   if (adsCredentialsExist && !tracking?.googleAdsCustomerId) {
     add(
