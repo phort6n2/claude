@@ -4,7 +4,24 @@ import { useState, useEffect } from 'react'
 import Header from '@/components/admin/Header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Eye, EyeOff, CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import {
+  Eye,
+  EyeOff,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+} from 'lucide-react'
+
+interface SetupStep {
+  /** What to do. */
+  text: string
+  /** Where to do it. */
+  href?: string
+  linkLabel?: string
+}
 
 interface ApiKeyConfig {
   key: string
@@ -12,49 +29,152 @@ interface ApiKeyConfig {
   description: string
   isTextarea?: boolean
   testable?: boolean
+  /** Numbered walkthrough, shown behind "Where do I get this?". */
+  steps?: SetupStep[]
+  /** Shown after the steps — the thing that bites if you skip it. */
+  warning?: string
 }
 
 const API_KEYS: ApiKeyConfig[] = [
   {
     key: 'ANTHROPIC_API_KEY',
     label: 'Anthropic API Key',
-    description: 'Used for call analysis and coaching notes (Claude)',
+    description: 'Call coaching, site import, and the location-page copy drafts',
     testable: true,
+    steps: [
+      { text: 'Sign in to the Anthropic Console.', href: 'https://console.anthropic.com/settings/keys', linkLabel: 'console.anthropic.com' },
+      { text: 'Create Key, name it "glassleads", and copy it — it is shown once.' },
+      { text: 'Make sure the workspace has credit, under Billing.' },
+    ],
   },
   {
     key: 'GOOGLE_PLACES_API_KEY',
     label: 'Google Places API Key',
-    description: 'Used for business search and auto-populating client info',
+    description: 'Business lookup, addresses, opening hours, and cached review counts',
     testable: true,
+    steps: [
+      { text: 'Open Google Cloud Console and pick (or create) a project.', href: 'https://console.cloud.google.com/projectselector2/home/dashboard', linkLabel: 'console.cloud.google.com' },
+      { text: 'Enable Places API (New).', href: 'https://console.cloud.google.com/apis/library/places.googleapis.com', linkLabel: 'Enable Places API (New)' },
+      { text: 'Also enable the legacy Places API — the address autocomplete still uses it.', href: 'https://console.cloud.google.com/apis/library/places-backend.googleapis.com', linkLabel: 'Enable Places API' },
+      { text: 'Credentials → Create credentials → API key, then copy it.', href: 'https://console.cloud.google.com/apis/credentials', linkLabel: 'Credentials' },
+      { text: 'Billing must be enabled on the project or every call returns REQUEST_DENIED.', href: 'https://console.cloud.google.com/billing', linkLabel: 'Billing' },
+    ],
+    warning:
+      'Restrict the key to those two APIs. It is used server-side only, so an IP or API restriction costs nothing and stops a leaked key being spent by someone else.',
   },
-  // Lead notifications send from OUR accounts, not the client's. One Resend
-  // key and one Twilio number cover every client; nobody signs up for
-  // anything, and turning a client's alerts on is a switch, not an
-  // onboarding.
   {
     key: 'RESEND_API_KEY',
     label: 'Resend API Key',
     description: 'Sends lead-alert emails for every client. Included free with their plan.',
+    steps: [
+      { text: 'Create a Resend account.', href: 'https://resend.com/signup', linkLabel: 'resend.com' },
+      { text: 'Add and verify the sending domain — this is the DNS step, and nothing sends until it is green.', href: 'https://resend.com/domains', linkLabel: 'Domains' },
+      { text: 'API Keys → Create API Key with Sending access, then copy it.', href: 'https://resend.com/api-keys', linkLabel: 'API Keys' },
+    ],
+    warning:
+      'Send from a subdomain you do not use for personal mail — e.g. leads@mail.glassleads.app. If alert volume ever gets marked as spam, it damages that subdomain\u2019s reputation and not your main one.',
   },
   {
     key: 'RESEND_FROM',
     label: 'Lead alert "from" address',
     description: 'e.g. GlassLeads <leads@glassleads.app>. The domain must be verified in Resend.',
+    steps: [
+      { text: 'Use the exact form: Display Name <address@domain>.' },
+      { text: 'The domain must be one showing Verified on the Resend Domains page.', href: 'https://resend.com/domains', linkLabel: 'Domains' },
+    ],
   },
   {
     key: 'TWILIO_ACCOUNT_SID',
     label: 'Twilio Account SID',
     description: 'Sends lead-alert texts. Billed to clients as the $15/mo SMS add-on.',
+    steps: [
+      { text: 'Open the Twilio Console; the Account SID is on the dashboard.', href: 'https://console.twilio.com', linkLabel: 'console.twilio.com' },
+      { text: 'It starts with AC and is safe to copy — the auth token below is the secret half.' },
+    ],
   },
   {
     key: 'TWILIO_AUTH_TOKEN',
     label: 'Twilio Auth Token',
     description: 'Paired with the SID above.',
+    steps: [
+      { text: 'Same dashboard page as the SID; click to reveal it.', href: 'https://console.twilio.com', linkLabel: 'console.twilio.com' },
+    ],
   },
   {
     key: 'TWILIO_FROM_NUMBER',
     label: 'Twilio sending number',
-    description: 'Your existing approved number, in +15035550100 form. Every client texts from it.',
+    description:
+      'A number already in your Twilio account, as +15035550100. Every client texts from it — nothing to import.',
+    steps: [
+      { text: 'Copy a number you already own, in +1XXXXXXXXXX form.', href: 'https://console.twilio.com/us1/develop/phone-numbers/manage/incoming', linkLabel: 'Active numbers' },
+      { text: 'It must have SMS capability — the numbers list shows which do.' },
+    ],
+    warning:
+      'US texting from a 10-digit number needs A2P 10DLC registration, or carriers filter the messages silently. If your number is already registered you are done; if not, register the brand and campaign first.',
+  },
+  {
+    key: 'TWILIO_MESSAGING_SERVICE_SID',
+    label: 'Twilio Messaging Service SID (optional)',
+    description:
+      'MG… — if your A2P 10DLC campaign is attached to a Messaging Service, set this and it is used instead of the bare number.',
+    steps: [
+      { text: 'Messaging → Services; copy the SID beginning MG.', href: 'https://console.twilio.com/us1/develop/sms/services', linkLabel: 'Messaging Services' },
+      { text: 'Leave blank to send from the plain number above.' },
+    ],
+  },
+  {
+    key: 'GOOGLE_ADS_DEVELOPER_TOKEN',
+    label: 'Google Ads developer token',
+    description: 'Read-only checks that a client\u2019s conversions are recording. Clients add nothing.',
+    steps: [
+      { text: 'In your MANAGER (MCC) account: Tools → Setup → API Center.', href: 'https://ads.google.com/aw/apicenter', linkLabel: 'API Center' },
+      { text: 'Copy the developer token. Basic access or higher is required.' },
+    ],
+    warning:
+      'A Test-access token only reaches test accounts. It authenticates fine and returns nothing for real clients, which looks like "no conversions" rather than "wrong token".',
+  },
+  {
+    key: 'GOOGLE_ADS_CLIENT_ID',
+    label: 'Google Ads OAuth client ID',
+    description: 'A Web application OAuth client, used once to mint the refresh token below.',
+    steps: [
+      { text: 'Enable the Google Ads API on your Cloud project.', href: 'https://console.cloud.google.com/apis/library/googleads.googleapis.com', linkLabel: 'Enable Google Ads API' },
+      { text: 'Credentials → Create credentials → OAuth client ID → Web application.', href: 'https://console.cloud.google.com/apis/credentials', linkLabel: 'Credentials' },
+      { text: 'Add https://developers.google.com/oauthplayground as an Authorised redirect URI.' },
+      { text: 'Copy the client ID.' },
+    ],
+    warning:
+      'It must be Web application, not Desktop — the Desktop type cannot use the playground redirect, which is how the refresh token is generated.',
+  },
+  {
+    key: 'GOOGLE_ADS_CLIENT_SECRET',
+    label: 'Google Ads OAuth client secret',
+    description: 'Paired with the client ID above.',
+    steps: [{ text: 'Shown next to the client ID on the Credentials page.', href: 'https://console.cloud.google.com/apis/credentials', linkLabel: 'Credentials' }],
+  },
+  {
+    key: 'GOOGLE_ADS_REFRESH_TOKEN',
+    label: 'Google Ads refresh token',
+    description: 'Generated once. It does not expire.',
+    steps: [
+      { text: 'Open the OAuth Playground.', href: 'https://developers.google.com/oauthplayground', linkLabel: 'OAuth Playground' },
+      { text: 'Gear icon → tick "Use your own OAuth credentials" → paste the client ID and secret.' },
+      { text: 'In Step 1, paste this scope into the box: https://www.googleapis.com/auth/adwords' },
+      { text: 'Authorise APIs, and sign in as the Google account that owns the MANAGER account.' },
+      { text: 'Step 2 → Exchange authorization code for tokens → copy the refresh token.' },
+      { text: 'Go back and remove the playground redirect URI from the OAuth client.', href: 'https://console.cloud.google.com/apis/credentials', linkLabel: 'Credentials' },
+    ],
+    warning:
+      'Sign in as the manager-account owner. Authorising with a personal Google account that merely has access produces a token that works today and breaks when that access changes.',
+  },
+  {
+    key: 'GOOGLE_ADS_LOGIN_CUSTOMER_ID',
+    label: 'Manager (MCC) customer ID',
+    description: 'The 10-digit ID of the manager account the client accounts sit under.',
+    steps: [
+      { text: 'Shown top-right in Google Ads while the manager account is selected.', href: 'https://ads.google.com', linkLabel: 'Google Ads' },
+      { text: 'Digits only — dashes are stripped automatically.' },
+    ],
   },
 ]
 
@@ -74,6 +194,10 @@ export default function ApiSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  // Which keys have their walkthrough open. Collapsed by default: once a key
+  // is set you never read the steps again, and thirteen expanded lists would
+  // bury the fields themselves.
+  const [openSteps, setOpenSteps] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     fetchSettings()
@@ -376,6 +500,61 @@ export default function ApiSettingsPage() {
                         <XCircle className="h-4 w-4" />
                       )}
                       {setting.testResult.message}
+                    </div>
+                  )}
+
+                  {config.steps && config.steps.length > 0 && (
+                    <div className="mt-3 border-t border-gray-100 pt-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenSteps((prev) => ({
+                            ...prev,
+                            [config.key]: !prev[config.key],
+                          }))
+                        }
+                        className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
+                      >
+                        {openSteps[config.key] ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                        Where do I get this?
+                      </button>
+
+                      {openSteps[config.key] && (
+                        <div className="mt-3 space-y-3">
+                          <ol className="space-y-2 text-sm text-gray-700">
+                            {config.steps.map((step, index) => (
+                              <li key={index} className="flex gap-2.5">
+                                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600">
+                                  {index + 1}
+                                </span>
+                                <span className="min-w-0">
+                                  <span className="break-words">{step.text}</span>
+                                  {step.href && (
+                                    <a
+                                      href={step.href}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="ml-2 inline-flex items-center gap-1 text-blue-600 hover:underline break-all"
+                                    >
+                                      {step.linkLabel || step.href}
+                                      <ExternalLink className="h-3 w-3 shrink-0" />
+                                    </a>
+                                  )}
+                                </span>
+                              </li>
+                            ))}
+                          </ol>
+                          {config.warning && (
+                            <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                              {config.warning}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>

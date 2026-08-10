@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
 import { getAdsTracking } from '@/lib/ads-tracking'
 import { canonicalHostFor } from '@/lib/site-origin'
+import { getAdsCredentials, listConversionActions } from '@/lib/google-ads'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -16,11 +17,14 @@ export const maxDuration = 30
  * typo'd into the wrong field, a conversion configured for a client whose
  * site isn't live.
  *
- * It CANNOT prove Google or Microsoft is receiving conversions. That needs
- * the Ads API, which this project doesn't hold credentials for. So each check
- * says exactly what it verified, and the answer to "is it recording?" points
- * at the place that can actually answer it. A green tick that means less than
- * it appears is worse than no tick.
+ * The page fetch alone cannot prove Google is receiving anything, so when Ads
+ * API credentials and an account are configured the second half of this asks
+ * Google directly: does the action behind that label exist, is it enabled, has
+ * it recorded anything in 30 days. Microsoft has no equivalent here — that
+ * half stays installation-only and says so.
+ *
+ * Each check states exactly what it verified. A green tick that means less
+ * than it appears is worse than no tick.
  */
 
 interface Check {
@@ -168,6 +172,73 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
           ? `The page will push "${tracking.bingLeadEventAction}". The goal in Microsoft must use this exact string.`
           : 'The action name is not in the page yet.',
       })
+    }
+  }
+
+  // ---- The other half: ask Google, not the page ----
+  //
+  // Only runs when there is something to ask about. Everything below degrades
+  // to a note rather than a failure: not having the API set up is a normal
+  // state, and a red cross for it would read as "your tracking is broken".
+  if (tracking.leadSendTo || tracking.callSendTo) {
+    const row = await prisma.clientAdsTracking
+      .findUnique({ where: { clientId: id }, select: { googleAdsCustomerId: true } })
+      .catch(() => null)
+    const customerId = row?.googleAdsCustomerId || ''
+    const creds = await getAdsCredentials()
+
+    if (!creds) {
+      checks.push({
+        label: 'Google is counting them',
+        ok: false,
+        detail:
+          'Not checked — no Google Ads API credentials in Settings → API keys. Google Ads → Goals → Conversions shows this under the action’s status.',
+      })
+    } else if (!customerId) {
+      checks.push({
+        label: 'Google is counting them',
+        ok: false,
+        detail: 'Not checked — pick this client’s Google Ads account above first.',
+      })
+    } else {
+      const result = await listConversionActions(customerId)
+      if (!result.ok) {
+        checks.push({
+          label: 'Google is counting them',
+          ok: false,
+          detail: `Could not ask Google: ${result.error}`,
+        })
+      } else {
+        const report = (what: string, sendTo: string) => {
+          const action = result.actions.find((a) => a.sendTo.includes(sendTo))
+          if (!action) {
+            checks.push({
+              label: `${what}: the action exists in Google Ads`,
+              ok: false,
+              detail: `No conversion action in account ${customerId} reports to ${sendTo}. Either the snippet came from a different account, or the action was deleted after it was pasted here.`,
+            })
+            return
+          }
+          const enabled = action.status === 'ENABLED'
+          checks.push({
+            label: `${what}: the action exists in Google Ads`,
+            ok: enabled,
+            detail: enabled
+              ? `"${action.name}" is enabled.`
+              : `"${action.name}" exists but its status is ${action.status}, so nothing sent to it is counted.`,
+          })
+          checks.push({
+            label: `${what}: conversions in the last 30 days`,
+            ok: action.conversions30d > 0,
+            detail:
+              action.conversions30d > 0
+                ? `${action.conversions30d} recorded against "${action.name}".`
+                : `None recorded. If the tag checks above are green, that means the page is set up and nobody has converted yet — not that it is broken. Google also takes up to 3 hours to show a first conversion.`,
+          })
+        }
+        if (tracking.leadSendTo) report('Form leads', tracking.leadSendTo)
+        if (tracking.callSendTo) report('Calls', tracking.callSendTo)
+      }
     }
   }
 

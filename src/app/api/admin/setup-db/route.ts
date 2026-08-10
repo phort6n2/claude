@@ -142,6 +142,7 @@ const STATEMENTS: Array<{ table: string; sql: string[] }> = [
          "enhancedConversions" BOOLEAN NOT NULL DEFAULT true,
          "bingUetTagId"        TEXT,
          "bingLeadEventAction" TEXT,
+         "googleAdsCustomerId" TEXT,
          "createdAt"           TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
          "updatedAt"           TIMESTAMP(3) NOT NULL,
          CONSTRAINT "ClientAdsTracking_pkey" PRIMARY KEY ("id"),
@@ -157,6 +158,7 @@ const STATEMENTS: Array<{ table: string; sql: string[] }> = [
       `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "callPhoneNumber" TEXT`,
       `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "bingUetTagId" TEXT`,
       `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "bingLeadEventAction" TEXT`,
+      `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "googleAdsCustomerId" TEXT`,
     ],
   },
 ]

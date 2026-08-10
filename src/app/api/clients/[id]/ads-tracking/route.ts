@@ -31,6 +31,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
         enhancedConversions: row?.enhancedConversions ?? true,
         bingUetTagId: row?.bingUetTagId || '',
         bingLeadEventAction: row?.bingLeadEventAction || '',
+        googleAdsCustomerId: row?.googleAdsCustomerId || '',
       },
     })
   } catch {
@@ -79,6 +80,10 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
   }
   const bingLeadEventAction = bingUetTagId ? str(body.bingLeadEventAction) || 'submit_lead_form' : null
 
+  // Which Ads account to interrogate when checking whether conversions are
+  // actually recording. Digits only; an empty pick clears it.
+  const googleAdsCustomerId = str(body.googleAdsCustomerId).replace(/\D/g, '') || null
+
   const data: {
     conversionId: string | null
     leadConversionLabel: string | null
@@ -89,6 +94,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     enhancedConversions: boolean
     bingUetTagId: string | null
     bingLeadEventAction: string | null
+    googleAdsCustomerId: string | null
   } = {
     conversionId: null,
     leadConversionLabel: null,
@@ -99,6 +105,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     enhancedConversions,
     bingUetTagId,
     bingLeadEventAction,
+    googleAdsCustomerId,
   }
 
   if (leadInput) {
@@ -163,6 +170,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       callPhoneNumber: data.callPhoneNumber,
       bingUetTagId: data.bingUetTagId,
       bingLeadEventAction: data.bingLeadEventAction,
+      googleAdsCustomerId: data.googleAdsCustomerId,
     },
   })
 }

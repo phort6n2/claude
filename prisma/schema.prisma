@@ -628,6 +628,11 @@ model ClientAdsTracking {
   bingUetTagId        String?
   bingLeadEventAction String?
 
+  /* Which Google Ads account this client's conversions live in. Chosen from
+   * the accounts under our manager account, never typed — a mistyped
+   * ten-digit id checks someone else's conversions and looks fine doing it. */
+  googleAdsCustomerId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
