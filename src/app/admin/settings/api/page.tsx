@@ -128,10 +128,15 @@ const API_KEYS: ApiKeyConfig[] = [
     description: 'Read-only checks that a client\u2019s conversions are recording. Clients add nothing.',
     steps: [
       { text: 'In your MANAGER (MCC) account: Tools → Setup → API Center.', href: 'https://ads.google.com/aw/apicenter', linkLabel: 'API Center' },
-      { text: 'Copy the developer token. Basic access or higher is required.' },
+      { text: 'Copy the developer token and check the access level shown beside it.' },
+      {
+        text: 'Explorer access is enough for everything this app does and is granted automatically — no application, no wait. Basic access only raises the daily ceiling.',
+        href: 'https://developers.google.com/google-ads/api/docs/api-policy/access-levels',
+        linkLabel: 'Access levels',
+      },
     ],
     warning:
-      'A Test-access token only reaches test accounts. It authenticates fine and returns nothing for real clients, which looks like "no conversions" rather than "wrong token".',
+      'Test access is the one that will not work: it reaches test accounts only, so it authenticates fine and returns nothing for real clients — which reads as "no conversions" rather than "wrong token". Explorer caps you at 2,880 operations a day against live accounts, which is far more than the conversion checks here use (two queries per client, per check).',
   },
   {
     key: 'GOOGLE_ADS_CLIENT_ID',
