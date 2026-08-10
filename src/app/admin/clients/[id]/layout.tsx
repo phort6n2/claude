@@ -2,7 +2,9 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, ExternalLink } from 'lucide-react'
 import { prisma } from '@/lib/db'
+import { getClientReadiness } from '@/lib/client-readiness'
 import ClientTabs from '@/components/admin/ClientTabs'
+import ClientReadinessBadge from '@/components/admin/ClientReadinessBadge'
 
 /**
  * Shell for everything under a single client: identity header, live-site
@@ -31,6 +33,10 @@ export default async function ClientLayout({
     },
   })
   if (!client) notFound()
+
+  // Computed here rather than per tab so the answer is the same wherever you
+  // are, and so a tab you never open can still tell you something is missing.
+  const readiness = await getClientReadiness(client.id)
 
   const siteUrl = client.siteSubdomain
     ? `https://${client.siteSubdomain}.glassleads.app`
@@ -79,6 +85,11 @@ export default async function ClientLayout({
           >
             {client.status}
           </span>
+          <ClientReadinessBadge
+            checks={readiness.checks}
+            requiredOpen={readiness.requiredOpen}
+            recommendedOpen={readiness.recommendedOpen}
+          />
           <a
             href={siteUrl}
             target="_blank"
