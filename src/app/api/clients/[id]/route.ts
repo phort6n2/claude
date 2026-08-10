@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { normalizeAllowedOrigins } from '@/lib/webhook-forwarding'
 import { requireAdmin, scrubClient } from '@/lib/admin-guard'
+import { deleteClientCompletely } from '@/lib/client-teardown'
 export const dynamic = 'force-dynamic'
 
 interface RouteContext {
@@ -130,19 +131,36 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
   const denied = await requireAdmin()
   if (denied) return denied
 
-  try {
-    const { id } = await params
+  const { id } = await params
 
-    await prisma.client.delete({
-      where: { id },
-    })
+  const client = await prisma.client.findUnique({
+    where: { id },
+    select: { businessName: true },
+  })
+  if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
 
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error('Failed to delete client:', error)
+  // The caller must name the client it is deleting. This endpoint used to
+  // destroy a client — and, by cascade, every lead, call recording and photo
+  // belonging to them — on a bare DELETE with an id in the URL. An id is easy
+  // to have wrong and impossible to sanity-check by eye; a business name is
+  // not. It is also the difference between a misfired request and an
+  // intentional one.
+  const body = await request.json().catch(() => ({}))
+  const confirm = typeof body.confirm === 'string' ? body.confirm.trim() : ''
+  if (confirm.toLowerCase() !== client.businessName.trim().toLowerCase()) {
     return NextResponse.json(
-      { error: 'Failed to delete client' },
-      { status: 500 }
+      {
+        error: `To delete this client, send its exact business name as "confirm". Expected "${client.businessName}".`,
+      },
+      { status: 400 }
     )
   }
+
+  const result = await deleteClientCompletely(id)
+  if (!result.ok) {
+    console.error('Failed to delete client:', result.error)
+    return NextResponse.json({ error: result.error || 'Failed to delete client' }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true, steps: result.steps, warnings: result.warnings })
 }
