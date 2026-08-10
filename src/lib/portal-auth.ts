@@ -36,6 +36,18 @@ interface PortalSessionClaims {
   impEmail?: string
   /** Absolute expiry (ms epoch); used to give impersonation a short life. */
   exp?: number
+  /**
+   * Impersonate a CLIENT rather than one of its users.
+   *
+   * Most clients have no portal user, and viewing what they would see should
+   * not require creating a login for them first — that is a real credential,
+   * created for a look around, and then left behind.
+   *
+   * Only ever set alongside `imp`, so a session carrying it is read-only by
+   * the same rule as any other impersonation, and it lives inside the HMAC so
+   * it cannot be added to a genuine client session to hop tenants.
+   */
+  impClientId?: string
 }
 
 function signClaims(claims: PortalSessionClaims): string {
@@ -322,6 +334,38 @@ export async function getPortalSession(): Promise<{
       return null
     }
 
+    // Impersonating a client that has no portal user. There is no ClientUser
+    // to load, so the client itself supplies everything the portal needs.
+    if (sessionData.imp && sessionData.impClientId) {
+      const client = await prisma.client.findUnique({
+        where: { id: sessionData.impClientId },
+        select: {
+          id: true,
+          businessName: true,
+          timezone: true,
+          logoUrl: true,
+          primaryColor: true,
+        },
+      })
+      if (!client) return null
+      return {
+        // Empty rather than faked. Nothing can write during impersonation, so
+        // no code path needs a user id — and an invented one could end up
+        // stamped on a record as if a real person had done it.
+        userId: '',
+        clientId: client.id,
+        email: sessionData.impEmail || 'admin',
+        name: 'Admin preview',
+        businessName: client.businessName,
+        timezone: client.timezone,
+        logoUrl: client.logoUrl,
+        primaryColor: client.primaryColor,
+        isImpersonating: true,
+        impersonatedBy: sessionData.impEmail,
+        impersonationExpiresAt: sessionData.exp,
+      }
+    }
+
     // Fetch user data
     const clientUser = await prisma.clientUser.findUnique({
       where: { id: sessionData.userId },
@@ -357,6 +401,36 @@ export async function getPortalSession(): Promise<{
 /**
  * Clear the portal session
  */
+/**
+ * Start a read-only look at a client that has no portal user.
+ *
+ * Separate from createPortalSession so the client-level claim can only ever
+ * be minted here, and only ever alongside the impersonation flag.
+ */
+export async function createClientPreviewSession(
+  clientId: string,
+  options: { impersonatedBy: string; adminEmail: string; ttlMinutes?: number }
+): Promise<void> {
+  const cookieStore = await cookies()
+  const now = Date.now()
+  const claims: PortalSessionClaims = {
+    userId: '',
+    createdAt: now,
+    imp: true,
+    impBy: options.impersonatedBy,
+    impEmail: options.adminEmail,
+    impClientId: clientId,
+    exp: now + (options.ttlMinutes ?? 30) * 60 * 1000,
+  }
+  cookieStore.set(PORTAL_SESSION_COOKIE, signClaims(claims), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: (options.ttlMinutes ?? 30) * 60,
+  })
+}
+
 export async function clearPortalSession(): Promise<void> {
   const cookieStore = await cookies()
   cookieStore.delete(PORTAL_SESSION_COOKIE)
