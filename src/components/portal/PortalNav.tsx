@@ -47,7 +47,10 @@ export default function PortalNav() {
 
       {/* Phone: fixed bottom bar */}
       <nav
-        className="sm:hidden fixed bottom-0 inset-x-0 z-40 grid grid-cols-3 bg-white/95 backdrop-blur border-t border-gray-200 pb-[env(safe-area-inset-bottom)]"
+        // Columns follow the tab count. Hardcoding three left the fourth tab
+        // stacked onto a second row on every phone.
+        style={{ gridTemplateColumns: `repeat(${TABS.length}, minmax(0, 1fr))` }}
+        className="sm:hidden fixed bottom-0 inset-x-0 z-40 grid bg-white/95 backdrop-blur border-t border-gray-200 pb-[env(safe-area-inset-bottom)]"
         aria-label="Portal"
       >
         {TABS.map((tab) => {
