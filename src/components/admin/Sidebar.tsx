@@ -16,6 +16,7 @@ import {
   Smartphone,
   ExternalLink,
   PhoneCall,
+  Target,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -52,6 +53,7 @@ const navigation: NavSection[] = [
     items: [
       { name: 'API Status', href: '/admin/api-status', icon: Activity },
       { name: 'Webhook Status', href: '/admin/webhook-status', icon: Radio },
+      { name: 'Conversion Health', href: '/admin/conversion-health', icon: Target },
     ],
   },
   {
