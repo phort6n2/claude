@@ -145,9 +145,9 @@ const API_KEYS: ApiKeyConfig[] = [
     description: 'A Web application OAuth client, used once to mint the refresh token below.',
     steps: [
       { text: 'Enable the Google Ads API on your Cloud project.', href: 'https://console.cloud.google.com/apis/library/googleads.googleapis.com', linkLabel: 'Enable Google Ads API' },
-      { text: 'Credentials → Create credentials → OAuth client ID → Web application.', href: 'https://console.cloud.google.com/apis/credentials', linkLabel: 'Credentials' },
+      { text: 'Google Auth Platform → Clients → Create client → Web application.', href: 'https://console.cloud.google.com/auth/clients', linkLabel: 'Clients' },
       { text: 'Add https://developers.google.com/oauthplayground as an Authorised redirect URI.' },
-      { text: 'Copy the client ID.' },
+      { text: 'Copy the client ID. (The client ID is not a secret; the client secret is.)' },
     ],
     warning:
       'It must be Web application, not Desktop — the Desktop type cannot use the playground redirect, which is how the refresh token is generated.',
@@ -156,22 +156,36 @@ const API_KEYS: ApiKeyConfig[] = [
     key: 'GOOGLE_ADS_CLIENT_SECRET',
     label: 'Google Ads OAuth client secret',
     description: 'Paired with the client ID above.',
-    steps: [{ text: 'Shown next to the client ID on the Credentials page.', href: 'https://console.cloud.google.com/apis/credentials', linkLabel: 'Credentials' }],
+    steps: [
+      {
+        text: 'Google Auth Platform → Clients → open your Web application client. The secret is on the right; use "Add secret" if the original was never copied.',
+        href: 'https://console.cloud.google.com/auth/clients',
+        linkLabel: 'Clients',
+      },
+    ],
   },
   {
     key: 'GOOGLE_ADS_REFRESH_TOKEN',
     label: 'Google Ads refresh token',
     description: 'Generated once. It does not expire.',
     steps: [
+      {
+        text: 'FIRST: Google Auth Platform → Audience. Set User type to External, then press Publish app so the status reads "In production".',
+        href: 'https://console.cloud.google.com/auth/audience',
+        linkLabel: 'Audience',
+      },
       { text: 'Open the OAuth Playground.', href: 'https://developers.google.com/oauthplayground', linkLabel: 'OAuth Playground' },
       { text: 'Gear icon → tick "Use your own OAuth credentials" → paste the client ID and secret.' },
       { text: 'In Step 1, paste this scope into the box: https://www.googleapis.com/auth/adwords' },
       { text: 'Authorise APIs, and sign in as the Google account that owns the MANAGER account.' },
+      {
+        text: 'You will get "Google hasn’t verified this app". Expected — click Advanced, then "Go to (unsafe)". You are the only user; verification only removes that warning.',
+      },
       { text: 'Step 2 → Exchange authorization code for tokens → copy the refresh token.' },
-      { text: 'Go back and remove the playground redirect URI from the OAuth client.', href: 'https://console.cloud.google.com/apis/credentials', linkLabel: 'Credentials' },
+      { text: 'Go back and remove the playground redirect URI from the OAuth client.', href: 'https://console.cloud.google.com/auth/clients', linkLabel: 'Clients' },
     ],
     warning:
-      'Sign in as the manager-account owner. Authorising with a personal Google account that merely has access produces a token that works today and breaks when that access changes.',
+      'Do not skip the Publish step. While the app sits in "Testing", Google issues a refresh token that EXPIRES IN 7 DAYS for this scope — it authenticates perfectly today and the conversion checks start failing a week later. Adding yourself as a Test user clears the 403 but keeps the 7-day clock. Also sign in as the manager-account owner: a personal account that merely has access produces a token that breaks when that access changes.',
   },
   {
     key: 'GOOGLE_ADS_LOGIN_CUSTOMER_ID',
