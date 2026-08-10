@@ -28,7 +28,12 @@ export async function GET() {
     // Named on the page. A screenshot of this list is meaningless without it —
     // a local run has none of the production credentials and reports almost
     // everything as unconfigured, which reads as a catastrophic outage.
-    environment: process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown',
+    //
+    // Deliberately NOT NODE_ENV: `next start` sets that to "production" on a
+    // laptop, so falling back to it labels a local server PRODUCTION and
+    // recreates the exact confusion this is here to prevent. VERCEL_ENV only
+    // exists when running on Vercel, so its absence means local, full stop.
+    environment: process.env.VERCEL_ENV || 'local',
     // Only failures that can actually cost a lead are worth a headline.
     criticalDown: checks.filter((c) => c.severity === 'critical' && c.configured && !c.ok).length,
   })
