@@ -27,6 +27,7 @@ import {
   DashboardSkeleton,
 } from '@/components/ui/theme'
 import { requireAdminPage } from '@/lib/admin-guard'
+import { getFailingDestinations } from '@/lib/delivery-health'
 
 async function getStats() {
   const startOfToday = new Date(new Date().setHours(0, 0, 0, 0))
@@ -78,6 +79,10 @@ async function getStats() {
 
 async function DashboardContent() {
   const stats = await getStats()
+  // Above the fold, deliberately. A client whose leads are not arriving is
+  // more urgent than any number on this page, and the only place it showed
+  // before was that one client's own tab.
+  const failing = await getFailingDestinations()
 
   return (
     <PageContainer>
@@ -103,6 +108,37 @@ async function DashboardContent() {
           </div>
         }
       />
+
+      {failing.length > 0 && (
+        <div className="mb-5 rounded-2xl border border-red-300 bg-red-50 p-5">
+          <h2 className="font-bold text-red-900 flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            Leads are not reaching {failing.length === 1 ? failing[0].businessName : `${failing.length} clients`}
+          </h2>
+          <p className="text-sm text-red-800 mb-3">
+            Captured, but the forward failed. Retries continue for 24 hours, then stop.
+          </p>
+          <div className="space-y-2">
+            {failing.map((f) => (
+              <div key={f.destinationId} className="rounded-xl bg-white border border-red-200 p-3">
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  <Link
+                    href={`/admin/clients/${f.clientId}/leads-setup`}
+                    className="font-semibold text-gray-900 hover:text-blue-700"
+                  >
+                    {f.businessName}
+                  </Link>
+                  <span className="text-xs text-gray-500">{f.label}</span>
+                  <span className="text-xs font-semibold text-red-700">
+                    {f.responseStatus ?? 'no response'} · {f.failedCount} undelivered
+                  </span>
+                </div>
+                <p className="text-sm text-gray-700">{f.diagnosis}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <StatCardGrid cols={4}>
