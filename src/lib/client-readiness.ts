@@ -3,6 +3,7 @@ import { getSiteExtras } from '@/lib/site-content'
 import { getClientLocations } from '@/lib/client-locations'
 import { mergeServiceAreas, LOCATION_PAGE_LIMIT } from '@/lib/site-locations'
 import { getCityContent, cityIsIndexable, type CityContent } from '@/lib/city-content'
+import { getAdsCredentials } from '@/lib/google-ads'
 
 /**
  * Is this client actually finished?
@@ -23,7 +24,19 @@ import { getCityContent, cityIsIndexable, type CityContent } from '@/lib/city-co
  * ignore the badge, which is worse than not having one.
  */
 
-export type CheckSeverity = 'required' | 'recommended'
+/**
+ * Three kinds of finding, and mixing them is what makes a checklist ignored.
+ *
+ *   required     — the client is not getting what they pay for
+ *   recommended  — it works, but it is measurably worse
+ *   opportunity  — nothing is wrong. There is money on the table.
+ *
+ * Opportunities are deliberately kept out of the outstanding-work count. A
+ * client on the self-serve tier is not "incomplete" for not buying the
+ * managed-ads tier, and counting them that way would mean the badge never
+ * goes green for the majority of the book.
+ */
+export type CheckSeverity = 'required' | 'recommended' | 'opportunity'
 
 export interface ReadinessCheck {
   id: string
@@ -40,6 +53,8 @@ export interface ReadinessReport {
   checks: ReadinessCheck[]
   requiredOpen: number
   recommendedOpen: number
+  /** Upsell signals. Never counted as outstanding work. */
+  opportunityOpen: number
   /** Everything required is done. */
   ready: boolean
 }
@@ -48,7 +63,9 @@ export async function getClientReadiness(clientId: string): Promise<ReadinessRep
   const base = `/admin/clients/${clientId}`
 
   const client = await prisma.client.findUnique({ where: { id: clientId } })
-  if (!client) return { checks: [], requiredOpen: 0, recommendedOpen: 0, ready: false }
+  if (!client) {
+    return { checks: [], requiredOpen: 0, recommendedOpen: 0, opportunityOpen: 0, ready: false }
+  }
 
   const [extras, locations, reviews, destinations, notification, tracking, userCount, cityContent] =
     await Promise.all([
@@ -270,14 +287,10 @@ export async function getClientReadiness(clientId: string): Promise<ReadinessRep
         'required',
         `${base}/advertising`
       )
-      add(
-        'ads-account',
-        'Ads account linked',
-        !!tracking?.googleAdsCustomerId,
-        'Pick the client’s Google Ads account so the checker can confirm conversions are recording.',
-        'recommended',
-        `${base}/advertising`
-      )
+      // Deliberately NOT flagged when unset. Plenty of clients run their own
+      // Ads account outside our manager account, and for them this can never
+      // be satisfied — a permanent amber item is one the operator learns to
+      // scroll past, which costs the checks that do matter.
     }
     if (hasBing) {
       add(
@@ -300,8 +313,34 @@ export async function getClientReadiness(clientId: string): Promise<ReadinessRep
     )
   }
 
+  // ---- Upsell signals ----
+  //
+  // A client whose Ads account is not under our manager account is, by
+  // definition, not on the managed-ads tier. That is not a fault — it is the
+  // self-serve tier working as sold — but it is worth surfacing, because the
+  // clients already getting leads from the site are the ones most likely to
+  // pay to have the ads run properly.
+  //
+  // Inferred from MCC linkage rather than known. It reads as "not managed by
+  // us" and will be exactly right until a client is linked for some other
+  // reason; a real plan field would make it certain.
+  const adsCredentialsExist = !!(await getAdsCredentials())
+  if (adsCredentialsExist && !tracking?.googleAdsCustomerId) {
+    add(
+      'dfy-ads',
+      'Not on managed ads',
+      false,
+      hasGoogle || hasBing
+        ? 'They are running ads themselves — the tag is here but the account is not under your manager account. The strongest upsell there is: you can already see the leads their own spend produces.'
+        : 'No ad account linked and no conversion tracking configured. If the site is producing leads organically, managed ads is the obvious next conversation.',
+      'opportunity',
+      `${base}/advertising`
+    )
+  }
+
   const requiredOpen = checks.filter((c) => !c.ok && c.severity === 'required').length
   const recommendedOpen = checks.filter((c) => !c.ok && c.severity === 'recommended').length
+  const opportunityOpen = checks.filter((c) => !c.ok && c.severity === 'opportunity').length
 
-  return { checks, requiredOpen, recommendedOpen, ready: requiredOpen === 0 }
+  return { checks, requiredOpen, recommendedOpen, opportunityOpen, ready: requiredOpen === 0 }
 }
