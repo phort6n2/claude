@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Loader2, Mail, MessageSquare, Send, TriangleAlert } from 'lucide-react'
+import { RecipientList } from '@/components/admin/RecipientList'
 
 /**
  * Who gets told when a lead arrives.
@@ -166,12 +167,12 @@ export default function LeadNotificationsCard({ clientId }: { clientId: string }
             </span>
           </span>
         </label>
-        <textarea
-          value={state.emailTo.join('\n')}
-          onChange={(e) => set('emailTo', e.target.value.split('\n').map((v) => v.trim()))}
-          rows={2}
-          placeholder={'dispatch@theshop.com\nowner@theshop.com'}
-          className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+        <RecipientList
+          kind="email"
+          values={state.emailTo}
+          onChange={(next) => set('emailTo', next)}
+          placeholder="dispatch@theshop.com"
+          addLabel="Add another email address"
         />
         {!providers.email && (
           <p className="text-xs text-amber-700">
@@ -203,12 +204,12 @@ export default function LeadNotificationsCard({ clientId }: { clientId: string }
             </span>
           </span>
         </label>
-        <textarea
-          value={state.smsTo.join('\n')}
-          onChange={(e) => set('smsTo', e.target.value.split('\n').map((v) => v.trim()))}
-          rows={2}
-          placeholder={'(503) 555-0100\n5035550142'}
-          className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+        <RecipientList
+          kind="phone"
+          values={state.smsTo}
+          onChange={(next) => set('smsTo', next)}
+          placeholder="(503) 555-0100"
+          addLabel="Add another mobile number"
         />
         {state.smsEnabled && (
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
