@@ -101,8 +101,6 @@ You have ruled this out for now and I have not built any. Worth revisiting: an i
 
 ## 5. Not built, ranked by what I would do next
 
-1. **VIN → glass spec and ADAS calibration flag.** The form already captures the VIN and does nothing with it. Decoding it would tell the shop the exact vehicle and flag when a windscreen likely needs camera calibration — which is both the priciest part of the job and the one most often missed at quoting time.
-2. **Surface the state insurance rule on the lead.** `insurance-rules.ts` already knows which states waive the glass deductible by statute. It is used on the public site and nowhere else. Putting "Florida — zero deductible by statute" on the alert tells the shop the job is bookable before they pick up the phone.
-3. **Response-time tracking.** The app knows when a lead arrived and when its status moved. "This shop takes four hours to touch a lead" is nearly free, and it is your answer when a client says the leads are bad.
+1. **Response-time tracking.** The app knows when a lead arrived and when its status moved. "This shop takes four hours to touch a lead" is nearly free, and it is your answer when a client says the leads are bad.
 4. **Monthly client-facing report.** Leads → booked → revenue. The retention artifact for a $497 client.
 5. **Follow-up on unbooked leads.** A lead marked "didn't book" is currently dead. Most shops never chase them.

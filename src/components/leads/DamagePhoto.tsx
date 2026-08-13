@@ -29,6 +29,43 @@ export function DamagePhoto({ url, className = '' }: { url: string; className?: 
   )
 }
 
+/**
+ * The decoded-VIN line and the calibration flag, when the lead has them.
+ *
+ * Rendered together because they answer one question — what is this vehicle
+ * and does the glass carry a camera — and the flag is meaningless without the
+ * vehicle it belongs to.
+ */
+export function VehicleDecode({
+  formData,
+  className = '',
+}: {
+  formData: Record<string, unknown> | null | undefined
+  className?: string
+}) {
+  const headline = typeof formData?.vin_decoded === 'string' ? formData.vin_decoded : null
+  const verdict = typeof formData?.vin_calibration === 'string' ? formData.vin_calibration : null
+  if (!headline) return null
+
+  const flagged = verdict === 'likely' || verdict === 'possible'
+  return (
+    <div className={className}>
+      <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1">
+        Decoded from the VIN
+      </p>
+      <p
+        className={`text-sm rounded-lg px-3 py-2 ${
+          flagged
+            ? 'bg-amber-50 border border-amber-200 text-amber-900'
+            : 'bg-gray-50 border border-gray-200 text-gray-700'
+        }`}
+      >
+        {headline}
+      </p>
+    </div>
+  )
+}
+
 /** Pull the stored photo off a lead's form data, if it has one. */
 export function damagePhotoOf(formData: Record<string, unknown> | null | undefined): string | null {
   if (!formData) return null

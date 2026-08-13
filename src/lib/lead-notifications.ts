@@ -42,6 +42,11 @@ export interface LeadSummary {
    * linked, because the entire value of it is being able to look without
    * opening anything. */
   damagePhotoUrl?: string
+  /* Decoded from the VIN. The calibration line is the reason this exists: it
+   * is the priciest part of a modern windscreen job and the one most often
+   * missed when quoting from the customer's description alone. */
+  decodedVehicle?: string
+  calibration?: string
 }
 
 async function secret(key: string): Promise<string | null> {
@@ -75,6 +80,7 @@ function plainLines(lead: LeadSummary): string[] {
     lead.service && `Job: ${lead.service}`,
     lead.vehicle && `Vehicle: ${lead.vehicle}`,
     lead.vin && `VIN: ${lead.vin}`,
+    lead.decodedVehicle && `Decoded: ${lead.decodedVehicle}`,
     lead.insurance && `Insurance: ${lead.insurance}`,
     lead.carrier && `Carrier: ${lead.carrier}`,
     lead.postalCode && `ZIP: ${lead.postalCode}`,
@@ -145,6 +151,11 @@ function emailHtml(businessName: string, lead: LeadSummary): string {
     ${
       lead.damagePhotoUrl
         ? `<a href="${esc(lead.damagePhotoUrl)}" style="display:block;margin-top:18px;text-decoration:none"><img src="${esc(lead.damagePhotoUrl)}" alt="Photo of the damage" width="472" style="width:100%;max-width:472px;border-radius:10px;border:1px solid #e5e7eb;display:block"><span style="display:block;margin-top:6px;font-size:12px;color:#6b7280">Photo sent by the customer — tap to open full size</span></a>`
+        : ''
+    }
+    ${
+      lead.calibration
+        ? `<p style="margin:18px 0 0;padding:11px 13px;background:#FEF3C7;border:1px solid #FCD34D;border-radius:10px;font-size:14px;color:#78350F"><strong>${esc(lead.calibration)}</strong> &mdash; quote the calibration, not just the glass.</p>`
         : ''
     }
     <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:18px">${rows}</table>
