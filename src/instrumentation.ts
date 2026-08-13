@@ -7,7 +7,26 @@ export async function register() {
   // Only run on the server (Node.js runtime)
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     await setupCreatifyFields()
+    await ensureCallTracking()
     await cleanupTestUsers()
+  }
+}
+
+/**
+ * Call-tracking tables and the columns Lead gained with them.
+ *
+ * Runs here rather than only in the setup endpoint because these include
+ * columns on an EXISTING table: Prisma selects every scalar it knows about,
+ * so between deploying the code and running the SQL by hand, every query on
+ * Lead fails — that is lead capture down, not a feature missing.
+ */
+async function ensureCallTracking() {
+  const { ensureCallTrackingSchema } = await import('@/lib/schema-bootstrap')
+  const result = await ensureCallTrackingSchema()
+  if (result.error) {
+    console.log('⚠️ Call tracking schema skipped:', result.error)
+  } else {
+    console.log(`✅ Call tracking schema ready (${result.ran} statements)`)
   }
 }
 

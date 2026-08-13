@@ -107,9 +107,10 @@ model Client {
   callCoachingEnabled Boolean @default(true)
 
   // Leads & Client Portal
-  leads        Lead[]
-  clientUsers  ClientUser[]
-  callAnalyses CallAnalysis[]
+  trackingNumbers TrackingNumber[]
+  leads           Lead[]
+  clientUsers     ClientUser[]
+  callAnalyses    CallAnalysis[]
 
   // Outbound lead forwarding (webhook fan-out)
   webhookDestinations WebhookDestination[]
@@ -205,8 +206,29 @@ model Lead {
   highlevelContactId String?
 
   // Phone Call Data
-  callRecordingUrl String? // URL to call recording from HighLevel
+  callRecordingUrl String? // Playable recording URL (Blob copy for Twilio calls)
   callAnalyses     CallAnalysis[]
+
+  /**
+   * Twilio call tracking. The CallSid is how the several webhooks for one
+   * call — the dial finishing, then the recording being ready minutes later —
+   * find the row they belong to, so it is unique rather than merely indexed.
+   */
+  twilioCallSid    String? @unique
+  /**
+   * Which tracking number was dialled, so a call can be attributed to the
+   * channel that produced it. Kept as plain text: the number outlives the
+   * TrackingNumber row if it is ever released, and losing the attribution on
+   * historic leads to tidy a foreign key would be the wrong trade.
+   */
+  trackingNumber   String?
+  /**
+   * completed, no-answer, busy, failed — as Twilio reported it. A missed call
+   * is a lead, and often the most valuable one, so it is recorded rather than
+   * dropped.
+   */
+  callStatus       String?
+  callDurationSecs Int?
 
   // Outbound webhook deliveries created for this lead
   webhookDeliveries WebhookDelivery[]
@@ -307,7 +329,7 @@ model ClientUser {
 // ============================================
 
 model PushSubscription {
-  id           String @id @default(cuid())
+  id           String     @id @default(cuid())
   clientUserId String
   clientUser   ClientUser @relation(fields: [clientUserId], references: [id], onDelete: Cascade)
 
@@ -374,7 +396,6 @@ model AdminPushSubscriptionClient {
   @@index([subscriptionId])
   @@index([clientId])
 }
-
 
 // ============================================
 // OUTBOUND WEBHOOK FORWARDING
@@ -481,25 +502,34 @@ model ClientNotification {
   emailEnabled Boolean  @default(false)
   emailTo      String[] @default([])
 
-  /* The paid add-on. Off by default and switchable only by an admin — email
+  /**
+   * The paid add-on. Off by default and switchable only by an admin — email
    * is included with every plan, SMS is billed monthly, so turning it on is a
    * commercial decision rather than a client preference.
-   *
    * Nothing here charges anyone. It is a record of what was switched on and
    * whether it is meant to be invoiced, which is why an existing client can
-   * be given it for nothing without pretending they paid. */
+   * be given it for nothing without pretending they paid.
+   */
   smsEnabled       Boolean   @default(false)
   smsTo            String[]  @default([])
-  /* When the add-on was last switched on, so billing has a date rather than
-   * someone's memory. */
+  /**
+   * When the add-on was last switched on, so billing has a date rather than
+   * someone's memory.
+   */
   smsActivatedAt   DateTime?
-  /* Comped: on, but not to be invoiced. */
+  /**
+   * Comped: on, but not to be invoiced.
+   */
   smsComplimentary Boolean   @default(false)
-  /* Free-text note for why — "grandfathered", "trial to March", a person. */
+  /**
+   * Free-text note for why — "grandfathered", "trial to March", a person.
+   */
   smsNote          String?
 
-  /* Last attempt, so the admin can see it working — or not — without
-   * digging through logs. */
+  /**
+   * Last attempt, so the admin can see it working — or not — without
+   * digging through logs.
+   */
   lastSentAt DateTime?
   lastError  String?
 
@@ -526,10 +556,14 @@ model ClientCityContent {
   clientId String
   client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
-  /* Matched case-insensitively against the service-area name. */
+  /**
+   * Matched case-insensitively against the service-area name.
+   */
   city String
 
-  /* The client's own words about working in this city. */
+  /**
+   * The client's own words about working in this city.
+   */
   heading String?
   body    String?
 
@@ -537,6 +571,67 @@ model ClientCityContent {
   updatedAt DateTime @updatedAt
 
   @@unique([clientId, city])
+  @@index([clientId])
+}
+
+/**
+ * A Twilio number that rings a shop, so the call can be measured.
+ * The point of a tracking number is that it is not the shop's number. Calls
+ * arrive here, are recorded and forwarded on, and the shop's real line never
+ * appears in an ad — which is what makes "how many calls did the ads produce"
+ * answerable at all.
+ * One number belongs to one client. Several numbers can belong to the same
+ * client, which is how a Google Ads line is told apart from the one on the
+ * Google Business Profile.
+ */
+model TrackingNumber {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  /**
+   * E.164, and unique across the platform: two clients cannot share a number,
+   * and an inbound call is matched by this alone.
+   */
+  phoneNumber String  @unique
+  /**
+   * Twilio's PN sid, so the number can be reconfigured through the API
+   * without a second lookup.
+   */
+  twilioSid   String?
+  /**
+   * What this number is for — "Google Ads", "Google Business Profile". Ends
+   * up on the lead as its source.
+   */
+  label       String?
+
+  /**
+   * Where the call actually goes: the shop's real line, E.164.
+   */
+  forwardTo String
+
+  recordCalls       Boolean @default(true)
+  /**
+   * Played to the caller before connecting. Recording a call without telling
+   * the caller is illegal in a good number of states, so this defaults on and
+   * the admin has to make a deliberate choice to turn it off.
+   */
+  announceRecording Boolean @default(true)
+  /**
+   * Played to the SHOP only, before the two are connected, so whoever picks
+   * up knows the call came from an ad rather than a friend.
+   */
+  whisper           String?
+
+  /**
+   * Off keeps the row and its history but stops routing. Releasing a number
+   * at Twilio is the irreversible step and is never done from here.
+   */
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([clientId])
 }
 
@@ -559,15 +654,21 @@ model ClientDomain {
   clientId String
   client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
-  /* Bare hostname, lowercase, no scheme: "collisionautoglass.com". */
+  /**
+   * Bare hostname, lowercase, no scheme: "collisionautoglass.com".
+   */
   domain String @unique
 
-  /* The host canonical URLs point at. Exactly one per client, enforced when
-   * the set is written. */
+  /**
+   * The host canonical URLs point at. Exactly one per client, enforced when
+   * the set is written.
+   */
   isPrimary Boolean @default(false)
 
-  /* Last known state from Vercel. Cached so the admin list renders without
-   * an API call per row; the detail view refreshes it on demand. */
+  /**
+   * Last known state from Vercel. Cached so the admin list renders without
+   * an API call per row; the detail view refreshes it on demand.
+   */
   verified      Boolean   @default(false)
   misconfigured Boolean   @default(true)
   lastCheckedAt DateTime?
@@ -596,41 +697,55 @@ model ClientAdsTracking {
   clientId String @unique
   client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
-  /* "AW-123456789". The whole feature is gated on this being present. */
+  /**
+   * "AW-123456789". The whole feature is gated on this being present.
+   */
   conversionId String?
 
-  /* Conversion action labels, the part after the slash in "AW-xxx/LABEL".
+  /**
+   * Conversion action labels, the part after the slash in "AW-xxx/LABEL".
    * Both are extracted from the snippet the operator pastes rather than typed,
-   * so there is no chance of splitting the pair at the wrong place. */
+   * so there is no chance of splitting the pair at the wrong place.
+   */
   leadConversionLabel String?
-  /* Value carried by the lead conversion, when the action defines one. */
-  leadValue    Float?
-  leadCurrency String?
+  /**
+   * Value carried by the lead conversion, when the action defines one.
+   */
+  leadValue           Float?
+  leadCurrency        String?
 
-  /* "Calls from a website". Google swaps callPhoneNumber on the page for a
+  /**
+   * "Calls from a website". Google swaps callPhoneNumber on the page for a
    * forwarding number and reports calls over the configured duration, so the
    * number has to be stored exactly as the snippet gives it. Optional and
    * deliberately separate — leave it unset when HighLevel's Number Pool
-   * Calling is doing the swap, because two swap systems on one number fight. */
+   * Calling is doing the swap, because two swap systems on one number fight.
+   */
   callConversionLabel String?
   callPhoneNumber     String?
 
-  /* Send hashed email/phone with the conversion. Both networks hash in the
+  /**
+   * Send hashed email/phone with the conversion. Both networks hash in the
    * browser; nothing identifiable is stored here. Applies to Google and
-   * Microsoft alike — the same lead, reported to whichever is configured. */
+   * Microsoft alike — the same lead, reported to whichever is configured.
+   */
   enhancedConversions Boolean @default(true)
 
-  /* --- Microsoft Advertising (Bing) ---
+  /**
+   * --- Microsoft Advertising (Bing) ---
    * UET is Microsoft's equivalent of the Google tag: one numeric tag id per
    * advertiser, installed once. Conversions are then "event goals" matched by
    * action name, which is why the action is stored rather than assumed — it
-   * has to be typed identically in the goal and here or the goal never fires. */
+   * has to be typed identically in the goal and here or the goal never fires.
+   */
   bingUetTagId        String?
   bingLeadEventAction String?
 
-  /* Which Google Ads account this client's conversions live in. Chosen from
+  /**
+   * Which Google Ads account this client's conversions live in. Chosen from
    * the accounts under our manager account, never typed — a mistyped
-   * ten-digit id checks someone else's conversions and looks fine doing it. */
+   * ten-digit id checks someone else's conversions and looks fine doing it.
+   */
   googleAdsCustomerId String?
 
   createdAt DateTime @default(now())
@@ -741,7 +856,7 @@ model ClientSiteContent {
 
 enum SitePhotoPool {
   GALLERY // the "range of work" grid
-  BODY    // process/detail shots beside prose on service pages
+  BODY // process/detail shots beside prose on service pages
 }
 
 model ClientSitePhoto {
@@ -764,33 +879,33 @@ model ClientSitePhoto {
 // ============================================
 
 model CallAnalysis {
-  id       String @id @default(cuid())
+  id       String  @id @default(cuid())
   clientId String
-  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client   Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   leadId   String?
-  lead     Lead?  @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  lead     Lead?   @relation(fields: [leadId], references: [id], onDelete: SetNull)
 
   // HighLevel references
   highlevelCallId    String?
   highlevelContactId String?
 
   // Audio
-  recordingUrl     String? // Original URL from HighLevel (Deepgram pulls from this)
-  durationSeconds  Int?
-  callDirection    String? // inbound | outbound
-  callerPhone      String?
-  repPhone         String?
+  recordingUrl    String? // Original URL from HighLevel (Deepgram pulls from this)
+  durationSeconds Int?
+  callDirection   String? // inbound | outbound
+  callerPhone     String?
+  repPhone        String?
 
   // Pipeline status
   status       CallAnalysisStatus @default(PENDING)
   errorMessage String?            @db.Text
 
   // Results
-  transcript    Json? // Full Deepgram response
-  audioMetrics  Json? // Computed talk ratios, interruptions, gaps
-  analysis      Json? // Full Claude analysis object
-  score         Int? // Denormalized from analysis.score for sorting/filtering
-  outcome       String? // Denormalized from analysis.outcome
+  transcript   Json? // Full Deepgram response
+  audioMetrics Json? // Computed talk ratios, interruptions, gaps
+  analysis     Json? // Full Claude analysis object
+  score        Int? // Denormalized from analysis.score for sorting/filtering
+  outcome      String? // Denormalized from analysis.outcome
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
