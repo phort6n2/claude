@@ -147,6 +147,12 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
     message: 'This is a test alert from glassleads.app. Safe to ignore.',
     source: 'Admin test',
     leadUrl: null,
+    // A test that omits half the fields is how a missing row goes unnoticed
+    // until a real lead arrives. This carries everything a real alert can.
+    vin: '5NMS3CAD4LH123456',
+    insurance: 'Filing through insurance',
+    carrier: 'State Farm',
+    landingPage: 'https://glassleads.app/admin (test)',
   })
 
   return NextResponse.json({

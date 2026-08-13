@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { decrypt } from '@/lib/encryption'
+import { toE164, telHref, smsHref, firstTextTo } from '@/lib/contact-links'
 
 /**
  * Email and SMS alerts when a lead arrives.
@@ -54,15 +55,6 @@ async function secret(key: string): Promise<string | null> {
   return process.env[key] || null
 }
 
-/** E.164 or nothing — Twilio rejects anything else, slowly. */
-function toE164(raw: string): string | null {
-  const digits = (raw || '').replace(/\D/g, '')
-  if (digits.length === 10) return `+1${digits}`
-  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`
-  if (raw.trim().startsWith('+') && digits.length >= 8) return `+${digits}`
-  return null
-}
-
 /**
  * Every captured field that has a value, in the order a dispatcher reads
  * them: what the job is, what it is on, then how to reach them.
@@ -111,14 +103,33 @@ function emailHtml(businessName: string, lead: LeadSummary): string {
       return `<tr><td style="padding:6px 16px 6px 0;color:#6b7280;white-space:nowrap">${esc(label)}</td><td style="padding:6px 0;color:#111827">${esc(rest.join(': '))}</td></tr>`
     })
     .join('')
-  const tel = lead.phone.replace(/[^+\d]/g, '')
+  const tel = telHref(lead.phone)
+  // The alert is read on a phone within a minute or two of the enquiry, which
+  // makes it the best place the platform has to put a reply one tap away. The
+  // text opens in the owner's own Messages app with a first line already
+  // written — the platform sends nothing.
+  //
+  // `esc` is doing real work on this href, not decoration: the sms: URI
+  // separates its body with `?&`, and a bare `&` inside an HTML attribute is
+  // an entity reference. Left unescaped, some clients swallow it and the
+  // message arrives empty.
+  const sms = smsHref(
+    lead.phone,
+    firstTextTo({
+      firstName: lead.name?.trim().split(/\s+/)[0] || null,
+      businessName,
+      service: lead.service,
+      vehicle: lead.vehicle,
+    })
+  )
   return `<!doctype html><html><body style="margin:0;background:#f6f7f9;font-family:-apple-system,Segoe UI,Roboto,sans-serif">
 <div style="max-width:520px;margin:0 auto;padding:24px">
   <div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:24px">
     <p style="margin:0 0 4px;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6b7280">New lead</p>
     <h1 style="margin:0 0 4px;font-size:22px;color:#111827">${esc(lead.name || 'New enquiry')}</h1>
     <p style="margin:0 0 18px;color:#6b7280;font-size:14px">${esc(businessName)}</p>
-    ${tel ? `<a href="tel:${esc(tel)}" style="display:block;text-align:center;background:#1d4ed8;color:#fff;text-decoration:none;font-weight:700;padding:14px;border-radius:10px;font-size:16px">Call ${esc(lead.phone)}</a>` : ''}
+    ${tel ? `<a href="${esc(tel)}" style="display:block;text-align:center;background:#1d4ed8;color:#fff;text-decoration:none;font-weight:700;padding:14px;border-radius:10px;font-size:16px">Call ${esc(lead.phone)}</a>` : ''}
+    ${sms ? `<a href="${esc(sms)}" style="display:block;text-align:center;background:#fff;color:#1d4ed8;border:1.5px solid #1d4ed8;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;font-size:16px;margin-top:8px">Text ${esc(lead.name?.trim().split(/\s+/)[0] || 'them')}</a>` : ''}
     <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:18px">${rows}</table>
     ${lead.leadUrl ? `<p style="margin:18px 0 0"><a href="${esc(lead.leadUrl)}" style="color:#1d4ed8;font-size:14px">Open this lead</a></p>` : ''}
   </div>

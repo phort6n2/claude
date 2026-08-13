@@ -3,8 +3,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Phone,
-  Mail,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -30,6 +28,7 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefresh'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
+import { LeadQuickActions } from '@/components/leads/LeadQuickActions'
 import { getLeadDisplayName, displayNameIsPhone, formatPhoneDisplay, formatFieldValue } from '@/lib/lead-display'
 import { ChannelBadge } from '@/components/leads/ChannelBadge'
 import { LeadSourceDetails } from '@/components/leads/LeadSourceDetails'
@@ -434,6 +433,7 @@ export default function PortalLeadsPage() {
               <LeadRow
                 key={lead.id}
                 lead={lead}
+                businessName={session.user?.businessName || ''}
                 isExpanded={expandedLeadId === lead.id}
                 isDimmed={expandedLeadId !== null && expandedLeadId !== lead.id}
                 onToggle={() => setExpandedLeadId(expandedLeadId === lead.id ? null : lead.id)}
@@ -738,12 +738,16 @@ function ContactHistory({ lead }: { lead: Lead }) {
 
 function LeadRow({
   lead,
+  businessName,
   isExpanded,
   isDimmed,
   onToggle,
   onUpdate,
 }: {
   lead: Lead
+  /* Named in the pre-written text so the customer knows who is messaging
+   * them from an unknown number. */
+  businessName: string
   isExpanded: boolean
   isDimmed: boolean
   onToggle: () => void
@@ -954,33 +958,16 @@ function LeadRow({
 
             {/* Quick Actions */}
             <div className="flex gap-2 pt-2">
-              {lead.phone && (
-                <a
-                  href={`tel:${lead.phone}`}
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 active:bg-green-700"
-                >
-                  <Phone className="h-4 w-4" />
-                  Call
-                </a>
-              )}
-              {lead.phone && (
-                <a
-                  href={`sms:${lead.phone}`}
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-purple-500 text-white rounded-lg text-sm font-medium hover:bg-purple-600 active:bg-purple-700"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  Text
-                </a>
-              )}
-              {lead.email && (
-                <a
-                  href={`mailto:${lead.email}`}
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 active:bg-blue-700"
-                >
-                  <Mail className="h-4 w-4" />
-                  Email
-                </a>
-              )}
+              <LeadQuickActions
+                phone={lead.phone}
+                email={lead.email}
+                lead={{
+                  firstName: lead.firstName,
+                  businessName,
+                  service: details.service,
+                  vehicle: details.vehicle,
+                }}
+              />
             </div>
 
             {/* Edit Lead Info - Expandable */}
