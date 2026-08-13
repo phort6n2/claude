@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
+import { toE164 } from '@/lib/contact-links'
 import { notifyNewLead } from '@/lib/lead-notifications'
 
 export const dynamic = 'force-dynamic'
@@ -16,14 +17,7 @@ const list = (value: unknown): string[] =>
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-/** Ten digits, or eleven starting with 1, or an explicit +country number. */
-function normalizePhone(raw: string): string | null {
-  const digits = raw.replace(/\D/g, '')
-  if (digits.length === 10) return `+1${digits}`
-  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`
-  if (raw.trim().startsWith('+') && digits.length >= 8) return `+${digits}`
-  return null
-}
+
 
 export async function GET(_request: NextRequest, { params }: RouteContext) {
   const denied = await requireAdmin()
@@ -77,7 +71,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
   const rawSms = list(body.smsTo)
   const smsTo: string[] = []
   for (const entry of rawSms) {
-    const normalized = normalizePhone(entry)
+    const normalized = toE164(entry)
     if (!normalized) {
       return NextResponse.json(
         { error: `"${entry}" is not a phone number we can text.` },
