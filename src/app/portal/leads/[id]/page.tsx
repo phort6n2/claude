@@ -20,6 +20,8 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { CallCoachingReport } from '@/components/portal/CallCoachingReport'
+import { LeadQuickActions } from '@/components/leads/LeadQuickActions'
+import { telHref } from '@/lib/contact-links'
 
 interface Lead {
   id: string
@@ -42,8 +44,16 @@ interface Lead {
 
 interface Session {
   authenticated: boolean
-  clientName?: string
-  userEmail?: string
+  /* The session endpoint has always returned these nested under `user`. This
+   * interface named them at the top level, so `session.clientName` was
+   * undefined and the page header rendered a blank line where the shop's name
+   * belongs. */
+  user?: {
+    clientId: string
+    businessName: string
+    email: string
+    name: string | null
+  }
 }
 
 const STATUS_OPTIONS = [
@@ -216,7 +226,7 @@ export default function PortalLeadDetailPage({ params }: { params: Promise<{ id:
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">{session.clientName}</h1>
+              <h1 className="text-xl font-bold text-gray-900">{session.user?.businessName}</h1>
               <p className="text-sm text-gray-500">Lead Details</p>
             </div>
           </div>
@@ -231,6 +241,17 @@ export default function PortalLeadDetailPage({ params }: { params: Promise<{ id:
         {/* Contact Info Card */}
         <div className="bg-white rounded-lg border p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">{fullName}</h2>
+
+          {/* Reach them from the phone that is already in their hand. The
+              detail view does not load the form payload, so the opening text
+              names the shop and the enquiry without the vehicle. */}
+          <div className="flex gap-2 mb-5">
+            <LeadQuickActions
+              phone={lead.phone}
+              email={lead.email}
+              lead={{ firstName: lead.firstName, businessName: session.user?.businessName }}
+            />
+          </div>
 
           <div className="grid md:grid-cols-2 gap-4">
             {lead.email && (
@@ -254,7 +275,10 @@ export default function PortalLeadDetailPage({ params }: { params: Promise<{ id:
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Phone</p>
-                  <a href={`tel:${lead.phone}`} className="text-green-600 hover:underline">
+                  <a
+                    href={telHref(lead.phone) || `tel:${lead.phone}`}
+                    className="text-green-600 hover:underline"
+                  >
                     {formatPhoneDisplay(lead.phone)}
                   </a>
                 </div>

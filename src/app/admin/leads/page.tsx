@@ -3,8 +3,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import {
-  Phone,
-  Mail,
   Building2,
   ChevronDown,
   ChevronRight,
@@ -34,6 +32,7 @@ import {
 } from '@/components/ui/theme'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
+import { LeadQuickActions } from '@/components/leads/LeadQuickActions'
 import { getLeadDisplayName, displayNameIsPhone, formatPhoneDisplay, formatFieldValue } from '@/lib/lead-display'
 import { useLeadStream } from '@/hooks/useLeadStream'
 
@@ -695,33 +694,16 @@ function LeadRow({
 
             {/* Quick Actions */}
             <div className="flex gap-2 pt-2">
-              {lead.phone && (
-                <a
-                  href={`tel:${lead.phone}`}
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 active:bg-green-700"
-                >
-                  <Phone className="h-4 w-4" />
-                  Call
-                </a>
-              )}
-              {lead.phone && (
-                <a
-                  href={`sms:${lead.phone}`}
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-purple-500 text-white rounded-lg text-sm font-medium hover:bg-purple-600 active:bg-purple-700"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  Text
-                </a>
-              )}
-              {lead.email && (
-                <a
-                  href={`mailto:${lead.email}`}
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 active:bg-blue-700"
-                >
-                  <Mail className="h-4 w-4" />
-                  Email
-                </a>
-              )}
+              <LeadQuickActions
+                phone={lead.phone}
+                email={lead.email}
+                lead={{
+                  firstName: lead.firstName,
+                  businessName: lead.client?.businessName,
+                  service: details.service,
+                  vehicle: details.vehicle,
+                }}
+              />
               <Link
                 href={`/admin/clients/${lead.client.id}`}
                 className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-gray-500 text-white rounded-lg text-sm font-medium hover:bg-gray-600 active:bg-gray-700"
