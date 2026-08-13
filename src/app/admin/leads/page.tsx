@@ -33,6 +33,7 @@ import {
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
 import { LeadQuickActions } from '@/components/leads/LeadQuickActions'
+import { DamagePhoto, damagePhotoOf } from '@/components/leads/DamagePhoto'
 import { getLeadDisplayName, displayNameIsPhone, formatPhoneDisplay, formatFieldValue } from '@/lib/lead-display'
 import { useLeadStream } from '@/hooks/useLeadStream'
 
@@ -468,7 +469,10 @@ function getAllFormFields(lead: Lead): Array<{ label: string; value: string }> {
     'recordingUrl', 'recording_url', 'callRecordingUrl', 'call_recording_url', 'audioUrl', 'audio_url',
     // Skip vehicle/service fields (shown combined in Lead Details section)
     'vehicle', 'Vehicle', 'vehicle_year', 'Vehicle Year', 'vehicle_make', 'Vehicle Make',
-    'vehicle_model', 'Vehicle Model', 'interested_in', 'Interested In', 'Interested In:'
+    'vehicle_model', 'Vehicle Model', 'interested_in', 'Interested In', 'Interested In:',
+    // The photo is rendered as an image above; the raw URL is a long
+    // unreadable line that pushes the useful fields off the screen.
+    'damage_photo_url',
   ])
 
   const formatLabel = (key: string): string => {
@@ -690,6 +694,10 @@ function LeadRow({
                   </audio>
                 </div>
               </div>
+            )}
+
+            {damagePhotoOf(lead.formData) && (
+              <DamagePhoto url={damagePhotoOf(lead.formData) as string} className="pt-2" />
             )}
 
             {/* Quick Actions */}

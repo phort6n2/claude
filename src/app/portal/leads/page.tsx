@@ -29,6 +29,7 @@ import { PullToRefreshIndicator } from '@/components/ui/PullToRefresh'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
 import { LeadQuickActions } from '@/components/leads/LeadQuickActions'
+import { DamagePhoto, damagePhotoOf } from '@/components/leads/DamagePhoto'
 import { getLeadDisplayName, displayNameIsPhone, formatPhoneDisplay, formatFieldValue } from '@/lib/lead-display'
 import { ChannelBadge } from '@/components/leads/ChannelBadge'
 import { LeadSourceDetails } from '@/components/leads/LeadSourceDetails'
@@ -612,6 +613,9 @@ function getAllFormFields(lead: Lead): Array<{ label: string; value: string }> {
     'vehicle_model', 'Vehicle Model', 'interested_in', 'Interested In', 'Interested In:',
     // Internal HighLevel identifier — not useful to display
     'key', 'Key',
+    // The photo is rendered as an image above; the raw URL is a long
+    // unreadable line that pushes the useful fields off the screen.
+    'damage_photo_url',
   ])
 
   // Label formatting helper
@@ -955,6 +959,10 @@ function LeadRow({
 
             {/* Where this lead came from */}
             <LeadSourceDetails lead={lead} />
+
+            {damagePhotoOf(lead.formData) && (
+              <DamagePhoto url={damagePhotoOf(lead.formData) as string} className="pt-2" />
+            )}
 
             {/* Quick Actions */}
             <div className="flex gap-2 pt-2">
