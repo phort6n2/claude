@@ -3,7 +3,11 @@ import { after } from 'next/server'
 import { prisma } from '@/lib/db'
 import { notifyNewLead } from '@/lib/push-notifications'
 import { kickOffCallAnalysis } from '@/lib/call-analysis/queue'
-import { findSameDayDuplicateCanonical } from '@/lib/lead-dedup'
+import {
+  findSameDayDuplicateCanonical,
+  earliestSameDayContact,
+  mergeAttributionIntoCanonical,
+} from '@/lib/lead-dedup'
 import { createDeliveriesForLead, attemptDelivery } from '@/lib/webhook-forwarding'
 // Aliased: push-notifications already exports a notifyNewLead (admin web push).
 import { notifyNewLead as notifyLeadRecipients } from '@/lib/lead-notifications'
@@ -589,19 +593,77 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
     // than an alert about it, and a slow Resend or Twilio call must never
     // delay — or fail — the webhook that captured it.
     //
-    // NOT for same-day duplicates. The dedup above has already decided this
-    // is the same person contacting us again today, and the whole point of
-    // that decision is that it is one enquiry. Alerting on every row turns a
-    // form submitted twice — or a webhook delivered twice, which happens on
-    // any retry — into two identical emails and two texts to the shop, for a
-    // customer they have already been told about.
+    // NOT for same-day duplicates. One customer contacting once is one
+    // enquiry, however many rows it arrives as. Alerting per row turns a form
+    // submitted twice — or a webhook redelivered on retry, or a page that
+    // posts to us and to a CRM that forwards its copy back — into two
+    // identical emails and two texts about a customer the shop has already
+    // been told about.
     after(async () => {
-      if (duplicateOfLeadId) {
+      // Asked now rather than trusted from insert time. Two copies of one
+      // enquiry can be in flight together — the page posts to us and to the
+      // CRM, and the CRM forwards its copy back — and neither insert sees the
+      // other. Both rows exist by the time this runs, and both agree on which
+      // one is the earliest, so exactly one alerts.
+      let alertAllowed = !duplicateOfLeadId
+      let survivorId = duplicateOfLeadId
+      try {
+        const earliest = await earliestSameDayContact({
+          clientId: client.id,
+          leadId: lead.id,
+          phone,
+          email,
+          timezone: client.timezone ?? undefined,
+        })
+        alertAllowed = earliest.isEarliest
+        survivorId = earliest.isEarliest ? null : earliest.earliestId
+      } catch (err) {
+        // Never swallow an alert because a dedup query failed. Fall back to
+        // the insert-time answer: a possible double beats a silent miss.
+        console.warn('[HighLevel Webhook] Alert dedup check failed, using insert-time flag:', err)
+      }
+
+      if (!alertAllowed) {
         console.log(
-          `[HighLevel Webhook] Skipping alerts for lead ${lead.id} — same-day duplicate of ${duplicateOfLeadId}`
+          `[HighLevel Webhook] Skipping alerts for lead ${lead.id} — same-day duplicate${
+            survivorId ? ` of ${survivorId}` : ''
+          }`
         )
+        // The copy being suppressed may be the only one carrying the click
+        // IDs — that is the usual shape, since a CRM workflow strips them on
+        // the way through. Move them onto the row that survives, which is the
+        // one the earliest check picked, not necessarily the one the
+        // insert-time dedup guessed.
+        if (survivorId) {
+          try {
+            const filled = await mergeAttributionIntoCanonical(survivorId, {
+              gclid, gbraid, wbraid,
+              utmSource, utmMedium, utmCampaign, utmContent, utmKeyword, utmMatchtype,
+              campaignId, adGroupId, adId,
+              landingPageUrl, referrerUrl,
+            })
+            if (filled.length) {
+              console.log(
+                `[HighLevel Webhook] Backfilled ${filled.join(', ')} onto canonical ${survivorId} from ${lead.id}`
+              )
+            }
+          } catch (err) {
+            console.error('[HighLevel Webhook] Attribution merge failed:', err)
+          }
+        }
         return
       }
+
+      // One decision governs the email, the SMS and the push. They used to be
+      // guarded separately, which is how they drift apart.
+      notifyNewLead(client.id, {
+        firstName: finalFirstName,
+        phone,
+        source: leadSource,
+      }).catch((err) => {
+        console.error(`[HighLevel Webhook] Failed to send push notification:`, err)
+      })
+
       try {
         const result = await notifyLeadRecipients(client.id, client.businessName, {
           name: String(payload.full_name || payload.first_name || '').trim(),
@@ -660,17 +722,6 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
       } catch (err) {
         console.error('[HighLevel Webhook] Failed to start call analysis:', err)
       }
-    }
-
-    // Push, same rule as the email and SMS above: one enquiry, one buzz.
-    if (!duplicateOfLeadId) {
-      notifyNewLead(client.id, {
-        firstName: finalFirstName,
-        phone,
-        source: leadSource,
-      }).catch((err) => {
-        console.error(`[HighLevel Webhook] Failed to send push notification:`, err)
-      })
     }
 
     return NextResponse.json({

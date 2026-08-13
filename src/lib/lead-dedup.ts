@@ -166,3 +166,136 @@ export async function findSameDayDuplicateCanonical(
 
   return null
 }
+
+/**
+ * Which same-day row for this person came first, and is it this one?
+ *
+ * The duplicate flag set at insert time answers a different question than it
+ * looks like it does. It is computed BEFORE the row exists, so two copies of
+ * one enquiry arriving together — which is exactly what happens when a page
+ * posts to us and to the CRM, and the CRM forwards its copy back — can both
+ * look like originals. Each lookup runs before the other's insert commits,
+ * neither sees the other, both flags come back null, and the shop gets two
+ * alerts for one customer.
+ *
+ * This is asked again at alert time, when both rows definitely exist, and it
+ * asks it as a question with one answer: of every same-day row for this
+ * person, is the earliest one me? Two racing copies both compute the same
+ * earliest row, so exactly one of them alerts. No lock, no schema change, and
+ * it settles the same way no matter which order the two callers run in.
+ *
+ * Ordering breaks ties on id because two inserts really can share a
+ * millisecond, and an ordering that is merely usually-stable would send two
+ * alerts on the day it wasn't.
+ */
+export async function earliestSameDayContact(args: {
+  clientId: string
+  leadId: string
+  phone?: string | null
+  email?: string | null
+  at?: Date
+  timezone?: string
+}): Promise<{ earliestId: string; isEarliest: boolean }> {
+  const mine = { earliestId: args.leadId, isEarliest: true }
+
+  const normPhone = normalizePhone(args.phone)
+  const normEmail = normalizeEmail(args.email)
+  // Nothing to match on: every such row is its own person as far as this can
+  // tell, so it alerts. Suppressing it would silently drop real enquiries.
+  if (!normPhone && !normEmail) return mine
+
+  const at = args.at ?? new Date()
+  const { start, end } = dayWindow(at, args.timezone ?? 'America/Denver')
+
+  const sameDay = await prisma.lead.findMany({
+    where: {
+      clientId: args.clientId,
+      createdAt: { gte: start, lte: end },
+      OR: [{ phone: { not: null } }, { email: { not: null } }],
+    },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    select: { id: true, phone: true, email: true },
+  })
+
+  const matches = sameDay.filter(
+    (l) =>
+      (normPhone && normalizePhone(l.phone) === normPhone) ||
+      (normEmail && normalizeEmail(l.email) === normEmail)
+  )
+
+  // Our own row should always be in there. If it somehow is not — a replica
+  // that has not caught up — say yes rather than swallow the alert.
+  if (!matches.some((l) => l.id === args.leadId)) return mine
+
+  return { earliestId: matches[0].id, isEarliest: matches[0].id === args.leadId }
+}
+
+/** Ad and campaign attribution, as carried on a Lead row. */
+export interface LeadAttribution {
+  gclid?: string | null
+  gbraid?: string | null
+  wbraid?: string | null
+  utmSource?: string | null
+  utmMedium?: string | null
+  utmCampaign?: string | null
+  utmContent?: string | null
+  utmKeyword?: string | null
+  utmMatchtype?: string | null
+  campaignId?: string | null
+  adGroupId?: string | null
+  adId?: string | null
+  landingPageUrl?: string | null
+  referrerUrl?: string | null
+}
+
+const ATTRIBUTION_FIELDS: Array<keyof LeadAttribution> = [
+  'gclid', 'gbraid', 'wbraid',
+  'utmSource', 'utmMedium', 'utmCampaign', 'utmContent', 'utmKeyword', 'utmMatchtype',
+  'campaignId', 'adGroupId', 'adId',
+  'landingPageUrl', 'referrerUrl',
+]
+
+/**
+ * Fill in attribution the canonical lead is missing from a duplicate that has
+ * it. Returns the field names actually filled.
+ *
+ * A page that posts to us directly and to a CRM sends two copies of one
+ * enquiry, and they do not carry the same information: the browser copy has
+ * the click IDs the page collected, while the copy that comes back through
+ * the CRM has usually had them stripped by the workflow in between. Whichever
+ * one commits first becomes the canonical, so the lead reads as untracked
+ * roughly half the time — for reasons that have nothing to do with how the
+ * customer actually arrived. Losing a coin flip is not an attribution model.
+ *
+ * Only ever fills nulls. A canonical that already has a gclid keeps it: two
+ * different click IDs for one person means the second is a later visit, and
+ * the first click is the one the conversion belongs to.
+ */
+export async function mergeAttributionIntoCanonical(
+  canonicalId: string,
+  incoming: LeadAttribution
+): Promise<string[]> {
+  const canonical = await prisma.lead.findUnique({
+    where: { id: canonicalId },
+    select: ATTRIBUTION_FIELDS.reduce(
+      (acc, f) => ({ ...acc, [f]: true }),
+      {} as Record<string, boolean>
+    ),
+  })
+  if (!canonical) return []
+
+  const patch: Record<string, string> = {}
+  for (const field of ATTRIBUTION_FIELDS) {
+    const existing = (canonical as Record<string, unknown>)[field]
+    const value = incoming[field]
+    if (!existing && typeof value === 'string' && value.trim()) {
+      patch[field] = value
+    }
+  }
+
+  const filled = Object.keys(patch)
+  if (filled.length === 0) return []
+
+  await prisma.lead.update({ where: { id: canonicalId }, data: patch })
+  return filled
+}
