@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { CALL_TRACKING_SQL } from '@/lib/schema-bootstrap'
+import { BOOTSTRAP_SQL } from '@/lib/schema-bootstrap'
 
 export const dynamic = 'force-dynamic'
 
@@ -163,10 +163,10 @@ const STATEMENTS: Array<{ table: string; sql: string[] }> = [
     ],
   },
   {
-    table: 'TrackingNumber + Lead call columns',
+    table: 'TrackingNumber, Lead call + ads-upload columns',
     // Shared with the startup hook so the two can never disagree about what
     // the schema needs — see lib/schema-bootstrap.ts.
-    sql: CALL_TRACKING_SQL,
+    sql: BOOTSTRAP_SQL,
   },
 ]
 

@@ -230,6 +230,16 @@ model Lead {
   callStatus       String?
   callDurationSecs Int?
 
+  /**
+   * Offline conversion upload to Google Ads. Stamped when the booked value
+   * has been sent, so a lead is never counted twice — and the value that was
+   * sent is kept alongside, because a shop correcting the amount afterwards
+   * needs an adjustment rather than a second upload.
+   */
+  adsUploadedAt    DateTime?
+  adsUploadedValue Float?
+  adsUploadError   String?
+
   // Outbound webhook deliveries created for this lead
   webhookDeliveries WebhookDelivery[]
 
@@ -747,6 +757,14 @@ model ClientAdsTracking {
    * ten-digit id checks someone else's conversions and looks fine doing it.
    */
   googleAdsCustomerId String?
+
+  /**
+   * The UPLOAD_CLICKS conversion action that booked jobs are uploaded to.
+   * A separate action from the website tag on purpose: the tag counts form
+   * fills, this one counts jobs that were actually sold, and mixing them
+   * would have Smart Bidding optimising for both at once.
+   */
+  offlineConversionActionId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
