@@ -147,6 +147,7 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
     insurance: 'Filing through insurance',
     carrier: 'State Farm',
     landingPage: 'https://glassleads.app/admin (test)',
+    outcomeUrl: null,
   })
 
   return NextResponse.json({
