@@ -48,6 +48,21 @@ export const CALL_TRACKING_SQL: string[] = [
 ]
 
 /**
+ * Offline conversion upload to Google Ads. Same rule as above: the Lead
+ * columns are on an existing table, so they cannot wait for anyone to
+ * remember to run an endpoint.
+ */
+export const OFFLINE_CONVERSION_SQL: string[] = [
+  `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "offlineConversionActionId" TEXT`,
+  `ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "adsUploadedAt" TIMESTAMP(3)`,
+  `ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "adsUploadedValue" DOUBLE PRECISION`,
+  `ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "adsUploadError" TEXT`,
+]
+
+/** Everything the running code assumes exists. */
+export const BOOTSTRAP_SQL: string[] = [...CALL_TRACKING_SQL, ...OFFLINE_CONVERSION_SQL]
+
+/**
  * Run them. Never throws: a database that is unreachable at boot must not
  * stop the server from starting, and the statements are retried on the next
  * cold start and by the setup endpoint.
@@ -56,7 +71,7 @@ export async function ensureCallTrackingSchema(): Promise<{ ran: number; error?:
   try {
     const { prisma } = await import('@/lib/db')
     let ran = 0
-    for (const sql of CALL_TRACKING_SQL) {
+    for (const sql of BOOTSTRAP_SQL) {
       await prisma.$executeRawUnsafe(sql)
       ran += 1
     }
