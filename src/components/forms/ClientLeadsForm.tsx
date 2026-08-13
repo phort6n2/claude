@@ -6,6 +6,7 @@ import SaveBar from '@/components/forms/SaveBar'
 import WebhookDestinationsManager from '@/components/admin/WebhookDestinationsManager'
 import CopyField from '@/components/admin/CopyField'
 import LeadNotificationsCard from '@/components/admin/LeadNotificationsCard'
+import TrackingNumbersCard from '@/components/admin/TrackingNumbersCard'
 
 /**
  * "Lead delivery" tab — everything touched when a client says "I stopped
@@ -70,6 +71,16 @@ export default function ClientLeadsForm({
           </p>
         </div>
         <LeadNotificationsCard clientId={client.id} />
+      </section>
+
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+        <div className="px-6 pt-5 pb-1">
+          <h2 className="font-semibold text-gray-900">Call tracking</h2>
+          <p className="text-sm text-gray-500">
+            Twilio numbers that ring this shop, so calls become leads and get coached
+          </p>
+        </div>
+        <TrackingNumbersCard clientId={client.id} />
       </section>
 
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">

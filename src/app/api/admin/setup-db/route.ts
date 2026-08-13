@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { CALL_TRACKING_SQL } from '@/lib/schema-bootstrap'
 
 export const dynamic = 'force-dynamic'
 
@@ -160,6 +161,12 @@ const STATEMENTS: Array<{ table: string; sql: string[] }> = [
       `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "bingLeadEventAction" TEXT`,
       `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "googleAdsCustomerId" TEXT`,
     ],
+  },
+  {
+    table: 'TrackingNumber + Lead call columns',
+    // Shared with the startup hook so the two can never disagree about what
+    // the schema needs — see lib/schema-bootstrap.ts.
+    sql: CALL_TRACKING_SQL,
   },
 ]
 
