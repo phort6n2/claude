@@ -234,6 +234,20 @@ const WIDGET_SOURCE = String.raw`(function () {
       '.chev{margin-left:auto;flex:0 0 auto;color:#6e6e6e;transition:transform .18s ease}' +
       '.more-btn[aria-expanded="true"] .chev{transform:rotate(180deg)}' +
       '.drawer{display:grid;gap:14px;padding:18px 14px;background:#faf7f7;border:1px solid #e2d8d8;border-top:0;border-radius:0 0 10px 10px}' +
+      // Photo picker: a drop-zone-shaped button rather than a bare file input,
+      // which on mobile is an unlabelled grey rectangle nobody presses.
+      '.photo-btn{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:12px 14px;background:#fff;border:1.5px dashed #7C8FA3;border-radius:14px;cursor:pointer;font-size:15px;color:#1a1a1a;text-align:left}' +
+      '.photo-btn:hover{border-color:' + cfg.primaryColor + ';background:' + rgba(cfg.primaryColor, 0.04) + '}' +
+      '.photo-in{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}' +
+      '.photo-prev{display:flex;align-items:center;gap:12px;padding:10px;background:#fff;border:1.5px solid #7C8FA3;border-radius:14px}' +
+      // display:flex beats the hidden attribute, so the empty preview shows as
+      // a bare white bar under the button until this says otherwise.
+      '.photo-prev[hidden]{display:none}' +
+      '.photo-btn[hidden]{display:none}' +
+      '.photo-prev img{width:56px;height:56px;object-fit:cover;border-radius:10px;flex:0 0 auto}' +
+      '.photo-meta{min-width:0;flex:1 1 auto;font-size:14px;color:#1a1a1a}' +
+      '.photo-meta small{display:block;color:#5c5c5c;font-size:12.5px}' +
+      '.photo-x{flex:0 0 auto;min-height:40px;padding:0 12px;background:#fff;border:1.5px solid #7C8FA3;border-radius:10px;cursor:pointer;font-size:14px;color:#1a1a1a}' +
       '.drawer[hidden]{display:none}' +
       '.radios{display:flex;flex-wrap:wrap;gap:8px;border:0;margin:0;padding:0}' +
       '.radios legend{flex:1 1 100%;font-size:14px;font-weight:600;color:#1a1a1a;padding:0;margin:0 0 8px}' +
@@ -355,6 +369,83 @@ const WIDGET_SOURCE = String.raw`(function () {
       radios.appendChild(el('label', { class: 'radio' }, [input, document.createTextNode(' ' + pair[1])]));
     });
 
+    /* ---- photo of the damage ----
+       The single most useful thing a customer can give a glass shop. A photo
+       settles chip-versus-crack, how far it has spread, whether it is in the
+       driver's line of sight and whether there is a camera bracket behind it
+       — which between them decide whether the job is a repair or a
+       replacement, and whether it needs calibration. Without it the shop
+       calls back to ask; with it they can quote.
+
+       Uploaded the moment it is chosen, not at submit. The URL is what the
+       form carries, so pressing the button is never waiting on a phone photo
+       going up a mobile connection. */
+    var photoUrl = null;
+    var photoInput = el('input', { type: 'file', class: 'photo-in', accept: 'image/*', tabindex: '-1' });
+    var photoBtn = el('button', { type: 'button', class: 'photo-btn' });
+    photoBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Add a photo of the damage</span>';
+    var photoPrev = el('div', { class: 'photo-prev' });
+    photoPrev.hidden = true;
+    var photoWrap = el('div', {}, [photoInput, photoBtn, photoPrev]);
+
+    photoBtn.addEventListener('click', function () { photoInput.click(); });
+
+    function resetPhoto() {
+      photoUrl = null;
+      photoInput.value = '';
+      photoPrev.hidden = true;
+      photoPrev.innerHTML = '';
+      photoBtn.hidden = false;
+    }
+
+    function showPhotoState(objectUrl, title, subtitle, busy) {
+      photoBtn.hidden = true;
+      photoPrev.hidden = false;
+      photoPrev.innerHTML = '';
+      var img = el('img', { alt: '' });
+      img.src = objectUrl;
+      var meta = el('div', { class: 'photo-meta' });
+      meta.appendChild(document.createTextNode(title));
+      meta.appendChild(el('small', { text: subtitle }));
+      photoPrev.appendChild(img);
+      photoPrev.appendChild(meta);
+      if (!busy) {
+        var x = el('button', { type: 'button', class: 'photo-x', text: 'Remove' });
+        x.addEventListener('click', resetPhoto);
+        photoPrev.appendChild(x);
+      }
+    }
+
+    photoInput.addEventListener('change', function () {
+      var f = photoInput.files && photoInput.files[0];
+      if (!f) return;
+      var objectUrl = URL.createObjectURL(f);
+      showPhotoState(objectUrl, 'Uploading…', 'One moment', true);
+
+      var fd = new FormData();
+      fd.append('photo', f);
+      fetch(BASE + '/api/widget/photo?client=' + encodeURIComponent(CLIENT), { method: 'POST', body: fd })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok || !res.j || !res.j.url) throw new Error((res.j && res.j.error) || 'Upload failed');
+          photoUrl = res.j.url;
+          showPhotoState(objectUrl, 'Photo attached', 'The shop will see this with your quote', false);
+        })
+        .catch(function (e) {
+          /* A failed photo must never cost the lead. The form stays entirely
+             usable and simply submits without one.
+
+             The reason goes to the console, not to the customer. Upload
+             failures are infrastructure — "Photo storage is not configured"
+             is a sentence for whoever runs this, and putting it in front of
+             somebody trying to get their windscreen fixed reads as the whole
+             form being broken. */
+          photoUrl = null;
+          try { console.warn('[glassleads] photo upload failed:', e && e.message); } catch (_) {}
+          showPhotoState(objectUrl, 'Couldn\'t attach that photo', 'No problem — send your request and they will ask if they need it', false);
+        });
+    });
+
     // Honeypot: no label, display:none, a name autofill doesn't recognise.
     var hp = el('input', { type: 'text', name: 'hp_check', tabindex: '-1', autocomplete: 'off', 'aria-hidden': 'true' });
     var hpWrap = el('div', { class: 'hp', 'aria-hidden': 'true' }, [hp]);
@@ -374,6 +465,7 @@ const WIDGET_SOURCE = String.raw`(function () {
     vinField.appendChild(vinHint);
     var drawer = el('div', { class: 'drawer' });
     drawer.hidden = true;
+    drawer.appendChild(field('Photo of the damage <span class="opt">— optional, usually saves a phone call</span>', photoWrap));
     drawer.appendChild(vinField);
     drawer.appendChild(radios);
     drawer.appendChild(carrierField);
@@ -382,7 +474,7 @@ const WIDGET_SOURCE = String.raw`(function () {
     var moreBtn = el('button', { type: 'button', class: 'more-btn', 'aria-expanded': 'false' });
     moreBtn.appendChild(el('span', {
       html: '<span class="more-t">Speed up my quote <span class="opt">(optional)</span></span><br>' +
-        '<span class="more-s">VIN, insurance, and anything else about the damage</span>'
+        '<span class="more-s">A photo, VIN, insurance — anything that helps them quote</span>'
     }));
     moreBtn.appendChild(el('span', {
       class: 'chev',
@@ -438,6 +530,7 @@ const WIDGET_SOURCE = String.raw`(function () {
         vehicle: vehicle.value.trim(),
         postal_code: zip.value.trim(),
         vin: vin.value.trim() || null,
+        damage_photo_url: photoUrl,
         insurance: insValue,
         insurance_carrier: insValue === 'yes' ? carrier.value || null : null,
         message: notes.value.trim() || null,
@@ -479,6 +572,7 @@ const WIDGET_SOURCE = String.raw`(function () {
         insurance: data.insurance,
         insurance_carrier: data.insurance_carrier,
         message: data.message,
+        damage_photo_url: data.damage_photo_url,
 
         // Readable companions + aliases for the template sites' key names, so
         // one CRM mapping covers both form types. Additive only.

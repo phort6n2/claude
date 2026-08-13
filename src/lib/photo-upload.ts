@@ -25,6 +25,10 @@ const WATERMARK_SCALE = 0.18
 /** Gap from the photo edge, as a fraction of the photo width. */
 const WATERMARK_PAD = 0.03
 const WATERMARK_OPACITY = 0.85
+/** A phone photo of a windscreen; anything bigger is a camera original. */
+export const MAX_DAMAGE_UPLOAD_BYTES = 12 * 1024 * 1024
+/** Enough to tell a chip from a crack and see where on the glass it sits. */
+const DAMAGE_DIMENSION = 1600
 
 export interface ProcessedPhoto {
   url: string
@@ -167,6 +171,59 @@ export async function processAndStorePhoto({
     }
   } catch (error) {
     console.error('Blob upload failed:', error)
+    return { ok: false, error: 'Upload failed. Please try again.' }
+  }
+}
+
+/**
+ * Store a customer's photo of their damage.
+ *
+ * Deliberately not the same path as the gallery photos above. This one is
+ * never watermarked — it is the customer's photo of their own car, and
+ * stamping a shop's logo on it would be both odd and misleading if it were
+ * ever forwarded on. It is also stored smaller: the job it has to do is let a
+ * technician tell a chip from a spreading crack and see where on the glass it
+ * sits, and 1600px does that with room to spare.
+ *
+ * The EXIF stripping matters more here than it does for a shop's own photos.
+ * A customer photographs the windscreen on their driveway, so the original
+ * carries the GPS coordinates of their house. Re-encoding through sharp drops
+ * it, and the file that reaches storage has none of it.
+ */
+export async function storeDamagePhoto({
+  file,
+  clientSlug,
+}: {
+  file: ArrayBuffer
+  clientSlug: string
+}): Promise<{ ok: true; url: string; bytes: number } | { ok: false; error: string }> {
+  if (!blobConfigured()) {
+    return { ok: false, error: 'Photo storage is not configured.' }
+  }
+  if (file.byteLength > MAX_DAMAGE_UPLOAD_BYTES) {
+    return { ok: false, error: 'That photo is too large. Please pick one under 12 MB.' }
+  }
+
+  let output: Buffer
+  try {
+    output = await sharp(Buffer.from(file), { failOn: 'error' })
+      .rotate() // apply EXIF orientation, then lose the EXIF with it
+      .resize({ width: DAMAGE_DIMENSION, height: DAMAGE_DIMENSION, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 80, mozjpeg: true })
+      .toBuffer()
+  } catch {
+    return { ok: false, error: "That file isn't a photo we can read. Try a JPEG, PNG or HEIC." }
+  }
+
+  try {
+    const blob = await put(`damage/${clientSlug}/${Date.now()}.jpg`, output, {
+      access: 'public',
+      contentType: 'image/jpeg',
+      addRandomSuffix: true,
+    })
+    return { ok: true, url: blob.url, bytes: output.byteLength }
+  } catch (error) {
+    console.error('[Damage photo] Blob upload failed:', error)
     return { ok: false, error: 'Upload failed. Please try again.' }
   }
 }

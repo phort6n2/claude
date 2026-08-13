@@ -34,6 +34,10 @@ export interface LeadSummary {
   insurance?: string
   carrier?: string
   landingPage?: string
+  /* The customer's own photo of the damage. Rendered in the email rather than
+   * linked, because the entire value of it is being able to look without
+   * opening anything. */
+  damagePhotoUrl?: string
 }
 
 async function secret(key: string): Promise<string | null> {
@@ -75,6 +79,7 @@ function plainLines(lead: LeadSummary): string[] {
     lead.message && `Notes: ${lead.message}`,
     lead.source && `Source: ${lead.source}`,
     lead.landingPage && `Page: ${lead.landingPage}`,
+    lead.damagePhotoUrl && `Photo: ${lead.damagePhotoUrl}`,
   ].filter(Boolean) as string[]
 }
 
@@ -98,6 +103,9 @@ function emailHtml(businessName: string, lead: LeadSummary): string {
   const esc = (v: string) =>
     v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
   const rows = plainLines(lead)
+    // The photo is rendered as an image below, so a row repeating its URL
+    // would just be a long unreadable string in the middle of the details.
+    .filter((line) => !line.startsWith('Photo: '))
     .map((line) => {
       const [label, ...rest] = line.split(': ')
       return `<tr><td style="padding:6px 16px 6px 0;color:#6b7280;white-space:nowrap">${esc(label)}</td><td style="padding:6px 0;color:#111827">${esc(rest.join(': '))}</td></tr>`
@@ -130,6 +138,11 @@ function emailHtml(businessName: string, lead: LeadSummary): string {
     <p style="margin:0 0 18px;color:#6b7280;font-size:14px">${esc(businessName)}</p>
     ${tel ? `<a href="${esc(tel)}" style="display:block;text-align:center;background:#1d4ed8;color:#fff;text-decoration:none;font-weight:700;padding:14px;border-radius:10px;font-size:16px">Call ${esc(lead.phone)}</a>` : ''}
     ${sms ? `<a href="${esc(sms)}" style="display:block;text-align:center;background:#fff;color:#1d4ed8;border:1.5px solid #1d4ed8;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;font-size:16px;margin-top:8px">Text ${esc(lead.name?.trim().split(/\s+/)[0] || 'them')}</a>` : ''}
+    ${
+      lead.damagePhotoUrl
+        ? `<a href="${esc(lead.damagePhotoUrl)}" style="display:block;margin-top:18px;text-decoration:none"><img src="${esc(lead.damagePhotoUrl)}" alt="Photo of the damage" width="472" style="width:100%;max-width:472px;border-radius:10px;border:1px solid #e5e7eb;display:block"><span style="display:block;margin-top:6px;font-size:12px;color:#6b7280">Photo sent by the customer — tap to open full size</span></a>`
+        : ''
+    }
     <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:18px">${rows}</table>
     ${lead.leadUrl ? `<p style="margin:18px 0 0"><a href="${esc(lead.leadUrl)}" style="color:#1d4ed8;font-size:14px">Open this lead</a></p>` : ''}
   </div>

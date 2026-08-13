@@ -40,6 +40,39 @@ function corsHeaders(origin: string | null, allowed: boolean): Record<string, st
   }
 }
 
+/**
+ * A damage photo URL, but only if we stored it.
+ *
+ * The alert email renders this as an image. The lead payload is attacker
+ * controllable — anyone allowed to post a lead controls every field in it —
+ * so an unchecked URL here is a way to put a chosen image, or a tracking
+ * pixel, straight into a shop owner's inbox. Only Vercel Blob URLs under our
+ * own damage prefix are accepted; anything else is dropped silently, because
+ * the lead itself is still worth keeping.
+ */
+function ourBlobUrl(value: unknown): string | undefined {
+  if (typeof value !== 'string' || !value) return undefined
+  try {
+    const url = new URL(value)
+    if (url.protocol !== 'https:') return undefined
+    if (!url.pathname.startsWith('/damage/')) return undefined
+
+    // Every Vercel Blob store answers on *.blob.vercel-storage.com, so the
+    // suffix alone would also accept somebody else's store — enough for
+    // whoever posted the lead to choose the image that lands in a shop's
+    // inbox. BLOB_STORE_HOST pins it to ours. Without it set, fall back to
+    // the suffix rather than dropping every photo: the narrow version of this
+    // is still far better than rendering arbitrary URLs, and a missing env
+    // var should not silently break the feature.
+    const pinned = process.env.BLOB_STORE_HOST
+    if (pinned) return url.hostname === pinned ? url.toString() : undefined
+    if (!url.hostname.endsWith('.blob.vercel-storage.com')) return undefined
+    return url.toString()
+  } catch {
+    return undefined
+  }
+}
+
 /** CORS preflight. Unknown origins get no headers, so the browser blocks. */
 export async function OPTIONS(request: NextRequest) {
   const origin = request.headers.get('origin')
@@ -310,6 +343,9 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
       vin: getCustomField('vin') ||
            getCustomField('VIN') ||
            getCustomField('Vin'),
+      // Validated on the way in for the same reason the alert validates it:
+      // this ends up rendered as an image in the admin and the portal.
+      damage_photo_url: ourBlobUrl(getCustomField('damage_photo_url')) || null,
       glass_type: getCustomField('glass_type') ||
                   getCustomField('What type of glass do you need help with?') ||
                   getCustomField('Glass Type'),
@@ -678,6 +714,10 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
           insurance: String(payload.insurance_label || payload.insurance || '').trim(),
           carrier: String(payload.carrier || payload.insurance_carrier || '').trim(),
           landingPage: String(payload.landing_page || payload.page || '').trim(),
+          // Only ever our own storage. The alert renders this as an <img>, so
+          // an arbitrary URL in the payload would let anyone who can post a
+          // lead put an image of their choosing into a shop's inbox.
+          damagePhotoUrl: ourBlobUrl(payload.damage_photo_url),
           leadUrl: `${process.env.APP_URL || 'https://glassleads.app'}/admin/leads/${lead.id}`,
         })
         if (result.emailSent || result.smsSent) {
