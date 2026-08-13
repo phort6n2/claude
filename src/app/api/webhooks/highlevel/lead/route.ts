@@ -13,6 +13,7 @@ import { createDeliveriesForLead, attemptDelivery } from '@/lib/webhook-forwardi
 import { notifyNewLead as notifyLeadRecipients } from '@/lib/lead-notifications'
 import { decideOrigin, requestHost } from '@/lib/lead-origin-policy'
 import { outcomeUrlFor } from '@/lib/lead-outcome-token'
+import { decodeVin, calibrationLabel } from '@/lib/vin-decode'
 import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -691,6 +692,37 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
         return
       }
 
+      // Decode the VIN before alerting rather than after. It is one bounded
+      // request and the alert is markedly more useful with it — knowing there
+      // is a camera behind the glass changes what the shop quotes. A failure
+      // or a slow vPIC costs the extra lines, never the alert.
+      let decoded: Awaited<ReturnType<typeof decodeVin>> = null
+      const vinForDecode = String(payload.vin || '').trim()
+      if (vinForDecode) {
+        try {
+          decoded = await decodeVin(vinForDecode)
+          if (decoded && !decoded.error) {
+            // Kept on the lead so the admin and the portal show the same
+            // answer later without asking vPIC again.
+            await prisma.lead
+              .update({
+                where: { id: lead.id },
+                data: {
+                  formData: {
+                    ...(formData as Record<string, unknown>),
+                    vin_decoded: decoded.headline,
+                    vin_calibration: decoded.calibration,
+                    vin_camera_systems: decoded.cameraSystems,
+                  } as Prisma.InputJsonValue,
+                },
+              })
+              .catch(() => {})
+          }
+        } catch (err) {
+          console.warn('[HighLevel Webhook] VIN decode failed:', err)
+        }
+      }
+
       // One decision governs the email, the SMS and the push. They used to be
       // guarded separately, which is how they drift apart.
       notifyNewLead(client.id, {
@@ -721,6 +753,8 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
           damagePhotoUrl: ourBlobUrl(payload.damage_photo_url),
           leadUrl: `${process.env.APP_URL || 'https://glassleads.app'}/admin/leads/${lead.id}`,
           outcomeUrl: outcomeUrlFor(lead.id),
+          decodedVehicle: decoded && !decoded.error ? decoded.headline : undefined,
+          calibration: decoded ? calibrationLabel(decoded.calibration) ?? undefined : undefined,
         })
         if (result.emailSent || result.smsSent) {
           console.log(
