@@ -26,6 +26,10 @@ export interface LeadSummary {
   message: string
   source: string
   leadUrl: string | null
+  /* Signed one-tap link for recording whether the job booked. Absent when no
+   * signing key is configured, in which case the buttons are simply omitted
+   * rather than rendered dead. */
+  outcomeUrl?: string | null
   /* Everything else the form captured. The alert used to carry a fixed
    * subset, so the shop got an email missing the VIN and the insurance
    * details — the two things that decide whether the job is bookable and what
@@ -144,6 +148,18 @@ function emailHtml(businessName: string, lead: LeadSummary): string {
         : ''
     }
     <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:18px">${rows}</table>
+    ${
+      lead.outcomeUrl
+        ? `<div style="margin:20px 0 0;padding:16px 0 0;border-top:1px solid #e5e7eb">
+      <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#111827">Did this one book?</p>
+      <p style="margin:0 0 12px;font-size:13px;color:#6b7280">One tap. It is what turns your leads list into a revenue figure — and it is how the ads learn which clicks are worth buying.</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%"><tr>
+        <td style="padding-right:5px;width:50%"><a href="${esc(lead.outcomeUrl)}" style="display:block;text-align:center;background:#059669;color:#fff;text-decoration:none;font-weight:700;padding:12px;border-radius:10px;font-size:15px">We booked it</a></td>
+        <td style="padding-left:5px;width:50%"><a href="${esc(lead.outcomeUrl)}" style="display:block;text-align:center;background:#fff;color:#374151;border:1.5px solid #d1d5db;text-decoration:none;font-weight:700;padding:11px;border-radius:10px;font-size:15px">Didn't book</a></td>
+      </tr></table>
+    </div>`
+        : ''
+    }
     ${lead.leadUrl ? `<p style="margin:18px 0 0"><a href="${esc(lead.leadUrl)}" style="color:#1d4ed8;font-size:14px">Open this lead</a></p>` : ''}
   </div>
   <p style="text-align:center;color:#9ca3af;font-size:12px;margin:16px 0 0">Sent by glassleads.app the moment the form was submitted.</p>

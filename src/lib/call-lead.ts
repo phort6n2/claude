@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { earliestSameDayContact } from '@/lib/lead-dedup'
 import { notifyNewLead as notifyLeadRecipients } from '@/lib/lead-notifications'
 import { notifyNewLead as notifyAdminPush } from '@/lib/push-notifications'
+import { outcomeUrlFor } from '@/lib/lead-outcome-token'
 import type { TrackingNumber } from '@prisma/client'
 
 /**
@@ -111,6 +112,7 @@ export async function recordCall(
           message: 'Nobody picked up. The caller has not left any details — calling straight back is the whole opportunity.',
           source: sourceLabel(number, true),
           leadUrl: `${process.env.APP_URL || 'https://glassleads.app'}/admin/leads/${lead.id}`,
+          outcomeUrl: outcomeUrlFor(lead.id),
         })
         notifyAdminPush(number.clientId, {
           firstName: 'Missed call',

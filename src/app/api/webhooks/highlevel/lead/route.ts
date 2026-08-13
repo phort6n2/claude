@@ -12,6 +12,7 @@ import { createDeliveriesForLead, attemptDelivery } from '@/lib/webhook-forwardi
 // Aliased: push-notifications already exports a notifyNewLead (admin web push).
 import { notifyNewLead as notifyLeadRecipients } from '@/lib/lead-notifications'
 import { decideOrigin, requestHost } from '@/lib/lead-origin-policy'
+import { outcomeUrlFor } from '@/lib/lead-outcome-token'
 import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -719,6 +720,7 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
           // lead put an image of their choosing into a shop's inbox.
           damagePhotoUrl: ourBlobUrl(payload.damage_photo_url),
           leadUrl: `${process.env.APP_URL || 'https://glassleads.app'}/admin/leads/${lead.id}`,
+          outcomeUrl: outcomeUrlFor(lead.id),
         })
         if (result.emailSent || result.smsSent) {
           console.log(
