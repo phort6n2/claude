@@ -11,9 +11,9 @@ import PhotoManager from '@/components/admin/PhotoManager'
  * "Website" tab — the client's hosted site: which address it lives at, and
  * everything on it.
  *
- * ONE save. The importer writes some of what it finds to the client record
- * (logo, service areas) and the rest to site content; both are committed by
- * the single Save inside the content editor, so an import can never be
+ * ONE write path. The importer writes some of what it finds to the client
+ * record (logo, service areas) and the rest to site content; both are
+ * committed by the content editor's autosave, so an import can never be
  * half-saved.
  */
 export default function ClientSiteForm({
