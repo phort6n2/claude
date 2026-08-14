@@ -27,7 +27,11 @@ async function lookupPlaceWebsite(placeId: string): Promise<string | null> {
     if (!res.ok) return null
     const data = await res.json()
     const website = data?.result?.website
-    return typeof website === 'string' && website.startsWith('http') ? website : null
+    // Profiles routinely store plain http:// — normalize so the import field
+    // (which requires https) can use the value as-is.
+    return typeof website === 'string' && website.startsWith('http')
+      ? website.replace(/^http:\/\//i, 'https://')
+      : null
   } catch {
     return null
   }
@@ -83,6 +87,11 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
           .update({ where: { id }, data: { websiteUrl } })
           .catch(() => {})
       }
+    } else if (websiteUrl && /^http:\/\//i.test(websiteUrl)) {
+      // Rows captured before the https normalization existed: heal on read,
+      // since the import field this seeds requires https.
+      websiteUrl = websiteUrl.replace(/^http:\/\//i, 'https://')
+      await prisma.client.update({ where: { id }, data: { websiteUrl } }).catch(() => {})
     }
     return NextResponse.json({
       content: content
