@@ -175,7 +175,9 @@ export async function GET(request: NextRequest) {
       googleMapsUrl: place.url || `https://www.google.com/maps/place/?q=place_id:${placeId}`,
       hoursLines,
       hours: condenseHours(hoursLines),
-      website: place.website,
+      // Business Profiles routinely store plain http:// — normalize here so
+      // every consumer (the picker, the import field it seeds) gets https.
+      website: place.website?.replace(/^http:\/\//i, 'https://'),
       rating: place.rating,
       reviewCount: place.user_ratings_total,
     }

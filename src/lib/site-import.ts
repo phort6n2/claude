@@ -79,6 +79,11 @@ export function validatePublicUrl(raw: string): { ok: true; url: URL } | { ok: f
   } catch {
     return { ok: false, error: 'Not a valid URL' }
   }
+  // Google Business Profiles routinely store plain http:// addresses, and
+  // that's what seeds the import field — so upgrade rather than reject. A
+  // site that genuinely has no https will fail at fetch time with a clear
+  // "could not fetch" instead of blocking here on its scheme.
+  if (parsed.protocol === 'http:') parsed.protocol = 'https:'
   if (parsed.protocol !== 'https:') {
     return { ok: false, error: 'URL must use https://' }
   }
