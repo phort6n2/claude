@@ -1,4 +1,5 @@
 import { Phone, MapPin, ShieldCheck, Check } from 'lucide-react'
+import { wordmarkParts } from '@/lib/wordmark'
 import type { SiteExtras } from '@/lib/site-content'
 import { locationPages } from '@/lib/site-locations'
 import { orderLocationsForCity, mapQuery, type SiteLocation } from '@/lib/client-locations'
@@ -283,6 +284,55 @@ export function UtilBar({ client, note }: { client: SiteClient; note: string }) 
 }
 
 /**
+ * The mark for a shop with no logo of their own: their initials in a brand
+ * badge beside their name, set in the site's display face.
+ *
+ * Drawn as live text rather than an image on purpose — it stays crisp at
+ * every density, costs no request, and inherits the page's own typography, so
+ * it reads as part of the design instead of a stand-in for something missing.
+ * `wordmarkParts` picks the initials from the distinctive part of the name;
+ * see that file for why "Collision Auto Glass" is C and not CA.
+ */
+export function Wordmark({
+  businessName,
+  size = 'md',
+  onDark = false,
+}: {
+  businessName: string
+  size?: 'sm' | 'md' | 'lg'
+  onDark?: boolean
+}) {
+  const { initials, name, length } = wordmarkParts(businessName)
+  const badge = size === 'sm' ? 'h-9 w-9 text-[13px]' : size === 'lg' ? 'h-12 w-12 text-lg' : 'h-11 w-11 text-base'
+  // Long names step down so a three-word shop doesn't crowd the nav beside it.
+  const nameCls =
+    length === 'long'
+      ? size === 'lg' ? 'text-lg' : 'text-[15px]'
+      : size === 'lg' ? 'text-xl' : 'text-[17px]'
+  return (
+    <span className="flex items-center gap-2.5 min-w-0">
+      <span
+        className={`${badge} rounded-full shrink-0 grid place-items-center font-extrabold text-white tracking-tight`}
+        style={{
+          background: 'linear-gradient(180deg, var(--cta), var(--cta-b))',
+          boxShadow: 'var(--sh-cta), inset 0 1px 0 rgba(255,255,255,.25)',
+        }}
+        aria-hidden="true"
+      >
+        {initials}
+      </span>
+      <span
+        className={`${nameCls} font-extrabold tracking-[-.02em] truncate ${
+          onDark ? 'text-white' : 'text-[var(--tx)]'
+        }`}
+      >
+        {name}
+      </span>
+    </span>
+  )
+}
+
+/**
  * Sticky header: logo (natural aspect, name text only when there is no
  * wordmark), desktop nav from the client's live service pages, live rating on
  * mobile (only when cached GBP data exists — never fabricated), solid brand
@@ -321,12 +371,7 @@ export function SiteHeader({
               className="h-[52px] w-auto max-w-[240px] object-contain"
             />
           ) : (
-            <>
-              <div className="h-11 w-11 rounded-full flex items-center justify-center text-white font-bold shrink-0 bg-[var(--brand)]">
-                {client.businessName[0]}
-              </div>
-              <span className="font-bold truncate text-[var(--tx)]">{client.businessName}</span>
-            </>
+            <Wordmark businessName={client.businessName} />
           )}
         </a>
         {nav && nav.length > 0 && (
@@ -1280,7 +1325,9 @@ export function SiteFooter({
                 className="h-10 w-auto max-w-[220px] object-contain mb-3.5"
               />
             ) : (
-              <div className="font-bold text-white text-lg mb-3">{client.businessName}</div>
+              <div className="mb-3">
+                <Wordmark businessName={client.businessName} size="lg" onDark />
+              </div>
             )}
             {extras?.footerBlurb && (
               <p className="text-sm leading-[1.6] m-0 mb-3">{extras.footerBlurb}</p>

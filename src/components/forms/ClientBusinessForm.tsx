@@ -517,6 +517,31 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
                 className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
                 placeholder="https://..."
               />
+              {/* No logo is a normal state, not an error — plenty of shops
+                  simply don't have a file. Showing exactly what the site will
+                  use instead stops it reading as something broken, and the
+                  download is there for when the shop asks for "our logo". */}
+              {!formData.logoUrl && (
+                <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <p className="text-xs text-gray-600 mb-2">
+                    No logo yet — the site, footer and photo watermarks use this generated
+                    wordmark from their name and brand color.
+                  </p>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/api/clients/${client.id}/wordmark`}
+                    alt="Generated wordmark preview"
+                    className="h-9 w-auto"
+                  />
+                  <a
+                    href={`/api/clients/${client.id}/wordmark`}
+                    download={`${client.slug || 'wordmark'}-wordmark.png`}
+                    className="mt-2 inline-block text-xs font-medium text-blue-600 hover:underline"
+                  >
+                    Download PNG
+                  </a>
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
