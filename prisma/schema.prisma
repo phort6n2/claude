@@ -90,6 +90,10 @@ model Client {
   // Google Places / Maps
   googlePlaceId String? // Google Places API place_id
   googleMapsUrl String? // Direct link to Google Maps
+  // Their existing website, captured from the Business Profile when the
+  // admin picks one. Seeds the site-content import so nobody re-types a URL
+  // that Google already told us.
+  websiteUrl    String?
 
   // Subscription Management
   subscriptionStatus    SubscriptionStatus @default(TRIAL)

@@ -73,7 +73,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     }
 
     // Text fields that may be blanked to null.
-    for (const key of ['contactPerson', 'googlePlaceId', 'googleMapsUrl', 'logoUrl'] as const) {
+    for (const key of ['contactPerson', 'googlePlaceId', 'googleMapsUrl', 'websiteUrl', 'logoUrl'] as const) {
       setIf(key, data[key] || null)
     }
     // Plain scalars, written as given.

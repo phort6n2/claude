@@ -139,26 +139,54 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
     }
   }
 
-  async function setSiteNumber(numberId: string, useOnSite: boolean) {
+  /**
+   * Autosave for existing numbers. Every control on a saved row writes the
+   * moment it changes — a settings card with an invisible save button is a
+   * card whose settings silently do not apply, which is how this started.
+   */
+  async function patchNumber(
+    numberId: string,
+    patch: Record<string, unknown>,
+    savedText = 'Saved. Applies from the next call.'
+  ) {
     setMessage(null)
+    // Flip the control immediately — a checkbox that answers after a round
+    // trip reads as broken. load() reconciles with the truth either way.
+    setNumbers((prev) =>
+      prev
+        ? prev.map((x) => {
+            if (x.id === numberId) return { ...x, ...patch }
+            // Only one number may front the site, so claiming it releases it
+            // everywhere else, locally as well as on the server.
+            if (patch.useOnSite === true && x.useOnSite) return { ...x, useOnSite: false }
+            return x
+          })
+        : prev
+    )
     try {
       const res = await fetch(`/api/clients/${clientId}/tracking-numbers`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ numberId, useOnSite }),
+        body: JSON.stringify({ numberId, ...patch }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Could not update')
       await load()
-      setMessage({
-        ok: true,
-        text: useOnSite
-          ? 'The hosted site now shows this number everywhere a visitor sees a phone. Live within about five minutes.'
-          : 'The site is back to showing the shop\u2019s real line.',
-      })
+      setMessage({ ok: true, text: savedText })
     } catch (err) {
       setMessage({ ok: false, text: err instanceof Error ? err.message : 'Failed' })
+      await load()
     }
+  }
+
+  async function setSiteNumber(numberId: string, useOnSite: boolean) {
+    await patchNumber(
+      numberId,
+      { useOnSite },
+      useOnSite
+        ? 'The hosted site now shows this number everywhere a visitor sees a phone. Live within about five minutes.'
+        : 'The site is back to showing the shop\u2019s real line.'
+    )
   }
 
   async function remove(numberId: string, phoneNumber: string) {
@@ -210,16 +238,53 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
                 <p className="font-medium text-gray-900 text-sm">
                   {n.phoneNumber}
                   {n.label && <span className="text-gray-500 font-normal"> · {n.label}</span>}
+                  {!n.active && <span className="text-amber-600 font-normal"> · paused</span>}
                 </p>
-                <p className="text-xs text-gray-500">
-                  Rings {n.forwardTo}
-                  {n.recordCalls ? ' · recorded' : ' · not recorded'}
-                  {n.recordCalls && n.announceRecording ? ' · caller told' : ''}
-                  {!n.active && ' · paused'}
-                </p>
-                {n.whisper && (
-                  <p className="text-xs text-gray-400">Shop hears: “{n.whisper}”</p>
-                )}
+                <label className="mt-1 flex items-center gap-2 text-xs text-gray-600">
+                  Rings
+                  <input
+                    key={`${n.id}-fwd-${n.forwardTo}`}
+                    defaultValue={n.forwardTo}
+                    onBlur={(e) => {
+                      const value = e.target.value.trim()
+                      if (value && value !== n.forwardTo) patchNumber(n.id, { forwardTo: value })
+                    }}
+                    className="w-36 px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500"
+                  />
+                </label>
+                <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+                  <label className="flex items-center gap-1.5 text-xs text-gray-600">
+                    <input
+                      type="checkbox"
+                      checked={n.recordCalls}
+                      onChange={(e) => patchNumber(n.id, { recordCalls: e.target.checked })}
+                    />
+                    Record calls
+                  </label>
+                  {n.recordCalls && (
+                    <label className="flex items-center gap-1.5 text-xs text-gray-600">
+                      <input
+                        type="checkbox"
+                        checked={n.announceRecording}
+                        onChange={(e) => patchNumber(n.id, { announceRecording: e.target.checked })}
+                      />
+                      Tell the caller it may be recorded
+                    </label>
+                  )}
+                </div>
+                <label className="mt-1.5 flex items-center gap-2 text-xs text-gray-600">
+                  Whisper
+                  <input
+                    key={`${n.id}-wh-${n.whisper ?? ''}`}
+                    defaultValue={n.whisper ?? ''}
+                    placeholder="none"
+                    onBlur={(e) => {
+                      const value = e.target.value.trim()
+                      if (value !== (n.whisper ?? '')) patchNumber(n.id, { whisper: value })
+                    }}
+                    className="w-44 px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500"
+                  />
+                </label>
                 <button
                   type="button"
                   onClick={() => setSiteNumber(n.id, !n.useOnSite)}

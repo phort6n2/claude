@@ -46,6 +46,7 @@ interface ClientData {
   postalCode: string
   country: string
   googlePlaceId: string | null
+  websiteUrl: string | null
   googleMapsUrl: string | null
   hasShopLocation: boolean
   offersMobileService: boolean
@@ -89,6 +90,7 @@ const defaultClientData: ClientData = {
   country: 'US',
   googlePlaceId: null,
   googleMapsUrl: null,
+  websiteUrl: null,
   hasShopLocation: true,
   offersMobileService: false,
   offersWindshieldRepair: true,
@@ -163,10 +165,14 @@ interface ChapterRow {
  */
 function SiteContentEditor({
   clientId,
+  suggestedImportUrl,
   onLogoFound,
   onAreasFound,
 }: {
   clientId: string
+  /* The website the Business Profile picker found, seeding the import field
+   * so nobody re-types a URL Google already handed over. */
+  suggestedImportUrl?: string | null
   onLogoFound?: (url: string) => void
   onAreasFound?: (areas: string[]) => void
 }) {
@@ -175,6 +181,9 @@ function SiteContentEditor({
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
   const [importUrl, setImportUrl] = useState('')
   const [importing, setImporting] = useState(false)
+  useEffect(() => {
+    if (suggestedImportUrl) setImportUrl((prev) => prev || suggestedImportUrl)
+  }, [suggestedImportUrl])
   const [warrantyTitle, setWarrantyTitle] = useState('')
   const [warrantyText, setWarrantyText] = useState('')
   const [footerBlurb, setFooterBlurb] = useState('')
@@ -992,8 +1001,8 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
         postalCode: details.postalCode || prev.postalCode,
         googlePlaceId: details.placeId,
         googleMapsUrl: details.googleMapsUrl,
+        websiteUrl: details.website || prev.websiteUrl,
       }))
-
       setPlaceSearch(details.businessName)
     } catch (err) {
       console.error('Error fetching place details:', err)
@@ -1677,6 +1686,7 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
                   </p>
                 )}
                 <SiteContentEditor
+                  suggestedImportUrl={formData.websiteUrl}
                   clientId={client!.id}
                   onLogoFound={(url) => updateField('logoUrl', url)}
                   onAreasFound={(found) => {

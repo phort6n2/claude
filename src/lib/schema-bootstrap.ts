@@ -46,6 +46,7 @@ export const CALL_TRACKING_SQL: string[] = [
   `ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "callDurationSecs" INTEGER`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "Lead_twilioCallSid_key" ON "Lead"("twilioCallSid")`,
   `ALTER TABLE "TrackingNumber" ADD COLUMN IF NOT EXISTS "useOnSite" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "websiteUrl" TEXT`,
 ]
 
 /**

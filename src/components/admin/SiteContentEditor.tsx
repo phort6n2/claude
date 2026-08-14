@@ -87,6 +87,9 @@ export default function SiteContentEditor({
           setChapters(Array.isArray(c.chapters) ? c.chapters : [])
         }
         if (Array.isArray(data.photos)) setPhotos(data.photos)
+        // Seed the import field with the site Google knows about, but never
+        // stamp over something already typed.
+        if (data.websiteUrl) setImportUrl((prev) => prev || data.websiteUrl)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
