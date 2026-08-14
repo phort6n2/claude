@@ -243,6 +243,12 @@ export function findLogo(html: string, base: URL, businessName = ''): string | n
     // list at all — these are the ones that keep showing up on trade sites.
     if (/geico|allstate|state.?farm|progressive|farmers|usaa|nationwide|liberty|safelite|google|yelp|facebook|bbb|wix|squarespace|godaddy|wordpress|elementor/.test(haystack))
       score -= 4
+    // Car-make badges. Auto-trade sites carry "makes we service" strips whose
+    // files are literally named things like cars_logo_acura.jpg — the single
+    // most reliable way for a first-match logo finder to ship Honda's mark as
+    // the shop's. Seen in production, not hypothetical.
+    if (/acura|honda|toyota|ford|chevrolet|chevy|nissan|subaru|bmw|mercedes|benz|audi|lexus|kia|hyundai|jeep|dodge|\bram\b|gmc|mazda|volkswagen|\bvw\b|tesla|volvo|cadillac|buick|chrysler|infiniti|porsche|jaguar|rover/.test(haystack))
+      score -= 4
     if (!best || score > best.score) best = { url: abs, score }
   }
   if (best && best.score > 0) return best.url
@@ -256,8 +262,10 @@ export function findLogo(html: string, base: URL, businessName = ''): string | n
     if (abs) return abs
   }
 
-  // A zero-score "logo" img is still more likely theirs than og:image is.
-  return best?.url ?? null
+  // A zero-score "logo" img is still more likely theirs than og:image is —
+  // but a NEGATIVE score means it was positively identified as someone
+  // else's mark, and no logo beats Honda's. The admin can upload one.
+  return best && best.score >= 0 ? best.url : null
 }
 
 /** Largest URL out of a srcset attribute value ("url1 400w, url2 1200w"). */
