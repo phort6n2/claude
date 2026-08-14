@@ -131,23 +131,44 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
   })
   if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
 
+  // The test must be a faithful replica of a real alert — every button, every
+  // row. A test that omits pieces is how missing pieces go unnoticed, and
+  // ALSO how present pieces get reported as broken: a test email without the
+  // Call/Text/booked buttons reads as "the alerts are broken", when the only
+  // thing missing was in the test.
+  //
+  // Call/Text dial the CUSTOMER on a real alert; here the shop's own number
+  // plays the customer, which doubles as a nice self-check — unless that
+  // number does not parse (fictional clients, short numbers), in which case a
+  // reserved fictional number stands in so the buttons still render.
+  const phone = toE164(client.phone) ? client.phone : '(800) 555-0199'
+
+  // The booked/didn't-book buttons need a lead to point at. Use the client's
+  // most recent one so the whole flow is clickable end to end; a brand-new
+  // client with no leads yet gets a note instead of silently missing buttons.
+  const latestLead = await prisma.lead
+    .findFirst({ where: { clientId: id }, orderBy: { createdAt: 'desc' }, select: { id: true } })
+    .catch(() => null)
+  const { outcomeUrlFor } = await import('@/lib/lead-outcome-token')
+  const outcomeUrl = latestLead ? outcomeUrlFor(latestLead.id) : null
+
   const result = await notifyNewLead(id, client.businessName, {
     name: 'Test Lead',
-    phone: client.phone,
+    phone,
     email: 'webhook-test@glassleads.app',
     service: 'Windshield Replacement',
     vehicle: '2020 Hyundai Santa Fe',
     postalCode: '97132',
-    message: 'This is a test alert from glassleads.app. Safe to ignore.',
+    message: outcomeUrl
+      ? 'This is a test alert from glassleads.app. Safe to ignore. The booked buttons below point at this client\u2019s most recent lead.'
+      : 'This is a test alert from glassleads.app. Safe to ignore. Real alerts also carry one-tap \u201cWe booked it\u201d buttons \u2014 they appear once this client has a lead to point them at.',
     source: 'Admin test',
     leadUrl: null,
-    // A test that omits half the fields is how a missing row goes unnoticed
-    // until a real lead arrives. This carries everything a real alert can.
     vin: '5NMS3CAD4LH123456',
     insurance: 'Filing through insurance',
     carrier: 'State Farm',
     landingPage: 'https://glassleads.app/admin (test)',
-    outcomeUrl: null,
+    outcomeUrl,
   })
 
   return NextResponse.json({
