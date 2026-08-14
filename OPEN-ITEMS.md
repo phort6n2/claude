@@ -102,5 +102,6 @@ You have ruled this out for now and I have not built any. Worth revisiting: an i
 ## 5. Not built, ranked by what I would do next
 
 1. **Response-time tracking.** The app knows when a lead arrived and when its status moved. "This shop takes four hours to touch a lead" is nearly free, and it is your answer when a client says the leads are bad.
+2. **Real sales page at glassleads.app.** Every client site's footer now links "Powered by GlassLeads" to the apex, which serves a holding brand page (features, no pricing, no contact). The real page needs decisions only you can make: published pricing yes/no, the CTA (a demo-booking link? a phone number? an email that actually receives mail — the Resend domain only sends), and proof (screenshots, a client quote).
 4. **Monthly client-facing report.** Leads → booked → revenue. The retention artifact for a $497 client.
 5. **Follow-up on unbooked leads.** A lead marked "didn't book" is currently dead. Most shops never chase them.
