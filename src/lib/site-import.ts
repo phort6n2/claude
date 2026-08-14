@@ -38,6 +38,36 @@ const MAX_EXTRA_PAGES = 4
 const MAX_TEXT_PER_PAGE = 14_000
 const MAX_PHOTO_CANDIDATES = 24
 
+// Somebody else's recognisable mark: insurer badges, review widgets, builder
+// credits — and car makes, because auto-trade sites carry "makes we service"
+// strips whose images are literally other brands' logos. Shared between the
+// logo scorer and the stale-logo check in the import route.
+const PARTNER_BRAND_RE =
+  /geico|allstate|state.?farm|progressive|farmers|usaa|nationwide|liberty|safelite|google|yelp|facebook|bbb|wix|squarespace|godaddy|wordpress|elementor/
+const CAR_MAKE_RE =
+  /acura|honda|toyota|ford|chevrolet|chevy|nissan|subaru|bmw|mercedes|benz|audi|lexus|kia|hyundai|jeep|dodge|\bram\b|gmc|mazda|volkswagen|\bvw\b|tesla|volvo|cadillac|buick|chrysler|infiniti|porsche|jaguar|rover/
+
+const nameTokensOf = (businessName: string): string[] =>
+  businessName
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((t) => t.length >= 3 && !['the', 'and', 'auto', 'glass', 'inc', 'llc'].includes(t))
+
+/**
+ * Does this URL/filename look like some OTHER brand's mark rather than the
+ * business's own? Used to clear a stale saved logo when a re-import finds no
+ * logo: the scorer refusing to pick Honda's badge is only half the fix if
+ * Honda's badge is already saved on the client from an earlier, dumber import.
+ * The business's own name in the string always wins — "Honda Row Auto Glass"
+ * gets to have "honda" in its logo filename.
+ */
+export function looksLikeForeignMark(s: string, businessName = ''): boolean {
+  const lower = s.toLowerCase()
+  if (nameTokensOf(businessName).some((t) => lower.includes(t))) return false
+  return PARTNER_BRAND_RE.test(lower) || CAR_MAKE_RE.test(lower)
+}
+
 /**
  * Admin-entered, but the server fetches it, so block the obvious SSRF shapes —
  * same policy as webhook destinations (https-only, no private/link-local hosts).
@@ -207,11 +237,7 @@ export function findLogo(html: string, base: URL, businessName = ''): string | n
   }
 
   // 2. Scored <img loading="lazy"> candidates
-  const nameTokens = businessName
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .split(/\s+/)
-    .filter((t) => t.length >= 3 && !['the', 'and', 'auto', 'glass', 'inc', 'llc'].includes(t))
+  const nameTokens = nameTokensOf(businessName)
   const footerStart = (() => {
     const i = html.search(/<footer[\s>]/i)
     return i === -1 ? html.length * 0.85 : i
@@ -239,16 +265,12 @@ export function findLogo(html: string, base: URL, businessName = ''): string | n
     // Footer imagery is credits and badges far more often than identity.
     if (m.index > footerStart) score -= 3
     // Carrying a DIFFERENT recognisable brand: insurer badges, review
-    // widgets, builder credits. The exact names matter less than having any
-    // list at all — these are the ones that keep showing up on trade sites.
-    if (/geico|allstate|state.?farm|progressive|farmers|usaa|nationwide|liberty|safelite|google|yelp|facebook|bbb|wix|squarespace|godaddy|wordpress|elementor/.test(haystack))
-      score -= 4
-    // Car-make badges. Auto-trade sites carry "makes we service" strips whose
-    // files are literally named things like cars_logo_acura.jpg — the single
-    // most reliable way for a first-match logo finder to ship Honda's mark as
-    // the shop's. Seen in production, not hypothetical.
-    if (/acura|honda|toyota|ford|chevrolet|chevy|nissan|subaru|bmw|mercedes|benz|audi|lexus|kia|hyundai|jeep|dodge|\bram\b|gmc|mazda|volkswagen|\bvw\b|tesla|volvo|cadillac|buick|chrysler|infiniti|porsche|jaguar|rover/.test(haystack))
-      score -= 4
+    // widgets, builder credits, car-make badges from "makes we service"
+    // strips (files literally named cars_logo_acura.jpg — seen in
+    // production, not hypothetical). The exact names matter less than
+    // having any list at all.
+    if (PARTNER_BRAND_RE.test(haystack)) score -= 4
+    if (CAR_MAKE_RE.test(haystack)) score -= 4
     if (!best || score > best.score) best = { url: abs, score }
   }
   if (best && best.score > 0) return best.url
@@ -325,6 +347,31 @@ export function findPhotoCandidates(html: string, base: URL): Array<{ url: strin
   return [...out.values()]
 }
 
+/**
+ * Is this URL actually a fetchable image? Headers only — the body is
+ * cancelled. Serves two purposes: dead URLs never make it into the gallery
+ * (they would 404 on the hosted site too), and the vision request below can't
+ * be sunk by one image the API fails to fetch.
+ */
+async function isFetchableImage(url: string): Promise<boolean> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 6_000)
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; GlassLeadsImporter/1.0)', Accept: 'image/*' },
+      redirect: 'follow',
+    })
+    const ok = res.ok && (res.headers.get('content-type') || '').startsWith('image/')
+    await res.body?.cancel().catch(() => {})
+    return ok
+  } catch {
+    return false
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 function parseModelJson(text: string): Record<string, unknown> {
   const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
   return JSON.parse(cleaned) as Record<string, unknown>
@@ -371,7 +418,16 @@ export async function importSiteContent(
     }
   }
 
-  const photoCandidates = [...photoMap.values()]
+  // Keep only URLs that actually serve an image. Dead links would 404 on the
+  // hosted site, and one unfetchable URL must not sink the vision request.
+  const rawCandidates = [...photoMap.values()]
+  const fetchable = await Promise.all(rawCandidates.map((p) => isFetchableImage(p.url)))
+  const photoCandidates = rawCandidates.filter((_, i) => fetchable[i])
+  if (rawCandidates.length > photoCandidates.length) {
+    console.log(
+      `[SiteImport] dropped ${rawCandidates.length - photoCandidates.length} unfetchable image URL(s)`
+    )
+  }
   if (photoCandidates.length === 0) {
     warnings.push(
       'No photo URLs found in the page HTML — the site may render its images with JavaScript. Photos can be added manually below.'
@@ -396,7 +452,7 @@ Return ONLY a JSON object (no prose, no markdown fence) with exactly these keys:
   "footerBlurb": string|null,          // one factual sentence about the business, from the site's own copy
   "chapters": [{"heading": string, "body": string, "photoIndex": number|null}], // 2-4 editorial sections telling this business's story, BUILT ONLY from facts and phrasing already on their site (their history, their approach, what makes them different — in their voice). 1-3 short paragraphs each, separated by blank lines. Condensing and light editing of THEIR copy is fine; adding facts is not. photoIndex optionally pairs a candidate photo whose subject fits the section. [] if the site has no real "about" substance.
   "serviceAreas": [string], // city/town names the site EXPLICITLY says they serve (coverage lists, footer links, "areas we serve"). Proper city names only — no regions like "the Westside" or "the metro", no states, no neighborhoods unless the site treats them as service cities. Max 10; [] if the site doesn't name cities.
-  "photos": [{"index": number, "alt": string}] // pick from the NUMBERED candidate list below BY INDEX. KEEP BY DEFAULT: these were already filtered mechanically, and you only see a filename and maybe an alt — a camera filename like IMG_4821.jpg tells you nothing, so it stays. Drop an image ONLY when the URL/alt makes it POSITIVELY clear it is not a photo of this business or its work: another company's branding, a map tile, a screenshot, a stock-agency path (shutterstock/istock/unsplash/pexels), clip-art. When in doubt, keep it — the admin reviews every photo before anything goes live, and a missing real photo costs more than an extra one they delete. Write a short factual alt from the filename/alt given — do not invent specifics. Max 12.
+  "photos": [{"index": number, "alt": string}] // pick from the NUMBERED candidates BY INDEX. The candidate images are attached above this text — judge each by WHAT IS ACTUALLY IN IT, not its filename. KEEP real photographs of this business and its work: the shop, vans/trucks, technicians, vehicles being worked on, completed glass work, the storefront. DROP anything that is not such a photograph: car manufacturers' logos or badges (Acura, Honda, Toyota… — auto sites carry "makes we service" strips and none of those belong in a gallery), any company's logo or wordmark, maps, screenshots, text banners/graphics, clip art, watermarked stock photography. If a candidate's image is NOT attached (it failed to load), judge by URL/alt alone and keep it unless those positively identify junk. Write a short factual alt describing what is visible — do not invent specifics. Max 12.
 }
 
 CANDIDATE PHOTOS (refer to these by index):
@@ -408,13 +464,37 @@ ${pages.map((p) => `=== ${p.url} ===\n${p.text}`).join('\n\n')}`
   try {
     const anthropic = new Anthropic({ apiKey })
     // Long input → stream to avoid request timeouts; we only need the final message.
-    const message = await anthropic.messages
-      .stream({
-        model: 'claude-opus-5',
-        max_tokens: 8000,
-        messages: [{ role: 'user', content: prompt }],
-      })
-      .finalMessage()
+    const callModel = (content: string | Anthropic.Messages.ContentBlockParam[]) =>
+      anthropic.messages
+        .stream({
+          model: 'claude-opus-5',
+          max_tokens: 8000,
+          messages: [{ role: 'user', content }],
+        })
+        .finalMessage()
+
+    // Attach the candidate images so the model judges photos by what is in
+    // them, not by filename — a car-make badge named images.jpg is invisible
+    // to text but unmistakable to eyes. Labels precede each image so the
+    // BY-INDEX contract stays unambiguous.
+    const visionContent: Anthropic.Messages.ContentBlockParam[] = photoCandidates.flatMap(
+      (p, i): Anthropic.Messages.ContentBlockParam[] => [
+        { type: 'text', text: `Candidate photo [${i}]:` },
+        { type: 'image', source: { type: 'url', url: p.url } },
+      ]
+    )
+    visionContent.push({ type: 'text', text: prompt })
+
+    let message: Anthropic.Messages.Message
+    try {
+      message = await callModel(photoCandidates.length ? visionContent : prompt)
+    } catch (visionErr) {
+      // Usually the API failing to fetch one of the image URLs. The text-only
+      // prompt still carries the full candidate list, so the import degrades
+      // to filename judgement rather than dying.
+      console.warn('[SiteImport] Vision request failed, retrying text-only:', visionErr)
+      message = await callModel(prompt)
+    }
 
     if (message.stop_reason === 'refusal') {
       return { ok: false, error: 'The model declined to process this page' }

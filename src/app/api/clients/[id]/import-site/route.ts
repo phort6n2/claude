@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { importSiteContent } from '@/lib/site-import'
+import { importSiteContent, looksLikeForeignMark } from '@/lib/site-import'
 
 export const dynamic = 'force-dynamic'
 // Crawl (up to 5 pages) + model extraction can exceed the default budget.
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const { id } = await params
     const client = await prisma.client.findUnique({
       where: { id },
-      select: { businessName: true, city: true, state: true },
+      select: { businessName: true, city: true, state: true, logoUrl: true },
     })
     if (!client) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 })
@@ -45,6 +45,19 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 422 })
     }
+
+    // The scorer refusing to pick another brand's badge is only half the fix
+    // when an earlier, dumber import already saved that badge as the logo. If
+    // this import found no logo and the saved one is recognisably someone
+    // else's mark, clear it — the site renders the business name instead,
+    // which is embarrassing to nobody, unlike Acura's badge in the header.
+    if (!result.draft.logoUrl && client.logoUrl && looksLikeForeignMark(client.logoUrl, client.businessName)) {
+      await prisma.client.update({ where: { id }, data: { logoUrl: null } }).catch(() => {})
+      result.draft.warnings.push(
+        'Removed the previously saved logo — it was another brand’s mark (a car maker or partner badge), not this shop’s. Upload their real logo when you have it.'
+      )
+    }
+
     return NextResponse.json({ draft: result.draft })
   } catch (error) {
     console.error('Failed to import site content:', error)

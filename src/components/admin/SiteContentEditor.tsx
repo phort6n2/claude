@@ -1,14 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Trash2, Loader2, Globe, Save } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Trash2, Loader2, Globe, Check, AlertCircle } from 'lucide-react'
 
 /**
  * Editorial content for a client's hosted site. Owns its own load/save
  * against /api/clients/[id]/site-content. The parent supplies callbacks for
  * the two things the importer finds that live on the CLIENT record rather
- * than site content (logo, service areas), so the parent can save them in the
- * same action — a second save button is how imported data used to get lost.
+ * than site content (logo, service areas), so both halves persist in the
+ * same autosave — a separate save step is how imported data used to get lost.
  */
 
 interface SitePhotoRow {
@@ -50,15 +50,19 @@ export default function SiteContentEditor({
   onAreasFound?: (areas: string[]) => void
   /**
    * Persists the fields the importer finds that live on the CLIENT record
-   * (logo, service areas). Called as part of THIS editor's save so one button
-   * commits everything the import produced — a second save button is exactly
-   * how imported data used to be lost.
+   * (logo, service areas). Called as part of THIS editor's autosave so one
+   * write commits everything the import produced — a separate save step is
+   * exactly how imported data used to be lost. Must be a no-op when there is
+   * nothing pending, because autosave calls it on every write.
    */
   persistClientFields?: () => Promise<void>
 }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  // Import feedback lives apart from save status: the found-items summary is
+  // worth reading for longer than the 1.2s before autosave would replace it.
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const [saveStatus, setSaveStatus] = useState<{ kind: 'saved' | 'warning' | 'error'; text: string } | null>(null)
   const [importUrl, setImportUrl] = useState('')
   const [importing, setImporting] = useState(false)
   const [warrantyTitle, setWarrantyTitle] = useState('')
@@ -95,43 +99,86 @@ export default function SiteContentEditor({
       .finally(() => setLoading(false))
   }, [clientId])
 
-  async function save() {
+  // ---- Autosave. No save button: edits debounce ~1.2s then PUT the whole
+  // document. Refs rather than closures throughout, so a save that fires
+  // after further typing writes what is on screen, not what was on screen
+  // when the timer was armed.
+  const payload = {
+    warrantyTitle,
+    warrantyText,
+    footerBlurb,
+    registrationName,
+    registrationNumber,
+    faq,
+    heroBullets: bullets,
+    chapters,
+    photos,
+  }
+  const payloadRef = useRef(payload)
+  payloadRef.current = payload
+  const snapshot = JSON.stringify(payload)
+  // null = still hydrating; the first post-load render records the baseline
+  // instead of saving it back, so loading a client never counts as an edit.
+  const lastSavedRef = useRef<string | null>(null)
+  const persistRef = useRef(persistClientFields)
+  persistRef.current = persistClientFields
+  const savingRef = useRef(false)
+  const queuedRef = useRef(false)
+
+  async function saveNow() {
+    if (savingRef.current) {
+      queuedRef.current = true
+      return
+    }
+    savingRef.current = true
     setSaving(true)
-    setMessage(null)
+    const body = payloadRef.current
+    const snap = JSON.stringify(body)
     try {
       // Client-record fields first: if this fails the operator must know
       // before we report success on the content half.
-      if (persistClientFields) await persistClientFields()
+      if (persistRef.current) await persistRef.current()
       const res = await fetch(`/api/clients/${clientId}/site-content`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          warrantyTitle,
-          warrantyText,
-          footerBlurb,
-          registrationName,
-          registrationNumber,
-          faq,
-          heroBullets: bullets,
-          chapters,
-          photos,
-        }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
-      setMessage(
-        res.ok
-          ? {
-              ok: !data.warning,
-              text: data.warning || 'Saved — the site updates within about 5 minutes.',
-            }
-          : { ok: false, text: data.error || 'Failed to save' }
-      )
+      if (res.ok) {
+        lastSavedRef.current = snap
+        setSaveStatus(
+          data.warning
+            ? { kind: 'warning', text: data.warning }
+            : { kind: 'saved', text: 'Saved — the site updates within about 5 minutes.' }
+        )
+      } else {
+        setSaveStatus({ kind: 'error', text: data.error || 'Failed to save' })
+      }
     } catch {
-      setMessage({ ok: false, text: 'Failed to save' })
+      setSaveStatus({ kind: 'error', text: 'Failed to save — your edits are still here, keep typing to retry.' })
     } finally {
+      savingRef.current = false
       setSaving(false)
+      // Edits landed mid-flight: save again so the screen and the database
+      // agree before the operator walks away.
+      if (queuedRef.current) {
+        queuedRef.current = false
+        if (JSON.stringify(payloadRef.current) !== lastSavedRef.current) void saveNow()
+      }
     }
   }
+
+  useEffect(() => {
+    if (loading) return
+    if (lastSavedRef.current === null) {
+      lastSavedRef.current = snapshot
+      return
+    }
+    if (snapshot === lastSavedRef.current) return
+    const timer = setTimeout(() => void saveNow(), 1200)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapshot, loading])
 
   async function importFromSite() {
     if (!importUrl.trim() || importing) return
@@ -177,7 +224,7 @@ export default function SiteContentEditor({
         ok: true,
         text:
           (found.length
-            ? `Imported draft (${found.join(', ')}) from ${d.pagesCrawled.length} page(s). Review below — nothing is live until you Save.`
+            ? `Imported (${found.join(', ')}) from ${d.pagesCrawled.length} page(s). Review below and delete anything wrong — it saves automatically.`
             : `Read ${d.pagesCrawled.length} page(s) but found nothing usable to import.`) + warnings,
       })
     } catch {
@@ -202,8 +249,8 @@ export default function SiteContentEditor({
         </label>
         <p className="text-xs text-gray-500 mb-2">
           Reads their site (plus warranty/FAQ/about pages) and pre-fills the fields below with
-          what it actually says — photos, warranty wording, FAQs. Everything lands here as a
-          draft for you to review; nothing goes live until you hit Save.
+          what it actually says — photos, warranty wording, FAQs. It saves automatically, so
+          review the fields after an import and delete anything that reads wrong.
         </p>
         <div className="flex gap-2">
           <input
@@ -494,20 +541,33 @@ export default function SiteContentEditor({
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={save}
-          disabled={saving}
-          className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Save Site Content
-        </button>
-        {message && (
-          <span className={`text-sm ${message.ok ? 'text-green-600' : 'text-red-600'}`}>
-            {message.text}
+      {/* Autosave status. Sticky so the operator can see a failed save from
+          anywhere in this long form — a silent failure at the bottom of an
+          off-screen footer is a lost afternoon of edits. */}
+      <div className="sticky bottom-0 -mx-6 px-6 py-2 bg-white/95 border-t border-gray-100 flex items-center gap-2 text-sm">
+        {saving ? (
+          <span className="flex items-center gap-1.5 text-gray-500">
+            <Loader2 className="h-4 w-4 animate-spin" /> Saving…
           </span>
+        ) : saveStatus ? (
+          <span
+            className={`flex items-center gap-1.5 ${
+              saveStatus.kind === 'saved'
+                ? 'text-green-600'
+                : saveStatus.kind === 'warning'
+                  ? 'text-amber-600'
+                  : 'text-red-600'
+            }`}
+          >
+            {saveStatus.kind === 'error' ? (
+              <AlertCircle className="h-4 w-4" />
+            ) : (
+              <Check className="h-4 w-4" />
+            )}
+            {saveStatus.text}
+          </span>
+        ) : (
+          <span className="text-gray-400">Changes save automatically.</span>
         )}
       </div>
     </div>
