@@ -1447,7 +1447,22 @@ export function SiteFooter({
         </div>
 
         <div className="mt-8 pt-5 border-t border-[var(--line-on-dark)] text-[12.5px] leading-[1.6] grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-          <div>© {year} {client.businessName}. All rights reserved.</div>
+          <div>
+            © {year} {client.businessName}. All rights reserved.{' '}
+            <span className="whitespace-nowrap">
+              ·{' '}
+              {/* Deliberately a followed link: every client site vouching for
+                  the platform is the point of the attribution. */}
+              <a
+                href="https://glassleads.app"
+                target="_blank"
+                rel="noopener"
+                className="underline text-[var(--on-dark-2)] hover:text-white"
+              >
+                Powered by GlassLeads
+              </a>
+            </span>
+          </div>
           <div className="flex flex-wrap gap-4">
             <a
               href={`${basePath || ''}/privacy`}
