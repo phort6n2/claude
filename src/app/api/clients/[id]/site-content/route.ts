@@ -20,7 +20,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 
   try {
     const { id } = await params
-    const [content, photos, chapterRow] = await Promise.all([
+    const [content, photos, chapterRow, clientRow] = await Promise.all([
       prisma.clientSiteContent.findUnique({
         where: { clientId: id },
         select: {
@@ -43,6 +43,11 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       prisma.clientSiteContent
         .findUnique({ where: { clientId: id }, select: { chapters: true } })
         .catch(() => null),
+      // Their existing site, as the Business Profile picker recorded it —
+      // seeds the import field. Newer column; degrade to null quietly.
+      prisma.client
+        .findUnique({ where: { id }, select: { websiteUrl: true } })
+        .catch(() => null),
     ])
     return NextResponse.json({
       content: content
@@ -58,6 +63,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
           }
         : null,
       photos,
+      websiteUrl: clientRow?.websiteUrl ?? null,
     })
   } catch (error) {
     console.error('Failed to load site content:', error)

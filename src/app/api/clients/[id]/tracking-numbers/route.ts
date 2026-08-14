@@ -248,7 +248,15 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   }
 }
 
-/** PATCH — flip which number fronts the hosted site. */
+/**
+ * PATCH — edit an existing number's settings.
+ *
+ * Only the fields present in the body change, so the site-number toggle can
+ * keep sending exactly one key and a settings edit can leave useOnSite alone.
+ * The Twilio side never needs touching here: routing behaviour (recording,
+ * announcement, whisper, forward-to) is read live from the row when a call
+ * arrives, so a save is effective on the very next call.
+ */
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const denied = await requireAdmin()
   if (denied) return denied
@@ -257,9 +265,26 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const numberId = String(body.numberId || '')
   if (!numberId) return NextResponse.json({ error: 'Missing numberId' }, { status: 400 })
 
-  const useOnSite = body.useOnSite === true
+  const data: Record<string, unknown> = {}
+  if ('useOnSite' in body) data.useOnSite = body.useOnSite === true
+  if ('recordCalls' in body) data.recordCalls = body.recordCalls === true
+  if ('announceRecording' in body) data.announceRecording = body.announceRecording === true
+  if ('active' in body) data.active = body.active === true
+  if ('label' in body) data.label = String(body.label || '').trim() || null
+  if ('whisper' in body) data.whisper = String(body.whisper || '').trim().slice(0, 200) || null
+  if ('forwardTo' in body) {
+    const forwardTo = toE164(String(body.forwardTo || ''))
+    if (!forwardTo) {
+      return NextResponse.json({ error: 'That forwarding number is not usable.' }, { status: 400 })
+    }
+    data.forwardTo = forwardTo
+  }
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json({ error: 'Nothing to change.' }, { status: 400 })
+  }
+
   try {
-    if (useOnSite) {
+    if (data.useOnSite === true) {
       await prisma.trackingNumber.updateMany({
         where: { clientId: id, useOnSite: true },
         data: { useOnSite: false },
@@ -267,7 +292,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     }
     const number = await prisma.trackingNumber.update({
       where: { id: numberId, clientId: id },
-      data: { useOnSite },
+      data,
     })
     return NextResponse.json({ number })
   } catch (error) {

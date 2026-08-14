@@ -25,6 +25,7 @@ interface ClientData {
   postalCode: string
   country: string
   googlePlaceId: string | null
+  websiteUrl: string | null
   googleMapsUrl: string | null
   hasShopLocation: boolean
   offersMobileService: boolean
@@ -125,6 +126,9 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
         postalCode: details.postalCode || prev.postalCode,
         googlePlaceId: details.placeId,
         googleMapsUrl: details.googleMapsUrl,
+        // Their site, straight off the Business Profile — seeds the import
+        // field on the Website tab so nobody re-types what Google knows.
+        websiteUrl: details.website || prev.websiteUrl,
       }))
       setPlaceSearch(details.businessName)
     } catch (err) {
