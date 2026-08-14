@@ -35,16 +35,33 @@ const BLANK = {
 
 export default function TrackingNumbersCard({ clientId }: { clientId: string }) {
   const [numbers, setNumbers] = useState<TrackingNumber[] | null>(null)
+  const [stats, setStats] = useState<Record<string, { calls: number; missed: number; minutes: number }>>({})
+  const [usage, setUsage] = useState<
+    { month: string; records: Array<{ category: string; usage: number; usageUnit: string; price: number }> } | null
+  >(null)
   const [unavailable, setUnavailable] = useState(false)
   const [draft, setDraft] = useState({ ...BLANK })
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const [areaCode, setAreaCode] = useState('')
+  const [candidates, setCandidates] = useState<
+    Array<{ phoneNumber: string; friendlyName: string; locality: string; region: string }> | null
+  >(null)
+  const [searching, setSearching] = useState(false)
+  const [buying, setBuying] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
       const data = await (await fetch(`/api/clients/${clientId}/tracking-numbers`)).json()
       if (data.unavailable) setUnavailable(true)
       setNumbers(data.numbers || [])
+      setStats(data.stats || {})
+      // The platform's Twilio bill for the month. Best-effort — a failed
+      // lookup hides the line rather than degrading the card.
+      fetch('/api/admin/twilio/usage')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((u) => u && setUsage(u))
+        .catch(() => {})
     } catch {
       setNumbers([])
     }
@@ -72,6 +89,52 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
       setMessage({ ok: false, text: err instanceof Error ? err.message : 'Failed' })
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function search() {
+    setSearching(true)
+    setMessage(null)
+    setCandidates(null)
+    try {
+      const res = await fetch(
+        `/api/clients/${clientId}/tracking-numbers/available?areaCode=${encodeURIComponent(areaCode)}`
+      )
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Search failed')
+      setCandidates(data.numbers || [])
+    } catch (err) {
+      setMessage({ ok: false, text: err instanceof Error ? err.message : 'Failed' })
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  async function buy(phoneNumber: string) {
+    if (!draft.forwardTo) {
+      setMessage({ ok: false, text: 'Fill in "Rings this number" above first — a bought number has to forward somewhere from the moment it exists.' })
+      return
+    }
+    if (!confirm(`Buy ${phoneNumber} from Twilio?\n\nTwilio bills its standard monthly rate for a US local number (about $1.15/mo) until you release it.`)) return
+    setBuying(phoneNumber)
+    setMessage(null)
+    try {
+      const res = await fetch(`/api/clients/${clientId}/tracking-numbers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...draft, phoneNumber, purchase: true }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not buy')
+      setCandidates(null)
+      setAreaCode('')
+      setDraft({ ...BLANK })
+      await load()
+      setMessage({ ok: true, text: `Bought ${phoneNumber}. It rings ${draft.forwardTo} and tracking is live — no other setup needed.` })
+    } catch (err) {
+      setMessage({ ok: false, text: err instanceof Error ? err.message : 'Failed' })
+    } finally {
+      setBuying(null)
     }
   }
 
@@ -133,6 +196,16 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
                 </p>
                 {n.whisper && (
                   <p className="text-xs text-gray-400">Shop hears: “{n.whisper}”</p>
+                )}
+                {stats[n.phoneNumber] && (
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    Last 30 days: <strong>{stats[n.phoneNumber].calls}</strong>{' '}
+                    {stats[n.phoneNumber].calls === 1 ? 'call' : 'calls'}
+                    {stats[n.phoneNumber].missed > 0 && (
+                      <span className="text-amber-700"> · {stats[n.phoneNumber].missed} missed</span>
+                    )}
+                    {' '}· {stats[n.phoneNumber].minutes} min
+                  </p>
                 )}
               </div>
               <button
@@ -253,7 +326,80 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
           {saving ? <Loader2 size={15} className="animate-spin" /> : <Phone size={15} />}
           Add and repoint in Twilio
         </button>
+
+        <div className="border-t border-gray-200 pt-4 space-y-2">
+          <p className="text-sm font-medium text-gray-900">
+            No spare number? Buy one
+            <span className="block text-xs font-normal text-gray-500">
+              Bought numbers arrive already pointed here — nothing to move, nothing taken from
+              anywhere else. Twilio bills about $1.15/mo per US local number. Fill in
+              &ldquo;Rings this number&rdquo; above before buying.
+            </span>
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              value={areaCode}
+              onChange={(e) => setAreaCode(e.target.value)}
+              placeholder="Area code, e.g. 805"
+              inputMode="numeric"
+              maxLength={3}
+              className="w-40 px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              type="button"
+              onClick={search}
+              disabled={searching || areaCode.replace(/\D/g, '').length !== 3}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {searching && <Loader2 size={14} className="animate-spin" />}
+              Search
+            </button>
+          </div>
+          {candidates && candidates.length === 0 && (
+            <p className="text-sm text-gray-500">Nothing for sale in that area code right now.</p>
+          )}
+          {candidates && candidates.length > 0 && (
+            <ul className="space-y-1.5">
+              {candidates.map((c) => (
+                <li
+                  key={c.phoneNumber}
+                  className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2"
+                >
+                  <span className="text-sm font-medium text-gray-900">{c.friendlyName || c.phoneNumber}</span>
+                  <span className="text-xs text-gray-400">
+                    {[c.locality, c.region].filter(Boolean).join(', ')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => buy(c.phoneNumber)}
+                    disabled={!!buying}
+                    className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {buying === c.phoneNumber && <Loader2 size={12} className="animate-spin" />}
+                    Buy
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
+
+      {usage && usage.records.length > 0 && (
+        <p className="text-xs text-gray-500 border-t border-gray-200 pt-3">
+          Twilio this month ({usage.month}):{' '}
+          {(() => {
+            const total = usage.records.find((r) => r.category === 'totalprice')
+            const parts = usage.records
+              .filter((r) => r.category !== 'totalprice' && r.price > 0)
+              .map((r) => `${r.category} $${r.price.toFixed(2)}`)
+            return `${total ? `$${total.price.toFixed(2)}` : '—'}${parts.length ? ` (${parts.join(' · ')})` : ''}`
+          })()}
+          <span className="block text-gray-400">
+            Whole account, all clients — not just this shop&apos;s numbers.
+          </span>
+        </p>
+      )}
 
       {message && (
         <p
