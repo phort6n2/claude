@@ -31,7 +31,36 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
       where: { clientId: id },
       orderBy: { createdAt: 'asc' },
     })
-    return NextResponse.json({ numbers })
+
+    // What each number has actually produced, from our own lead rows — every
+    // tracked call is already stored with its number, outcome and duration,
+    // so "is this number earning its dollar a month" needs no Twilio call.
+    const since = new Date(Date.now() - 30 * 24 * 3600 * 1000)
+    const calls = await prisma.lead
+      .groupBy({
+        by: ['trackingNumber', 'callStatus'],
+        where: {
+          clientId: id,
+          trackingNumber: { in: numbers.map((n) => n.phoneNumber) },
+          createdAt: { gte: since },
+        },
+        _count: { _all: true },
+        _sum: { callDurationSecs: true },
+      })
+      .catch(() => [])
+
+    const MISSED = new Set(['no-answer', 'busy', 'failed', 'canceled'])
+    const stats: Record<string, { calls: number; missed: number; minutes: number }> = {}
+    for (const row of calls) {
+      const key = row.trackingNumber as string
+      if (!key) continue
+      const bucket = (stats[key] ??= { calls: 0, missed: 0, minutes: 0 })
+      bucket.calls += row._count._all
+      if (row.callStatus && MISSED.has(row.callStatus)) bucket.missed += row._count._all
+      bucket.minutes += Math.round((row._sum.callDurationSecs ?? 0) / 60)
+    }
+
+    return NextResponse.json({ numbers, stats })
   } catch {
     // Table may not exist yet if the code deployed before the SQL ran.
     return NextResponse.json({ numbers: [], unavailable: true })
@@ -86,6 +115,60 @@ async function repointInTwilio(
   }
 }
 
+/**
+ * Buy a number from Twilio, already pointed at this app.
+ *
+ * The VoiceUrl rides in the purchase request itself, so there is no window —
+ * not even a short one — where the number exists but rings nowhere. This is
+ * the one way to get a tracking number that never needs the repoint step.
+ *
+ * Spends real money (Twilio's standard monthly rate for a US local number),
+ * which is why it only runs when the caller explicitly asked to purchase.
+ */
+async function purchaseInTwilio(
+  phoneNumber: string,
+  voiceUrl: string
+): Promise<{ ok: boolean; sid?: string; error?: string }> {
+  const creds = await twilioCreds()
+  if (!creds) return { ok: false, error: 'No Twilio credentials saved.' }
+
+  const auth = Buffer.from(`${creds.accountSid}:${creds.authToken}`).toString('base64')
+  try {
+    const res = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${creds.accountSid}/IncomingPhoneNumbers.json`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${auth}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          PhoneNumber: phoneNumber,
+          VoiceUrl: voiceUrl,
+          VoiceMethod: 'POST',
+          FriendlyName: 'glassleads tracking',
+        }),
+        signal: AbortSignal.timeout(20_000),
+      }
+    )
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      // 21422: no longer available — somebody else bought it between the
+      // search and the click. Say so plainly; the fix is picking another.
+      const message = String(data.message || `HTTP ${res.status}`)
+      return {
+        ok: false,
+        error: message.includes('not available')
+          ? 'That number was just taken. Search again and pick another.'
+          : `Twilio refused the purchase: ${message}`,
+      }
+    }
+    return { ok: true, sid: String(data.sid || '') }
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : 'Purchase failed' }
+  }
+}
+
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const denied = await requireAdmin()
   if (denied) return denied
@@ -121,7 +204,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   }
 
   const base = process.env.APP_URL || 'https://glassleads.app'
-  const repoint = await repointInTwilio(phoneNumber, `${base}/api/webhooks/twilio/voice`)
+  const voiceUrl = `${base}/api/webhooks/twilio/voice`
+  // Two ways in: point a number the account already owns, or buy a fresh one.
+  // Buying is the explicit path — it costs money, so it never happens because
+  // a flag defaulted wrong.
+  const repoint =
+    body.purchase === true
+      ? await purchaseInTwilio(phoneNumber, voiceUrl)
+      : await repointInTwilio(phoneNumber, voiceUrl)
   if (!repoint.ok) {
     return NextResponse.json({ error: repoint.error }, { status: 400 })
   }

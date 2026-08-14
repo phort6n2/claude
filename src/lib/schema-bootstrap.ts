@@ -66,17 +66,35 @@ export const BOOTSTRAP_SQL: string[] = [...CALL_TRACKING_SQL, ...OFFLINE_CONVERS
  * Run them. Never throws: a database that is unreachable at boot must not
  * stop the server from starting, and the statements are retried on the next
  * cold start and by the setup endpoint.
+ *
+ * DDL goes through its OWN client on the DIRECT connection string, not the
+ * shared pooled one. Production's pooled prisma+postgres:// role cannot
+ * create tables — setup-db has known this all along and builds a direct
+ * client for exactly this reason. The first version of this hook used the
+ * shared client anyway, which meant it succeeded locally (direct connection)
+ * and failed silently on every production cold start, leaving the tracking
+ * numbers card telling the admin to go run the endpoint this hook exists to
+ * make unnecessary.
  */
 export async function ensureCallTrackingSchema(): Promise<{ ran: number; error?: string }> {
+  const directUrl = process.env.DIRECT_URL || process.env.DATABASE_URL
+  if (!directUrl) return { ran: 0, error: 'No database URL configured' }
+  if (directUrl.startsWith('prisma')) {
+    return { ran: 0, error: 'Only a pooled prisma+postgres:// URL is available; DDL needs DIRECT_URL' }
+  }
+
+  const { PrismaClient } = await import('@prisma/client')
+  const ddl = new PrismaClient({ datasourceUrl: directUrl })
   try {
-    const { prisma } = await import('@/lib/db')
     let ran = 0
     for (const sql of BOOTSTRAP_SQL) {
-      await prisma.$executeRawUnsafe(sql)
+      await ddl.$executeRawUnsafe(sql)
       ran += 1
     }
     return { ran }
   } catch (error) {
     return { ran: 0, error: error instanceof Error ? error.message : 'Unknown error' }
+  } finally {
+    await ddl.$disconnect().catch(() => {})
   }
 }
