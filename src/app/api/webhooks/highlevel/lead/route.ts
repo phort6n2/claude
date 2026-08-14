@@ -736,7 +736,7 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
       try {
         const result = await notifyLeadRecipients(client.id, client.businessName, {
           name: String(payload.full_name || payload.first_name || '').trim(),
-          phone: String(payload.phone || '').trim(),
+          phone: String(payload.phone || payload.phone_formatted || '').trim(),
           email: String(payload.email || '').trim(),
           service: String(payload.service_label || payload.service || '').trim(),
           vehicle: String(payload.vehicle || '').trim(),

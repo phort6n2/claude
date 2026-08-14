@@ -144,36 +144,120 @@ function findContentLinks(html: string, base: URL): URL[] {
 }
 
 /**
- * The site's logo: first <img> whose filename/alt/class says "logo"
- * (mechanical — the logo is excluded from photo candidates by the same
- * keyword, so the two never overlap), falling back to og:image.
+ * The site's logo, scored rather than first-matched.
+ *
+ * "First <img> mentioning logo" grabbed whatever happened to render earliest:
+ * an insurer's badge in a trust bar, a partner logo, the web designer's
+ * credit in the footer. And the og:image fallback is usually a hero PHOTO,
+ * not a logo — a wrong logo is worse than none, because none leaves the
+ * admin looking for the right one while wrong quietly ships someone else's
+ * mark. So og:image is gone entirely.
+ *
+ * Order of trust:
+ *   1. JSON-LD Organization/LocalBusiness "logo" — the site declaring its own
+ *      identity, and the one signal that is explicit rather than inferred.
+ *   2. <img> candidates mentioning "logo", scored: business-name tokens in
+ *      the file/alt, early in the document (headers come first), penalised
+ *      for footer position and for carrying some OTHER brand's name.
+ *   3. apple-touch-icon — squarish brand mark, still theirs.
  */
-export function findLogo(html: string, base: URL): string | null {
-  const re = /<img[^>]*>/gi
-  let m: RegExpExecArray | null
-  while ((m = re.exec(html))) {
-    const tag = m[0]
-    if (!/logo/i.test(tag)) continue
-    const src = /(?:data-src|src)\s*=\s*["']([^"']+)["']/i.exec(tag)?.[1]
-    if (!src || src.startsWith('data:')) continue
+export function findLogo(html: string, base: URL, businessName = ''): string | null {
+  const absolutize = (src: string): string | null => {
+    if (!src || src.startsWith('data:')) return null
     try {
       const abs = new URL(src, base)
-      if (abs.protocol === 'https:') return abs.toString()
+      return abs.protocol === 'https:' ? abs.toString() : null
     } catch {
-      /* keep scanning */
+      return null
     }
   }
-  const og = /<meta[^>]+property\s*=\s*["']og:image["'][^>]+content\s*=\s*["']([^"']+)["']/i.exec(html)
-    || /<meta[^>]+content\s*=\s*["']([^"']+)["'][^>]+property\s*=\s*["']og:image["']/i.exec(html)
-  if (og) {
+
+  // 1. JSON-LD logo
+  const ldRe = /<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi
+  let ld: RegExpExecArray | null
+  while ((ld = ldRe.exec(html))) {
     try {
-      const abs = new URL(og[1], base)
-      if (abs.protocol === 'https:') return abs.toString()
+      const walk = (node: unknown): string | null => {
+        if (!node || typeof node !== 'object') return null
+        if (Array.isArray(node)) {
+          for (const item of node) {
+            const hit = walk(item)
+            if (hit) return hit
+          }
+          return null
+        }
+        const obj = node as Record<string, unknown>
+        const logo = obj.logo
+        if (typeof logo === 'string') return logo
+        if (logo && typeof logo === 'object' && typeof (logo as { url?: unknown }).url === 'string') {
+          return (logo as { url: string }).url
+        }
+        for (const value of Object.values(obj)) {
+          const hit = walk(value)
+          if (hit) return hit
+        }
+        return null
+      }
+      const found = walk(JSON.parse(ld[1]))
+      const abs = found && absolutize(found)
+      if (abs) return abs
     } catch {
-      /* fall through */
+      /* malformed JSON-LD is routine; keep going */
     }
   }
-  return null
+
+  // 2. Scored <img loading="lazy"> candidates
+  const nameTokens = businessName
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((t) => t.length >= 3 && !['the', 'and', 'auto', 'glass', 'inc', 'llc'].includes(t))
+  const footerStart = (() => {
+    const i = html.search(/<footer[\s>]/i)
+    return i === -1 ? html.length * 0.85 : i
+  })()
+
+  let best: { url: string; score: number } | null = null
+  const imgRe = /<img[^>]*>/gi
+  let m: RegExpExecArray | null
+  while ((m = imgRe.exec(html))) {
+    const tag = m[0]
+    if (!/logo/i.test(tag)) continue
+    const src =
+      /(?:data-lazy-src|data-src|src)\s*=\s*["']([^"']+)["']/i.exec(tag)?.[1] || ''
+    const abs = absolutize(src)
+    if (!abs) continue
+    const haystack = tag.toLowerCase()
+
+    let score = 0
+    // Their own name in the tag is the strongest ownership signal available.
+    for (const token of nameTokens) if (haystack.includes(token)) score += 3
+    // Theme classes that mean "this is THE site logo".
+    if (/site-logo|custom-logo|navbar-brand|site-branding|header-logo|main-logo/.test(haystack)) score += 3
+    // Early in the document is where a site's own logo lives.
+    if (m.index < html.length * 0.25) score += 2
+    // Footer imagery is credits and badges far more often than identity.
+    if (m.index > footerStart) score -= 3
+    // Carrying a DIFFERENT recognisable brand: insurer badges, review
+    // widgets, builder credits. The exact names matter less than having any
+    // list at all — these are the ones that keep showing up on trade sites.
+    if (/geico|allstate|state.?farm|progressive|farmers|usaa|nationwide|liberty|safelite|google|yelp|facebook|bbb|wix|squarespace|godaddy|wordpress|elementor/.test(haystack))
+      score -= 4
+    if (!best || score > best.score) best = { url: abs, score }
+  }
+  if (best && best.score > 0) return best.url
+
+  // 3. apple-touch-icon
+  const touch =
+    /<link[^>]+rel\s*=\s*["']apple-touch-icon[^"']*["'][^>]+href\s*=\s*["']([^"']+)["']/i.exec(html) ||
+    /<link[^>]+href\s*=\s*["']([^"']+)["'][^>]+rel\s*=\s*["']apple-touch-icon[^"']*["']/i.exec(html)
+  if (touch) {
+    const abs = absolutize(touch[1])
+    if (abs) return abs
+  }
+
+  // A zero-score "logo" img is still more likely theirs than og:image is.
+  return best?.url ?? null
 }
 
 /** Largest URL out of a srcset attribute value ("url1 400w, url2 1200w"). */
@@ -220,6 +304,13 @@ export function findPhotoCandidates(html: string, base: URL): Array<{ url: strin
     // Junk filter runs on the PATH only — hostnames like spcdn.shortpixel.ai
     // (an image CDN half the WordPress world uses) must not trip "pixel".
     if (/logo|icon|sprite|favicon|pixel|badge|avatar|placeholder/i.test(abs.pathname)) continue
+    // Declared dimensions are a cheap junk filter: a 1x1 is a tracking
+    // pixel, a 40px square is an icon whatever its filename says. Only tags
+    // that DECLARE a small size are dropped — most real photos declare
+    // nothing, and absence must not count against them.
+    const w = parseInt(/\bwidth\s*=\s*["']?(\d+)/i.exec(tag)?.[1] || '', 10)
+    const h = parseInt(/\bheight\s*=\s*["']?(\d+)/i.exec(tag)?.[1] || '', 10)
+    if ((Number.isFinite(w) && w > 0 && w < 120) || (Number.isFinite(h) && h > 0 && h < 120)) continue
     const alt = /alt\s*=\s*["']([^"']*)["']/i.exec(tag)?.[1] || ''
     out.set(abs.toString(), { url: abs.toString(), alt: alt.trim().slice(0, 200) })
   }
@@ -250,7 +341,7 @@ export async function importSiteContent(
   }
 
   const warnings: string[] = []
-  const logoUrl = findLogo(mainHtml, check.url)
+  const logoUrl = findLogo(mainHtml, check.url, business.name)
   const pages: Array<{ url: string; text: string }> = [
     { url: check.url.toString(), text: htmlToText(mainHtml) },
   ]
@@ -297,7 +388,7 @@ Return ONLY a JSON object (no prose, no markdown fence) with exactly these keys:
   "footerBlurb": string|null,          // one factual sentence about the business, from the site's own copy
   "chapters": [{"heading": string, "body": string, "photoIndex": number|null}], // 2-4 editorial sections telling this business's story, BUILT ONLY from facts and phrasing already on their site (their history, their approach, what makes them different — in their voice). 1-3 short paragraphs each, separated by blank lines. Condensing and light editing of THEIR copy is fine; adding facts is not. photoIndex optionally pairs a candidate photo whose subject fits the section. [] if the site has no real "about" substance.
   "serviceAreas": [string], // city/town names the site EXPLICITLY says they serve (coverage lists, footer links, "areas we serve"). Proper city names only — no regions like "the Westside" or "the metro", no states, no neighborhoods unless the site treats them as service cities. Max 10; [] if the site doesn't name cities.
-  "photos": [{"index": number, "alt": string}] // pick from the NUMBERED candidate list below BY INDEX: keep only ones whose URL/alt suggest real photos of this business or its work (vehicles, glass jobs, shop, team). Drop stock-looking, decorative, or unrelated images. Write a short factual alt from the filename/alt given — do not invent specifics. Max 12.
+  "photos": [{"index": number, "alt": string}] // pick from the NUMBERED candidate list below BY INDEX. KEEP BY DEFAULT: these were already filtered mechanically, and you only see a filename and maybe an alt — a camera filename like IMG_4821.jpg tells you nothing, so it stays. Drop an image ONLY when the URL/alt makes it POSITIVELY clear it is not a photo of this business or its work: another company's branding, a map tile, a screenshot, a stock-agency path (shutterstock/istock/unsplash/pexels), clip-art. When in doubt, keep it — the admin reviews every photo before anything goes live, and a missing real photo costs more than an extra one they delete. Write a short factual alt from the filename/alt given — do not invent specifics. Max 12.
 }
 
 CANDIDATE PHOTOS (refer to these by index):

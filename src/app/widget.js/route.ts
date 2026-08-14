@@ -510,7 +510,7 @@ const WIDGET_SOURCE = String.raw`(function () {
         if (bad && !firstBad) firstBad = input;
       }
       check('name', name, !name.value.trim(), 'Please enter your name.');
-      check('phone', phone, phone.value.replace(/\D/g, '').length < 7, 'Please enter a mobile number we can reach you on.');
+      check('phone', phone, phDigits(phone.value).length !== 10, 'Please enter a 10-digit mobile number so the shop can reach you.');
       check('email', email, !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim()), 'Please enter a valid email.');
       check('zip', zip, !/^\d{5}$/.test(zip.value.trim()), 'Please enter your 5-digit ZIP.');
       check('vehicle', vehicle, !vehicle.value.trim(), 'Tell us the year, make and model.');
