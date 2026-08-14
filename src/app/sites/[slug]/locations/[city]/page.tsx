@@ -2,6 +2,7 @@ import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
+import { withSitePhone } from '@/lib/site-phone'
 import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
 import { findLocation, mergeServiceAreas } from '@/lib/site-locations'
 import {
@@ -157,6 +158,8 @@ export default async function LocationPage({ params }: PageProps) {
   const client = await getClient(slug)
   if (!client) notFound()
   if (client.status !== 'ACTIVE') return <SiteUnavailable />
+  // Visitors see the tracking number when one is set; see lib/site-phone.ts.
+  client.phone = (await withSitePhone(client)).phone
 
   const [reviews, extras, locations, adsTracking, cityContent] = await Promise.all([
     getReviews(client.id),

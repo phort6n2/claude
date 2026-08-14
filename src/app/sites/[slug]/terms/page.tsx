@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
+import { withSitePhone } from '@/lib/site-phone'
 import { SiteUnavailable } from '@/components/sites/shared'
 import { LegalShell, TermsContent } from '@/components/sites/legal'
 import { getSiteExtras } from '@/lib/site-content'
@@ -53,6 +54,8 @@ export default async function TermsPage({ params }: PageProps) {
   const client = await getClient(slug)
   if (!client) notFound()
   if (client.status !== 'ACTIVE') return <SiteUnavailable />
+  // Visitors see the tracking number when one is set; see lib/site-phone.ts.
+  client.phone = (await withSitePhone(client)).phone
   const extras = await getSiteExtras(client.id)
 
   return (
