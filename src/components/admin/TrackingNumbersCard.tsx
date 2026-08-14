@@ -22,6 +22,7 @@ interface TrackingNumber {
   announceRecording: boolean
   whisper: string | null
   active: boolean
+  useOnSite: boolean
 }
 
 const BLANK = {
@@ -138,6 +139,28 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
     }
   }
 
+  async function setSiteNumber(numberId: string, useOnSite: boolean) {
+    setMessage(null)
+    try {
+      const res = await fetch(`/api/clients/${clientId}/tracking-numbers`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ numberId, useOnSite }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not update')
+      await load()
+      setMessage({
+        ok: true,
+        text: useOnSite
+          ? 'The hosted site now shows this number everywhere a visitor sees a phone. Live within about five minutes.'
+          : 'The site is back to showing the shop\u2019s real line.',
+      })
+    } catch (err) {
+      setMessage({ ok: false, text: err instanceof Error ? err.message : 'Failed' })
+    }
+  }
+
   async function remove(numberId: string, phoneNumber: string) {
     if (!confirm(`Stop routing ${phoneNumber} through this app?\n\nThe number stays in your Twilio account — this only removes it from this client.`)) return
     setMessage(null)
@@ -197,6 +220,17 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
                 {n.whisper && (
                   <p className="text-xs text-gray-400">Shop hears: “{n.whisper}”</p>
                 )}
+                <button
+                  type="button"
+                  onClick={() => setSiteNumber(n.id, !n.useOnSite)}
+                  className={`mt-1 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold border ${
+                    n.useOnSite
+                      ? 'bg-blue-50 border-blue-200 text-blue-700'
+                      : 'bg-white border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-700'
+                  }`}
+                >
+                  {n.useOnSite ? '\u2713 Shown on the hosted site' : 'Show on the hosted site'}
+                </button>
                 {stats[n.phoneNumber] && (
                   <p className="text-xs text-gray-600 mt-0.5">
                     Last 30 days: <strong>{stats[n.phoneNumber].calls}</strong>{' '}

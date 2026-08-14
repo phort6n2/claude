@@ -639,6 +639,15 @@ model TrackingNumber {
    */
   active Boolean @default(true)
 
+  /**
+   * Shown as the phone number on the hosted site, replacing the shop's real
+   * line everywhere a visitor sees it. One per client, enforced on write.
+   * The LocalBusiness schema keeps the REAL number on purpose — search
+   * engines cross-check it against the Google Business Profile, and a
+   * tracking number there splits the local-SEO signal.
+   */
+  useOnSite Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

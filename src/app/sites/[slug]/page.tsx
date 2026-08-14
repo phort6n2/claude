@@ -2,6 +2,7 @@ import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
+import { withSitePhone } from '@/lib/site-phone'
 import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
 import {
   UtilBar,
@@ -183,6 +184,12 @@ export default async function ClientSitePage({ params }: PageProps) {
     extras,
     locations,
   })
+
+  // From here down the page is for humans, so the tracking number takes over
+  // when one is set. The jsonLd above was built FIRST, from the real line —
+  // search engines cross-check schema phone against the Business Profile, and
+  // a tracking number there splits the local signal. Order is load-bearing.
+  client.phone = (await withSitePhone(client)).phone
 
   // Headline names the location and the highest-value service the client
   // actually offers, like the reference — never a generic slogan.

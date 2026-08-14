@@ -217,6 +217,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   }
 
   try {
+    const useOnSite = body.useOnSite === true
     const data = {
       clientId: id,
       phoneNumber,
@@ -227,6 +228,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       announceRecording: body.announceRecording !== false,
       whisper: String(body.whisper || '').trim().slice(0, 200) || null,
       active: body.active !== false,
+      useOnSite,
+    }
+    // The pages show one phone, so exactly one number may front the site.
+    if (useOnSite) {
+      await prisma.trackingNumber
+        .updateMany({ where: { clientId: id, useOnSite: true }, data: { useOnSite: false } })
+        .catch(() => {})
     }
     const number = existing
       ? await prisma.trackingNumber.update({ where: { id: existing.id }, data })
@@ -235,6 +243,36 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Could not save' },
+      { status: 500 }
+    )
+  }
+}
+
+/** PATCH — flip which number fronts the hosted site. */
+export async function PATCH(request: NextRequest, { params }: RouteContext) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+  const { id } = await params
+  const body = await request.json().catch(() => ({}))
+  const numberId = String(body.numberId || '')
+  if (!numberId) return NextResponse.json({ error: 'Missing numberId' }, { status: 400 })
+
+  const useOnSite = body.useOnSite === true
+  try {
+    if (useOnSite) {
+      await prisma.trackingNumber.updateMany({
+        where: { clientId: id, useOnSite: true },
+        data: { useOnSite: false },
+      })
+    }
+    const number = await prisma.trackingNumber.update({
+      where: { id: numberId, clientId: id },
+      data: { useOnSite },
+    })
+    return NextResponse.json({ number })
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Could not update' },
       { status: 500 }
     )
   }
