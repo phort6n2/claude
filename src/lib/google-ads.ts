@@ -15,7 +15,13 @@ import { decrypt } from '@/lib/encryption'
  * of them.
  */
 
-const API_VERSION = 'v21'
+/* Google sunsets versions roughly a year out and, since Jan 2026, releases
+ * monthly — v21 died 2026-08-05 and took the conversion-count probe with it.
+ * When this next starts failing with a version error, the fix is this one
+ * line; the fields used here (conversion_action, customer_client,
+ * metrics.all_conversions, uploadClickConversions) have been stable across
+ * every version so far. */
+const API_VERSION = 'v25'
 const BASE = `https://googleads.googleapis.com/${API_VERSION}`
 
 async function secret(key: string): Promise<string | null> {
