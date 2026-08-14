@@ -204,7 +204,12 @@ export async function notifyNewLead(
 
   if (emails.length > 0) {
     const apiKey = await secret('RESEND_API_KEY')
-    const from = (await secret('RESEND_FROM')) || 'GlassLeads <leads@glassleads.app>'
+    // The address comes from configuration; the display name is fixed. A shop
+    // owner triages by sender, and "AUTO GLASS LEAD" in the sender column
+    // reads as what it is before the subject is even glanced at.
+    const configured = (await secret('RESEND_FROM')) || 'GlassLeads <leads@glassleads.app>'
+    const address = /<([^>]+)>/.exec(configured)?.[1] || configured
+    const from = `AUTO GLASS LEAD <${address}>`
     if (!apiKey) {
       result.errors.push('RESEND_API_KEY is not configured')
     } else {
@@ -214,7 +219,7 @@ export async function notifyNewLead(
         const sent = await resend.emails.send({
           from,
           to: emails,
-          subject: `New lead: ${lead.name || 'enquiry'}${lead.service ? ` — ${lead.service}` : ''}`,
+          subject: `[NEW LEAD - ${businessName}] - Call Immediately`,
           html: emailHtml(businessName, lead),
           text: [`New lead — ${businessName}`, lead.name, ...plainLines(lead)]
             .filter(Boolean)

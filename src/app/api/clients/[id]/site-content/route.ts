@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { decrypt } from '@/lib/encryption'
 import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -12,6 +13,26 @@ interface RouteContext {
 const MAX_PHOTOS = 24
 
 /** GET — current editorial content + photos for the client's hosted site. */
+async function lookupPlaceWebsite(placeId: string): Promise<string | null> {
+  try {
+    const setting = await prisma.setting.findUnique({ where: { key: 'GOOGLE_PLACES_API_KEY' } })
+    const apiKey = setting?.encrypted
+      ? decrypt(setting.value)
+      : setting?.value || process.env.GOOGLE_PLACES_API_KEY || null
+    if (!apiKey) return null
+    const res = await fetch(
+      `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=website&key=${apiKey}`,
+      { signal: AbortSignal.timeout(8_000) }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    const website = data?.result?.website
+    return typeof website === 'string' && website.startsWith('http') ? website : null
+  } catch {
+    return null
+  }
+}
+
 export async function GET(request: NextRequest, { params }: RouteContext) {
   const session = await auth()
   if (!session?.user) {
@@ -46,9 +67,23 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       // Their existing site, as the Business Profile picker recorded it —
       // seeds the import field. Newer column; degrade to null quietly.
       prisma.client
-        .findUnique({ where: { id }, select: { websiteUrl: true } })
+        .findUnique({ where: { id }, select: { websiteUrl: true, googlePlaceId: true } })
         .catch(() => null),
     ])
+
+    // Clients picked before the capture existed have a Place ID and no
+    // stored website. Backfill on the spot rather than making the admin
+    // re-pick every existing client: one Places call, persisted, so it runs
+    // once per client rather than once per page load.
+    let websiteUrl = clientRow?.websiteUrl ?? null
+    if (!websiteUrl && clientRow?.googlePlaceId) {
+      websiteUrl = await lookupPlaceWebsite(clientRow.googlePlaceId)
+      if (websiteUrl) {
+        await prisma.client
+          .update({ where: { id }, data: { websiteUrl } })
+          .catch(() => {})
+      }
+    }
     return NextResponse.json({
       content: content
         ? {
@@ -63,7 +98,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
           }
         : null,
       photos,
-      websiteUrl: clientRow?.websiteUrl ?? null,
+      websiteUrl,
     })
   } catch (error) {
     console.error('Failed to load site content:', error)
