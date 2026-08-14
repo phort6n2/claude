@@ -261,7 +261,8 @@ export function UtilBar({ client, note }: { client: SiteClient; note: string }) 
   const noteTail = noteRest.length ? ` — ${noteRest.join(' — ')}` : ''
   return (
     <div className="max-[359px]:hidden bg-[var(--dark)] text-[var(--on-dark-2)] text-[13px] on-dark">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 min-h-[34px] py-1.5 flex items-center justify-between gap-4">
+      {/* max-w-7xl to stay flush with the header brand below it, not the body bands. */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 min-h-[34px] py-1.5 flex items-center justify-between gap-4">
         <span className="flex-1 min-w-0 truncate">
           {noteHead}
           {noteTail && <span className="hidden sm:inline">{noteTail}</span>}
@@ -298,10 +299,17 @@ export function SiteHeader({
   reviews?: ReviewsData | null
   nav?: SiteNavLink[]
 }) {
+  // Four service links plus both buttons genuinely do not fit a lg-width
+  // row — the flex items are all fixed-width, so the excess used to shove the
+  // phone button through the container's right padding and off the edge.
+  // Everything here is width-budgeted: the header gets a wider stage than the
+  // body bands (max-w-7xl vs 6xl), a 4-link nav waits for xl, and the brand
+  // is the one element allowed to truncate under pressure.
+  const navBreakpoint = (nav?.length ?? 0) >= 4 ? 'hidden xl:flex' : 'hidden lg:flex'
   return (
     <header className="site-hdr sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-[var(--line)]">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 min-h-[64px] lg:min-h-[72px] flex items-center gap-4">
-        <a href={basePath || '/'} className="flex items-center gap-3 min-w-0 no-underline shrink-0">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 min-h-[64px] lg:min-h-[72px] flex items-center gap-4">
+        <a href={basePath || '/'} className="flex items-center gap-3 min-w-0 no-underline">
           {client.logoUrl ? (
             // Natural aspect, like the template's .brand img — wordmark logos
             // must never be cropped into a circle, and they already carry the
@@ -322,7 +330,7 @@ export function SiteHeader({
           )}
         </a>
         {nav && nav.length > 0 && (
-          <nav className="hidden lg:flex gap-[22px] ml-auto" aria-label="Services">
+          <nav className={`${navBreakpoint} gap-4 ml-auto`} aria-label="Services">
             {nav.map((link) => (
               <a
                 key={link.href}
@@ -352,14 +360,14 @@ export function SiteHeader({
             sticky mobile bar covers phones. */}
         <a
           href="#quote"
-          className={`${nav && nav.length > 0 ? 'lg:ml-4 ' : ''}${reviews ? '' : 'lg:ml-auto '}hidden lg:inline-flex items-center min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] text-white shrink-0 no-underline`}
+          className={`${nav && nav.length > 0 ? 'lg:ml-2 ' : ''}${reviews ? '' : 'lg:ml-auto '}hidden lg:inline-flex items-center min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] text-white shrink-0 no-underline`}
           style={{ background: 'linear-gradient(180deg, var(--cta), var(--cta-b))', boxShadow: 'var(--sh-cta), inset 0 1px 0 rgba(255,255,255,.2)' }}
         >
           Get my free quote
         </a>
         <a
           href={telHrefFor(client.phone)}
-          className={`${reviews ? '' : 'ml-auto lg:ml-0 '}inline-flex items-center gap-2 min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] shrink-0 no-underline bg-white text-[var(--cta)] border-[1.5px] border-[var(--cta)] shadow-[0_1px_2px_rgba(11,27,43,.16)] hover:bg-[var(--s1)] transition-colors max-lg:bg-[var(--cta)] max-lg:text-white`}
+          className={`${reviews ? '' : 'ml-auto lg:ml-0 '}inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] shrink-0 no-underline bg-white text-[var(--cta)] border-[1.5px] border-[var(--cta)] shadow-[0_1px_2px_rgba(11,27,43,.16)] hover:bg-[var(--s1)] transition-colors max-lg:bg-[var(--cta)] max-lg:text-white`}
         >
           <Phone className="h-4 w-4" />
           <span className="hidden sm:inline">{client.phone}</span>
