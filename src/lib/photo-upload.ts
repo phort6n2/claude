@@ -1,5 +1,13 @@
 import { put, del, list } from '@vercel/blob'
 import sharp, { type Sharp, type Metadata } from 'sharp'
+import { wordmarkPng } from '@/lib/wordmark-image'
+
+/** Enough of a client to draw their generated wordmark. */
+export interface WordmarkSource {
+  businessName: string
+  primaryColor?: string | null
+  accentColor?: string | null
+}
 
 /**
  * Photo uploads for client sites, watermarked with the client's own logo.
@@ -49,12 +57,25 @@ export function blobConfigured(): boolean {
  * format sharp can't read. A missing watermark is a cosmetic loss; a failed
  * upload is a broken feature, so this never throws.
  */
-async function buildWatermark(logoUrl: string | null, photoWidth: number): Promise<Buffer | null> {
-  if (!logoUrl) return null
+async function buildWatermark(
+  logoUrl: string | null,
+  photoWidth: number,
+  wordmark?: WordmarkSource
+): Promise<Buffer | null> {
+  // No logo is not the same as nothing to mark with. A shop without a logo
+  // still has a name, and an unmarked photo is one anybody can lift for their
+  // own listing — so the generated wordmark stands in.
+  let raw: Buffer
   try {
-    const res = await fetch(logoUrl, { signal: AbortSignal.timeout(8000) })
-    if (!res.ok) return null
-    const raw = Buffer.from(await res.arrayBuffer())
+    if (logoUrl) {
+      const res = await fetch(logoUrl, { signal: AbortSignal.timeout(8000) })
+      if (!res.ok) return null
+      raw = Buffer.from(await res.arrayBuffer())
+    } else if (wordmark?.businessName) {
+      raw = await wordmarkPng({ ...wordmark, variant: 'mono' })
+    } else {
+      return null
+    }
 
     const target = Math.max(64, Math.round(photoWidth * WATERMARK_SCALE))
     const resized = await sharp(raw)
@@ -81,17 +102,20 @@ async function buildWatermark(logoUrl: string | null, photoWidth: number): Promi
 /**
  * Normalise, watermark and store one uploaded photo.
  *
- * @param logoUrl the client's logo; when absent the photo is stored unmarked
- *                rather than marked with someone else's brand.
+ * @param logoUrl the client's logo. When absent, the generated wordmark is
+ *                used instead — never another business's brand.
  */
 export async function processAndStorePhoto({
   file,
   clientSlug,
   logoUrl,
+  wordmark,
 }: {
   file: ArrayBuffer
   clientSlug: string
   logoUrl: string | null
+  /** Used to mark the photo when the client has no logo of their own. */
+  wordmark?: WordmarkSource
 }): Promise<{ ok: true; photo: ProcessedPhoto } | { ok: false; error: string }> {
   if (!blobConfigured()) {
     return {
@@ -130,7 +154,7 @@ export async function processAndStorePhoto({
   const width = resizedMeta.width || MAX_DIMENSION
   const height = resizedMeta.height || MAX_DIMENSION
 
-  const watermark = await buildWatermark(logoUrl, width)
+  const watermark = await buildWatermark(logoUrl, width, wordmark)
   let finalBuffer = resizedBuffer
   if (watermark) {
     const mark = await sharp(watermark).metadata()

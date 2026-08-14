@@ -36,7 +36,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   const { id } = await params
   const client = await prisma.client.findUnique({
     where: { id },
-    select: { slug: true, logoUrl: true },
+    select: { slug: true, logoUrl: true, businessName: true, primaryColor: true, accentColor: true },
   })
   if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
 
@@ -50,6 +50,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     file: await file.arrayBuffer(),
     clientSlug: client.slug,
     logoUrl: client.logoUrl,
+    wordmark: {
+      businessName: client.businessName,
+      primaryColor: client.primaryColor,
+      accentColor: client.accentColor,
+    },
   })
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 })
 
