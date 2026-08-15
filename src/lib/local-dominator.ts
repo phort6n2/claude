@@ -236,6 +236,58 @@ export async function campaignMapUrl(scheduledScanId: string): Promise<string | 
   )
 }
 
+export interface ScheduledScanPatch {
+  /** Active terms. Anything previously tracked and not listed goes inactive. */
+  searchTerms?: string[]
+  /** Terms to keep but stop scanning — history survives, billing stops. */
+  retireTerms?: string[]
+  scheduling?: string
+  distance?: number
+  gridSize?: number
+}
+
+/**
+ * Update a campaign in place: keywords, cron, geometry.
+ *
+ * Retiring a keyword sets `status: 'inactive'` rather than dropping it from
+ * the list. Their API takes either, but a term removed outright takes its
+ * history with it — and the whole value of this feature is the series, so a
+ * client downgraded from the SEO tier must not lose the months already
+ * measured on the keywords they are no longer paying to track.
+ */
+export async function updateScheduledScan(
+  id: string,
+  patch: ScheduledScanPatch
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const body: Record<string, unknown> = {}
+
+  if (patch.searchTerms?.length) {
+    const active = patch.searchTerms.map((term) => ({ term, status: 'active' }))
+    const retired = (patch.retireTerms || [])
+      // Their API rejects duplicate terms, case-insensitively.
+      .filter((t) => !patch.searchTerms!.some((a) => a.toLowerCase() === t.toLowerCase()))
+      .map((term) => ({ term, status: 'inactive' }))
+    body.search_terms = [...active, ...retired]
+  }
+  if (patch.scheduling) body.scheduling = patch.scheduling
+  if (patch.distance !== undefined) body.distance = patch.distance
+  if (patch.gridSize !== undefined) body.grid_size = patch.gridSize
+
+  if (Object.keys(body).length === 0) return { ok: false, error: 'Nothing to change.' }
+
+  try {
+    const res = await ldFetch(`/v1/scheduled-scans/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    })
+    if (res.ok) return { ok: true }
+    const detail = await res.json().catch(() => null)
+    return { ok: false, error: describeError(res.status, detail) }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Request failed' }
+  }
+}
+
 /** Change a campaign's cron in place. */
 export async function updateScheduledScanSchedule(
   id: string,

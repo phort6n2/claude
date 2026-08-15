@@ -1,10 +1,12 @@
 import { prisma } from '@/lib/db'
 import { decrypt } from '@/lib/encryption'
 import {
+  SCAN_PRESETS,
   campaignMapUrl,
   createScheduledScan,
   suggestedKeywords,
   localDominatorKey,
+  updateScheduledScan,
 } from '@/lib/local-dominator'
 import { rankWebhookUrl } from '@/lib/local-rank-token'
 
@@ -63,6 +65,82 @@ async function backfillCoordinates(
   } catch {
     return null
   }
+}
+
+/**
+ * Move an existing campaign onto the tier the client is now on.
+ *
+ * Moving a shop onto the SEO plan has to change the campaign, not just the
+ * flag: four keywords instead of two, weekly instead of monthly. Without
+ * this the plan changes, the invoice changes, and the scan carries on
+ * exactly as before — which is the kind of gap nobody notices until a client
+ * asks why their new keywords never appeared.
+ *
+ * Downgrades retire the extra keywords rather than deleting them, so the
+ * months already measured stay in the series and simply stop extending.
+ *
+ * Safe to call when nothing changed: it sends the tier's current shape, and
+ * their API treats an identical PATCH as a no-op.
+ */
+export async function syncCampaignTier(
+  clientId: string
+): Promise<{ ok: boolean; message: string }> {
+  const client = await prisma.client
+    .findUnique({
+      where: { id: clientId },
+      select: {
+        businessName: true,
+        seoClient: true,
+        rankTrackingId: true,
+        rankKeywords: true,
+        offersMobileService: true,
+        offersSideWindowRepair: true,
+      },
+    })
+    .catch(() => null)
+
+  if (!client?.rankTrackingId) {
+    // No campaign yet: the daily sweep will create one at the right tier.
+    return { ok: true, message: 'No campaign to update yet.' }
+  }
+
+  const tier = client.seoClient ? 'seo' : 'standard'
+  const preset = SCAN_PRESETS[tier]
+  const suggested = suggestedKeywords(tier, {
+    offersMobileService: client.offersMobileService,
+    offersSideWindowRepair: client.offersSideWindowRepair,
+  })
+
+  // Keep what is already tracked, in order, and top up from the suggestions
+  // for the new tier. An upgrade must not renumber or replace the keywords a
+  // client has months of history on.
+  const kept = client.rankKeywords.filter((k) => k.trim())
+  const active: string[] = []
+  for (const term of [...kept, ...suggested]) {
+    if (active.length >= preset.maxKeywords) break
+    if (!active.some((a) => a.toLowerCase() === term.toLowerCase())) active.push(term)
+  }
+  const retired = kept.filter((k) => !active.some((a) => a.toLowerCase() === k.toLowerCase()))
+
+  const result = await updateScheduledScan(client.rankTrackingId, {
+    searchTerms: active,
+    retireTerms: retired,
+    scheduling: preset.cron,
+    distance: preset.distance,
+    gridSize: preset.gridSize,
+  })
+
+  if (!result.ok) return { ok: false, message: result.error }
+
+  await prisma.client
+    .update({ where: { id: clientId }, data: { rankKeywords: active } })
+    .catch(() => {})
+
+  const added = active.filter((a) => !kept.some((k) => k.toLowerCase() === a.toLowerCase()))
+  const parts = [`${tier === 'seo' ? 'Weekly' : 'Monthly'} on ${active.length} keywords`]
+  if (added.length) parts.push(`added ${added.join(', ')}`)
+  if (retired.length) parts.push(`retired ${retired.join(', ')}`)
+  return { ok: true, message: parts.join(' · ') }
 }
 
 export async function ensureRankCampaigns(origin: string): Promise<EnsureResult> {

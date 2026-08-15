@@ -228,6 +228,14 @@ and posts each finished run back, so nothing is polled.
   client's portal. Only the token travels.
 - The daily sweep captures and refreshes it, so rendering costs no request.
   Creating the campaign and capturing this URL is the entire integration.
+- The sweep only CREATES for clients with no `rankTrackingId`; it never
+  touches an existing campaign. Changing an existing one goes through PATCH:
+  `syncCampaignTier` on a tier flip, `/respace` for geometry, `/reschedule`
+  for the cron.
+- Flipping `Client.seoClient` PATCHes the live campaign — four keywords and
+  weekly, or two and monthly. A downgrade sets the extra terms `inactive`
+  rather than removing them, because a removed term takes its history with
+  it and the series is the whole point.
 - **Embed the CAMPAIGN's share link, not a run's.** `GET /v1/scheduled-scans/{id}`
   → `share_links.dynamic_url` is, per their docs, derived from the newest
   notified run *that has resolvable share URLs*. So it is stable (their
