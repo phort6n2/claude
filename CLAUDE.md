@@ -220,6 +220,14 @@ and posts each finished run back, so nothing is polled.
   their `average_rank` is the mean of every raw cell (a 10×10 summing to 113
   reports 1.13), and their docs deliver a genuinely missing point as `null`.
   `/api/admin/rank-campaigns/repair` asserts that equality on every run.
+- **Embed the CAMPAIGN's share link, not a run's.** `GET /v1/scheduled-scans/{id}`
+  → `share_links.dynamic_url` is, per their docs, derived from the newest
+  notified run *that has resolvable share URLs*. So it is stable (their
+  scheduler repoints it as each run completes — one URL, always current) and
+  it can never point at an empty record. A per-run link taken from a webhook
+  can, and their page renders an empty record as a blank world map centred on
+  0,0 — the Atlantic. That cannot be detected by fetching the page: it
+  returns the same 200 and the same shell either way.
 - **Prefer the WHITE-LABEL form of the report:** `https://{share host}/{link}`,
   where the host is the `LOCALDOMINATOR_SHARE_HOST` setting (our own domain
   pointed at them) and `link` is the UUID out of `dynamic_url`. It is the same

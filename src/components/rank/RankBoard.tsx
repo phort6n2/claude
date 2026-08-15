@@ -136,6 +136,18 @@ export default function RankBoard({
           <span className="text-xs text-gray-500">
             {multiple ? `${active.runs.length} scans · ${run.label}` : run.label}
           </span>
+          {/* In the header, not under the map: the frame is 92vh and their
+              own UI already occupies the bottom of it. */}
+          {run.providerUrl && (
+            <a
+              href={run.providerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold text-blue-600 hover:underline whitespace-nowrap"
+            >
+              Full size ↗
+            </a>
+          )}
         </div>
       </div>
 
@@ -208,29 +220,14 @@ export default function RankBoard({
           </div>
         )}
 
-        {active.runs.length >= 2 ? (
+        {/* Only when there is a trend. A line of text explaining that a chart
+            is absent is clutter sitting under a map that is already tall. */}
+        {active.runs.length >= 2 && (
           <RankTrend
             points={active.runs.map((r) => ({ date: r.date, averageRank: r.averageRank }))}
           />
-        ) : (
-          <p className="text-xs text-gray-500">
-            The trend line appears once there are two scans to compare.
-          </p>
         )}
 
-        {run.providerUrl && (
-          <p className="text-xs text-gray-500">
-            <a
-              href={run.providerUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-semibold text-blue-600 hover:underline"
-            >
-              Open this map in a new tab
-            </a>{' '}
-            — the same report at full size.
-          </p>
-        )}
       </div>
     </section>
   )

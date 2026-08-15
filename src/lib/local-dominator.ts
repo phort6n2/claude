@@ -260,18 +260,37 @@ export async function getScheduledScanSchedule(id: string): Promise<CampaignSche
   }
 }
 
+export interface CampaignShareLinks {
+  /** The report for the newest run that actually has one. */
+  dynamicUrl: string | null
+  /** Their static heatmap for the same run. */
+  imageLink: string | null
+}
+
 /**
- * The campaign-wide share link for a scheduled scan.
+ * The campaign's CURRENT share links.
  *
- * This is the map their own dashboard shows: every keyword, every run, with
- * the date control built in — `share_links.campaign_link` on the campaign
- * object. It never appears in the webhook payload, which only ever carries
- * the per-run `image_link` and `dynamic_url`, so it has to be fetched.
+ * This is the right thing to embed, and the reason is in their docs: the
+ * links on a campaign are "derived from the newest notified run that has
+ * resolvable per-row share URLs". Two properties fall out of that, and both
+ * are things we were otherwise fighting.
  *
- * Cached for an hour. It is derived from the newest notified run, so it does
- * change — but not within a page view, and their API is not free.
+ * It is STABLE. LocalDominator repoints it as each scheduled run completes,
+ * so one URL keeps showing the latest scan without us re-reading a webhook
+ * payload or swapping an iframe src.
+ *
+ * And it can never be an empty record. A per-run URL taken straight from a
+ * webhook points at that run whether or not the run came back with a grid,
+ * and a token whose record has no grid renders their page as an empty world
+ * centred on 0,0 — the Atlantic. The campaign link skips those by
+ * construction, because "has resolvable share URLs" is part of how they
+ * choose it.
+ *
+ * Cached an hour: it changes when a run completes, which is weekly at most.
  */
-export async function campaignShareLink(scheduledScanId: string): Promise<string | null> {
+export async function campaignShareLinks(
+  scheduledScanId: string
+): Promise<CampaignShareLinks | null> {
   try {
     const key = await localDominatorKey()
     if (!key) return null
@@ -286,8 +305,13 @@ export async function campaignShareLink(scheduledScanId: string): Promise<string
     if (!res.ok) return null
     const body = (await res.json().catch(() => null)) as Record<string, unknown> | null
     const links = (body?.share_links || {}) as Record<string, unknown>
-    const link = links.campaign_link
-    return typeof link === 'string' && link ? link : null
+    const str = (v: unknown) => (typeof v === 'string' && v ? v : null)
+    return {
+      // NOT campaign_link — that is their standalone marketing page for the
+      // campaign, not the report. The report is what it links to.
+      dynamicUrl: str(links.dynamic_url),
+      imageLink: str(links.image_link),
+    }
   } catch {
     return null
   }
