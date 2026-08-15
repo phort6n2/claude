@@ -1,6 +1,6 @@
 import { gridRanks, readScanRecord, type HeatmapRecord } from '@/lib/local-dominator'
 import RankHeatmap from '@/components/rank/RankHeatmap'
-import RankTrend from '@/components/rank/RankTrend'
+import RankKeywordSection, { type RunPoint } from '@/components/rank/RankKeywordSection'
 
 /**
  * The ranking report itself, rendered identically wherever it appears: the
@@ -23,24 +23,7 @@ export interface RankScanRow {
   raw: unknown
 }
 
-function relative(date: Date): string {
-  const days = Math.round((Date.now() - date.getTime()) / 86_400_000)
-  if (days <= 0) return 'today'
-  if (days === 1) return 'yesterday'
-  if (days < 14) return `${days} days ago`
-  if (days < 60) return `${Math.round(days / 7)} weeks ago`
-  return `${Math.round(days / 30)} months ago`
-}
 
-function Stat({ label, value, hint }: { label: string; value: string; hint: string }) {
-  return (
-    <div className="rounded-xl border border-gray-200 p-3">
-      <div className="text-xl font-extrabold text-gray-900 tabular-nums leading-none">{value}</div>
-      <div className="mt-1 text-[11px] font-semibold text-gray-700 leading-tight">{label}</div>
-      <div className="text-[11px] text-gray-500 leading-tight">{hint}</div>
-    </div>
-  )
-}
 
 export default function RankReport({
   scans,
@@ -77,76 +60,39 @@ export default function RankReport({
   return (
     <div className="space-y-4">
       {[...byTerm.entries()].map(([term, list]) => {
+        // Only the image and the three numbers travel to the browser — never
+        // the grids. A year of weekly scans is a lot of JSON for a page that
+        // shows one map at a time.
+        const runs: RunPoint[] = list.map((scan) => {
+          const meta = readScanRecord((scan.raw || {}) as HeatmapRecord)
+          return {
+            date: scan.scannedAt.toISOString(),
+            label: scan.scannedAt.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }),
+            imageUrl: meta.mapImageUrl,
+            averageRank: scan.averageRank,
+            top3Percent: scan.top3Percent,
+            foundPercent: scan.foundPercent,
+          }
+        })
+
+        // Our own render, used only when the provider sent no image.
         const latest = list[list.length - 1]
-        const record = (latest.raw || {}) as HeatmapRecord
-        const meta = readScanRecord(record)
-        const grid = gridRanks(record, meta.placeId || placeId)
-        // Local Dominator renders its own heatmap and hands us the link, so
-        // prefer theirs: it is the picture their dashboard shows, it needs no
-        // Maps key and costs nothing per view. Our own pins-over-a-map render
-        // is the fallback for records that carry no image.
-        const providerMap = meta.mapImageUrl
-        const mapUrl = hasCoordinates
-          ? `/api/rank-map?grid=${latest.gridSize}&distance=${latest.distance}${mapQuery ? `&${mapQuery}` : ''}`
-          : null
+        const latestRecord = (latest.raw || {}) as HeatmapRecord
+        const grid = gridRanks(latestRecord, readScanRecord(latestRecord).placeId || placeId)
+        const fallback =
+          grid.length > 0 ? (
+            <RankHeatmap
+              grid={grid}
+              label={term}
+              mapUrl={
+                hasCoordinates
+                  ? `/api/rank-map?grid=${latest.gridSize}&distance=${latest.distance}${mapQuery ? `&${mapQuery}` : ''}`
+                  : null
+              }
+            />
+          ) : null
 
-        return (
-          <section key={term} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-6">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-lg font-bold text-gray-900">&ldquo;{term}&rdquo;</h2>
-              <span className="text-xs text-gray-500">Last checked {relative(latest.scannedAt)}</span>
-            </div>
-
-            <div className="mt-3 grid gap-6 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start">
-              {providerMap ? (
-                <div className="w-full max-w-[460px]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={providerMap}
-                    alt={`Ranking heatmap for ${term}`}
-                    className="w-full rounded-xl border border-gray-200"
-                    loading="lazy"
-                  />
-                </div>
-              ) : grid.length > 0 ? (
-                <RankHeatmap grid={grid} label={term} mapUrl={mapUrl} />
-              ) : null}
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-3">
-                  <Stat
-                    label="Average position"
-                    value={latest.averageRank === null ? '—' : latest.averageRank.toFixed(1)}
-                    hint={latest.averageRank === null ? 'not showing yet' : 'where they rank'}
-                  />
-                  <Stat
-                    label="In the top 3"
-                    value={latest.top3Percent === null ? '—' : `${Math.round(latest.top3Percent)}%`}
-                    hint="of the area"
-                  />
-                  <Stat
-                    label="Showing at all"
-                    value={latest.foundPercent === null ? '—' : `${Math.round(latest.foundPercent)}%`}
-                    hint="of the area"
-                  />
-                </div>
-
-                {list.length >= 2 ? (
-                  <RankTrend
-                    points={list.map((s) => ({
-                      date: s.scannedAt.toISOString(),
-                      averageRank: s.averageRank,
-                    }))}
-                  />
-                ) : (
-                  <p className="text-xs text-gray-500">
-                    The trend line appears once there are two scans to compare.
-                  </p>
-                )}
-              </div>
-            </div>
-          </section>
-        )
+        return <RankKeywordSection key={term} term={term} runs={runs} fallback={fallback} />
       })}
     </div>
   )
