@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { decrypt } from '@/lib/encryption'
 import {
   getApiKey,
   getArticle,
@@ -11,12 +12,17 @@ import { flagsFrom, reviewArticle } from '@/lib/seo-article-review'
  * Sync BabyLoveGrowth's articles into our own table and decide which are
  * allowed onto a shop's site.
  *
- * Two things have to be true before an article appears anywhere: it must be
- * matched to a shop, and it must survive the content scan. Neither is a
- * formality. An article that cannot be matched is held rather than guessed
- * at, because putting one shop's content on another's site is worse than
- * publishing nothing; an article that trips the scan is held rather than
- * rewritten, because a claim about a real business is a human's call.
+ * Each shop is normally its own BabyLoveGrowth organisation with its own key,
+ * held on the client record. That is the reliable arrangement: the key itself
+ * says which shop an article belongs to, so there is nothing to match and
+ * nothing to get wrong. An account-wide key still works — its articles are
+ * matched by the website they were written for — but that path can leave an
+ * article unplaced, and an unplaced article is held rather than guessed at,
+ * because publishing one shop's content under another's name is worse than
+ * publishing nothing.
+ *
+ * The second gate is the content scan. It holds rather than rewrites: a claim
+ * about a real business is a human's call.
  */
 
 /** Bare lowercase host, no scheme, no www, no path. */
@@ -88,6 +94,48 @@ export interface SyncResult {
   unmatched: number
 }
 
+/** One key to pull with, and the shop it belongs to when it belongs to one. */
+interface Source {
+  apiKey: string
+  clientId: string | null
+  label: string
+}
+
+async function sourcesFor(clientId?: string): Promise<Source[]> {
+  const clients = await prisma.client
+    .findMany({
+      where: {
+        status: 'ACTIVE',
+        seoContentEnabled: true,
+        blgApiKey: { not: null },
+        ...(clientId ? { id: clientId } : {}),
+      },
+      select: { id: true, businessName: true, blgApiKey: true },
+    })
+    .catch(() => [])
+
+  const sources: Source[] = []
+  for (const client of clients) {
+    const apiKey = decrypt(client.blgApiKey || '')
+    if (!apiKey) {
+      console.warn(`[SEO] ${client.businessName} has a key that could not be decrypted`)
+      continue
+    }
+    sources.push({ apiKey, clientId: client.id, label: client.businessName })
+  }
+
+  // The account-wide key covers a single BabyLoveGrowth account holding
+  // several organisations. Skipped when syncing one client on demand.
+  if (!clientId) {
+    const shared = await getApiKey()
+    if (shared && !sources.some((s) => s.apiKey === shared)) {
+      sources.push({ apiKey: shared, clientId: null, label: 'account-wide key' })
+    }
+  }
+
+  return sources
+}
+
 /**
  * Pull everything, store what is new, publish what is clean.
  *
@@ -96,25 +144,16 @@ export interface SyncResult {
  * hundred articles would otherwise be a hundred extra requests against a rate
  * limit for content that has not changed.
  */
-export async function syncSeoArticles(): Promise<SyncResult> {
+export async function syncSeoArticles(clientId?: string): Promise<SyncResult> {
   const empty = { fetched: 0, created: 0, updated: 0, published: 0, held: 0, unmatched: 0 }
 
-  const apiKey = await getApiKey()
-  if (!apiKey) {
+  const sources = await sourcesFor(clientId)
+  if (sources.length === 0) {
     return {
       ok: false,
-      message: 'No BabyLoveGrowth API key saved in Settings → API keys.',
-      ...empty,
-    }
-  }
-
-  let summaries: BlgArticleSummary[]
-  try {
-    summaries = await listAllArticles(apiKey)
-  } catch (error) {
-    return {
-      ok: false,
-      message: error instanceof Error ? error.message : 'Could not reach BabyLoveGrowth',
+      message: clientId
+        ? 'No BabyLoveGrowth key on this client, or SEO content is switched off for them.'
+        : 'No BabyLoveGrowth keys configured — add one per client on their SEO tab, or an account-wide key in Settings → API keys.',
       ...empty,
     }
   }
@@ -132,104 +171,135 @@ export async function syncSeoArticles(): Promise<SyncResult> {
   const index = buildHostIndex(clients)
 
   const existing = await prisma.seoArticle
-    .findMany({ select: { externalId: true, contentHtml: true, publishedAt: true } })
+    .findMany({ select: { externalId: true, contentHtml: true, publishedAt: true, clientId: true } })
     .catch(() => [])
   const stored = new Map(existing.map((a) => [a.externalId, a]))
 
+  let fetched = 0
   let created = 0
   let updated = 0
   let published = 0
   let held = 0
   let unmatched = 0
+  const failures: string[] = []
 
-  for (const summary of summaries) {
-    const externalId = String(summary.id)
-    if (!externalId) continue
+  for (const source of sources) {
+    let summaries: BlgArticleSummary[]
+    try {
+      summaries = await listAllArticles(source.apiKey)
+    } catch (error) {
+      // One shop's bad key must not stop every other shop's sync.
+      const message = error instanceof Error ? error.message : 'request failed'
+      console.warn(`[SEO] ${source.label}: ${message}`)
+      failures.push(`${source.label} (${message})`)
+      continue
+    }
+    fetched += summaries.length
 
-    const known = stored.get(externalId)
-    const needsBody = !known?.contentHtml
+    for (const summary of summaries) {
+      const externalId = String(summary.id)
+      if (!externalId) continue
 
-    let full = summary as Awaited<ReturnType<typeof getArticle>>
-    if (needsBody) {
-      try {
-        full = await getArticle(externalId, apiKey)
-      } catch (error) {
+      const known = stored.get(externalId)
+
+      // Their article ids look account-independent, but "look" is not a
+      // guarantee — and an id collision across two accounts would silently
+      // move one shop's article onto another's site. Refuse instead.
+      if (known && known.clientId && source.clientId && known.clientId !== source.clientId) {
         console.warn(
-          `[SEO] could not fetch article ${externalId}:`,
-          error instanceof Error ? error.message : error
+          `[SEO] article ${externalId} is already stored for a different client; skipping ${source.label}`
         )
         continue
       }
-    }
 
-    const clientId = index.get(hostOf(full.orgWebsite) || '') || null
-    if (!clientId) unmatched++
+      const needsBody = !known?.contentHtml
+      let full = summary as Awaited<ReturnType<typeof getArticle>>
+      if (needsBody) {
+        try {
+          full = await getArticle(externalId, source.apiKey)
+        } catch (error) {
+          console.warn(
+            `[SEO] could not fetch article ${externalId}:`,
+            error instanceof Error ? error.message : error
+          )
+          continue
+        }
+      }
 
-    const findings = reviewArticle({
-      title: full.title,
-      excerpt: full.excerpt,
-      metaDescription: full.meta_description,
-      contentHtml: full.content_html,
-      contentMarkdown: full.content_markdown,
-    })
-    const flags = flagsFrom(findings)
+      // A per-client key is the answer on its own. Only the account-wide key
+      // has to work out which shop an article belongs to.
+      const owner = source.clientId || index.get(hostOf(full.orgWebsite) || '') || null
+      if (!owner) unmatched++
 
-    // Clean and matched goes live. Anything else waits in the admin queue.
-    // An article already published stays published: unpublishing under a
-    // shop is a decision, not a side effect of a re-scan.
-    const publishable = clientId !== null && flags.length === 0
-    const publishedAt = known?.publishedAt ?? (publishable ? new Date() : null)
-    if (publishedAt) published++
-    else held++
-
-    const data = {
-      clientId,
-      title: full.title || 'Untitled',
-      slug: (full.slug && slugify(full.slug)) || slugify(full.title || externalId),
-      excerpt: full.excerpt || null,
-      metaDescription: full.meta_description || null,
-      heroImageUrl: full.hero_image_url || null,
-      languageCode: full.languageCode || null,
-      orgWebsite: full.orgWebsite || null,
-      seedKeyword: full.seedKeyword || null,
-      keywords: Array.isArray(full.keywords) ? full.keywords.filter((k) => typeof k === 'string') : [],
-      reviewFlags: flags,
-      publishedAt,
-      authoredAt: full.created_at ? new Date(full.created_at) : null,
-      syncedAt: new Date(),
-      // Only overwrite a body we actually fetched — a summary-only pass must
-      // not blank the content of an article we already have in full.
-      ...(needsBody
-        ? {
-            contentHtml: full.content_html || null,
-            contentMarkdown: full.content_markdown || null,
-            jsonLd: (full.jsonLd as object) ?? undefined,
-            faqJsonLd: (full.faqJsonLd as object) ?? undefined,
-          }
-        : {}),
-    }
-
-    try {
-      await prisma.seoArticle.upsert({
-        where: { externalId },
-        update: data,
-        create: { externalId, ...data },
+      const findings = reviewArticle({
+        title: full.title,
+        excerpt: full.excerpt,
+        metaDescription: full.meta_description,
+        contentHtml: full.content_html,
+        contentMarkdown: full.content_markdown,
       })
-      if (known) updated++
-      else created++
-    } catch (error) {
-      console.error(`[SEO] failed to store article ${externalId}:`, error)
+      const flags = flagsFrom(findings)
+
+      // Clean and placed goes live. Anything else waits in the admin queue.
+      // An article already published stays published: taking one down under
+      // a shop is a decision, not a side effect of a re-scan.
+      const publishable = owner !== null && flags.length === 0
+      const publishedAt = known?.publishedAt ?? (publishable ? new Date() : null)
+      if (publishedAt) published++
+      else held++
+
+      const data = {
+        clientId: owner,
+        title: full.title || 'Untitled',
+        slug: (full.slug && slugify(full.slug)) || slugify(full.title || externalId),
+        excerpt: full.excerpt || null,
+        metaDescription: full.meta_description || null,
+        heroImageUrl: full.hero_image_url || null,
+        languageCode: full.languageCode || null,
+        orgWebsite: full.orgWebsite || null,
+        seedKeyword: full.seedKeyword || null,
+        keywords: Array.isArray(full.keywords)
+          ? full.keywords.filter((k) => typeof k === 'string')
+          : [],
+        reviewFlags: flags,
+        publishedAt,
+        authoredAt: full.created_at ? new Date(full.created_at) : null,
+        syncedAt: new Date(),
+        // Only overwrite a body we actually fetched — a summary-only pass
+        // must not blank the content of an article we already have in full.
+        ...(needsBody
+          ? {
+              contentHtml: full.content_html || null,
+              contentMarkdown: full.content_markdown || null,
+              jsonLd: (full.jsonLd as object) ?? undefined,
+              faqJsonLd: (full.faqJsonLd as object) ?? undefined,
+            }
+          : {}),
+      }
+
+      try {
+        await prisma.seoArticle.upsert({
+          where: { externalId },
+          update: data,
+          create: { externalId, ...data },
+        })
+        if (known) updated++
+        else created++
+      } catch (error) {
+        console.error(`[SEO] failed to store article ${externalId}:`, error)
+      }
     }
   }
 
-  const parts = [`${summaries.length} fetched`, `${created} new`, `${updated} updated`]
+  const parts = [`${fetched} fetched`, `${created} new`, `${updated} updated`]
   if (held) parts.push(`${held} held for review`)
   if (unmatched) parts.push(`${unmatched} not matched to a shop`)
+  if (failures.length) parts.push(`failed: ${failures.join('; ')}`)
 
   return {
-    ok: true,
+    ok: failures.length === 0,
     message: parts.join(' · '),
-    fetched: summaries.length,
+    fetched,
     created,
     updated,
     published,

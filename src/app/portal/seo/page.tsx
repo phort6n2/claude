@@ -55,7 +55,11 @@ export default async function PortalSeoPage() {
 
   const articles = await prisma.seoArticle
     .findMany({
-      where: { clientId: session.clientId, publishedAt: { not: null } },
+      where: {
+        clientId: session.clientId,
+        publishedAt: { not: null },
+        client: { seoContentEnabled: true },
+      },
       orderBy: { publishedAt: 'desc' },
       select: { id: true, slug: true, title: true, seedKeyword: true, publishedAt: true },
     })

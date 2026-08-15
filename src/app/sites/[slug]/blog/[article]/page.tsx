@@ -44,7 +44,15 @@ async function getClient(slug: string) {
 async function getArticle(clientId: string, slug: string) {
   return prisma.seoArticle
     .findFirst({
-      where: { clientId, slug, publishedAt: { not: null } },
+      // The shop's SEO switch is enforced here, not only at sync: turning
+      // it off has to take live pages down, which is what the admin card
+      // says it does.
+      where: {
+        clientId,
+        slug,
+        publishedAt: { not: null },
+        client: { seoContentEnabled: true },
+      },
       select: {
         title: true,
         metaDescription: true,

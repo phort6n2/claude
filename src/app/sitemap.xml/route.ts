@@ -87,7 +87,11 @@ export async function GET(request: NextRequest) {
   // pays for.
   const articles = await prisma.seoArticle
     .findMany({
-      where: { clientId: client.id, publishedAt: { not: null } },
+      where: {
+        clientId: client.id,
+        publishedAt: { not: null },
+        client: { seoContentEnabled: true },
+      },
       orderBy: { publishedAt: 'desc' },
       select: { slug: true, publishedAt: true },
     })

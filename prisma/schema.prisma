@@ -89,7 +89,13 @@ model Client {
   rankTrackingId String? // LocalDominator scheduled_scan_id
   rankKeywords   String[]
   localRankScans LocalRankScan[]
-  seoArticles    SeoArticle[]
+
+  // Syndicated SEO content. Each shop is its own BabyLoveGrowth organisation
+  // with its own key, so the key itself says which shop an article belongs
+  // to — no matching a website against a domain and hoping.
+  seoContentEnabled Boolean      @default(false)
+  blgApiKey         String? // Encrypted
+  seoArticles       SeoArticle[]
 
   // Brand Settings
   logoUrl        String?
