@@ -23,8 +23,19 @@ export const SCAN_PRESETS = {
   // `distance` is METRES between adjacent pins, per their docs — not the
   // width of the grid. A 10x10 has NINE gaps across, so 1207m (0.75 miles)
   // spans 10.9km, about 6.75 miles corner to corner.
-  seo: { gridSize: 10, distance: 1207, cron: '0 6 * * 1', maxKeywords: 4 },
-  standard: { gridSize: 10, distance: 1207, cron: '0 6 1 * *', maxKeywords: 2 },
+  // Crons run on a WEEKDAY, in US business hours. A geogrid measures the
+  // local pack as it stands at that moment, and the pack a shop competes in
+  // on a Sunday morning is not the one that sells jobs: competitors with
+  // weekend hours surface, closed shops get demoted, and the whole grid
+  // shifts for reasons that have nothing to do with the SEO being paid for.
+  // Scanning at 19:00 UTC on a Tuesday is midday in the east and mid-morning
+  // in the west — inside business hours everywhere in the lower 48.
+  seo: { gridSize: 10, distance: 1207, cron: '0 19 * * 2', maxKeywords: 4 },
+  // First Tuesday of the month. See rescheduleCampaigns: whether their cron
+  // ANDs day-of-month with day-of-week is checked against one campaign before
+  // the rest are touched, because the other reading is "every Tuesday", which
+  // would quadruple a monthly client's credits.
+  standard: { gridSize: 10, distance: 1207, cron: '0 19 1-7 * 2', maxKeywords: 2 },
 } as const
 
 export type ScanTier = keyof typeof SCAN_PRESETS
@@ -198,6 +209,54 @@ export async function updateScheduledScanGrid(
     return { ok: false, error: describeError(res.status, detail) }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Request failed' }
+  }
+}
+
+/** Change a campaign's cron in place. */
+export async function updateScheduledScanSchedule(
+  id: string,
+  cron: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const res = await ldFetch(`/v1/scheduled-scans/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ scheduling: cron }),
+    })
+    if (res.ok) return { ok: true }
+    const detail = await res.json().catch(() => null)
+    return { ok: false, error: describeError(res.status, detail) }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Request failed' }
+  }
+}
+
+export interface CampaignSchedule {
+  scheduling: string | null
+  schedulingType: string | null
+  nextRunAt: string | null
+}
+
+/**
+ * Read a campaign's schedule back.
+ *
+ * `next_run_at` is the only honest test of what a cron expression means on
+ * their side: the docs never say whether day-of-month and day-of-week are
+ * ANDed or ORed, and the two readings differ by a factor of four in credits.
+ */
+export async function getScheduledScanSchedule(id: string): Promise<CampaignSchedule | null> {
+  try {
+    const res = await ldFetch(`/v1/scheduled-scans/${encodeURIComponent(id)}?date_range=1M`)
+    if (!res.ok) return null
+    const body = (await res.json().catch(() => null)) as Record<string, unknown> | null
+    if (!body) return null
+    const str = (v: unknown) => (typeof v === 'string' && v ? v : null)
+    return {
+      scheduling: str(body.scheduling),
+      schedulingType: str(body.scheduling_type),
+      nextRunAt: str(body.next_run_at),
+    }
+  } catch {
+    return null
   }
 }
 
@@ -405,6 +464,26 @@ export function summarizeRanks(grid: Array<Array<number | null>>): RankSummary |
     foundPercent: pct(found),
     points,
   }
+}
+
+/**
+ * Did this run actually come back with something to draw?
+ *
+ * Their share page is a client-side app: hand it a token whose record has no
+ * grid and it renders an empty world map centred on 0,0 — the Atlantic. That
+ * is indistinguishable from a working embed until a client is looking at it,
+ * and it cannot be caught by fetching the page, which returns the same 200
+ * and the same shell either way.
+ *
+ * So it is caught here instead, from the payload we already hold: no share
+ * link, or no rows in `content`, means no map. Say so rather than framing it.
+ */
+export function hasRenderableMap(record: HeatmapRecord): boolean {
+  const meta = readScanRecord(record)
+  if (!meta.shareUrl && !meta.mapImageUrl) return false
+  const content = (record as Record<string, unknown>).content
+  if (!Array.isArray(content) || content.length === 0) return false
+  return ranksFromContent(record).some((row) => row.some((v) => v !== null))
 }
 
 export interface LocatedGrid {
