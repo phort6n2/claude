@@ -29,6 +29,8 @@ interface ClientData {
   googleMapsUrl: string | null
   hasShopLocation: boolean
   offersMobileService: boolean
+  latitude?: number | null
+  longitude?: number | null
   filesInsuranceClaims?: boolean
   smsCapable?: boolean
   // Services offered
@@ -131,6 +133,9 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
         // Their site, straight off the Business Profile — seeds the import
         // field on the Website tab so nobody re-types what Google knows.
         websiteUrl: details.website || prev.websiteUrl,
+        // Grid centre for local rank scans.
+        latitude: details.latitude ?? prev.latitude,
+        longitude: details.longitude ?? prev.longitude,
       }))
       setPlaceSearch(details.businessName)
     } catch (err) {

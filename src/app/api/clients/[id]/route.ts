@@ -105,6 +105,10 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       'offersRockChipRepair',
       'offersAdasCalibration',
       'filesInsuranceClaims',
+      'latitude',
+      'longitude',
+      'seoClient',
+      'rankKeywords',
       'smsCapable',
       'callCoachingEnabled',
     ] as const) {

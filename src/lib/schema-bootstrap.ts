@@ -71,11 +71,47 @@ export const CLAIM_FLAGS_SQL: string[] = [
   `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "smsCapable" BOOLEAN NOT NULL DEFAULT false`,
 ]
 
+/**
+ * Local rank tracking (LocalDominator geogrid scans). Coordinates live on
+ * Client because every scan needs a grid centre, and the scan table is
+ * append-mostly — one row per keyword per run.
+ */
+export const LOCAL_RANK_SQL: string[] = [
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "latitude" DOUBLE PRECISION`,
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "longitude" DOUBLE PRECISION`,
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "seoClient" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "rankTrackingId" TEXT`,
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "rankKeywords" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[]`,
+  `CREATE TABLE IF NOT EXISTS "LocalRankScan" (
+    "id" TEXT NOT NULL,
+    "clientId" TEXT NOT NULL,
+    "runUuid" TEXT NOT NULL,
+    "searchTerm" TEXT NOT NULL,
+    "scannedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "gridSize" INTEGER NOT NULL,
+    "distance" INTEGER NOT NULL,
+    "averageRank" DOUBLE PRECISION,
+    "top3Percent" DOUBLE PRECISION,
+    "top10Percent" DOUBLE PRECISION,
+    "foundPercent" DOUBLE PRECISION,
+    "raw" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "LocalRankScan_pkey" PRIMARY KEY ("id")
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "LocalRankScan_runUuid_searchTerm_key" ON "LocalRankScan"("runUuid", "searchTerm")`,
+  `CREATE INDEX IF NOT EXISTS "LocalRankScan_clientId_searchTerm_scannedAt_idx" ON "LocalRankScan"("clientId", "searchTerm", "scannedAt")`,
+  `DO $$ BEGIN
+    ALTER TABLE "LocalRankScan" ADD CONSTRAINT "LocalRankScan_clientId_fkey"
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+]
+
 /** Everything the running code assumes exists. */
 export const BOOTSTRAP_SQL: string[] = [
   ...CALL_TRACKING_SQL,
   ...OFFLINE_CONVERSION_SQL,
   ...CLAIM_FLAGS_SQL,
+  ...LOCAL_RANK_SQL,
 ]
 
 /**

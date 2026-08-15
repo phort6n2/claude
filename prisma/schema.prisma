@@ -77,6 +77,19 @@ model Client {
   filesInsuranceClaims Boolean @default(false)
   smsCapable           Boolean @default(false)
 
+  // Grid centre for local-rank scans. Captured from the Business Profile
+  // picker alongside the Place ID; backfilled for clients picked before it.
+  latitude  Float?
+  longitude Float?
+
+  // Local rank tracking. SEO clients get a denser, more frequent scan; the
+  // rest get a light one, which is the "here is where you actually rank"
+  // conversation that sells the SEO service in the first place.
+  seoClient      Boolean         @default(false)
+  rankTrackingId String? // LocalDominator scheduled_scan_id
+  rankKeywords   String[]
+  localRankScans LocalRankScan[]
+
   // Brand Settings
   logoUrl        String?
   primaryColor   String? @default("#1e40af")
@@ -974,4 +987,45 @@ model Setting {
   encrypted Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/**
+ * One keyword's grid from one local-rank scan run.
+ * A run returns one heatmap per keyword, so a weekly 4-keyword campaign
+ * writes four rows. The whole point is the SERIES — a single scan says
+ * nothing a screenshot could not, while twelve weeks of them is the evidence
+ * that the SEO work is doing something.
+ * The provider's raw grid is kept so the heatmap can be redrawn without
+ * re-scanning (and re-charging credits); the summary columns are what the
+ * trend chart and the client report actually read.
+ */
+model LocalRankScan {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Provider run identity. Unique per keyword so a webhook redelivery
+  // updates the row rather than appending a duplicate week.
+  runUuid    String
+  searchTerm String
+
+  scannedAt DateTime @default(now())
+  gridSize  Int
+  distance  Int
+
+  // Summary of THIS client's position across the grid. Null when the scan
+  // completed but the business appeared at no point — which is itself the
+  // finding, and must not read as "no data".
+  averageRank  Float?
+  top3Percent  Float?
+  top10Percent Float?
+  foundPercent Float?
+
+  /// Provider payload: compressed_grid + detailsArray.
+  raw Json?
+
+  createdAt DateTime @default(now())
+
+  @@unique([runUuid, searchTerm])
+  @@index([clientId, searchTerm, scannedAt])
 }
