@@ -30,6 +30,13 @@
  *
  * `campaign_link` is deliberately not used. It is their standalone marketing
  * page for a campaign, not the report — the report is what it links TO.
+ *
+ * Preferred above all of it is the WHITE-LABEL form of the same report:
+ * `https://{our-share-host}/{link}`. It is the same page on our own domain,
+ * and it is the only one of the three that says so in a header —
+ * `content-security-policy: frame-ancestors *`, i.e. built to be embedded.
+ * A client looking at their own rankings should not be reading a competitor
+ * vendor's domain in the address bar of the frame.
  */
 
 const PROVIDER_HOST = 'app.localdominator.co'
@@ -61,6 +68,30 @@ function normalise(link: string | null | undefined, forceShare: boolean): string
   }
 }
 
+/**
+ * The white-label form of a run's report: the `link` UUID from their URL,
+ * served from our own share host.
+ *
+ * Both halves are validated rather than trusted. The host comes from a
+ * setting and the UUID out of a webhook payload, and the result becomes an
+ * iframe `src` inside a client's portal — so a malformed host or a token
+ * carrying a path must not be able to frame something else.
+ */
+export function whiteLabelEmbedUrl(
+  link: string | null | undefined,
+  host: string | null
+): string | null {
+  if (!host || !link) return null
+  if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(host)) return null
+  try {
+    const token = new URL(link).searchParams.get('link')
+    if (!token || !/^[0-9a-f-]{16,64}$/i.test(token)) return null
+    return `https://${host}/${token}`
+  } catch {
+    return null
+  }
+}
+
 /** Their interactive report for a run. */
 export function interactiveEmbedUrl(dynamicUrl: string | null | undefined): string | null {
   return normalise(dynamicUrl, false)
@@ -72,6 +103,8 @@ export function shareEmbedUrl(imageLink: string | null | undefined): string | nu
 }
 
 export interface EmbedVerdict {
+  /** Our own share host serves the report — the first choice. */
+  whiteLabelOk: boolean
   /** Their static heatmap can be framed — the default map. */
   staticOk: boolean
   /** Their interactive report can be framed — offered as a switch. */
@@ -126,8 +159,16 @@ async function reachable(url: string): Promise<{ ok: boolean; why: string }> {
  */
 export async function pickEmbed(
   interactive: string | null,
-  statik: string | null
+  statik: string | null,
+  whiteLabel: string | null = null
 ): Promise<EmbedVerdict> {
+  if (whiteLabel) {
+    const check = await reachable(whiteLabel)
+    if (check.ok) {
+      return { whiteLabelOk: true, staticOk: false, interactiveOk: false, reason: 'ok' }
+    }
+  }
+
   const [staticCheck, interactiveCheck] = await Promise.all([
     statik ? reachable(statik) : Promise.resolve({ ok: false, why: 'no static link on this run' }),
     interactive
@@ -136,6 +177,7 @@ export async function pickEmbed(
   ])
 
   return {
+    whiteLabelOk: false,
     staticOk: staticCheck.ok,
     interactiveOk: interactiveCheck.ok,
     reason: interactiveCheck.ok || staticCheck.ok

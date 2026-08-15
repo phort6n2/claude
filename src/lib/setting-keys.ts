@@ -43,6 +43,7 @@ export const ALL_KEYS: string[] = [
   'GOOGLE_ADS_LOGIN_CUSTOMER_ID',
   'LOCALDOMINATOR_API_KEY',
   'BABYLOVEGROWTH_API_KEY',
+  'LOCALDOMINATOR_SHARE_HOST',
 ]
 
 export function isSensitiveKey(key: string): boolean {

@@ -254,6 +254,24 @@ const API_KEYS: ApiKeyConfig[] = [
       'Scans bill credits per run, and cost scales with clients × keywords × grid size × frequency. A 10×10 grid on four keywords weekly is 16× the spend of the same grid monthly on two, so switch a client to the SEO tier deliberately rather than by default.',
   },
   {
+    key: 'LOCALDOMINATOR_SHARE_HOST',
+    label: 'Rank report share domain',
+    description:
+      'Your white-label Local Dominator domain, e.g. ranking.autoglassmarketingpros.com. Host only — no https://, no path.',
+    steps: [
+      {
+        text: 'Local Dominator → white-label settings → the domain you pointed at them. Share links are then served as https://that-domain/{link}.',
+        href: 'https://app.localdominator.co/',
+        linkLabel: 'app.localdominator.co',
+      },
+      {
+        text: 'Set this and every rank map — portal, admin and share link — is framed from your domain instead of theirs.',
+      },
+    ],
+    warning:
+      'Without it the maps still work, but they are framed from app.localdominator.co, so a client reading their own rankings sees a vendor\u2019s domain rather than yours. That domain is also the only one that advertises frame-ancestors *, so it is the most reliable to embed as well as the best branded.',
+  },
+  {
     key: 'BABYLOVEGROWTH_API_KEY',
     label: 'BabyLoveGrowth API Key (account-wide)',
     description:

@@ -86,6 +86,23 @@ export async function localDominatorKey(): Promise<string | null> {
   return process.env.LOCALDOMINATOR_API_KEY || null
 }
 
+/**
+ * The white-label host their share links are served from, e.g.
+ * `ranking.autoglassmarketingpros.com`. A setting rather than a constant
+ * because it is OUR domain, not theirs, and it can change.
+ */
+export async function localDominatorShareHost(): Promise<string | null> {
+  const row = await prisma.setting
+    .findUnique({ where: { key: 'LOCALDOMINATOR_SHARE_HOST' } })
+    .catch(() => null)
+  const raw = (row?.value || process.env.LOCALDOMINATOR_SHARE_HOST || '').trim()
+  if (!raw) return null
+  // Host only. Anything with a slash or a scheme is a configuration mistake
+  // that would otherwise become an iframe src.
+  const host = raw.replace(/^https?:\/\//i, '').split('/')[0].toLowerCase()
+  return /^[a-z0-9.-]+\.[a-z]{2,}$/.test(host) ? host : null
+}
+
 async function ldFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const key = await localDominatorKey()
   if (!key) throw new Error('LOCALDOMINATOR_API_KEY is not configured')

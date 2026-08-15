@@ -220,7 +220,14 @@ and posts each finished run back, so nothing is polled.
   their `average_rank` is the mean of every raw cell (a 10×10 summing to 113
   reports 1.13), and their docs deliver a genuinely missing point as `null`.
   `/api/admin/rank-campaigns/repair` asserts that equality on every run.
-- **The map on the page is theirs, framed: `share_links.dynamic_url`.** It is
+- **Prefer the WHITE-LABEL form of the report:** `https://{share host}/{link}`,
+  where the host is the `LOCALDOMINATOR_SHARE_HOST` setting (our own domain
+  pointed at them) and `link` is the UUID out of `dynamic_url`. It is the same
+  page on our domain, and the only one of the three that advertises
+  `content-security-policy: frame-ancestors *` — built to be embedded. A
+  client reading their own rankings should not see a vendor's domain.
+- **The same report on their host: `share_links.dynamic_url`.** The fallback
+  when no share host is configured. It is
   public — fetched with a real `link` token and no cookies it answers 200,
   sends no `X-Frame-Options` and no `frame-ancestors`, and never redirects to
   their login. It is a client-side app that reads `heatmapRecordId` and `link`

@@ -10,6 +10,21 @@ Last reviewed: 2026-08-15
 
 ## 0. New since the landing-page overhaul — five minutes each
 
+### 0.0 Set the rank report share domain
+**Blocks:** nothing, but until it is set every client sees Local Dominator's
+domain inside their own portal instead of yours.
+
+Settings → API keys → **Rank report share domain**:
+
+```
+ranking.autoglassmarketingpros.com
+```
+
+Host only — no `https://`, no path. Every rank map (portal, admin, share link)
+is then framed from your domain. It is also the only one of their URL forms
+that advertises `frame-ancestors *`, so it is the most reliable to embed as
+well as the best branded.
+
 ### 0.0b A BabyLoveGrowth key per shop
 **Blocks:** all syndicated SEO articles.
 
