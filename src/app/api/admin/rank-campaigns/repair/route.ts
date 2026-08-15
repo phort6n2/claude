@@ -53,17 +53,36 @@ export async function POST() {
       const cell = row && typeof row === 'object' && cellKey !== null
         ? (row as Record<string, unknown>)[cellKey]
         : null
+      // The whole matrix, as delivered. A hundred small integers is nothing
+      // to log and it is the only way to settle what the values mean: a
+      // geogrid centred on the shop must be best in the middle, so whichever
+      // reading produces that is the correct one.
+      const matrix = Array.isArray(content)
+        ? content.map((r) =>
+            Array.isArray(r)
+              ? r
+              : r && typeof r === 'object'
+                ? Object.keys(r as object)
+                    .filter((k) => /^\d+$/.test(k))
+                    .sort((a, b) => Number(a) - Number(b))
+                    .map((k) => (r as Record<string, unknown>)[k])
+                : []
+          )
+        : []
       console.warn(
-        '[LocalRank] content shape:',
+        '[LocalRank] matrix',
         JSON.stringify({
-          contentIsArray: Array.isArray(content),
-          rows: Array.isArray(content) ? content.length : 0,
-          rowKeys: row && typeof row === 'object' ? Object.keys(row).slice(0, 12) : null,
-          cellType: Array.isArray(cell) ? 'array' : typeof cell,
-          cellSample: JSON.stringify(cell)?.slice(0, 400),
+          keyword: meta.keyword,
           providerAverageRank: meta.averageRank,
-        }).slice(0, 1200)
+          gridSize: meta.gridSize,
+          rows: matrix.length,
+          cols: matrix[0]?.length ?? 0,
+          distinctValues: [...new Set(matrix.flat())].sort((a, b) => Number(a) - Number(b)).slice(0, 25),
+        })
       )
+      for (const [i, r] of matrix.entries()) {
+        console.warn(`[LocalRank] row${String(i).padStart(2, '0')} ${JSON.stringify(r)}`)
+      }
     }
     const summary = summarizeGrid(record, meta.placeId || placeId)
 
