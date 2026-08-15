@@ -4,7 +4,53 @@ Everything built that needs something from you before it does anything, plus
 the decisions still outstanding. Kept in the repo so it survives a chat
 window.
 
-Last reviewed: 2026-08-13
+Last reviewed: 2026-08-15
+
+---
+
+## 0. New since the landing-page overhaul — five minutes each
+
+### 0.1 Tick the two new claim flags per shop
+**Blocks:** two true things your shops are no longer allowed to say.
+
+The template used to assert both of these for everyone. They are now per-shop
+and **default off**, so right now every site says the conservative version.
+Client → **Business** tab → *What we're allowed to say*:
+
+- **They file insurance claims for the customer.** Off, the site says they
+  will check coverage and give the carrier what it needs. On, it says they
+  deal with the carrier directly.
+- **Their published number can receive texts.** Adds a "Text photo" button to
+  the mobile bar and a text-us line on the form's success screen. Leave off
+  for a landline — a text into a dead line loses the lead silently.
+
+### 0.2 Re-run each shop's website import
+**Blocks:** nothing, but it is how the logo, photo and stock-photo fixes take
+effect on existing clients.
+
+The importer now judges photos by sight, prefers a shop's own work over
+generic imagery, keeps stock the shop published rather than dropping it, and
+clears a previously saved logo that turns out to be another brand's badge.
+None of that applies retroactively — it runs on the next import.
+
+> The gallery/body classification is the one part of this that has never run
+> against a live site: there is no Anthropic API key in the dev environment,
+> so it could not be tested locally. Check the first one and tell me if
+> photos land in the wrong pool — the per-photo Gallery/Body dropdown in the
+> photo editor overrides it, and the prompt is easy to tune.
+
+### 0.3 DMARC record for the sending domain
+**Blocks:** Apple Mail showing "cannot verify this message is from
+leads@leads.glassleads.app" on lead alerts.
+
+Add a TXT record on the `glassleads.app` zone, host `_dmarc`:
+
+```
+v=DMARC1; p=quarantine; rua=mailto:you@yourdomain
+```
+
+`p=none` instead of `p=quarantine` if you would rather monitor before
+enforcing.
 
 ---
 
@@ -103,5 +149,13 @@ You have ruled this out for now and I have not built any. Worth revisiting: an i
 
 1. **Response-time tracking.** The app knows when a lead arrived and when its status moved. "This shop takes four hours to touch a lead" is nearly free, and it is your answer when a client says the leads are bad.
 2. **Real sales page at glassleads.app.** Every client site's footer now links "Powered by GlassLeads" to the apex, which serves a holding brand page (features, no pricing, no contact). The real page needs decisions only you can make: published pricing yes/no, the CTA (a demo-booking link? a phone number? an email that actually receives mail — the Resend domain only sends), and proof (screenshots, a client quote).
+3. **Two-step quote form with partial capture.** The form dropped from six
+   required fields to four, which was most of the available gain. The rest —
+   submitting name/phone/ZIP on step one so an abandoned form still sends a
+   lead — was deliberately NOT shipped, because it changes what a "lead"
+   means for every downstream consumer: HighLevel forwarding, the Google Ads
+   offline upload keyed on lead id, same-day dedup, and alert timing. A lead
+   that never completes step two becomes a permanent half-record flowing into
+   your ad conversions. Worth doing, worth designing first.
 4. **Monthly client-facing report.** Leads → booked → revenue. The retention artifact for a $497 client.
 5. **Follow-up on unbooked leads.** A lead marked "didn't book" is currently dead. Most shops never chase them.
