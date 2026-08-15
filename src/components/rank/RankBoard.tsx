@@ -30,8 +30,6 @@ export interface RunPoint {
   label: string
   /** Their static heatmap, from the public /share/ route. The default. */
   embedUrl: string | null
-  /** Their interactive report. Offered as a switch — see the note below. */
-  interactiveUrl?: string | null
   /** Their report in its own tab, where it always works. */
   providerUrl?: string | null
   averageRank: number | null
@@ -73,11 +71,7 @@ export default function RankBoard({
   // a run the new keyword does not have.
   const [indexes, setIndexes] = useState<Record<string, number>>({})
 
-  // Off by default, deliberately. Their interactive report framed correctly
-  // once and then reverted to 0,0 — a cross-site frame whose storage the
-  // browser partitions, which nothing on our side can fix. An intermittent
-  // map is worse than a plain one, so this is the viewer's choice to make.
-  const [interactive, setInteractive] = useState(false)
+
 
   if (!active) return null
 
@@ -139,31 +133,20 @@ export default function RankBoard({
           )}
         </div>
         <div className="flex items-center gap-3">
-          {run.interactiveUrl && (
-            <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={interactive}
-                onChange={(e) => setInteractive(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-gray-300"
-              />
-              Interactive
-            </label>
-          )}
           <span className="text-xs text-gray-500">
             {multiple ? `${active.runs.length} scans · ${run.label}` : run.label}
           </span>
         </div>
       </div>
 
-      {(interactive && run.interactiveUrl) || run.embedUrl ? (
+      {run.embedUrl ? (
         // Their map, framed from the public share route, given the full width
         // of the page. Keyed on the URL so the date slider reloads the frame:
         // React would otherwise keep the element and only swap the attribute,
         // which some browsers do not treat as a navigation.
         <iframe
-          key={interactive && run.interactiveUrl ? run.interactiveUrl : run.embedUrl!}
-          src={interactive && run.interactiveUrl ? run.interactiveUrl : run.embedUrl!}
+          key={run.embedUrl}
+          src={run.embedUrl}
           title={`Ranking map for ${active.term} on ${run.label}`}
           className="w-full block border-0 bg-gray-100 h-[88vh] min-h-[620px]"
           loading="lazy"
@@ -229,10 +212,9 @@ export default function RankBoard({
               rel="noopener noreferrer"
               className="font-semibold text-blue-600 hover:underline"
             >
-              Open the interactive map in a new tab
+              Open this map in a new tab
             </a>{' '}
-            — pan, zoom and click a point. It is reliable in its own tab; framed here it
-            sometimes loses its bearings, which is why the switch above is off by default.
+            — the same report at full size.
           </p>
         )}
       </div>
