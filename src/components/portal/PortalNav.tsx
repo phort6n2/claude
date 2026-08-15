@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Inbox, Globe, Image as ImageIcon, MapPin } from 'lucide-react'
+import { Home, Inbox, Globe, Image as ImageIcon, MapPin, TrendingUp } from 'lucide-react'
 
 /**
  * Portal navigation, named the way a shop owner talks. Bottom tab bar on a
@@ -15,23 +15,33 @@ const TABS = [
   { href: '/portal/website', label: 'My Website', icon: Globe },
 ]
 
+const SEO_TAB = { href: '/portal/seo', label: 'SEO', icon: TrendingUp }
 const RANKINGS_TAB = { href: '/portal/rankings', label: 'Rankings', icon: MapPin }
 
 /**
- * `showRankings` is false until the client actually has scan data. A tab
- * that leads to a permanent empty state is worse than no tab — it reads as
+ * Both flags are false until there is something behind the tab. A tab that
+ * leads to a permanent empty state is worse than no tab — it reads as
  * something broken rather than something not bought.
+ *
+ * SEO comes before Rankings because it is the summary and Rankings is the
+ * detail behind one of its numbers.
  */
-function useTabs(showRankings: boolean) {
+function useTabs(showRankings: boolean, showSeo: boolean) {
   const pathname = usePathname()
-  const tabs = showRankings ? [...TABS, RANKINGS_TAB] : TABS
+  const tabs = [...TABS, ...(showSeo ? [SEO_TAB] : []), ...(showRankings ? [RANKINGS_TAB] : [])]
   const isActive = (tab: (typeof TABS)[number]) =>
     tab.exact ? pathname === tab.href : pathname.startsWith(tab.href)
   return { tabs, isActive }
 }
 
-export default function PortalNav({ showRankings = false }: { showRankings?: boolean }) {
-  const { tabs, isActive } = useTabs(showRankings)
+export default function PortalNav({
+  showRankings = false,
+  showSeo = false,
+}: {
+  showRankings?: boolean
+  showSeo?: boolean
+}) {
+  const { tabs, isActive } = useTabs(showRankings, showSeo)
 
   return (
     <nav className="hidden sm:flex gap-1" aria-label="Portal">
@@ -67,8 +77,14 @@ export default function PortalNav({ showRankings = false }: { showRankings?: boo
  * `fixed bottom-0` pinned it to the bottom of the HEADER, i.e. the top of
  * the screen, on every phone.
  */
-export function PortalTabBar({ showRankings = false }: { showRankings?: boolean }) {
-  const { tabs, isActive } = useTabs(showRankings)
+export function PortalTabBar({
+  showRankings = false,
+  showSeo = false,
+}: {
+  showRankings?: boolean
+  showSeo?: boolean
+}) {
+  const { tabs, isActive } = useTabs(showRankings, showSeo)
 
   return (
     <nav

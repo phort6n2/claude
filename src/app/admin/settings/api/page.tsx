@@ -244,6 +244,34 @@ const API_KEYS: ApiKeyConfig[] = [
     warning:
       'Scans bill credits per run, and cost scales with clients × keywords × grid size × frequency. A 10×10 grid on four keywords weekly is 16× the spend of the same grid monthly on two, so switch a client to the SEO tier deliberately rather than by default.',
   },
+  {
+    key: 'BABYLOVEGROWTH_API_KEY',
+    label: 'BabyLoveGrowth API Key',
+    description:
+      'SEO articles for the shops on the content plan. Synced nightly onto their hosted site at /blog.',
+    testable: true,
+    action: {
+      label: 'Sync articles now',
+      endpoint: '/api/admin/seo-articles/sync',
+      confirm:
+        'Pull every article from BabyLoveGrowth now?\n\nArticles are matched to a shop by the website they were written for. Clean ones go live on that shop’s site; anything making a claim this platform cannot make on a shop’s behalf is held for review instead. This also happens nightly.',
+    },
+    steps: [
+      {
+        text: 'BabyLoveGrowth → Integrations → API. Generate API Key, then copy it — it is shown once.',
+        href: 'https://app.babylovegrowth.ai/',
+        linkLabel: 'app.babylovegrowth.ai',
+      },
+      {
+        text: 'In BabyLoveGrowth, each shop must be its own organisation, with its website set to the site the articles are for.',
+      },
+      {
+        text: 'That website is the only link between an article and a shop here. It is matched against the shop’s custom domain, the website on their Business Profile, and their glassleads.app subdomain.',
+      },
+    ],
+    warning:
+      'Articles are written by a third party and speak for a real business in a regulated trade. Every one is scanned before it can go live, and anything that promises a turnaround, offers to cover a deductible, claims an insurer relationship, asserts a rating or states a fact about the shop’s history or credentials is held in the review queue instead. Clear those by hand — the scan catches known phrasings, not every invented fact.',
+  },
 ]
 
 /**
