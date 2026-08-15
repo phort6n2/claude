@@ -26,6 +26,34 @@ export const SCAN_PRESETS = {
 
 export type ScanTier = keyof typeof SCAN_PRESETS
 
+/**
+ * Default keywords, in priority order — the admin card prefills these and
+ * they stay editable per client.
+ *
+ * Deliberately BARE head terms: no city, no "near me". A geogrid already
+ * supplies the location, because every pin searches as if standing there.
+ * Adding "denver" to the phrase tracks a different and less representative
+ * SERP than the one a real customer in Denver sees, and "near me" is the pin
+ * restated. City modifiers belong in classic SERP tracking, not here.
+ *
+ * The fourth is the symptom rather than the service: people search what has
+ * gone wrong before they search what fixes it. ADAS calibration is
+ * deliberately absent — near-zero consumer awareness means almost nobody
+ * types it before a shop has told them they need it, so it measures nothing
+ * about visibility to new customers.
+ */
+export const DEFAULT_KEYWORDS = [
+  'windshield replacement',
+  'auto glass repair',
+  'mobile windshield replacement',
+  'cracked windshield',
+] as const
+
+/** The first N defaults for a tier — 4 for SEO clients, 2 for everyone else. */
+export function suggestedKeywords(tier: ScanTier): string[] {
+  return DEFAULT_KEYWORDS.slice(0, SCAN_PRESETS[tier].maxKeywords)
+}
+
 export async function localDominatorKey(): Promise<string | null> {
   const row = await prisma.setting
     .findUnique({ where: { key: 'LOCALDOMINATOR_API_KEY' } })
