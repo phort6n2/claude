@@ -1,5 +1,5 @@
 import { gridRanks, readScanRecord, type HeatmapRecord } from '@/lib/local-dominator'
-import { canEmbedShare, shareEmbedUrl } from '@/lib/rank-embed'
+import { interactiveEmbedUrl, pickEmbed, shareEmbedUrl } from '@/lib/rank-embed'
 import RankHeatmap from '@/components/rank/RankHeatmap'
 import RankBoard, { type KeywordRuns, type RunPoint } from '@/components/rank/RankBoard'
 
@@ -70,18 +70,20 @@ export default async function RankReport({
     )
   }
 
-  // One probe for the whole report. Framing is a property of their route, not
-  // of a particular run, so asking once per keyword per visit would be a
-  // request per page view for an answer that is the same every time.
-  const probeUrl = (() => {
+  // One probe for the whole report. Which of their maps can be framed is a
+  // property of their routes, not of a particular run, so asking per keyword
+  // per visit would be a request per page view for the same answer.
+  const sample = (() => {
     for (const list of byTerm.values()) {
-      const latest = list[list.length - 1]
-      const url = shareEmbedUrl(readScanRecord((latest.raw || {}) as HeatmapRecord).mapImageUrl)
-      if (url) return url
+      const meta = readScanRecord((list[list.length - 1].raw || {}) as HeatmapRecord)
+      if (meta.shareUrl || meta.mapImageUrl) return meta
     }
     return null
   })()
-  const verdict = await canEmbedShare(probeUrl)
+  const verdict = await pickEmbed(
+    interactiveEmbedUrl(sample?.shareUrl),
+    shareEmbedUrl(sample?.mapImageUrl)
+  )
 
   const keywords: KeywordRuns[] = [...byTerm.entries()].map(([term, list]) => {
     // Only the URLs and the three numbers travel to the browser — never the
@@ -97,9 +99,15 @@ export default async function RankReport({
           month: 'short',
           year: 'numeric',
         }),
-        // Their native map, framed. Withheld entirely when the probe said it
-        // cannot be framed, so the client never meets a blank box.
-        embedUrl: verdict.ok ? shareEmbedUrl(meta.mapImageUrl) : null,
+        // Their native map, framed — the interactive one when a signed-out
+        // visitor can reach it, their static heatmap when not. Withheld
+        // entirely when neither can be, so a client never meets a blank box.
+        embedUrl:
+          verdict.kind === 'interactive'
+            ? interactiveEmbedUrl(meta.shareUrl)
+            : verdict.kind === 'static'
+              ? shareEmbedUrl(meta.mapImageUrl)
+              : null,
         providerUrl: showProviderLink ? meta.shareUrl : null,
         averageRank: scan.averageRank,
         top3Percent: scan.top3Percent,
@@ -132,7 +140,7 @@ export default async function RankReport({
       keywords={keywords}
       // Admin only: a client has no use for a framing policy, and showing
       // them one reads as the product being broken.
-      fallbackReason={showProviderLink && !verdict.ok ? verdict.reason : null}
+      fallbackReason={showProviderLink && !verdict.kind ? verdict.reason : null}
     />
   )
 }
