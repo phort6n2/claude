@@ -148,7 +148,7 @@ export default function RankBoard({
           key={run.embedUrl}
           src={run.embedUrl}
           title={`Ranking map for ${active.term} on ${run.label}`}
-          className="w-full block border-0 bg-gray-100 h-[88vh] min-h-[620px]"
+          className="w-full block border-0 bg-gray-100 h-[92vh] min-h-[720px]"
           loading="lazy"
           // allow-storage-access-by-user-activation matters: their app is
           // cross-site here, so its own storage is partitioned by default,
@@ -162,8 +162,22 @@ export default function RankBoard({
         // theirs can be framed is settled server-side before this renders.
         <div className="p-4 sm:p-5">
           {active.fallback || (
-            <div className="w-full aspect-square max-w-[460px] rounded-xl border border-dashed border-gray-300 grid place-items-center text-xs text-gray-500 p-4 text-center">
-              The map for this scan could not be loaded.
+            <div className="w-full rounded-xl border border-dashed border-gray-300 grid place-items-center text-sm text-gray-600 p-8 text-center min-h-[200px]">
+              This scan didn&apos;t come back with a map.
+              {run.providerUrl && (
+                <>
+                  {' '}
+                  <a
+                    href={run.providerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-blue-600 hover:underline"
+                  >
+                    Open it directly
+                  </a>
+                  .
+                </>
+              )}
             </div>
           )}
           {fallbackReason && (

@@ -239,6 +239,9 @@ const API_KEYS: ApiKeyConfig[] = [
       // Spacing lives in SCAN_PRESETS, but a campaign created at the old
       // spacing keeps it — their scheduler holds the geometry, not us.
       { label: 'Apply grid spacing', endpoint: '/api/admin/rank-campaigns/respace' },
+      // Weekend scans measure a different local pack than the one that sells
+      // jobs. This moves every campaign to a weekday in business hours.
+      { label: 'Apply run schedule', endpoint: '/api/admin/rank-campaigns/reschedule' },
     ],
     description:
       'Geogrid rank scans. Local Dominator runs the schedule on their side and posts each completed run back here, so nothing needs to be polled.',

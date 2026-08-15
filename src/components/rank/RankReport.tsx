@@ -1,4 +1,4 @@
-import { readScanRecord, type HeatmapRecord } from '@/lib/local-dominator'
+import { hasRenderableMap, readScanRecord, type HeatmapRecord } from '@/lib/local-dominator'
 import {
   interactiveEmbedUrl,
   pickEmbed,
@@ -93,7 +93,11 @@ export default async function RankReport({
     // grids. A year of weekly scans is a lot of JSON for a page that shows
     // one map at a time.
     const runs: RunPoint[] = list.map((scan) => {
-      const meta = readScanRecord((scan.raw || {}) as HeatmapRecord)
+      const record = (scan.raw || {}) as HeatmapRecord
+      const meta = readScanRecord(record)
+      // A run with nothing behind it is never framed: their page would draw
+      // an empty world map rather than admit it has no data.
+      const renderable = hasRenderableMap(record)
       return {
         scanId: scan.id,
         date: scan.scannedAt.toISOString(),
@@ -104,13 +108,15 @@ export default async function RankReport({
         }),
         // Same report, in order of preference: our own share host first, so
         // a client never reads a vendor's domain in their own portal.
-        embedUrl: verdict.whiteLabelOk
-          ? whiteLabelEmbedUrl(meta.shareUrl, shareHost)
-          : verdict.interactiveOk
-            ? interactiveEmbedUrl(meta.shareUrl)
-            : verdict.staticOk
-              ? shareEmbedUrl(meta.mapImageUrl)
-              : null,
+        embedUrl: !renderable
+          ? null
+          : verdict.whiteLabelOk
+            ? whiteLabelEmbedUrl(meta.shareUrl, shareHost)
+            : verdict.interactiveOk
+              ? interactiveEmbedUrl(meta.shareUrl)
+              : verdict.staticOk
+                ? shareEmbedUrl(meta.mapImageUrl)
+                : null,
         // The new-tab link is for everyone: it is where their interactive
         // report is reliable, frame partitioning being the whole problem.
         providerUrl:

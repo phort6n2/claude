@@ -251,6 +251,15 @@ and posts each finished run back, so nothing is polled.
   theirs in front of a client (2.8 against their 1.80) and was deleted along
   with its Static Maps proxy. When theirs cannot be framed the page says so
   and links out.
+- **Scans run on a weekday, in business hours** (`0 19 * * 2`). A geogrid
+  measures the pack as it stands at that moment, and the weekend pack is not
+  the one that sells jobs — competitors with weekend hours surface and closed
+  shops get demoted, moving the grid for reasons unrelated to the SEO. The
+  monthly cron `0 19 1-7 * 2` means "first Tuesday" only if their scheduler
+  ANDs day-of-month with day-of-week; Vixie cron ORs them, which would be
+  weekly. `/api/admin/rank-campaigns/reschedule` proves it on ONE campaign by
+  reading `next_run_at` back, and falls back to `0 19 2 * *` if it does not
+  land on a Tuesday.
 - `distance` is **metres between adjacent pins**, and a 10x10 spans NINE
   gaps. 1207m = 0.75 miles apart, 6.75 miles across. Their scheduler holds
   the geometry, so changing `SCAN_PRESETS` does nothing to existing
