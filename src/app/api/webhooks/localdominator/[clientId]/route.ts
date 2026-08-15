@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import {
   summarizeGrid,
   searchTermOf,
+  readScanRecord,
   type HeatmapRecord,
 } from '@/lib/local-dominator'
 
@@ -69,19 +70,26 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   let stored = 0
 
   for (const [i, record] of records.entries()) {
-    const term = searchTermOf(record) || `keyword ${i + 1}`
-    const summary = placeId ? summarizeGrid(record, placeId) : null
-    const grid = record.compressed_grid
-    const gridSize = Array.isArray(grid) ? grid.length : 0
+    // The delivered record carries far more than the documented shape: the
+    // keyword, the shop's own place id, the geometry, and an average rank
+    // Local Dominator has already worked out.
+    const meta = readScanRecord(record)
+    const term = meta.keyword || searchTermOf(record) || `keyword ${i + 1}`
+    // Their place id beats ours: it is the business the scan was actually
+    // run for, so a stale Place ID on our side cannot silently misread it.
+    const subject = meta.placeId || placeId
+    const summary = subject ? summarizeGrid(record, subject) : null
 
     try {
       const data = {
         clientId,
         runUuid,
         searchTerm: term,
-        gridSize,
-        distance: Number(body.distance) || 0,
-        averageRank: summary?.averageRank ?? null,
+        gridSize: meta.gridSize ?? 0,
+        distance: meta.distance ?? Number(body.distance) ?? 0,
+        // Prefer their number over ours — it is what their dashboard shows,
+        // and a report disagreeing with the tool it came from is worthless.
+        averageRank: meta.averageRank ?? summary?.averageRank ?? null,
         top3Percent: summary?.top3Percent ?? null,
         top10Percent: summary?.top10Percent ?? null,
         foundPercent: summary?.foundPercent ?? null,

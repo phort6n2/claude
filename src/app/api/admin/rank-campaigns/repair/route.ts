@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
-import { summarizeGrid, locateHeatmap, type HeatmapRecord } from '@/lib/local-dominator'
+import { summarizeGrid, locateHeatmap, readScanRecord, type HeatmapRecord } from '@/lib/local-dominator'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -39,7 +39,26 @@ export async function POST() {
       continue
     }
     const record = (scan.raw || {}) as HeatmapRecord
-    const summary = summarizeGrid(record, placeId)
+    const meta = readScanRecord(record)
+    const summary = summarizeGrid(record, meta.placeId || placeId)
+
+    // Their average_rank alone is enough to make the row useful, even if the
+    // per-point grid still will not parse.
+    if (!summary && meta.averageRank !== null) {
+      await prisma.localRankScan
+        .update({
+          where: { id: scan.id },
+          data: {
+            averageRank: meta.averageRank,
+            gridSize: meta.gridSize ?? undefined,
+            distance: meta.distance ?? undefined,
+          },
+        })
+        .catch(() => {})
+      repaired++
+      continue
+    }
+
     if (!summary) {
       // Log the SHAPE of the first payload we cannot read, so the reader can
       // be fixed against the real structure instead of a guess. Keys only —
@@ -61,7 +80,23 @@ export async function POST() {
                     : typeof v,
               ])
             )
-          ).slice(0, 900)
+          ).slice(0, 700),
+          '| contentCell=',
+          (() => {
+            const c = (record as Record<string, unknown>).content
+            if (!Array.isArray(c) || !c.length) return 'none'
+            const row = c[0] as Record<string, unknown>
+            const cell = row && typeof row === 'object' ? row[Object.keys(row)[0]] : null
+            return JSON.stringify({
+              rowType: Array.isArray(row) ? 'array' : typeof row,
+              rowKeys: row && typeof row === 'object' ? Object.keys(row).slice(0, 4) : null,
+              cell: Array.isArray(cell)
+                ? `array(${cell.length}) first=${JSON.stringify(cell[0])?.slice(0, 120)}`
+                : cell && typeof cell === 'object'
+                  ? `object{${Object.keys(cell).join('|')}}`
+                  : typeof cell,
+            }).slice(0, 500)
+          })()
         )
       }
       stillEmpty++
