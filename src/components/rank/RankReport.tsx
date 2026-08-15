@@ -70,12 +70,12 @@ export default function RankReport({
             scanId: scan.id,
             date: scan.scannedAt.toISOString(),
             label: scan.scannedAt.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }),
-            // Proxied, never linked directly: their image is served from
-            // the account and renders broken from a browser.
-            imageUrl: meta.mapImageUrl
-              ? `/api/rank-image?scan=${scan.id}${mapQuery ? `&${mapQuery}` : ''}`
-              : null,
-            interactiveUrl: meta.shareUrl,
+            // Their share_links are HTML pages, not assets: image_link
+            // returns text/html and dynamic_url renders at 0,0 without their
+            // app's context. Neither can be embedded, so every run draws
+            // from the per-point ranks we decode ourselves.
+            imageUrl: null,
+            interactiveUrl: null,
             averageRank: scan.averageRank,
             top3Percent: scan.top3Percent,
             foundPercent: scan.foundPercent,
