@@ -1,5 +1,5 @@
 import { readScanRecord, type HeatmapRecord } from '@/lib/local-dominator'
-import { campaignEmbedUrl, interactiveEmbedUrl, pickEmbed, shareEmbedUrl } from '@/lib/rank-embed'
+import { interactiveEmbedUrl, pickEmbed, shareEmbedUrl } from '@/lib/rank-embed'
 import RankBoard, { type KeywordRuns, type RunPoint } from '@/components/rank/RankBoard'
 
 /**
@@ -75,31 +75,10 @@ export default async function RankReport({
     }
     return null
   })()
-  // Their campaign map covers every keyword and every date in one frame, so
-  // it is asked for first. It is not in the webhook payload — only the
-  // campaign object carries it — hence the extra call.
-  const { campaignShareLink } = await import('@/lib/local-dominator')
-  const campaign = campaignId ? campaignEmbedUrl(await campaignShareLink(campaignId)) : null
-
   const verdict = await pickEmbed(
     interactiveEmbedUrl(sample?.shareUrl),
-    shareEmbedUrl(sample?.mapImageUrl),
-    campaign
+    shareEmbedUrl(sample?.mapImageUrl)
   )
-
-  // One frame for the whole report: their controls, not ours.
-  if (verdict.campaignUrl) {
-    return (
-      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <iframe
-          src={verdict.campaignUrl}
-          title="Local ranking maps"
-          className="w-full block border-0 bg-gray-100 h-[88vh] min-h-[620px]"
-          sandbox="allow-scripts allow-same-origin allow-popups allow-storage-access-by-user-activation"
-        />
-      </section>
-    )
-  }
 
   const keywords: KeywordRuns[] = [...byTerm.entries()].map(([term, list]) => {
     // Only the URLs and the three numbers travel to the browser — never the
@@ -115,11 +94,13 @@ export default async function RankReport({
           month: 'short',
           year: 'numeric',
         }),
-        // Their static heatmap is the default: it renders every time. The
-        // interactive report is offered as a switch, never as the default,
-        // because framed it works intermittently — see lib/rank-embed.ts.
-        embedUrl: verdict.staticOk ? shareEmbedUrl(meta.mapImageUrl) : null,
-        interactiveUrl: verdict.interactiveOk ? interactiveEmbedUrl(meta.shareUrl) : null,
+        // Their interactive report is the map. Their static heatmap stands
+        // in only when the interactive one cannot be reached.
+        embedUrl: verdict.interactiveOk
+          ? interactiveEmbedUrl(meta.shareUrl)
+          : verdict.staticOk
+            ? shareEmbedUrl(meta.mapImageUrl)
+            : null,
         // The new-tab link is for everyone: it is where their interactive
         // report is reliable, frame partitioning being the whole problem.
         providerUrl: interactiveEmbedUrl(meta.shareUrl),
@@ -137,7 +118,9 @@ export default async function RankReport({
       keywords={keywords}
       // Admin only: a client has no use for a framing policy, and showing
       // them one reads as the product being broken.
-      fallbackReason={showProviderLink && !verdict.staticOk ? verdict.reason : null}
+      fallbackReason={
+        showProviderLink && !verdict.interactiveOk && !verdict.staticOk ? verdict.reason : null
+      }
     />
   )
 }

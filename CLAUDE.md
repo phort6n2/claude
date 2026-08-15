@@ -220,22 +220,35 @@ and posts each finished run back, so nothing is polled.
   their `average_rank` is the mean of every raw cell (a 10×10 summing to 113
   reports 1.13), and their docs deliver a genuinely missing point as `null`.
   `/api/admin/rank-campaigns/repair` asserts that equality on every run.
-- **The map on the page is theirs, framed.** `share_links.image_link` is an
-  HTML page despite the name — it can never be an `<img src>` — and it 307s
-  to `/share/static-images/heat-map-image?...`. That `/share/` prefix is
-  their PUBLIC route, gated by the `link` UUID rather than a session, and it
-  renders the heatmap with no dashboard chrome. Go straight at the `/share/`
-  form and put it in an iframe.
-- `dynamic_url` has **no** `/share/` form — it is the signed-in dashboard, and
-  signed out it renders at 0,0 in the Atlantic. Admin-only new-tab link,
-  never a client-facing frame.
+- **The map on the page is theirs, framed: `share_links.dynamic_url`.** It is
+  public — fetched with a real `link` token and no cookies it answers 200,
+  sends no `X-Frame-Options` and no `frame-ancestors`, and never redirects to
+  their login. It is a client-side app that reads `heatmapRecordId` and `link`
+  off its own query string, so all it needs is the URL passed through
+  untouched — it once drew the Atlantic only because the frame carried
+  `referrerPolicy="no-referrer"`.
+- **Never probe their routes with a made-up token.** An invalid token refuses
+  exactly like a missing route, and reading one as the other wrote the
+  interactive map off as login-only twice. `/api/admin/rank-campaigns/embed-check`
+  probes every URL shape with the real tokens from a stored payload.
+- `share_links.image_link` is an HTML page despite the name — never an
+  `<img src>` — and 307s to `/share/static-images/heat-map-image?...`. It is
+  the fallback when the interactive report cannot be reached.
+- `share_links.campaign_link` is their standalone marketing page for a
+  campaign, not the report. The report is what it links to. Not used.
 - Whether their page can be framed is probed **server-side** before render
   (`rank-embed.ts`, cached a day), because an iframe fails silently and a
   blank box in front of a client is worse than our own map. Ours is the
   fallback.
-- The map background is a **Static Maps** proxy (`/api/rank-map`), which needs
-  the *Maps Static API* enabled on `GOOGLE_PLACES_API_KEY` — a key authorised
-  only for Places returns 403 and the grid draws on plain grey.
+- **We do not draw a map of our own.** There was one; it disagreed with
+  theirs in front of a client (2.8 against their 1.80) and was deleted along
+  with its Static Maps proxy. When theirs cannot be framed the page says so
+  and links out.
+- `distance` is **metres between adjacent pins**, and a 10x10 spans NINE
+  gaps. 1207m = 0.75 miles apart, 6.75 miles across. Their scheduler holds
+  the geometry, so changing `SCAN_PRESETS` does nothing to existing
+  campaigns — `/api/admin/rank-campaigns/respace` PATCHes each one in place
+  (never delete-and-recreate: that orphans stored runs and burns credits).
 - The raw payload is stored precisely so a reader bug costs a recompute
   rather than a re-scan: credits are billed per run.
 
