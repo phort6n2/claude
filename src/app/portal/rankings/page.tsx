@@ -31,7 +31,7 @@ export default async function PortalRankingsPage() {
 
   const client = await prisma.client.findUnique({
     where: { id: session.clientId },
-    select: { businessName: true, city: true, googlePlaceId: true },
+    select: { businessName: true, city: true, googlePlaceId: true, latitude: true, longitude: true },
   })
 
   const scans = await prisma.localRankScan
@@ -44,6 +44,8 @@ export default async function PortalRankingsPage() {
         averageRank: true,
         top3Percent: true,
         foundPercent: true,
+        gridSize: true,
+        distance: true,
         raw: true,
       },
     })
@@ -79,6 +81,11 @@ export default async function PortalRankingsPage() {
         [...byTerm.entries()].map(([term, list]) => {
           const latest = list[list.length - 1]
           const grid = gridRanks((latest.raw || {}) as HeatmapRecord, client?.googlePlaceId || '')
+          // The map only makes sense once we know where the grid is centred.
+          const mapUrl =
+            client?.latitude && client?.longitude
+              ? `/api/portal/rank-map?grid=${latest.gridSize}&distance=${latest.distance}`
+              : null
           return (
             <section key={term} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-6">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -91,7 +98,7 @@ export default async function PortalRankingsPage() {
               </div>
 
               <div className="mt-3 grid gap-6 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start">
-                {grid.length > 0 && <RankHeatmap grid={grid} label={term} />}
+                {grid.length > 0 && <RankHeatmap grid={grid} label={term} mapUrl={mapUrl} />}
 
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-3">
