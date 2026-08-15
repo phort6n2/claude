@@ -105,23 +105,50 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       'offersRockChipRepair',
       'offersAdasCalibration',
       'filesInsuranceClaims',
-      'latitude',
-      'longitude',
       'seoClient',
-      'rankKeywords',
       'smsCapable',
       'callCoachingEnabled',
     ] as const) {
       if (has(key)) patch[key] = !!data[key]
     }
+    // Numbers, NOT booleans. These sat in the loop above, where `!!` turned a
+    // latitude into `true` and Prisma rejected the whole update — so any save
+    // that carried coordinates failed, and the failure looked like the form
+    // rather than the field.
+    for (const key of ['latitude', 'longitude'] as const) {
+      if (!has(key)) continue
+      const value = data[key]
+      const num = typeof value === 'number' ? value : Number(value)
+      patch[key] = value === null || value === '' || !Number.isFinite(num) ? null : num
+    }
+    if (has('rankKeywords')) {
+      patch.rankKeywords = Array.isArray(data.rankKeywords)
+        ? data.rankKeywords.map((k: unknown) => String(k).trim()).filter(Boolean)
+        : []
+    }
     if (has('country')) patch.country = data.country || 'US'
     if (has('serviceAreas')) patch.serviceAreas = Array.isArray(data.serviceAreas) ? data.serviceAreas : []
     if (has('allowedOrigins')) patch.allowedOrigins = allowedOrigins
+
+    const before = await prisma.client
+      .findUnique({ where: { id }, select: { seoClient: true } })
+      .catch(() => null)
 
     const client = await prisma.client.update({
       where: { id },
       data: patch,
     })
+
+    // Moving a shop between tiers has to reach the scan itself: four keywords
+    // and weekly instead of two and monthly. Otherwise the plan changes, the
+    // invoice changes, and the campaign carries on exactly as it was.
+    if (before && has('seoClient') && before.seoClient !== client.seoClient) {
+      const { syncCampaignTier } = await import('@/lib/rank-campaigns')
+      const synced = await syncCampaignTier(id)
+      console.log(
+        `[RankCampaigns] ${client.businessName} tier → ${client.seoClient ? 'seo' : 'standard'}: ${synced.message}`
+      )
+    }
 
     return NextResponse.json(client)
   } catch (error) {
