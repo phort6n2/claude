@@ -207,6 +207,54 @@ click window (85 days used against Google's 90), not already uploaded.
 `location.fieldPathElements` — a 200 does not mean success. "Check without
 sending" runs `validateOnly` and leaves no trace.
 
+### Local rank tracking
+
+`local-dominator.ts` plus the webhook at
+`/api/webhooks/localdominator/[clientId]`. Their scheduler runs the campaign
+and posts each finished run back, so nothing is polled.
+
+- The delivered payload is **not** the documented `ResultsJson`. The grid is
+  `content` — one entry per row, keyed `"0".."9"` — not `compressed_grid`.
+- **Cells are zero-indexed positions: 0 is first place.** Reading 0 as "did
+  not appear" inverts every map and shipped twice. The proof is arithmetic:
+  their `average_rank` is the mean of every raw cell (a 10×10 summing to 113
+  reports 1.13), and their docs deliver a genuinely missing point as `null`.
+  `/api/admin/rank-campaigns/repair` asserts that equality on every run.
+- `share_links.image_link` is an HTML page, not an image, so it can never be
+  an `<img src>`. `dynamic_url` is their dashboard; it renders at 0,0 for a
+  signed-out viewer, so it sits behind a button, never in place of our map.
+- The map background is a **Static Maps** proxy (`/api/rank-map`), which needs
+  the *Maps Static API* enabled on `GOOGLE_PLACES_API_KEY` — a key authorised
+  only for Places returns 403 and the grid draws on plain grey.
+- The raw payload is stored precisely so a reader bug costs a recompute
+  rather than a re-scan: credits are billed per run.
+
+### Syndicated SEO articles
+
+`baby-love-growth.ts` (API client), `seo-articles.ts` (sync),
+`seo-article-review.ts` (content scan), `sanitize-html.ts`.
+
+BabyLoveGrowth writes articles; a nightly cron pulls them into `SeoArticle`
+and the hosted sites serve them at `/blog`. Pull-only and rate limited, so
+nothing may call their API per page view.
+
+- An article reaches a site only if it **matches a shop** (its `orgWebsite`
+  against the shop's custom domain, Business Profile website, or
+  glassleads.app subdomain) **and passes the content scan**. Unmatched is
+  held, never guessed — one shop's content under another's name is worse
+  than no content.
+- The scan enforces §2's content rules on copy nobody at the shop reads
+  before it goes up: turnaround promises, deductible offers, insurer
+  relationships, asserted ratings, credentials, years in business. It
+  **holds, never rewrites** — a claim about a real business is a human's
+  call. It is a floor: it catches known phrasings, not a fabricated fact
+  stated plainly.
+- Bodies are third-party HTML on the shop's own origin, next to their quote
+  form, so they go through an **allow-list** sanitiser at render (not at
+  sync, so a fix applies to everything already stored).
+- Clients see the work in the portal's SEO tab and cannot act on it. That is
+  deliberate — read-only, no approvals, no scheduling.
+
 ### Other pieces worth knowing
 
 - `wordmark.ts` / `wordmark-image.tsx` — generated wordmark for shops with no
