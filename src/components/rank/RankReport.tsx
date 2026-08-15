@@ -1,5 +1,11 @@
 import { readScanRecord, type HeatmapRecord } from '@/lib/local-dominator'
-import { interactiveEmbedUrl, pickEmbed, shareEmbedUrl } from '@/lib/rank-embed'
+import {
+  interactiveEmbedUrl,
+  pickEmbed,
+  shareEmbedUrl,
+  whiteLabelEmbedUrl,
+} from '@/lib/rank-embed'
+import { localDominatorShareHost } from '@/lib/local-dominator'
 import RankBoard, { type KeywordRuns, type RunPoint } from '@/components/rank/RankBoard'
 
 /**
@@ -75,9 +81,11 @@ export default async function RankReport({
     }
     return null
   })()
+  const shareHost = await localDominatorShareHost()
   const verdict = await pickEmbed(
     interactiveEmbedUrl(sample?.shareUrl),
-    shareEmbedUrl(sample?.mapImageUrl)
+    shareEmbedUrl(sample?.mapImageUrl),
+    whiteLabelEmbedUrl(sample?.shareUrl, shareHost)
   )
 
   const keywords: KeywordRuns[] = [...byTerm.entries()].map(([term, list]) => {
@@ -94,16 +102,19 @@ export default async function RankReport({
           month: 'short',
           year: 'numeric',
         }),
-        // Their interactive report is the map. Their static heatmap stands
-        // in only when the interactive one cannot be reached.
-        embedUrl: verdict.interactiveOk
-          ? interactiveEmbedUrl(meta.shareUrl)
-          : verdict.staticOk
-            ? shareEmbedUrl(meta.mapImageUrl)
-            : null,
+        // Same report, in order of preference: our own share host first, so
+        // a client never reads a vendor's domain in their own portal.
+        embedUrl: verdict.whiteLabelOk
+          ? whiteLabelEmbedUrl(meta.shareUrl, shareHost)
+          : verdict.interactiveOk
+            ? interactiveEmbedUrl(meta.shareUrl)
+            : verdict.staticOk
+              ? shareEmbedUrl(meta.mapImageUrl)
+              : null,
         // The new-tab link is for everyone: it is where their interactive
         // report is reliable, frame partitioning being the whole problem.
-        providerUrl: interactiveEmbedUrl(meta.shareUrl),
+        providerUrl:
+          whiteLabelEmbedUrl(meta.shareUrl, shareHost) || interactiveEmbedUrl(meta.shareUrl),
         averageRank: scan.averageRank,
         top3Percent: scan.top3Percent,
         foundPercent: scan.foundPercent,
@@ -119,7 +130,9 @@ export default async function RankReport({
       // Admin only: a client has no use for a framing policy, and showing
       // them one reads as the product being broken.
       fallbackReason={
-        showProviderLink && !verdict.interactiveOk && !verdict.staticOk ? verdict.reason : null
+        showProviderLink && !verdict.whiteLabelOk && !verdict.interactiveOk && !verdict.staticOk
+          ? verdict.reason
+          : null
       }
     />
   )
