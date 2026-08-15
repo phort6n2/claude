@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import {
+  MapPin,
   LayoutDashboard,
   Users,
   Settings,
@@ -47,6 +48,7 @@ const navigation: NavSection[] = [
       { name: 'Leads', href: '/admin/leads', icon: UserCheck },
       { name: 'Master Leads', href: '/master-leads', icon: Smartphone, external: true },
       { name: 'Call Coaching', href: '/admin/call-coaching-insights', icon: PhoneCall },
+      { name: 'Local Rankings', href: '/admin/rankings', icon: MapPin },
     ],
   },
   {

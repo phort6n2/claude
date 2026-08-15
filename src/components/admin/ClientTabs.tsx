@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Building2, Globe, Megaphone, Webhook, Users } from 'lucide-react'
+import { LayoutDashboard, Building2, Globe, Megaphone, Webhook, Users, MapPin } from 'lucide-react'
 
 /**
  * Tabs across the client's routed sub-pages. Each tab is one task, and each
@@ -17,6 +17,7 @@ export default function ClientTabs({ clientId }: { clientId: string }) {
     { href: `${base}/business`, label: 'Business', icon: Building2 },
     { href: `${base}/site`, label: 'Website', icon: Globe },
     { href: `${base}/advertising`, label: 'Advertising', icon: Megaphone },
+    { href: `${base}/rankings`, label: 'Rankings', icon: MapPin },
     { href: `${base}/leads-setup`, label: 'Lead delivery', icon: Webhook },
     { href: `${base}/users`, label: 'Users', icon: Users },
   ]
