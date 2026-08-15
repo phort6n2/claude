@@ -243,6 +243,28 @@ export function summarizeGrid(record: HeatmapRecord, placeId: string): RankSumma
   }
 }
 
+/**
+ * This business's rank at every grid point, row by row, for drawing a
+ * heatmap. `null` means it did not appear at that point at all — which is
+ * the most important cell on the map and must never be shown as a zero or
+ * quietly dropped.
+ */
+export function gridRanks(record: HeatmapRecord, placeId: string): Array<Array<number | null>> {
+  const grid = record.compressed_grid
+  const details = record.detailsArray
+  if (!Array.isArray(grid) || !Array.isArray(details)) return []
+  const selfIndex = details.findIndex((d) => d?.placeId === placeId)
+  return grid.map((row) =>
+    Array.isArray(row)
+      ? row.map((cell) => {
+          if (selfIndex < 0 || !Array.isArray(cell)) return null
+          const at = cell.indexOf(selfIndex)
+          return at < 0 ? null : at + 1
+        })
+      : []
+  )
+}
+
 /** The keyword a heatmap record belongs to, across the field names seen. */
 export function searchTermOf(record: HeatmapRecord): string | null {
   for (const key of ['searchTerm', 'search_term', 'keyword', 'term', 'query']) {
