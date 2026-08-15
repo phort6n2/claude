@@ -17,6 +17,7 @@ export async function rankScansFor(clientId: string): Promise<RankScanRow[]> {
       where: { clientId },
       orderBy: { scannedAt: 'asc' },
       select: {
+        id: true,
         searchTerm: true,
         scannedAt: true,
         averageRank: true,

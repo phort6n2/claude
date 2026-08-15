@@ -13,6 +13,7 @@ import RankKeywordSection, { type RunPoint } from '@/components/rank/RankKeyword
  */
 
 export interface RankScanRow {
+  id: string
   searchTerm: string
   scannedAt: Date
   averageRank: number | null
@@ -66,9 +67,15 @@ export default function RankReport({
         const runs: RunPoint[] = list.map((scan) => {
           const meta = readScanRecord((scan.raw || {}) as HeatmapRecord)
           return {
+            scanId: scan.id,
             date: scan.scannedAt.toISOString(),
             label: scan.scannedAt.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }),
-            imageUrl: meta.mapImageUrl,
+            // Proxied, never linked directly: their image is served from
+            // the account and renders broken from a browser.
+            imageUrl: meta.mapImageUrl
+              ? `/api/rank-image?scan=${scan.id}${mapQuery ? `&${mapQuery}` : ''}`
+              : null,
+            interactiveUrl: meta.shareUrl,
             averageRank: scan.averageRank,
             top3Percent: scan.top3Percent,
             foundPercent: scan.foundPercent,
