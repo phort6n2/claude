@@ -1,7 +1,7 @@
 import { gridRanks, readScanRecord, type HeatmapRecord } from '@/lib/local-dominator'
 import { canEmbedShare, shareEmbedUrl } from '@/lib/rank-embed'
 import RankHeatmap from '@/components/rank/RankHeatmap'
-import RankKeywordSection, { type RunPoint } from '@/components/rank/RankKeywordSection'
+import RankBoard, { type KeywordRuns, type RunPoint } from '@/components/rank/RankBoard'
 
 /**
  * The ranking report itself, rendered identically wherever it appears: the
@@ -15,6 +15,9 @@ import RankKeywordSection, { type RunPoint } from '@/components/rank/RankKeyword
  * The map is Local Dominator's own, framed from their public /share/ route.
  * Ours is the fallback, and whether theirs can be framed is settled
  * server-side before anything renders — see lib/rank-embed.ts.
+ *
+ * This part is the data; RankBoard is the layout — one keyword at a time
+ * behind tabs, so the map gets the whole width of the page.
  */
 
 export interface RankScanRow {
@@ -80,61 +83,56 @@ export default async function RankReport({
   })()
   const verdict = await canEmbedShare(probeUrl)
 
-  return (
-    <div className="space-y-4">
-      {[...byTerm.entries()].map(([term, list]) => {
-        // Only the URLs and the three numbers travel to the browser — never
-        // the grids. A year of weekly scans is a lot of JSON for a page that
-        // shows one map at a time.
-        const runs: RunPoint[] = list.map((scan) => {
-          const meta = readScanRecord((scan.raw || {}) as HeatmapRecord)
-          return {
-            scanId: scan.id,
-            date: scan.scannedAt.toISOString(),
-            label: scan.scannedAt.toLocaleDateString(undefined, {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            }),
-            // Their native map, framed. Withheld entirely when the probe said
-            // it cannot be framed, so the client never meets a blank box.
-            embedUrl: verdict.ok ? shareEmbedUrl(meta.mapImageUrl) : null,
-            providerUrl: showProviderLink ? meta.shareUrl : null,
-            averageRank: scan.averageRank,
-            top3Percent: scan.top3Percent,
-            foundPercent: scan.foundPercent,
+  const keywords: KeywordRuns[] = [...byTerm.entries()].map(([term, list]) => {
+    // Only the URLs and the three numbers travel to the browser — never the
+    // grids. A year of weekly scans is a lot of JSON for a page that shows
+    // one map at a time.
+    const runs: RunPoint[] = list.map((scan) => {
+      const meta = readScanRecord((scan.raw || {}) as HeatmapRecord)
+      return {
+        scanId: scan.id,
+        date: scan.scannedAt.toISOString(),
+        label: scan.scannedAt.toLocaleDateString(undefined, {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        }),
+        // Their native map, framed. Withheld entirely when the probe said it
+        // cannot be framed, so the client never meets a blank box.
+        embedUrl: verdict.ok ? shareEmbedUrl(meta.mapImageUrl) : null,
+        providerUrl: showProviderLink ? meta.shareUrl : null,
+        averageRank: scan.averageRank,
+        top3Percent: scan.top3Percent,
+        foundPercent: scan.foundPercent,
+      }
+    })
+
+    // Our own render, used when theirs cannot be framed.
+    const latest = list[list.length - 1]
+    const latestRecord = (latest.raw || {}) as HeatmapRecord
+    const grid = gridRanks(latestRecord, readScanRecord(latestRecord).placeId || placeId)
+    const fallback =
+      grid.length > 0 ? (
+        <RankHeatmap
+          grid={grid}
+          label={term}
+          mapUrl={
+            hasCoordinates
+              ? `/api/rank-map?grid=${latest.gridSize}&distance=${latest.distance}${mapQuery ? `&${mapQuery}` : ''}`
+              : null
           }
-        })
+        />
+      ) : null
 
-        // Our own render, used when theirs cannot be framed.
-        const latest = list[list.length - 1]
-        const latestRecord = (latest.raw || {}) as HeatmapRecord
-        const grid = gridRanks(latestRecord, readScanRecord(latestRecord).placeId || placeId)
-        const fallback =
-          grid.length > 0 ? (
-            <RankHeatmap
-              grid={grid}
-              label={term}
-              mapUrl={
-                hasCoordinates
-                  ? `/api/rank-map?grid=${latest.gridSize}&distance=${latest.distance}${mapQuery ? `&${mapQuery}` : ''}`
-                  : null
-              }
-            />
-          ) : null
+    return { term, runs, fallback }
+  })
 
-        return (
-          <RankKeywordSection
-            key={term}
-            term={term}
-            runs={runs}
-            fallback={fallback}
-            // Admin only: a client has no use for a framing policy, and
-            // showing them one reads as the product being broken.
-            fallbackReason={showProviderLink && !verdict.ok ? verdict.reason : null}
-          />
-        )
-      })}
-    </div>
+  return (
+    <RankBoard
+      keywords={keywords}
+      // Admin only: a client has no use for a framing policy, and showing
+      // them one reads as the product being broken.
+      fallbackReason={showProviderLink && !verdict.ok ? verdict.reason : null}
+    />
   )
 }
