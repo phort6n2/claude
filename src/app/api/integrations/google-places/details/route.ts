@@ -32,6 +32,9 @@ interface PlaceDetails {
   /** The same schedule condensed onto one line for the site's hours field. */
   hours?: string
   website?: string
+  /** Grid centre for local-rank scans. */
+  latitude?: number | null
+  longitude?: number | null
   rating?: number
   reviewCount?: number
 }
@@ -107,7 +110,7 @@ export async function GET(request: NextRequest) {
       // opening_hours gives weekday_text, which is Google's own human-readable
       // schedule — exactly what the site prints, so it needs no parsing and
       // nobody has to retype the hours off the Business Profile.
-      `&fields=place_id,name,formatted_phone_number,formatted_address,address_components,url,website,rating,user_ratings_total,opening_hours` +
+      `&fields=place_id,name,formatted_phone_number,formatted_address,address_components,url,website,rating,user_ratings_total,opening_hours,geometry` +
       `&key=${apiKey}`
     )
 
@@ -178,6 +181,10 @@ export async function GET(request: NextRequest) {
       // Business Profiles routinely store plain http:// — normalize here so
       // every consumer (the picker, the import field it seeds) gets https.
       website: place.website?.replace(/^http:\/\//i, 'https://'),
+      // Grid centre for local-rank scans. Captured here because this is the
+      // one moment we already have the place in hand.
+      latitude: place.geometry?.location?.lat ?? null,
+      longitude: place.geometry?.location?.lng ?? null,
       rating: place.rating,
       reviewCount: place.user_ratings_total,
     }
