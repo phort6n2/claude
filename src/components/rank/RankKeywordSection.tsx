@@ -18,12 +18,15 @@ import RankTrend from '@/components/rank/RankTrend'
  */
 
 export interface RunPoint {
+  scanId: string
   date: string
   label: string
   imageUrl: string | null
   averageRank: number | null
   top3Percent: number | null
   foundPercent: number | null
+  /** Local Dominator's own interactive report for this run, when shared. */
+  interactiveUrl?: string | null
 }
 
 function Stat({ label, value, hint }: { label: string; value: string; hint: string }) {
@@ -48,6 +51,8 @@ export default function RankKeywordSection({
   fallback?: React.ReactNode
 }) {
   const [index, setIndex] = useState(runs.length - 1)
+  const [imageFailed, setImageFailed] = useState(false)
+  const [showInteractive, setShowInteractive] = useState(false)
   const run = runs[index] || runs[runs.length - 1]
   const multiple = runs.length > 1
 
@@ -60,18 +65,64 @@ export default function RankKeywordSection({
         </span>
       </div>
 
+      {showInteractive && run.interactiveUrl && (
+        <div className="mt-3">
+          {/* Their own interactive report, framed. Plenty of apps refuse to
+              be embedded, so the link below always works even when the frame
+              stays blank — better than a dead grey box with no way out. */}
+          <iframe
+            src={run.interactiveUrl}
+            title={`Interactive ranking map for ${term}`}
+            className="w-full h-[520px] rounded-xl border border-gray-200 bg-gray-50"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Not loading?{' '}
+            <a
+              href={run.interactiveUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline"
+            >
+              Open it in a new tab
+            </a>
+            .
+          </p>
+        </div>
+      )}
+
       <div className="mt-3 grid gap-6 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start">
         <div className="w-full max-w-[460px]">
-          {run.imageUrl ? (
+          {run.imageUrl && !imageFailed ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={run.imageUrl}
               alt={`Ranking heatmap for ${term} on ${run.label}`}
               className="w-full rounded-xl border border-gray-200 bg-gray-100"
               loading="lazy"
+              onError={() => setImageFailed(true)}
             />
           ) : (
-            fallback
+            // Our own render stands in when theirs cannot be fetched — a
+            // broken-image icon in front of a client is worse than either.
+            fallback || (
+              <div className="w-full aspect-square rounded-xl border border-dashed border-gray-300 grid place-items-center text-xs text-gray-500 p-4 text-center">
+                The map for this scan could not be loaded.
+              </div>
+            )
+          )}
+
+          {run.interactiveUrl && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => setShowInteractive((v) => !v)}
+                className="text-xs font-semibold text-blue-600 hover:underline"
+              >
+                {showInteractive ? 'Hide the interactive map' : 'Open the interactive map'}
+              </button>
+            </div>
           )}
 
           {multiple && (

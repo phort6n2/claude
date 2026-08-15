@@ -31,6 +31,7 @@ export async function POST() {
   let repaired = 0
   let stillEmpty = 0
   let unchanged = 0
+  let loggedShape = false
 
   for (const scan of scans) {
     const placeId = scan.client.googlePlaceId
@@ -40,6 +41,30 @@ export async function POST() {
     }
     const record = (scan.raw || {}) as HeatmapRecord
     const meta = readScanRecord(record)
+
+    // Log the grid's structure once per run, whether or not the row parsed.
+    // Gating this on failure meant the average_rank shortcut skipped it, and
+    // the per-point percentages still cannot be computed without it.
+    if (!loggedShape) {
+      loggedShape = true
+      const content = (record as Record<string, unknown>).content
+      const row = Array.isArray(content) ? content[0] : null
+      const cellKey = row && typeof row === 'object' ? Object.keys(row)[0] : null
+      const cell = row && typeof row === 'object' && cellKey !== null
+        ? (row as Record<string, unknown>)[cellKey]
+        : null
+      console.warn(
+        '[LocalRank] content shape:',
+        JSON.stringify({
+          contentIsArray: Array.isArray(content),
+          rows: Array.isArray(content) ? content.length : 0,
+          rowKeys: row && typeof row === 'object' ? Object.keys(row).slice(0, 12) : null,
+          cellType: Array.isArray(cell) ? 'array' : typeof cell,
+          cellSample: JSON.stringify(cell)?.slice(0, 400),
+          providerAverageRank: meta.averageRank,
+        }).slice(0, 1200)
+      )
+    }
     const summary = summarizeGrid(record, meta.placeId || placeId)
 
     // Their average_rank alone is enough to make the row useful, even if the
