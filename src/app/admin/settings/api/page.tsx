@@ -230,7 +230,13 @@ const API_KEYS: ApiKeyConfig[] = [
     },
     // Costs nothing and touches no third party: it re-reads scan payloads we
     // already hold, so it needs no confirm.
-    extraActions: [{ label: 'Recalculate scans', endpoint: '/api/admin/rank-campaigns/repair' }],
+    extraActions: [
+      { label: 'Recalculate scans', endpoint: '/api/admin/rank-campaigns/repair' },
+      // Probes their share URLs with the REAL tokens from a stored payload and
+      // no cookies — the only way to know what a signed-out client actually
+      // gets, as opposed to what an admin sees while signed in to their app.
+      { label: 'Check map embeds', endpoint: '/api/admin/rank-campaigns/embed-check' },
+    ],
     description:
       'Geogrid rank scans. Local Dominator runs the schedule on their side and posts each completed run back here, so nothing needs to be polled.',
     steps: [

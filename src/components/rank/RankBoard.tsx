@@ -146,7 +146,12 @@ export default function RankBoard({
           title={`Ranking map for ${active.term} on ${run.label}`}
           className="w-full block border-0 bg-gray-100 h-[70vh] min-h-[460px]"
           loading="lazy"
-          sandbox="allow-scripts allow-same-origin"
+          // allow-storage-access-by-user-activation matters: their app is
+          // cross-site here, so its own storage is partitioned by default,
+          // and a map that cannot read its own state is a map that renders
+          // at 0,0 in the Atlantic. That was the first attempt's bug — read
+          // at the time as "it needs a login", which it does not.
+          sandbox="allow-scripts allow-same-origin allow-popups allow-storage-access-by-user-activation"
         />
       ) : (
         // Ours stands in. Never a broken frame in front of a client — whether
@@ -205,8 +210,7 @@ export default function RankBoard({
             >
               Open this run in Local Dominator
             </a>{' '}
-            — their interactive dashboard. It needs a Local Dominator login, so it is yours only;
-            clients see the map above.
+            — the same report in its own tab, at full size.
           </p>
         )}
       </div>
