@@ -21,6 +21,10 @@
     {
       "path": "/api/cron/refresh-gbp-reviews",
       "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/cron/ensure-rank-campaigns",
+      "schedule": "0 4 * * *"
     }
   ]
 }
