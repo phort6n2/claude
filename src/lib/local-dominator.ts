@@ -20,8 +20,11 @@ const API_BASE = 'https://api.localdominator.co'
 
 /** Scan shape per tier. SEO clients get depth; everyone else gets a look. */
 export const SCAN_PRESETS = {
-  seo: { gridSize: 10, distance: 500, cron: '0 6 * * 1', maxKeywords: 4 },
-  standard: { gridSize: 10, distance: 500, cron: '0 6 1 * *', maxKeywords: 2 },
+  // `distance` is METRES between adjacent pins, per their docs — not the
+  // width of the grid. A 10x10 has NINE gaps across, so 1207m (0.75 miles)
+  // spans 10.9km, about 6.75 miles corner to corner.
+  seo: { gridSize: 10, distance: 1207, cron: '0 6 * * 1', maxKeywords: 4 },
+  standard: { gridSize: 10, distance: 1207, cron: '0 6 1 * *', maxKeywords: 2 },
 } as const
 
 export type ScanTier = keyof typeof SCAN_PRESETS
@@ -148,6 +151,69 @@ export async function createScheduledScan(
     return { ok: true, id: String(id) }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Request failed' }
+  }
+}
+
+/**
+ * Change an existing campaign's grid without recreating it.
+ *
+ * PATCH keeps the campaign's id, its history and its webhook — deleting and
+ * recreating would orphan every stored run against a scheduled_scan_id that
+ * no longer exists, and spend a fresh run's credits to get back to where it
+ * already was.
+ */
+export async function updateScheduledScanGrid(
+  id: string,
+  grid: { distance?: number; gridSize?: number }
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const body: Record<string, number> = {}
+  if (grid.distance !== undefined) body.distance = grid.distance
+  if (grid.gridSize !== undefined) body.grid_size = grid.gridSize
+  if (Object.keys(body).length === 0) return { ok: false, error: 'Nothing to change.' }
+
+  try {
+    const res = await ldFetch(`/v1/scheduled-scans/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    })
+    if (res.ok) return { ok: true }
+    const detail = await res.json().catch(() => null)
+    return { ok: false, error: describeError(res.status, detail) }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Request failed' }
+  }
+}
+
+/**
+ * The campaign-wide share link for a scheduled scan.
+ *
+ * This is the map their own dashboard shows: every keyword, every run, with
+ * the date control built in — `share_links.campaign_link` on the campaign
+ * object. It never appears in the webhook payload, which only ever carries
+ * the per-run `image_link` and `dynamic_url`, so it has to be fetched.
+ *
+ * Cached for an hour. It is derived from the newest notified run, so it does
+ * change — but not within a page view, and their API is not free.
+ */
+export async function campaignShareLink(scheduledScanId: string): Promise<string | null> {
+  try {
+    const key = await localDominatorKey()
+    if (!key) return null
+    const res = await fetch(
+      `${API_BASE}/v1/scheduled-scans/${encodeURIComponent(scheduledScanId)}?date_range=MAX`,
+      {
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(15_000),
+        next: { revalidate: 3_600 },
+      }
+    )
+    if (!res.ok) return null
+    const body = (await res.json().catch(() => null)) as Record<string, unknown> | null
+    const links = (body?.share_links || {}) as Record<string, unknown>
+    const link = links.campaign_link
+    return typeof link === 'string' && link ? link : null
+  } catch {
+    return null
   }
 }
 

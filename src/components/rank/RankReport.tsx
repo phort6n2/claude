@@ -1,6 +1,5 @@
-import { gridRanks, readScanRecord, type HeatmapRecord } from '@/lib/local-dominator'
-import { interactiveEmbedUrl, pickEmbed, shareEmbedUrl } from '@/lib/rank-embed'
-import RankHeatmap from '@/components/rank/RankHeatmap'
+import { readScanRecord, type HeatmapRecord } from '@/lib/local-dominator'
+import { campaignEmbedUrl, interactiveEmbedUrl, pickEmbed, shareEmbedUrl } from '@/lib/rank-embed'
 import RankBoard, { type KeywordRuns, type RunPoint } from '@/components/rank/RankBoard'
 
 /**
@@ -12,9 +11,12 @@ import RankBoard, { type KeywordRuns, type RunPoint } from '@/components/rank/Ra
  * sees — if the admin copy flattered the numbers, the artifact would be
  * worth nothing.
  *
- * The map is Local Dominator's own, framed from their public /share/ route.
- * Ours is the fallback, and whether theirs can be framed is settled
- * server-side before anything renders — see lib/rank-embed.ts.
+ * The map is Local Dominator's own and only ever theirs. We do not draw a
+ * geogrid of our own: a second rendering of the same scan is a second thing
+ * to keep correct, and when the two disagree in front of a client — which is
+ * exactly what happened, ours reading 2.8 against their 1.80 — the report is
+ * worth less than no report. When theirs cannot be framed the page says so
+ * and links to it rather than substituting something homemade.
  *
  * This part is the data; RankBoard is the layout — one keyword at a time
  * behind tabs, so the map gets the whole width of the page.
@@ -34,21 +36,14 @@ export interface RankScanRow {
 
 export default async function RankReport({
   scans,
-  placeId,
-  hasCoordinates,
-  mapQuery = '',
+  campaignId = null,
   showProviderLink = false,
 }: {
   /** Chronological, oldest first, across every keyword. */
   scans: RankScanRow[]
-  placeId: string
-  hasCoordinates: boolean
-  /** Extra query for the map proxy — a share token, or a client id. */
-  mapQuery?: string
-  /**
-   * Admin only. Their `dynamic_url` is the signed-in dashboard, so it is
-   * useful to whoever holds the Local Dominator login and to nobody else.
-   */
+  /** Their scheduled_scan_id — unlocks the campaign-wide map. */
+  campaignId?: string | null
+  /** Admin only: shows why theirs is not framed, when it is not. */
   showProviderLink?: boolean
 }) {
   const byTerm = new Map<string, RankScanRow[]>()
@@ -80,10 +75,31 @@ export default async function RankReport({
     }
     return null
   })()
+  // Their campaign map covers every keyword and every date in one frame, so
+  // it is asked for first. It is not in the webhook payload — only the
+  // campaign object carries it — hence the extra call.
+  const { campaignShareLink } = await import('@/lib/local-dominator')
+  const campaign = campaignId ? campaignEmbedUrl(await campaignShareLink(campaignId)) : null
+
   const verdict = await pickEmbed(
     interactiveEmbedUrl(sample?.shareUrl),
-    shareEmbedUrl(sample?.mapImageUrl)
+    shareEmbedUrl(sample?.mapImageUrl),
+    campaign
   )
+
+  // One frame for the whole report: their controls, not ours.
+  if (verdict.campaignUrl) {
+    return (
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <iframe
+          src={verdict.campaignUrl}
+          title="Local ranking maps"
+          className="w-full block border-0 bg-gray-100 h-[88vh] min-h-[620px]"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-storage-access-by-user-activation"
+        />
+      </section>
+    )
+  }
 
   const keywords: KeywordRuns[] = [...byTerm.entries()].map(([term, list]) => {
     // Only the URLs and the three numbers travel to the browser — never the
@@ -99,40 +115,21 @@ export default async function RankReport({
           month: 'short',
           year: 'numeric',
         }),
-        // Their native map, framed — the interactive one when a signed-out
-        // visitor can reach it, their static heatmap when not. Withheld
-        // entirely when neither can be, so a client never meets a blank box.
-        embedUrl:
-          verdict.kind === 'interactive'
-            ? interactiveEmbedUrl(meta.shareUrl)
-            : verdict.kind === 'static'
-              ? shareEmbedUrl(meta.mapImageUrl)
-              : null,
-        providerUrl: showProviderLink ? meta.shareUrl : null,
+        // Their static heatmap is the default: it renders every time. The
+        // interactive report is offered as a switch, never as the default,
+        // because framed it works intermittently — see lib/rank-embed.ts.
+        embedUrl: verdict.staticOk ? shareEmbedUrl(meta.mapImageUrl) : null,
+        interactiveUrl: verdict.interactiveOk ? interactiveEmbedUrl(meta.shareUrl) : null,
+        // The new-tab link is for everyone: it is where their interactive
+        // report is reliable, frame partitioning being the whole problem.
+        providerUrl: interactiveEmbedUrl(meta.shareUrl),
         averageRank: scan.averageRank,
         top3Percent: scan.top3Percent,
         foundPercent: scan.foundPercent,
       }
     })
 
-    // Our own render, used when theirs cannot be framed.
-    const latest = list[list.length - 1]
-    const latestRecord = (latest.raw || {}) as HeatmapRecord
-    const grid = gridRanks(latestRecord, readScanRecord(latestRecord).placeId || placeId)
-    const fallback =
-      grid.length > 0 ? (
-        <RankHeatmap
-          grid={grid}
-          label={term}
-          mapUrl={
-            hasCoordinates
-              ? `/api/rank-map?grid=${latest.gridSize}&distance=${latest.distance}${mapQuery ? `&${mapQuery}` : ''}`
-              : null
-          }
-        />
-      ) : null
-
-    return { term, runs, fallback }
+    return { term, runs }
   })
 
   return (
@@ -140,7 +137,7 @@ export default async function RankReport({
       keywords={keywords}
       // Admin only: a client has no use for a framing policy, and showing
       // them one reads as the product being broken.
-      fallbackReason={showProviderLink && !verdict.kind ? verdict.reason : null}
+      fallbackReason={showProviderLink && !verdict.staticOk ? verdict.reason : null}
     />
   )
 }

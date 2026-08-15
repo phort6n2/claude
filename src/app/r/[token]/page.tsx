@@ -57,9 +57,6 @@ export default async function SharedRankingsPage({
 
         <RankReport
           scans={scans}
-          placeId={client.googlePlaceId || ''}
-          hasCoordinates={!!(client.latitude && client.longitude)}
-          mapQuery={`t=${encodeURIComponent(token)}`}
         />
 
         <p className="pt-2 text-center text-xs text-gray-500">

@@ -65,9 +65,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
       <RankReport
         scans={scans}
-        placeId={client.googlePlaceId || ''}
-        hasCoordinates={!!(client.latitude && client.longitude)}
-        mapQuery={`client=${client.id}`}
+        campaignId={client.rankTrackingId}
+
+
+
         showProviderLink
       />
     </div>
