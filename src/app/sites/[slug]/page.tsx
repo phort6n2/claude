@@ -325,9 +325,11 @@ export default async function ClientSitePage({ params }: PageProps) {
         client={client}
         flags={flags}
         reviews={reviews}
-        // Two, not five: five chapters is a magazine feature, and they now
-        // sit below the proof rather than ahead of it.
-        storyChapters={extras.chapters.slice(0, 2)}
+        // Not truncated. The reason to cap was that the story stood between
+        // a paid visitor and the sections that answer "what does this cost" —
+        // moving it below the proof fixed that, and cutting sections the shop
+        // actually wrote only loses their content and their photos.
+        storyChapters={extras.chapters}
         storyFallbackPhotos={extras.bodyPhotos.length ? extras.bodyPhotos : extras.galleryPhotos.slice(1)}
         extras={extras}
         services={services}

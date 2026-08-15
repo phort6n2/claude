@@ -302,7 +302,7 @@ export default async function ServicePage({ params }: PageProps) {
       <SiteBody
         client={client}
         flags={flags}
-        storyChapters={extras.chapters.slice(0, 2)}
+        storyChapters={extras.chapters}
         storyFallbackPhotos={extras.bodyPhotos.length ? extras.bodyPhotos : extras.galleryPhotos.slice(1)}
         reviews={reviews}
         extras={extras}
