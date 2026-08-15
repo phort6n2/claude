@@ -68,6 +68,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         placeId={client.googlePlaceId || ''}
         hasCoordinates={!!(client.latitude && client.longitude)}
         mapQuery={`client=${client.id}`}
+        showProviderLink
       />
     </div>
   )
