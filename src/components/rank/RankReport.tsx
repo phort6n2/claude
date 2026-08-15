@@ -100,12 +100,11 @@ export default async function RankReport({
   // request at all. The live fetch is only for a campaign whose first run has
   // not completed since the sweep last ran.
   const campaign = mapUrl || !campaignId ? null : await campaignShareLinks(campaignId)
-  const campaignEmbed =
-    mapUrl ||
-    whiteLabelEmbedUrl(campaign?.campaignLink, shareHost) ||
-    whiteLabelEmbedUrl(campaign?.dynamicUrl, shareHost) ||
-    interactiveEmbedUrl(campaign?.dynamicUrl) ||
-    shareEmbedUrl(campaign?.imageLink)
+  // The campaign token, and nothing else. Their `dynamic_url` is ONE
+  // keyword's report; using it here showed a single keyword on every
+  // client's report and looked like the all-keywords map. When there is no
+  // campaign token yet, the per-keyword tabs below reach all of them.
+  const campaignEmbed = mapUrl || whiteLabelEmbedUrl(campaign?.campaignLink, shareHost)
 
   if (campaignEmbed) {
     return (
