@@ -15,6 +15,7 @@ import {
   Copy,
   ExternalLink,
 } from 'lucide-react'
+import { ALL_KEYS } from '@/lib/setting-keys'
 
 interface SetupStep {
   /** What to do. */
@@ -38,6 +39,13 @@ interface ApiKeyConfig {
   warning?: string
 }
 
+/**
+ * Rich per-key copy for this page. `setting-keys.ts` remains the source of
+ * truth for what exists; anything listed there but missing here still gets a
+ * plain field via `RENDERED_KEYS` below, so a new credential can never be
+ * saveable by the API and invisible in the UI — which is exactly how the
+ * Local Dominator key shipped unreachable.
+ */
 const API_KEYS: ApiKeyConfig[] = [
   {
     key: 'ANTHROPIC_API_KEY',
@@ -201,6 +209,35 @@ const API_KEYS: ApiKeyConfig[] = [
       { text: 'Digits only — dashes are stripped automatically.' },
     ],
   },
+  {
+    key: 'LOCALDOMINATOR_API_KEY',
+    label: 'Local Dominator API key',
+    description:
+      'Geogrid rank scans. Local Dominator runs the schedule on their side and posts each completed run back here, so nothing needs to be polled.',
+    steps: [
+      {
+        text: 'Local Dominator → account settings → API. Keys begin ld_.',
+        href: 'https://app.localdominator.co/api-doc/',
+        linkLabel: 'API docs',
+      },
+      { text: 'API access starts on the Powerhouse plan — the key will not be issued on lower tiers.' },
+    ],
+    warning:
+      'Scans bill credits per run, and cost scales with clients × keywords × grid size × frequency. A 10×10 grid on four keywords weekly is 16× the spend of the same grid monthly on two, so switch a client to the SEO tier deliberately rather than by default.',
+  },
+]
+
+/**
+ * Every key the app knows about: the configured ones above, then a bare
+ * fallback for any that were added to `setting-keys.ts` without copy here.
+ */
+const RENDERED_KEYS: ApiKeyConfig[] = [
+  ...API_KEYS,
+  ...ALL_KEYS.filter((key) => !API_KEYS.some((c) => c.key === key)).map((key) => ({
+    key,
+    label: key,
+    description: 'No setup notes written for this key yet.',
+  })),
 ]
 
 interface SettingState {
@@ -246,7 +283,7 @@ export default function ApiSettingsPage() {
       const data = await response.json()
 
       const initialState: Record<string, SettingState> = {}
-      for (const config of API_KEYS) {
+      for (const config of RENDERED_KEYS) {
         const setting = data[config.key] || { value: '', masked: '', hasValue: false }
         initialState[config.key] = {
           value: setting.value,
@@ -443,7 +480,7 @@ export default function ApiSettingsPage() {
         )}
 
         <div className="space-y-4">
-          {API_KEYS.map((config) => {
+          {RENDERED_KEYS.map((config) => {
             const setting = settings[config.key]
             if (!setting) return null
 
