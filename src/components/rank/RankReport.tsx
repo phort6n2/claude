@@ -1,11 +1,11 @@
 import { hasRenderableMap, readScanRecord, type HeatmapRecord } from '@/lib/local-dominator'
+import { campaignShareLinks, localDominatorShareHost } from '@/lib/local-dominator'
 import {
   interactiveEmbedUrl,
   pickEmbed,
   shareEmbedUrl,
   whiteLabelEmbedUrl,
 } from '@/lib/rank-embed'
-import { localDominatorShareHost } from '@/lib/local-dominator'
 import RankBoard, { type KeywordRuns, type RunPoint } from '@/components/rank/RankBoard'
 
 /**
@@ -82,6 +82,32 @@ export default async function RankReport({
     return null
   })()
   const shareHost = await localDominatorShareHost()
+
+  // The campaign's own share link is preferred over anything taken from a
+  // stored webhook payload. Their scheduler repoints it as each run
+  // completes, so one URL always shows the latest scan — and their docs say
+  // it is derived from the newest run that HAS a resolvable share URL, which
+  // is exactly the guarantee a per-run link cannot make. A run that came back
+  // empty is skipped rather than framed as an empty world map.
+  const campaign = campaignId ? await campaignShareLinks(campaignId) : null
+  const campaignEmbed =
+    whiteLabelEmbedUrl(campaign?.dynamicUrl, shareHost) ||
+    interactiveEmbedUrl(campaign?.dynamicUrl) ||
+    shareEmbedUrl(campaign?.imageLink)
+
+  if (campaignEmbed) {
+    return (
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <iframe
+          src={campaignEmbed}
+          title="Local ranking map"
+          className="w-full block border-0 bg-gray-100 h-[92vh] min-h-[720px]"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-storage-access-by-user-activation"
+        />
+      </section>
+    )
+  }
+
   const verdict = await pickEmbed(
     interactiveEmbedUrl(sample?.shareUrl),
     shareEmbedUrl(sample?.mapImageUrl),
