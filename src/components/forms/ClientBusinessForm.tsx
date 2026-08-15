@@ -29,6 +29,8 @@ interface ClientData {
   googleMapsUrl: string | null
   hasShopLocation: boolean
   offersMobileService: boolean
+  filesInsuranceClaims?: boolean
+  smsCapable?: boolean
   // Services offered
   offersWindshieldRepair: boolean
   offersWindshieldReplacement: boolean
@@ -352,6 +354,47 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
                   <span className="text-sm">Mobile Service</span>
                 </label>
               </div>
+            </div>
+
+            {/* Claims, not services. The site used to assert both of these
+                for every shop; each one now has to be earned. */}
+            <div className="pt-2 border-t border-gray-100">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                What we&apos;re allowed to say
+              </label>
+              <p className="text-xs text-gray-500 mb-2">
+                Only tick these if they are true for this shop — the site says them out loud.
+              </p>
+              <label className="flex items-start gap-2 mb-2">
+                <input
+                  type="checkbox"
+                  checked={!!formData.filesInsuranceClaims}
+                  onChange={(e) => updateField('filesInsuranceClaims', e.target.checked)}
+                  className="rounded mt-0.5"
+                />
+                <span className="text-sm">
+                  They file insurance claims for the customer
+                  <span className="block text-xs text-gray-500">
+                    Off: the site says they&apos;ll check coverage and give the carrier what it
+                    needs. On: the site says they deal with the carrier directly.
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={!!formData.smsCapable}
+                  onChange={(e) => updateField('smsCapable', e.target.checked)}
+                  className="rounded mt-0.5"
+                />
+                <span className="text-sm">
+                  Their published number can receive texts
+                  <span className="block text-xs text-gray-500">
+                    Adds a &ldquo;Text a photo&rdquo; button on mobile. Leave off for a landline —
+                    a text into a dead line loses the lead.
+                  </span>
+                </span>
+              </label>
             </div>
         </div>
       </section>

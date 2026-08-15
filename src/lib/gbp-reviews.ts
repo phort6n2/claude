@@ -190,7 +190,9 @@ export async function refreshGbpReviews(clientId: string): Promise<RefreshResult
     }))
     .filter((r) => r.rating === 5 && r.text.length >= 40 && r.text.length <= 650)
     .sort((a, b) => b.text.length - a.text.length)
-    .slice(0, 3)
+    // Six, not three: a wall of full-length reviews is the one proof asset a
+    // national chain cannot match, and the page has room for two rows.
+    .slice(0, 6)
 
   await prisma.clientGbpReviews.upsert({
     where: { clientId },

@@ -88,6 +88,8 @@ async function getClient(slug: string) {
       offersSunroofRepair: true,
       offersRockChipRepair: true,
       offersAdasCalibration: true,
+      filesInsuranceClaims: true,
+      smsCapable: true,
       serviceAreas: true,
       googleMapsUrl: true,
     },
@@ -167,6 +169,8 @@ export default async function ServicePage({ params }: PageProps) {
   const flags = {
     offersMobileService: client.offersMobileService,
     offersAdasCalibration: client.offersAdasCalibration,
+    filesInsuranceClaims: client.filesInsuranceClaims,
+    smsCapable: client.smsCapable,
   }
   const nav = prioritizeServices(services)
     .filter((s) => s.slug !== page.slug)
@@ -194,10 +198,15 @@ export default async function ServicePage({ params }: PageProps) {
   // The service's own copy leads the page, chapter-style, with body photos.
   // The service's own copy leads, then the client's real story follows: the
   // highest-intent page should carry MORE proof than the home page, not less.
-  const serviceChapters = [
-    ...page.sections.map((s) => ({ heading: s.heading, body: s.body, photoUrl: '' })),
-    ...extras.chapters,
-  ]
+  // Split deliberately: the SERVICE's own copy ("when replacement is the
+  // right call", "what the job involves") is objection handling and keeps the
+  // high slot. The shop's general story is about the business, so it moves
+  // below the proof like it does on the home page.
+  const serviceChapters = page.sections.map((s) => ({
+    heading: s.heading,
+    body: s.body,
+    photoUrl: '',
+  }))
 
   return (
     <div
@@ -293,6 +302,8 @@ export default async function ServicePage({ params }: PageProps) {
       <SiteBody
         client={client}
         flags={flags}
+        storyChapters={extras.chapters.slice(0, 2)}
+        storyFallbackPhotos={extras.bodyPhotos.length ? extras.bodyPhotos : extras.galleryPhotos.slice(1)}
         reviews={reviews}
         extras={extras}
         services={services}

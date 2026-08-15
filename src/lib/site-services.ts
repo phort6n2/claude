@@ -31,7 +31,7 @@ export const SERVICE_PAGES: ServicePage[] = [
     slug: 'windshield-replacement',
     flag: 'offersWindshieldReplacement',
     name: 'Windshield Replacement',
-    short: 'OEM-quality glass, professionally installed and ready to drive fast.',
+    short: 'Full windshield replacement, correctly bonded and safety-checked before you drive.',
     heroLine: 'Full windshield replacement with quality glass and professional installation.',
     sections: [
       {
@@ -73,7 +73,7 @@ export const SERVICE_PAGES: ServicePage[] = [
     slug: 'rock-chip-repair',
     flag: 'offersRockChipRepair',
     name: 'Rock Chip Repair',
-    short: 'Quick chip repairs — often covered 100% by insurance.',
+    short: 'Quick chip repairs — carriers usually waive the deductible, so often nothing out of pocket.',
     heroLine: 'Fast resin repair for rock chips, stars, and bullseyes.',
     sections: [
       {
@@ -145,7 +145,7 @@ export const SERVICE_PAGES: ServicePage[] = [
     slug: 'adas-calibration',
     flag: 'offersAdasCalibration',
     name: 'ADAS Calibration',
-    short: 'Camera and sensor recalibration after windshield replacement.',
+    short: 'If your car has lane-keep or automatic braking, the camera behind the glass has to be recalibrated. We do it in the same appointment — no separate dealer trip.',
     heroLine: 'Recalibration for lane-keep, emergency braking, and driver-assist cameras.',
     sections: [
       {

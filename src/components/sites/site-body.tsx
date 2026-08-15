@@ -26,6 +26,7 @@ import {
   WarrantyBand,
   GalleryGrid,
   FaqSection,
+  ChapterSections,
   FinalCta,
   SiteFooter,
   MobileCallBar,
@@ -34,6 +35,7 @@ import {
   type TrustItem,
 } from '@/components/sites/shared'
 import type { SiteExtras } from '@/lib/site-content'
+import { withDefaultFaq } from '@/lib/site-faq'
 import type { SiteLocation } from '@/lib/client-locations'
 
 /**
@@ -46,6 +48,14 @@ import type { SiteLocation } from '@/lib/client-locations'
 export interface SiteFlags {
   offersMobileService: boolean
   offersAdasCalibration: boolean
+  /**
+   * Whether this shop actually files the claim for the customer. Some do;
+   * some hand over a phone number. The template used to assert it for all of
+   * them, which put a promise in a shop's mouth that they never made.
+   */
+  filesInsuranceClaims?: boolean
+  /** Whether the shop's published line can receive SMS. */
+  smsCapable?: boolean
 }
 
 interface WidgetClient extends SiteClient {
@@ -59,6 +69,7 @@ interface WidgetClient extends SiteClient {
   offersSunroofRepair?: boolean
   offersAdasCalibration?: boolean
   offersMobileService?: boolean
+  smsCapable?: boolean
 }
 
 /**
@@ -82,6 +93,10 @@ export function buildWidgetConfig(client: WidgetClient, privacyUrl?: string) {
     secondaryColor: client.secondaryColor || '#3b82f6',
     services,
     offersMobileService: !!client.offersMobileService,
+    // Gates every "text us a photo" path. An sms: link pointed at a landline
+    // is a dead end, so the copy only appears once a shop confirms the line
+    // receives texts.
+    smsCapable: !!client.smsCapable,
     ...(privacyUrl ? { privacyUrl } : {}),
   }
 }
@@ -102,7 +117,7 @@ export function WidgetMount({ client, service }: { client: SiteClient; service?:
       <div className="bg-white rounded-[20px] border-t-4 border-t-[var(--cta)] border border-[var(--line-card)] shadow-lg p-6">
         <p className="m-0 text-xl font-extrabold tracking-tight text-[var(--tx)]">Get your free quote</p>
         <p className="mt-1.5 mb-0 text-sm text-[var(--tx-muted)]">
-          Takes about 30 seconds — loading the form…
+          Four quick questions and you&apos;ll have a real number.
         </p>
         <a
           href={`tel:${client.phone.replace(/[^+\d]/g, '')}`}
@@ -174,13 +189,18 @@ export function buildTrustItems(
       ? [{ icon: <Truck className="h-5 w-5" />, title: 'Mobile service', text: 'We come to your home or work' }]
       : []),
     ...(flags.offersAdasCalibration
-      ? [{ icon: <ScanLine className="h-5 w-5" />, title: 'ADAS calibration', text: 'Cameras recalibrated after replacement' }]
+      ? [{ icon: <ScanLine className="h-5 w-5" />, title: 'ADAS calibration included', text: 'No second trip to the dealer' }]
       : []),
-    { icon: <ShieldCheck className="h-5 w-5" />, title: 'Insurance claims handled', text: 'We work with your carrier directly' },
+    flags.filesInsuranceClaims
+      ? { icon: <ShieldCheck className="h-5 w-5" />, title: 'Insurance claims handled', text: 'We work with your carrier directly' }
+      : { icon: <ShieldCheck className="h-5 w-5" />, title: 'Insurance or cash', text: 'We quote it both ways so you can choose' },
     ...(extras.warrantyText
       ? [{ icon: <BadgeCheck className="h-5 w-5" />, title: extras.warrantyTitle || 'Workmanship warranty', text: 'Full terms further down this page' }]
       : []),
-    { icon: <Clock className="h-5 w-5" />, title: 'Fast scheduling', text: 'Most jobs done same or next day' },
+    // Replaces a hardcoded "most jobs done same or next day" — a scheduling
+    // promise the platform cannot make on behalf of fifteen different shops.
+    // The price promise is true of all of them and answers a bigger question.
+    { icon: <Clock className="h-5 w-5" />, title: 'Free quote first', text: 'A real price before anything is booked' },
   ].slice(0, 4)
 }
 
@@ -191,10 +211,12 @@ export function defaultHeroBullets(flags: SiteFlags): Array<{ lead: string; text
       ? [{ lead: 'Mobile service available.', text: 'Home, office, or roadside.' }]
       : []),
     ...(flags.offersAdasCalibration
-      ? [{ lead: 'ADAS calibration.', text: 'Cameras recalibrated after replacement.' }]
+      ? [{ lead: 'ADAS calibration included.', text: 'No second trip to the dealer.' }]
       : []),
-    { lead: 'Insurance claims handled.', text: 'We work with your carrier directly.' },
-    { lead: 'Fast scheduling.', text: 'Most jobs done same or next day.' },
+    flags.filesInsuranceClaims
+      ? { lead: 'Insurance claims handled.', text: 'We work with your carrier directly.' }
+      : { lead: 'Insurance or cash.', text: 'We quote it both ways so you can choose.' },
+    { lead: 'Free quote first.', text: 'A real price before anything is booked.' },
   ]
 }
 
@@ -210,10 +232,20 @@ export function SiteBody({
   locations = [],
   activeCity,
   linkableCities,
+  storyChapters = [],
+  storyFallbackPhotos = [],
 }: {
   client: SiteClient
   flags: SiteFlags
   reviews: ReviewsData | null
+  /**
+   * The shop's own long-form story. Rendered AFTER the reviews rather than
+   * before the services: it is the block that talks about the business
+   * instead of the customer, and in the old position it stood between a paid
+   * visitor and every section that answers "what will this cost me".
+   */
+  storyChapters?: Array<{ heading: string; body: string; photoUrl: string }>
+  storyFallbackPhotos?: Array<{ url: string; alt: string }>
   extras: SiteExtras
   services: Array<{ slug: string; name: string; short: string }>
   areas: string[]
@@ -240,7 +272,7 @@ export function SiteBody({
             <SectionHead
               eyebrow="Services"
               title={currentServiceSlug ? 'Everything we handle' : 'What we handle'}
-              lead="Every job backed by professional installation and quality glass."
+              lead="Not sure whether yours is a repair or a replacement? Send a photo with your quote and we'll tell you \u2014 a chip caught early is a great deal cheaper than the crack it turns into."
             />
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {gridServices.map((s) => {
@@ -303,7 +335,7 @@ export function SiteBody({
       {/* Insurance — the warm band; the warranty follows immediately so the
           price/risk question the insurance copy raises gets answered while
           it's fresh */}
-      <InsuranceBand state={client.state} />
+      <InsuranceBand state={client.state} filesClaims={flags.filesInsuranceClaims} />
       <WarrantyBand extras={extras} />
 
       {/* Range-of-work gallery (stripped when no photos) */}
@@ -311,6 +343,13 @@ export function SiteBody({
 
       {/* Reviews (live GBP data only; stripped when absent) */}
       <ReviewsBand reviews={reviews} />
+
+      {/* The shop's own story — after the proof, not before the services */}
+      <ChapterSections
+        client={client}
+        chapters={storyChapters}
+        fallbackPhotos={storyFallbackPhotos}
+      />
 
       {/* Map + Google listing (shop locations only) */}
       <MapSection
@@ -322,11 +361,19 @@ export function SiteBody({
         activeCity={activeCity}
       />
 
+      {/* FAQ (objection handling) ahead of the coverage band: the areas list
+          is fourteen outbound links, and it used to sit between the map and
+          the FAQ where it read as the end of the page. */}
+      <FaqSection
+        extras={null}
+        extraFaq={withDefaultFaq(extras.faq, {
+          state: client.state,
+          offersAdasCalibration: flags.offersAdasCalibration,
+        })}
+      />
+
       {/* Service areas — dark coverage band */}
       <AreasBand client={client} areas={areas} basePath={basePath} linkableCities={linkableCities} />
-
-      {/* FAQ (stripped when empty) */}
-      <FaqSection extras={extras} />
 
       <FinalCta client={client} />
     </>
@@ -369,7 +416,7 @@ export function SiteChrome({
         locations={locations}
         linkableCities={linkableCities}
       />
-      <MobileCallBar client={client} quoteHref="#quote" />
+      <MobileCallBar client={client} quoteHref="#quote" smsCapable={flags.smsCapable} />
     </>
   )
 }
