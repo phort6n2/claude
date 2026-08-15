@@ -42,21 +42,17 @@ export async function POST() {
     const record = (scan.raw || {}) as HeatmapRecord
     const meta = readScanRecord(record)
 
-    // Log the grid's structure once per run, whether or not the row parsed.
-    // Gating this on failure meant the average_rank shortcut skipped it, and
-    // the per-point percentages still cannot be computed without it.
+    // One line per run, whether or not the rows parsed. Gating this on
+    // failure meant the average_rank shortcut skipped it, and the per-point
+    // percentages still cannot be computed without it.
+    //
+    // `check` is the assertion that settled how a cell should be read: the
+    // provider's own average_rank is the mean of every raw cell, so if these
+    // two ever stop matching, the payload's meaning has changed and the +1 in
+    // ranksFromContent needs re-deriving rather than trusting.
     if (!loggedShape) {
       loggedShape = true
       const content = (record as Record<string, unknown>).content
-      const row = Array.isArray(content) ? content[0] : null
-      const cellKey = row && typeof row === 'object' ? Object.keys(row)[0] : null
-      const cell = row && typeof row === 'object' && cellKey !== null
-        ? (row as Record<string, unknown>)[cellKey]
-        : null
-      // The whole matrix, as delivered. A hundred small integers is nothing
-      // to log and it is the only way to settle what the values mean: a
-      // geogrid centred on the shop must be best in the middle, so whichever
-      // reading produces that is the correct one.
       const matrix = Array.isArray(content)
         ? content.map((r) =>
             Array.isArray(r)
@@ -69,20 +65,26 @@ export async function POST() {
                 : []
           )
         : []
+      const flat = matrix.flat().filter((v): v is number => typeof v === 'number')
+      const rawMean = flat.length ? flat.reduce((a, b) => a + b, 0) / flat.length : null
       console.warn(
-        '[LocalRank] matrix',
+        '[LocalRank] grid',
         JSON.stringify({
           keyword: meta.keyword,
-          providerAverageRank: meta.averageRank,
-          gridSize: meta.gridSize,
           rows: matrix.length,
           cols: matrix[0]?.length ?? 0,
-          distinctValues: [...new Set(matrix.flat())].sort((a, b) => Number(a) - Number(b)).slice(0, 25),
+          distinctRaw: [...new Set(flat)].sort((a, b) => a - b).slice(0, 25),
+          providerAverageRank: meta.averageRank,
+          rawMean: rawMean === null ? null : Math.round(rawMean * 100) / 100,
+          check:
+            rawMean !== null && meta.averageRank !== null
+              ? Math.abs(rawMean - meta.averageRank) < 0.02
+                ? 'raw mean matches their average — cells are 0-indexed positions'
+                : 'MISMATCH — re-derive how a cell should be read'
+              : 'not comparable',
+          shareUrl: meta.shareUrl,
         })
       )
-      for (const [i, r] of matrix.entries()) {
-        console.warn(`[LocalRank] row${String(i).padStart(2, '0')} ${JSON.stringify(r)}`)
-      }
     }
     const summary = summarizeGrid(record, meta.placeId || placeId)
 

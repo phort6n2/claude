@@ -70,12 +70,15 @@ export default function RankReport({
             scanId: scan.id,
             date: scan.scannedAt.toISOString(),
             label: scan.scannedAt.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }),
-            // Their share_links are HTML pages, not assets: image_link
-            // returns text/html and dynamic_url renders at 0,0 without their
-            // app's context. Neither can be embedded, so every run draws
-            // from the per-point ranks we decode ourselves.
+            // `image_link` is an HTML page, not an asset — it returns
+            // text/html, so it can never be an <img src>. The map on the page
+            // is always our own render of the per-point ranks.
             imageUrl: null,
-            interactiveUrl: null,
+            // `dynamic_url` is their live dashboard for this run. It goes in
+            // an iframe behind a button rather than in place of our map,
+            // because it once rendered at 0,0 for a signed-out viewer and a
+            // client must never open this tab to a map of the Atlantic.
+            interactiveUrl: meta.shareUrl,
             averageRank: scan.averageRank,
             top3Percent: scan.top3Percent,
             foundPercent: scan.foundPercent,
