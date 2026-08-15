@@ -24,6 +24,7 @@ export default async function PortalRankingsPage() {
       city: true,
       googlePlaceId: true,
       rankTrackingId: true,
+      rankMapUrl: true,
     },
   })
   const scans = await rankScansFor(session.clientId)
@@ -39,6 +40,7 @@ export default async function PortalRankingsPage() {
       </div>
       <RankReport
         scans={scans}
+        mapUrl={client?.rankMapUrl || null}
         campaignId={client?.rankTrackingId || null}
       />
     </div>

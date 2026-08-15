@@ -212,6 +212,30 @@ export async function updateScheduledScanGrid(
   }
 }
 
+/**
+ * The all-keywords map for a campaign, on our own share host.
+ *
+ * This is the single URL the report embeds, and the only one worth storing:
+ * LocalDominator repoints it as each scheduled run completes, so it keeps
+ * showing the latest scan on its own. Creating the campaign and capturing
+ * this URL is the whole of our job.
+ */
+export async function campaignMapUrl(scheduledScanId: string): Promise<string | null> {
+  const [links, host] = await Promise.all([
+    campaignShareLinks(scheduledScanId),
+    localDominatorShareHost(),
+  ])
+  if (!links) return null
+  const { whiteLabelEmbedUrl } = await import('@/lib/rank-embed')
+  // Campaign token first (every keyword), then a single keyword's report, so
+  // a campaign whose campaign_link has not appeared yet still shows a map.
+  return (
+    whiteLabelEmbedUrl(links.campaignLink, host) ||
+    whiteLabelEmbedUrl(links.dynamicUrl, host) ||
+    null
+  )
+}
+
 /** Change a campaign's cron in place. */
 export async function updateScheduledScanSchedule(
   id: string,
@@ -261,7 +285,18 @@ export async function getScheduledScanSchedule(id: string): Promise<CampaignSche
 }
 
 export interface CampaignShareLinks {
-  /** The report for the newest run that actually has one. */
+  /**
+   * The campaign's own token — the ONE to embed. On our white-label host it
+   * renders every keyword in a single map with their own controls; a
+   * per-keyword token renders just that keyword.
+   *
+   * It is `campaign_link` here, which is confusing: on THEIR host that URL is
+   * a standalone marketing page for the campaign, and embedding it as-is puts
+   * marketing chrome in a client's portal. The token inside it is what
+   * matters, served from our host.
+   */
+  campaignLink: string | null
+  /** One keyword's report — the newest run that has one. */
   dynamicUrl: string | null
   /** Their static heatmap for the same run. */
   imageLink: string | null
@@ -307,8 +342,7 @@ export async function campaignShareLinks(
     const links = (body?.share_links || {}) as Record<string, unknown>
     const str = (v: unknown) => (typeof v === 'string' && v ? v : null)
     return {
-      // NOT campaign_link — that is their standalone marketing page for the
-      // campaign, not the report. The report is what it links to.
+      campaignLink: str(links.campaign_link),
       dynamicUrl: str(links.dynamic_url),
       imageLink: str(links.image_link),
     }

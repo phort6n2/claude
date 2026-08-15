@@ -1,6 +1,11 @@
 import { prisma } from '@/lib/db'
 import { decrypt } from '@/lib/encryption'
-import { createScheduledScan, suggestedKeywords, localDominatorKey } from '@/lib/local-dominator'
+import {
+  campaignMapUrl,
+  createScheduledScan,
+  suggestedKeywords,
+  localDominatorKey,
+} from '@/lib/local-dominator'
 import { rankWebhookUrl } from '@/lib/local-rank-token'
 
 /**
@@ -22,6 +27,8 @@ import { rankWebhookUrl } from '@/lib/local-rank-token'
 
 export interface EnsureResult {
   created: number
+  /** Campaigns whose live map URL was captured or refreshed this pass. */
+  mapped: number
   skipped: number
   backfilled: number
   errors: Array<{ client: string; error: string }>
@@ -59,7 +66,7 @@ async function backfillCoordinates(
 }
 
 export async function ensureRankCampaigns(origin: string): Promise<EnsureResult> {
-  const result: EnsureResult = { created: 0, skipped: 0, backfilled: 0, errors: [] }
+  const result: EnsureResult = { created: 0, mapped: 0, skipped: 0, backfilled: 0, errors: [] }
 
   if (!(await localDominatorKey())) {
     // Not configured is not an error: the whole feature is simply off until
@@ -132,6 +139,28 @@ export async function ensureRankCampaigns(origin: string): Promise<EnsureResult>
     })
     result.created++
     console.log(`[RankCampaigns] ${client.businessName}: ${tier} campaign ${created.id}`)
+  }
+
+  // Capture (or refresh) each campaign's map URL. Their share links only
+  // resolve once a run has completed, so a campaign created a moment ago
+  // usually has none yet — which is why this is a daily sweep rather than a
+  // one-shot at creation. It is also how the URL stays right: they repoint it
+  // as runs complete, and a stored URL that is never re-read goes stale.
+  const withCampaigns = await prisma.client
+    .findMany({
+      where: { status: 'ACTIVE', rankTrackingId: { not: null } },
+      select: { id: true, businessName: true, rankTrackingId: true, rankMapUrl: true },
+    })
+    .catch(() => [])
+
+  for (const client of withCampaigns) {
+    const url = await campaignMapUrl(client.rankTrackingId as string)
+    if (!url || url === client.rankMapUrl) continue
+    await prisma.client
+      .update({ where: { id: client.id }, data: { rankMapUrl: url } })
+      .catch(() => {})
+    result.mapped++
+    console.log(`[RankCampaigns] ${client.businessName}: map url captured`)
   }
 
   return result

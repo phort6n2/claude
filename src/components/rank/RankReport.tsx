@@ -42,12 +42,19 @@ export interface RankScanRow {
 
 export default async function RankReport({
   scans,
+  mapUrl = null,
   campaignId = null,
   showProviderLink = false,
 }: {
   /** Chronological, oldest first, across every keyword. */
   scans: RankScanRow[]
-  /** Their scheduled_scan_id — unlocks the campaign-wide map. */
+  /**
+   * The campaign's all-keywords map, already white-labelled and stored on the
+   * client. This is the whole report: their page, every keyword, their own
+   * controls, and Local Dominator repoints it as each run completes.
+   */
+  mapUrl?: string | null
+  /** Fallback when the URL has not been captured yet. */
   campaignId?: string | null
   /** Admin only: shows why theirs is not framed, when it is not. */
   showProviderLink?: boolean
@@ -89,8 +96,13 @@ export default async function RankReport({
   // it is derived from the newest run that HAS a resolvable share URL, which
   // is exactly the guarantee a per-run link cannot make. A run that came back
   // empty is skipped rather than framed as an empty world map.
-  const campaign = campaignId ? await campaignShareLinks(campaignId) : null
+  // Stored first: the daily sweep captures it, so the common path costs no
+  // request at all. The live fetch is only for a campaign whose first run has
+  // not completed since the sweep last ran.
+  const campaign = mapUrl || !campaignId ? null : await campaignShareLinks(campaignId)
   const campaignEmbed =
+    mapUrl ||
+    whiteLabelEmbedUrl(campaign?.campaignLink, shareHost) ||
     whiteLabelEmbedUrl(campaign?.dynamicUrl, shareHost) ||
     interactiveEmbedUrl(campaign?.dynamicUrl) ||
     shareEmbedUrl(campaign?.imageLink)
