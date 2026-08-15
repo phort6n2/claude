@@ -31,6 +31,12 @@ interface ApiKeyConfig {
   description: string
   isTextarea?: boolean
   testable?: boolean
+  /**
+   * A side-effecting action offered beside the key, distinct from the
+   * read-only connection test — it does something and may cost money, so it
+   * always confirms first.
+   */
+  action?: { label: string; endpoint: string; confirm: string }
   /** Overrides "Test Connection" when the test covers more than this one key. */
   testLabel?: string
   /** Numbered walkthrough, shown behind "Where do I get this?". */
@@ -212,6 +218,14 @@ const API_KEYS: ApiKeyConfig[] = [
   {
     key: 'LOCALDOMINATOR_API_KEY',
     label: 'Local Dominator API key',
+    testable: true,
+    testLabel: 'Test connection',
+    action: {
+      label: 'Create campaigns now',
+      endpoint: '/api/admin/rank-campaigns/run',
+      confirm:
+        'Create rank-tracking campaigns for every client that does not have one yet?\n\nSEO clients are scanned weekly on four keywords, everyone else monthly on two. This spends Local Dominator credits, and the same thing happens automatically once a day — this only runs it sooner.',
+    },
     description:
       'Geogrid rank scans. Local Dominator runs the schedule on their side and posts each completed run back here, so nothing needs to be polled.',
     steps: [
@@ -419,6 +433,48 @@ export default function ApiSettingsPage() {
     }
   }
 
+  /**
+   * Fire a key's side-effecting action. Confirms first, because unlike the
+   * connection test this one does something and can cost money. Results
+   * reuse the same banner as the test — one place to look for "what
+   * happened when I pressed the button".
+   */
+  async function runAction(key: string) {
+    const config = RENDERED_KEYS.find((c) => c.key === key)
+    if (!config?.action) return
+    if (!window.confirm(config.action.confirm)) return
+
+    setSettings((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], testing: true, testResult: undefined },
+    }))
+
+    try {
+      const response = await fetch(config.action.endpoint, { method: 'POST' })
+      const result = await response.json()
+      setSettings((prev) => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          testing: false,
+          testResult: {
+            success: result.success !== false,
+            message: result.message || 'Done.',
+          },
+        },
+      }))
+    } catch {
+      setSettings((prev) => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          testing: false,
+          testResult: { success: false, message: 'Could not run that just now.' },
+        },
+      }))
+    }
+  }
+
   async function testConnection(key: string) {
     const setting = settings[key]
     const valueToTest = setting.editing ? setting.newValue : undefined
@@ -615,6 +671,23 @@ export default function ApiSettingsPage() {
                               </>
                             ) : (
                               config.testLabel || 'Test Connection'
+                            )}
+                          </Button>
+                        )}
+                        {config.action && setting.hasValue && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => runAction(config.key)}
+                            disabled={setting.testing}
+                          >
+                            {setting.testing ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Working…
+                              </>
+                            ) : (
+                              config.action.label
                             )}
                           </Button>
                         )}
