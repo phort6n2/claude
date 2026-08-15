@@ -260,34 +260,39 @@ function locate(node: unknown, key: string, depth = 0): unknown {
  * Per-point ranks from a delivered record's `content`.
  *
  * The real payload is not the documented compressed grid. `content` is one
- * entry per row, each an object keyed "0".."9", and each cell is the rank
- * itself as a number — with **0 meaning the business did not appear at that
- * point at all**. That reading is what the evidence supports: the corner
- * cell is 0, and their own `average_rank` comes out below 1 because it
- * averages across every cell including the zeros.
+ * entry per row, each an object keyed "0".."9", and each cell is a number.
  *
- * Which is also why their average is not shown as a position. Averaging a
- * rank with a hundred absences produces an area score, and "average position
- * 0.9" is not a position any business can hold.
+ * **The cell is a ZERO-INDEXED position: 0 is first place.** This cost two
+ * wrong reports before the whole matrix was logged and the arithmetic settled
+ * it. A delivered 10x10 read [0,1,1,1,1,1,2,3,4,4] across its first row and
+ * every other row likewise; the hundred cells summed to 113, and the record's
+ * own `average_rank` was 1.13 — exactly the mean of every cell including the
+ * zeros. A value a provider averages into a rank is a rank, not an absence.
+ * Their docs confirm the other half: a point with no data is delivered as
+ * `null`, never as 0. So 0 + 1 = position 1, and the shop's own doorstep —
+ * the centre of a grid drawn around it — comes out best, which is what a
+ * geogrid centred on a business must look like.
+ *
+ * Reading 0 as "did not appear" inverted the map: the centre went grey and
+ * the far edge went green. It looked like data, which is why it survived two
+ * rounds. Do not reintroduce it.
  */
 export function ranksFromContent(record: HeatmapRecord): Array<Array<number | null>> {
   const content = (record as Record<string, unknown>).content
   if (!Array.isArray(content) || content.length === 0) return []
 
+  const rank = (v: unknown): number | null =>
+    typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v + 1 : null
+
   return content.map((row) => {
-    if (Array.isArray(row)) {
-      return row.map((v) => (typeof v === 'number' && v > 0 ? v : null))
-    }
+    if (Array.isArray(row)) return row.map(rank)
     if (!row || typeof row !== 'object') return []
     const cells = row as Record<string, unknown>
     // Numeric keys, in numeric order — "10" must not sort before "2".
     return Object.keys(cells)
       .filter((k) => /^\d+$/.test(k))
       .sort((a, b) => Number(a) - Number(b))
-      .map((k) => {
-        const v = cells[k]
-        return typeof v === 'number' && v > 0 ? v : null
-      })
+      .map((k) => rank(cells[k]))
   })
 }
 
