@@ -37,6 +37,8 @@ interface ApiKeyConfig {
    * always confirms first.
    */
   action?: { label: string; endpoint: string; confirm: string }
+  /** Extra actions that are safe enough not to need a confirm. */
+  extraActions?: Array<{ label: string; endpoint: string }>
   /** Overrides "Test Connection" when the test covers more than this one key. */
   testLabel?: string
   /** Numbered walkthrough, shown behind "Where do I get this?". */
@@ -226,6 +228,9 @@ const API_KEYS: ApiKeyConfig[] = [
       confirm:
         'Create rank-tracking campaigns for every client that does not have one yet?\n\nSEO clients are scanned weekly on four keywords, everyone else monthly on two. This spends Local Dominator credits, and the same thing happens automatically once a day — this only runs it sooner.',
     },
+    // Costs nothing and touches no third party: it re-reads scan payloads we
+    // already hold, so it needs no confirm.
+    extraActions: [{ label: 'Recalculate scans', endpoint: '/api/admin/rank-campaigns/repair' }],
     description:
       'Geogrid rank scans. Local Dominator runs the schedule on their side and posts each completed run back here, so nothing needs to be polled.',
     steps: [
@@ -475,6 +480,32 @@ export default function ApiSettingsPage() {
     }
   }
 
+  /** Fire an endpoint with no confirm, reporting into the same banner. */
+  async function runEndpoint(key: string, endpoint: string) {
+    setSettings((prev) => ({ ...prev, [key]: { ...prev[key], testing: true, testResult: undefined } }))
+    try {
+      const response = await fetch(endpoint, { method: 'POST' })
+      const result = await response.json()
+      setSettings((prev) => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          testing: false,
+          testResult: { success: result.success !== false, message: result.message || 'Done.' },
+        },
+      }))
+    } catch {
+      setSettings((prev) => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          testing: false,
+          testResult: { success: false, message: 'Could not run that just now.' },
+        },
+      }))
+    }
+  }
+
   async function testConnection(key: string) {
     const setting = settings[key]
     const valueToTest = setting.editing ? setting.newValue : undefined
@@ -673,6 +704,19 @@ export default function ApiSettingsPage() {
                               config.testLabel || 'Test Connection'
                             )}
                           </Button>
+                        )}
+                        {config.extraActions?.map((extra) =>
+                          setting.hasValue ? (
+                            <Button
+                              key={extra.endpoint}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => runEndpoint(config.key, extra.endpoint)}
+                              disabled={setting.testing}
+                            >
+                              {extra.label}
+                            </Button>
+                          ) : null
                         )}
                         {config.action && setting.hasValue && (
                           <Button

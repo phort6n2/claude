@@ -180,6 +180,48 @@ export interface HeatmapRecord {
   [key: string]: unknown
 }
 
+/**
+ * Find the grid and the business list inside a payload.
+ *
+ * The documented shape puts `compressed_grid` and `detailsArray` at the top
+ * of each heatmap record, but a webhook payload can wrap them a level or two
+ * deeper, and a reader that only looks in the documented place produces
+ * empty numbers rather than an error — which is worse, because it looks like
+ * "not ranking anywhere" instead of "we failed to read this".
+ *
+ * So both are located wherever they are. They are searched independently
+ * because nothing guarantees they sit in the same object.
+ */
+function locate(node: unknown, key: string, depth = 0): unknown {
+  if (!node || typeof node !== 'object' || depth > 4) return null
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const hit = locate(item, key, depth + 1)
+      if (hit) return hit
+    }
+    return null
+  }
+  const obj = node as Record<string, unknown>
+  if (Array.isArray(obj[key])) return obj[key]
+  for (const value of Object.values(obj)) {
+    const hit = locate(value, key, depth + 1)
+    if (hit) return hit
+  }
+  return null
+}
+
+export interface LocatedGrid {
+  grid: number[][][]
+  details: Array<{ placeId?: string }>
+}
+
+export function locateHeatmap(record: HeatmapRecord): LocatedGrid | null {
+  const grid = locate(record, 'compressed_grid') as number[][][] | null
+  const details = locate(record, 'detailsArray') as Array<{ placeId?: string }> | null
+  if (!Array.isArray(grid) || !Array.isArray(details)) return null
+  return { grid, details }
+}
+
 export interface RankSummary {
   /** Mean position across the points where the business appeared at all. */
   averageRank: number | null
@@ -205,9 +247,9 @@ export interface RankSummary {
  * which is the honest way to show "you are invisible over here".
  */
 export function summarizeGrid(record: HeatmapRecord, placeId: string): RankSummary | null {
-  const grid = record.compressed_grid
-  const details = record.detailsArray
-  if (!Array.isArray(grid) || !Array.isArray(details)) return null
+  const located = locateHeatmap(record)
+  if (!located) return null
+  const { grid, details } = located
 
   const selfIndex = details.findIndex((d) => d?.placeId === placeId)
   let points = 0
@@ -250,9 +292,9 @@ export function summarizeGrid(record: HeatmapRecord, placeId: string): RankSumma
  * quietly dropped.
  */
 export function gridRanks(record: HeatmapRecord, placeId: string): Array<Array<number | null>> {
-  const grid = record.compressed_grid
-  const details = record.detailsArray
-  if (!Array.isArray(grid) || !Array.isArray(details)) return []
+  const located = locateHeatmap(record)
+  if (!located) return []
+  const { grid, details } = located
   const selfIndex = details.findIndex((d) => d?.placeId === placeId)
   return grid.map((row) =>
     Array.isArray(row)
