@@ -19,6 +19,7 @@ import {
   PhoneCall,
   Target,
   HardDrive,
+  FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -49,6 +50,7 @@ const navigation: NavSection[] = [
       { name: 'Master Leads', href: '/master-leads', icon: Smartphone, external: true },
       { name: 'Call Coaching', href: '/admin/call-coaching-insights', icon: PhoneCall },
       { name: 'Local Rankings', href: '/admin/rankings', icon: MapPin },
+      { name: 'SEO Articles', href: '/admin/seo-articles', icon: FileText },
     ],
   },
   {

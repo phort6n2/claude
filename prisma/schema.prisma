@@ -89,6 +89,7 @@ model Client {
   rankTrackingId String? // LocalDominator scheduled_scan_id
   rankKeywords   String[]
   localRankScans LocalRankScan[]
+  seoArticles    SeoArticle[]
 
   // Brand Settings
   logoUrl        String?
@@ -1028,4 +1029,56 @@ model LocalRankScan {
 
   @@unique([runUuid, searchTerm])
   @@index([clientId, searchTerm, scannedAt])
+}
+
+/// An SEO article written by BabyLoveGrowth, synced into this app and served
+/// on the shop's hosted site.
+///
+/// Stored rather than fetched on demand: their API is rate limited, and a
+/// page that calls a third party on every view is a page that goes down when
+/// the third party does.
+model SeoArticle {
+  id String @id @default(cuid())
+
+  /// Their article id. The sync key — a re-sync updates rather than duplicates.
+  externalId String @unique
+
+  /// Null until the article is matched to a shop. An article nobody owns is
+  /// held, never guessed at: publishing one shop's content on another's site
+  /// is worse than publishing nothing.
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  title           String
+  slug            String
+  excerpt         String?
+  metaDescription String?
+  heroImageUrl    String?
+  contentHtml     String?
+  contentMarkdown String?
+  jsonLd          Json?
+  faqJsonLd       Json?
+  seedKeyword     String?
+  keywords        String[]
+  languageCode    String?
+
+  /// The site the article was written for. How an article finds its shop.
+  orgWebsite String?
+
+  /// Claims in the copy that this platform is not allowed to make on a shop's
+  /// behalf. A non-empty list holds the article off the site until a human
+  /// clears it — see lib/seo-article-review.ts.
+  reviewFlags String[]
+
+  /// Null means written but not on the site.
+  publishedAt DateTime?
+  /// Their created_at, so ordering survives a re-sync.
+  authoredAt  DateTime?
+  syncedAt    DateTime  @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([clientId, slug])
+  @@index([clientId, publishedAt])
 }

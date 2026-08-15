@@ -18,6 +18,7 @@ export const SENSITIVE_KEYS = [
   'GOOGLE_ADS_CLIENT_SECRET',
   'GOOGLE_ADS_REFRESH_TOKEN',
   'LOCALDOMINATOR_API_KEY',
+  'BABYLOVEGROWTH_API_KEY',
 ] as const
 
 /**
@@ -41,6 +42,7 @@ export const ALL_KEYS: string[] = [
   'GOOGLE_ADS_REFRESH_TOKEN',
   'GOOGLE_ADS_LOGIN_CUSTOMER_ID',
   'LOCALDOMINATOR_API_KEY',
+  'BABYLOVEGROWTH_API_KEY',
 ]
 
 export function isSensitiveKey(key: string): boolean {
