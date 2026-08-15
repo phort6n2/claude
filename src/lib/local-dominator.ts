@@ -256,6 +256,69 @@ function locate(node: unknown, key: string, depth = 0): unknown {
   return null
 }
 
+/**
+ * Per-point ranks from a delivered record's `content`.
+ *
+ * The real payload is not the documented compressed grid. `content` is one
+ * entry per row, each an object keyed "0".."9", and each cell is the rank
+ * itself as a number — with **0 meaning the business did not appear at that
+ * point at all**. That reading is what the evidence supports: the corner
+ * cell is 0, and their own `average_rank` comes out below 1 because it
+ * averages across every cell including the zeros.
+ *
+ * Which is also why their average is not shown as a position. Averaging a
+ * rank with a hundred absences produces an area score, and "average position
+ * 0.9" is not a position any business can hold.
+ */
+export function ranksFromContent(record: HeatmapRecord): Array<Array<number | null>> {
+  const content = (record as Record<string, unknown>).content
+  if (!Array.isArray(content) || content.length === 0) return []
+
+  return content.map((row) => {
+    if (Array.isArray(row)) {
+      return row.map((v) => (typeof v === 'number' && v > 0 ? v : null))
+    }
+    if (!row || typeof row !== 'object') return []
+    const cells = row as Record<string, unknown>
+    // Numeric keys, in numeric order — "10" must not sort before "2".
+    return Object.keys(cells)
+      .filter((k) => /^\d+$/.test(k))
+      .sort((a, b) => Number(a) - Number(b))
+      .map((k) => {
+        const v = cells[k]
+        return typeof v === 'number' && v > 0 ? v : null
+      })
+  })
+}
+
+/** Summary from a rank grid we have already decoded. */
+export function summarizeRanks(grid: Array<Array<number | null>>): RankSummary | null {
+  let points = 0
+  let found = 0
+  let top3 = 0
+  let top10 = 0
+  let rankSum = 0
+  for (const row of grid) {
+    for (const rank of row) {
+      points++
+      if (rank === null) continue
+      found++
+      rankSum += rank
+      if (rank <= 3) top3++
+      if (rank <= 10) top10++
+    }
+  }
+  if (points === 0) return null
+  const pct = (n: number) => Math.round((n / points) * 1000) / 10
+  return {
+    averageRank: found > 0 ? Math.round((rankSum / found) * 10) / 10 : null,
+    top3Percent: pct(top3),
+    top10Percent: pct(top10),
+    foundPercent: pct(found),
+    points,
+  }
+}
+
 export interface LocatedGrid {
   grid: number[][][]
   details: Array<{ placeId?: string }>
@@ -293,6 +356,9 @@ export interface RankSummary {
  * which is the honest way to show "you are invisible over here".
  */
 export function summarizeGrid(record: HeatmapRecord, placeId: string): RankSummary | null {
+  const fromContent = ranksFromContent(record)
+  if (fromContent.length > 0) return summarizeRanks(fromContent)
+
   const located = locateHeatmap(record)
   if (!located) return null
   const { grid, details } = located
@@ -338,6 +404,9 @@ export function summarizeGrid(record: HeatmapRecord, placeId: string): RankSumma
  * quietly dropped.
  */
 export function gridRanks(record: HeatmapRecord, placeId: string): Array<Array<number | null>> {
+  const fromContent = ranksFromContent(record)
+  if (fromContent.length > 0) return fromContent
+
   const located = locateHeatmap(record)
   if (!located) return []
   const { grid, details } = located

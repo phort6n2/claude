@@ -87,9 +87,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         searchTerm: term,
         gridSize: meta.gridSize ?? 0,
         distance: meta.distance ?? Number(body.distance) ?? 0,
-        // Prefer their number over ours — it is what their dashboard shows,
-        // and a report disagreeing with the tool it came from is worthless.
-        averageRank: meta.averageRank ?? summary?.averageRank ?? null,
+        // OUR average, not theirs. Their average_rank divides by every grid
+        // point including the ones where the business does not appear, which
+        // yields an area score below 1 — not a position any business holds.
+        // Ours is the mean position across the points where they DO appear,
+        // with absence reported separately as foundPercent.
+        averageRank: summary?.averageRank ?? null,
         top3Percent: summary?.top3Percent ?? null,
         top10Percent: summary?.top10Percent ?? null,
         foundPercent: summary?.foundPercent ?? null,
