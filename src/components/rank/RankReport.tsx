@@ -1,4 +1,5 @@
 import { gridRanks, readScanRecord, type HeatmapRecord } from '@/lib/local-dominator'
+import { canEmbedShare, shareEmbedUrl } from '@/lib/rank-embed'
 import RankHeatmap from '@/components/rank/RankHeatmap'
 import RankKeywordSection, { type RunPoint } from '@/components/rank/RankKeywordSection'
 
@@ -10,6 +11,10 @@ import RankKeywordSection, { type RunPoint } from '@/components/rank/RankKeyword
  * value of the share link is that a prospect sees exactly what the client
  * sees — if the admin copy flattered the numbers, the artifact would be
  * worth nothing.
+ *
+ * The map is Local Dominator's own, framed from their public /share/ route.
+ * Ours is the fallback, and whether theirs can be framed is settled
+ * server-side before anything renders — see lib/rank-embed.ts.
  */
 
 export interface RankScanRow {
@@ -24,13 +29,12 @@ export interface RankScanRow {
   raw: unknown
 }
 
-
-
-export default function RankReport({
+export default async function RankReport({
   scans,
   placeId,
   hasCoordinates,
   mapQuery = '',
+  showProviderLink = false,
 }: {
   /** Chronological, oldest first, across every keyword. */
   scans: RankScanRow[]
@@ -38,6 +42,11 @@ export default function RankReport({
   hasCoordinates: boolean
   /** Extra query for the map proxy — a share token, or a client id. */
   mapQuery?: string
+  /**
+   * Admin only. Their `dynamic_url` is the signed-in dashboard, so it is
+   * useful to whoever holds the Local Dominator login and to nobody else.
+   */
+  showProviderLink?: boolean
 }) {
   const byTerm = new Map<string, RankScanRow[]>()
   for (const scan of scans) {
@@ -58,10 +67,23 @@ export default function RankReport({
     )
   }
 
+  // One probe for the whole report. Framing is a property of their route, not
+  // of a particular run, so asking once per keyword per visit would be a
+  // request per page view for an answer that is the same every time.
+  const probeUrl = (() => {
+    for (const list of byTerm.values()) {
+      const latest = list[list.length - 1]
+      const url = shareEmbedUrl(readScanRecord((latest.raw || {}) as HeatmapRecord).mapImageUrl)
+      if (url) return url
+    }
+    return null
+  })()
+  const verdict = await canEmbedShare(probeUrl)
+
   return (
     <div className="space-y-4">
       {[...byTerm.entries()].map(([term, list]) => {
-        // Only the image and the three numbers travel to the browser — never
+        // Only the URLs and the three numbers travel to the browser — never
         // the grids. A year of weekly scans is a lot of JSON for a page that
         // shows one map at a time.
         const runs: RunPoint[] = list.map((scan) => {
@@ -69,23 +91,22 @@ export default function RankReport({
           return {
             scanId: scan.id,
             date: scan.scannedAt.toISOString(),
-            label: scan.scannedAt.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }),
-            // `image_link` is an HTML page, not an asset — it returns
-            // text/html, so it can never be an <img src>. The map on the page
-            // is always our own render of the per-point ranks.
-            imageUrl: null,
-            // `dynamic_url` is their live dashboard for this run. It goes in
-            // an iframe behind a button rather than in place of our map,
-            // because it once rendered at 0,0 for a signed-out viewer and a
-            // client must never open this tab to a map of the Atlantic.
-            interactiveUrl: meta.shareUrl,
+            label: scan.scannedAt.toLocaleDateString(undefined, {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            }),
+            // Their native map, framed. Withheld entirely when the probe said
+            // it cannot be framed, so the client never meets a blank box.
+            embedUrl: verdict.ok ? shareEmbedUrl(meta.mapImageUrl) : null,
+            providerUrl: showProviderLink ? meta.shareUrl : null,
             averageRank: scan.averageRank,
             top3Percent: scan.top3Percent,
             foundPercent: scan.foundPercent,
           }
         })
 
-        // Our own render, used only when the provider sent no image.
+        // Our own render, used when theirs cannot be framed.
         const latest = list[list.length - 1]
         const latestRecord = (latest.raw || {}) as HeatmapRecord
         const grid = gridRanks(latestRecord, readScanRecord(latestRecord).placeId || placeId)
@@ -102,7 +123,17 @@ export default function RankReport({
             />
           ) : null
 
-        return <RankKeywordSection key={term} term={term} runs={runs} fallback={fallback} />
+        return (
+          <RankKeywordSection
+            key={term}
+            term={term}
+            runs={runs}
+            fallback={fallback}
+            // Admin only: a client has no use for a framing policy, and
+            // showing them one reads as the product being broken.
+            fallbackReason={showProviderLink && !verdict.ok ? verdict.reason : null}
+          />
+        )
       })}
     </div>
   )
