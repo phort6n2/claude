@@ -28,7 +28,13 @@ export default async function PortalLayout({ children }: { children: React.React
   const [rankScans, liveArticles] = await Promise.all([
     prisma.localRankScan.count({ where: { clientId: session.clientId } }).catch(() => 0),
     prisma.seoArticle
-      .count({ where: { clientId: session.clientId, publishedAt: { not: null } } })
+      .count({
+        where: {
+          clientId: session.clientId,
+          publishedAt: { not: null },
+          client: { seoContentEnabled: true },
+        },
+      })
       .catch(() => 0),
   ])
   const hasRankings = rankScans > 0

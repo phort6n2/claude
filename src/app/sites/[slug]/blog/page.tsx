@@ -57,7 +57,14 @@ export default async function BlogIndexPage({ params }: PageProps) {
 
   const articles = await prisma.seoArticle
     .findMany({
-      where: { clientId: client.id, publishedAt: { not: null } },
+      // The shop's SEO switch is enforced here, not only at sync: turning
+      // it off has to take live pages down, which is what the admin card
+      // says it does.
+      where: {
+        clientId: client.id,
+        publishedAt: { not: null },
+        client: { seoContentEnabled: true },
+      },
       orderBy: { publishedAt: 'desc' },
       select: {
         slug: true,

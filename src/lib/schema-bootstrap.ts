@@ -107,6 +107,11 @@ export const LOCAL_RANK_SQL: string[] = [
 ]
 
 export const SEO_ARTICLE_SQL: string[] = [
+  // On Client, not in a side table: Prisma selects every scalar it knows
+  // about, so these two must exist before the deploy that adds them serves a
+  // single request against Client — which is nearly every request there is.
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "seoContentEnabled" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "blgApiKey" TEXT`,
   `CREATE TABLE IF NOT EXISTS "SeoArticle" (
      "id"              TEXT NOT NULL,
      "externalId"      TEXT NOT NULL,

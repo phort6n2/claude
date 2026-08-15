@@ -24,22 +24,26 @@ Enable, on the same project as `GOOGLE_PLACES_API_KEY`. If the key has an API
 restriction list, add Maps Static API to it. Nothing to redeploy — the next
 page load fetches it.
 
-### 0.0b BabyLoveGrowth API key, and one organisation per shop
+### 0.0b A BabyLoveGrowth key per shop
 **Blocks:** all syndicated SEO articles.
 
-Settings → API keys → **BabyLoveGrowth API Key**, then *Test Connection*, then
+Per shop: **Clients → the shop → SEO tab**. Tick *Publish SEO articles for this
+shop*, paste that shop's BabyLoveGrowth key, *Save key*, *Test connection*,
 *Sync articles now*. After that it runs itself, nightly at 05:00 UTC.
 
-In BabyLoveGrowth, each shop must be its own organisation with its website set
-to the site the articles are for — that website is the **only** link between an
-article and a shop here. It is matched against the shop's custom domain, the
-website on their Business Profile, and their glassleads.app subdomain. Anything
-unmatched lands in Admin → SEO Articles for you to assign by hand.
+The key is what identifies the shop, so nothing is matched by website and
+nothing can land on the wrong site. The account-wide key in Settings → API keys
+is only needed if one BabyLoveGrowth account covers several shops — then each
+organisation's website has to be set correctly, and anything it cannot place
+waits in Admin → SEO Articles.
 
-Articles that make a claim the platform is not allowed to make on a shop's
-behalf are held in that same queue rather than published. Read them before
+Articles making a claim the platform is not allowed to make on a shop's behalf
+are held rather than published, on that shop's SEO tab. Read them before
 clearing: the scan catches known phrasings, not a fabricated fact stated
 plainly.
+
+Switching the toggle off takes that shop's live articles down as well as
+stopping the next pull.
 
 ### 0.1 Tick the two new claim flags per shop
 **Blocks:** two true things your shops are no longer allowed to say.

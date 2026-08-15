@@ -246,9 +246,9 @@ const API_KEYS: ApiKeyConfig[] = [
   },
   {
     key: 'BABYLOVEGROWTH_API_KEY',
-    label: 'BabyLoveGrowth API Key',
+    label: 'BabyLoveGrowth API Key (account-wide)',
     description:
-      'SEO articles for the shops on the content plan. Synced nightly onto their hosted site at /blog.',
+      'Optional fallback. Each shop normally holds its own key on their SEO tab — set this only if one BabyLoveGrowth account covers several shops.',
     testable: true,
     action: {
       label: 'Sync articles now',
@@ -258,15 +258,15 @@ const API_KEYS: ApiKeyConfig[] = [
     },
     steps: [
       {
+        text: 'Prefer the per-shop key: Clients → pick a shop → SEO tab. The key identifies the shop, so nothing has to be matched.',
+      },
+      {
         text: 'BabyLoveGrowth → Integrations → API. Generate API Key, then copy it — it is shown once.',
         href: 'https://app.babylovegrowth.ai/',
         linkLabel: 'app.babylovegrowth.ai',
       },
       {
-        text: 'In BabyLoveGrowth, each shop must be its own organisation, with its website set to the site the articles are for.',
-      },
-      {
-        text: 'That website is the only link between an article and a shop here. It is matched against the shop’s custom domain, the website on their Business Profile, and their glassleads.app subdomain.',
+        text: 'Only if you use one account for several shops: set the key here, and give each organisation the website its articles are for. That website is then the only link to a shop — matched against their custom domain, their Business Profile website, and their glassleads.app subdomain.',
       },
     ],
     warning:
