@@ -10,6 +10,37 @@ Last reviewed: 2026-08-15
 
 ## 0. New since the landing-page overhaul — five minutes each
 
+### 0.0 Enable the Maps Static API on the Places key
+**Blocks:** the street map behind every rank grid. Google is refusing it with
+a 403: *"This API key is not authorized to use this service or API."*
+
+The grid itself is fine — the pins draw, the numbers are right — but they sit
+on plain grey instead of the shop's actual streets, which is most of what
+makes "you are weak on the north side of town" a sentence a shop owner can
+act on.
+
+Google Cloud Console → APIs & Services → Library → **Maps Static API** →
+Enable, on the same project as `GOOGLE_PLACES_API_KEY`. If the key has an API
+restriction list, add Maps Static API to it. Nothing to redeploy — the next
+page load fetches it.
+
+### 0.0b BabyLoveGrowth API key, and one organisation per shop
+**Blocks:** all syndicated SEO articles.
+
+Settings → API keys → **BabyLoveGrowth API Key**, then *Test Connection*, then
+*Sync articles now*. After that it runs itself, nightly at 05:00 UTC.
+
+In BabyLoveGrowth, each shop must be its own organisation with its website set
+to the site the articles are for — that website is the **only** link between an
+article and a shop here. It is matched against the shop's custom domain, the
+website on their Business Profile, and their glassleads.app subdomain. Anything
+unmatched lands in Admin → SEO Articles for you to assign by hand.
+
+Articles that make a claim the platform is not allowed to make on a shop's
+behalf are held in that same queue rather than published. Read them before
+clearing: the scan catches known phrasings, not a fabricated fact stated
+plainly.
+
 ### 0.1 Tick the two new claim flags per shop
 **Blocks:** two true things your shops are no longer allowed to say.
 
