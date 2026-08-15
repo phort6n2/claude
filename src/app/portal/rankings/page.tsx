@@ -19,7 +19,12 @@ export default async function PortalRankingsPage() {
 
   const client = await prisma.client.findUnique({
     where: { id: session.clientId },
-    select: { businessName: true, city: true, googlePlaceId: true, latitude: true, longitude: true },
+    select: {
+      businessName: true,
+      city: true,
+      googlePlaceId: true,
+      rankTrackingId: true,
+    },
   })
   const scans = await rankScansFor(session.clientId)
 
@@ -34,8 +39,7 @@ export default async function PortalRankingsPage() {
       </div>
       <RankReport
         scans={scans}
-        placeId={client?.googlePlaceId || ''}
-        hasCoordinates={!!(client?.latitude && client?.longitude)}
+        campaignId={client?.rankTrackingId || null}
       />
     </div>
   )

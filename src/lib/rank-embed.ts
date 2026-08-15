@@ -16,11 +16,18 @@
  *   public route. It renders the heatmap and nothing else. Fetching it as an
  *   `<img src>` was the original mistake — it returns text/html.
  *
- * Both are tried, interactive first, and the choice is made by asking their
- * server with the real token and no cookies. Probing with a made-up token
- * proves nothing, because an invalid token and a missing route both come back
- * as a refusal — reading one as the other is exactly how the interactive map
- * got written off.
+ * The static page is the DEFAULT because it is the one that renders every
+ * time. The interactive report framed correctly once and then went back to
+ * 0,0, which is what a cross-site frame looks like when the browser
+ * partitions its storage and their app cannot read its own state. We cannot
+ * fix that from this side, and an intermittent map is worse than a plain
+ * one — so the interactive report is a switch the viewer can throw, plus a
+ * new-tab link where it works reliably, and never the default.
+ *
+ * Both are probed against their server with the real token and no cookies.
+ * Probing with a made-up token proves nothing, because an invalid token and
+ * a missing route both come back as a refusal — reading one as the other is
+ * exactly how the interactive map got written off as login-only.
  */
 
 const PROVIDER_HOST = 'app.localdominator.co'
@@ -52,6 +59,15 @@ function normalise(link: string | null | undefined, forceShare: boolean): string
   }
 }
 
+/**
+ * Their campaign-wide map: every keyword, every run, their own date control.
+ * `share_links.campaign_link`, which never appears in the webhook payload and
+ * has to be fetched from the campaign object.
+ */
+export function campaignEmbedUrl(link: string | null | undefined): string | null {
+  return normalise(link, false)
+}
+
 /** Their interactive report for a run. */
 export function interactiveEmbedUrl(dynamicUrl: string | null | undefined): string | null {
   return normalise(dynamicUrl, false)
@@ -63,11 +79,13 @@ export function shareEmbedUrl(imageLink: string | null | undefined): string | nu
 }
 
 export interface EmbedVerdict {
-  /** The URL to frame, best first, or null when nothing of theirs works. */
-  url: string | null
-  /** Which one won, for the admin note. */
-  kind: 'interactive' | 'static' | null
-  /** Why nothing worked, when nothing did. */
+  /** Their static heatmap can be framed — the default map. */
+  staticOk: boolean
+  /** Their interactive report can be framed — offered as a switch. */
+  interactiveOk: boolean
+  /** Their whole-campaign map, when it can be framed. Beats both of the above. */
+  campaignUrl: string | null
+  /** Why nothing of theirs is being shown, when nothing is. */
   reason: string
 }
 
@@ -117,25 +135,32 @@ async function reachable(url: string): Promise<{ ok: boolean; why: string }> {
  */
 export async function pickEmbed(
   interactive: string | null,
-  statik: string | null
+  statik: string | null,
+  campaign: string | null = null
 ): Promise<EmbedVerdict> {
-  const tried: string[] = []
-
-  if (interactive) {
-    const check = await reachable(interactive)
-    if (check.ok) return { url: interactive, kind: 'interactive', reason: 'ok' }
-    tried.push(`their interactive map: ${check.why}`)
+  // The campaign map first when there is one: it is the whole report in one
+  // frame, with their own keyword and date controls, so nothing of ours has
+  // to reproduce them.
+  if (campaign) {
+    const check = await reachable(campaign)
+    if (check.ok) {
+      return { staticOk: false, interactiveOk: false, campaignUrl: campaign, reason: 'ok' }
+    }
   }
 
-  if (statik) {
-    const check = await reachable(statik)
-    if (check.ok) return { url: statik, kind: 'static', reason: 'ok' }
-    tried.push(`their static map: ${check.why}`)
-  }
+  const [staticCheck, interactiveCheck] = await Promise.all([
+    statik ? reachable(statik) : Promise.resolve({ ok: false, why: 'no static link on this run' }),
+    interactive
+      ? reachable(interactive)
+      : Promise.resolve({ ok: false, why: 'no interactive link on this run' }),
+  ])
 
   return {
-    url: null,
-    kind: null,
-    reason: tried.length ? tried.join('; ') : 'this run carried no share link',
+    staticOk: staticCheck.ok,
+    interactiveOk: interactiveCheck.ok,
+    campaignUrl: null,
+    reason: staticCheck.ok
+      ? 'ok'
+      : `their static map: ${staticCheck.why}; their interactive map: ${interactiveCheck.why}`,
   }
 }

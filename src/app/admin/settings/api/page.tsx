@@ -236,6 +236,9 @@ const API_KEYS: ApiKeyConfig[] = [
       // no cookies — the only way to know what a signed-out client actually
       // gets, as opposed to what an admin sees while signed in to their app.
       { label: 'Check map embeds', endpoint: '/api/admin/rank-campaigns/embed-check' },
+      // Spacing lives in SCAN_PRESETS, but a campaign created at the old
+      // spacing keeps it — their scheduler holds the geometry, not us.
+      { label: 'Apply grid spacing', endpoint: '/api/admin/rank-campaigns/respace' },
     ],
     description:
       'Geogrid rank scans. Local Dominator runs the schedule on their side and posts each completed run back here, so nothing needs to be polled.',
