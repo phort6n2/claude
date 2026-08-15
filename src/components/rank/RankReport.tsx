@@ -1,4 +1,4 @@
-import { gridRanks, type HeatmapRecord } from '@/lib/local-dominator'
+import { gridRanks, readScanRecord, type HeatmapRecord } from '@/lib/local-dominator'
 import RankHeatmap from '@/components/rank/RankHeatmap'
 import RankTrend from '@/components/rank/RankTrend'
 
@@ -78,7 +78,14 @@ export default function RankReport({
     <div className="space-y-4">
       {[...byTerm.entries()].map(([term, list]) => {
         const latest = list[list.length - 1]
-        const grid = gridRanks((latest.raw || {}) as HeatmapRecord, placeId)
+        const record = (latest.raw || {}) as HeatmapRecord
+        const meta = readScanRecord(record)
+        const grid = gridRanks(record, meta.placeId || placeId)
+        // Local Dominator renders its own heatmap and hands us the link, so
+        // prefer theirs: it is the picture their dashboard shows, it needs no
+        // Maps key and costs nothing per view. Our own pins-over-a-map render
+        // is the fallback for records that carry no image.
+        const providerMap = meta.mapImageUrl
         const mapUrl = hasCoordinates
           ? `/api/rank-map?grid=${latest.gridSize}&distance=${latest.distance}${mapQuery ? `&${mapQuery}` : ''}`
           : null
@@ -91,7 +98,19 @@ export default function RankReport({
             </div>
 
             <div className="mt-3 grid gap-6 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start">
-              {grid.length > 0 && <RankHeatmap grid={grid} label={term} mapUrl={mapUrl} />}
+              {providerMap ? (
+                <div className="w-full max-w-[460px]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={providerMap}
+                    alt={`Ranking heatmap for ${term}`}
+                    className="w-full rounded-xl border border-gray-200"
+                    loading="lazy"
+                  />
+                </div>
+              ) : grid.length > 0 ? (
+                <RankHeatmap grid={grid} label={term} mapUrl={mapUrl} />
+              ) : null}
 
               <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-3">

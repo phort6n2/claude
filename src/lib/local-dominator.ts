@@ -181,6 +181,52 @@ export interface HeatmapRecord {
 }
 
 /**
+ * What a delivered scan record actually contains.
+ *
+ * The webhook does NOT deliver the documented `ResultsJson` shape. A real
+ * record is richer: it carries the keyword, the business's own place id, the
+ * grid geometry, an average rank Local Dominator has already computed, and a
+ * link to their rendered heatmap image. The grid itself is `content`, not
+ * `compressed_grid`.
+ *
+ * Reading their `average_rank` rather than recomputing one is deliberate: it
+ * is the number their own dashboard shows, and a report that disagreed with
+ * the tool it came from would be indefensible in front of a client.
+ */
+export interface ScanRecord {
+  keyword: string | null
+  placeId: string | null
+  averageRank: number | null
+  gridSize: number | null
+  distance: number | null
+  centerLat: number | null
+  centerLng: number | null
+  /** Local Dominator's own rendered heatmap. */
+  mapImageUrl: string | null
+  shareUrl: string | null
+}
+
+const num = (v: unknown): number | null =>
+  typeof v === 'number' && Number.isFinite(v) ? v : null
+const str = (v: unknown): string | null =>
+  typeof v === 'string' && v.trim() ? v.trim() : null
+
+export function readScanRecord(record: HeatmapRecord): ScanRecord {
+  const share = (record.share_links || {}) as Record<string, unknown>
+  return {
+    keyword: str(record.keyword) || str(record.search_term) || str(record.searchTerm),
+    placeId: str(record.place_id) || str(record.placeId),
+    averageRank: num(record.average_rank) ?? num(record.averageRank),
+    gridSize: num(record.grid_size) ?? num(record.gridSize),
+    distance: num(record.locations_distance) ?? num(record.distance),
+    centerLat: num(record.center_lat),
+    centerLng: num(record.center_lng),
+    mapImageUrl: str(share.image_link) || str(share.imageLink),
+    shareUrl: str(share.dynamic_url) || str(share.dynamicUrl),
+  }
+}
+
+/**
  * Find the grid and the business list inside a payload.
  *
  * The documented shape puts `compressed_grid` and `detailsArray` at the top
