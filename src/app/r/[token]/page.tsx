@@ -34,7 +34,13 @@ export default async function SharedRankingsPage({
   const client = await prisma.client
     .findUnique({
       where: { id: clientId },
-      select: { businessName: true, city: true, state: true, googlePlaceId: true, latitude: true, longitude: true },
+      select: {
+        businessName: true,
+        city: true,
+        state: true,
+        rankTrackingId: true,
+        rankMapUrl: true,
+      },
     })
     .catch(() => null)
   if (!client) notFound()
@@ -57,6 +63,8 @@ export default async function SharedRankingsPage({
 
         <RankReport
           scans={scans}
+          mapUrl={client.rankMapUrl}
+          campaignId={client.rankTrackingId}
         />
 
         <p className="pt-2 text-center text-xs text-gray-500">

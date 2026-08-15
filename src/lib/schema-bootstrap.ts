@@ -106,6 +106,10 @@ export const LOCAL_RANK_SQL: string[] = [
   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
 ]
 
+export const RANK_MAP_SQL: string[] = [
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "rankMapUrl" TEXT`,
+]
+
 export const SEO_ARTICLE_SQL: string[] = [
   // On Client, not in a side table: Prisma selects every scalar it knows
   // about, so these two must exist before the deploy that adds them serves a
@@ -152,6 +156,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...OFFLINE_CONVERSION_SQL,
   ...CLAIM_FLAGS_SQL,
   ...LOCAL_RANK_SQL,
+  ...RANK_MAP_SQL,
   ...SEO_ARTICLE_SQL,
 ]
 

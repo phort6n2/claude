@@ -88,6 +88,9 @@ model Client {
   seoClient      Boolean         @default(false)
   rankTrackingId String? // LocalDominator scheduled_scan_id
   rankKeywords   String[]
+  /// The campaign's all-keywords map, white-labelled. Stored rather than
+  /// fetched per render: it changes when a run completes, not per page view.
+  rankMapUrl     String?
   localRankScans LocalRankScan[]
 
   // Syndicated SEO content. Each shop is its own BabyLoveGrowth organisation
