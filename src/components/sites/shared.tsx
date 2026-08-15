@@ -764,7 +764,20 @@ export function WarrantyBand({ extras }: { extras: SiteExtras | null }) {
 
 /** "Range of work" photo grid as captioned figures. Stripped when empty. */
 export function GalleryGrid({ extras }: { extras: SiteExtras | null }) {
-  if (!extras || extras.galleryPhotos.length === 0) return null
+  // The two pools are a PREFERENCE, not a filter. Photos that look like this
+  // specific shop lead the grid; generic or stock imagery fills the rest of
+  // it rather than disappearing — body photos otherwise only render beside
+  // story sections, so a shop with more photos than sections would silently
+  // lose the surplus. The heading claims nothing about who took them.
+  const seen = new Set<string>()
+  const photos = [...(extras?.galleryPhotos ?? []), ...(extras?.bodyPhotos ?? [])]
+    .filter((p) => {
+      if (seen.has(p.url)) return false
+      seen.add(p.url)
+      return true
+    })
+    .slice(0, 6)
+  if (photos.length === 0) return null
   return (
     <section className="border-t border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
@@ -773,10 +786,10 @@ export function GalleryGrid({ extras }: { extras: SiteExtras | null }) {
             no orphan card on the last row. */}
         <div
           className={`grid grid-cols-2 gap-5 ${
-            extras.galleryPhotos.slice(0, 6).length % 3 === 1 ? 'md:grid-cols-2' : 'md:grid-cols-3'
+            photos.length % 3 === 1 ? 'md:grid-cols-2' : 'md:grid-cols-3'
           }`}
         >
-          {extras.galleryPhotos.slice(0, 6).map((photo) => (
+          {photos.map((photo) => (
             <figure
               key={photo.url}
               className="m-0 rounded-[20px] border border-[var(--line-card)] bg-white shadow-sm overflow-hidden"

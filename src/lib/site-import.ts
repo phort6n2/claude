@@ -457,7 +457,13 @@ Return ONLY a JSON object (no prose, no markdown fence) with exactly these keys:
   "footerBlurb": string|null,          // one factual sentence about the business, from the site's own copy
   "chapters": [{"heading": string, "body": string, "photoIndex": number|null}], // 2-4 editorial sections telling this business's story, BUILT ONLY from facts and phrasing already on their site (their history, their approach, what makes them different — in their voice). 1-3 short paragraphs each, separated by blank lines. Condensing and light editing of THEIR copy is fine; adding facts is not. photoIndex optionally pairs a candidate photo whose subject fits the section. [] if the site has no real "about" substance.
   "serviceAreas": [string], // city/town names the site EXPLICITLY says they serve (coverage lists, footer links, "areas we serve"). Proper city names only — no regions like "the Westside" or "the metro", no states, no neighborhoods unless the site treats them as service cities. Max 10; [] if the site doesn't name cities.
-  "photos": [{"index": number, "alt": string}] // pick from the NUMBERED candidates BY INDEX. The candidate images are attached above this text — judge each by WHAT IS ACTUALLY IN IT, not its filename. KEEP real photographs of this business and its work: the shop, vans/trucks, technicians, vehicles being worked on, completed glass work, the storefront. DROP anything that is not such a photograph: car manufacturers' logos or badges (Acura, Honda, Toyota… — auto sites carry "makes we service" strips and none of those belong in a gallery), any company's logo or wordmark, maps, screenshots, text banners/graphics, clip art, watermarked stock photography. ALSO drop any candidate whose URL or filename identifies it as licensed stock photography (istock, shutterstock, gettyimages, unsplash, pexels, adobestock, depositphotos, dreamstime, 123rf) — licensed stock is not watermarked and looks exactly like a real job photo, so the filename is the ONLY evidence available and it overrides what you see in the image. These galleries are captioned as the shop's own work, so a stock photo there is a false claim. If a candidate's image is NOT attached (it failed to load), judge by URL/alt alone and keep it unless those positively identify junk. Write a short factual alt describing what is visible — do not invent specifics. Max 12.
+  "photos": [{"index": number, "alt": string, "pool": "gallery"|"body"}] // pick from the NUMBERED candidates BY INDEX. The candidate images are attached above this text — judge each by WHAT IS ACTUALLY IN IT, not its filename.
+  //   KEEP any photograph that could plausibly illustrate this business: the shop, vans/trucks, technicians, vehicles being worked on, completed glass work, the storefront, glass being handled.
+  //   DROP only what is not a photograph of that kind at all: car manufacturers' logos or badges (Acura, Honda, Toyota… — auto sites carry "makes we service" strips), any company's logo or wordmark, maps, screenshots, text banners/graphics, clip art.
+  //   POOL — this is the important judgement. "gallery" builds a grid a visitor reads as THIS SHOP'S OWN COMPLETED JOBS. "body" is illustrative imagery beside the page's text, which claims nothing about who took it.
+  //     Use "gallery" for photographs that look like this specific business: a van with signage, a named storefront, a technician on an actual job, a real customer vehicle.
+  //     Use "body" for generic or stock-looking imagery — a polished studio shot, an anonymous model in clean coveralls, an image whose URL or filename names a stock agency (istock, shutterstock, gettyimages, unsplash, pexels, adobestock, depositphotos, dreamstime, 123rf). Licensed stock carries no watermark and looks exactly like a real job photo, so the filename is often the only evidence and it OVERRIDES what you see in the image. These are kept — the shop published them on their own site — they simply must not pose as this shop's completed work.
+  //   If a candidate's image is NOT attached (it failed to load), judge by URL/alt alone and keep it unless those positively identify junk. Write a short factual alt describing what is visible — do not invent specifics. Max 12.
 }
 
 CANDIDATE PHOTOS (refer to these by index):
@@ -516,7 +522,7 @@ ${pages.map((p) => `=== ${p.url} ===\n${p.text}`).join('\n\n')}`
     // scheme silently dropped every photo).
     const seenIdx = new Set<number>()
     const photos: ImportedPhoto[] = Array.isArray(parsed.photos)
-      ? (parsed.photos as Array<{ index?: unknown; alt?: unknown }>)
+      ? (parsed.photos as Array<{ index?: unknown; alt?: unknown; pool?: unknown }>)
           .filter((p) => {
             const i = p?.index
             if (typeof i !== 'number' || !Number.isInteger(i) || i < 0 || i >= photoCandidates.length) return false
@@ -528,7 +534,11 @@ ${pages.map((p) => `=== ${p.url} ===\n${p.text}`).join('\n\n')}`
           .map((p) => {
             const candidate = photoCandidates[p.index as number]
             const alt = typeof p.alt === 'string' && p.alt.trim() ? p.alt.trim() : candidate.alt
-            return { url: candidate.url, alt: alt.slice(0, 200), pool: 'GALLERY' as const }
+            // Stock and generic imagery lands in BODY, where it illustrates
+            // the text instead of posing as this shop's completed work. The
+            // admin photo editor can move any photo between pools.
+            const pool = String(p.pool || '').toLowerCase() === 'body' ? 'BODY' : 'GALLERY'
+            return { url: candidate.url, alt: alt.slice(0, 200), pool: pool as 'GALLERY' | 'BODY' }
           })
       : []
     console.log(
