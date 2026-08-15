@@ -71,14 +71,27 @@ export async function GET(request: NextRequest) {
       { signal: AbortSignal.timeout(10_000) }
     )
     if (!res.ok) {
+      // Google explains itself in the body as plain text — "This API project
+      // is not authorized...", "billing...", "referer restriction". Logging
+      // it turns a bare 502 into the actual fix.
+      const detail = await res.text().catch(() => '')
+      console.warn(
+        `[LocalRank] static map ${res.status}: ${detail.slice(0, 300).replace(/\s+/g, ' ')}`
+      )
       return NextResponse.json(
-        { error: `Static Maps returned ${res.status}. Check the Maps Static API is enabled on this key.` },
+        { error: `Static Maps returned ${res.status}. ${detail.slice(0, 200)}` },
         { status: 502 }
       )
     }
+    const type = res.headers.get('content-type') || ''
+    if (!type.startsWith('image/')) {
+      const detail = await res.text().catch(() => '')
+      console.warn(`[LocalRank] static map returned ${type}: ${detail.slice(0, 200)}`)
+      return NextResponse.json({ error: `Static Maps returned ${type}` }, { status: 502 })
+    }
     return new NextResponse(await res.arrayBuffer(), {
       headers: {
-        'Content-Type': res.headers.get('content-type') || 'image/png',
+        'Content-Type': type,
         'Cache-Control': 'private, max-age=604800, immutable',
       },
     })
