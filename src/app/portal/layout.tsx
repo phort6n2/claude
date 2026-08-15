@@ -1,6 +1,7 @@
 import { getPortalSession } from '@/lib/portal-auth'
+import { prisma } from '@/lib/db'
 import ImpersonationBanner from '@/components/portal/ImpersonationBanner'
-import PortalNav from '@/components/portal/PortalNav'
+import PortalNav, { PortalTabBar } from '@/components/portal/PortalNav'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,6 +21,12 @@ export default async function PortalLayout({ children }: { children: React.React
   }
 
   const brand = session.primaryColor || '#1e40af'
+
+  // Only offer the rankings tab once a scan has actually landed.
+  const hasRankings =
+    (await prisma.localRankScan
+      .count({ where: { clientId: session.clientId } })
+      .catch(() => 0)) > 0
 
   return (
     <div
@@ -59,12 +66,17 @@ export default async function PortalLayout({ children }: { children: React.React
           )}
           <span className="font-bold text-gray-900 truncate">{session.businessName}</span>
           <div className="ml-auto">
-            <PortalNav />
+            <PortalNav showRankings={hasRankings} />
           </div>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 pb-24 sm:pb-10">{children}</main>
+
+      {/* Outside the header on purpose: the header's backdrop-blur makes it a
+          containing block for fixed children, which pinned this bar to the
+          top of the screen instead of the bottom. */}
+      <PortalTabBar showRankings={hasRankings} />
     </div>
   )
 }
