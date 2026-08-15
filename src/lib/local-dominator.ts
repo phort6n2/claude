@@ -227,13 +227,40 @@ export async function campaignMapUrl(scheduledScanId: string): Promise<string | 
   ])
   if (!links) return null
   const { whiteLabelEmbedUrl } = await import('@/lib/rank-embed')
-  // Campaign token first (every keyword), then a single keyword's report, so
-  // a campaign whose campaign_link has not appeared yet still shows a map.
-  return (
-    whiteLabelEmbedUrl(links.campaignLink, host) ||
-    whiteLabelEmbedUrl(links.dynamicUrl, host) ||
-    null
-  )
+  // ONLY the campaign token. `dynamic_url` is one keyword's report, and
+  // falling back to it here stored a single-keyword map under a name that
+  // says all of them — so every client's report showed one keyword and
+  // nothing said why. A campaign whose campaign_link has not appeared yet
+  // gets null, and the report falls back to the per-keyword tabs, which at
+  // least reach every keyword.
+  return whiteLabelEmbedUrl(links.campaignLink, host)
+}
+
+/**
+ * Start a run now.
+ *
+ * Geometry changes only reach a map when a run is taken at the new spacing:
+ * their scheduler holds the grid, and a stored run keeps whatever it was
+ * measured with. So after a respace this is the difference between seeing
+ * the wider map today and seeing it after the next scheduled scan.
+ *
+ * Costs a run's credits per campaign, so nothing calls it automatically.
+ */
+export async function runScheduledScanNow(
+  id: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const res = await ldFetch(`/v1/scheduled-scans/${encodeURIComponent(id)}/run-now`, {
+      method: 'POST',
+    })
+    if (res.ok) return { ok: true }
+    const detail = await res.json().catch(() => null)
+    // 412 is their documented "not enough credits", worth saying plainly.
+    if (res.status === 412) return { ok: false, error: 'not enough credits' }
+    return { ok: false, error: describeError(res.status, detail) }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Request failed' }
+  }
 }
 
 export interface ScheduledScanPatch {

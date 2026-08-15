@@ -37,8 +37,8 @@ interface ApiKeyConfig {
    * always confirms first.
    */
   action?: { label: string; endpoint: string; confirm: string }
-  /** Extra actions that are safe enough not to need a confirm. */
-  extraActions?: Array<{ label: string; endpoint: string }>
+  /** Extra actions. `confirm` only where one spends money or credits. */
+  extraActions?: Array<{ label: string; endpoint: string; confirm?: string }>
   /** Overrides "Test Connection" when the test covers more than this one key. */
   testLabel?: string
   /** Numbered walkthrough, shown behind "Where do I get this?". */
@@ -242,6 +242,14 @@ const API_KEYS: ApiKeyConfig[] = [
       // Weekend scans measure a different local pack than the one that sells
       // jobs. This moves every campaign to a weekday in business hours.
       { label: 'Apply run schedule', endpoint: '/api/admin/rank-campaigns/reschedule' },
+      // The only way a geometry change reaches a map: their scheduler holds
+      // the grid, and a stored run keeps whatever spacing it was measured at.
+      {
+        label: 'Run every scan now',
+        endpoint: '/api/admin/rank-campaigns/run-now',
+        confirm:
+          'Start a fresh run on every campaign now?\n\nThis spends a run\u2019s credits per campaign. Do it after changing the grid spacing — their scheduler holds the geometry, so the maps keep the old zoom until a scan is taken at the new spacing.',
+      },
     ],
     description:
       'Geogrid rank scans. Local Dominator runs the schedule on their side and posts each completed run back here, so nothing needs to be polled.',
@@ -769,7 +777,10 @@ export default function ApiSettingsPage() {
                               key={extra.endpoint}
                               variant="outline"
                               size="sm"
-                              onClick={() => runEndpoint(config.key, extra.endpoint)}
+                              onClick={() => {
+                                if (extra.confirm && !window.confirm(extra.confirm)) return
+                                runEndpoint(config.key, extra.endpoint)
+                              }}
                               disabled={setting.testing}
                             >
                               {extra.label}
