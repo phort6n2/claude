@@ -134,6 +134,25 @@ export function hasStatutoryWaiver(state: string | null | undefined): boolean {
  * most useful sentence on the page: it turns a "how much" call into a
  * booking, and it has a deadline built in.
  */
+/**
+ * One line, for above the fold.
+ *
+ * Cost is the first question a driver has and the page used to answer it in
+ * section eight. This is the shortest true answer available without any
+ * per-shop data: in the statutory-waiver states it names the law, and
+ * everywhere else it points at the chip repair, which is the cheapest real
+ * outcome. Both are conditioned on carrying comprehensive and neither
+ * promises a price.
+ */
+export function heroCostLineFor(state: string | null | undefined): string {
+  const rule = insuranceForState(state)
+  const name = stateNameFor(state)
+  if (rule.rule === 'automatic' && name) {
+    return `In ${name}, a comprehensive policy can’t put a deductible on a windshield replacement — for most drivers that’s nothing out of pocket.`
+  }
+  return 'Most carriers waive the deductible entirely on a chip repair — if yours can still be repaired, that’s usually the cheapest way out.'
+}
+
 export const CHIP_DEDUCTIBLE_NOTE =
   'Most carriers waive the deductible on a chip repair even where a replacement would carry one — a repair costs them a fraction of new glass.'
 

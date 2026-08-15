@@ -454,19 +454,31 @@ const WIDGET_SOURCE = String.raw`(function () {
     btn.className = 'btn';
     var err = el('div', { role: 'alert' }); err.className = 'err';
 
+    // Four required fields, not six. The shop follows up by PHONE — the
+    // success screen says so — and email was the field most likely to lose
+    // someone standing next to a damaged car on their phone. It moves into
+    // the optional drawer rather than disappearing.
     var row1 = el('div', { class: 'row' }, [field('Full name' + REQ, name, 'name'), field('Mobile phone' + REQ, phone, 'phone')]);
-    var row2 = el('div', { class: 'row' }, [field('Email' + REQ, email, 'email'), field('Service ZIP' + REQ, zip, 'zip')]);
-    var row3 = el('div', { class: 'row' }, [field('What do you need?' + REQ, service), field('Vehicle' + REQ, vehicle, 'vehicle')]);
+    var row2 = el('div', { class: 'row' }, [field('Service ZIP' + REQ, zip, 'zip'), field('What do you need?' + REQ, service)]);
+    var row3 = el('div', { class: 'row' }, [field('Vehicle' + REQ, vehicle, 'vehicle')]);
     form.appendChild(row1);
     form.appendChild(row2);
     form.appendChild(row3);
+
+    // The photo is the single most useful thing a customer can hand a glass
+    // shop — it settles chip-vs-crack, spread, line of sight and whether
+    // there's a camera bracket. Burying it in a drawer labelled "optional"
+    // told people to skip the best feature on the form.
+    var photoField = field('Photo of the damage <span class="opt">— usually saves a callback</span>', photoWrap);
+    photoField.className = 'photo-field';
+    form.appendChild(photoField);
 
     var vinField = field('VIN <span class="opt">— optional, gets us the exact glass</span>', vin);
     vinField.appendChild(vinHint);
     var drawer = el('div', { class: 'drawer' });
     drawer.hidden = true;
-    drawer.appendChild(field('Photo of the damage <span class="opt">— optional, usually saves a phone call</span>', photoWrap));
     drawer.appendChild(vinField);
+    drawer.appendChild(field('Email <span class="opt">— optional, for a written quote</span>', email, 'email'));
     drawer.appendChild(radios);
     drawer.appendChild(carrierField);
     drawer.appendChild(field('Anything else? <span class="opt">— optional</span>', notes));
@@ -474,7 +486,7 @@ const WIDGET_SOURCE = String.raw`(function () {
     var moreBtn = el('button', { type: 'button', class: 'more-btn', 'aria-expanded': 'false' });
     moreBtn.appendChild(el('span', {
       html: '<span class="more-t">Speed up my quote <span class="opt">(optional)</span></span><br>' +
-        '<span class="more-s">A photo, VIN, insurance — anything that helps them quote</span>'
+        '<span class="more-s">VIN, insurance, email — anything that helps them quote</span>'
     }));
     moreBtn.appendChild(el('span', {
       class: 'chev',
@@ -491,7 +503,7 @@ const WIDGET_SOURCE = String.raw`(function () {
     form.appendChild(hpWrap);
     form.appendChild(err);
     form.appendChild(btn);
-    form.appendChild(el('p', { class: 'micro', text: 'No obligation · We confirm your coverage before dispatch' }));
+    form.appendChild(el('p', { class: 'micro', text: 'No obligation · No card · We check your coverage before anything is booked' }));
     var consent = el('p', { class: 'consent', text: 'By submitting this form you agree we may contact you by phone, text or email about your quote. Message rates may apply. ' });
     if (cfg.privacyUrl) {
       consent.appendChild(el('a', { href: cfg.privacyUrl, text: 'Privacy Policy', style: 'color:#6e6e6e' }));
@@ -511,7 +523,8 @@ const WIDGET_SOURCE = String.raw`(function () {
       }
       check('name', name, !name.value.trim(), 'Please enter your name.');
       check('phone', phone, phDigits(phone.value).length !== 10, 'Please enter a 10-digit mobile number so the shop can reach you.');
-      check('email', email, !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim()), 'Please enter a valid email.');
+      // Optional now — validate the FORMAT only when they actually typed one.
+      check('email', email, !!email.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim()), 'That email address does not look right.');
       check('zip', zip, !/^\d{5}$/.test(zip.value.trim()), 'Please enter your 5-digit ZIP.');
       check('vehicle', vehicle, !vehicle.value.trim(), 'Tell us the year, make and model.');
       if (firstBad) {
@@ -551,7 +564,7 @@ const WIDGET_SOURCE = String.raw`(function () {
     var headwrap = el('div'); headwrap.className = 'headwrap';
     var head = el('div'); head.className = 'head';
     head.appendChild(el('h3', { text: 'Get your free quote' }));
-    head.appendChild(el('p', { text: "Takes about 30 seconds. We'll confirm your glass and your coverage before anyone is dispatched." }));
+    head.appendChild(el('p', { text: "Four quick questions. We'll confirm what your insurance covers before anything is booked — no obligation." }));
     headwrap.appendChild(head);
     card.appendChild(headwrap);
     var body = el('div'); body.className = 'body';
@@ -639,9 +652,18 @@ const WIDGET_SOURCE = String.raw`(function () {
         }));
         var okHead = el('h4', { text: "You're all set, " + first + '.', tabindex: '-1' });
         ok.appendChild(okHead);
-        ok.appendChild(el('p', { text: "We've got your request. A " + cfg.businessName + ' tech will call you shortly to confirm the glass, your coverage and a time that works.' }));
+        ok.appendChild(el('p', {
+          text: 'Your request is with ' + cfg.businessName + '.' + (cfg.phone
+            ? ' They will call from ' + cfg.phone + ' to confirm the glass, your coverage and a time — save the number so you do not miss it.'
+            : ' They will call to confirm the glass, your coverage and a time that works.')
+        }));
+        // Only when the shop's line can actually receive a text; an sms:
+        // link to a landline is a dead end that costs the lead.
+        if (cfg.phone && cfg.smsCapable && !data.damage_photo_url) {
+          ok.appendChild(el('p', { text: 'Didn\u2019t send a photo of the damage? Text one to ' + cfg.phone + ' — it is the fastest way to a firm price.' }));
+        }
         if (cfg.phone) {
-          ok.appendChild(el('a', { href: 'tel:' + cfg.phone.replace(/[^+\d]/g, ''), text: 'Call us now — ' + cfg.phone }));
+          ok.appendChild(el('a', { href: 'tel:' + cfg.phone.replace(/[^+\d]/g, ''), text: 'Call ' + cfg.businessName + ' — ' + cfg.phone }));
         }
         body.appendChild(ok);
         try { okHead.focus(); } catch (e) {}

@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
       accentColor: true,
       hasShopLocation: true,
       offersMobileService: true,
+      smsCapable: true,
       offersWindshieldRepair: true,
       offersWindshieldReplacement: true,
       offersSideWindowRepair: true,
@@ -78,6 +79,7 @@ export async function GET(request: NextRequest) {
       accentColor: client.accentColor || '#f59e0b',
       services,
       offersMobileService: client.offersMobileService,
+      smsCapable: client.smsCapable,
       hasShopLocation: client.hasShopLocation,
     },
     {

@@ -71,6 +71,12 @@ model Client {
   offersRockChipRepair        Boolean @default(true)
   offersAdasCalibration       Boolean @default(false)
 
+  // Claims the site is only allowed to make when the shop confirms them.
+  // Both default false: the template asserted these for every shop, which
+  // made a promise on behalf of shops that never made it.
+  filesInsuranceClaims Boolean @default(false)
+  smsCapable           Boolean @default(false)
+
   // Brand Settings
   logoUrl        String?
   primaryColor   String? @default("#1e40af")

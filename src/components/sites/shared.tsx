@@ -1,6 +1,8 @@
-import { Phone, MapPin, ShieldCheck, Check } from 'lucide-react'
+import { Phone, MapPin, ShieldCheck, Check, MessageSquare } from 'lucide-react'
 import { wordmarkParts } from '@/lib/wordmark'
-import type { SiteExtras } from '@/lib/site-content'
+import { smsHref } from '@/lib/contact-links'
+import { mostMentionedName } from '@/lib/review-names'
+import type { SiteExtras, FaqItem } from '@/lib/site-content'
 import { locationPages } from '@/lib/site-locations'
 import { orderLocationsForCity, mapQuery, type SiteLocation } from '@/lib/client-locations'
 import {
@@ -460,6 +462,10 @@ const AVATAR_COLORS = ['#0B57D0', '#B3261E', '#146C2E', '#7B4397', '#B26A00']
 
 /** "What customers say" band on the s2 tint. Stripped without live data. */
 export function ReviewsBand({ reviews }: { reviews: ReviewsData | null }) {
+  // A named human is the one proof asset a national chain structurally
+  // cannot have. Derived from the review text the shop already has — it
+  // asserts nothing, and stays quiet unless a name genuinely recurs.
+  const mostNamed = mostMentionedName(reviews?.quotes ?? [])
   if (!reviews) return null
   return (
     <section className="bg-[var(--s2)] border-t border-[var(--line)]">
@@ -467,11 +473,15 @@ export function ReviewsBand({ reviews }: { reviews: ReviewsData | null }) {
         <SectionHead
           eyebrow="Reviews"
           title="What customers say"
-          lead="Pulled straight from our Google listing — real customers, real jobs."
+          lead={
+            mostNamed
+              ? `Pulled straight from our Google listing — and customers keep mentioning ${mostNamed}.`
+              : 'Pulled straight from our Google listing — real customers, real jobs.'
+          }
         />
         {reviews.quotes.length > 0 && (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {reviews.quotes.slice(0, 3).map((q, i) => (
+            {reviews.quotes.slice(0, 6).map((q, i) => (
               <figure
                 key={i}
                 className="p-5 rounded-[20px] border border-[var(--line-card)] shadow-sm bg-white flex flex-col m-0"
@@ -493,7 +503,11 @@ export function ReviewsBand({ reviews }: { reviews: ReviewsData | null }) {
                 </div>
                 <StarRow rating={q.rating} size={13} className="mb-2" />
                 <blockquote className="m-0 text-sm text-[var(--tx2)] flex-1 leading-relaxed">
-                  “{q.text.length > 220 ? q.text.slice(0, 220).trimEnd() + '…' : q.text}”
+                  {/* Never clipped. The clip landed mid-sentence exactly where
+                      these reviews become persuasive — a technician talking a
+                      customer OUT of the cheaper job. Fetch already caps length
+                      at 650 characters, which is the real guard. */}
+                  “{q.text}”
                 </blockquote>
               </figure>
             ))}
@@ -530,9 +544,10 @@ export function StatBand({
     })
     stats.push({ big: String(reviews.reviewCount), label: 'Google reviews' })
   }
-  // Only outward-facing numbers: menu size dilutes the review proof, and a
-  // short city list isn't a stat.
-  if (areasCount > 5) stats.push({ big: String(areasCount), label: 'cities covered' })
+  // Only outward-facing numbers. Menu size dilutes the review proof — and so
+  // does coverage breadth: service-area count is a logistics fact, not proof
+  // of quality, and sitting beside a review count it reads as padding.
+  void areasCount
   void servicesCount
   if (stats.length < 2) return null
 
@@ -645,7 +660,14 @@ export function ProcessSection({
  * why every line says "if you carry comprehensive" and none of them say
  * "free".
  */
-export function InsuranceBand({ state }: { state?: string | null }) {
+export function InsuranceBand({
+  state,
+  filesClaims = false,
+}: {
+  state?: string | null
+  /** Only shops that confirmed it get to say they file the claim for you. */
+  filesClaims?: boolean
+}) {
   const rule = insuranceForState(state)
   const stateName = stateNameFor(state)
 
@@ -657,7 +679,9 @@ export function InsuranceBand({ state }: { state?: string | null }) {
           title={
             rule.rule === 'automatic' && stateName
               ? `${stateName} law is on your side here`
-              : 'We handle the claim with your carrier'
+              : filesClaims
+                ? 'We handle the claim with your carrier'
+                : 'Going through insurance'
           }
           lead="Glass coverage sits in the comprehensive part of your policy — and we do the paperwork."
         />
@@ -671,9 +695,9 @@ export function InsuranceBand({ state }: { state?: string | null }) {
               <p className="mt-2 mb-0 text-sm text-[var(--tx2)] leading-relaxed">{rule.note}</p>
             )}
             <p className="mt-3 mb-0 text-sm text-[var(--tx2)] leading-relaxed">
-              We file the claim with your carrier and deal with them directly, so you are not on
-              hold for an afternoon. Call us with your policy number and we will check your
-              coverage with you before you commit to anything.
+              {filesClaims
+                ? 'We file the claim with your carrier and deal with them directly, so you are not on hold for an afternoon. Call us with your policy number and we will check your coverage with you before you commit to anything.'
+                : 'Call us with your policy number and we will check your coverage with you before you commit to anything — and give your carrier everything they need: the exact glass, the part numbers and a written quote.'}
             </p>
           </div>
           <div className="bg-white rounded-[20px] border border-[var(--line-card)] shadow-sm p-6">
@@ -744,7 +768,7 @@ export function GalleryGrid({ extras }: { extras: SiteExtras | null }) {
   return (
     <section className="border-t border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
-        <SectionHead eyebrow="Recent jobs" title="Real vehicles, real work" />
+        <SectionHead eyebrow="Our work" title="The kind of work we do" />
         {/* Even photo counts that don't fill three columns read better 2-up —
             no orphan card on the last row. */}
         <div
@@ -757,19 +781,18 @@ export function GalleryGrid({ extras }: { extras: SiteExtras | null }) {
               key={photo.url}
               className="m-0 rounded-[20px] border border-[var(--line-card)] bg-white shadow-sm overflow-hidden"
             >
+              {/* The description belongs in alt, not under the photo. Printed
+                  as a caption it just narrates what the reader can already
+                  see, and reads like stock-photo metadata — which costs more
+                  credibility than the caption ever added. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={photo.url}
-                alt={photo.alt ? '' : 'Job photo'}
+                alt={photo.alt || 'Job photo'}
                 loading="lazy"
                 decoding="async"
                 className="w-full aspect-[4/3] object-cover"
               />
-              {photo.alt && (
-                <figcaption className="px-4 py-3 text-[13px] text-[var(--tx-muted)] leading-snug">
-                  {photo.alt}
-                </figcaption>
-              )}
             </figure>
           ))}
         </div>
@@ -1171,14 +1194,22 @@ export function AreasBand({
 }
 
 /** FAQ as hairline-divided rows in a reading column. Stripped when empty. */
-export function FaqSection({ extras }: { extras: SiteExtras | null }) {
-  if (!extras || extras.faq.length === 0) return null
+export function FaqSection({
+  extras,
+  extraFaq = [],
+}: {
+  extras: SiteExtras | null
+  /** Platform defaults, appended behind the shop's own questions. */
+  extraFaq?: FaqItem[]
+}) {
+  const faq = [...(extras?.faq ?? []), ...extraFaq]
+  if (faq.length === 0) return null
   return (
     <section className="border-t border-[var(--line)]">
       <div className="max-w-[80ch] mx-auto px-4 sm:px-6 py-14">
         <SectionHead center eyebrow="Questions" title="Frequently asked" />
         <div>
-          {extras.faq.map((item) => (
+          {faq.map((item) => (
             <details key={item.q} className="group border-t border-[var(--line)] py-4 last:border-b">
               <summary className="font-bold cursor-pointer list-none flex items-center justify-between gap-3 text-[var(--tx)]">
                 {item.q}
@@ -1229,10 +1260,11 @@ export function FinalCta({ client }: { client: SiteClient; quoteHref?: string })
           Ready when you are
         </Eyebrow>
         <h2 className="text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight">
-          Get your glass sorted this week
+          Let&apos;s get you a real number
         </h2>
         <p className="mt-3 text-[var(--on-dark-2)]">
-          Tell us what broke — we&apos;ll confirm the glass, your coverage, and a time that works.
+          Tell us what broke and what you drive — we&apos;ll confirm the glass, check your
+          coverage, and book a time that works for you.
         </p>
         <div className="mt-7 flex flex-wrap justify-center gap-3">
           <CtaButton href="#quote">Get my free quote</CtaButton>
@@ -1542,15 +1574,44 @@ export function SiteFooter({
 }
 
 /** Sticky mobile action bar: loud call button, quiet ghost quote button. */
-export function MobileCallBar({ client, quoteHref }: { client: SiteClient; quoteHref: string }) {
+export function MobileCallBar({
+  client,
+  quoteHref,
+  smsCapable = false,
+}: {
+  client: SiteClient
+  quoteHref: string
+  /** Only shops whose line actually receives texts get the text button. */
+  smsCapable?: boolean
+}) {
+  // Text-a-photo is the shortest path from "cracked windshield" to a
+  // quotable lead on a phone: no form, no typing, and it hands the shop the
+  // one artifact that settles the quote. The body is pre-filled because
+  // "what do I even say" is the pause that loses the message.
+  const textHref = smsCapable
+    ? smsHref(client.phone, 'Hi, I need a windshield quote. Here is a photo of the damage:')
+    : null
   return (
-    <div data-gl-mobilebar className="lg:hidden sticky bottom-0 z-40 grid grid-cols-[1.15fr_1fr] gap-2.5 px-4 pt-2.5 pb-[calc(10px+env(safe-area-inset-bottom))] bg-white/95 backdrop-blur border-t border-[var(--line)]">
+    <div
+      data-gl-mobilebar
+      className={`lg:hidden sticky bottom-0 z-40 grid ${
+        textHref ? 'grid-cols-[1.1fr_1fr_1fr]' : 'grid-cols-[1.15fr_1fr]'
+      } gap-2.5 px-4 pt-2.5 pb-[calc(10px+env(safe-area-inset-bottom))] bg-white/95 backdrop-blur border-t border-[var(--line)]`}
+    >
       <a
         href={telHrefFor(client.phone)}
         className="min-h-[50px] rounded-[14px] font-bold text-base text-white text-center flex items-center justify-center gap-2 no-underline bg-[var(--cta)] hover:bg-[var(--cta-b)]"
       >
         <Phone className="h-4 w-4" /> Call Now
       </a>
+      {textHref && (
+        <a
+          href={textHref}
+          className="min-h-[50px] rounded-[14px] font-bold text-[14px] whitespace-nowrap text-center no-underline text-[var(--tx)] bg-white border-[1.5px] border-[var(--line-strong)] shadow-sm flex items-center justify-center gap-1.5"
+        >
+          <MessageSquare className="h-4 w-4 shrink-0" /> Text photo
+        </a>
+      )}
       <a
         href={quoteHref}
         className="min-h-[50px] rounded-[14px] font-bold text-base text-center no-underline text-[var(--tx)] bg-white border-[1.5px] border-[var(--line-strong)] shadow-sm flex items-center justify-center"

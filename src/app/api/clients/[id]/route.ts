@@ -104,6 +104,8 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       'offersSunroofRepair',
       'offersRockChipRepair',
       'offersAdasCalibration',
+      'filesInsuranceClaims',
+      'smsCapable',
       'callCoachingEnabled',
     ] as const) {
       if (has(key)) patch[key] = !!data[key]

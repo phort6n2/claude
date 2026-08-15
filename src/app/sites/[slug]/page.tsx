@@ -12,10 +12,10 @@ import {
   Eyebrow,
   BulletCheck,
   CallButton,
+  CtaButton,
   SiteBaseStyles,
   SkipLink,
   TrustRow,
-  ChapterSections,
   type ReviewsData,
   type ReviewQuote,
 } from '@/components/sites/shared'
@@ -37,6 +37,7 @@ import { getAdsTracking } from '@/lib/ads-tracking'
 import { GoogleTag } from '@/components/sites/GoogleTag'
 import { mergeServiceAreas } from '@/lib/site-locations'
 import { homeJsonLd } from '@/lib/site-schema'
+import { heroCostLineFor } from '@/lib/insurance-rules'
 
 /**
  * Hosted client landing page, styled after the landing-template reference
@@ -96,6 +97,8 @@ async function getClient(slug: string) {
       offersSunroofRepair: true,
       offersRockChipRepair: true,
       offersAdasCalibration: true,
+      filesInsuranceClaims: true,
+      smsCapable: true,
       serviceAreas: true,
       googleMapsUrl: true,
     },
@@ -170,6 +173,8 @@ export default async function ClientSitePage({ params }: PageProps) {
   const flags = {
     offersMobileService: client.offersMobileService,
     offersAdasCalibration: client.offersAdasCalibration,
+    filesInsuranceClaims: client.filesInsuranceClaims,
+    smsCapable: client.smsCapable,
   }
   const nav = prioritizeServices(services).slice(0, 4).map((s) => ({
     href: `${basePath}/services/${s.slug}`,
@@ -193,11 +198,14 @@ export default async function ClientSitePage({ params }: PageProps) {
 
   // Headline names the location and the highest-value service the client
   // actually offers, like the reference — never a generic slogan.
-  const heroTitle = client.offersAdasCalibration
-    ? `Auto glass and ADAS calibration across the ${client.city} area`
-    : client.offersMobileService
-      ? `Auto glass repair and replacement — we come to you in ${client.city}`
-      : `Windshield repair and replacement in ${client.city}`
+  // Ordered by what the VISITOR searched, not by what the shop is proudest
+  // of. "ADAS calibration" is trade jargon to someone with a cracked
+  // windshield — it reads as an unknown surcharge — while mobile service is
+  // the strongest thing a glass shop can say and answers "do I lose a day of
+  // work". ADAS earns its place further down, as an objection it removes.
+  const heroTitle = client.offersMobileService
+    ? `Cracked windshield in ${client.city}? We come to you.`
+    : `Windshield repair and replacement in ${client.city}`
 
   // Cities the site is willing to link to: a shop is there, or the client has
   // written something specific about it.
@@ -258,23 +266,26 @@ export default async function ClientSitePage({ params }: PageProps) {
         )}
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_452px] lg:grid-rows-[auto_1fr] lg:gap-x-[52px] lg:gap-y-[18px]">
           <div className="lg:col-start-1 lg:row-start-1">
+            {/* "Experts" is unsupported puffery the reader discounts on
+                sight; the eyebrow's job is the keyword anchor. */}
             <Eyebrow>
-              {client.city}, {client.state} auto glass experts
+              Windshield repair &amp; replacement · {client.city}, {client.state}
             </Eyebrow>
             <h1 className="text-[clamp(1.875rem,1.35rem+2.6vw,3.4rem)] font-extrabold leading-[1.08] tracking-[-.02em] text-[var(--tx)]">
               {heroTitle}
             </h1>
             <p className="mt-4 text-[17px] leading-[1.55] text-[var(--tx2)] max-w-[48ch]">
-              Windshield repair and replacement in {client.city}
-              <span className="max-[599px]:hidden">
-                {' '}
-                —
-                {client.offersMobileService
-                  ? ' we come to your home or office, or visit our shop.'
-                  : ' fast turnaround at our local shop.'}{' '}
-                Free quotes and help with your insurance claim.
-              </span>
-              <span className="min-[600px]:hidden">.</span>
+              Free quote before you commit to anything — we&apos;ll tell you what your insurance
+              covers and what you&apos;d actually pay.
+              {client.offersMobileService
+                ? ` We come to your home, office or roadside in ${client.city}.`
+                : ` Bring it to our ${client.city} shop and we'll take it from there.`}
+            </p>
+            {/* The money question, answered in the first screen instead of
+                section eight. State-aware, no per-shop data, and already
+                through compliance review in insurance-rules.ts. */}
+            <p className="mt-3 text-[15px] leading-[1.5] text-[var(--tx2)] max-w-[46ch] border-l-2 border-[var(--cta)] pl-3">
+              {heroCostLineFor(client.state)}
             </p>
             <div className="mt-5 mb-[18px] hidden lg:block">
               <RatingChip reviews={reviews} client={client} />
@@ -300,6 +311,7 @@ export default async function ClientSitePage({ params }: PageProps) {
               ))}
             </ul>
             <div className="mt-6 max-[719px]:flex max-[719px]:flex-col max-[719px]:[&>a]:w-full flex flex-wrap gap-3">
+              <CtaButton href="#quote">Get my free quote</CtaButton>
               <CallButton client={client} withLabel />
             </div>
           </div>
@@ -309,18 +321,14 @@ export default async function ClientSitePage({ params }: PageProps) {
         <TrustRow items={trustItems} />
       </section>
 
-      {/* Editorial chapters — the reference's long-form middle. Stripped
-          entirely when the client has none. */}
-      <ChapterSections
-        client={client}
-        chapters={extras.chapters}
-        fallbackPhotos={extras.bodyPhotos.length ? extras.bodyPhotos : extras.galleryPhotos.slice(1)}
-      />
-
       <SiteBody
         client={client}
         flags={flags}
         reviews={reviews}
+        // Two, not five: five chapters is a magazine feature, and they now
+        // sit below the proof rather than ahead of it.
+        storyChapters={extras.chapters.slice(0, 2)}
+        storyFallbackPhotos={extras.bodyPhotos.length ? extras.bodyPhotos : extras.galleryPhotos.slice(1)}
         extras={extras}
         services={services}
         areas={areas}

@@ -61,8 +61,22 @@ export const OFFLINE_CONVERSION_SQL: string[] = [
   `ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "adsUploadError" TEXT`,
 ]
 
+/**
+ * Per-shop claim flags. Prisma selects every scalar, so the column has to
+ * exist before any client query runs — these ship with the boot hook rather
+ * than a migration for the same reason as everything else here.
+ */
+export const CLAIM_FLAGS_SQL: string[] = [
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "filesInsuranceClaims" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "smsCapable" BOOLEAN NOT NULL DEFAULT false`,
+]
+
 /** Everything the running code assumes exists. */
-export const BOOTSTRAP_SQL: string[] = [...CALL_TRACKING_SQL, ...OFFLINE_CONVERSION_SQL]
+export const BOOTSTRAP_SQL: string[] = [
+  ...CALL_TRACKING_SQL,
+  ...OFFLINE_CONVERSION_SQL,
+  ...CLAIM_FLAGS_SQL,
+]
 
 /**
  * Run them. Never throws: a database that is unreachable at boot must not

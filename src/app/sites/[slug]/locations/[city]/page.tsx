@@ -90,6 +90,8 @@ async function getClient(slug: string) {
       offersSunroofRepair: true,
       offersRockChipRepair: true,
       offersAdasCalibration: true,
+      filesInsuranceClaims: true,
+      smsCapable: true,
       serviceAreas: true,
       googleMapsUrl: true,
     },
@@ -182,6 +184,8 @@ export default async function LocationPage({ params }: PageProps) {
   const flags = {
     offersMobileService: client.offersMobileService,
     offersAdasCalibration: client.offersAdasCalibration,
+    filesInsuranceClaims: client.filesInsuranceClaims,
+    smsCapable: client.smsCapable,
   }
   const nav = prioritizeServices(services).slice(0, 4).map((s) => ({
     href: `${basePath}/services/${s.slug}`,
@@ -330,16 +334,19 @@ export default async function LocationPage({ params }: PageProps) {
         <TrustRow items={trustItems} />
       </section>
 
-      {/* The city's own copy first, then the shared business chapters. */}
+      {/* The city's own copy leads; the shop's general story now renders
+          below the proof inside SiteBody, same as every other page type. */}
       <ChapterSections
         client={client}
-        chapters={[...cityChapters, ...extras.chapters]}
+        chapters={cityChapters}
         fallbackPhotos={extras.bodyPhotos.length ? extras.bodyPhotos : extras.galleryPhotos.slice(1)}
       />
 
       <SiteBody
         client={client}
         flags={flags}
+        storyChapters={extras.chapters.slice(0, 2)}
+        storyFallbackPhotos={extras.bodyPhotos.length ? extras.bodyPhotos : extras.galleryPhotos.slice(1)}
         reviews={reviews}
         extras={cityExtras}
         services={services}
