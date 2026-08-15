@@ -84,9 +84,12 @@ function cleanTag(raw: string, tag: string, attrsRaw: string, closing: boolean):
   // Every outbound link leaves the shop's site, so none of them may hand the
   // destination a window reference back.
   if (tag === 'a') {
-    const href = kept.find((a) => a.startsWith('href='))
-    if (!href) return '' // A link with nothing safe to point at is not a link.
-    kept.push('target="_blank"', 'rel="noopener noreferrer nofollow"')
+    // A link whose href was rejected keeps its tag but loses the href: the
+    // text stays readable and the element is inert, where dropping the open
+    // tag would leave its </a> orphaned in the output.
+    if (kept.some((a) => a.startsWith('href='))) {
+      kept.push('target="_blank"', 'rel="noopener noreferrer nofollow"')
+    }
   }
   if (tag === 'img') {
     if (!kept.some((a) => a.startsWith('src='))) return ''
