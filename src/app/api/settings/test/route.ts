@@ -68,6 +68,31 @@ async function testGooglePlaces(apiKey: string): Promise<{ success: boolean; mes
   }
 }
 
+/**
+ * Read-only probe. Listing a single project proves the key is valid AND
+ * that the plan includes API access — the two ways this fails — without
+ * creating anything or spending a credit.
+ */
+async function testLocalDominator(apiKey: string): Promise<{ success: boolean; message: string }> {
+  try {
+    const res = await fetch('https://api.localdominator.co/v1/projects?per_page=1', {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(15_000),
+    })
+    if (res.ok) return { success: true, message: 'Connected — the key is valid and has API access.' }
+    if (res.status === 401 || res.status === 403) {
+      return {
+        success: false,
+        message: 'Rejected. Either the key is wrong, or the plan does not include API access (Powerhouse and above).',
+      }
+    }
+    if (res.status === 429) return { success: false, message: 'Rate limited — try again in a minute.' }
+    return { success: false, message: `Local Dominator returned ${res.status}.` }
+  } catch {
+    return { success: false, message: 'Could not reach Local Dominator.' }
+  }
+}
+
 export async function POST(request: Request) {
   const session = await auth()
   if (!session?.user) {
@@ -102,6 +127,9 @@ export async function POST(request: Request) {
       break
     case 'GOOGLE_PLACES_API_KEY':
       result = await testGooglePlaces(apiKey)
+      break
+    case 'LOCALDOMINATOR_API_KEY':
+      result = await testLocalDominator(apiKey)
       break
     default:
       result = { success: false, message: 'Unknown setting key' }
