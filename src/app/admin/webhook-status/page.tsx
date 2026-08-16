@@ -90,13 +90,13 @@ export default function WebhookStatusPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <Link href="/admin" className="text-gray-500 hover:text-gray-700">
+            <Link href="/admin/dashboard" className="text-gray-500 hover:text-gray-700">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
               <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                 <Activity className="h-6 w-6 text-blue-600" />
-                Webhook Status
+                Lead capture
               </h1>
               <p className="text-gray-600">Monitor lead capture from HighLevel webhooks</p>
             </div>

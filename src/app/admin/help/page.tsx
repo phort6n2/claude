@@ -16,7 +16,7 @@ export default async function HelpPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <Header title="Help & Documentation" subtitle="How the leads and call coaching platform works" />
+      <Header title="Help" subtitle="How the leads and call coaching platform works" />
       <div className="flex-1 p-6 overflow-auto">
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Getting Started */}
@@ -154,7 +154,7 @@ export default async function HelpPage() {
               <p>
                 Live integrations: Anthropic (call analysis), Deepgram (transcription), and
                 Google Places (business lookup). Check them on the{' '}
-                <Link href="/admin/api-status" className="text-blue-600 hover:underline">API Status</Link>{' '}
+                <Link href="/admin/api-status" className="text-blue-600 hover:underline">Integrations</Link>{' '}
                 page, and manage keys under{' '}
                 <Link href="/admin/settings/api" className="text-blue-600 hover:underline">Settings → API</Link>.
               </p>
