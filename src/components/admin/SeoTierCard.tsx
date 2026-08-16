@@ -17,9 +17,12 @@ import { CheckCircle, Loader2, XCircle } from 'lucide-react'
 export default function SeoTierCard({
   clientId,
   initialEnabled,
+  onEnabledChange,
 }: {
   clientId: string
   initialEnabled: boolean
+  /** Lets the tab reveal the content cards on the tick, before the save lands. */
+  onEnabledChange?: (enabled: boolean) => void
 }) {
   const [enabled, setEnabled] = useState(initialEnabled)
   const [busy, setBusy] = useState(false)
@@ -27,6 +30,7 @@ export default function SeoTierCard({
 
   async function toggle(next: boolean) {
     setEnabled(next)
+    onEnabledChange?.(next)
     setBusy(true)
     setStatus(null)
     try {
@@ -43,6 +47,7 @@ export default function SeoTierCard({
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setEnabled(!next)
+        onEnabledChange?.(!next)
         setStatus({ ok: false, message: data.error || 'Could not save.' })
       } else {
         setStatus({
@@ -59,6 +64,7 @@ export default function SeoTierCard({
       }
     } catch {
       setEnabled(!next)
+      onEnabledChange?.(!next)
       setStatus({ ok: false, message: 'Could not save.' })
     } finally {
       setBusy(false)

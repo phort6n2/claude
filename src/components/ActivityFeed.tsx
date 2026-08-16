@@ -1,6 +1,7 @@
 import {
   CalendarCheck,
   Camera,
+  FileText,
   Globe,
   Inbox,
   MapPin,
@@ -20,6 +21,7 @@ import type { ActivityKind, ActivityMonth } from '@/lib/client-activity'
 
 const ICONS: Record<ActivityKind, React.ElementType> = {
   ranking: TrendingUp,
+  article: FileText,
   website: Globe,
   photos: Camera,
   reviews: Star,
@@ -35,8 +37,8 @@ export default function ActivityFeed({ months }: { months: ActivityMonth[] }) {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
         <h2 className="font-semibold text-gray-900">Nothing to show yet</h2>
         <p className="mt-1 text-sm text-gray-600 max-w-prose">
-          This fills in as work happens — ranking scans, photos and pages added to your site,
-          calls reviewed, and enquiries delivered.
+          This fills in as work happens — ranking scans, photos, pages and articles added to your
+          site, calls reviewed, and enquiries delivered.
         </p>
       </div>
     )
@@ -58,7 +60,18 @@ export default function ActivityFeed({ months }: { months: ActivityMonth[] }) {
                     <Icon className="h-3.5 w-3.5 text-[var(--brand-ink,#1e40af)]" />
                   </span>
                   <div className="flex flex-wrap items-baseline gap-x-2">
-                    <p className="font-semibold text-gray-900 m-0">{item.title}</p>
+                    {item.href ? (
+                      <a
+                        href={item.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-gray-900 hover:text-[var(--brand-ink,#1e40af)] hover:underline"
+                      >
+                        {item.title}
+                      </a>
+                    ) : (
+                      <p className="font-semibold text-gray-900 m-0">{item.title}</p>
+                    )}
                     <time
                       className="text-xs text-gray-500"
                       dateTime={item.at.toISOString()}
