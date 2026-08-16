@@ -228,8 +228,12 @@ export default async function LocationPage({ params }: PageProps) {
       .map((area) => area.trim().toLowerCase())
   )
 
-  const trustItems = buildTrustItems(client, flags, extras)
-  const heroBullets = extras.heroBullets.length > 0 ? extras.heroBullets : defaultHeroBullets(flags)
+  // When the shop wrote its own bullets, the trust strip adds a second,
+  // different set of reasons. When it did not, both are derived from the same
+  // flags and say the same four things twice — so the strip stands down.
+  const wroteOwnBullets = extras.heroBullets.length > 0
+  const trustItems = wroteOwnBullets ? buildTrustItems(client, flags, extras) : []
+  const heroBullets = wroteOwnBullets ? extras.heroBullets : defaultHeroBullets(flags)
 
   // The client's own words about this city lead the page when they exist, and
   // are what makes it an indexable page rather than the template renamed.
@@ -283,6 +287,13 @@ export default async function LocationPage({ params }: PageProps) {
         }}
       >
         {extras.galleryPhotos[0] && (
+          // Not on phones. This paints a texture at 13% opacity, and on one
+          // live client it is a 2500px 188KB file — which made a DECORATION
+          // the LCP element: blocking it dropped measured LCP from 5.5s to
+          // 2.7s on slow 4G, with the H1 taking over. There is no image
+          // optimiser on these remote hosts (see next.config.ts), so the
+          // honest saving is not to send it to the device that cannot afford
+          // it. The gradient underneath carries the hero on its own.
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={extras.galleryPhotos[0].url}
@@ -290,7 +301,7 @@ export default async function LocationPage({ params }: PageProps) {
             aria-hidden="true"
             fetchPriority="low"
             decoding="async"
-            className="absolute inset-0 w-full h-full object-cover opacity-[0.13] pointer-events-none select-none"
+            className="absolute inset-0 w-full h-full object-cover opacity-[0.13] pointer-events-none select-none hidden sm:block"
           />
         )}
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_452px] lg:grid-rows-[auto_1fr] lg:gap-x-[52px] lg:gap-y-[18px]">

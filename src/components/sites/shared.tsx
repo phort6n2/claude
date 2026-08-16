@@ -285,19 +285,28 @@ export function CallButton({
 /* -------------------------------------------------------------- top bars */
 
 /**
- * Thin dark strip above the header. The note's tail (after " — ") drops on
- * phones so small screens get a complete short sentence instead of an
- * ellipsis mid-thought; the call block never reflows.
+ * Thin dark strip above the header. The note is cut down twice, because
+ * dropping only the tail after " — " was not enough: the head alone still
+ * overflowed at every phone width tested, so the very first rendered line on
+ * the page ended in an ellipsis mid-word ("Mobile service across Gaithersb…").
+ * Phones get the clause before the first " & " too, which is a complete short
+ * sentence; the call block never reflows.
  */
 export function UtilBar({ client, note }: { client: SiteClient; note: string }) {
   const [noteHead, ...noteRest] = note.split(' — ')
   const noteTail = noteRest.length ? ` — ${noteRest.join(' — ')}` : ''
+  const [noteShort, ...noteMid] = noteHead.split(' & ')
+  const noteHeadTail = noteMid.length ? ` & ${noteMid.join(' & ')}` : ''
   return (
     <div className="max-[359px]:hidden bg-[var(--dark)] text-[var(--on-dark-2)] text-[13px] on-dark">
       {/* max-w-7xl to stay flush with the header brand below it, not the body bands. */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 min-h-[34px] py-1.5 flex items-center justify-between gap-4">
-        <span className="flex-1 min-w-0 truncate">
-          {noteHead}
+        {/* Below 390 even the shortest clause loses to the call block by a
+            few pixels, and a truncated note is worth less than no note — the
+            number is the half of this bar anyone uses. */}
+        <span className="flex-1 min-w-0 truncate hidden min-[390px]:block">
+          {noteShort}
+          {noteHeadTail && <span className="hidden min-[430px]:inline">{noteHeadTail}</span>}
           {noteTail && <span className="hidden sm:inline">{noteTail}</span>}
         </span>
         <span className="flex items-center gap-1.5 whitespace-nowrap shrink-0">
@@ -353,8 +362,13 @@ export function Wordmark({
       >
         {initials}
       </span>
+      {/* Wraps to a second line on phones instead of truncating. A shop with
+          no logo saw its own name as "ABC Auto Gl…" at 360 and 390 — the
+          loudest "generic template" signal available, in the first 200ms of a
+          paid click. It still truncates from sm up, where the nav needs the
+          brand to hold one line. */}
       <span
-        className={`${nameCls} font-extrabold tracking-[-.02em] truncate ${
+        className={`${nameCls} font-extrabold tracking-[-.02em] leading-[1.15] sm:truncate ${
           onDark ? 'text-white' : 'text-[var(--tx)]'
         }`}
       >
@@ -419,17 +433,28 @@ export function SiteHeader({
             ))}
           </nav>
         )}
+        {/* The stars are what get dropped on a narrow phone, not the count.
+            It was the other way round, so a 360px screen showed "4.9 ★★★★★"
+            with no volume — and volume is the half that makes 4.9 mean
+            anything. Dropping the glyphs also gives the brand back ~60px,
+            which is why the shop's own name rendered as "ABC Auto Gl…" at both
+            360 and 390. */}
         {reviews && (
-          <div className="mx-auto lg:hidden hidden min-[340px]:flex flex-col items-center leading-none gap-0.5">
+          <div className="ml-auto lg:hidden flex shrink-0 flex-col items-end leading-none gap-0.5">
             <span className="flex items-center gap-1.5">
               <GoogleG size={14} />
               <span className="text-[15px] font-extrabold text-[var(--tx)] tabular-nums">
                 {reviews.rating.toFixed(1)}
               </span>
-              <StarRow rating={reviews.rating} size={11} />
+              <span className="hidden min-[430px]:inline">
+                <StarRow rating={reviews.rating} size={11} />
+              </span>
             </span>
-            <span className="hidden min-[390px]:inline text-[11px] font-semibold text-[var(--tx-muted)] whitespace-nowrap">
-              {reviews.reviewCount} Google reviews
+            <span className="text-[11px] font-semibold text-[var(--tx-muted)] whitespace-nowrap">
+              {/* "Google" is redundant beside the G logo, and on a phone it is
+                  ~55px taken from the shop's own name. */}
+              {reviews.reviewCount}
+              <span className="hidden min-[430px]:inline"> Google</span> reviews
             </span>
           </div>
         )}
@@ -447,6 +472,11 @@ export function SiteHeader({
           className={`${reviews ? '' : 'ml-auto lg:ml-0 '}inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] shrink-0 no-underline bg-white text-[var(--cta)] border-[1.5px] border-[var(--cta)] shadow-[0_1px_2px_rgba(11,27,43,.16)] hover:bg-[var(--s1)] transition-colors max-lg:bg-[var(--cta)] max-lg:text-white`}
         >
           <Phone className="h-4 w-4" />
+          {/* "Call", not a bare glyph. The number itself only fits from sm
+              (640px), which no phone reaches — so the one element that follows
+              a visitor everywhere was an unlabelled icon, on the action that
+              matters most for this trade. */}
+          <span className="sm:hidden">Call</span>
           <span className="hidden sm:inline">{client.phone}</span>
           <span className="sr-only">Call us</span>
         </a>
@@ -833,11 +863,25 @@ export function GalleryGrid({ extras }: { extras: SiteExtras | null }) {
   // it rather than disappearing — body photos otherwise only render beside
   // story sections, so a shop with more photos than sections would silently
   // lose the surplus. The heading claims nothing about who took them.
+  // Deduped on the FILENAME, not the full URL. One live client's gallery
+  // rendered the same photograph twice — byte-identical, but uploaded to their
+  // CDN twice under different asset ids, so the URLs differed and the URL
+  // check waved both through. They landed in positions 2 and 4, which is one
+  // scroll apart at 2-up on a phone, and a visitor who spots a repeat in a
+  // six-photo portfolio concludes it was padded.
   const seen = new Set<string>()
+  const photoKey = (url: string) => {
+    try {
+      return decodeURIComponent(new URL(url).pathname.split('/').pop() || url).toLowerCase()
+    } catch {
+      return url.toLowerCase()
+    }
+  }
   const photos = [...(extras?.galleryPhotos ?? []), ...(extras?.bodyPhotos ?? [])]
     .filter((p) => {
-      if (seen.has(p.url)) return false
-      seen.add(p.url)
+      const key = photoKey(p.url)
+      if (seen.has(key)) return false
+      seen.add(key)
       return true
     })
     .slice(0, 6)
@@ -1167,7 +1211,7 @@ function LocationCard({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <a
           href={telHrefFor(location.phone)}
-          className="inline-flex items-center gap-1.5 text-sm font-bold no-underline text-[var(--brand)] hover:underline"
+          className="inline-flex items-center min-h-[44px] -my-2 inline-flex items-center gap-1.5 text-sm font-bold no-underline text-[var(--brand)] hover:underline"
         >
           <Phone className="h-3.5 w-3.5" />
           {location.phone}
@@ -1453,7 +1497,7 @@ export function SiteFooter({
             <p className="m-0 text-sm leading-[1.6]">
               <a
                 href={telHrefFor(client.phone)}
-                className="font-bold no-underline text-[var(--gold-on-dark)] text-[17px] inline-block py-1"
+                className="inline-flex items-center min-h-[44px] -my-2 font-bold no-underline text-[var(--gold-on-dark)] text-[17px] inline-block py-1"
               >
                 {client.phone}
               </a>
@@ -1542,7 +1586,7 @@ export function SiteFooter({
             Serving {client.city}, {client.state} and nearby:{' '}
             <a
               href={telHrefFor(client.phone)}
-              className="font-bold no-underline text-[var(--gold-on-dark)]"
+              className="inline-flex items-center min-h-[44px] -my-2 font-bold no-underline text-[var(--gold-on-dark)]"
             >
               {client.phone}
             </a>
@@ -1574,7 +1618,7 @@ export function SiteFooter({
                       {location.phone !== client.phone && (
                         <a
                           href={telHrefFor(location.phone)}
-                          className="no-underline text-[var(--gold-on-dark)]"
+                          className="inline-flex items-center min-h-[44px] -my-2 no-underline text-[var(--gold-on-dark)]"
                         >
                           {location.phone}
                         </a>

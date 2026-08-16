@@ -112,7 +112,10 @@ export function WidgetMount({ client, service }: { client: SiteClient; service?:
     <div
       data-glassleads-widget
       {...(service ? { 'data-service': service } : {})}
-      className="min-h-[540px] lg:min-h-[600px]"
+      // Reserved for what it actually renders. 540px was the desktop card; on a
+      // phone the mounted form is ~944px, so the page below grew 400px under
+      // anyone who had started scrolling.
+      className="min-h-[940px] sm:min-h-[540px] lg:min-h-[600px]"
     >
       <div className="bg-white rounded-[20px] border-t-4 border-t-[var(--cta)] border border-[var(--line-card)] shadow-lg p-6">
         <p className="m-0 text-xl font-extrabold tracking-tight text-[var(--tx)]">Get your free quote</p>
@@ -205,6 +208,16 @@ export function buildTrustItems(
 }
 
 /** Hero bullets fallback when the client hasn't written their own. */
+/**
+ * Fallback hero bullets for a shop that wrote none.
+ *
+ * These are derived from the same flags as buildTrustItems, so a shop with an
+ * untouched editor read "Mobile service / ADAS calibration included /
+ * Insurance or cash / Free quote first" and then read it again in the strip
+ * immediately below — about 600px of duplicated filler between the form and
+ * the first real section. The caller drops the trust strip when it is falling
+ * back to these.
+ */
 export function defaultHeroBullets(flags: SiteFlags): Array<{ lead: string; text: string }> {
   return [
     ...(flags.offersMobileService
@@ -261,7 +274,12 @@ export function SiteBody({
   linkableCities?: Set<string>
 }) {
   const prioritized = prioritizeServices(services)
-  const gridServices = prioritized.slice(0, flags.offersMobileService ? 5 : 6)
+  // Never the page you are standing on. On a service page the grid is headed
+  // "Everything we handle" and included the current service — one of only six
+  // cards, a full screen tall on a phone, linking to itself.
+  const gridServices = prioritized
+    .filter((s) => s.slug !== currentServiceSlug)
+    .slice(0, flags.offersMobileService ? 5 : 6)
 
   return (
     <>
@@ -290,8 +308,12 @@ export function SiteBody({
                       {s.name}
                     </h3>
                     <p className="text-[var(--tx-muted)] text-sm mt-1.5 mb-0">{s.short}</p>
+                    {/* Not the name again. On desktop the repeated label reads
+                        as a link affordance; on a phone the whole card is the
+                        tap target, so it was the title printed twice about
+                        100px apart, on five of six cards. */}
                     <span className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-[var(--brand)]">
-                      {s.name}
+                      See details
                       <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
                     </span>
                   </a>
