@@ -35,12 +35,14 @@ dashboard. Proven: of six campaigns with completed runs, the only two with a
 `campaign_link` are the two you had opened by hand.
 
 Per client: open the campaign in Local Dominator, then **Local Rankings →
-Refresh map URLs**. Or skip that and paste the campaign's share link straight
-into **Clients → the shop → Rankings → Map URL** (the bare token works too).
+Refresh map URLs**. That is now the only route — the paste-a-URL field on the
+client's Rankings tab is gone, because it cost a permanent card of explanation
+on a page whose whole job is to show a map.
 
-Currently on per-keyword tabs: ABC Auto Glass, HV Auto Glass Denver,
-Maximum Glass, Speedy Windshield Repair. Skip this entirely if the tabs are
-fine — nothing else depends on it.
+**Every client is on per-keyword tabs**, including the two that previously had
+a combined map: deleting and recreating the campaigns cleared their stored
+URLs and their new campaigns are API-created. Skip this entirely if the tabs
+are fine — nothing else depends on it.
 
 ### 0.0b A BabyLoveGrowth key per shop
 **Blocks:** all syndicated SEO articles.
