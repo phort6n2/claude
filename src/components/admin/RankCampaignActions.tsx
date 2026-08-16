@@ -19,6 +19,13 @@ const ACTIONS: Array<{
   confirm?: string
 }> = [
   {
+    label: 'Create campaigns now',
+    endpoint: '/api/admin/rank-campaigns/run',
+    hint: 'Builds a campaign for every client that has none — at 1207 m spacing, on a weekday in business hours. Spends a run’s credits per client created.',
+    confirm:
+      'Create a rank campaign for every client that does not have one?\n\nSEO clients: weekly on four keywords. Everyone else: monthly on two. Each one runs immediately, which spends a run’s credits per client.',
+  },
+  {
     label: 'Refresh map URLs',
     endpoint: '/api/admin/rank-campaigns/map-status',
     hint: 'Fetches each campaign’s all-keywords map and stores it. Free. Start here when a map looks wrong.',
@@ -75,7 +82,7 @@ export default function RankCampaignActions() {
         place — none of it creates duplicates.
       </p>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {ACTIONS.map((action) => (
           <div key={action.endpoint} className="rounded-xl border border-gray-200 p-3">
             <Button
