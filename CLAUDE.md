@@ -239,10 +239,15 @@ and posts each finished run back, so nothing is polled.
   they ship share-creation endpoints for AI Tracker, Projects and SERP, but
   not for scheduled scans. The two campaigns that DID have a `campaign_link`
   were the two opened by hand in their dashboard.
-- So a new client is a one-time manual step: open the campaign in Local
-  Dominator, then "Refresh map URLs" — or paste the URL into the client's
-  **Map URL** field, which takes the bare token too. Do not spend another
-  afternoon looking for an automatic route without new evidence.
+- **Per-KEYWORD maps are fully automatic and need none of that.** Their
+  tokens ride in every webhook as `share_links.dynamic_url`, and on the
+  white-label host they render the same way (verified: 200,
+  `frame-ancestors *`). That is the default view — one keyword per tab — and
+  it stays current on its own.
+- The all-keywords map is the only thing that needs the manual step: open the
+  campaign in Local Dominator then "Refresh map URLs", or paste it into the
+  client's **Map URL** field, which takes the bare token too. Do not spend
+  another afternoon looking for an automatic route without new evidence.
 - The sweep only CREATES for clients with no `rankTrackingId`; it never
   touches an existing campaign. Changing an existing one goes through PATCH:
   `syncCampaignTier` on a tier flip, `/respace` for geometry, `/reschedule`

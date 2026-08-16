@@ -141,13 +141,15 @@ export default async function RankReport({
     whiteLabelEmbedUrl(sample?.shareUrl, shareHost)
   )
 
-  // Nothing campaign-wide to frame. Say why, once, where an admin will see
-  // it — otherwise the per-keyword tabs below just look like the wrong map.
+  // No campaign-wide map, so this is the per-keyword view. That is a normal
+  // outcome, not a failure: the per-keyword tokens arrive in every webhook,
+  // so these maps are automatic and current for every client. Only the
+  // all-keywords map needs a token their API will not issue.
   const noCampaignReason = !shareHost
-    ? 'No share domain set (Settings → API keys → Rank report share domain).'
+    ? 'No share domain set — Settings → API keys → Rank report share domain.'
     : !campaignId
       ? 'This client has no Local Dominator campaign yet.'
-      : 'Local Dominator has not issued a campaign share link for this campaign. Their API does not create one — opening the campaign once in their dashboard does. Do that, then press “Refresh map URLs” on Local Rankings, or paste the URL into Map URL below. Until then: per-keyword maps.'
+      : 'One map per keyword. The single all-keywords map needs a campaign share link, which their API does not issue — open the campaign once in Local Dominator and press “Refresh map URLs”, or paste it into Map URL below.'
 
   const keywords: KeywordRuns[] = [...byTerm.entries()].map(([term, list]) => {
     // Only the URLs and the three numbers travel to the browser — never the
