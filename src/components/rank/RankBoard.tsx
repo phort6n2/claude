@@ -154,7 +154,6 @@ export default function RankBoard({ keywords }: { keywords: KeywordRuns[] }) {
           src={run.embedUrl}
           title={`Ranking map for ${active.term} on ${run.label}`}
           className="w-full block border-0 bg-gray-100 h-[100vh] min-h-[720px]"
-          loading="lazy"
           // allow-storage-access-by-user-activation matters: their app is
           // cross-site here, so its own storage is partitioned by default,
           // and a map that cannot read its own state is a map that renders

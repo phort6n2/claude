@@ -157,6 +157,29 @@ async function reachable(url: string): Promise<{ ok: boolean; why: string }> {
  * so re-asking per page view would be a request per visit for a value that
  * changes when they redeploy, if ever.
  */
+/**
+ * Does this exact URL resolve on their host?
+ *
+ * Their white-label host answers 404 for a token it does not know and 200
+ * for one it does, so a token that has been purged is detectable — which one
+ * probe against a single sample keyword could never catch, because a verdict
+ * taken from one keyword says nothing about the others' tokens.
+ */
+export async function urlResolves(url: string | null): Promise<boolean> {
+  if (!url) return false
+  try {
+    const res = await fetch(url, {
+      redirect: 'follow',
+      signal: AbortSignal.timeout(8_000),
+      next: { revalidate: 3_600 },
+    })
+    if (!res.ok) return false
+    return !/\/login\b|\/signin\b/i.test(res.url || '')
+  } catch {
+    return false
+  }
+}
+
 export async function pickEmbed(
   interactive: string | null,
   statik: string | null,
