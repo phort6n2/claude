@@ -1,19 +1,31 @@
 import type { Metadata } from "next";
-import { Inter, Inter_Tight } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-// Self-hosted by next/font — no external CDN request, no layout shift.
+// Served from our own origin — no external CDN request, no layout shift.
 // Two weights of a display cut for headings, the text cut for body: enough
 // contrast to read as typeset rather than as browser default.
-const sans = Inter({
-  subsets: ["latin"],
+//
+// The files are bundled rather than fetched by `next/font/google`, which
+// downloads from fonts.gstatic.com AT BUILD TIME. That download failed once on
+// Vercel and took a production deploy down with "Can't resolve
+// '@vercel/turbopack-next/internal/font/google/font'" — the same commit having
+// built green on the branch two seconds earlier, which is what a third-party
+// network dependency in a build looks like when it breaks. Nothing about the
+// rendered output changes: same families, same latin subset, same variable
+// weight range, and next/font still hashes, preloads and metric-adjusts them.
+const sans = localFont({
+  src: "../assets/fonts/Inter-latin.woff2",
+  weight: "100 900",
+  style: "normal",
   variable: "--font-sans-next",
   display: "swap",
 });
 
-const display = Inter_Tight({
-  subsets: ["latin"],
-  weight: ["600", "700", "800"],
+const display = localFont({
+  src: "../assets/fonts/InterTight-latin.woff2",
+  weight: "100 900",
+  style: "normal",
   variable: "--font-display-next",
   display: "swap",
 });
