@@ -20,6 +20,7 @@ import {
   Loader2,
   RefreshCw,
 } from 'lucide-react'
+import { STATUS_CONFIG, STATUS_OPTIONS, displayNameIsPhone, formatFieldValue, formatPhoneDisplay, getLeadDisplayName, relativeAge, waitingLevel } from '@/lib/lead-display'
 import { Button } from '@/components/ui/Button'
 import {
   PageContainer,
@@ -34,7 +35,6 @@ import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
 import { LeadQuickActions } from '@/components/leads/LeadQuickActions'
 import { DamagePhoto, damagePhotoOf, VehicleDecode } from '@/components/leads/DamagePhoto'
-import { getLeadDisplayName, displayNameIsPhone, formatPhoneDisplay, formatFieldValue } from '@/lib/lead-display'
 import { useLeadStream } from '@/hooks/useLeadStream'
 
 interface Lead {
@@ -68,20 +68,6 @@ interface Client {
   slug: string
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: React.ElementType }> = {
-  NEW: { label: 'New', color: 'text-blue-700', bgColor: 'bg-blue-100', icon: Clock },
-  CONTACTED: { label: 'Contacted', color: 'text-yellow-700', bgColor: 'bg-yellow-100', icon: MessageSquare },
-  QUALIFIED: { label: 'Qualified', color: 'text-green-700', bgColor: 'bg-green-100', icon: CheckCircle2 },
-  UNQUALIFIED: { label: 'Unqualified', color: 'text-gray-700', bgColor: 'bg-gray-100', icon: XCircle },
-  QUOTED: { label: 'Quoted', color: 'text-purple-700', bgColor: 'bg-purple-100', icon: DollarSign },
-  SOLD: { label: 'Sold', color: 'text-emerald-700', bgColor: 'bg-emerald-100', icon: TrendingUp },
-  LOST: { label: 'Lost', color: 'text-red-700', bgColor: 'bg-red-100', icon: XCircle },
-}
-
-const STATUS_OPTIONS = Object.entries(STATUS_CONFIG).map(([value, config]) => ({
-  value,
-  label: config.label,
-}))
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([])
@@ -520,6 +506,9 @@ function LeadRow({
   getLeadDetails: (lead: Lead) => { service: string | null; vehicle: string | null; year: string | null; make: string | null; model: string | null; vin: string | null; zipCode: string | null; insuranceHelp: string | null }
 }) {
   const statusConfig = STATUS_CONFIG[lead.status] || STATUS_CONFIG.NEW
+  // Only NEW leads can be "waiting": one that has been contacted is not late
+  // however old it is, and colouring those would train the colour out.
+  const waiting = waitingLevel(lead.status, lead.createdAt)
   const fullName = getLeadDisplayName(lead)
   const details = getLeadDetails(lead)
 
@@ -657,7 +646,24 @@ function LeadRow({
                 </>
               )}
               <span className="text-gray-300">•</span>
-              <span className="text-xs text-gray-500">{formatDate(lead.createdAt)}</span>
+              {/* Age, not a date. An absolute timestamp made a lead from 20
+                  minutes ago and one from 3 days ago look identical, so the
+                  one nobody had answered was invisible without arithmetic.
+                  The exact time stays in the tooltip. */}
+              <span
+                className={`text-xs ${
+                  waiting === 'late'
+                    ? 'font-semibold text-red-600'
+                    : waiting === 'warn'
+                      ? 'font-semibold text-amber-600'
+                      : 'text-gray-500'
+                }`}
+                title={formatDate(lead.createdAt)}
+              >
+                {waiting === 'none'
+                  ? relativeAge(lead.createdAt)
+                  : `waiting ${relativeAge(lead.createdAt).replace(' ago', '')}`}
+              </span>
             </div>
           </div>
 

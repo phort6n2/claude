@@ -26,6 +26,7 @@ import {
   Code,
   Zap,
 } from 'lucide-react'
+import { STATUS_CONFIG, STATUS_OPTIONS } from '@/lib/lead-display'
 import { Button } from '@/components/ui/Button'
 
 interface Lead {
@@ -68,18 +69,6 @@ interface Lead {
   }
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: React.ElementType }> = {
-  NEW: { label: 'New', color: 'text-blue-700', bgColor: 'bg-blue-100', icon: Clock },
-  CONTACTED: { label: 'Contacted', color: 'text-yellow-700', bgColor: 'bg-yellow-100', icon: MessageSquare },
-  QUOTED: { label: 'Quoted', color: 'text-purple-700', bgColor: 'bg-purple-100', icon: DollarSign },
-  SOLD: { label: 'Sold', color: 'text-emerald-700', bgColor: 'bg-emerald-100', icon: TrendingUp },
-  LOST: { label: 'Lost', color: 'text-red-700', bgColor: 'bg-red-100', icon: XCircle },
-}
-
-const STATUS_OPTIONS = Object.entries(STATUS_CONFIG).map(([value, config]) => ({
-  value,
-  label: config.label,
-}))
 
 export default function LeadDetailPage() {
   const router = useRouter()

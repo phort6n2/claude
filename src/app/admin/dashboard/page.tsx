@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
+import { relativeAge, statusStyle } from '@/lib/lead-display'
 import { formatDateTime } from '@/lib/utils'
 import {
   Users,
@@ -33,15 +34,25 @@ async function getStats() {
   const startOfToday = new Date(new Date().setHours(0, 0, 0, 0))
   const startOfWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
 
+  // Two hours: long enough that a shop mid-job has not "failed" to answer,
+  // short enough that a lead going cold is still worth a phone call. The
+  // whole point of this tile is that it is actionable within the day.
+  const staleAfter = new Date(Date.now() - 2 * 60 * 60 * 1000)
+
   const [
-    activeClients,
+    unworkedLeads,
     leadsToday,
     leadsThisWeek,
     failedAnalyses,
     recentLeads,
     recentCalls,
   ] = await Promise.all([
-    prisma.client.count({ where: { status: 'ACTIVE' } }),
+    // Was Active Clients — a number that is the same every day and cannot be
+    // acted on. What this page has to answer first is "what needs me today",
+    // and that is leads nobody has touched.
+    prisma.lead.count({
+      where: { status: 'NEW', duplicateOfLeadId: null, createdAt: { lte: staleAfter } },
+    }),
     prisma.lead.count({
       where: { createdAt: { gte: startOfToday }, duplicateOfLeadId: null },
     }),
@@ -68,7 +79,7 @@ async function getStats() {
   ])
 
   return {
-    activeClients,
+    unworkedLeads,
     leadsToday,
     leadsThisWeek,
     failedAnalyses,
@@ -142,12 +153,14 @@ async function DashboardContent() {
 
       {/* Stats Cards */}
       <StatCardGrid cols={4}>
-        <GradientStatCard
-          title="Active Clients"
-          value={stats.activeClients}
-          subtitle="Receiving leads"
-          icon={<Users />}
-          variant="blue"
+        <NeutralStatCard
+          title="Unworked leads"
+          value={stats.unworkedLeads}
+          subtitle={
+            stats.unworkedLeads === 0 ? 'Everything has been touched' : 'Still NEW after 2 hours'
+          }
+          icon={<UserCheck />}
+          isAlert={stats.unworkedLeads > 0}
         />
         <GradientStatCard
           title="Leads Today"
@@ -215,11 +228,19 @@ async function DashboardContent() {
                       </p>
                       <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {formatDateTime(lead.createdAt)}
+                        <span title={formatDateTime(lead.createdAt)}>
+                          {relativeAge(lead.createdAt)}
+                        </span>
                       </p>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                      {lead.source}
+                    {/* Status, not source. Every row said WEB or PHONE, which
+                        is the same on nearly all of them and answers nothing;
+                        whether a lead has been handled is the question this
+                        list is read for. */}
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusStyle(lead.status).bgColor} ${statusStyle(lead.status).color}`}
+                    >
+                      {statusStyle(lead.status).label}
                     </span>
                   </div>
                 </Link>
