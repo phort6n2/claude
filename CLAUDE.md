@@ -231,14 +231,18 @@ and posts each finished run back, so nothing is polled.
   one it does not.** Verified against a real token and two invented ones. So
   a candidate token can be TESTED rather than guessed — which is how the
   scheduled_scan_id is tried when no campaign_link exists.
-- **Their API does not CREATE the campaign share link.** A campaign made via
-  the API comes back with `share_links: [image_link, dynamic_url]` and no
-  `campaign_link`, even after a run has completed; the two campaigns that had
-  one were the two opened by hand in their dashboard. There is no endpoint to
-  create it (they have share-creation endpoints for AI Tracker, Projects and
-  SERP — not for scheduled scans). So a new client needs the campaign opened
-  once in Local Dominator, then "Refresh map URLs" — or the URL pasted into
-  the client's Map URL field, which accepts the bare token too.
+- **The campaign share token cannot be derived. It has to come from their
+  dashboard.** Three things were tested and all are dead ends: their API does
+  not issue `campaign_link` for a campaign it created (a completed run still
+  returns `share_links: [image_link, dynamic_url]`); the `scheduled_scan_id`
+  is not the share token (their host 404s it); and no endpoint creates one —
+  they ship share-creation endpoints for AI Tracker, Projects and SERP, but
+  not for scheduled scans. The two campaigns that DID have a `campaign_link`
+  were the two opened by hand in their dashboard.
+- So a new client is a one-time manual step: open the campaign in Local
+  Dominator, then "Refresh map URLs" — or paste the URL into the client's
+  **Map URL** field, which takes the bare token too. Do not spend another
+  afternoon looking for an automatic route without new evidence.
 - The sweep only CREATES for clients with no `rankTrackingId`; it never
   touches an existing campaign. Changing an existing one goes through PATCH:
   `syncCampaignTier` on a tier flip, `/respace` for geometry, `/reschedule`

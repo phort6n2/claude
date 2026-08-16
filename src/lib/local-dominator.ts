@@ -245,6 +245,39 @@ export async function campaignMapUrl(scheduledScanId: string): Promise<string | 
 }
 
 /**
+ * Look for a campaign in the LIST endpoint and report what it carries.
+ *
+ * The last untested source. Their docs specify that run objects have no
+ * campaign_link, and the detail endpoint demonstrably omits it for campaigns
+ * created through the API — but nothing says what a list ITEM carries, and
+ * an endpoint that has never been read is not evidence of anything.
+ */
+export async function campaignListEntry(
+  scheduledScanId: string
+): Promise<{ found: boolean; keys: string[]; shareLinkKeys: string[]; campaignLink: string | null }> {
+  const empty = { found: false, keys: [], shareLinkKeys: [], campaignLink: null }
+  try {
+    const res = await ldFetch('/v1/scheduled-scans?per_page=100&page=0')
+    if (!res.ok) return empty
+    const body = (await res.json().catch(() => null)) as Record<string, unknown> | null
+    const list = (body?.scheduled_scans || []) as Array<Record<string, unknown>>
+    if (!Array.isArray(list)) return empty
+    const entry = list.find((e) => String(e?.id || '') === scheduledScanId)
+    if (!entry) return empty
+    const links = (entry.share_links || {}) as Record<string, unknown>
+    const link = links.campaign_link
+    return {
+      found: true,
+      keys: Object.keys(entry),
+      shareLinkKeys: Object.keys(links),
+      campaignLink: typeof link === 'string' && link ? link : null,
+    }
+  } catch {
+    return empty
+  }
+}
+
+/**
  * Does their share host recognise this token?
  *
  * 200 for a token it knows, 404 for one it does not — verified against a
