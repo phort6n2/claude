@@ -1813,6 +1813,7 @@ export function ChapterSections({
             ? { url: chapter.photoUrl, alt: chapter.heading }
             : fallbackPhotos[i] || null
           const paragraphs = chapter.body.split(/\n\s*\n/).filter((p) => p.trim())
+          const isLast = i === chapters.length - 1
           return (
             <div
               key={chapter.heading}
@@ -1827,6 +1828,19 @@ export function ChapterSections({
                     {p.trim()}
                   </p>
                 ))}
+                {/* On a wide screen the CTA belongs HERE, under the words that
+                    just earned it. A photo is a fixed 4:3 and the prose beside
+                    it is usually shorter, so a full-width row after the grid
+                    hung the buttons under the taller column — orphaned beneath
+                    the image, with dead space under the text. Below lg the
+                    grid is one column and the row after the loop is right, so
+                    only one of the two ever renders. */}
+                {client && isLast && (
+                  <div className="hidden lg:flex flex-wrap gap-3 mt-7">
+                    <CtaButton href="#quote">Get my free quote</CtaButton>
+                    <CallButton client={client} withLabel />
+                  </div>
+                )}
               </div>
               {photo && (
                 <figure className={`m-0 ${i % 2 === 1 ? 'lg:order-1' : ''}`}>
@@ -1847,7 +1861,7 @@ export function ChapterSections({
           )
         })}
         {client && (
-          <div className="flex flex-wrap gap-3 pt-2 max-[719px]:flex-col max-[719px]:[&>a]:w-full">
+          <div className="flex lg:hidden flex-wrap gap-3 pt-2 max-[719px]:flex-col max-[719px]:[&>a]:w-full">
             <CtaButton href="#quote">Get my free quote</CtaButton>
             <CallButton client={client} withLabel />
           </div>
