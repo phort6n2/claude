@@ -197,7 +197,17 @@ You have ruled this out for now and I have not built any. Worth revisiting: an i
 ## 5. Not built, ranked by what I would do next
 
 ### 5.0 Clarity on the landing pages, and a standing conversion-rate loop
-**Agreed, queued behind the admin UI/UX work. Not started.**
+**BUILT. Waiting on fifteen project ids from you.**
+
+Per shop: create a Clarity project, then **Clients → the shop → Advertising →
+Behaviour analytics** and paste the project id. The tag goes live on their
+pages within the hour, and their privacy page grows a "How this site is
+measured" section the moment it is saved. The export token is optional and only
+needed to read numbers back inside the app.
+
+The constraints below were settled before the code and still hold — most
+importantly that the API returns aggregates, not recordings, so anything
+needing a replay watched is a thing YOU watch and tell me about.
 
 Microsoft Clarity on every hosted landing page, read continuously, with the
 scoreboard being conversion rate in Google Ads — **search campaigns, not

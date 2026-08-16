@@ -668,6 +668,18 @@ const WIDGET_SOURCE = String.raw`(function () {
           }));
         } catch (e) {}
 
+        /* Clarity smart event, guarded on the collector actually being there.
+           The form lives in a shadow root, so Clarity's automatic click
+           detection cannot see it either — the same blindness the host-page
+           event above exists to work around. This is the numerator of any
+           conversion rate measured on Clarity's side. */
+        try {
+          if (window.clarity) {
+            window.clarity('event', 'quote_submitted');
+            window.clarity('set', 'converted', 'yes');
+          }
+        } catch (e) {}
+
         body.innerHTML = '';
         /* The head lives on the CARD, outside .body — so clearing the body
            left the confirmation sitting under "Get your free quote — four

@@ -172,6 +172,11 @@ export const CONTENT_FEED_SQL: string[] = [
   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
 ]
 
+export const CLARITY_SQL: string[] = [
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "clarityProjectId" TEXT`,
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "clarityApiToken" TEXT`,
+]
+
 /** Everything the running code assumes exists. */
 export const BOOTSTRAP_SQL: string[] = [
   ...CALL_TRACKING_SQL,
@@ -181,6 +186,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...RANK_MAP_SQL,
   ...SEO_ARTICLE_SQL,
   ...CONTENT_FEED_SQL,
+  ...CLARITY_SQL,
 ]
 
 /**

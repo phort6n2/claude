@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import AdsTrackingCard from '@/components/admin/AdsTrackingCard'
 import OfflineConversionsCard from '@/components/admin/OfflineConversionsCard'
+import ClarityCard from '@/components/admin/ClarityCard'
+import { decrypt } from '@/lib/encryption'
 import { requireAdminPage } from '@/lib/admin-guard'
 
 /**
@@ -20,9 +22,21 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const { id } = await params
   const client = await prisma.client.findUnique({
     where: { id },
-    select: { id: true, phone: true },
+    select: {
+      id: true,
+      phone: true,
+      clarityProjectId: true,
+      clarityApiToken: true,
+    },
   })
   if (!client) notFound()
+
+  const token = client.clarityApiToken ? decrypt(client.clarityApiToken) : null
+  const maskedToken = token
+    ? token.length <= 8
+      ? '••••'
+      : `${token.slice(0, 4)}••••${token.slice(-4)}`
+    : null
 
   return (
     <div className="space-y-4">
@@ -49,6 +63,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         </div>
         <OfflineConversionsCard clientId={client.id} />
       </section>
+
+      <ClarityCard
+        clientId={client.id}
+        initialProjectId={client.clarityProjectId}
+        initialMaskedToken={maskedToken}
+      />
     </div>
   )
 }

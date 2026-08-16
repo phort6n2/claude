@@ -1,4 +1,5 @@
 import { SiteBaseStyles, telHrefFor, type SiteClient } from '@/components/sites/shared'
+import { SiteAnalytics } from '@/components/sites/analytics'
 import { sitePaletteVars } from '@/lib/site-theme'
 import { sanitizeHtml } from '@/lib/sanitize-html'
 import { stripVendorLinks } from '@/lib/article-whitelabel'
@@ -16,6 +17,7 @@ import { stripVendorLinks } from '@/lib/article-whitelabel'
 
 export interface BlogClient extends SiteClient {
   siteSubdomain?: string | null
+  clarityProjectId?: string | null
 }
 
 function Shell({
@@ -35,6 +37,7 @@ function Shell({
       style={palette as React.CSSProperties}
     >
       <SiteBaseStyles />
+      <SiteAnalytics projectId={client.clarityProjectId} slug={client.slug} pageType="blog" />
       <header className="border-b border-[var(--line)] sticky top-0 z-10 bg-[var(--paper)]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 min-h-[64px] flex items-center justify-between gap-4">
           <a href={basePath || '/'} className="font-bold no-underline text-[var(--brand)]">

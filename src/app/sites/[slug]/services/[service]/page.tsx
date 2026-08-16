@@ -2,6 +2,7 @@ import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
+import { SiteAnalytics } from '@/components/sites/analytics'
 import { withSitePhone } from '@/lib/site-phone'
 import { getServicePage, servicesForClient, type ServiceFlag } from '@/lib/site-services'
 import {
@@ -93,6 +94,7 @@ async function getClient(slug: string) {
       smsCapable: true,
       serviceAreas: true,
       googleMapsUrl: true,
+      clarityProjectId: true,
     },
   })
 }
@@ -219,6 +221,11 @@ export default async function ServicePage({ params }: PageProps) {
       style={palette as React.CSSProperties}
     >
       <SiteBaseStyles />
+      <SiteAnalytics
+        projectId={client.clarityProjectId}
+        slug={client.slug}
+        pageType="service"
+      />
       <GoogleTag tracking={adsTracking} />
       <script
         type="application/ld+json"
