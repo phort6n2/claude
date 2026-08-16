@@ -176,15 +176,87 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
       )
     }
 
-    // Parse the webhook payload
-    const payload = await request.json()
+    // Parse the payload.
+    //
+    // JSON from HighLevel and from the widget's fetch; FORM-ENCODED from the
+    // server-rendered quote form, which is a plain <form method="post"> and
+    // therefore the only path that still works with JavaScript off. It goes
+    // through THIS handler rather than a route of its own on purpose: dedup,
+    // attribution, alerting and forwarding all live here, and a parallel
+    // intake is a second copy of that behaviour waiting to drift from this one.
+    const isFormPost = (request.headers.get('content-type') || '').includes(
+      'application/x-www-form-urlencoded'
+    )
+    // `any`, because that is what request.json() already returned here and the
+    // seven hundred lines below were written against it. Tightening it is a
+    // separate job from making the form work without JavaScript.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let payload: Record<string, any>
+    if (isFormPost) {
+      const form = await request.formData()
+      payload = Object.fromEntries(
+        [...form.entries()].map(([key, value]) => [key, typeof value === 'string' ? value : ''])
+      )
+    } else {
+      payload = await request.json()
+    }
+
+    /**
+     * Where the browser lands after a plain form post.
+     *
+     * The scheme and the PORT both come from the request. Rebuilding the URL
+     * as `https://` + a port-stripped host was wrong twice over: it cannot be
+     * followed on a non-https host, and `requestHost()` drops the port on
+     * purpose (it exists to compare origins), so the redirect pointed at the
+     * wrong place anywhere the app is not on 443.
+     *
+     * 303 rather than 302 so the follow-up is a GET — a refresh on the
+     * confirmation page must not post the lead a second time.
+     *
+     * `return_to` is honoured only when it is on the host that served the
+     * form. Anything else is an open redirect on fifteen live sites.
+     */
+    const formRedirect = (ok: boolean) => {
+      const headers = request.headers
+      const proto =
+        headers.get('x-forwarded-proto')?.split(',')[0].trim() ||
+        new URL(request.url).protocol.replace(':', '') ||
+        'https'
+      const host = (headers.get('x-forwarded-host') || headers.get('host') || '')
+        .split(',')[0]
+        .trim()
+      const base = `${proto}://${host}`
+
+      /* The same HTML serves a shop's own host AND /sites/{slug} on the app
+         host — middleware rewrites, so the page cannot know which one the
+         visitor is looking at, and a path baked in at render is wrong for one
+         of them. The Referer a form post carries says which, and it is the
+         only thing that can: without JavaScript there is nothing to put in a
+         hidden field. Falls back to the bare path, which is right on a shop's
+         own host — the case that matters. */
+      let prefix = ''
+      try {
+        const referer = headers.get('referer')
+        if (referer) {
+          const from = new URL(referer)
+          const match = from.pathname.match(/^\/sites\/[^/]+/)
+          if (from.host === host && match) prefix = match[0]
+        }
+      } catch {
+        /* no usable referer — the bare path is the safe answer */
+      }
+
+      return NextResponse.redirect(`${base}${prefix}/quote-sent${ok ? '' : '?problem=1'}`, 303)
+    }
 
     // Honeypot: the embeddable widget includes a visually-hidden field that
     // only bots fill in (sent as `_hp`). Answer with success so the bot moves
     // on, but store nothing.
     if (typeof payload._hp === 'string' && payload._hp.trim() !== '') {
       console.warn(`[HighLevel Webhook] Honeypot tripped for ${client.businessName} — dropping submission`)
-      return NextResponse.json({ success: true, message: 'Lead captured successfully' })
+      return isFormPost
+        ? formRedirect(true)
+        : NextResponse.json({ success: true, message: 'Lead captured successfully' })
     }
 
     console.log(`[HighLevel Webhook] Received for ${client.businessName}:`, JSON.stringify(payload, null, 2))
@@ -800,6 +872,8 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
       }
     }
 
+    if (isFormPost) return formRedirect(true)
+
     return NextResponse.json({
       success: true,
       leadId: lead.id,
@@ -816,6 +890,21 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
       stack: errorStack,
       url: request.url,
     })
+
+    // A browser that posted a form gets a page, not a JSON error body it
+    // would render as plain text. `isFormPost` is scoped to the try block, so
+    // the header is read again rather than hoisted — the failure path must not
+    // depend on how far the successful path got.
+    if ((request.headers.get('content-type') || '').includes('application/x-www-form-urlencoded')) {
+      const proto =
+        request.headers.get('x-forwarded-proto')?.split(',')[0].trim() ||
+        new URL(request.url).protocol.replace(':', '') ||
+        'https'
+      const host = (request.headers.get('x-forwarded-host') || request.headers.get('host') || '')
+        .split(',')[0]
+        .trim()
+      return NextResponse.redirect(`${proto}://${host}/quote-sent?problem=1`, 303)
+    }
 
     return NextResponse.json(
       { error: 'Failed to process webhook', details: errorMessage },

@@ -74,7 +74,6 @@ export async function getClientActivity(clientId: string): Promise<ActivityMonth
     reviews,
     domains,
     leadCounts,
-    articles,
     feedItems,
   ] = await Promise.all([
       prisma.client
@@ -118,16 +117,6 @@ export async function getClientActivity(clientId: string): Promise<ActivityMonth
         .findMany({
           where: { clientId, duplicateOfLeadId: null },
           select: { createdAt: true, status: true, saleValue: true },
-        })
-        .catch(() => []),
-      // Published only. An article held in the review queue has not been done
-      // FOR the shop yet, and the feed's whole claim is that everything on it
-      // actually happened.
-      prisma.seoArticle
-        .findMany({
-          where: { clientId, publishedAt: { not: null }, client: { seoContentEnabled: true } },
-          orderBy: { publishedAt: 'desc' },
-          select: { title: true, slug: true, seedKeyword: true, publishedAt: true },
         })
         .catch(() => []),
       // Whatever the shop's own site published, read from their RSS feed.
@@ -233,15 +222,7 @@ export async function getClientActivity(clientId: string): Promise<ActivityMonth
     domains.find((d) => d.isPrimary)?.domain ||
     domains[0]?.domain ||
     (client ? `${client.siteSubdomain || client.slug}.glassleads.app` : null)
-  //
-  // Two sources can supply the same post — the shop's RSS feed, and articles
-  // synced directly when that integration was in use. Titles are deduped
-  // across both so a shop running both does not read its own work twice.
-  const seenTitles = new Set<string>()
-  const titleKey = (title: string) => title.trim().toLowerCase().replace(/\s+/g, ' ')
-
   for (const item of feedItems) {
-    seenTitles.add(titleKey(item.title))
     items.push({
       // An undated feed entry falls back to when we first saw it, which is
       // the honest answer — it is when the post appeared as far as we know.
@@ -253,18 +234,6 @@ export async function getClientActivity(clientId: string): Promise<ActivityMonth
     })
   }
 
-  for (const article of articles) {
-    if (seenTitles.has(titleKey(article.title))) continue
-    items.push({
-      at: article.publishedAt as Date,
-      kind: 'article',
-      title: article.title,
-      detail: article.seedKeyword
-        ? `Written for people searching “${article.seedKeyword}” and published to your site.`
-        : 'Written for search and published to your site.',
-      href: siteHost ? `https://${siteHost}/blog/${article.slug}` : undefined,
-    })
-  }
 
   // ---- Calls.
   for (const number of numbers) {

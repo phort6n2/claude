@@ -117,12 +117,58 @@ function esc(value: string): string {
 
 export function WidgetMount({ client, service }: { client: SiteClient; service?: string }) {
   const tel = client.phone.replace(/[^+\d]/g, '')
+  const action = `/api/webhooks/highlevel/lead?client=${encodeURIComponent(client.slug)}`
+
+  // A REAL, WORKING FORM — not a skeleton.
+  //
+  // What sat here before was a placeholder card with a phone number, and the
+  // form only existed once widget.js had run. With JavaScript off or the
+  // script blocked, the page's whole job — collecting an enquiry — was simply
+  // not available, and the visitor saw a heading promising a quote above
+  // nothing that could take one.
+  //
+  // So the server sends a plain <form method="post">. It posts to the same
+  // intake the widget's fetch uses, so a no-script lead is dedup'd, attributed
+  // and alerted exactly like any other; the response is a 303 to /quote-sent
+  // because a browser needs a page rather than JSON.
+  //
+  // widget.js still upgrades this to the richer form — photo upload, inline
+  // validation, no reload — and carries across anything already typed, since
+  // the script arrives about a second after the HTML and someone can start
+  // filling it in before then.
+  //
   // Written as a string, not JSX, on purpose — see the comment below.
   const placeholder = `
     <div class="bg-white rounded-[20px] border-t-4 border-t-[var(--cta)] border border-[var(--line-card)] shadow-lg p-6">
       <p class="m-0 text-xl font-extrabold tracking-tight text-[var(--tx)]">Get your free quote</p>
       <p class="mt-1.5 mb-0 text-sm text-[var(--tx-muted)]">Four quick questions and you&rsquo;ll have a real number.</p>
-      <a href="tel:${esc(tel)}" class="mt-5 flex items-center justify-center min-h-[52px] rounded-[14px] font-bold text-white no-underline" style="background:linear-gradient(180deg, var(--cta), var(--cta-b))">Or call ${esc(client.phone)}</a>
+      <form method="post" action="${esc(action)}" class="mt-4 grid gap-3">
+        <input type="hidden" name="form_name" value="glassleads-noscript" />
+        <input type="hidden" name="source_label" value="Landing page" />
+        ${service ? `<input type="hidden" name="service" value="${esc(service)}" />` : ''}
+        <label class="grid gap-1">
+          <span class="text-sm font-semibold text-[var(--tx)]">Your name</span>
+          <input name="full_name" required autocomplete="name" class="min-h-[46px] rounded-[12px] border border-[var(--line-card)] px-3 text-[16px]" />
+        </label>
+        <label class="grid gap-1">
+          <span class="text-sm font-semibold text-[var(--tx)]">Phone</span>
+          <input name="phone" type="tel" required autocomplete="tel" inputmode="tel" class="min-h-[46px] rounded-[12px] border border-[var(--line-card)] px-3 text-[16px]" />
+        </label>
+        <label class="grid gap-1">
+          <span class="text-sm font-semibold text-[var(--tx)]">Vehicle</span>
+          <input name="vehicle" required placeholder="Year, make and model" class="min-h-[46px] rounded-[12px] border border-[var(--line-card)] px-3 text-[16px]" />
+        </label>
+        <label class="grid gap-1">
+          <span class="text-sm font-semibold text-[var(--tx)]">What needs doing?</span>
+          <textarea name="message" rows="2" placeholder="Which glass, and where the damage is" class="rounded-[12px] border border-[var(--line-card)] px-3 py-2 text-[16px]"></textarea>
+        </label>
+        <!-- Bots fill this in; people never see it. Same field the widget posts. -->
+        <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">
+          <label>Leave this empty<input name="_hp" tabindex="-1" autocomplete="off" /></label>
+        </div>
+        <button type="submit" class="mt-1 flex items-center justify-center min-h-[52px] rounded-[14px] font-bold text-white border-0 cursor-pointer" style="background:linear-gradient(180deg, var(--cta), var(--cta-b))">Get my free quote</button>
+      </form>
+      <a href="tel:${esc(tel)}" class="mt-3 flex items-center justify-center min-h-[52px] rounded-[14px] font-bold no-underline text-[var(--brand)] border border-[var(--line-card)]">Or call ${esc(client.phone)}</a>
     </div>`
 
   return (
