@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
-import { campaignShareLinks, localDominatorShareHost } from '@/lib/local-dominator'
+import { campaignDetail, localDominatorShareHost } from '@/lib/local-dominator'
 import { whiteLabelEmbedUrl } from '@/lib/rank-embed'
 
 export const dynamic = 'force-dynamic'
@@ -31,8 +31,8 @@ export async function POST() {
 
   const rows = []
   for (const client of clients) {
-    const links = await campaignShareLinks(client.rankTrackingId as string)
-    const wanted = whiteLabelEmbedUrl(links?.campaignLink, shareHost)
+    const detail = await campaignDetail(client.rankTrackingId as string)
+    const wanted = whiteLabelEmbedUrl(detail.campaignLink, shareHost)
     // Diagnose AND fix in one press. Storing is idempotent and costs no
     // credits, and a check that reports a fixable problem without fixing it
     // is just another round trip.
@@ -43,15 +43,23 @@ export async function POST() {
     }
     rows.push({
       client: client.businessName,
-      hasCampaignLink: !!links?.campaignLink,
+      campaignId: client.rankTrackingId,
+      httpStatus: detail.httpStatus,
+      shareLinkKeys: detail.shareLinkKeys,
+      runCount: detail.runCount,
+      lastRunDate: detail.lastRunDate,
+      apiError: detail.error,
+      hasCampaignLink: !!detail.campaignLink,
       // The all-keywords URL we WOULD store, and the one currently stored.
       wanted,
       stored: wanted || client.rankMapUrl,
       updated: !!wanted && wanted !== client.rankMapUrl,
     })
     console.warn(
-      `[RankCampaigns] map-status ${client.businessName}: campaignLink=${!!links?.campaignLink} ` +
-        `wanted=${wanted || 'none'} stored=${client.rankMapUrl || 'none'}`
+      `[RankCampaigns] map-status ${client.businessName}: campaign=${client.rankTrackingId} ` +
+        `http=${detail.httpStatus} shareKeys=[${detail.shareLinkKeys.join(',')}] ` +
+        `runs=${detail.runCount} lastRun=${detail.lastRunDate} err=${detail.error || 'none'} ` +
+        `wanted=${wanted || 'none'}`
     )
   }
 
@@ -62,12 +70,28 @@ export async function POST() {
       'No share domain set — Settings → API keys → Rank report share domain. Nothing can be white-labelled until it is.'
     )
   }
-  const missing = rows.filter((r) => !r.hasCampaignLink)
+  // Say WHICH failure it is. "No campaign_link" covering an HTTP error, an
+  // unrun campaign and a genuinely absent field is three different fixes
+  // wearing one message.
+  const errored = rows.filter((r) => r.apiError)
+  if (errored.length) {
+    problems.push(
+      `${errored.length} campaign(s) errored: ${errored
+        .map((r) => `${r.client} — ${r.apiError}`)
+        .join('; ')}`
+    )
+  }
+  const missing = rows.filter((r) => !r.hasCampaignLink && !r.apiError)
   if (missing.length) {
     problems.push(
-      `${missing.length} campaign(s) have no campaign_link from Local Dominator yet (${missing
-        .map((r) => r.client)
-        .join(', ')}) — those fall back to per-keyword tabs.`
+      `${missing.length} returned no campaign_link: ${missing
+        .map(
+          (r) =>
+            `${r.client} (runs=${r.runCount ?? '?'}, lastRun=${r.lastRunDate || 'never'}, share_links=[${
+              r.shareLinkKeys.join(',') || 'empty'
+            }])`
+        )
+        .join('; ')}`
     )
   }
   const updated = rows.filter((r) => r.updated)

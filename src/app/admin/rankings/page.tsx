@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { requireAdminPage } from '@/lib/admin-guard'
 import { rankSummaries } from '@/lib/rank-report'
 import Header from '@/components/admin/Header'
+import RankCampaignActions from '@/components/admin/RankCampaignActions'
 
 /**
  * Every client's local ranking, in one list.
@@ -43,7 +44,9 @@ export default async function AdminRankingsPage() {
   return (
     <div>
       <Header title="Local rankings" subtitle={`${tracked} of ${rows.length} clients with scan data`} />
-      <div className="p-6">
+      <div className="p-6 space-y-4">
+        <RankCampaignActions />
+
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

@@ -236,27 +236,9 @@ const API_KEYS: ApiKeyConfig[] = [
       // no cookies — the only way to know what a signed-out client actually
       // gets, as opposed to what an admin sees while signed in to their app.
       { label: 'Check map embeds', endpoint: '/api/admin/rank-campaigns/embed-check' },
-      // Fetches each campaign's all-keywords link, stores it, and says per
-      // client what happened. Free, idempotent, and the answer to "why is the
-      // wrong map showing" — which cost several rounds of inference.
-      { label: 'Refresh map URLs', endpoint: '/api/admin/rank-campaigns/map-status' },
-      // Spacing lives in SCAN_PRESETS, but a campaign created at the old
-      // spacing keeps it — their scheduler holds the geometry, not us.
-      { label: 'Apply grid spacing', endpoint: '/api/admin/rank-campaigns/respace' },
-      // Weekend scans measure a different local pack than the one that sells
-      // jobs. This moves every campaign to a weekday in business hours.
-      { label: 'Apply run schedule', endpoint: '/api/admin/rank-campaigns/reschedule' },
-      // The only way a geometry change reaches a map: their scheduler holds
-      // the grid, and a stored run keeps whatever spacing it was measured at.
-      {
-        label: 'Run every scan now',
-        endpoint: '/api/admin/rank-campaigns/run-now',
-        confirm:
-          'Start a fresh run on every campaign now?\n\nThis spends a run\u2019s credits per campaign. Do it after changing the grid spacing — their scheduler holds the geometry, so the maps keep the old zoom until a scan is taken at the new spacing.',
-      },
     ],
     description:
-      'Geogrid rank scans. Local Dominator runs the schedule on their side and posts each completed run back here, so nothing needs to be polled.',
+      'Geogrid rank scans. Campaign controls live on the Local Rankings page. Local Dominator runs the schedule on their side and posts each completed run back here, so nothing needs to be polled.',
     steps: [
       {
         text: 'Local Dominator → account settings → API. Keys begin ld_.',
