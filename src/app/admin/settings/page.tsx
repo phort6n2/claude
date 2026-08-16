@@ -13,7 +13,7 @@ import { requireAdminPage } from '@/lib/admin-guard'
 
 const settingsSections = [
   {
-    title: 'API Settings',
+    title: 'API keys',
     description: 'Configure external API keys and integrations',
     href: '/admin/settings/api',
     icon: Key,
@@ -38,7 +38,7 @@ export default async function SettingsPage() {
       <PageHeader
         title="Settings"
         subtitle="Configure platform settings and integrations"
-        backHref="/admin"
+        backHref="/admin/dashboard"
       />
 
       {/* Settings Grid */}

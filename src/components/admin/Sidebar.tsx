@@ -54,16 +54,16 @@ const navigation: NavSection[] = [
   {
     title: 'System',
     items: [
-      { name: 'Integration Status', href: '/admin/api-status', icon: Activity },
-      { name: 'Webhook Status', href: '/admin/webhook-status', icon: Radio },
-      { name: 'Conversion Health', href: '/admin/conversion-health', icon: Target },
+      { name: 'Integrations', href: '/admin/api-status', icon: Activity },
+      { name: 'Lead capture', href: '/admin/webhook-status', icon: Radio },
+      { name: 'Conversion tracking', href: '/admin/conversion-health', icon: Target },
       { name: 'Storage', href: '/admin/storage', icon: HardDrive },
     ],
   },
   {
     title: 'Settings',
     items: [
-      { name: 'Settings', href: '/admin/settings', icon: Settings },
+      { name: 'API keys', href: '/admin/settings/api', icon: Settings },
       { name: 'Help', href: '/admin/help', icon: HelpCircle },
     ],
   },

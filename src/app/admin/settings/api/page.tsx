@@ -566,7 +566,7 @@ export default function ApiSettingsPage() {
   if (loading) {
     return (
       <div className="flex flex-col h-full">
-        <Header title="API Settings" subtitle="Configure external API integrations" />
+        <Header title="API keys" subtitle="Configure external API integrations" />
         <div className="flex-1 p-6 flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-50">
           <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
         </div>
@@ -576,7 +576,7 @@ export default function ApiSettingsPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <Header title="API Settings" subtitle="Configure external API integrations" />
+      <Header title="API keys" subtitle="Configure external API integrations" />
       <div className="flex-1 p-6 overflow-auto bg-gradient-to-br from-slate-50 via-white to-slate-50">
         {message && (
           <div

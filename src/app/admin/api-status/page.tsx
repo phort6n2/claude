@@ -61,7 +61,7 @@ export default function ApiStatusPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <Header title="Integration status" subtitle="Every outside service, and what breaks without it" />
+      <Header title="Integrations" subtitle="Every outside service, and what breaks without it" />
       <div className="flex-1 p-6 overflow-auto bg-gradient-to-br from-slate-50 via-white to-slate-50">
         <div className="flex flex-wrap items-center gap-3 mb-4">
           <button

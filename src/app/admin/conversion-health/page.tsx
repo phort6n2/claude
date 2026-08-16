@@ -18,7 +18,7 @@ export default async function ConversionHealthPage() {
   return (
     <div className="flex flex-col h-full">
       <Header
-        title="Conversion health"
+        title="Conversion tracking"
         subtitle="Which clients are reporting conversions, and which are spending blind"
       />
       <div className="flex-1 p-6 overflow-auto bg-gradient-to-br from-slate-50 via-white to-slate-50">
