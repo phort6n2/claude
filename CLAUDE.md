@@ -359,6 +359,11 @@ posts actually go up. We read it nightly and store what is new in
   off the shop's own site, then tries the usual paths. Advertised first,
   because a guess that happens to 200 from a catch-all route is how you end up
   watching the wrong thing.
+- The nightly sweep **adopts an advertised feed by itself** for any shop that
+  has none, so the manual step disappears for every site that declares one. It
+  will NOT adopt a path guess unattended — a catch-all that answers 200 would
+  put another business's posts on this shop's Activity tab, and a client
+  reading someone else's work as their own is far worse than reading none.
 - The fetch goes through `validatePublicUrl` and uses **the URL that guard
   returns**, not the one it was handed — it upgrades http to https, and a
   guard you then bypass is not a guard.
@@ -440,6 +445,24 @@ back), switched on per shop from the admin Advertising tab.
   setting, `identify()` is never called, and the shop's privacy page gains a
   "How this site is measured" section — **only** for a shop that actually has
   a project id, so no site claims a tool it does not use.
+
+### Results (the monthly report)
+
+`monthly-report.ts` + `components/MonthlyReport.tsx`, on the client's portal
+(linked from the Booked tile, not a tab) and the admin's Results tab.
+
+- **Every figure is the shop's own bookkeeping.** Booked counts and revenue are
+  what they marked and what they typed. Nothing is estimated or grossed up — a
+  revenue figure a client cannot reconcile against their own till costs trust
+  rather than building it.
+- A zero booked column reads as "this does not work" when it usually means
+  nobody ticked the box, so the page **says which it is**, and reports how many
+  enquiries are still open as the caveat on every figure.
+- Empty months **in the middle** are shown; the empty tail before the shop
+  existed is trimmed. A gap month is worth seeing; eleven blank rows read as a
+  year of failure.
+- **It is not emailed.** Building the numbers and mailing them to fifteen real
+  business owners are different decisions.
 
 ### Response time
 

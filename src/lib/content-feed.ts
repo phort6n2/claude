@@ -170,6 +170,31 @@ async function fetchText(url: string): Promise<string | null> {
  * watching the wrong thing.
  */
 export async function discoverFeedUrl(siteUrl: string): Promise<string | null> {
+  const advertised = await discoverAdvertisedFeed(siteUrl)
+  if (advertised) return advertised
+
+  let origin: string
+  try {
+    origin = new URL(siteUrl.includes('://') ? siteUrl : `https://${siteUrl}`).origin
+  } catch {
+    return null
+  }
+
+  for (const path of GUESSES) {
+    const candidate = `${origin}${path}`
+    const body = await fetchText(candidate)
+    if (body && looksLikeFeed(body) && parseFeed(body).length > 0) return candidate
+  }
+  return null
+}
+
+/**
+ * Only what the site itself declares, via `<link rel="alternate">`.
+ *
+ * Separate from the guessing half because the unattended sweep may adopt this
+ * and may not adopt a guess — see `adoptAdvertisedFeeds`.
+ */
+export async function discoverAdvertisedFeed(siteUrl: string): Promise<string | null> {
   let origin: string
   try {
     origin = new URL(siteUrl.includes('://') ? siteUrl : `https://${siteUrl}`).origin
@@ -196,12 +221,6 @@ export async function discoverFeedUrl(siteUrl: string): Promise<string | null> {
         continue
       }
     }
-  }
-
-  for (const path of GUESSES) {
-    const candidate = `${origin}${path}`
-    const body = await fetchText(candidate)
-    if (body && looksLikeFeed(body) && parseFeed(body).length > 0) return candidate
   }
   return null
 }
@@ -243,6 +262,46 @@ export interface FeedSyncResult {
   message: string
   checked: number
   added: number
+  /** Shops whose feed the sweep found for itself. */
+  discovered: number
+}
+
+/**
+ * Find feeds for shops that have none, and adopt them.
+ *
+ * ONLY AN ADVERTISED FEED IS ADOPTED — a `<link rel="alternate"
+ * type="application/rss+xml">` on the shop's own site. That is the site
+ * declaring where its feed is, so it cannot be the wrong one. The path
+ * guesses (`/feed`, `/rss`, …) that `discoverFeedUrl` also tries are NOT
+ * enough to adopt unattended: a catch-all route that happens to answer 200
+ * would put another business's posts on this shop's Activity tab, and a
+ * client reading someone else's articles as their own work is far worse than
+ * a client reading none. Those stay behind the admin's "Find it for me".
+ */
+async function adoptAdvertisedFeeds(): Promise<number> {
+  const candidates = await prisma.client
+    .findMany({
+      where: { status: 'ACTIVE', contentFeedUrl: null, websiteUrl: { not: null } },
+      select: { id: true, businessName: true, websiteUrl: true },
+    })
+    .catch(() => [])
+
+  let adopted = 0
+  for (const client of candidates) {
+    const found = await discoverAdvertisedFeed(client.websiteUrl as string)
+    if (!found) continue
+    const check = await checkFeed(found)
+    if (!check.ok || check.entries.length === 0) continue
+    await prisma.client
+      .update({
+        where: { id: client.id },
+        data: { contentFeedUrl: found, contentFeedError: null },
+      })
+      .catch(() => {})
+    adopted++
+    console.log(`[ContentFeed] adopted ${found} for ${client.businessName}`)
+  }
+  return adopted
 }
 
 /**
@@ -253,6 +312,12 @@ export interface FeedSyncResult {
  * published, and a history that shortens as it ages is not a history.
  */
 export async function syncContentFeeds(clientId?: string): Promise<FeedSyncResult> {
+  // The unattended sweep adopts advertised feeds for shops that have none, so
+  // the manual step disappears for every site that declares one. Skipped when
+  // syncing a single client on demand — that is an admin who is already
+  // looking at the field.
+  const discovered = clientId ? 0 : await adoptAdvertisedFeeds()
+
   const clients = await prisma.client
     .findMany({
       where: {
@@ -268,9 +333,10 @@ export async function syncContentFeeds(clientId?: string): Promise<FeedSyncResul
       ok: true,
       checked: 0,
       added: 0,
+      discovered,
       message: clientId
         ? 'No content feed set for this shop yet.'
-        : 'No shops have a content feed set.',
+        : 'No shops have a content feed set, and none advertise one on their own site.',
     }
   }
 
@@ -332,6 +398,7 @@ export async function syncContentFeeds(clientId?: string): Promise<FeedSyncResul
   }
 
   const parts = [`${clients.length} feed${clients.length === 1 ? '' : 's'} checked`]
+  if (discovered) parts.push(`${discovered} found automatically`)
   if (added) parts.push(`${added} new post${added === 1 ? '' : 's'}`)
   if (failures.length) parts.push(`could not read: ${failures.join('; ')}`)
 
@@ -339,6 +406,7 @@ export async function syncContentFeeds(clientId?: string): Promise<FeedSyncResul
     ok: failures.length === 0,
     checked: clients.length,
     added,
+    discovered,
     message: parts.join(', ') + '.',
   }
 }
