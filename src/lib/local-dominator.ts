@@ -381,6 +381,63 @@ export interface CampaignShareLinks {
   imageLink: string | null
 }
 
+export interface CampaignDetail {
+  httpStatus: number | null
+  /** Keys actually present under share_links, verbatim. */
+  shareLinkKeys: string[]
+  campaignLink: string | null
+  dynamicUrl: string | null
+  imageLink: string | null
+  runCount: number | null
+  lastRunDate: string | null
+  error: string | null
+}
+
+/**
+ * The campaign object, reported warts and all.
+ *
+ * Separate from campaignShareLinks because that one collapses every failure
+ * to null, and "their API returned 404" then reads identically to "the field
+ * is not there yet". Those need different fixes, so the diagnostic gets the
+ * status code, the keys that actually came back, and how many runs the
+ * campaign has — enough to tell a missing field from a missing campaign.
+ */
+export async function campaignDetail(scheduledScanId: string): Promise<CampaignDetail> {
+  const empty: CampaignDetail = {
+    httpStatus: null,
+    shareLinkKeys: [],
+    campaignLink: null,
+    dynamicUrl: null,
+    imageLink: null,
+    runCount: null,
+    lastRunDate: null,
+    error: null,
+  }
+  try {
+    const res = await ldFetch(
+      `/v1/scheduled-scans/${encodeURIComponent(scheduledScanId)}?date_range=MAX`
+    )
+    const body = (await res.json().catch(() => null)) as Record<string, unknown> | null
+    if (!res.ok) {
+      return { ...empty, httpStatus: res.status, error: describeError(res.status, body) }
+    }
+    const links = (body?.share_links || {}) as Record<string, unknown>
+    const str = (v: unknown) => (typeof v === 'string' && v ? v : null)
+    return {
+      httpStatus: res.status,
+      shareLinkKeys: Object.keys(links),
+      campaignLink: str(links.campaign_link),
+      dynamicUrl: str(links.dynamic_url),
+      imageLink: str(links.image_link),
+      runCount: Array.isArray(body?.runs) ? (body.runs as unknown[]).length : null,
+      lastRunDate: str(body?.last_run_date),
+      error: null,
+    }
+  } catch (err) {
+    return { ...empty, error: err instanceof Error ? err.message : 'Request failed' }
+  }
+}
+
 /**
  * The campaign's CURRENT share links.
  *
