@@ -268,34 +268,6 @@ const API_KEYS: ApiKeyConfig[] = [
     warning:
       'Without it the maps still work, but they are framed from app.localdominator.co, so a client reading their own rankings sees a vendor\u2019s domain rather than yours. That domain is also the only one that advertises frame-ancestors *, so it is the most reliable to embed as well as the best branded.',
   },
-  {
-    key: 'BABYLOVEGROWTH_API_KEY',
-    label: 'BabyLoveGrowth API Key (account-wide)',
-    description:
-      'Optional fallback. Each shop normally holds its own key on their SEO tab — set this only if one BabyLoveGrowth account covers several shops.',
-    testable: true,
-    action: {
-      label: 'Sync articles now',
-      endpoint: '/api/admin/seo-articles/sync',
-      confirm:
-        'Pull every article from BabyLoveGrowth now?\n\nArticles are matched to a shop by the website they were written for. Clean ones go live on that shop’s site; anything making a claim this platform cannot make on a shop’s behalf is held for review instead. This also happens nightly.',
-    },
-    steps: [
-      {
-        text: 'Prefer the per-shop key: Clients → pick a shop → SEO tab. The key identifies the shop, so nothing has to be matched.',
-      },
-      {
-        text: 'BabyLoveGrowth → Integrations → API. Generate API Key, then copy it — it is shown once.',
-        href: 'https://app.babylovegrowth.ai/',
-        linkLabel: 'app.babylovegrowth.ai',
-      },
-      {
-        text: 'Only if you use one account for several shops: set the key here, and give each organisation the website its articles are for. That website is then the only link to a shop — matched against their custom domain, their Business Profile website, and their glassleads.app subdomain.',
-      },
-    ],
-    warning:
-      'Articles are written by a third party and speak for a real business in a regulated trade. Every one is scanned before it can go live, and anything that promises a turnaround, offers to cover a deductible, claims an insurer relationship, asserts a rating or states a fact about the shop’s history or credentials is held in the review queue instead. Clear those by hand — the scan catches known phrasings, not every invented fact.',
-  },
 ]
 
 /**

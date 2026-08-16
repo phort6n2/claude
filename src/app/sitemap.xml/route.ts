@@ -82,21 +82,6 @@ export async function GET(request: NextRequest) {
   const entry = (path: string, priority: string, freq: string) =>
     `  <url><loc>${origin}${path}</loc><lastmod>${lastmod}</lastmod><changefreq>${freq}</changefreq><priority>${priority}</priority></url>`
 
-  // Published articles only — the review queue is not a publishing surface,
-  // and a sitemap entry for a page that 404s is a crawl error the whole site
-  // pays for.
-  const articles = await prisma.seoArticle
-    .findMany({
-      where: {
-        clientId: client.id,
-        publishedAt: { not: null },
-        client: { seoContentEnabled: true },
-      },
-      orderBy: { publishedAt: 'desc' },
-      select: { slug: true, publishedAt: true },
-    })
-    .catch(() => [])
-
   const urls = [
     entry('/', '1.0', 'weekly'),
     ...servicesForClient(client as unknown as Record<ServiceFlag, boolean>).map((s) =>
@@ -108,15 +93,6 @@ export async function GET(request: NextRequest) {
     ...locationPages(areas)
       .filter((l) => cityIsIndexable(l.area, cityContent, shopCities.map((s) => s.city)))
       .map((l) => entry(`/locations/${l.slug}`, '0.7', 'monthly')),
-    ...(articles.length
-      ? [
-          entry('/blog', '0.6', 'weekly'),
-          ...articles.map(
-            (a) =>
-              `  <url><loc>${origin}/blog/${a.slug}</loc><lastmod>${(a.publishedAt || client.updatedAt).toISOString()}</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>`
-          ),
-        ]
-      : []),
     entry('/privacy', '0.1', 'yearly'),
     entry('/terms', '0.1', 'yearly'),
   ]

@@ -93,35 +93,6 @@ async function testLocalDominator(apiKey: string): Promise<{ success: boolean; m
   }
 }
 
-async function testBabyLoveGrowth(apiKey: string): Promise<{ success: boolean; message: string }> {
-  try {
-    const res = await fetch(
-      'https://api.babylovegrowth.ai/api/integrations/v1/articles?limit=1&offset=0',
-      {
-        headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(15_000),
-      }
-    )
-    if (res.ok) {
-      const body = (await res.json().catch(() => null)) as Array<{ title?: string }> | null
-      return {
-        success: true,
-        message:
-          Array.isArray(body) && body.length
-            ? `Connected. Newest article: “${body[0].title || 'untitled'}”.`
-            : 'Connected, but the account has no articles yet.',
-      }
-    }
-    if (res.status === 401) {
-      return { success: false, message: 'Rejected \u2014 check the key. It is sent as the X-API-Key header.' }
-    }
-    if (res.status === 429) return { success: false, message: 'Rate limited \u2014 try again in a minute.' }
-    return { success: false, message: `BabyLoveGrowth returned ${res.status}.` }
-  } catch {
-    return { success: false, message: 'Could not reach BabyLoveGrowth.' }
-  }
-}
-
 export async function POST(request: Request) {
   const session = await auth()
   if (!session?.user) {
@@ -159,9 +130,6 @@ export async function POST(request: Request) {
       break
     case 'LOCALDOMINATOR_API_KEY':
       result = await testLocalDominator(apiKey)
-      break
-    case 'BABYLOVEGROWTH_API_KEY':
-      result = await testBabyLoveGrowth(apiKey)
       break
     default:
       result = { success: false, message: 'Unknown setting key' }

@@ -30,8 +30,13 @@ export default function SeoTierCard({
     setBusy(true)
     setStatus(null)
     try {
+      // PUT, not PATCH: that route exports GET, PUT and DELETE and nothing
+      // else, so a PATCH was answered 405 with an empty body and this card
+      // could never save — it reported "Could not save." and reverted, which
+      // read as a rejected value rather than a wrong verb. The handler is
+      // already a partial write; keys absent from the payload are left alone.
       const res = await fetch(`/api/clients/${clientId}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ seoClient: next }),
       })

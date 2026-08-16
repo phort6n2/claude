@@ -25,10 +25,6 @@
     {
       "path": "/api/cron/ensure-rank-campaigns",
       "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron/sync-seo-articles",
-      "schedule": "0 5 * * *"
     }
   ]
 }
