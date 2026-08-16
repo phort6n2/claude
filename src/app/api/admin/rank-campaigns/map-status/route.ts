@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
 import {
   campaignDetail,
+  campaignListEntry,
   localDominatorShareHost,
   shareTokenResolves,
 } from '@/lib/local-dominator'
@@ -47,6 +48,19 @@ export async function POST() {
         source = 'scheduled_scan_id'
       }
     }
+
+    // The list endpoint, last. Its items may carry share_links that the
+    // detail response does not.
+    let listKeys: string[] = []
+    if (!wanted && client.rankTrackingId) {
+      const entry = await campaignListEntry(client.rankTrackingId)
+      listKeys = entry.shareLinkKeys
+      const fromList = whiteLabelEmbedUrl(entry.campaignLink, shareHost)
+      if (fromList) {
+        wanted = fromList
+        source = 'list endpoint'
+      }
+    }
     // Diagnose AND fix in one press. Storing is idempotent and costs no
     // credits, and a check that reports a fixable problem without fixing it
     // is just another round trip.
@@ -64,6 +78,7 @@ export async function POST() {
       lastRunDate: detail.lastRunDate,
       apiError: detail.error,
       hasCampaignLink: !!detail.campaignLink,
+      listShareLinkKeys: listKeys,
       source,
       // The all-keywords URL we WOULD store, and the one currently stored.
       wanted,
@@ -110,9 +125,9 @@ export async function POST() {
       `${missing.length} have no all-keywords map: ${missing
         .map(
           (r) =>
-            `${r.client} (runs=${r.runCount ?? '?'}, lastRun=${r.lastRunDate || 'never'}, share_links=[${
+            `${r.client} (detail share_links=[${
               r.shareLinkKeys.join(',') || 'empty'
-            }])`
+            }], list share_links=[${r.listShareLinkKeys.join(',') || 'empty'}])`
         )
         .join('; ')}`
     )
