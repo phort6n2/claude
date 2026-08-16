@@ -2,8 +2,8 @@ import { hasRenderableMap, readScanRecord, type HeatmapRecord } from '@/lib/loca
 import { campaignShareLinks, localDominatorShareHost } from '@/lib/local-dominator'
 import {
   interactiveEmbedUrl,
-  pickEmbed,
   shareEmbedUrl,
+  urlResolves,
   whiteLabelEmbedUrl,
 } from '@/lib/rank-embed'
 import RankBoard, { type KeywordRuns, type RunPoint } from '@/components/rank/RankBoard'
@@ -78,16 +78,6 @@ export default async function RankReport({
     )
   }
 
-  // One probe for the whole report. Which of their maps can be framed is a
-  // property of their routes, not of a particular run, so asking per keyword
-  // per visit would be a request per page view for the same answer.
-  const sample = (() => {
-    for (const list of byTerm.values()) {
-      const meta = readScanRecord((list[list.length - 1].raw || {}) as HeatmapRecord)
-      if (meta.shareUrl || meta.mapImageUrl) return meta
-    }
-    return null
-  })()
   const shareHost = await localDominatorShareHost()
 
   // The campaign's own share link is preferred over anything taken from a
@@ -134,22 +124,31 @@ export default async function RankReport({
     )
   }
 
-  const verdict = await pickEmbed(
-    interactiveEmbedUrl(sample?.shareUrl),
-    shareEmbedUrl(sample?.mapImageUrl),
-    whiteLabelEmbedUrl(sample?.shareUrl, shareHost)
-  )
-
-  const keywords: KeywordRuns[] = [...byTerm.entries()].map(([term, list]) => {
+  // Probed PER KEYWORD, not once for the report. Each keyword's runs carry
+  // their own share token, so a verdict taken from one of them says nothing
+  // about the rest — which is how a keyword whose token no longer resolves
+  // still got framed, and their page renders that as an empty world map
+  // centred on 0,0 rather than an error.
+  const keywords: KeywordRuns[] = await Promise.all(
+    [...byTerm.entries()].map(async ([term, list]) => {
     // Only the URLs and the three numbers travel to the browser — never the
     // grids. A year of weekly scans is a lot of JSON for a page that shows
     // one map at a time.
+    const urlFor = (meta: ReturnType<typeof readScanRecord>) =>
+      whiteLabelEmbedUrl(meta.shareUrl, shareHost) ||
+      interactiveEmbedUrl(meta.shareUrl) ||
+      shareEmbedUrl(meta.mapImageUrl)
+
+    // One probe per keyword, on its newest run — the one shown by default.
+    const latest = readScanRecord((list[list.length - 1].raw || {}) as HeatmapRecord)
+    const keywordOk = await urlResolves(urlFor(latest))
+
     const runs: RunPoint[] = list.map((scan) => {
       const record = (scan.raw || {}) as HeatmapRecord
       const meta = readScanRecord(record)
       // A run with nothing behind it is never framed: their page would draw
       // an empty world map rather than admit it has no data.
-      const renderable = hasRenderableMap(record)
+      const renderable = keywordOk && hasRenderableMap(record)
       return {
         scanId: scan.id,
         date: scan.scannedAt.toISOString(),
@@ -158,17 +157,9 @@ export default async function RankReport({
           month: 'short',
           year: 'numeric',
         }),
-        // Same report, in order of preference: our own share host first, so
-        // a client never reads a vendor's domain in their own portal.
-        embedUrl: !renderable
-          ? null
-          : verdict.whiteLabelOk
-            ? whiteLabelEmbedUrl(meta.shareUrl, shareHost)
-            : verdict.interactiveOk
-              ? interactiveEmbedUrl(meta.shareUrl)
-              : verdict.staticOk
-                ? shareEmbedUrl(meta.mapImageUrl)
-                : null,
+        // Our own share host first, so a client never reads a vendor's domain
+        // in their own portal.
+        embedUrl: renderable ? urlFor(meta) : null,
         // The new-tab link is for everyone: it is where their interactive
         // report is reliable, frame partitioning being the whole problem.
         providerUrl:
@@ -179,8 +170,9 @@ export default async function RankReport({
       }
     })
 
-    return { term, runs }
-  })
+      return { term, runs }
+    })
+  )
 
   return <RankBoard keywords={keywords} />
 }
