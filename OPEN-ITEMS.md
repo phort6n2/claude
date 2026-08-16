@@ -181,6 +181,45 @@ You have ruled this out for now and I have not built any. Worth revisiting: an i
 
 ## 5. Not built, ranked by what I would do next
 
+### 5.0 Clarity on the landing pages, and a standing conversion-rate loop
+**Agreed, queued behind the admin UI/UX work. Not started.**
+
+Microsoft Clarity on every hosted landing page, read continuously, with the
+scoreboard being conversion rate in Google Ads — **search campaigns, not
+PMax**, because PMax mixes placements and audiences that the landing page did
+not cause and cannot be held responsible for.
+
+Three things decide whether this works, and they are worth settling before any
+code:
+
+- **Clarity's API returns aggregates, not recordings.** The Data Export API
+  gives metrics broken down by dimension — dead clicks, rage clicks, scroll
+  depth, quickbacks, traffic by page and device — capped at a small number of
+  calls a day per project, over the last few days only. Session replays and
+  heatmaps are dashboard-only, human-eye things. So the standing loop reads
+  aggregates and forms hypotheses; anything that needs a replay watched is a
+  thing YOU watch and tell me about. A loop designed as "the model watches the
+  recordings" would be a loop that quietly invents its findings.
+- **Attribution has to survive the join.** Clarity measures the page; Google
+  Ads measures the money. The join is already half-built — `gclid` rides with
+  every lead and booked jobs upload back as offline conversions — so the
+  honest metric is per-shop, per-campaign, over a window long enough for a
+  low-volume shop to accumulate signal. With 15 shops at auto-glass volumes,
+  most page changes will not clear noise in a week. Expect to run changes for
+  a month, and expect some to stay unproven.
+- **Session replay on a real business's site is a privacy surface.** Clarity
+  records interactions and masks text by default; the quote form carries
+  names, phone numbers and damage photos. Masking must stay on, the form's
+  fields must be excluded explicitly rather than by trusting the default, and
+  each shop's privacy page has to say that a session-analytics tool is in use.
+  That is a §2 content change on 15 live sites, not a footnote.
+
+Open decisions: one Clarity project per shop (clean separation, 15 API tokens,
+15 dashboards) or one project across all of them (one token, one dashboard,
+filtering by host). Recommendation is one project per shop — the shops have
+different traffic, different geography and different pages, and a merged
+dataset would average away exactly the differences worth acting on.
+
 1. **Response-time tracking.** The app knows when a lead arrived and when its status moved. "This shop takes four hours to touch a lead" is nearly free, and it is your answer when a client says the leads are bad.
 2. **Real sales page at glassleads.app.** Every client site's footer now links "Powered by GlassLeads" to the apex, which serves a holding brand page (features, no pricing, no contact). The real page needs decisions only you can make: published pricing yes/no, the CTA (a demo-booking link? a phone number? an email that actually receives mail — the Resend domain only sends), and proof (screenshots, a client quote).
 3. **Two-step quote form with partial capture.** The form dropped from six
