@@ -227,6 +227,10 @@ and posts each finished run back, so nothing is polled.
   URL is a standalone marketing page, which is what put marketing chrome in a
   client's portal. Only the token travels.
 - The daily sweep captures and refreshes it, so rendering costs no request.
+- **Their share host is a usable oracle: 200 for a token it knows, 404 for
+  one it does not.** Verified against a real token and two invented ones. So
+  a candidate token can be TESTED rather than guessed — which is how the
+  scheduled_scan_id is tried when no campaign_link exists.
 - **Their API does not CREATE the campaign share link.** A campaign made via
   the API comes back with `share_links: [image_link, dynamic_url]` and no
   `campaign_link`, even after a run has completed; the two campaigns that had
