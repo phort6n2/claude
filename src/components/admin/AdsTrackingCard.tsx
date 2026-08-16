@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import ClarityPanel from '@/components/admin/ClarityPanel'
+import OfflineConversionsCard from '@/components/admin/OfflineConversionsCard'
 import {
   CheckCircle2,
   ChevronDown,
@@ -549,6 +550,20 @@ export default function AdsTrackingCard({
           the site&apos;s footer prints one plain, un-rewritten copy of the main number.
         </p>
       </Steps>
+
+      {/* Uploading booked jobs is Google-only — there is no Microsoft
+          equivalent and Clarity has nothing to do with it — so it belongs
+          inside this panel rather than as a card of its own below the tabs,
+          where it sat under every tab regardless of which one was open. */}
+      <div className="border-t border-gray-200 pt-5">
+        <h3 className="font-semibold text-gray-900">Booked jobs back to Google</h3>
+        <p className="text-sm text-gray-500">
+          Upload what each job was worth, so bidding optimises for revenue rather than form fills
+        </p>
+        <div className="-mx-6 -mb-5">
+          <OfflineConversionsCard clientId={clientId} />
+        </div>
+      </div>
 
         </>
       )}
