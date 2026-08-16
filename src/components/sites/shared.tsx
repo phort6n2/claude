@@ -1531,14 +1531,34 @@ export function SiteFooter({
               </ul>
             </div>
           )}
+          {/* The areas are pre-split into two halves so they can be two
+              columns of the desktop footer grid. Below md that grid is a
+              single column, so the two halves STACKED — one long list with an
+              unexplained gap in the middle of it where the second half began.
+              Here they are put side by side instead, under one heading, which
+              is what the split was always for.
+
+              `md:contents` makes this wrapper vanish from the box tree at md
+              and above, so the two chunks become direct grid items again and
+              the desktop layout is byte-for-byte what it was. */}
+          {areaSplit.length > 0 && (
+          <div className="md:contents">
+            <h2 className="md:hidden text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5">
+              Areas we serve
+            </h2>
+            <div className="grid grid-cols-2 gap-x-6 md:contents">
           {areaSplit.map((chunk, i) => (
             <div key={i}>
               {i === 0 ? (
-                <h2 className="text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5">
+                <h2 className="hidden md:block text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5">
                   Areas we serve
                 </h2>
               ) : (
-                <div aria-hidden="true" className="hidden lg:block mb-3.5 text-[13px] leading-normal font-bold">&nbsp;</div>
+                // Was `hidden lg:block`, which left this spacer off at md —
+                // where the two chunks are ALREADY side by side, so the second
+                // column's first city sat level with the heading instead of
+                // with the first column's first city.
+                <div aria-hidden="true" className="hidden md:block mb-3.5 text-[13px] leading-normal font-bold">&nbsp;</div>
               )}
               <ul className="list-none m-0 p-0 text-sm">
                 {chunk.map((area) => {
@@ -1548,16 +1568,20 @@ export function SiteFooter({
                       )?.slug
                     : locationPages(areas || []).find((l) => l.area === area)?.slug
                   return (
-                    <li key={area} className="py-[5px]">
+                    <li key={area}>
                       {slug ? (
                         <a
                           href={`${basePath || ''}/locations/${slug}`}
-                          className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline"
+                          // Padding on the ANCHOR, not the li: it was on the
+                          // li, so the tappable area was the text box itself —
+                          // about 20px tall on a list of links meant to be hit
+                          // with a thumb.
+                          className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-[7px]"
                         >
                           {area}
                         </a>
                       ) : (
-                        area
+                        <span className="inline-block py-[7px]">{area}</span>
                       )}
                     </li>
                   )
@@ -1565,6 +1589,9 @@ export function SiteFooter({
               </ul>
             </div>
           ))}
+            </div>
+          </div>
+          )}
         </div>
         {/* Identity bar — who the business is and how to reach it, with a
             data-backed trust grid beside it. The phone here is a plain,
