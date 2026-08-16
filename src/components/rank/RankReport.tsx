@@ -109,6 +109,22 @@ export default async function RankReport({
   if (campaignEmbed) {
     return (
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        {/* Admin only. Which URL is framed is the single most useful fact when
+            this looks wrong, and inferring it from a screenshot cost several
+            rounds. It costs one line to just say it. */}
+        {showProviderLink && (
+          <p className="px-4 sm:px-5 py-2 text-[11px] text-gray-500 border-b border-gray-100 truncate">
+            {mapUrl ? 'Stored' : 'Live'} all-keywords map:{' '}
+            <a
+              href={campaignEmbed}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              {campaignEmbed}
+            </a>
+          </p>
+        )}
         <iframe
           src={campaignEmbed}
           title="Local ranking map"
@@ -124,6 +140,14 @@ export default async function RankReport({
     shareEmbedUrl(sample?.mapImageUrl),
     whiteLabelEmbedUrl(sample?.shareUrl, shareHost)
   )
+
+  // Nothing campaign-wide to frame. Say why, once, where an admin will see
+  // it — otherwise the per-keyword tabs below just look like the wrong map.
+  const noCampaignReason = !shareHost
+    ? 'No share domain set (Settings → API keys → Rank report share domain).'
+    : !campaignId
+      ? 'This client has no Local Dominator campaign yet.'
+      : 'Local Dominator has not issued a campaign_link for this campaign yet — showing per-keyword maps instead.'
 
   const keywords: KeywordRuns[] = [...byTerm.entries()].map(([term, list]) => {
     // Only the URLs and the three numbers travel to the browser — never the
@@ -172,11 +196,7 @@ export default async function RankReport({
       keywords={keywords}
       // Admin only: a client has no use for a framing policy, and showing
       // them one reads as the product being broken.
-      fallbackReason={
-        showProviderLink && !verdict.whiteLabelOk && !verdict.interactiveOk && !verdict.staticOk
-          ? verdict.reason
-          : null
-      }
+      fallbackReason={showProviderLink ? noCampaignReason : null}
     />
   )
 }

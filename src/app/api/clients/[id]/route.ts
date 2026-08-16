@@ -73,7 +73,17 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     }
 
     // Text fields that may be blanked to null.
-    for (const key of ['contactPerson', 'googlePlaceId', 'googleMapsUrl', 'websiteUrl', 'logoUrl'] as const) {
+    // Their all-keywords map is in this list, not the one below: it must be
+    // clearable, so that emptying the field hands control back to the API
+    // capture rather than pinning a stale URL forever.
+    for (const key of [
+      'contactPerson',
+      'googlePlaceId',
+      'googleMapsUrl',
+      'websiteUrl',
+      'logoUrl',
+      'rankMapUrl',
+    ] as const) {
       setIf(key, data[key] || null)
     }
     // Plain scalars, written as given.
