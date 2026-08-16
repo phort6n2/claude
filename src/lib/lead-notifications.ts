@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { decrypt } from '@/lib/encryption'
 import { toE164, telHref, smsHref, firstTextTo } from '@/lib/contact-links'
+import { countSegments, fitSegments } from '@/lib/sms-segments'
 
 /**
  * Email and SMS alerts when a lead arrives.
@@ -94,19 +95,34 @@ function plainLines(lead: LeadSummary): string[] {
 }
 
 /**
- * The SMS body.
+ * The SMS body: everything useful that fits in ONE billed segment.
  *
- * Kept under one segment where possible — the phone number is first after the
- * name because the only useful action on a lead alert is to call it, and a
- * dispatcher reading this on a lock screen should not have to open anything.
+ * Two things decide the cost, and only one of them is length.
+ *
+ * A message containing a single character outside the GSM-7 alphabet is sent
+ * as UCS-2, where a segment holds 70 characters instead of 160. This body used
+ * to open "New lead — {shop}" and join the job to the vehicle with "·", so
+ * EVERY alert this platform has ever sent was billed as two segments where one
+ * would have done — while the comment here claimed it was kept to one. Both
+ * characters are gone, and `fitSegments` normalises whatever a shop name or a
+ * customer's own words drag in.
+ *
+ * The order is the priority order, and the tail is dropped rather than the
+ * message being allowed to grow. Name and number first, because the only
+ * useful action on a lead alert is to call it and a dispatcher reading a lock
+ * screen should not have to open anything; then what the job is; then the ZIP,
+ * which decides whether a mobile van can take it.
  */
 function smsBody(businessName: string, lead: LeadSummary): string {
-  const parts = [
-    `New lead — ${businessName}`,
-    `${lead.name} ${lead.phone}`.trim(),
-    [lead.service, lead.vehicle].filter(Boolean).join(' · '),
-  ].filter(Boolean)
-  return parts.join('\n').slice(0, 320)
+  return fitSegments(
+    [
+      `${lead.name || 'New lead'} ${lead.phone || ''}`.trim(),
+      [lead.service, lead.vehicle].filter(Boolean).join(', '),
+      lead.postalCode ? `ZIP ${lead.postalCode}` : '',
+      businessName,
+    ],
+    1
+  )
 }
 
 function emailHtml(businessName: string, lead: LeadSummary): string {
@@ -198,6 +214,13 @@ export async function notifyNewLead(
   const config = await prisma.clientNotification.findUnique({ where: { clientId } }).catch(() => null)
   if (!config) return result
 
+  // ONLY THE ADDRESSES AND NUMBERS SET ON THIS CLIENT. There is deliberately
+  // no fallback here — not the shop's own `Client.email`, not an operator
+  // address from the environment, not a "last known good" from anywhere. A
+  // lead alert carries a real customer's name, phone number and sometimes a
+  // photo of their car, so a default recipient is a way for that to reach
+  // somebody nobody chose. An unconfigured client sends nothing and says so on
+  // its readiness badge, which is the correct failure.
   const emails = config.emailEnabled ? config.emailTo.filter(Boolean) : []
   const numbers = config.smsEnabled ? config.smsTo.filter(Boolean) : []
   if (emails.length === 0 && numbers.length === 0) return result
@@ -252,6 +275,15 @@ export async function notifyNewLead(
         const twilio = (await import('twilio')).default
         const clientApi = twilio(sid, token)
         const body = smsBody(businessName, lead)
+        // Logged because the cost of this is invisible otherwise: a change to
+        // the body, or a shop name with an emoji in it, silently doubles every
+        // alert that shop sends and nothing in the app would say so.
+        const segments = countSegments(body)
+        if (segments > 1) {
+          console.warn(
+            `[Notify] SMS for ${businessName} is ${segments} segments — each recipient is billed ${segments}x`
+          )
+        }
         // Sequential, and each failure is recorded rather than aborting the
         // rest: one bad number in the list must not silence the others.
         for (const raw of numbers) {

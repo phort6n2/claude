@@ -112,8 +112,9 @@ export default function ClarityPanel({
           Project id
         </label>
         <p className="mt-0.5 text-xs text-gray-500">
-          Clarity → Settings → Overview. The short code from the tracking snippet, not a URL. Not
-          a secret — it ships in their page source.
+          Clarity → Settings → Overview. <strong>Paste the whole tracking snippet</strong> if that
+          is what you have — the id is pulled out of it. Not a secret: it ships in their page
+          source either way.
         </p>
         <div className="mt-2 flex flex-wrap gap-2">
           <input
@@ -123,7 +124,7 @@ export default function ClarityPanel({
             spellCheck={false}
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
-            placeholder="abc123xyz"
+            placeholder="Paste the snippet, or just the id"
             className="flex-1 min-w-[220px] border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono"
           />
           <Button onClick={() => patch('id')} disabled={busy !== null}>

@@ -181,7 +181,21 @@ server-side; `widget.js` upgrades it in place.
 
 ### Notifications
 
-`lead-notifications.ts` — Resend email and Twilio SMS. Emails come from
+`lead-notifications.ts` — Resend email and Twilio SMS.
+
+- **Recipients are ONLY what is set on the client.** No fallback to
+  `Client.email`, no operator address from the environment, nothing. A lead
+  alert carries a real customer's name, number and sometimes a photo of their
+  car; a default recipient is how that reaches somebody nobody chose. An
+  unconfigured client sends nothing and says so on its readiness badge.
+- **SMS is billed per SEGMENT, and encoding decides the segment size.** One
+  character outside GSM-7 drops the message from 160 characters per segment to
+  70. An em dash and a middle dot in the body were doubling the cost of every
+  alert ever sent. `sms-segments.ts` normalises to GSM-7 and `fitSegments`
+  drops the least important lines until it fits one segment — name and number
+  first, they are never dropped. A multi-segment body is logged as a warning,
+  because nothing else in the app would show it.
+ Emails come from
 **"AUTO GLASS LEAD"** with subject `[NEW LEAD - {shop}] - Call Immediately`,
 and carry Call / Text / damage-photo / "did this one book?" buttons.
 
@@ -407,6 +421,10 @@ tracking, Check the live site) hide on that tab.
 
 - **One project per shop.** A merged project averages away exactly the
   differences worth acting on — different traffic, geography and pages.
+- **Paste the whole snippet.** `extractClarityProjectId` digs the id out of the
+  tracking snippet, the tag URL or a dashboard URL. Demanding the bare code
+  meant reading a `<script>` block and picking the right one of its quoted
+  strings, with "clarity" and "script" sitting next to the one you want.
 - **Two fields, treated differently.** `Client.clarityProjectId` is PUBLIC —
   it ships in the page source, because that is how the collector identifies
   itself — so it is stored in the clear. `Client.clarityApiToken` reads the

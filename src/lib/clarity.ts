@@ -23,6 +23,43 @@ import { decrypt } from '@/lib/encryption'
  * click id riding with every lead on the other.
  */
 
+/**
+ * Pull the project id out of whatever the operator pasted.
+ *
+ * Clarity hands you a `<script>` block, not an id, so demanding the bare code
+ * means reading the snippet and picking the right one of its several quoted
+ * strings — with "clarity" and "script" sitting right next to the one you
+ * want. Accepting the snippet is the difference between a field that works on
+ * the first try and one that rejects the thing the vendor actually gave you.
+ *
+ * Handles: the bare id, the full tracking snippet, the tag URL, and a
+ * dashboard URL. Returns null when there is no id in there at all, so a
+ * genuine mistake is still refused rather than saved as nonsense.
+ */
+export function extractClarityProjectId(input: string): string | null {
+  const raw = input.trim()
+  if (!raw) return null
+
+  // Already an id.
+  if (/^[a-z0-9]{6,20}$/i.test(raw)) return raw.toLowerCase()
+
+  // The tag URL, in a snippet or on its own: clarity.ms/tag/{id}
+  const fromTag = /clarity\.ms\/tag\/([a-z0-9]{6,20})/i.exec(raw)
+  if (fromTag) return fromTag[1].toLowerCase()
+
+  // A dashboard URL: clarity.microsoft.com/projects/view/{id}/...
+  const fromDashboard = /clarity\.microsoft\.com\/projects\/view\/([a-z0-9]{6,20})/i.exec(raw)
+  if (fromDashboard) return fromDashboard[1].toLowerCase()
+
+  // The snippet's last argument: (window, document, "clarity", "script", "{id}")
+  // Anchored on the "script" argument so the literal words "clarity" and
+  // "script" in the same call cannot be mistaken for the id.
+  const fromSnippet = /["']script["']\s*,\s*["']([a-z0-9]{6,20})["']/i.exec(raw)
+  if (fromSnippet) return fromSnippet[1].toLowerCase()
+
+  return null
+}
+
 const EXPORT_URL = 'https://www.clarity.ms/export-data/api/v1/project-live-insights'
 /** Their documented ceiling. Older data is dashboard-only. */
 export const MAX_DAYS = 3

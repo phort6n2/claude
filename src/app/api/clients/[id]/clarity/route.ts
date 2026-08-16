@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
 import { decrypt, encrypt, isEncryptionConfigured } from '@/lib/encryption'
-import { fetchClarityInsights, summarise } from '@/lib/clarity'
+import { extractClarityProjectId, fetchClarityInsights, summarise } from '@/lib/clarity'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -37,15 +37,20 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
   if ('clarityProjectId' in body) {
     const raw = typeof body.clarityProjectId === 'string' ? body.clarityProjectId.trim() : ''
-    // Their ids are short lowercase alphanumerics. Rejecting a pasted URL or a
-    // whole script tag here beats putting a broken loader on 15 live sites.
-    if (raw && !/^[a-z0-9]{6,20}$/.test(raw)) {
+    // Paste the whole snippet if you like — the id is dug out of it. Only a
+    // string with no id anywhere in it is refused, because putting a broken
+    // loader on a live site is worse than a rejected save.
+    const extracted = raw ? extractClarityProjectId(raw) : null
+    if (raw && !extracted) {
       return NextResponse.json(
-        { error: 'That does not look like a Clarity project id — it is the short code from the tracking snippet, not a URL.' },
+        {
+          error:
+            'No Clarity project id in that. Paste the whole tracking snippet, the tag URL, or just the short code itself.',
+        },
         { status: 400 }
       )
     }
-    data.clarityProjectId = raw || null
+    data.clarityProjectId = extracted
   }
 
   if ('clarityApiToken' in body) {
