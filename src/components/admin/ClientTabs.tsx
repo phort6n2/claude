@@ -36,7 +36,15 @@ export default function ClientTabs({ clientId }: { clientId: string }) {
   ]
 
   return (
-    <nav className="flex gap-1 overflow-x-auto border-b border-gray-200 -mb-px" aria-label="Client settings">
+    // Wraps rather than scrolls. It was overflow-x-auto with no fade, no
+    // arrow and no scrollbar until hovered, so below about 1100px the last
+    // three tabs — SEO, Lead delivery, Users — were simply invisible, with
+    // nothing on screen suggesting they existed. A second row is uglier than
+    // a scroll and infinitely more findable.
+    <nav
+      className="flex flex-wrap gap-1 border-b border-gray-200 -mb-px"
+      aria-label="Client settings"
+    >
       {tabs.map((tab) => {
         const active = tab.exact ? pathname === tab.href : pathname.startsWith(tab.href)
         const Icon = tab.icon

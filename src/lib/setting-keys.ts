@@ -9,6 +9,7 @@
 /** Stored encrypted, and never sent to the browser by the list endpoint. */
 export const SENSITIVE_KEYS = [
   'ANTHROPIC_API_KEY',
+  'DEEPGRAM_API_KEY',
   'GOOGLE_PLACES_API_KEY',
   'RESEND_API_KEY',
   'TWILIO_ACCOUNT_SID',
@@ -28,6 +29,12 @@ export const SENSITIVE_KEYS = [
  */
 export const ALL_KEYS: string[] = [
   'ANTHROPIC_API_KEY',
+  // Transcription — the FIRST step of call coaching. This was read by the
+  // pipeline and probed by the status page but had no field anywhere, so the
+  // headline feature could not be switched on from the UI at all. Exactly the
+  // failure the settings fallback exists to prevent, and the second time it
+  // has happened after Local Dominator.
+  'DEEPGRAM_API_KEY',
   'GOOGLE_PLACES_API_KEY',
   'RESEND_API_KEY',
   'RESEND_FROM',

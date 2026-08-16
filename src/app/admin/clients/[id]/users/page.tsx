@@ -242,22 +242,13 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
-      <div className="max-w-4xl mx-auto p-6">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <Link
-            href={`/admin/clients/${id}`}
-            className="p-2 hover:bg-gray-200 rounded-full transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{client?.businessName}</h1>
-            <p className="text-gray-600">Portal Users</p>
-          </div>
-        </div>
-
+    // A tab, not a page. This used to re-render the whole page shell inside
+    // the tab shell — its own min-h-screen, its own gradient, a max-w-4xl
+    // column narrower than and misaligned with the tab bar above it, and a
+    // second copy of the client's name with a back arrow. Every other tab is
+    // just its content.
+    <div className="space-y-6">
+      <div>
         {/* Info banner */}
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6">
           <p className="text-sm text-blue-800">
@@ -409,7 +400,10 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    {/* Wraps. As a single non-wrapping row the deactivate
+                        toggle clipped and the delete button was pushed
+                        outside the card entirely at a 900px window. */}
+                    <div className="flex flex-wrap items-center justify-end gap-2">
                       {settingPasswordFor === user.id ? (
                         <div className="flex items-center gap-2">
                           <input
