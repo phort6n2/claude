@@ -29,6 +29,10 @@
     {
       "path": "/api/cron/sync-content-feeds",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/sync-clarity",
+      "schedule": "0 7 * * *"
     }
   ]
 }

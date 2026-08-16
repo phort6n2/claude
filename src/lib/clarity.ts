@@ -172,3 +172,117 @@ export function summarise(metrics: ClarityMetric[]): Array<{ name: string; total
       }, 0),
     }))
 }
+
+/** Pull one number out of the metric soup, whatever shape the rows take. */
+function totalFor(metrics: ClarityMetric[], name: string): number | null {
+  const metric = metrics.find((m) => m.metricName === name)
+  if (!metric || !Array.isArray(metric.information)) return null
+  let total = 0
+  let seen = false
+  for (const row of metric.information) {
+    const value = row.sessionsCount ?? row.subTotal ?? row.sessionsWithMetricPercentage
+    const n = typeof value === 'number' ? value : Number(value)
+    if (Number.isFinite(n)) {
+      total += n
+      seen = true
+    }
+  }
+  return seen ? total : null
+}
+
+export interface ClaritySyncResult {
+  ok: boolean
+  message: string
+  stored: number
+  skipped: number
+}
+
+/**
+ * Copy yesterday out of Clarity before it ages off.
+ *
+ * WHY THIS RUNS ON A SCHEDULE rather than on demand: their export API serves
+ * the LAST THREE DAYS and nothing older, at a handful of calls per project per
+ * day. A week-old Tuesday cannot be fetched at any price — it exists only in
+ * their dashboard, for a person to read by eye. So the history has to be
+ * accumulated as it happens, or there is no history to reason about at all.
+ *
+ * One call per shop per night, well inside their limit. A shop with a project
+ * id but no export token is skipped rather than failed: the tag is collecting
+ * either way, and the token is the optional half.
+ */
+export async function syncClarityHistory(clientId?: string): Promise<ClaritySyncResult> {
+  const clients = await prisma.client
+    .findMany({
+      where: {
+        ...(clientId ? { id: clientId } : { status: 'ACTIVE' }),
+        clarityProjectId: { not: null },
+        clarityApiToken: { not: null },
+      },
+      select: { id: true, businessName: true },
+    })
+    .catch(() => [])
+
+  if (clients.length === 0) {
+    return {
+      ok: true,
+      stored: 0,
+      skipped: 0,
+      message: 'No shops have both a Clarity project id and an export token.',
+    }
+  }
+
+  // Yesterday, at midnight UTC. Yesterday rather than today because today is
+  // still accumulating and would be rewritten by tomorrow's run with a
+  // different, larger number for the same date.
+  const day = new Date()
+  day.setUTCDate(day.getUTCDate() - 1)
+  day.setUTCHours(0, 0, 0, 0)
+
+  let stored = 0
+  let skipped = 0
+  const failures: string[] = []
+
+  for (const client of clients) {
+    const existing = await prisma.clarityDay
+      .findUnique({ where: { clientId_day: { clientId: client.id, day } } })
+      .catch(() => null)
+    // Already have it. Re-fetching would spend one of the day's few calls to
+    // overwrite a row with the same numbers.
+    if (existing) {
+      skipped++
+      continue
+    }
+
+    const result = await fetchClarityInsights(client.id, { days: 1, dimensions: ['URL', 'Device'] })
+    if (!result.ok) {
+      failures.push(`${client.businessName}: ${result.message}`)
+      continue
+    }
+
+    await prisma.clarityDay
+      .create({
+        data: {
+          clientId: client.id,
+          day,
+          sessions: totalFor(result.metrics, 'Traffic'),
+          deadClicks: totalFor(result.metrics, 'DeadClickCount'),
+          rageClicks: totalFor(result.metrics, 'RageClickCount'),
+          quickbacks: totalFor(result.metrics, 'QuickbackClick'),
+          scrollDepth: totalFor(result.metrics, 'ScrollDepth'),
+          raw: result.metrics as unknown as object,
+        },
+      })
+      .then(() => {
+        stored++
+      })
+      .catch((err) => {
+        failures.push(`${client.businessName}: could not store (${err?.message || 'unknown'})`)
+      })
+  }
+
+  const parts = [`${stored} day(s) stored`]
+  if (skipped) parts.push(`${skipped} already had it`)
+  if (failures.length) parts.push(`failed: ${failures.join('; ')}`)
+
+  return { ok: failures.length === 0, stored, skipped, message: parts.join(', ') + '.' }
+}

@@ -439,7 +439,12 @@ tracking, Check the live site) hide on that tab.
   the join to Google Ads, and a paid session gets `upgrade()`d because at
   auto-glass volumes an unprioritised replay is usually a bot.
 - **The API returns AGGREGATES, NOT RECORDINGS**, a few calls per project per
-  day, last three days only. Replays and heatmaps are dashboard-only, human-eye
+  day, **last three days only** — which is why `/api/cron/sync-clarity` exists.
+  A day not copied into `ClarityDay` inside that window cannot be fetched again
+  at any price; it survives only in their dashboard, for a person to read by
+  eye. The nightly job stores yesterday (not today, which is still
+  accumulating) with the raw payload beside the extracted numbers, so a reader
+  bug costs a recompute rather than a window that cannot be re-fetched. Replays and heatmaps are dashboard-only, human-eye
   things. A loop designed as "the model watches the recordings" is a loop that
   invents its findings.
 - **The scoreboard is not in Clarity.** It is conversion rate in Google Ads on
