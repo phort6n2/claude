@@ -156,7 +156,17 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
           }))
       : []
 
-    const rawPhotos = Array.isArray(body.photos) ? body.photos.slice(0, MAX_PHOTOS) : []
+    // A payload with no `photos` key LEAVES THE PHOTOS ALONE. It used to
+    // rewrite them from whatever the caller sent — meaning absent was read as
+    // "delete them all", and any editor that had loaded a photo list minutes
+    // ago wrote that stale list back on its next save. Reordering a photo in
+    // the photo manager and then typing one character in the site-content
+    // editor below it silently restored the old order, with no message.
+    // Photos are owned by /api/clients/[id]/photos; this route only accepts
+    // them so the importer can seed a whole site in one write.
+    const managesPhotos = Object.prototype.hasOwnProperty.call(body, 'photos')
+    const rawPhotos =
+      managesPhotos && Array.isArray(body.photos) ? body.photos.slice(0, MAX_PHOTOS) : []
     const photos: Array<{ url: string; alt: string; pool: 'GALLERY' | 'BODY'; sortOrder: number }> = []
     for (const [index, photo] of rawPhotos.entries()) {
       if (typeof photo?.url !== 'string') continue
@@ -212,9 +222,17 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
           update: data,
           create: { clientId: id, ...data },
         }),
-        prisma.clientSitePhoto.deleteMany({ where: { clientId: id } }),
-        ...(photos.length
-          ? [prisma.clientSitePhoto.createMany({ data: photos.map((p) => ({ ...p, clientId: id })) })]
+        ...(managesPhotos
+          ? [
+              prisma.clientSitePhoto.deleteMany({ where: { clientId: id } }),
+              ...(photos.length
+                ? [
+                    prisma.clientSitePhoto.createMany({
+                      data: photos.map((p) => ({ ...p, clientId: id })),
+                    }),
+                  ]
+                : []),
+            ]
           : []),
       ])
 

@@ -35,9 +35,15 @@ interface ChapterRow {
 
 /**
  * Editorial content for the hosted site: warranty, FAQ, hero bullets, footer
- * blurb, registration line, and photo URLs. Every section on the site backed
- * by this data disappears when its content is empty — so an untouched editor
- * simply means a leaner site, never a broken one.
+ * blurb and the registration line. Every section on the site backed by this
+ * data disappears when its content is empty — so an untouched editor simply
+ * means a leaner site, never a broken one.
+ *
+ * NOT photos. There is one photo editor and it is the photo manager above
+ * this card; a second list here wrote the whole table on every autosave from
+ * a snapshot loaded on page load, so a reorder or a hero change made in the
+ * manager was silently reverted by the next keystroke down here. The state
+ * survives only to carry what an import finds through to its first save.
  */
 export default function SiteContentEditor({
   clientId,
@@ -124,6 +130,9 @@ export default function SiteContentEditor({
   persistRef.current = persistClientFields
   const savingRef = useRef(false)
   const queuedRef = useRef(false)
+  // True only between an import landing photos in state and the save that
+  // persists them. Nothing else in this editor may write the photo table.
+  const importedPhotosRef = useRef(false)
 
   async function saveNow() {
     if (savingRef.current) {
@@ -132,8 +141,14 @@ export default function SiteContentEditor({
     }
     savingRef.current = true
     setSaving(true)
-    const body = payloadRef.current
-    const snap = JSON.stringify(body)
+    const snap = JSON.stringify(payloadRef.current)
+    // Photos travel ONLY on the save that follows an import. They are owned by
+    // the photo manager above, which writes them one at a time through
+    // /photos — so sending this editor's copy on every autosave meant a list
+    // loaded minutes ago overwrote a reorder or a hero change made since, and
+    // it did it silently. `photos` absent leaves them untouched server-side.
+    const { photos: importedPhotos, ...rest } = payloadRef.current
+    const body = importedPhotosRef.current ? { ...rest, photos: importedPhotos } : rest
     try {
       // Client-record fields first: if this fails the operator must know
       // before we report success on the content half.
@@ -145,6 +160,7 @@ export default function SiteContentEditor({
       })
       const data = await res.json()
       if (res.ok) {
+        importedPhotosRef.current = false
         lastSavedRef.current = snap
         setSaveStatus(
           data.warning
@@ -202,7 +218,10 @@ export default function SiteContentEditor({
       if (Array.isArray(d.faq) && d.faq.length) setFaq(d.faq)
       if (Array.isArray(d.heroBullets) && d.heroBullets.length) setBullets(d.heroBullets)
       if (Array.isArray(d.chapters) && d.chapters.length) setChapters(d.chapters)
-      if (Array.isArray(d.photos) && d.photos.length) setPhotos(d.photos)
+      if (Array.isArray(d.photos) && d.photos.length) {
+        setPhotos(d.photos)
+        importedPhotosRef.current = true
+      }
       if (d.logoUrl && onLogoFound) onLogoFound(d.logoUrl)
       if (Array.isArray(d.serviceAreas) && d.serviceAreas.length && onAreasFound) {
         onAreasFound(d.serviceAreas)
@@ -249,7 +268,7 @@ export default function SiteContentEditor({
         </label>
         <p className="text-xs text-gray-500 mb-2">
           Reads their site (plus warranty/FAQ/about pages) and pre-fills the fields below with
-          what it actually says — photos, warranty wording, FAQs. It saves automatically, so
+          what it actually says — warranty wording, FAQs, the story. It saves automatically, so
           review the fields after an import and delete anything that reads wrong.
         </p>
         <div className="flex gap-2">
@@ -442,68 +461,6 @@ export default function SiteContentEditor({
             className="text-sm text-blue-600 font-medium"
           >
             + Add question
-          </button>
-        )}
-      </div>
-
-      {/* Photos */}
-      <div>
-        <label className="block text-xs font-semibold text-gray-600 mb-1">
-          Photos (https image URLs — real photos of this business only)
-        </label>
-        <p className="text-xs text-gray-400 mb-2">
-          Gallery photos build the &quot;Our Work&quot; grid (6 looks best). Body photos
-          appear beside the text on service pages. Stock photography reads as fake
-          and costs more trust than the polish gains.
-        </p>
-        {photos.map((photo, i) => (
-          <div key={i} className="flex gap-2 mb-2">
-            <input
-              className={inputCls}
-              placeholder="https://…/photo.jpg"
-              value={photo.url}
-              onChange={(e) =>
-                setPhotos((prev) => prev.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)))
-              }
-            />
-            <input
-              className={inputCls}
-              style={{ maxWidth: '200px' }}
-              placeholder="Description (alt text)"
-              value={photo.alt}
-              onChange={(e) =>
-                setPhotos((prev) => prev.map((x, j) => (j === i ? { ...x, alt: e.target.value } : x)))
-              }
-            />
-            <select
-              className={`${inputCls}`}
-              style={{ maxWidth: '110px' }}
-              value={photo.pool}
-              onChange={(e) =>
-                setPhotos((prev) =>
-                  prev.map((x, j) => (j === i ? { ...x, pool: e.target.value as 'GALLERY' | 'BODY' } : x))
-                )
-              }
-            >
-              <option value="GALLERY">Gallery</option>
-              <option value="BODY">Body</option>
-            </select>
-            <button
-              type="button"
-              onClick={() => setPhotos((prev) => prev.filter((_, j) => j !== i))}
-              className="p-2 text-gray-400 hover:text-red-600 shrink-0"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        ))}
-        {photos.length < 24 && (
-          <button
-            type="button"
-            onClick={() => setPhotos((prev) => [...prev, { url: '', alt: '', pool: 'GALLERY' }])}
-            className="text-sm text-blue-600 font-medium"
-          >
-            + Add photo
           </button>
         )}
       </div>

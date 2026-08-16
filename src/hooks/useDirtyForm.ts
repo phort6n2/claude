@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useUnsavedWork } from '@/components/admin/UnsavedWorkGuard'
 
 /**
  * Tracks a form against the values it loaded with, so the UI can always
@@ -46,6 +47,17 @@ export function useDirtyForm<T extends object>(initial: T) {
   }, [values])
 
   const discard = useCallback(() => setValues(baseline.current), [])
+
+  // Report upward so the client tab bar can stop a soft navigation too.
+  // beforeunload below covers leaving the DOCUMENT; switching tabs inside the
+  // client editor never touches it, which is how a typed-but-unsaved business
+  // name used to vanish without a word.
+  const formKey = useId()
+  const { setDirty } = useUnsavedWork()
+  useEffect(() => {
+    setDirty(formKey, isDirty)
+    return () => setDirty(formKey, false)
+  }, [isDirty, formKey, setDirty])
 
   // Browser-level guard (tab close / reload / external link).
   useEffect(() => {

@@ -214,11 +214,11 @@ code:
   each shop's privacy page has to say that a session-analytics tool is in use.
   That is a §2 content change on 15 live sites, not a footnote.
 
-Open decisions: one Clarity project per shop (clean separation, 15 API tokens,
-15 dashboards) or one project across all of them (one token, one dashboard,
-filtering by host). Recommendation is one project per shop — the shops have
-different traffic, different geography and different pages, and a merged
-dataset would average away exactly the differences worth acting on.
+**Decided: one Clarity project per shop.** Fifteen tokens and fifteen
+dashboards, against one merged dataset that would average away exactly the
+differences worth acting on — the shops have different traffic, different
+geography and different pages. The token belongs on the Client row, encrypted,
+next to the other per-shop keys.
 
 1. **Response-time tracking.** The app knows when a lead arrived and when its status moved. "This shop takes four hours to touch a lead" is nearly free, and it is your answer when a client says the leads are bad.
 2. **Real sales page at glassleads.app.** Every client site's footer now links "Powered by GlassLeads" to the apex, which serves a holding brand page (features, no pricing, no contact). The real page needs decisions only you can make: published pricing yes/no, the CTA (a demo-booking link? a phone number? an email that actually receives mail — the Resend domain only sends), and proof (screenshots, a client quote).

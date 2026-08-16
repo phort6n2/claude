@@ -4,6 +4,7 @@ import { ArrowLeft, ExternalLink } from 'lucide-react'
 import { prisma } from '@/lib/db'
 import { getClientReadiness } from '@/lib/client-readiness'
 import ClientTabs from '@/components/admin/ClientTabs'
+import { UnsavedWorkProvider } from '@/components/admin/UnsavedWorkGuard'
 import ClientReadinessBadge from '@/components/admin/ClientReadinessBadge'
 import ViewAsClientButton from '@/components/admin/ViewAsClientButton'
 import { requireAdminPage } from '@/lib/admin-guard'
@@ -109,8 +110,12 @@ export default async function ClientLayout({
           </div>
         </div>
 
-        <ClientTabs clientId={client.id} />
-        <div className="pt-6">{children}</div>
+        {/* The provider must wrap BOTH: the tab bar asks, the tab's form
+            answers. */}
+        <UnsavedWorkProvider>
+          <ClientTabs clientId={client.id} />
+          <div className="pt-6">{children}</div>
+        </UnsavedWorkProvider>
       </div>
     </div>
   )
