@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
-import { campaignDetail, localDominatorShareHost } from '@/lib/local-dominator'
+import {
+  campaignDetail,
+  localDominatorShareHost,
+  shareTokenResolves,
+} from '@/lib/local-dominator'
 import { whiteLabelEmbedUrl } from '@/lib/rank-embed'
 
 export const dynamic = 'force-dynamic'
@@ -32,7 +36,17 @@ export async function POST() {
   const rows = []
   for (const client of clients) {
     const detail = await campaignDetail(client.rankTrackingId as string)
-    const wanted = whiteLabelEmbedUrl(detail.campaignLink, shareHost)
+    let wanted = whiteLabelEmbedUrl(detail.campaignLink, shareHost)
+    let source = wanted ? 'campaign_link' : 'none'
+
+    // If they never issued a campaign_link, try the scheduled_scan_id itself
+    // against the share host, which 404s for a token it does not know.
+    if (!wanted && shareHost && client.rankTrackingId) {
+      if (await shareTokenResolves(client.rankTrackingId, shareHost)) {
+        wanted = `https://${shareHost}/${client.rankTrackingId}`
+        source = 'scheduled_scan_id'
+      }
+    }
     // Diagnose AND fix in one press. Storing is idempotent and costs no
     // credits, and a check that reports a fixable problem without fixing it
     // is just another round trip.
@@ -50,6 +64,7 @@ export async function POST() {
       lastRunDate: detail.lastRunDate,
       apiError: detail.error,
       hasCampaignLink: !!detail.campaignLink,
+      source,
       // The all-keywords URL we WOULD store, and the one currently stored.
       wanted,
       stored: wanted || client.rankMapUrl,
@@ -59,7 +74,7 @@ export async function POST() {
       `[RankCampaigns] map-status ${client.businessName}: campaign=${client.rankTrackingId} ` +
         `http=${detail.httpStatus} shareKeys=[${detail.shareLinkKeys.join(',')}] ` +
         `runs=${detail.runCount} lastRun=${detail.lastRunDate} err=${detail.error || 'none'} ` +
-        `wanted=${wanted || 'none'}`
+        `source=${source} wanted=${wanted || 'none'}`
     )
   }
 
@@ -81,10 +96,18 @@ export async function POST() {
         .join('; ')}`
     )
   }
-  const missing = rows.filter((r) => !r.hasCampaignLink && !r.apiError)
+  const bySid = rows.filter((r) => r.source === 'scheduled_scan_id')
+  if (bySid.length) {
+    problems.push(
+      `${bySid.length} resolved from the campaign id instead of campaign_link (${bySid
+        .map((r) => r.client)
+        .join(', ')}) — their share host accepted it, so those are correct.`
+    )
+  }
+  const missing = rows.filter((r) => !r.wanted && !r.apiError)
   if (missing.length) {
     problems.push(
-      `${missing.length} returned no campaign_link: ${missing
+      `${missing.length} have no all-keywords map: ${missing
         .map(
           (r) =>
             `${r.client} (runs=${r.runCount ?? '?'}, lastRun=${r.lastRunDate || 'never'}, share_links=[${

@@ -225,15 +225,44 @@ export async function campaignMapUrl(scheduledScanId: string): Promise<string | 
     campaignShareLinks(scheduledScanId),
     localDominatorShareHost(),
   ])
-  if (!links) return null
+  if (!host) return null
   const { whiteLabelEmbedUrl } = await import('@/lib/rank-embed')
   // ONLY the campaign token. `dynamic_url` is one keyword's report, and
   // falling back to it here stored a single-keyword map under a name that
   // says all of them — so every client's report showed one keyword and
-  // nothing said why. A campaign whose campaign_link has not appeared yet
-  // gets null, and the report falls back to the per-keyword tabs, which at
-  // least reach every keyword.
-  return whiteLabelEmbedUrl(links.campaignLink, host)
+  // nothing said why.
+  const fromLink = whiteLabelEmbedUrl(links?.campaignLink, host)
+  if (fromLink) return fromLink
+
+  // Their API does not issue campaign_link for a campaign it created itself,
+  // so try the one other UUID we hold: the scheduled_scan_id. The share host
+  // is a usable oracle — it answers 200 for a token it knows and 404 for one
+  // it does not — so this is a test rather than a guess, and a wrong answer
+  // costs one HEAD-sized GET rather than a wrong map in front of a client.
+  return (await shareTokenResolves(scheduledScanId, host))
+    ? `https://${host}/${scheduledScanId}`
+    : null
+}
+
+/**
+ * Does their share host recognise this token?
+ *
+ * 200 for a token it knows, 404 for one it does not — verified against a
+ * real token and two invented ones. That makes candidate tokens testable
+ * instead of guessable.
+ */
+export async function shareTokenResolves(token: string, host: string): Promise<boolean> {
+  if (!/^[0-9a-f-]{16,64}$/i.test(token)) return false
+  try {
+    const res = await fetch(`https://${host}/${token}`, {
+      redirect: 'follow',
+      signal: AbortSignal.timeout(10_000),
+      next: { revalidate: 3_600 },
+    })
+    return res.ok
+  } catch {
+    return false
+  }
 }
 
 /**
