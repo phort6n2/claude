@@ -355,6 +355,14 @@ nothing may call their API per page view.
   Satori cannot read the WOFF2 `next/font` emits, and the font is read by
   path — so its routes are listed in `outputFileTracingIncludes` in
   `next.config.ts`. Miss that and it 500s in production while working in dev.
+- **Fonts are bundled, never fetched at build.** `layout.tsx` loads Inter and
+  Inter Tight through `next/font/local` from `src/assets/fonts/`, because
+  `next/font/google` downloads from `fonts.gstatic.com` while the build runs.
+  That download failed once on Vercel and took production down — the same
+  commit having built green on the branch two seconds earlier, which is what a
+  network dependency inside a build looks like when it breaks. Do not put it
+  back. Refreshing the files means re-reading Google's `css2` output; they rev
+  the URL when the font revs.
 - `insurance-rules.ts` — per-state glass deductible rules, and
   `heroCostLineFor()` for the above-the-fold cost line. All of it already
   compliance-reviewed; reuse it rather than writing new insurance copy.
