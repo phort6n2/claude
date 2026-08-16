@@ -25,6 +25,22 @@ is then framed from your domain. It is also the only one of their URL forms
 that advertises `frame-ancestors *`, so it is the most reliable to embed as
 well as the best branded.
 
+### 0.0c Open each rank campaign once in Local Dominator
+**Blocks:** the all-keywords map for four clients. They currently show
+per-keyword maps instead.
+
+Local Dominator does not issue a campaign share link for a campaign created
+through their API — it appears once the campaign has been opened in their
+dashboard. Proven: of six campaigns with completed runs, the only two with a
+`campaign_link` are the two you had opened by hand.
+
+Per client: open the campaign in Local Dominator, then **Local Rankings →
+Refresh map URLs**. Or skip that and paste the campaign's share link straight
+into **Clients → the shop → Rankings → Map URL** (the bare token works too).
+
+Currently missing: ABC Auto Glass, HV Auto Glass Denver, Maximum Glass,
+Speedy Windshield Repair.
+
 ### 0.0b A BabyLoveGrowth key per shop
 **Blocks:** all syndicated SEO articles.
 

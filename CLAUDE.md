@@ -227,7 +227,14 @@ and posts each finished run back, so nothing is polled.
   URL is a standalone marketing page, which is what put marketing chrome in a
   client's portal. Only the token travels.
 - The daily sweep captures and refreshes it, so rendering costs no request.
-  Creating the campaign and capturing this URL is the entire integration.
+- **Their API does not CREATE the campaign share link.** A campaign made via
+  the API comes back with `share_links: [image_link, dynamic_url]` and no
+  `campaign_link`, even after a run has completed; the two campaigns that had
+  one were the two opened by hand in their dashboard. There is no endpoint to
+  create it (they have share-creation endpoints for AI Tracker, Projects and
+  SERP — not for scheduled scans). So a new client needs the campaign opened
+  once in Local Dominator, then "Refresh map URLs" — or the URL pasted into
+  the client's Map URL field, which accepts the bare token too.
 - The sweep only CREATES for clients with no `rankTrackingId`; it never
   touches an existing campaign. Changing an existing one goes through PATCH:
   `syncCampaignTier` on a tier flip, `/respace` for geometry, `/reschedule`

@@ -51,9 +51,9 @@ export default function RankMapUrlCard({
     <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-6">
       <h2 className="font-semibold text-gray-900">Map URL</h2>
       <p className="mt-1 text-sm text-gray-600 max-w-prose">
-        The all-keywords map embedded above. Captured automatically from the campaign, or paste it
-        from Local Dominator — the share link for the campaign, not for a single keyword. Clear the
-        field to go back to the automatic one.
+        The all-keywords map embedded above. Paste the campaign&apos;s share link from Local
+        Dominator — the one for the whole campaign, not a single keyword. The bare token works too.
+        Clear the field to go back to whatever the API can find on its own.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         <input
@@ -63,7 +63,7 @@ export default function RankMapUrlCard({
             setUrl(e.target.value)
             setSaved(false)
           }}
-          placeholder="https://ranking.example.com/…"
+          placeholder="https://ranking.example.com/… or just the token"
           className="flex-1 min-w-[280px] border border-gray-300 rounded-lg px-3 py-2 text-sm"
         />
         <Button onClick={save} disabled={saving}>
