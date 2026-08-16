@@ -1,4 +1,3 @@
-import Script from 'next/script'
 import {
   ArrowRight,
   Car,
@@ -107,7 +106,25 @@ export function buildWidgetConfig(client: WidgetClient, privacyUrl?: string) {
  * widget mounts and replaces it. `service` preselects the form on service
  * pages so the ad → page → form scent stays unbroken.
  */
+/** Minimal HTML escape for the values interpolated into the placeholder. */
+function esc(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 export function WidgetMount({ client, service }: { client: SiteClient; service?: string }) {
+  const tel = client.phone.replace(/[^+\d]/g, '')
+  // Written as a string, not JSX, on purpose — see the comment below.
+  const placeholder = `
+    <div class="bg-white rounded-[20px] border-t-4 border-t-[var(--cta)] border border-[var(--line-card)] shadow-lg p-6">
+      <p class="m-0 text-xl font-extrabold tracking-tight text-[var(--tx)]">Get your free quote</p>
+      <p class="mt-1.5 mb-0 text-sm text-[var(--tx-muted)]">Four quick questions and you&rsquo;ll have a real number.</p>
+      <a href="tel:${esc(tel)}" class="mt-5 flex items-center justify-center min-h-[52px] rounded-[14px] font-bold text-white no-underline" style="background:linear-gradient(180deg, var(--cta), var(--cta-b))">Or call ${esc(client.phone)}</a>
+    </div>`
+
   return (
     <div
       data-glassleads-widget
@@ -116,35 +133,40 @@ export function WidgetMount({ client, service }: { client: SiteClient; service?:
       // phone the mounted form is ~944px, so the page below grew 400px under
       // anyone who had started scrolling.
       className="min-h-[940px] sm:min-h-[540px] lg:min-h-[600px]"
-    >
-      <div className="bg-white rounded-[20px] border-t-4 border-t-[var(--cta)] border border-[var(--line-card)] shadow-lg p-6">
-        <p className="m-0 text-xl font-extrabold tracking-tight text-[var(--tx)]">Get your free quote</p>
-        <p className="mt-1.5 mb-0 text-sm text-[var(--tx-muted)]">
-          Four quick questions and you&apos;ll have a real number.
-        </p>
-        <a
-          href={`tel:${client.phone.replace(/[^+\d]/g, '')}`}
-          className="mt-5 flex items-center justify-center min-h-[52px] rounded-[14px] font-bold text-white no-underline"
-          style={{ background: 'linear-gradient(180deg, var(--cta), var(--cta-b))' }}
-        >
-          Or call {client.phone}
-        </a>
-      </div>
-    </div>
+      // THE CHILDREN OF THIS DIV ARE NOT REACT'S.
+      //
+      // widget.js clears this container and mounts the form into it. While the
+      // placeholder was ordinary JSX, doing that before hydration made React
+      // reconcile the subtree and wipe the mounted form — the incident the old
+      // comment on WidgetScript recorded, and the reason the script was held
+      // until afterInteractive.
+      //
+      // Rendered through dangerouslySetInnerHTML, React compares only the
+      // __html string and never walks the children, so the script is free to
+      // mount whenever it likes. That is what lets it load without waiting for
+      // a ~146KB bundle to hydrate: the form was measured downloaded at 1.45s
+      // and usable at 4.2s, and the gap was all hydration.
+      suppressHydrationWarning
+      dangerouslySetInnerHTML={{ __html: placeholder }}
+    />
   )
 }
 
 /**
- * The widget script with the config inlined so no config round trip is
- * needed. Loaded afterInteractive: mounting must wait for hydration — a
- * pre-hydration DOM mutation makes React re-render the body and wipe the
- * mounted form (hydration mismatch).
+ * The widget script, with the config inlined so no config round trip is
+ * needed.
+ *
+ * A plain deferred <script>, not next/script. `afterInteractive` exists to
+ * hold a script until React has hydrated, which is precisely the delay being
+ * removed here — and it is only safe to remove because WidgetMount above puts
+ * its subtree beyond React's reach. Deferred, so it still runs after the
+ * document is parsed and the container exists.
  */
 export function WidgetScript({ client, basePath }: { client: WidgetClient; basePath?: string }) {
   return (
-    <Script
+    <script
       src="/widget.js"
-      strategy="afterInteractive"
+      defer
       data-client={client.slug}
       data-phone={client.phone}
       data-config={JSON.stringify(buildWidgetConfig(client, `${basePath || ''}/privacy`))}
