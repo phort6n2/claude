@@ -47,21 +47,18 @@ are fine — nothing else depends on it.
 ### 0.0b A content feed per shop
 **Blocks:** the article entries on the client's Activity tab.
 
-**Mostly automatic now.** The nightly sweep finds and adopts a feed by itself
-for any shop whose own website advertises one, so for most shops there is
-nothing to do — check the SEO tab in a day and it will be filled in.
+**Mostly automatic.** The nightly sweep finds and adopts a feed by itself for
+any shop whose own website advertises one, so for most shops there is nothing
+to do — check the SEO tab in a day and it will be filled in.
 
 For the rest: **Clients → the shop → SEO tab**. Tick *This shop is on the SEO
 plan*, then in **Content feed** press *Find it for me* — it also tries the
 usual addresses, which the unattended sweep deliberately will not. If it finds
-nothing, paste the address by hand. Press *Save*; it checks the feed and pulls the posts straight away, then
-runs itself nightly at 06:00 UTC.
+nothing, paste the address by hand. Press *Save*; it checks the feed and pulls
+the posts straight away, then runs itself nightly at 06:00 UTC.
 
-That is the whole setup. No key, nothing to rotate, and it keeps working if
-the writing tool changes.
-
-If a feed stops answering, the error shows on that card — worth a look if a
-shop's Activity tab stops gaining posts.
+No key, nothing to rotate, and it keeps working if the writing tool changes.
+If a feed stops answering, the error shows on that card.
 
 ### 0.1 Tick the two new claim flags per shop
 **Blocks:** two true things your shops are no longer allowed to say.

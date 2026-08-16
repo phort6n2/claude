@@ -27,10 +27,6 @@
       "schedule": "0 4 * * *"
     },
     {
-      "path": "/api/cron/sync-seo-articles",
-      "schedule": "0 5 * * *"
-    },
-    {
       "path": "/api/cron/sync-content-feeds",
       "schedule": "0 6 * * *"
     }

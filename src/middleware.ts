@@ -38,12 +38,6 @@ export default function middleware(req: NextRequest) {
     pathname !== '/' &&
     !pathname.startsWith('/services/') &&
     !pathname.startsWith('/locations/') &&
-    // /blog and /blog/{article}. Left out when the blog shipped, so every
-    // article was reachable only at /sites/{slug}/blog/... while the sitemap
-    // advertised it on the shop's own host — a 404 for every crawler that
-    // followed one.
-    pathname !== '/blog' &&
-    !pathname.startsWith('/blog/') &&
     pathname !== '/privacy' &&
     pathname !== '/terms'
   ) {
@@ -74,8 +68,6 @@ export const config = {
     '/',
     '/services/:path*',
     '/locations/:path*',
-    '/blog',
-    '/blog/:path*',
     '/privacy',
     '/terms',
   ],

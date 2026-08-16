@@ -75,8 +75,11 @@ shops pay this platform; a supplier's name on their page is an invitation to
 go straight to the supplier.
 
 This is not satisfied by keeping vendor names out of UI copy — the strings
-were never the leak. `article-whitelabel.ts` handles the three that are, and
-anything new that renders third-party content has to handle all three:
+were never the leak. Nothing renders supplier content today (the Activity feed
+reads the shop's own RSS, which has no author field), so the rule is currently
+enforced by the format. `article-whitelabel.ts` keeps `VENDOR_HOSTS` and the
+test; the next integration that RENDERS a supplier's content has to handle all
+three of these, and none of them is a string:
 
 - **Images** are copied onto our own storage at sync, so no vendor CDN host
   appears in a page source, a network tab or an `og:image`.
@@ -87,7 +90,7 @@ anything new that renders third-party content has to handle all three:
   sanitiser asks whether markup can execute, not whose name is on it.
 
 `VENDOR_HOSTS` is the list. Add every host a new vendor serves from, not just
-their apex.
+their apex — CDNs and app subdomains are exactly what appears in a page source.
 
 ### Security
 
@@ -369,50 +372,6 @@ posts actually go up. We read it nightly and store what is new in
   guard you then bypass is not a guard.
 - Parser precedence: the **unprefixed** tag wins over a namespaced one.
   `<dc:title>` beating `<title>` was a real bug caught by its unit test.
-
-### Syndicated SEO articles (dormant)
-
-Superseded by the content feed above and left in place but unused. The cards
-render only for a shop that already has a key or synced articles, so a client
-that never used it is not offered it.
-
-`baby-love-growth.ts` (API client), `seo-articles.ts` (sync),
-`seo-article-review.ts` (content scan), `sanitize-html.ts`.
-
-BabyLoveGrowth writes articles; a nightly cron pulls them into `SeoArticle`
-and the hosted sites serve them at `/blog`. Pull-only and rate limited, so
-nothing may call their API per page view.
-
-- **Each shop is its own BabyLoveGrowth organisation with its own key**, held
-  encrypted on `Client.blgApiKey` and switched on with `Client.seoContentEnabled`
-  (admin → client → SEO tab). The key identifies the shop, so nothing has to
-  be matched. **Ticking the SEO plan is what reveals the key field** — it used
-  to appear only for a shop that already had a key, which left nowhere to
-  enter the first one. An account-wide key in Settings still works as a
-  fallback and falls back to matching `orgWebsite` against the shop's custom
-  domain, Business Profile website, or glassleads.app subdomain.
-- An article reaches a site only if it is **placed with a shop** and **passes
-  the content scan**. Unplaced is held, never guessed — one shop's content
-  under another's name is worse than no content.
-- `seoContentEnabled` is enforced at **render**, not only at sync: the blog
-  pages, the sitemap and the activity feed all require it, so switching it off
-  takes live pages down rather than only stopping the next pull.
-- The scan enforces §2's content rules on copy nobody at the shop reads
-  before it goes up: turnaround promises, deductible offers, insurer
-  relationships, asserted ratings, credentials, years in business. It
-  **holds, never rewrites** — a claim about a real business is a human's
-  call. It is a floor: it catches known phrasings, not a fabricated fact
-  stated plainly.
-- Bodies are third-party HTML on the shop's own origin, next to their quote
-  form, so they go through an **allow-list** sanitiser at render (not at
-  sync, so a fix applies to everything already stored).
-- **`/blog` has to be in the middleware matcher.** It was not, for the whole
-  first life of this integration: articles were reachable only at
-  `/sites/{slug}/blog/...` while the sitemap advertised them on the shop's own
-  host, so every crawler that followed one got a 404.
-- Clients see published articles on their **Activity** tab, linked out to the
-  live page, and cannot act on them. That is deliberate — read-only, no
-  approvals, no scheduling.
 
 ### Behaviour analytics (Microsoft Clarity)
 
