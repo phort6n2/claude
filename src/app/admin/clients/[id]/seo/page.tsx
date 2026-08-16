@@ -4,16 +4,17 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { requireAdminPage } from '@/lib/admin-guard'
 import { decrypt } from '@/lib/encryption'
+import SeoTierCard from '@/components/admin/SeoTierCard'
 import SeoContentCard from '@/components/admin/SeoContentCard'
 import SeoArticleRows from '@/components/admin/SeoArticleRows'
 
 /**
- * "SEO" tab: switch syndicated content on for this shop, hold their
- * BabyLoveGrowth key, and decide what reaches their site.
+ * "SEO" tab: what this shop is paying for, and what that changes.
  *
- * Per-shop rather than one account-wide key, because each shop is its own
- * organisation at the provider — which means the key itself identifies the
- * shop and there is no website to match and get wrong.
+ * One switch for now. The syndicated-content cards below it only appear once
+ * a shop actually has a BabyLoveGrowth key or articles — the integration is
+ * built and idle, and a card for something nobody is using is clutter on
+ * every client rather than a feature.
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   await requireAdminPage()
@@ -23,9 +24,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     where: { id },
     select: {
       id: true,
-      businessName: true,
       slug: true,
       siteSubdomain: true,
+      seoClient: true,
       seoContentEnabled: true,
       blgApiKey: true,
       domains: { where: { isPrimary: true }, select: { domain: true }, take: 1 },
@@ -49,45 +50,42 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     })
     .catch(() => [])
 
-  // Decrypted only to mask it. The key is never sent to the browser in full.
+  // Content is in use for this shop only if it has a key or something synced.
+  const usesContent = !!client.blgApiKey || articles.length > 0
   const plain = client.blgApiKey ? decrypt(client.blgApiKey) : null
   const masked = plain
     ? plain.length <= 8
       ? '••••'
       : `${plain.slice(0, 4)}••••${plain.slice(-4)}`
     : null
-
-  const host =
-    client.domains[0]?.domain || `${client.siteSubdomain || client.slug}.glassleads.app`
-
-  const held = articles.filter((a) => !a.publishedAt).length
+  const host = client.domains[0]?.domain || `${client.siteSubdomain || client.slug}.glassleads.app`
 
   return (
     <div className="space-y-4">
-      <SeoContentCard
-        clientId={client.id}
-        initialEnabled={client.seoContentEnabled}
-        initialMaskedKey={masked}
-      />
+      <SeoTierCard clientId={client.id} initialEnabled={client.seoClient} />
 
-      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-6">
-        <h2 className="font-semibold text-gray-900">
-          Articles{articles.length ? ` (${articles.length})` : ''}
-        </h2>
-        <p className="mt-1 mb-4 text-sm text-gray-600">
-          {held > 0
-            ? `${held} waiting on you. Read each one before publishing — the scan catches known phrasings, not every invented fact.`
-            : 'Everything pulled for this shop is live on their site.'}
-        </p>
-        <SeoArticleRows
-          articles={articles.map((a) => ({
-            ...a,
-            publishedAt: a.publishedAt?.toISOString() || null,
-            authoredAt: a.authoredAt?.toISOString() || null,
-          }))}
-          host={host}
-        />
-      </section>
+      {usesContent && (
+        <>
+          <SeoContentCard
+            clientId={client.id}
+            initialEnabled={client.seoContentEnabled}
+            initialMaskedKey={masked}
+          />
+          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-6">
+            <h2 className="font-semibold text-gray-900">Articles ({articles.length})</h2>
+            <div className="mt-4">
+              <SeoArticleRows
+                articles={articles.map((a) => ({
+                  ...a,
+                  publishedAt: a.publishedAt?.toISOString() || null,
+                  authoredAt: a.authoredAt?.toISOString() || null,
+                }))}
+                host={host}
+              />
+            </div>
+          </section>
+        </>
+      )}
     </div>
   )
 }

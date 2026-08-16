@@ -165,15 +165,17 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     // Moving a shop between tiers has to reach the scan itself: four keywords
     // and weekly instead of two and monthly. Otherwise the plan changes, the
     // invoice changes, and the campaign carries on exactly as it was.
+    let campaignSync: string | null = null
     if (before && has('seoClient') && before.seoClient !== client.seoClient) {
       const { syncCampaignTier } = await import('@/lib/rank-campaigns')
       const synced = await syncCampaignTier(id)
+      campaignSync = synced.message
       console.log(
         `[RankCampaigns] ${client.businessName} tier → ${client.seoClient ? 'seo' : 'standard'}: ${synced.message}`
       )
     }
 
-    return NextResponse.json(client)
+    return NextResponse.json({ ...client, campaignSync })
   } catch (error) {
     console.error('Failed to update client:', error)
     return NextResponse.json(
