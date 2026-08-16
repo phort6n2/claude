@@ -110,6 +110,46 @@ export const RANK_MAP_SQL: string[] = [
   `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "rankMapUrl" TEXT`,
 ]
 
+export const SEO_ARTICLE_SQL: string[] = [
+  // On Client, not in a side table: Prisma selects every scalar it knows
+  // about, so these two must exist before the deploy that adds them serves a
+  // single request against Client — which is nearly every request there is.
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "seoContentEnabled" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "blgApiKey" TEXT`,
+  `CREATE TABLE IF NOT EXISTS "SeoArticle" (
+     "id"              TEXT NOT NULL,
+     "externalId"      TEXT NOT NULL,
+     "clientId"        TEXT,
+     "title"           TEXT NOT NULL,
+     "slug"            TEXT NOT NULL,
+     "excerpt"         TEXT,
+     "metaDescription" TEXT,
+     "heroImageUrl"    TEXT,
+     "contentHtml"     TEXT,
+     "contentMarkdown" TEXT,
+     "jsonLd"          JSONB,
+     "faqJsonLd"       JSONB,
+     "seedKeyword"     TEXT,
+     "keywords"        TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+     "languageCode"    TEXT,
+     "orgWebsite"      TEXT,
+     "reviewFlags"     TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+     "publishedAt"     TIMESTAMP(3),
+     "authoredAt"      TIMESTAMP(3),
+     "syncedAt"        TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     "createdAt"       TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     "updatedAt"       TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     CONSTRAINT "SeoArticle_pkey" PRIMARY KEY ("id")
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "SeoArticle_externalId_key" ON "SeoArticle"("externalId")`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "SeoArticle_clientId_slug_key" ON "SeoArticle"("clientId", "slug")`,
+  `CREATE INDEX IF NOT EXISTS "SeoArticle_clientId_publishedAt_idx" ON "SeoArticle"("clientId", "publishedAt")`,
+  `DO $$ BEGIN
+    ALTER TABLE "SeoArticle" ADD CONSTRAINT "SeoArticle_clientId_fkey"
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+]
+
 /** Everything the running code assumes exists. */
 export const BOOTSTRAP_SQL: string[] = [
   ...CALL_TRACKING_SQL,
@@ -117,6 +157,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...CLAIM_FLAGS_SQL,
   ...LOCAL_RANK_SQL,
   ...RANK_MAP_SQL,
+  ...SEO_ARTICLE_SQL,
 ]
 
 /**

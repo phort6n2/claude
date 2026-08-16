@@ -22,6 +22,7 @@ import { prisma } from '@/lib/db'
 
 export type ActivityKind =
   | 'ranking'
+  | 'article'
   | 'website'
   | 'photos'
   | 'reviews'
@@ -38,6 +39,8 @@ export interface ActivityItem {
   title: string
   /** Optional supporting sentence. Never speculative. */
   detail?: string
+  /** Optional link to the thing itself, when there is a page to read. */
+  href?: string
 }
 
 export interface ActivityMonth {
@@ -60,12 +63,23 @@ function describeMovement(first: number, latest: number, keyword: string): strin
 }
 
 export async function getClientActivity(clientId: string): Promise<ActivityMonth[]> {
-  const [client, scans, photos, content, cityPages, numbers, calls, reviews, domains, leadCounts] =
-    await Promise.all([
+  const [
+    client,
+    scans,
+    photos,
+    content,
+    cityPages,
+    numbers,
+    calls,
+    reviews,
+    domains,
+    leadCounts,
+    articles,
+  ] = await Promise.all([
       prisma.client
         .findUnique({
           where: { id: clientId },
-          select: { createdAt: true, siteSubdomain: true, rankKeywords: true },
+          select: { createdAt: true, slug: true, siteSubdomain: true, rankKeywords: true },
         })
         .catch(() => null),
       prisma.localRankScan
@@ -97,12 +111,22 @@ export async function getClientActivity(clientId: string): Promise<ActivityMonth
         .findUnique({ where: { clientId }, select: { fetchedAt: true, rating: true, reviewCount: true } })
         .catch(() => null),
       prisma.clientDomain
-        .findMany({ where: { clientId }, select: { domain: true, createdAt: true } })
+        .findMany({ where: { clientId }, select: { domain: true, isPrimary: true, createdAt: true } })
         .catch(() => []),
       prisma.lead
         .findMany({
           where: { clientId, duplicateOfLeadId: null },
           select: { createdAt: true, status: true, saleValue: true },
+        })
+        .catch(() => []),
+      // Published only. An article held in the review queue has not been done
+      // FOR the shop yet, and the feed's whole claim is that everything on it
+      // actually happened.
+      prisma.seoArticle
+        .findMany({
+          where: { clientId, publishedAt: { not: null }, client: { seoContentEnabled: true } },
+          orderBy: { publishedAt: 'desc' },
+          select: { title: true, slug: true, seedKeyword: true, publishedAt: true },
         })
         .catch(() => []),
     ])
@@ -186,6 +210,28 @@ export async function getClientActivity(clientId: string): Promise<ActivityMonth
       kind: 'setup',
       title: `${domain.domain} connected`,
       detail: 'Your site answers on your own address.',
+    })
+  }
+
+  // ---- Articles. One row each, deliberately: this is the part of the work a
+  // shop owner can actually read, and collapsing a month of them into "4
+  // articles published" throws away the only proof they exist.
+  // Their own domain if they have one, otherwise the hosted address — which
+  // always answers on the slug even when no short subdomain was provisioned,
+  // so an article always has somewhere to link to.
+  const siteHost =
+    domains.find((d) => d.isPrimary)?.domain ||
+    domains[0]?.domain ||
+    (client ? `${client.siteSubdomain || client.slug}.glassleads.app` : null)
+  for (const article of articles) {
+    items.push({
+      at: article.publishedAt as Date,
+      kind: 'article',
+      title: article.title,
+      detail: article.seedKeyword
+        ? `Written for people searching “${article.seedKeyword}” and published to your site.`
+        : 'Written for search and published to your site.',
+      href: siteHost ? `https://${siteHost}/blog/${article.slug}` : undefined,
     })
   }
 
