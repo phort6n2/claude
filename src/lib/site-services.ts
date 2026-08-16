@@ -1,4 +1,15 @@
 /**
+ * NOTHING HERE MAY PROMISE A TIMEFRAME OR AN INVENTORY.
+ *
+ * This copy renders on 15 different shops' sites, so a sentence is only
+ * allowed if it is true for every one of them. "Most chip repairs take well
+ * under an hour", "door glass is in stock", "we do it in the same
+ * appointment" and "replaced quickly" all shipped here and all had to come
+ * out: the platform cannot promise scheduling or stock on a shop's behalf,
+ * and CLAUDE.md §2 says so. Insurance wording belongs in insurance-rules.ts,
+ * which is compliance-reviewed — reuse it rather than restating it here.
+ */
+/**
  * Service definitions for hosted client landing pages.
  *
  * Shared by the home page (services grid + nav) and the per-service pages.
@@ -61,7 +72,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       },
       {
         heading: 'Why sooner is cheaper',
-        body: 'A chip that would have been a quick repair can become a spreading crack after one cold morning or one hard pothole. Once a crack reaches the edge of the glass or crosses the driver’s view, replacement is usually the only safe option. If you’re looking at fresh damage, getting it assessed quickly is the cheapest decision you can make.',
+        body: 'A chip that would have been a simple repair can become a spreading crack after one cold morning or one hard pothole. Once a crack reaches the edge of the glass or crosses the driver’s view, replacement is usually the only safe option. If you are looking at fresh damage, getting it assessed early is the cheapest decision you can make.',
       },
       {
         heading: 'Insurance',
@@ -73,8 +84,8 @@ export const SERVICE_PAGES: ServicePage[] = [
     slug: 'rock-chip-repair',
     flag: 'offersRockChipRepair',
     name: 'Rock Chip Repair',
-    short: 'Quick chip repairs — carriers usually waive the deductible, so often nothing out of pocket.',
-    heroLine: 'Fast resin repair for rock chips, stars, and bullseyes.',
+    short: 'Chip repair stops the damage spreading — and carriers usually waive the deductible, so often nothing out of pocket.',
+    heroLine: 'Resin repair for rock chips, stars, and bullseyes.',
     sections: [
       {
         heading: 'What can be repaired',
@@ -82,7 +93,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       },
       {
         heading: 'Act before the weather does',
-        body: 'A fresh chip is the best candidate for repair. Moisture and grime work into the break over days, and temperature changes flex the glass until the chip legs out into a crack. Most chip repairs take well under an hour.',
+        body: 'A fresh chip is the best candidate for repair. Moisture and grime work into the break over days, and temperature changes flex the glass until the chip legs out into a crack. A repair is a far smaller job than a replacement — ask when you call.',
       },
       {
         heading: 'Insurance',
@@ -94,7 +105,7 @@ export const SERVICE_PAGES: ServicePage[] = [
     slug: 'side-window-replacement',
     flag: 'offersSideWindowRepair',
     name: 'Side Window Replacement',
-    short: 'Broken door glass replaced quickly, with full cleanup.',
+    short: 'Broken door glass replaced, with full cleanup.',
     heroLine: 'Door glass replacement after a break-in, accident, or failure.',
     sections: [
       {
@@ -103,7 +114,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       },
       {
         heading: 'Weather and security',
-        body: 'An open window is an open car. If you can’t get in immediately, cover the opening — and get it scheduled quickly. Most door glass is in stock or available fast for common vehicles.',
+        body: 'An open window is an open car. If you cannot get it in straight away, cover the opening. We will confirm the right glass for your vehicle when you call.',
       },
     ],
   },
@@ -137,7 +148,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       },
       {
         heading: 'Don’t drive with an open hole',
-        body: 'A shattered sunroof exposed to weather damages the headliner and electronics fast. A temporary cover is fine for days, not weeks — get it assessed promptly.',
+        body: 'A shattered sunroof exposed to weather damages the headliner and the electronics below it. A temporary cover is a stopgap, not a fix — get it assessed.',
       },
     ],
   },
@@ -145,7 +156,7 @@ export const SERVICE_PAGES: ServicePage[] = [
     slug: 'adas-calibration',
     flag: 'offersAdasCalibration',
     name: 'ADAS Calibration',
-    short: 'If your car has lane-keep or automatic braking, the camera behind the glass has to be recalibrated. We do it in the same appointment — no separate dealer trip.',
+    short: 'If your car has lane-keep or automatic braking, the camera behind the glass has to be recalibrated. We handle calibration in-house, so there is no second trip to a dealer.',
     heroLine: 'Recalibration for lane-keep, emergency braking, and driver-assist cameras.',
     sections: [
       {
