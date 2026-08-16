@@ -2,6 +2,8 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { confirmDiscard } from '@/hooks/useDirtyForm'
+import { useUnsavedWork } from '@/components/admin/UnsavedWorkGuard'
 import {
   LayoutDashboard,
   Building2,
@@ -20,6 +22,7 @@ import {
  */
 export default function ClientTabs({ clientId }: { clientId: string }) {
   const pathname = usePathname()
+  const { isDirty } = useUnsavedWork()
   const base = `/admin/clients/${clientId}`
   const tabs = [
     { href: base, label: 'Overview', icon: LayoutDashboard, exact: true },
@@ -42,6 +45,11 @@ export default function ClientTabs({ clientId }: { clientId: string }) {
             key={tab.href}
             href={tab.href}
             aria-current={active ? 'page' : undefined}
+            // A tab change is a soft navigation, so the browser's own unsaved
+            // guard never sees it. Ask here instead of losing the work.
+            onClick={(e) => {
+              if (!confirmDiscard(isDirty())) e.preventDefault()
+            }}
             className={`inline-flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
               active
                 ? 'border-blue-600 text-blue-700'
