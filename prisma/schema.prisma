@@ -100,6 +100,16 @@ model Client {
   blgApiKey         String? // Encrypted
   seoArticles       SeoArticle[]
 
+  /// The RSS/Atom feed of wherever this shop's articles actually get
+  /// published. Watched rather than integrated with: whatever tool writes
+  /// them, a new post shows up here, and nothing has to know the tool's name.
+  contentFeedUrl String?
+  /// Null until a fetch succeeds. Shown in the admin so a feed that quietly
+  /// stopped answering is visible rather than merely silent.
+  contentFeedCheckedAt DateTime?
+  contentFeedError     String?
+  feedItems            SiteFeedItem[]
+
   // Brand Settings
   logoUrl        String?
   primaryColor   String? @default("#1e40af")
@@ -1089,5 +1099,35 @@ model SeoArticle {
   updatedAt DateTime @updatedAt
 
   @@unique([clientId, slug])
+  @@index([clientId, publishedAt])
+}
+
+/// One entry from a shop's published content feed.
+///
+/// Stored so the Activity feed has a stable date and does not depend on the
+/// shop's site answering at render time. The row exists because a post was
+/// published — nobody writes to this table by hand, which is the rule the
+/// whole Activity feed rests on.
+model SiteFeedItem {
+  id String @id @default(cuid())
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  /// The feed's own guid, or the link when it has none. The dedup key.
+  guid String
+
+  title String
+  url   String?
+
+  /// The feed's date. Null when it publishes none — `createdAt`, the moment
+  /// we first saw it, carries the item then, so an undated post still lands
+  /// somewhere sensible rather than at the epoch.
+  publishedAt DateTime?
+
+  /// When this row was created, i.e. when we first saw the post.
+  createdAt DateTime @default(now())
+
+  @@unique([clientId, guid])
   @@index([clientId, publishedAt])
 }

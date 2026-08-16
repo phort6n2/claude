@@ -150,6 +150,28 @@ export const SEO_ARTICLE_SQL: string[] = [
   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
 ]
 
+export const CONTENT_FEED_SQL: string[] = [
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "contentFeedUrl" TEXT`,
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "contentFeedCheckedAt" TIMESTAMP(3)`,
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "contentFeedError" TEXT`,
+  `CREATE TABLE IF NOT EXISTS "SiteFeedItem" (
+     "id"          TEXT NOT NULL,
+     "clientId"    TEXT NOT NULL,
+     "guid"        TEXT NOT NULL,
+     "title"       TEXT NOT NULL,
+     "url"         TEXT,
+     "publishedAt" TIMESTAMP(3),
+     "createdAt"   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     CONSTRAINT "SiteFeedItem_pkey" PRIMARY KEY ("id")
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "SiteFeedItem_clientId_guid_key" ON "SiteFeedItem"("clientId", "guid")`,
+  `CREATE INDEX IF NOT EXISTS "SiteFeedItem_clientId_publishedAt_idx" ON "SiteFeedItem"("clientId", "publishedAt")`,
+  `DO $$ BEGIN
+    ALTER TABLE "SiteFeedItem" ADD CONSTRAINT "SiteFeedItem_clientId_fkey"
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+]
+
 /** Everything the running code assumes exists. */
 export const BOOTSTRAP_SQL: string[] = [
   ...CALL_TRACKING_SQL,
@@ -158,6 +180,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...LOCAL_RANK_SQL,
   ...RANK_MAP_SQL,
   ...SEO_ARTICLE_SQL,
+  ...CONTENT_FEED_SQL,
 ]
 
 /**

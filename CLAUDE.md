@@ -334,7 +334,42 @@ and posts each finished run back, so nothing is polled.
 - The raw payload is stored precisely so a reader bug costs a recompute
   rather than a re-scan: credits are billed per run.
 
-### Syndicated SEO articles
+### The content feed
+
+`content-feed.ts` plus `/api/clients/[id]/content-feed` and the nightly cron
+at `/api/cron/sync-content-feeds`.
+
+**How the Activity tab learns that an article was published.** One field,
+`Client.contentFeedUrl`, holds the RSS/Atom address of wherever the shop's
+posts actually go up. We read it nightly and store what is new in
+`SiteFeedItem`. That is the whole integration.
+
+- **Read-only, no credential, vendor-agnostic.** Swap the writing tool and the
+  feed keeps answering. Nothing to store encrypted, nothing to rotate. And a
+  feed has no field for who wrote the post, so §2's white-label rule is
+  enforced by the format rather than by our care.
+- **Additive.** A post that scrolls off the end of the feed is NOT deleted:
+  it was still published, and a history that shortens as it ages is not a
+  history.
+- Setting an address **checks it first** and syncs immediately. A feed that
+  does not answer is worse than none — the Activity tab then reads as "nothing
+  is being published" rather than "nothing is configured", so a failure is
+  recorded on `contentFeedError` and shown on the tab.
+- "Find it for me" reads `<link rel="alternate" type="application/rss+xml">`
+  off the shop's own site, then tries the usual paths. Advertised first,
+  because a guess that happens to 200 from a catch-all route is how you end up
+  watching the wrong thing.
+- The fetch goes through `validatePublicUrl` and uses **the URL that guard
+  returns**, not the one it was handed — it upgrades http to https, and a
+  guard you then bypass is not a guard.
+- Parser precedence: the **unprefixed** tag wins over a namespaced one.
+  `<dc:title>` beating `<title>` was a real bug caught by its unit test.
+
+### Syndicated SEO articles (dormant)
+
+Superseded by the content feed above and left in place but unused. The cards
+render only for a shop that already has a key or synced articles, so a client
+that never used it is not offered it.
 
 `baby-love-growth.ts` (API client), `seo-articles.ts` (sync),
 `seo-article-review.ts` (content scan), `sanitize-html.ts`.

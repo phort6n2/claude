@@ -4,6 +4,7 @@ import { useState } from 'react'
 import SeoTierCard from '@/components/admin/SeoTierCard'
 import SeoContentCard from '@/components/admin/SeoContentCard'
 import SeoArticleRows, { type ArticleRow } from '@/components/admin/SeoArticleRows'
+import ContentFeedCard from '@/components/admin/ContentFeedCard'
 
 /**
  * The SEO tab, as one client component so the plan switch can reveal the rest.
@@ -25,6 +26,7 @@ export default function SeoTab({
   initialMaskedKey,
   articles,
   host,
+  feed,
 }: {
   clientId: string
   initialSeoClient: boolean
@@ -32,12 +34,24 @@ export default function SeoTab({
   initialMaskedKey: string | null
   articles: ArticleRow[]
   host: string
+  feed: {
+    url: string | null
+    checkedAt: string | null
+    error: string | null
+    itemCount: number
+  }
 }) {
   const [seoClient, setSeoClient] = useState(initialSeoClient)
 
   // Articles already synced stay visible even if the plan is switched off, so
   // turning the plan off never looks like it deleted the work.
-  const showContent = seoClient || !!initialMaskedKey || articles.length > 0
+  const showContent = seoClient || !!initialMaskedKey || articles.length > 0 || !!feed.url
+
+  // The direct integration is dormant: the Activity tab is fed by the shop's
+  // own RSS feed now, which works whoever writes the posts. These cards render
+  // only for a shop that already has a key or articles from when it was in
+  // use, so they are not offered on a client that never used it.
+  const showBlg = !!initialMaskedKey || articles.length > 0
 
   return (
     <div className="space-y-4">
@@ -48,6 +62,16 @@ export default function SeoTab({
       />
 
       {showContent && (
+        <ContentFeedCard
+          clientId={clientId}
+          initialUrl={feed.url}
+          lastCheckedAt={feed.checkedAt}
+          lastError={feed.error}
+          itemCount={feed.itemCount}
+        />
+      )}
+
+      {showBlg && (
         <>
           <SeoContentCard
             clientId={clientId}
