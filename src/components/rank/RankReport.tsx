@@ -114,12 +114,20 @@ export default async function RankReport({
             </a>
           </p>
         )}
-        <iframe
-          src={campaignEmbed}
-          title="Local ranking map"
-          className="w-full block border-0 bg-gray-100 h-[100vh] min-h-[720px]"
-          sandbox="allow-scripts allow-same-origin allow-popups allow-storage-access-by-user-activation"
-        />
+        {/* Their competitors drawer is pinned to the bottom of their own page,
+            and a cross-origin frame cannot be reached into from out here. So
+            the frame is made taller than the box it sits in and the box clips
+            it: the map fills the view, the drawer falls below the cut. A crop
+            rather than a removal — if their drawer changes height, this
+            offset is the thing to adjust. */}
+        <div className="relative w-full overflow-hidden h-[100vh] min-h-[720px]">
+          <iframe
+            src={campaignEmbed}
+            title="Local ranking map"
+            className="absolute inset-x-0 top-0 w-full border-0 bg-gray-100 h-[calc(100%+340px)]"
+            sandbox="allow-scripts allow-same-origin allow-popups allow-storage-access-by-user-activation"
+          />
+        </div>
       </section>
     )
   }

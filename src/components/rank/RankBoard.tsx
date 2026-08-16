@@ -149,18 +149,26 @@ export default function RankBoard({ keywords }: { keywords: KeywordRuns[] }) {
         // of the page. Keyed on the URL so the date slider reloads the frame:
         // React would otherwise keep the element and only swap the attribute,
         // which some browsers do not treat as a navigation.
-        <iframe
-          key={run.embedUrl}
-          src={run.embedUrl}
-          title={`Ranking map for ${active.term} on ${run.label}`}
-          className="w-full block border-0 bg-gray-100 h-[100vh] min-h-[720px]"
-          // allow-storage-access-by-user-activation matters: their app is
-          // cross-site here, so its own storage is partitioned by default,
-          // and a map that cannot read its own state is a map that renders
-          // at 0,0 in the Atlantic. That was the first attempt's bug — read
-          // at the time as "it needs a login", which it does not.
-          sandbox="allow-scripts allow-same-origin allow-popups allow-storage-access-by-user-activation"
-        />
+        {/* Their competitors drawer is pinned to the bottom of their own page,
+            and a cross-origin frame cannot be reached into from out here. So
+            the frame is made taller than the box it sits in and the box clips
+            it: the map fills the view, the drawer falls below the cut. A crop
+            rather than a removal — if their drawer changes height, this
+            offset is the thing to adjust. */}
+        <div className="relative w-full overflow-hidden h-[100vh] min-h-[720px]">
+          <iframe
+            key={run.embedUrl}
+            src={run.embedUrl}
+            title={`Ranking map for ${active.term} on ${run.label}`}
+            className="absolute inset-x-0 top-0 w-full border-0 bg-gray-100 h-[calc(100%+340px)]"
+            // allow-storage-access-by-user-activation matters: their app is
+            // cross-site here, so its own storage is partitioned by default,
+            // and a map that cannot read its own state is a map that renders
+            // at 0,0 in the Atlantic. That was the first attempt's bug — read
+            // at the time as "it needs a login", which it does not.
+            sandbox="allow-scripts allow-same-origin allow-popups allow-storage-access-by-user-activation"
+          />
+        </div>
       ) : (
         // Ours stands in. Never a broken frame in front of a client — whether
         // theirs can be framed is settled server-side before this renders.
