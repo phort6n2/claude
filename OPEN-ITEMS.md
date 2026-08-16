@@ -44,27 +44,6 @@ a combined map: deleting and recreating the campaigns cleared their stored
 URLs and their new campaigns are API-created. Skip this entirely if the tabs
 are fine — nothing else depends on it.
 
-### 0.0b A BabyLoveGrowth key per shop
-**Blocks:** all syndicated SEO articles.
-
-Per shop: **Clients → the shop → SEO tab**. Tick *Publish SEO articles for this
-shop*, paste that shop's BabyLoveGrowth key, *Save key*, *Test connection*,
-*Sync articles now*. After that it runs itself, nightly at 05:00 UTC.
-
-The key is what identifies the shop, so nothing is matched by website and
-nothing can land on the wrong site. The account-wide key in Settings → API keys
-is only needed if one BabyLoveGrowth account covers several shops — then each
-organisation's website has to be set correctly, and anything it cannot place
-waits in Admin → SEO Articles.
-
-Articles making a claim the platform is not allowed to make on a shop's behalf
-are held rather than published, on that shop's SEO tab. Read them before
-clearing: the scan catches known phrasings, not a fabricated fact stated
-plainly.
-
-Switching the toggle off takes that shop's live articles down as well as
-stopping the next pull.
-
 ### 0.1 Tick the two new claim flags per shop
 **Blocks:** two true things your shops are no longer allowed to say.
 

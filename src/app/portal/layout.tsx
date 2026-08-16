@@ -22,23 +22,13 @@ export default async function PortalLayout({ children }: { children: React.React
 
   const brand = session.primaryColor || '#1e40af'
 
-  // Only offer these tabs once there is something behind them. A tab that
-  // leads to a permanent empty state reads as something broken rather than
+  // Only offer this tab once there is something behind it. A tab that leads
+  // to a permanent empty state reads as something broken rather than
   // something not bought.
-  const [rankScans, liveArticles] = await Promise.all([
-    prisma.localRankScan.count({ where: { clientId: session.clientId } }).catch(() => 0),
-    prisma.seoArticle
-      .count({
-        where: {
-          clientId: session.clientId,
-          publishedAt: { not: null },
-          client: { seoContentEnabled: true },
-        },
-      })
-      .catch(() => 0),
-  ])
+  const rankScans = await prisma.localRankScan
+    .count({ where: { clientId: session.clientId } })
+    .catch(() => 0)
   const hasRankings = rankScans > 0
-  const hasSeo = liveArticles > 0 || rankScans > 0
 
   return (
     <div
@@ -78,7 +68,7 @@ export default async function PortalLayout({ children }: { children: React.React
           )}
           <span className="font-bold text-gray-900 truncate">{session.businessName}</span>
           <div className="ml-auto">
-            <PortalNav showRankings={hasRankings} showSeo={hasSeo} />
+            <PortalNav showRankings={hasRankings} />
           </div>
         </div>
       </header>
@@ -88,7 +78,7 @@ export default async function PortalLayout({ children }: { children: React.React
       {/* Outside the header on purpose: the header's backdrop-blur makes it a
           containing block for fixed children, which pinned this bar to the
           top of the screen instead of the bottom. */}
-      <PortalTabBar showRankings={hasRankings} showSeo={hasSeo} />
+      <PortalTabBar showRankings={hasRankings} />
     </div>
   )
 }

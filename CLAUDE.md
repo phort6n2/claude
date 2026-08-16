@@ -312,39 +312,6 @@ and posts each finished run back, so nothing is polled.
 - The raw payload is stored precisely so a reader bug costs a recompute
   rather than a re-scan: credits are billed per run.
 
-### Syndicated SEO articles
-
-`baby-love-growth.ts` (API client), `seo-articles.ts` (sync),
-`seo-article-review.ts` (content scan), `sanitize-html.ts`.
-
-BabyLoveGrowth writes articles; a nightly cron pulls them into `SeoArticle`
-and the hosted sites serve them at `/blog`. Pull-only and rate limited, so
-nothing may call their API per page view.
-
-- **Each shop is its own BabyLoveGrowth organisation with its own key**, held
-  encrypted on `Client.blgApiKey` and switched on with `Client.seoContentEnabled`
-  (admin → client → SEO tab). The key identifies the shop, so nothing has to
-  be matched. An account-wide key in Settings still works as a fallback and
-  falls back to matching `orgWebsite` against the shop's custom domain,
-  Business Profile website, or glassleads.app subdomain.
-- An article reaches a site only if it is **placed with a shop** and **passes
-  the content scan**. Unplaced is held, never guessed — one shop's content
-  under another's name is worse than no content.
-- `seoContentEnabled` is enforced at **render**, not only at sync: the blog
-  pages, the sitemap and the portal all require it, so switching it off takes
-  live pages down rather than only stopping the next pull.
-- The scan enforces §2's content rules on copy nobody at the shop reads
-  before it goes up: turnaround promises, deductible offers, insurer
-  relationships, asserted ratings, credentials, years in business. It
-  **holds, never rewrites** — a claim about a real business is a human's
-  call. It is a floor: it catches known phrasings, not a fabricated fact
-  stated plainly.
-- Bodies are third-party HTML on the shop's own origin, next to their quote
-  form, so they go through an **allow-list** sanitiser at render (not at
-  sync, so a fix applies to everything already stored).
-- Clients see the work in the portal's SEO tab and cannot act on it. That is
-  deliberate — read-only, no approvals, no scheduling.
-
 ### Other pieces worth knowing
 
 - `wordmark.ts` / `wordmark-image.tsx` — generated wordmark for shops with no
