@@ -160,7 +160,7 @@ export default function RankBoard({
           key={run.embedUrl}
           src={run.embedUrl}
           title={`Ranking map for ${active.term} on ${run.label}`}
-          className="w-full block border-0 bg-gray-100 h-[92vh] min-h-[720px]"
+          className="w-full block border-0 bg-gray-100 h-[100vh] min-h-[720px]"
           loading="lazy"
           // allow-storage-access-by-user-activation matters: their app is
           // cross-site here, so its own storage is partitioned by default,

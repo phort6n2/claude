@@ -45,13 +45,19 @@ const ACTIONS: Array<{
 export default function RankCampaignActions() {
   const [busy, setBusy] = useState<string | null>(null)
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const [purgeScans, setPurgeScans] = useState(false)
 
-  async function run(endpoint: string, confirmText?: string) {
+  async function run(endpoint: string, confirmText?: string, payload?: unknown) {
     if (confirmText && !window.confirm(confirmText)) return
     setBusy(endpoint)
     setResult(null)
     try {
-      const res = await fetch(endpoint, { method: 'POST' })
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        ...(payload
+          ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
+          : {}),
+      })
       const data = await res.json().catch(() => ({}))
       setResult({ ok: !!data.success, message: data.message || (res.ok ? 'Done.' : 'Failed.') })
     } catch {
@@ -87,6 +93,51 @@ export default function RankCampaignActions() {
             <p className="mt-2 text-xs text-gray-600">{action.hint}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4">
+        <h3 className="text-sm font-bold text-red-900">Delete every campaign</h3>
+        <p className="mt-1 text-xs text-red-900 max-w-prose">
+          Irreversible at Local Dominator — deleting a scheduled scan takes its runs with it.
+          Recreating is not a restore: new campaigns, new share tokens, and a run&apos;s credits
+          per client the moment they are created.
+        </p>
+        <label className="mt-3 flex items-start gap-2 text-xs text-red-900 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={purgeScans}
+            onChange={(e) => setPurgeScans(e.target.checked)}
+            className="mt-0.5 h-3.5 w-3.5 rounded border-red-300"
+          />
+          <span>
+            Also delete the scans stored here. Left alone they keep the trend history, but their
+            maps point at tokens Local Dominator will have purged, so those frames go dead.
+          </span>
+        </label>
+        <div className="mt-3">
+          <Button
+            size="sm"
+            variant="danger"
+            disabled={busy !== null}
+            onClick={() =>
+              run(
+                '/api/admin/rank-campaigns/delete-all',
+                `Delete EVERY rank campaign at Local Dominator?\n\n${
+                  purgeScans
+                    ? 'Stored scan history here will be deleted too.\n\n'
+                    : 'Stored scans here are kept, but their maps will go dead.\n\n'
+                }This cannot be undone. Recreating spends a run's credits per client.`,
+                { purgeScans }
+              )
+            }
+          >
+            {busy === '/api/admin/rank-campaigns/delete-all' ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              'Delete all campaigns'
+            )}
+          </Button>
+        </div>
       </div>
 
       {result && (
