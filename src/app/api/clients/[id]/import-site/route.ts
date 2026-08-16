@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { importSiteContent, looksLikeForeignMark } from '@/lib/site-import'
+import { mirrorImages, mirrorRemoteImage } from '@/lib/photo-mirror'
 
 export const dynamic = 'force-dynamic'
 // Crawl (up to 5 pages) + model extraction can exceed the default budget.
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const { id } = await params
     const client = await prisma.client.findUnique({
       where: { id },
-      select: { businessName: true, city: true, state: true, logoUrl: true },
+      select: { slug: true, businessName: true, city: true, state: true, logoUrl: true },
     })
     if (!client) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 })
@@ -44,6 +45,17 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     })
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 422 })
+    }
+
+    // Copied onto our own storage before the draft is even shown. Hot-linking
+    // the shop's old CMS was measured at ~1MB of images into 358px phone slots
+    // on one live site, and it breaks silently the day they redesign. Anything
+    // that cannot be copied keeps its original URL — a hot-linked photo beats
+    // no photo.
+    result.draft.photos = await mirrorImages(result.draft.photos, client.slug)
+    if (result.draft.logoUrl) {
+      const mirrored = await mirrorRemoteImage(result.draft.logoUrl, client.slug, 'logo')
+      if (mirrored) result.draft.logoUrl = mirrored
     }
 
     // The scorer refusing to pick another brand's badge is only half the fix

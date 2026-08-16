@@ -90,6 +90,7 @@ export default function StorageSweep() {
 
   return (
     <div className="space-y-4">
+      <MirrorPhotosCard />
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -202,5 +203,60 @@ export default function StorageSweep() {
         )}
       </section>
     </div>
+  )
+}
+
+
+/**
+ * Copy hot-linked photos onto our own storage.
+ *
+ * Shops imported before the importer did this still serve every photo from
+ * their old CMS, at whatever size was uploaded — measured at ~1MB into 358px
+ * phone slots on one live site, and it breaks the day they redesign. Safe to
+ * run repeatedly: anything already on Blob is skipped.
+ */
+function MirrorPhotosCard() {
+  const [running, setRunning] = useState(false)
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null)
+
+  async function run() {
+    if (!confirm('Copy every hot-linked photo and logo onto our own storage?\n\nThis fetches and re-encodes each one, so it takes a while. Anything already copied is skipped, and anything that cannot be fetched keeps its current URL.')) {
+      return
+    }
+    setRunning(true)
+    setResult(null)
+    try {
+      const res = await fetch('/api/admin/mirror-photos', { method: 'POST' })
+      const data = await res.json()
+      setResult({ ok: !!data.success, text: data.message || 'Done.' })
+    } catch {
+      setResult({ ok: false, text: 'Could not run — try again.' })
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  return (
+    <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+      <h2 className="font-bold text-gray-900 flex items-center gap-2">
+        <HardDrive className="h-4 w-4 text-gray-400" /> Self-host imported photos
+      </h2>
+      <p className="text-sm text-gray-600 max-w-prose">
+        Photos and logos taken from a shop&rsquo;s old website are served from that site until they
+        are copied here. Copying them makes the pages lighter, stops them breaking when the shop
+        redesigns, and stops billing someone else for the traffic.
+      </p>
+      <button
+        type="button"
+        onClick={run}
+        disabled={running}
+        className="mt-3 inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+      >
+        {running ? 'Copying…' : 'Copy imported photos'}
+      </button>
+      {result && (
+        <p className={`mt-2 text-sm ${result.ok ? 'text-green-700' : 'text-red-600'}`}>{result.text}</p>
+      )}
+    </section>
   )
 }
