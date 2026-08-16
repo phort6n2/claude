@@ -13,6 +13,7 @@ import {
   Users,
   MapPin,
   FileText,
+  Sparkles,
 } from 'lucide-react'
 
 /**
@@ -30,6 +31,7 @@ export default function ClientTabs({ clientId }: { clientId: string }) {
     { href: `${base}/site`, label: 'Website', icon: Globe },
     { href: `${base}/advertising`, label: 'Advertising', icon: Megaphone },
     { href: `${base}/rankings`, label: 'Rankings', icon: MapPin },
+    { href: `${base}/activity`, label: 'Activity', icon: Sparkles },
     { href: `${base}/seo`, label: 'SEO', icon: FileText },
     { href: `${base}/leads-setup`, label: 'Lead delivery', icon: Webhook },
     { href: `${base}/users`, label: 'Users', icon: Users },
