@@ -38,6 +38,10 @@ export default function middleware(req: NextRequest) {
     pathname !== '/' &&
     !pathname.startsWith('/services/') &&
     !pathname.startsWith('/locations/') &&
+    // Where a no-JavaScript form submission lands. Without this it is only
+    // reachable at /sites/{slug}/quote-sent, and the redirect goes to the
+    // shop's own host.
+    pathname !== '/quote-sent' &&
     pathname !== '/privacy' &&
     pathname !== '/terms'
   ) {
@@ -68,6 +72,7 @@ export const config = {
     '/',
     '/services/:path*',
     '/locations/:path*',
+    '/quote-sent',
     '/privacy',
     '/terms',
   ],

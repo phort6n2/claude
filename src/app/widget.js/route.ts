@@ -731,7 +731,22 @@ const WIDGET_SOURCE = String.raw`(function () {
   }
 
   function mountInline(container, cfg) {
-    // Clear the server-rendered loading skeleton before mounting the card.
+    /* Carry across anything already typed.
+
+       The container now holds a REAL, working form rather than a skeleton, so
+       it can be used the moment the HTML arrives — about a second before this
+       script does. Clearing it without reading it first would silently wipe
+       what someone had started, on the one element the whole page exists for. */
+    var carried = {};
+    try {
+      var prior = container.querySelectorAll('input[name], textarea[name], select[name]');
+      for (var p = 0; p < prior.length; p++) {
+        var field = prior[p];
+        if (field.name && field.name !== '_hp' && field.value) carried[field.name] = field.value;
+      }
+    } catch (e) {}
+
+    // Clear the server-rendered form before mounting the richer card.
     container.textContent = '';
     var host = el('div');
     container.appendChild(host);
@@ -741,6 +756,15 @@ const WIDGET_SOURCE = String.raw`(function () {
     var built = buildCard(cfg, null);
     // Message-match: a service page names its service on the container and
     // the select starts there instead of the global default.
+    /* Restore what was typed into the no-script form, best effort: a field
+       the richer card does not have is simply dropped rather than throwing. */
+    try {
+      Object.keys(carried).forEach(function (name) {
+        var target = built.card.querySelector('[name="' + name + '"]');
+        if (target && !target.value) target.value = carried[name];
+      });
+    } catch (e) {}
+
     var wanted = container.getAttribute('data-service');
     if (wanted) {
       var select = built.card.querySelector('select[name="service"]');

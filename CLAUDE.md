@@ -157,6 +157,28 @@ arrive from the hosted sites' own form and from embedded widgets.
   captured client-side, persisted, and travel with the lead. `paid_click`
   is tracked separately from the site's nominal source.
 
+### The quote form
+
+`WidgetMount` in `site-body.tsx` renders a **real, working `<form method="post">`**
+server-side; `widget.js` upgrades it in place.
+
+- **No JavaScript, still a lead.** The form posts urlencoded to the SAME intake
+  the widget's fetch uses, so a no-script lead is dedup'd, attributed, alerted
+  and forwarded identically. A parallel route would be a second copy of that
+  behaviour waiting to drift.
+- The intake branches on `Content-Type` and answers a form post with a **303**
+  to `/quote-sent`, never JSON. 303, so a refresh cannot post the lead twice.
+- The confirmation path comes from the **`Referer`**, because the same HTML
+  serves a shop's own host and `/sites/{slug}` — a path baked in at render is
+  wrong for one of them, and without JS there is nothing to put in a hidden
+  field. A referer on another host is ignored.
+- Scheme and **port** come from `x-forwarded-proto`/`x-forwarded-host`.
+  `requestHost()` strips the port on purpose (it compares origins) and is the
+  wrong tool for building a redirect.
+- `widget.js` **carries across anything already typed** before it swapped the
+  form — the script lands about a second after the HTML, and that is the one
+  element the page exists for.
+
 ### Notifications
 
 `lead-notifications.ts` — Resend email and Twilio SMS. Emails come from
