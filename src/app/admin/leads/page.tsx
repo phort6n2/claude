@@ -74,7 +74,7 @@ export default function LeadsPage() {
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
-  const [stats, setStats] = useState<{ byStatus: Record<string, number> }>({ byStatus: {} })
+  const [stats, setStats] = useState<{ byStatus: Record<string, number>; soldValue?: number }>({ byStatus: {} })
 
   // Filters
   const [selectedClient, setSelectedClient] = useState<string>('')
@@ -86,8 +86,12 @@ export default function LeadsPage() {
   // Refresh state (manual button + visibility-change catch-up)
   const [refreshing, setRefreshing] = useState(false)
   const [lastRefreshAt, setLastRefreshAt] = useState<number>(Date.now())
-  const filterRef = useRef({ selectedClient, selectedStatus })
-  filterRef.current = { selectedClient, selectedStatus }
+  const filterRef = useRef({ selectedClient, selectedStatus, searchQuery })
+  filterRef.current = { selectedClient, selectedStatus, searchQuery }
+  // The offset for "load more" is the number of rows already held, read at
+  // click time rather than closed over.
+  const leadsRef = useRef(leads)
+  leadsRef.current = leads
 
   // Load clients for filter dropdown
   useEffect(() => {
@@ -104,11 +108,16 @@ export default function LeadsPage() {
   // Fetch the list from REST. `mode === 'initial'` shows the skeleton; otherwise
   // the spinner on the Refresh button signals progress without blowing away
   // expanded rows / in-progress edits.
-  const fetchLeads = useCallback(async (mode: 'initial' | 'manual' = 'initial') => {
-    const { selectedClient, selectedStatus } = filterRef.current
+  const fetchLeads = useCallback(async (mode: 'initial' | 'manual' | 'more' = 'initial') => {
+    const { selectedClient, selectedStatus, searchQuery } = filterRef.current
     const params = new URLSearchParams()
     if (selectedClient) params.set('clientId', selectedClient)
     if (selectedStatus) params.set('status', selectedStatus)
+    // Searched server-side. Filtering in the browser only ever searched the
+    // page that happened to be loaded, so a customer past the newest 50 came
+    // back as "no leads found".
+    if (searchQuery.trim()) params.set('q', searchQuery.trim())
+    if (mode === 'more') params.set('offset', String(leadsRef.current.length))
 
     if (mode === 'initial') {
       setLoading(true)
@@ -119,7 +128,7 @@ export default function LeadsPage() {
     try {
       const res = await fetch(`/api/leads?${params.toString()}`)
       const data = await res.json()
-      setLeads(data.leads || [])
+      setLeads((prev) => (mode === 'more' ? [...prev, ...(data.leads || [])] : data.leads || []))
       setTotal(data.total || 0)
       setStats(data.stats || { byStatus: {} })
       setLastRefreshAt(Date.now())
@@ -138,6 +147,18 @@ export default function LeadsPage() {
   useEffect(() => {
     fetchLeads('initial')
   }, [selectedClient, selectedStatus, fetchLeads])
+
+  // Typing re-queries the server, debounced. Skips the very first run so the
+  // load above is not immediately duplicated.
+  const searchedRef = useRef(searchQuery)
+  useEffect(() => {
+    if (searchedRef.current === searchQuery) return
+    const timer = setTimeout(() => {
+      searchedRef.current = searchQuery
+      void fetchLeads('manual')
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [searchQuery, fetchLeads])
 
   // Real-time push: new leads arrive over SSE and are prepended directly.
   const streamUrl = useMemo(() => {
@@ -173,18 +194,8 @@ export default function LeadsPage() {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [fetchLeads])
 
-  // Filter leads by search query (client-side)
-  const filteredLeads = leads.filter((lead) => {
-    if (!searchQuery) return true
-    const query = searchQuery.toLowerCase()
-    return (
-      lead.email?.toLowerCase().includes(query) ||
-      lead.phone?.includes(query) ||
-      lead.firstName?.toLowerCase().includes(query) ||
-      lead.lastName?.toLowerCase().includes(query) ||
-      lead.client.businessName.toLowerCase().includes(query)
-    )
-  })
+  // The server has already applied the search; these are the rows to draw.
+  const filteredLeads = leads
 
   function formatDate(dateString: string) {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -232,7 +243,9 @@ export default function LeadsPage() {
   }
 
   // Calculate totals
-  const totalValue = leads.filter(l => l.saleValue).reduce((sum, l) => sum + (l.saleValue || 0), 0)
+  // From the server, over every matching row. Summing the loaded page made
+  // the money number a function of how far you had scrolled.
+  const totalValue = stats.soldValue ?? 0
   const soldCount = stats.byStatus['SOLD'] || 0
   const newCount = stats.byStatus['NEW'] || 0
 
@@ -418,10 +431,20 @@ export default function LeadsPage() {
         </div>
       )}
 
-      {/* Pagination hint */}
+      {/* Not just a hint — the rest of the list was unreachable. */}
       {filteredLeads.length > 0 && filteredLeads.length < total && (
-        <div className="mt-4 text-center text-sm text-gray-500">
-          Showing {filteredLeads.length} of {total} leads
+        <div className="mt-4 flex flex-col items-center gap-2">
+          <button
+            type="button"
+            onClick={() => fetchLeads('more')}
+            disabled={refreshing}
+            className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+          >
+            {refreshing ? 'Loading…' : `Load ${Math.min(50, total - filteredLeads.length)} more`}
+          </button>
+          <span className="text-sm text-gray-500">
+            Showing {filteredLeads.length} of {total} leads
+          </span>
         </div>
       )}
 

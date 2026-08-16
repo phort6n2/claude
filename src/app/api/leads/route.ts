@@ -25,6 +25,10 @@ export async function GET(request: NextRequest) {
   // their canonical lead — don't surface them as top-level rows or daily
   // counts would be inflated.
   const includeDuplicates = searchParams.get('includeDuplicates') === '1'
+  // Searched HERE, not in the browser. The page only ever holds the newest
+  // page of rows, so a filter applied client-side searched those and quietly
+  // reported "no leads found" for a customer who is in the database.
+  const query = (searchParams.get('q') || '').trim()
 
   try {
     // Build where clause
@@ -40,6 +44,16 @@ export async function GET(request: NextRequest) {
 
     if (!includeDuplicates) {
       where.duplicateOfLeadId = null
+    }
+
+    if (query) {
+      const contains = { contains: query, mode: 'insensitive' as const }
+      where.OR = [
+        { firstName: contains },
+        { lastName: contains },
+        { email: contains },
+        { phone: { contains: query.replace(/\D/g, '') || query } },
+      ]
     }
 
     if (startDate || endDate) {
@@ -134,6 +148,21 @@ export async function GET(request: NextRequest) {
       return acc
     }, {} as Record<string, number>)
 
+    // Summed across every matching row, not the page. The Total Value tile sat
+    // beside three server-side counts and was computed from the 50 leads the
+    // browser happened to be holding, so the money number silently depended on
+    // how far you had scrolled.
+    const valueAgg = await withRetry(() =>
+      prisma.lead.aggregate({
+        where: {
+          ...(clientId ? { clientId } : {}),
+          ...(includeDuplicates ? {} : { duplicateOfLeadId: null }),
+          status: 'SOLD',
+        },
+        _sum: { saleValue: true },
+      })
+    )
+
     // Flatten the most-recent CallAnalysis onto each lead + its duplicates so
     // the UI doesn't have to deal with nested arrays.
     type CallAnalysisSummary = {
@@ -173,6 +202,7 @@ export async function GET(request: NextRequest) {
       stats: {
         total,
         byStatus: statusCounts,
+        soldValue: valueAgg._sum.saleValue ?? 0,
       },
     })
   } catch (error) {
