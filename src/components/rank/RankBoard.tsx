@@ -83,7 +83,7 @@ export default function RankBoard({
     <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
       {keywords.length > 1 && (
         <div
-          className="flex gap-1 overflow-x-auto border-b border-gray-200 px-2 pt-2"
+          className="flex gap-1 overflow-x-auto border-b border-gray-200 px-2 pt-2 bg-gray-50"
           role="tablist"
           aria-label="Keyword"
         >
@@ -107,12 +107,6 @@ export default function RankBoard({
             )
           })}
         </div>
-      )}
-
-      {fallbackReason && (
-        <p className="px-4 sm:px-5 py-2 text-[11px] text-gray-500 border-b border-gray-100">
-          {fallbackReason}
-        </p>
       )}
 
       <div className="px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-gray-100">
@@ -202,6 +196,10 @@ export default function RankBoard({
       )}
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
+        {/* Admin-facing, and below the map rather than above it: the map is
+            the point, and this is a footnote about which map. */}
+        {fallbackReason && <p className="text-[11px] text-gray-500">{fallbackReason}</p>}
+
         {multiple && (
           <div>
             <input
