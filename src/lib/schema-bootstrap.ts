@@ -177,6 +177,10 @@ export const CLARITY_SQL: string[] = [
   `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "clarityApiToken" TEXT`,
 ]
 
+export const RESPONSE_TIME_SQL: string[] = [
+  `ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "firstTouchedAt" TIMESTAMP(3)`,
+]
+
 /** Everything the running code assumes exists. */
 export const BOOTSTRAP_SQL: string[] = [
   ...CALL_TRACKING_SQL,
@@ -187,6 +191,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...SEO_ARTICLE_SQL,
   ...CONTENT_FEED_SQL,
   ...CLARITY_SQL,
+  ...RESPONSE_TIME_SQL,
 ]
 
 /**

@@ -10,11 +10,13 @@ import {
   CheckCircle2,
   ArrowRight,
   MapPin,
+  Timer,
 } from 'lucide-react'
 import { prisma } from '@/lib/db'
 import { getSiteExtras } from '@/lib/site-content'
 import CopyField from '@/components/admin/CopyField'
 import { requireAdminPage } from '@/lib/admin-guard'
+import { formatMinutes, getResponseTime } from '@/lib/response-time'
 
 /**
  * Client overview — "is this client OK, and where do I go?".
@@ -90,7 +92,8 @@ export default async function ClientOverviewPage({ params }: PageProps) {
   if (!client) notFound()
 
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-  const [leadCount, lastLead, reviews, destinations, extras, userCount] = await Promise.all([
+  const [leadCount, lastLead, reviews, destinations, extras, userCount, response] =
+    await Promise.all([
     prisma.lead.count({ where: { clientId: id, createdAt: { gte: weekAgo } } }),
     prisma.lead.findFirst({
       where: { clientId: id },
@@ -115,6 +118,7 @@ export default async function ClientOverviewPage({ params }: PageProps) {
       .catch(() => []),
     getSiteExtras(id),
     prisma.clientUser.count({ where: { clientId: id } }).catch(() => 0),
+    getResponseTime(id).catch(() => null),
   ])
 
   const base = `/admin/clients/${id}`
@@ -156,6 +160,60 @@ export default async function ClientOverviewPage({ params }: PageProps) {
           <p className="text-gray-400">
             {lastLead ? `Last lead ${timeAgo(lastLead.createdAt)}` : 'No leads yet'}
           </p>
+        </Card>
+
+        {/* The answer to "your leads are bad". A shop that opens its enquiries
+            the next morning is not getting worse leads than one that calls in
+            ten minutes — it is converting the same leads worse. */}
+        <Card
+          title="Response time"
+          icon={Timer}
+          tone={
+            !response || response.measured === 0
+              ? 'idle'
+              : response.medianMinutes !== null && response.medianMinutes <= 15
+                ? 'ok'
+                : response.medianMinutes !== null && response.medianMinutes <= 120
+                  ? 'warn'
+                  : 'bad'
+          }
+          href={`/admin/leads?clientId=${client.id}`}
+          linkLabel="Open leads"
+        >
+          {!response || response.measured === 0 ? (
+            <p>
+              {response?.untouched
+                ? `${response.untouched} lead${response.untouched === 1 ? '' : 's'} still untouched, none answered yet to measure.`
+                : 'No answered leads yet to measure.'}
+            </p>
+          ) : (
+            <>
+              <p className="text-2xl font-bold text-gray-900">
+                {formatMinutes(response.medianMinutes)}
+              </p>
+              <p>typical time to first touch, last 90 days</p>
+              <p className="text-gray-400">
+                {response.withinFifteenMin} of {response.measured} inside 15 min
+                {response.overOneDay ? `, ${response.overOneDay} left over a day` : ''}
+                {response.untouched ? `, ${response.untouched} never touched` : ''}
+              </p>
+              {/* The gap between median and mean IS the finding: it says the
+                  shop is fine most of the time and drops some entirely. */}
+              {response.meanMinutes !== null &&
+                response.medianMinutes !== null &&
+                response.meanMinutes > response.medianMinutes * 3 && (
+                  <p className="text-amber-700">
+                    Average is {formatMinutes(response.meanMinutes)} — a few are being left much
+                    longer than the rest.
+                  </p>
+                )}
+              {response.unmeasurable > 0 && (
+                <p className="text-gray-400">
+                  {response.unmeasurable} answered before this was tracked, not counted.
+                </p>
+              )}
+            </>
+          )}
         </Card>
 
         <Card

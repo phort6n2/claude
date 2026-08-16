@@ -95,6 +95,14 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       if (data.updatedBy) {
         updateData.statusUpdatedBy = data.updatedBy
       }
+
+      // First touch, stamped once and never overwritten. `statusUpdatedAt`
+      // above records the LATEST change, so on a lead that went
+      // NEW -> CONTACTED -> SOLD it reports the sale — which measures how long
+      // the job took, not how long the customer waited.
+      if (data.status !== 'NEW' && !existing.firstTouchedAt) {
+        updateData.firstTouchedAt = new Date()
+      }
     }
 
     // Qualification

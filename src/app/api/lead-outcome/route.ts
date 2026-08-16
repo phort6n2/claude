@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
   try {
     const existing = await prisma.lead.findUnique({
       where: { id: leadId },
-      select: { id: true, saleDate: true },
+      select: { id: true, saleDate: true, firstTouchedAt: true },
     })
     if (!existing) {
       return NextResponse.json({ error: 'That lead no longer exists.' }, { status: 404 })
@@ -57,6 +57,9 @@ export async function POST(request: NextRequest) {
       data: {
         status: outcome === 'won' ? 'SOLD' : 'LOST',
         statusUpdatedAt: new Date(),
+        // Tapping the button in the alert IS the first touch when nothing
+        // else has moved the lead. Stamped once, never overwritten.
+        ...(existing.firstTouchedAt ? {} : { firstTouchedAt: new Date() }),
         // Not a ClientUser id — nobody signed in. Named so the source of the
         // change is obvious in a row that otherwise looks like it edited itself.
         statusUpdatedBy: 'lead-alert-link',
