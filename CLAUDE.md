@@ -441,6 +441,23 @@ back), switched on per shop from the admin Advertising tab.
   "How this site is measured" section — **only** for a shop that actually has
   a project id, so no site claims a tool it does not use.
 
+### Response time
+
+`response-time.ts`, shown on the admin client Overview. The answer when a
+client says the leads are bad.
+
+- Measured from **`Lead.firstTouchedAt`**, stamped once on the first move off
+  NEW. NOT `statusUpdatedAt`, which holds the LATEST change — on a lead that
+  went NEW → CONTACTED → SOLD that reports how long the job took, not how long
+  the customer waited.
+- **Median, with the mean beside it.** One lead answered five days late ruins
+  an average while the typical response was twenty minutes. The gap between
+  the two IS the finding: it says the shop is fine most of the time and drops
+  some entirely.
+- Leads predating the column are excluded **and counted as excluded**. A
+  metric that quietly drops what it cannot measure reads as complete when it
+  is not.
+
 ### Other pieces worth knowing
 
 - `wordmark.ts` / `wordmark-image.tsx` — generated wordmark for shops with no

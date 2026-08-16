@@ -270,7 +270,14 @@ differences worth acting on — the shops have different traffic, different
 geography and different pages. The token belongs on the Client row, encrypted,
 next to the other per-shop keys.
 
-1. **Response-time tracking.** The app knows when a lead arrived and when its status moved. "This shop takes four hours to touch a lead" is nearly free, and it is your answer when a client says the leads are bad.
+1. ~~**Response-time tracking.**~~ **BUILT.** On each client's Overview tab:
+   the typical (median) time to first touch over 90 days, how many were
+   answered inside 15 minutes, how many were left over a day, and how many
+   were never touched at all. When the average runs far above the median the
+   card says so — that gap means the shop is fine most of the time and drops
+   some entirely, which is a different conversation from "you are slow".
+   Leads answered before the tracking column existed are excluded and counted
+   as excluded, so the figure never looks more complete than it is.
 2. **Real sales page at glassleads.app.** Every client site's footer now links "Powered by GlassLeads" to the apex, which serves a holding brand page (features, no pricing, no contact). The real page needs decisions only you can make: published pricing yes/no, the CTA (a demo-booking link? a phone number? an email that actually receives mail — the Resend domain only sends), and proof (screenshots, a client quote).
 3. **Two-step quote form with partial capture.** The form dropped from six
    required fields to four, which was most of the available gain. The rest —

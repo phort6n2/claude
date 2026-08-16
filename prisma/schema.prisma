@@ -296,6 +296,14 @@ model Lead {
   // Lead Status (updated by client)
   status          LeadStatus @default(NEW)
   statusUpdatedAt DateTime?
+  /// The FIRST move off NEW, written once and never again.
+  ///
+  /// Not the same thing as statusUpdatedAt, which holds the LATEST change: a
+  /// lead that went NEW → CONTACTED → SOLD reports the sale there, so using it
+  /// as a response time measures how long the job took, not how long the
+  /// customer waited. Null on every lead that predates this column, and the
+  /// metric says so rather than quietly averaging them in.
+  firstTouchedAt  DateTime?
   statusUpdatedBy String? // ClientUser ID who updated
 
   // Qualification
