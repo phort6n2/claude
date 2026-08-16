@@ -156,7 +156,16 @@ export default function AdsTrackingCard({
     }
   }, [])
 
-  async function save() {
+  /**
+   * Save, and optionally remove a conversion on purpose.
+   *
+   * An empty snippet box leaves that conversion as it is. It used to delete
+   * it, which meant every later visit to this card — to pick an account, fix
+   * the Bing tag, untick enhanced conversions — quietly wiped the two Google
+   * conversions, because the boxes are blanked after every successful save.
+   * Removing one is now a deliberate act with its own button.
+   */
+  async function save(clear?: { lead?: boolean; call?: boolean }) {
     setSaving(true)
     setMessage(null)
     try {
@@ -166,6 +175,8 @@ export default function AdsTrackingCard({
         body: JSON.stringify({
           leadSnippet,
           callSnippet,
+          clearLead: clear?.lead === true,
+          clearCall: clear?.call === true,
           enhancedConversions: enhanced,
           bingUetTagId: bingTagId,
           bingLeadEventAction: bingAction,
@@ -178,7 +189,13 @@ export default function AdsTrackingCard({
       if (data.parsed?.bingLeadEventAction) setBingAction(data.parsed.bingLeadEventAction)
       setLeadSnippet('')
       setCallSnippet('')
-      setMessage({ ok: true, text: 'Saved. The tag updates on the site within about 5 minutes.' })
+      setMessage({
+        ok: true,
+        text:
+          clear?.lead || clear?.call
+            ? 'Removed. The tag updates on the site within about 5 minutes.'
+            : 'Saved. The tag updates on the site within about 5 minutes.',
+      })
     } catch (err) {
       setMessage({ ok: false, text: err instanceof Error ? err.message : 'Failed to save' })
     } finally {
@@ -276,7 +293,7 @@ export default function AdsTrackingCard({
           ) : (
             <span className="mt-1.5 ml-1 mr-1 h-2 w-2 rounded-full bg-gray-300 shrink-0" />
           )}
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="font-medium text-gray-900">Form leads</div>
             <div className="text-gray-600">
               {leadLive ? (
@@ -291,6 +308,24 @@ export default function AdsTrackingCard({
               )}
             </div>
           </div>
+          {leadLive && (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => {
+                if (
+                  confirm(
+                    'Stop reporting form leads to Google Ads for this shop? Quote-form submissions become invisible to Google until a snippet is pasted again.'
+                  )
+                ) {
+                  save({ lead: true })
+                }
+              }}
+              className="shrink-0 text-xs font-semibold text-red-600 hover:underline disabled:opacity-50"
+            >
+              Remove
+            </button>
+          )}
         </div>
         <div className="flex items-start gap-2 p-3">
           {callLive ? (
@@ -298,7 +333,7 @@ export default function AdsTrackingCard({
           ) : (
             <span className="mt-1.5 ml-1 mr-1 h-2 w-2 rounded-full bg-gray-300 shrink-0" />
           )}
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="font-medium text-gray-900">Calls from the website</div>
             <div className="text-gray-600">
               {callLive
@@ -306,6 +341,24 @@ export default function AdsTrackingCard({
                 : 'Not reporting from this site. Correct if HighLevel is tracking calls instead.'}
             </div>
           </div>
+          {callLive && (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => {
+                if (
+                  confirm(
+                    'Stop reporting website calls to Google Ads for this shop? Google stops swapping the number on the site and stops counting those calls.'
+                  )
+                ) {
+                  save({ call: true })
+                }
+              }}
+              className="shrink-0 text-xs font-semibold text-red-600 hover:underline disabled:opacity-50"
+            >
+              Remove
+            </button>
+          )}
         </div>
       </div>
 
@@ -620,7 +673,7 @@ export default function AdsTrackingCard({
       <div className="flex flex-wrap items-center gap-3 border-t border-gray-200 pt-4">
         <button
           type="button"
-          onClick={save}
+          onClick={() => save()}
           disabled={saving}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60"
         >
@@ -641,7 +694,8 @@ export default function AdsTrackingCard({
           Check the live site
         </button>
         <span className="text-xs text-gray-500">
-          Saving replaces what&apos;s configured. Leave a box empty to clear that conversion.
+          A box left empty keeps that conversion as it is. Use <strong>Remove</strong> on the row
+          above to stop one.
         </span>
         {message && (
           <span className={`text-sm ${message.ok ? 'text-green-700' : 'text-red-600'}`}>

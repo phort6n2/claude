@@ -84,6 +84,22 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
   // actually recording. Digits only; an empty pick clears it.
   const googleAdsCustomerId = str(body.googleAdsCustomerId).replace(/\D/g, '') || null
 
+  // An EMPTY snippet box means "leave this conversion alone", not "delete
+  // it". It used to mean delete, and that lost live conversions: the card
+  // blanks both boxes after a successful save, so coming back later to pick
+  // an Ads account, change the Bing tag or untick enhanced conversions
+  // submitted two empty snippets and wiped the form-lead and call
+  // conversions the card was still reporting as configured. No error, no
+  // warning, and nothing to notice until booked jobs stopped reaching Google
+  // — which is the one loop this product is built around. Clearing is now
+  // something you ask for by name.
+  const existing = await prisma.clientAdsTracking
+    .findUnique({ where: { clientId: id } })
+    .catch(() => null)
+
+  const keepLead = !leadInput && body.clearLead !== true && !!existing
+  const keepCall = !callInput && body.clearCall !== true && !!existing
+
   const data: {
     conversionId: string | null
     leadConversionLabel: string | null
@@ -96,12 +112,14 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     bingLeadEventAction: string | null
     googleAdsCustomerId: string | null
   } = {
-    conversionId: null,
-    leadConversionLabel: null,
-    leadValue: null,
-    leadCurrency: null,
-    callConversionLabel: null,
-    callPhoneNumber: null,
+    // Both conversions live in one Ads account, so the account id survives as
+    // long as either of them does.
+    conversionId: keepLead || keepCall ? (existing?.conversionId ?? null) : null,
+    leadConversionLabel: keepLead ? (existing?.leadConversionLabel ?? null) : null,
+    leadValue: keepLead ? (existing?.leadValue ?? null) : null,
+    leadCurrency: keepLead ? (existing?.leadCurrency ?? null) : null,
+    callConversionLabel: keepCall ? (existing?.callConversionLabel ?? null) : null,
+    callPhoneNumber: keepCall ? (existing?.callPhoneNumber ?? null) : null,
     enhancedConversions,
     bingUetTagId,
     bingLeadEventAction,
@@ -112,6 +130,17 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     const parsed = parseLeadSnippet(leadInput)
     if (!parsed.ok || !parsed.value) {
       return NextResponse.json({ error: `Lead snippet: ${parsed.error}` }, { status: 400 })
+    }
+    // The same one-account rule the call branch enforces, in the other
+    // direction: a new lead snippet must not orphan a call conversion that
+    // is being kept from a different account.
+    if (keepCall && data.conversionId && data.conversionId !== parsed.value.conversionId) {
+      return NextResponse.json(
+        {
+          error: `That lead snippet is from a different Ads account (${parsed.value.conversionId}) than the call conversion already saved (${data.conversionId}). Both have to come from the same account — paste a matching call snippet too, or remove the saved call conversion first.`,
+        },
+        { status: 400 }
+      )
     }
     data.conversionId = parsed.value.conversionId
     data.leadConversionLabel = parsed.value.leadConversionLabel
@@ -137,6 +166,14 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     data.conversionId = parsed.value.conversionId
     data.callConversionLabel = parsed.value.callConversionLabel
     data.callPhoneNumber = parsed.value.phoneNumber
+  }
+
+  // The account id exists only to address those two conversions. Carried
+  // past the last of them it would put Google's loader on the site with
+  // nothing to report — a tag that fires and credits nothing, which is the
+  // exact state this card exists to make visible.
+  if (!data.leadConversionLabel && !data.callConversionLabel) {
+    data.conversionId = null
   }
 
   try {
