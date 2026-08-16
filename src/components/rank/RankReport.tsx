@@ -128,7 +128,7 @@ export default async function RankReport({
         <iframe
           src={campaignEmbed}
           title="Local ranking map"
-          className="w-full block border-0 bg-gray-100 h-[92vh] min-h-[720px]"
+          className="w-full block border-0 bg-gray-100 h-[100vh] min-h-[720px]"
           sandbox="allow-scripts allow-same-origin allow-popups allow-storage-access-by-user-activation"
         />
       </section>

@@ -136,6 +136,8 @@ export interface ScheduledScanInput {
   tier: ScanTier
   webhookUrl: string
   alias?: string
+  /** Overrides the tier's cron — see ensureRankCampaigns' monthly canary. */
+  cron?: string
 }
 
 /**
@@ -161,7 +163,7 @@ export async function createScheduledScan(
         distance: preset.distance,
         grid_size: preset.gridSize,
         search_terms: terms,
-        scheduling: preset.cron,
+        scheduling: input.cron || preset.cron,
         webhook_url: input.webhookUrl,
         preschedule_analysis: true,
         run_now: true,

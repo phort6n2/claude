@@ -4,10 +4,27 @@ import {
   SCAN_PRESETS,
   campaignMapUrl,
   createScheduledScan,
+  getScheduledScanSchedule,
   suggestedKeywords,
   localDominatorKey,
   updateScheduledScan,
+  updateScheduledScanSchedule,
 } from '@/lib/local-dominator'
+
+/**
+ * Monthly, unambiguously, when their scheduler turns out to OR day-of-month
+ * against day-of-week. Lands on a weekday most months and never more than
+ * once a month, which is the property that actually matters for billing.
+ */
+const SAFE_MONTHLY_CRON = '0 19 2 * *'
+
+/** First Tuesday: a Tuesday, within the next five weeks. */
+function looksLikeFirstTuesday(iso: string | null | undefined): boolean {
+  if (!iso) return false
+  const at = new Date(iso)
+  if (Number.isNaN(at.getTime())) return false
+  return at.getUTCDay() === 2 && at.getTime() - Date.now() < 35 * 24 * 3_600_000
+}
 import { rankWebhookUrl } from '@/lib/local-rank-token'
 
 /**
@@ -167,6 +184,14 @@ export async function ensureRankCampaigns(origin: string): Promise<EnsureResult>
     },
   })
 
+  // Resolved from the first monthly campaign created, then reused. The
+  // expression `0 19 1-7 * 2` is "first Tuesday" only if their scheduler ANDs
+  // day-of-month with day-of-week; classic cron ORs them, which reads as
+  // every Tuesday — four times the runs and four times the credits for a
+  // client paying for one scan a month. Their docs do not say which, so the
+  // first one created is asked rather than assumed.
+  let monthlyCron: string | null = null
+
   for (const client of clients) {
     let lat = client.latitude
     let lng = client.longitude
@@ -204,11 +229,30 @@ export async function ensureRankCampaigns(origin: string): Promise<EnsureResult>
       tier,
       webhookUrl: rankWebhookUrl(origin, client.id),
       alias: client.businessName,
+      ...(tier === 'standard' && monthlyCron ? { cron: monthlyCron } : {}),
     })
 
     if (!created.ok) {
       result.errors.push({ client: client.businessName, error: created.error })
       continue
+    }
+
+    // The canary. Read back what their scheduler made of the expression; if
+    // it is not a first Tuesday, this one and every monthly campaign after it
+    // gets the unambiguous form instead.
+    if (tier === 'standard' && monthlyCron === null) {
+      const schedule = await getScheduledScanSchedule(created.id)
+      if (looksLikeFirstTuesday(schedule?.nextRunAt)) {
+        monthlyCron = SCAN_PRESETS.standard.cron
+        console.log(`[RankCampaigns] first-Tuesday confirmed (next run ${schedule?.nextRunAt})`)
+      } else {
+        monthlyCron = SAFE_MONTHLY_CRON
+        await updateScheduledScanSchedule(created.id, monthlyCron)
+        console.warn(
+          `[RankCampaigns] first-Tuesday NOT honoured (next run ${schedule?.nextRunAt}); ` +
+            `monthly campaigns use ${monthlyCron}`
+        )
+      }
     }
 
     await prisma.client.update({
