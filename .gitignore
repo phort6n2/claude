@@ -47,3 +47,9 @@ next-env.d.ts
 
 # Temporary review screenshots (not part of the app)
 /scratchpad-shots/
+
+# Throwaway Playwright/diagnostic scripts written into the repo root while
+# driving the app during a review. Agents write these here because that is
+# where `require('playwright')` resolves, and a `git add -A` swept five of
+# them into main once. They are never part of the app.
+/_*.js
