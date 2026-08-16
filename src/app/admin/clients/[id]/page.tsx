@@ -148,7 +148,7 @@ export default async function ClientOverviewPage({ params }: PageProps) {
           title="Leads"
           icon={Inbox}
           tone={leadCount > 0 ? 'ok' : 'idle'}
-          href="/admin/leads"
+          href={`/admin/leads?clientId=${client.id}`}
           linkLabel="Open leads"
         >
           <p className="text-2xl font-bold text-gray-900">{leadCount}</p>

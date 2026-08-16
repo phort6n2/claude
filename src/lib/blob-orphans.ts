@@ -81,7 +81,7 @@ export async function scanOrphans(): Promise<OrphanScan> {
     tooRecent: 0,
   }
   if (!blobConfigured()) {
-    return { ...empty, error: 'BLOB_READ_WRITE_TOKEN is not set in this deployment.' }
+    return { ...empty, error: 'Vercel Blob is not connected to this deployment, so there is nothing to sweep. Connect the store in Vercel, then redeploy — the token is only injected at build time.' }
   }
 
   let referenced: Set<string>
@@ -159,7 +159,7 @@ export interface SweepResult {
  */
 export async function sweepOrphans(urls: string[]): Promise<SweepResult> {
   if (!blobConfigured()) {
-    return { ok: false, error: 'BLOB_READ_WRITE_TOKEN is not set.', deleted: 0, freedBytes: 0, skipped: [] }
+    return { ok: false, error: 'Vercel Blob is not connected to this deployment.', deleted: 0, freedBytes: 0, skipped: [] }
   }
   if (urls.length === 0) {
     return { ok: true, deleted: 0, freedBytes: 0, skipped: [] }

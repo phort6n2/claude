@@ -108,7 +108,7 @@ export default function WebhookStatusPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
             <div className="flex items-center gap-2 text-gray-600 mb-1">
               <Users className="h-4 w-4" />
@@ -128,12 +128,21 @@ export default function WebhookStatusPage() {
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
             <div className="flex items-center gap-2 text-green-600 mb-1">
               <Zap className="h-4 w-4" />
-              <span className="text-sm">GCLID Captured</span>
+              <span className="text-sm">Google click ID captured</span>
             </div>
             <div className="text-2xl font-bold text-green-600">{stats.summary.leadsWithGclid}</div>
             <div className="text-xs text-gray-500">{stats.summary.gclidCaptureRate} of leads</div>
           </div>
 
+          {/* Was computed by the API and never rendered, leaving two empty
+              columns at 1440px. */}
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+            <div className="flex items-center gap-2 text-gray-600 mb-1">
+              <Clock className="h-4 w-4" />
+              <span className="text-sm">This week</span>
+            </div>
+            <div className="text-2xl font-bold">{stats.summary.leadsThisWeek}</div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -213,9 +222,9 @@ export default function WebhookStatusPage() {
 
                   <div className="flex items-center gap-2">
                     {lead.gclid ? (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">GCLID</span>
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Paid click</span>
                     ) : (
-                      <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded">No GCLID</span>
+                      <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded">No click ID</span>
                     )}
                     <span className="text-sm text-gray-500">
                       {new Date(lead.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}

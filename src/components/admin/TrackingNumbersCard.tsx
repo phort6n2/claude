@@ -329,6 +329,16 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
         </span>
       </div>
 
+      {/* Echoed here as well as at the foot of the card. Every control on a
+          saved row autosaves — including two text inputs that commit on blur —
+          and the only confirmation rendered below the add form and the buy
+          block, roughly 600px away on a shop with one number. */}
+      {message && (
+        <p className={`text-xs ${message.ok ? 'text-green-700' : 'text-red-600'}`}>
+          {message.text}
+        </p>
+      )}
+
       <div className="space-y-3 border-t border-gray-200 pt-4">
         <div className="grid sm:grid-cols-2 gap-3">
           <label className="block">

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   Building2,
@@ -77,7 +78,11 @@ export default function LeadsPage() {
   const [stats, setStats] = useState<{ byStatus: Record<string, number>; soldValue?: number }>({ byStatus: {} })
 
   // Filters
-  const [selectedClient, setSelectedClient] = useState<string>('')
+  // Seeded from the URL so "Open leads" from inside a client shows THAT
+  // client's leads. It linked to the unfiltered list, which from a page about
+  // one shop reads as that shop having every other shop's leads.
+  const searchParams = useSearchParams()
+  const [selectedClient, setSelectedClient] = useState<string>(searchParams.get('clientId') || '')
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null)
@@ -395,7 +400,10 @@ export default function LeadsPage() {
           <button
             onClick={() => fetchLeads('manual')}
             disabled={refreshing}
-            title={`Last refreshed ${formatRelative(lastRefreshAt)} · auto-refreshes every 20s`}
+            // There is no polling. New leads arrive over SSE and are
+            // prepended; status changes made elsewhere are not picked up until
+            // this is pressed, which is the opposite of what it claimed.
+            title={`Last refreshed ${formatRelative(lastRefreshAt)} · live — new leads appear as they arrive; press to pick up status changes`}
             className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-xl bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 transition-colors"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />

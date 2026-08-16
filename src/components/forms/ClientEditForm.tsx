@@ -1611,6 +1611,13 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
         )}
       </div>
 
+      {/* Hidden while creating. These three could not be used until the
+          client existed — two of them said so in an amber box, and Call
+          Coaching is not even in the create payload, so setting it did
+          nothing. A new shop now sees only the fields that will actually be
+          saved; the tabs it lands on straight after own the rest. */}
+      {!isNewClient && (
+        <>
       {/* Website */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <SectionHeader
@@ -1703,7 +1710,11 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
           </div>
         )}
       </div>
+        </>
+      )}
 
+      {!isNewClient && (
+        <>
       {/* Lead Forwarding */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <SectionHeader
@@ -1789,7 +1800,11 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
           </div>
         )}
       </div>
+        </>
+      )}
 
+      {!isNewClient && (
+        <>
       {/* Call Coaching */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <SectionHeader
@@ -1827,6 +1842,8 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
           </div>
         )}
       </div>
+        </>
+      )}
 
       {/* Bottom Save Button */}
       <div className="flex justify-end gap-3 pt-4">
