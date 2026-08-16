@@ -1,3 +1,12 @@
+import {
+  CheckCircle2,
+  Clock,
+  DollarSign,
+  MessageSquare,
+  TrendingUp,
+  XCircle,
+} from 'lucide-react'
+
 /**
  * How a lead is labelled in the lists.
  *
@@ -153,4 +162,93 @@ export function formatFieldValue(value: unknown): string {
   return segments
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
+}
+
+/**
+ * How a lead's status is drawn, in one place.
+ *
+ * There were two copies of this — the leads list and the lead detail page —
+ * and they had already drifted: the detail page was missing Qualified and
+ * Unqualified, so a lead in either state showed a blank dropdown and could
+ * not be moved out of it from the page you land on when you click the lead.
+ * Two lists of the same enum will always drift; one cannot.
+ */
+export interface LeadStatusStyle {
+  label: string
+  color: string
+  bgColor: string
+  icon: React.ElementType
+}
+
+export const STATUS_CONFIG: Record<string, LeadStatusStyle> = {
+  NEW: { label: 'New', color: 'text-blue-700', bgColor: 'bg-blue-100', icon: Clock },
+  CONTACTED: {
+    label: 'Contacted',
+    color: 'text-yellow-700',
+    bgColor: 'bg-yellow-100',
+    icon: MessageSquare,
+  },
+  QUALIFIED: {
+    label: 'Qualified',
+    color: 'text-green-700',
+    bgColor: 'bg-green-100',
+    icon: CheckCircle2,
+  },
+  UNQUALIFIED: {
+    label: 'Unqualified',
+    color: 'text-gray-700',
+    bgColor: 'bg-gray-100',
+    icon: XCircle,
+  },
+  QUOTED: { label: 'Quoted', color: 'text-purple-700', bgColor: 'bg-purple-100', icon: DollarSign },
+  SOLD: { label: 'Sold', color: 'text-emerald-700', bgColor: 'bg-emerald-100', icon: TrendingUp },
+  LOST: { label: 'Lost', color: 'text-red-700', bgColor: 'bg-red-100', icon: XCircle },
+}
+
+export const STATUS_OPTIONS = Object.entries(STATUS_CONFIG).map(([value, config]) => ({
+  value,
+  label: config.label,
+}))
+
+export function statusStyle(status: string | null | undefined): LeadStatusStyle {
+  return STATUS_CONFIG[status || ''] || STATUS_CONFIG.NEW
+}
+
+/**
+ * How long a lead has been sitting, as a person would say it.
+ *
+ * Absolute timestamps made the list unreadable: a row from twenty minutes ago
+ * and a row from three days ago looked identical, and working out which was
+ * which meant doing arithmetic against today's date on every line. The whole
+ * job of this list is to surface the lead nobody has answered.
+ */
+export function relativeAge(date: Date | string): string {
+  const then = typeof date === 'string' ? new Date(date) : date
+  const mins = Math.floor((Date.now() - then.getTime()) / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  const months = Math.floor(days / 30)
+  return months < 12 ? `${months}mo ago` : `${Math.floor(months / 12)}y ago`
+}
+
+/**
+ * How loudly an unanswered lead should read.
+ *
+ * Only ever applied to NEW: a lead that has been contacted is not late no
+ * matter how old it is, and colouring it would train the colour out.
+ */
+export function waitingLevel(
+  status: string | null | undefined,
+  createdAt: Date | string
+): 'none' | 'warn' | 'late' {
+  if (status !== 'NEW') return 'none'
+  const then = typeof createdAt === 'string' ? new Date(createdAt) : createdAt
+  const hours = (Date.now() - then.getTime()) / 3_600_000
+  if (hours >= 4) return 'late'
+  if (hours >= 1) return 'warn'
+  return 'none'
 }
