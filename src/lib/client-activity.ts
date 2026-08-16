@@ -75,6 +75,7 @@ export async function getClientActivity(clientId: string): Promise<ActivityMonth
     domains,
     leadCounts,
     articles,
+    feedItems,
   ] = await Promise.all([
       prisma.client
         .findUnique({
@@ -127,6 +128,15 @@ export async function getClientActivity(clientId: string): Promise<ActivityMonth
           where: { clientId, publishedAt: { not: null }, client: { seoContentEnabled: true } },
           orderBy: { publishedAt: 'desc' },
           select: { title: true, slug: true, seedKeyword: true, publishedAt: true },
+        })
+        .catch(() => []),
+      // Whatever the shop's own site published, read from their RSS feed.
+      // Vendor-agnostic on purpose — see lib/content-feed.ts.
+      prisma.siteFeedItem
+        .findMany({
+          where: { clientId },
+          orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
+          select: { title: true, url: true, publishedAt: true, createdAt: true },
         })
         .catch(() => []),
     ])
@@ -223,7 +233,28 @@ export async function getClientActivity(clientId: string): Promise<ActivityMonth
     domains.find((d) => d.isPrimary)?.domain ||
     domains[0]?.domain ||
     (client ? `${client.siteSubdomain || client.slug}.glassleads.app` : null)
+  //
+  // Two sources can supply the same post — the shop's RSS feed, and articles
+  // synced directly when that integration was in use. Titles are deduped
+  // across both so a shop running both does not read its own work twice.
+  const seenTitles = new Set<string>()
+  const titleKey = (title: string) => title.trim().toLowerCase().replace(/\s+/g, ' ')
+
+  for (const item of feedItems) {
+    seenTitles.add(titleKey(item.title))
+    items.push({
+      // An undated feed entry falls back to when we first saw it, which is
+      // the honest answer — it is when the post appeared as far as we know.
+      at: item.publishedAt ?? item.createdAt,
+      kind: 'article',
+      title: item.title,
+      detail: 'Published on your site, written to be found in search.',
+      href: item.url || undefined,
+    })
+  }
+
   for (const article of articles) {
+    if (seenTitles.has(titleKey(article.title))) continue
     items.push({
       at: article.publishedAt as Date,
       kind: 'article',

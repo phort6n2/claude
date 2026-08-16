@@ -10,8 +10,8 @@ import SeoTab from '@/components/admin/SeoTab'
  * "SEO" tab: what this shop is paying for, and what that changes.
  *
  * The plan switch is the top of it, and it is also the gate: ticking it on is
- * the moment a shop's BabyLoveGrowth key is wanted, so the content card and
- * their articles appear underneath it rather than on every client.
+ * the moment their content feed is wanted, so that card appears underneath it
+ * rather than on every client.
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   await requireAdminPage()
@@ -26,6 +26,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       seoClient: true,
       seoContentEnabled: true,
       blgApiKey: true,
+      contentFeedUrl: true,
+      contentFeedCheckedAt: true,
+      contentFeedError: true,
       domains: { where: { isPrimary: true }, select: { domain: true }, take: 1 },
     },
   })
@@ -47,6 +50,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     })
     .catch(() => [])
 
+  const feedItemCount = await prisma.siteFeedItem.count({ where: { clientId: id } }).catch(() => 0)
+
   const plain = client.blgApiKey ? decrypt(client.blgApiKey) : null
   const masked = plain
     ? plain.length <= 8
@@ -67,6 +72,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         authoredAt: a.authoredAt?.toISOString() || null,
       }))}
       host={host}
+      feed={{
+        url: client.contentFeedUrl,
+        checkedAt: client.contentFeedCheckedAt?.toISOString() || null,
+        error: client.contentFeedError,
+        itemCount: feedItemCount,
+      }}
     />
   )
 }
