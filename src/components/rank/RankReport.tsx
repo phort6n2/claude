@@ -114,12 +114,12 @@ export default async function RankReport({
             </a>
           </p>
         )}
-        {/* Their competitors drawer is pinned to the bottom of their own page,
-            and a cross-origin frame cannot be reached into from out here. So
-            the frame is made taller than the box it sits in and the box clips
-            it: the map fills the view, the drawer falls below the cut. A crop
-            rather than a removal — if their drawer changes height, this
-            offset is the thing to adjust. */}
+        // Their competitors drawer is pinned to the bottom of their own page,
+        // and a cross-origin frame cannot be reached into from out here. So
+        // the frame is made taller than the box it sits in and the box clips
+        // it: the map fills the view, the drawer falls below the cut. A crop
+        // rather than a removal — if their drawer changes height, this offset
+        // is the thing to adjust.
         <div className="relative w-full overflow-hidden h-[100vh] min-h-[720px]">
           <iframe
             src={campaignEmbed}
