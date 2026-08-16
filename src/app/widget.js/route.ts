@@ -548,11 +548,25 @@ const WIDGET_SOURCE = String.raw`(function () {
         insurance_carrier: insValue === 'yes' ? carrier.value || null : null,
         message: notes.value.trim() || null,
         hp: hp.value || ''
-      }, function (ok, friendly) {
+      }, function (ok, friendly, callNumber) {
         if (ok) return;
         btn.disabled = false;
         btn.textContent = 'Get my free quote';
-        err.textContent = friendly;
+        err.textContent = '';
+        /* Built as nodes so the number can be a real tel: link. It was plain
+           text, so a visitor whose submission had just failed was asked to
+           memorise a number and dial it by hand. */
+        if (callNumber) {
+          var tail = ' Please call us at ';
+          err.appendChild(document.createTextNode(friendly.split(tail)[0] + tail));
+          err.appendChild(el('a', {
+            href: 'tel:' + String(callNumber).replace(/[^+\d]/g, ''),
+            text: callNumber
+          }));
+          err.appendChild(document.createTextNode('.'));
+        } else {
+          err.textContent = friendly;
+        }
         err.className = 'err on';
       });
     });
@@ -616,11 +630,22 @@ const WIDGET_SOURCE = String.raw`(function () {
       };
       CLICK_IDS.concat(UTM_KEYS).forEach(function (k) { if (stored[k]) payload[k] = stored[k]; });
 
+      /* Bounded. Without this the request can hang for as long as the
+         network lets it, and the submit button sits disabled on "Sending…"
+         with no error and no way back — stranding the most valuable visitor
+         on the page, the one who filled everything in and pressed the button.
+         The catch below already re-enables and explains, so aborting routes
+         straight into working recovery. */
+      var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 15000) : null;
+
       fetch(BASE + '/api/webhooks/highlevel/lead?client=' + encodeURIComponent(CLIENT), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: ctrl ? ctrl.signal : undefined
       }).then(function (res) {
+        if (timer) clearTimeout(timer);
         if (!res.ok) throw new Error('HTTP ' + res.status);
 
         /* Announce the lead to the host page.
@@ -644,6 +669,13 @@ const WIDGET_SOURCE = String.raw`(function () {
         } catch (e) {}
 
         body.innerHTML = '';
+        /* The head lives on the CARD, outside .body — so clearing the body
+           left the confirmation sitting under "Get your free quote — four
+           quick questions", i.e. every single person who converted was told,
+           directly above the tick, that they had not. That reads as a failed
+           submission and produces a duplicate lead or a needless call. */
+        head.innerHTML = '';
+        head.appendChild(el('h3', { text: 'Request sent' }));
         var first = (data.full_name || '').split(' ')[0] || 'there';
         var ok = el('div', { role: 'status', 'aria-live': 'polite' }); ok.className = 'ok';
         ok.appendChild(el('div', {
@@ -669,7 +701,15 @@ const WIDGET_SOURCE = String.raw`(function () {
         try { okHead.focus(); } catch (e) {}
         if (onDone) onDone();
       }).catch(function () {
-        fail(false, 'Something went wrong sending your request. Please call us at ' + (cfg.phone || 'the number on this page') + '.');
+        if (timer) clearTimeout(timer);
+        /* A tappable number, not a string to memorise. This is the one screen
+           where the form has just failed and calling is the only way through. */
+        fail(
+          false,
+          'Something went wrong sending your request. Please call us at ' +
+            (cfg.phone || 'the number on this page') + '.',
+          cfg.phone || ''
+        );
       });
     });
 

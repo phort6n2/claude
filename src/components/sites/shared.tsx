@@ -207,25 +207,55 @@ export function GoogleG({ size = 20 }: { size?: number }) {
   )
 }
 
-/** Brand-gradient primary action button with the brand-tinted CTA shadow. */
-export function CtaButton({ href, children, block }: { href: string; children: React.ReactNode; block?: boolean }) {
+/**
+ * Brand-gradient primary action button with the brand-tinted CTA shadow.
+ *
+ * `onDark` is not decoration. On the closing band the gradient paints
+ * --cta on --dark-2, and for a shop whose brand is already dark that measured
+ * 1.44:1 — while the SECONDARY call button, which inverts to white, read at
+ * about 17:1. The page's last and most important ask was the less visible of
+ * the two. On a dark band it inverts as well.
+ */
+export function CtaButton({
+  href,
+  children,
+  block,
+  onDark,
+}: {
+  href: string
+  children: React.ReactNode
+  block?: boolean
+  onDark?: boolean
+}) {
   return (
     <a
       href={href}
-      className={`inline-flex items-center justify-center gap-2.5 min-h-[52px] px-6 rounded-[14px] font-bold text-[17px] text-white no-underline hover:-translate-y-px transition-transform ${
-        block ? 'flex w-full' : ''
-      }`}
-      style={{
-        background: 'linear-gradient(180deg, var(--cta), var(--cta-b))',
-        boxShadow: 'var(--sh-cta), inset 0 1px 0 rgba(255,255,255,.2)',
-      }}
+      className={`inline-flex items-center justify-center gap-2.5 min-h-[52px] px-6 rounded-[14px] font-bold text-[17px] no-underline hover:-translate-y-px transition-transform ${
+        onDark ? 'text-[var(--dark-2,#111)] bg-white' : 'text-white'
+      } ${block ? 'flex w-full' : ''}`}
+      style={
+        onDark
+          ? { boxShadow: '0 8px 24px rgba(0,0,0,.28)' }
+          : {
+              background: 'linear-gradient(180deg, var(--cta), var(--cta-b))',
+              boxShadow: 'var(--sh-cta), inset 0 1px 0 rgba(255,255,255,.2)',
+            }
+      }
     >
       {children}
     </a>
   )
 }
 
-/** Call button — solid brand on light surfaces, inverted white on dark bands. */
+/**
+ * Call button — solid brand on light surfaces, outlined on dark bands.
+ *
+ * `onDark` is used in exactly one place, the closing band, and it used to
+ * paint solid white there. Once the primary quote button also inverted to
+ * white (it measured 1.44:1 against that band otherwise) the two were
+ * identical and the hierarchy vanished, so the secondary became an outline:
+ * still ~17:1 legible, visibly the lesser of the two.
+ */
 export function CallButton({
   client,
   onDark,
@@ -242,7 +272,7 @@ export function CallButton({
       href={telHrefFor(client.phone)}
       className={`inline-flex items-center justify-center gap-2.5 min-h-[52px] px-6 rounded-[14px] font-bold text-[17px] no-underline shadow-[0_1px_2px_rgba(11,27,43,.16)] transition-colors ${
         onDark
-          ? 'bg-white text-[var(--cta)] border-[1.5px] border-white'
+          ? 'bg-transparent text-white border-[1.5px] border-white/70 hover:bg-white/10'
           : 'text-white bg-[var(--cta)] border-[1.5px] border-[var(--cta)] hover:bg-[var(--cta-b)] hover:border-[var(--cta-b)]'
       } ${block ? 'flex w-full' : ''}`}
     >
@@ -732,6 +762,25 @@ export function InsuranceBand({
 }
 
 /**
+ * Does this warranty text actually define the warranty it names?
+ *
+ * Deliberately crude, and deliberately biased towards the weaker lead: the
+ * cost of judging a complete warranty incomplete is one softer sentence,
+ * while the cost of the reverse is the platform vouching for terms that are
+ * not there. Length alone is not enough — two long sentences of praise are
+ * still not terms — so it also wants a word that only appears when scope or
+ * limits are being described.
+ */
+function warrantyStatesTerms(text: string | null | undefined): boolean {
+  const body = (text || '').trim()
+  if (body.length < 240) return false
+  return /\b(cover|covers|covered|exclude|excludes|excluding|not included|transfer|transferable|void|does not|doesn't|applies|limited to)\b/i.test(
+    body
+  )
+}
+
+
+/**
  * Warranty band on the accent tint with the terms in a card. Rendered only
  * when warranty text exists, and always shows the definition in full beside
  * the claim — a warranty headline without its terms is the compliance failure
@@ -747,8 +796,23 @@ export function WarrantyBand({ extras }: { extras: SiteExtras | null }) {
           <h2 className="text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight text-[var(--tx)] m-0">
             {extras.warrantyTitle || 'What the warranty covers'}
           </h2>
+          {/* "In full, right here" is a claim the PLATFORM makes about the
+              shop's text, and it is only true if that text actually defines
+              something. On a live client it headlined "Lifetime Warranty" over
+              two sentences naming no scope, no exclusions and no
+              transferability — a named warranty without its terms, which §2
+              calls out by name, under a line promising the opposite.
+
+              The terms themselves can never be written here: inventing
+              "covers leaks and workmanship, non-transferable" for a shop is
+              the fabricated-fact failure the rules exist to prevent. So the
+              lead adapts instead — the strong version only when the shop has
+              genuinely spelled it out, and otherwise a line that is true for
+              everyone. */}
           <p className="mt-3 mb-0 text-[17px] leading-[1.55] text-[var(--tx2)]">
-            In writing, in full, right here — not a claim with the terms hidden somewhere else.
+            {warrantyStatesTerms(extras.warrantyText)
+              ? 'In writing, in full, right here — not a claim with the terms hidden somewhere else.'
+              : 'The cover this shop offers, in their own words.'}
           </p>
         </div>
         <div className="bg-white rounded-[20px] border border-[var(--line-card)] shadow-sm p-6 md:p-8">
@@ -1221,10 +1285,14 @@ export function FaqSection({
     <section className="border-t border-[var(--line)]">
       <div className="max-w-[80ch] mx-auto px-4 sm:px-6 py-14">
         <SectionHead center eyebrow="Questions" title="Frequently asked" />
+        {/* py-4 sits on the SUMMARY below, not on the details. On the details
+            it was 32px of padding outside the hit box, so a one-line question
+            looked like a 58px row and answered taps in only the middle 26px of
+            it — on the block whose whole job is answering objections. */}
         <div>
           {faq.map((item) => (
-            <details key={item.q} className="group border-t border-[var(--line)] py-4 last:border-b">
-              <summary className="font-bold cursor-pointer list-none flex items-center justify-between gap-3 text-[var(--tx)]">
+            <details key={item.q} className="group border-t border-[var(--line)] last:border-b">
+              <summary className="font-bold cursor-pointer list-none flex items-center justify-between gap-3 py-4 text-[var(--tx)]">
                 {item.q}
                 <svg
                   className="h-5 w-5 shrink-0 text-[var(--tx-muted)] group-open:rotate-180 transition-transform"
@@ -1279,8 +1347,13 @@ export function FinalCta({ client }: { client: SiteClient; quoteHref?: string })
           Tell us what broke and what you drive — we&apos;ll confirm the glass, check your
           coverage, and book a time that works for you.
         </p>
-        <div className="mt-7 flex flex-wrap justify-center gap-3">
-          <CtaButton href="#quote">Get my free quote</CtaButton>
+        {/* Stacked full-width on phones, exactly as the hero pair already
+            does. Left ragged they measured 196px and 249px, centred, at the
+            page's final ask. */}
+        <div className="mt-7 flex flex-wrap justify-center gap-3 max-[719px]:flex-col max-[719px]:[&>a]:w-full">
+          <CtaButton href="#quote" onDark>
+            Get my free quote
+          </CtaButton>
           <CallButton client={client} onDark withLabel />
         </div>
       </div>

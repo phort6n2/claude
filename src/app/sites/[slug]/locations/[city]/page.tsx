@@ -31,6 +31,7 @@ import {
   prioritizeServices,
 } from '@/components/sites/site-body'
 import { getSiteExtras } from '@/lib/site-content'
+import { heroCostLineFor } from '@/lib/insurance-rules'
 import { sitePaletteVars } from '@/lib/site-theme'
 import { getClientLocations } from '@/lib/client-locations'
 import { cityIsIndexable, faqForCity, getCityContent } from '@/lib/city-content'
@@ -298,12 +299,18 @@ export default async function LocationPage({ params }: PageProps) {
               {location.area}, {client.state}
             </Eyebrow>
             <h1 className="text-[clamp(1.875rem,1.35rem+2.6vw,3.4rem)] font-extrabold leading-[1.08] tracking-[-.02em] text-[var(--tx)]">
-              {client.offersAdasCalibration
-                ? `Auto glass and ADAS calibration in ${location.area}`
-                : `Windshield repair and replacement in ${location.area}`}
+              {/* Never lead with ADAS. The home page's own comment says why:
+                  it is trade jargon to someone with a cracked windshield and
+                  reads as an unknown surcharge — and this is the headline on
+                  the page bought with "windshield ___ in {city}" money.
+                  Calibration still earns its place twice below the fold. */}
+              {`Windshield repair and replacement in ${location.area}`}
             </h1>
             <p className="mt-4 text-[17px] leading-[1.55] text-[var(--tx2)] max-w-[48ch]">{heroSub}</p>
-            <div className="mt-5 mb-[18px] hidden lg:block">
+            <p className="mt-3 text-[15px] leading-[1.5] text-[var(--tx2)] max-w-[46ch] border-l-2 border-[var(--cta)] pl-3">
+              {heroCostLineFor(client.state)}
+            </p>
+            <div className="mt-5 mb-[18px]">
               <RatingChip reviews={reviews} client={client} />
             </div>
           </div>

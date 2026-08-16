@@ -30,6 +30,7 @@ import {
   prioritizeServices,
 } from '@/components/sites/site-body'
 import { getSiteExtras } from '@/lib/site-content'
+import { heroCostLineFor } from '@/lib/insurance-rules'
 import { sitePaletteVars } from '@/lib/site-theme'
 import { getClientLocations } from '@/lib/client-locations'
 import { cityIsIndexable, getCityContent } from '@/lib/city-content'
@@ -261,7 +262,15 @@ export default async function ServicePage({ params }: PageProps) {
             <p className="mt-4 text-[17px] leading-[1.55] text-[var(--tx2)] max-w-[48ch]">
               {page.heroLine}
             </p>
-            <div className="mt-5 mb-[18px] hidden lg:block">
+            {/* The cost line and the rating were on the home page only — and
+                these are the pages the ads actually land on. Both are
+                already-reviewed, data-driven and self-stripping: the cost line
+                is state-aware copy from insurance-rules.ts, the chip renders
+                nothing without a live Google feed. */}
+            <p className="mt-3 text-[15px] leading-[1.5] text-[var(--tx2)] max-w-[46ch] border-l-2 border-[var(--cta)] pl-3">
+              {heroCostLineFor(client.state)}
+            </p>
+            <div className="mt-5 mb-[18px]">
               <RatingChip reviews={reviews} client={client} />
             </div>
           </div>
