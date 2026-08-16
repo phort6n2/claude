@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { requireAdminPage } from '@/lib/admin-guard'
 import RankReport from '@/components/rank/RankReport'
 import { rankScansFor } from '@/lib/rank-report'
+import RankMapUrlCard from '@/components/admin/RankMapUrlCard'
 
 /**
  * "Rankings" tab: the same report the client sees, and nothing else.
@@ -25,11 +26,14 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   if (!client) notFound()
 
   return (
-    <RankReport
-      scans={await rankScansFor(id)}
-      mapUrl={client.rankMapUrl}
-      campaignId={client.rankTrackingId}
-      showProviderLink
-    />
+    <div className="space-y-4">
+      <RankReport
+        scans={await rankScansFor(id)}
+        mapUrl={client.rankMapUrl}
+        campaignId={client.rankTrackingId}
+        showProviderLink
+      />
+      <RankMapUrlCard clientId={client.id} initialUrl={client.rankMapUrl} />
+    </div>
   )
 }

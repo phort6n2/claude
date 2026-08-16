@@ -236,6 +236,10 @@ const API_KEYS: ApiKeyConfig[] = [
       // no cookies — the only way to know what a signed-out client actually
       // gets, as opposed to what an admin sees while signed in to their app.
       { label: 'Check map embeds', endpoint: '/api/admin/rank-campaigns/embed-check' },
+      // Fetches each campaign's all-keywords link, stores it, and says per
+      // client what happened. Free, idempotent, and the answer to "why is the
+      // wrong map showing" — which cost several rounds of inference.
+      { label: 'Refresh map URLs', endpoint: '/api/admin/rank-campaigns/map-status' },
       // Spacing lives in SCAN_PRESETS, but a campaign created at the old
       // spacing keeps it — their scheduler holds the geometry, not us.
       { label: 'Apply grid spacing', endpoint: '/api/admin/rank-campaigns/respace' },
