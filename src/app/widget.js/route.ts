@@ -416,15 +416,71 @@ const WIDGET_SOURCE = String.raw`(function () {
       }
     }
 
+    /* Shrink in the browser before uploading.
+
+       Two reasons, and the first one is a hard wall rather than an
+       optimisation. A serverless function will not accept a request body over
+       ~4.5MB; a photo straight off a modern phone is routinely 3-8MB, so the
+       upload was rejected at the edge with a platform error page before any
+       of our own code — including the friendly "under 12MB" message — could
+       run. Second, the server resizes to 1600px anyway, so every byte above
+       that was uploaded over mobile data purely to be thrown away.
+
+       Downscaling to the same 1600px here makes a typical phone photo a few
+       hundred KB: it clears the limit with room to spare and turns a
+       twenty-second upload on 4G into about one.
+
+       Anything that goes wrong falls back to the original file. A photo is
+       worth attempting; it is never worth losing the lead over. */
+    var UPLOAD_MAX_EDGE = 1600;
+
+    function shrinkPhoto(file) {
+      return new Promise(function (resolve) {
+        /* A file already small enough is sent untouched — re-encoding it
+           would only lose quality. */
+        if (!file || !/^image\//.test(file.type) || file.size < 900 * 1024) return resolve(file);
+        if (typeof createImageBitmap !== 'function' || !document.createElement('canvas').getContext) {
+          return resolve(file);
+        }
+        var done = false;
+        var bail = function () { if (!done) { done = true; resolve(file); } };
+        /* HEIC and anything else the browser cannot decode lands here rather
+           than hanging the form on a promise that never settles. */
+        var timer = setTimeout(bail, 8000);
+        createImageBitmap(file)
+          .then(function (bmp) {
+            var scale = Math.min(1, UPLOAD_MAX_EDGE / Math.max(bmp.width, bmp.height));
+            var w = Math.round(bmp.width * scale);
+            var h = Math.round(bmp.height * scale);
+            var canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+            if (bmp.close) bmp.close();
+            canvas.toBlob(function (blob) {
+              clearTimeout(timer);
+              if (done) return;
+              done = true;
+              /* Only take the smaller of the two. A tiny PNG screenshot can
+                 come back LARGER as a JPEG. */
+              resolve(blob && blob.size && blob.size < file.size
+                ? new File([blob], 'damage.jpg', { type: 'image/jpeg' })
+                : file);
+            }, 'image/jpeg', 0.82);
+          })
+          .catch(function () { clearTimeout(timer); bail(); });
+      });
+    }
+
     photoInput.addEventListener('change', function () {
       var f = photoInput.files && photoInput.files[0];
       if (!f) return;
       var objectUrl = URL.createObjectURL(f);
       showPhotoState(objectUrl, 'Uploading…', 'One moment', true);
 
+      shrinkPhoto(f).then(function (ready) {
       var fd = new FormData();
-      fd.append('photo', f);
-      fetch(BASE + '/api/widget/photo?client=' + encodeURIComponent(CLIENT), { method: 'POST', body: fd })
+      fd.append('photo', ready);
+      return fetch(BASE + '/api/widget/photo?client=' + encodeURIComponent(CLIENT), { method: 'POST', body: fd })
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (res) {
           if (!res.ok || !res.j || !res.j.url) throw new Error((res.j && res.j.error) || 'Upload failed');
@@ -444,6 +500,7 @@ const WIDGET_SOURCE = String.raw`(function () {
           try { console.warn('[glassleads] photo upload failed:', e && e.message); } catch (_) {}
           showPhotoState(objectUrl, 'Couldn\'t attach that photo', 'No problem — send your request and they will ask if they need it', false);
         });
+      });
     });
 
     // Honeypot: no label, display:none, a name autofill doesn't recognise.

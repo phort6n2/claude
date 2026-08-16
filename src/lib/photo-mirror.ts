@@ -1,6 +1,7 @@
 import { put } from '@vercel/blob'
 import sharp from 'sharp'
 import { validatePublicUrl } from '@/lib/site-import'
+import { toBlobBody } from '@/lib/blob-body'
 
 /**
  * Copy an imported image onto our own storage.
@@ -96,7 +97,7 @@ export async function mirrorRemoteImage(
 
     const blob = await put(
       `sites/${clientSlug}/imported/${Date.now()}.${isLogo ? 'png' : 'jpg'}`,
-      output,
+      toBlobBody(output),
       {
         access: 'public',
         contentType: isLogo ? 'image/png' : 'image/jpeg',
