@@ -109,12 +109,14 @@ export default async function PortalHomePage() {
           }
           icon={Inbox}
         />
-        <Tile
-          label="Booked this month"
-          value={`$${(monthSales._sum.saleValue || 0).toLocaleString()}`}
-          sub={`${monthSales._count} job${monthSales._count === 1 ? '' : 's'} marked sold`}
-          icon={TrendingUp}
-        />
+        <Link href="/portal/results" className="block no-underline">
+          <Tile
+            label="Booked this month"
+            value={`$${(monthSales._sum.saleValue || 0).toLocaleString()}`}
+            sub={`${monthSales._count} job${monthSales._count === 1 ? '' : 's'} marked sold · see every month`}
+            icon={TrendingUp}
+          />
+        </Link>
         {reviews ? (
           <Tile
             label="Your Google rating"

@@ -47,10 +47,14 @@ are fine — nothing else depends on it.
 ### 0.0b A content feed per shop
 **Blocks:** the article entries on the client's Activity tab.
 
-Per shop: **Clients → the shop → SEO tab**. Tick *This shop is on the SEO
-plan*, then in **Content feed** press *Find it for me* — it reads their own
-site for an advertised RSS address. If it finds nothing, paste the address by
-hand. Press *Save*; it checks the feed and pulls the posts straight away, then
+**Mostly automatic now.** The nightly sweep finds and adopts a feed by itself
+for any shop whose own website advertises one, so for most shops there is
+nothing to do — check the SEO tab in a day and it will be filled in.
+
+For the rest: **Clients → the shop → SEO tab**. Tick *This shop is on the SEO
+plan*, then in **Content feed** press *Find it for me* — it also tries the
+usual addresses, which the unattended sweep deliberately will not. If it finds
+nothing, paste the address by hand. Press *Save*; it checks the feed and pulls the posts straight away, then
 runs itself nightly at 06:00 UTC.
 
 That is the whole setup. No key, nothing to rotate, and it keeps working if
@@ -287,5 +291,11 @@ next to the other per-shop keys.
    offline upload keyed on lead id, same-day dedup, and alert timing. A lead
    that never completes step two becomes a permanent half-record flowing into
    your ad conversions. Worth doing, worth designing first.
-4. **Monthly client-facing report.** Leads → booked → revenue. The retention artifact for a $497 client.
+4. ~~**Monthly client-facing report.**~~ **BUILT**, as **Results** — in the
+   client's portal (linked from the Booked tile on their home screen) and on
+   their admin Results tab, same component so the two cannot disagree. Leads →
+   calls → booked → rate → revenue, by month.
+   **It is not emailed to anyone.** Building the numbers and mailing them to
+   fifteen real business owners are separate decisions and the second is
+   yours — say the word and I will wire a monthly send.
 5. **Follow-up on unbooked leads.** A lead marked "didn't book" is currently dead. Most shops never chase them.

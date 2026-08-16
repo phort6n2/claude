@@ -14,6 +14,7 @@ import {
   MapPin,
   FileText,
   Sparkles,
+  BarChart3,
 } from 'lucide-react'
 
 /**
@@ -31,6 +32,7 @@ export default function ClientTabs({ clientId }: { clientId: string }) {
     { href: `${base}/site`, label: 'Website', icon: Globe },
     { href: `${base}/advertising`, label: 'Advertising', icon: Megaphone },
     { href: `${base}/rankings`, label: 'Rankings', icon: MapPin },
+    { href: `${base}/results`, label: 'Results', icon: BarChart3 },
     { href: `${base}/activity`, label: 'Activity', icon: Sparkles },
     { href: `${base}/seo`, label: 'SEO', icon: FileText },
     { href: `${base}/leads-setup`, label: 'Lead delivery', icon: Webhook },

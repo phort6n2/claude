@@ -27,6 +27,11 @@ function useTabs(showRankings: boolean) {
   const pathname = usePathname()
   // Activity is always offered: it has a floor (the day the site went live),
   // so unlike Rankings it can never lead to an empty page.
+  // Results is deliberately NOT a tab. Six would already be tight on a 360px
+  // phone and seven with Rankings would wrap, which is the exact failure the
+  // grid-column comment below records. It is reached from the Booked tile on
+  // the home screen, which is where someone asking "what have I made" already
+  // is.
   const tabs = [...TABS, ACTIVITY_TAB, ...(showRankings ? [RANKINGS_TAB] : [])]
   const isActive = (tab: (typeof TABS)[number]) =>
     tab.exact ? pathname === tab.href : pathname.startsWith(tab.href)
