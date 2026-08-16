@@ -141,6 +141,28 @@ export const RESPONSE_TIME_SQL: string[] = [
   `ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "firstTouchedAt" TIMESTAMP(3)`,
 ]
 
+export const CLARITY_HISTORY_SQL: string[] = [
+  `CREATE TABLE IF NOT EXISTS "ClarityDay" (
+     "id"          TEXT NOT NULL,
+     "clientId"    TEXT NOT NULL,
+     "day"         TIMESTAMP(3) NOT NULL,
+     "sessions"    INTEGER,
+     "deadClicks"  INTEGER,
+     "rageClicks"  INTEGER,
+     "quickbacks"  INTEGER,
+     "scrollDepth" DOUBLE PRECISION,
+     "raw"         JSONB,
+     "createdAt"   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     CONSTRAINT "ClarityDay_pkey" PRIMARY KEY ("id")
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "ClarityDay_clientId_day_key" ON "ClarityDay"("clientId", "day")`,
+  `CREATE INDEX IF NOT EXISTS "ClarityDay_clientId_day_idx" ON "ClarityDay"("clientId", "day")`,
+  `DO $$ BEGIN
+    ALTER TABLE "ClarityDay" ADD CONSTRAINT "ClarityDay_clientId_fkey"
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+]
+
 /** Everything the running code assumes exists. */
 export const BOOTSTRAP_SQL: string[] = [
   ...CALL_TRACKING_SQL,
@@ -150,6 +172,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...RANK_MAP_SQL,
   ...CONTENT_FEED_SQL,
   ...CLARITY_SQL,
+  ...CLARITY_HISTORY_SQL,
   ...RESPONSE_TIME_SQL,
 ]
 

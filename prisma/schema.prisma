@@ -109,6 +109,7 @@ model Client {
   /// EXPORT TOKEN reads the aggregates back and is a credential, so it is not.
   clarityProjectId String?
   clarityApiToken  String? // Encrypted
+  clarityDays      ClarityDay[]
 
   // Brand Settings
   logoUrl        String?
@@ -1087,4 +1088,45 @@ model SiteFeedItem {
 
   @@unique([clientId, guid])
   @@index([clientId, publishedAt])
+}
+
+/// One day of Microsoft Clarity aggregates for one shop.
+///
+/// THE REASON THIS TABLE EXISTS: their export API only serves the LAST THREE
+/// DAYS, and only a handful of calls per project per day. Anything not
+/// fetched inside that window is gone as far as any automation is concerned —
+/// it survives only in their dashboard, for a human to look at by eye. So a
+/// nightly job copies each day out before it ages off, and the history
+/// accumulates here.
+///
+/// The raw payload is kept alongside the extracted numbers, on the same
+/// reasoning as LocalRankScan: a reader bug should cost a recompute, not a
+/// window of data that cannot be fetched again at any price.
+model ClarityDay {
+  id String @id @default(cuid())
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  /// The day the window covers, at midnight UTC. One row per shop per day.
+  day DateTime
+
+  /// Sessions in the window — the denominator for everything else.
+  sessions Int?
+  /// A click on something that looks tappable and is not.
+  deadClicks Int?
+  /// The same click, repeated, after the visitor lost patience.
+  rageClicks Int?
+  /// Clicked through and came straight back: the page answered the wrong question.
+  quickbacks Int?
+  /// Average scroll depth, as a percentage.
+  scrollDepth Float?
+
+  /// Everything the API returned, unread.
+  raw Json?
+
+  createdAt DateTime @default(now())
+
+  @@unique([clientId, day])
+  @@index([clientId, day])
 }

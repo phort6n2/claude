@@ -99,7 +99,7 @@ export default function ClarityPanel({
   }
 
   return (
-    <div className="p-5 sm:p-6">
+    <div>
       <p className="text-sm text-gray-600 max-w-prose">
         Not conversion tracking — this records how visitors move through the pages, so you can see
         what confuses them. One project per shop, so their numbers are not averaged in with

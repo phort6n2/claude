@@ -699,14 +699,12 @@ export default function AdsTrackingCard({
           carries its own buttons. The shared footer below belongs to the two
           conversion panels and would be a dead "Save tracking" here. */}
       {network === 'clarity' && (
-        <div className="-mx-5 sm:-mx-6 -mb-5 sm:-mb-6">
-          <ClarityPanel
-            clientId={clientId}
-            initialProjectId={clarityProjectId}
-            initialMaskedToken={clarityMaskedToken}
-            onConfiguredChange={setClarityLive}
-          />
-        </div>
+        <ClarityPanel
+          clientId={clientId}
+          initialProjectId={clarityProjectId}
+          initialMaskedToken={clarityMaskedToken}
+          onConfiguredChange={setClarityLive}
+        />
       )}
 
       {network !== 'clarity' && (
