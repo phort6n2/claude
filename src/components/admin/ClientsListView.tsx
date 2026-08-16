@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { relativeAge } from '@/lib/lead-display'
 import Link from 'next/link'
 import {
   Search,
@@ -27,9 +28,11 @@ interface Client {
   primaryColor: string | null
   googleMapsUrl: string | null
   callCoachingEnabled: boolean
+  leadsLast7: number
+  lastLeadAt: Date | string | null
 }
 
-type SortKey = 'name' | 'status'
+type SortKey = 'name' | 'status' | 'leads' | 'lastLead'
 type SortDirection = 'asc' | 'desc'
 
 interface ClientsListViewProps {
@@ -66,6 +69,18 @@ export default function ClientsListView({ clients }: ClientsListViewProps) {
         case 'status':
           comparison = a.status.localeCompare(b.status)
           break
+        // Quiet-first by default on both: the shop with no leads this week is
+        // the one to ring, and a list that buries it is a list you have to
+        // read all of.
+        case 'leads':
+          comparison = a.leadsLast7 - b.leadsLast7
+          break
+        case 'lastLead': {
+          const at = a.lastLeadAt ? new Date(a.lastLeadAt).getTime() : 0
+          const bt = b.lastLeadAt ? new Date(b.lastLeadAt).getTime() : 0
+          comparison = at - bt
+          break
+        }
       }
       return sortDirection === 'asc' ? comparison : -comparison
     })
@@ -148,24 +163,23 @@ export default function ClientsListView({ clients }: ClientsListViewProps) {
                       {renderSortIcon('name')}
                     </button>
                   </th>
-                  <th className="text-left px-4 py-4">
+                  <th className="text-right px-4 py-4">
                     <button
-                      onClick={() => handleSort('status')}
-                      className="flex items-center gap-1 text-xs font-semibold text-gray-600 uppercase tracking-wider hover:text-gray-900"
+                      onClick={() => handleSort('leads')}
+                      className="ml-auto flex items-center gap-1 text-xs font-semibold text-gray-600 uppercase tracking-wider hover:text-gray-900"
                     >
-                      Status
-                      {renderSortIcon('status')}
+                      Leads (7d)
+                      {renderSortIcon('leads')}
                     </button>
                   </th>
                   <th className="text-left px-4 py-4">
-                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Call Coaching
-                    </span>
-                  </th>
-                  <th className="text-right px-6 py-4">
-                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Actions
-                    </span>
+                    <button
+                      onClick={() => handleSort('lastLead')}
+                      className="flex items-center gap-1 text-xs font-semibold text-gray-600 uppercase tracking-wider hover:text-gray-900"
+                    >
+                      Last lead
+                      {renderSortIcon('lastLead')}
+                    </button>
                   </th>
                 </tr>
               </thead>
@@ -182,12 +196,18 @@ export default function ClientsListView({ clients }: ClientsListViewProps) {
                           size="sm"
                         />
                         <div className="min-w-0">
-                          <Link
-                            href={`/admin/clients/${client.id}`}
-                            className="font-medium text-gray-900 hover:text-blue-600 transition-colors truncate"
-                          >
-                            {client.businessName}
-                          </Link>
+                          <div className="flex items-center gap-2">
+                            <Link
+                              href={`/admin/clients/${client.id}`}
+                              className="font-medium text-gray-900 hover:text-blue-600 transition-colors truncate"
+                            >
+                              {client.businessName}
+                            </Link>
+                            {/* Only when it is NOT the normal case. A badge
+                                reading ACTIVE on every row is a column of the
+                                same word. */}
+                            {client.status !== 'ACTIVE' && <StatusBadge status={client.status} />}
+                          </div>
                           <p className="text-xs text-gray-500 flex items-center gap-1">
                             <MapPin className="h-3 w-3" />
                             {client.city}, {client.state}
@@ -196,36 +216,29 @@ export default function ClientsListView({ clients }: ClientsListViewProps) {
                       </div>
                     </td>
 
-                    {/* Status */}
-                    <td className="px-4 py-4">
-                      <StatusBadge status={client.status} />
-                    </td>
-
-                    {/* Call Coaching */}
-                    <td className="px-4 py-4">
+                    {/* Leads in the last 7 days */}
+                    <td className="px-4 py-4 text-right">
                       <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                          client.callCoachingEnabled
-                            ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                            : 'bg-gray-50 text-gray-500 ring-1 ring-gray-200'
+                        className={`tabular-nums font-semibold ${
+                          client.leadsLast7 === 0 ? 'text-red-600' : 'text-gray-900'
                         }`}
                       >
-                        <PhoneCall className="h-3 w-3" />
-                        {client.callCoachingEnabled ? 'On' : 'Off'}
+                        {client.leadsLast7}
                       </span>
                     </td>
 
-                    {/* Actions */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <Link
-                          href={`/admin/clients/${client.id}`}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                    {/* Last lead */}
+                    <td className="px-4 py-4">
+                      {client.lastLeadAt ? (
+                        <span
+                          className="text-sm text-gray-600"
+                          title={new Date(client.lastLeadAt).toLocaleString()}
                         >
-                          <Settings className="h-3.5 w-3.5" />
-                          Manage
-                        </Link>
-                      </div>
+                          {relativeAge(client.lastLeadAt)}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-gray-400">never</span>
+                      )}
                     </td>
                   </tr>
                 ))}
