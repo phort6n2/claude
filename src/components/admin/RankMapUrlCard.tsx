@@ -51,9 +51,11 @@ export default function RankMapUrlCard({
     <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-6">
       <h2 className="font-semibold text-gray-900">Map URL</h2>
       <p className="mt-1 text-sm text-gray-600 max-w-prose">
-        The all-keywords map embedded above. Paste the campaign&apos;s share link from Local
-        Dominator — the one for the whole campaign, not a single keyword. The bare token works too.
-        Clear the field to go back to whatever the API can find on its own.
+        Empty means the map above is one per keyword, on tabs — which is automatic and stays
+        current, so this is optional. Fill it in to show a single map with every keyword instead:
+        open the campaign in Local Dominator, copy its share link, and paste it here. Their API
+        does not issue that link, which is why it cannot be fetched. The bare token works too, and
+        clearing the field goes back to the tabs.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         <input

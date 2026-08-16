@@ -113,15 +113,14 @@ export default async function RankReport({
             this looks wrong, and inferring it from a screenshot cost several
             rounds. It costs one line to just say it. */}
         {showProviderLink && (
-          <p className="px-4 sm:px-5 py-2 text-[11px] text-gray-500 border-b border-gray-100 truncate">
-            {mapUrl ? 'Stored' : 'Live'} all-keywords map:{' '}
+          <p className="px-4 sm:px-5 py-1 text-[10px] text-gray-400 truncate">
             <a
               href={campaignEmbed}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
+              className="hover:underline"
             >
-              {campaignEmbed}
+              {mapUrl ? 'stored' : 'live'} all-keywords map ↗
             </a>
           </p>
         )}
@@ -140,16 +139,6 @@ export default async function RankReport({
     shareEmbedUrl(sample?.mapImageUrl),
     whiteLabelEmbedUrl(sample?.shareUrl, shareHost)
   )
-
-  // No campaign-wide map, so this is the per-keyword view. That is a normal
-  // outcome, not a failure: the per-keyword tokens arrive in every webhook,
-  // so these maps are automatic and current for every client. Only the
-  // all-keywords map needs a token their API will not issue.
-  const noCampaignReason = !shareHost
-    ? 'No share domain set — Settings → API keys → Rank report share domain.'
-    : !campaignId
-      ? 'This client has no Local Dominator campaign yet.'
-      : 'One map per keyword. The single all-keywords map needs a campaign share link, which their API does not issue — open the campaign once in Local Dominator and press “Refresh map URLs”, or paste it into Map URL below.'
 
   const keywords: KeywordRuns[] = [...byTerm.entries()].map(([term, list]) => {
     // Only the URLs and the three numbers travel to the browser — never the
@@ -193,12 +182,5 @@ export default async function RankReport({
     return { term, runs }
   })
 
-  return (
-    <RankBoard
-      keywords={keywords}
-      // Admin only: a client has no use for a framing policy, and showing
-      // them one reads as the product being broken.
-      fallbackReason={showProviderLink ? noCampaignReason : null}
-    />
-  )
+  return <RankBoard keywords={keywords} />
 }

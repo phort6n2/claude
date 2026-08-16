@@ -55,14 +55,7 @@ function Stat({ value, label }: { value: string; label: string }) {
   )
 }
 
-export default function RankBoard({
-  keywords,
-  fallbackReason = null,
-}: {
-  keywords: KeywordRuns[]
-  /** Why theirs is not being shown. Admin-facing detail, kept quiet. */
-  fallbackReason?: string | null
-}) {
+export default function RankBoard({ keywords }: { keywords: KeywordRuns[] }) {
   const [term, setTerm] = useState(keywords[0]?.term || '')
   const active = keywords.find((k) => k.term === term) || keywords[0]
 
@@ -196,10 +189,6 @@ export default function RankBoard({
       )}
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
-        {/* Admin-facing, and below the map rather than above it: the map is
-            the point, and this is a footnote about which map. */}
-        {fallbackReason && <p className="text-[11px] text-gray-500">{fallbackReason}</p>}
-
         {multiple && (
           <div>
             <input
