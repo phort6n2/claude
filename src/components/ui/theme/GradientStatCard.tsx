@@ -150,7 +150,10 @@ export function StatCardGrid({ children, cols = 4 }: { children: ReactNode; cols
   const colsClass = {
     2: 'grid-cols-1 sm:grid-cols-2',
     3: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
-    4: 'grid-cols-2 md:grid-cols-4',
+    // xl, not md. The sidebar is a fixed 256px, so a `md` (768px viewport)
+    // breakpoint gives each of four cards ~160px and the fourth value clips
+    // its own text — "$3,05…" on the leads page.
+    4: 'grid-cols-2 xl:grid-cols-4',
   }[cols]
 
   return <div className={`grid ${colsClass} gap-4 mb-6`}>{children}</div>

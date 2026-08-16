@@ -214,6 +214,31 @@ code:
   each shop's privacy page has to say that a session-analytics tool is in use.
   That is a §2 content change on 15 live sites, not a footnote.
 
+**The package.** `@microsoft/clarity` (1.0.2, MIT, no dependencies) is a thin
+client-side loader — `Clarity.init(projectId)` — plus five calls worth knowing
+before designing anything:
+
+- `setTag(key, value)` — arbitrary tags on a session. This is the join. Tag
+  every session with the shop slug, the page type (home / service / location)
+  and whether the visit arrived with a click id, and the aggregates stop being
+  one undifferentiated pile.
+- `event(name)` — a custom Smart event, filterable in their dashboard. Quote
+  form submitted, call button tapped, text-photo tapped. These are the
+  numerator of any conversion rate measured on their side.
+- `upgrade(reason)` — prioritises a session for recording. Given how thin
+  auto-glass volumes are, upgrading sessions that arrived on a paid click is
+  the difference between replays worth watching and replays of bots.
+- `consentV2({ ad_Storage, analytics_Storage })` — only needed if the project
+  is set to require cookie consent. Which of those two we can honestly grant
+  is a question for the privacy page, not for the code.
+- `identify(customId, …)` — hashed client-side, and **not to be used**. There
+  is no version of tying a session replay to a named customer that is worth
+  the exposure on somebody else's business's site.
+
+Note what the package does NOT do: it is the collector only. Reading the
+results back still needs the Data Export API and a token per project, which is
+the aggregates-not-recordings constraint above.
+
 **Decided: one Clarity project per shop.** Fifteen tokens and fifteen
 dashboards, against one merged dataset that would average away exactly the
 differences worth acting on — the shops have different traffic, different
