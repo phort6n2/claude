@@ -7,6 +7,8 @@ import {
   type BlgArticleSummary,
 } from '@/lib/baby-love-growth'
 import { flagsFrom, reviewArticle } from '@/lib/seo-article-review'
+import { mirrorRemoteImage } from '@/lib/photo-mirror'
+import { collectImageSources, replaceImageSources } from '@/lib/article-whitelabel'
 
 /**
  * Sync BabyLoveGrowth's articles into our own table and decide which are
@@ -169,6 +171,7 @@ export async function syncSeoArticles(clientId?: string): Promise<SyncResult> {
     },
   })
   const index = buildHostIndex(clients)
+  const slugById = new Map(clients.map((c) => [c.id, c.slug]))
 
   const existing = await prisma.seoArticle
     .findMany({ select: { externalId: true, contentHtml: true, publishedAt: true, clientId: true } })
@@ -248,13 +251,42 @@ export async function syncSeoArticles(clientId?: string): Promise<SyncResult> {
       if (publishedAt) published++
       else held++
 
+      // Images come onto our own storage before anything is stored.
+      //
+      // Left alone they are served from the writer's CDN, which puts a
+      // vendor's hostname in the page source, the network tab and the
+      // og:image of a page that is supposed to be the shop's own. It is also
+      // the same weight-and-fragility problem imported site photos had. Only
+      // once the article has a shop, because the path is per shop; an
+      // unplaced article keeps its URLs and is mirrored by the sync that
+      // finally places it, and an unplaced article is never rendered.
+      //
+      // A failed copy keeps the original URL: a hot-linked image is worse
+      // than a self-hosted one and much better than a missing one.
+      let heroImageUrl = full.hero_image_url || null
+      let bodyHtml = needsBody ? full.content_html || null : null
+      const ownerSlug = owner ? slugById.get(owner) : null
+      if (ownerSlug) {
+        if (heroImageUrl) {
+          heroImageUrl = (await mirrorRemoteImage(heroImageUrl, ownerSlug)) || heroImageUrl
+        }
+        if (bodyHtml) {
+          const mapping = new Map<string, string>()
+          for (const src of collectImageSources(bodyHtml)) {
+            const copied = await mirrorRemoteImage(src, ownerSlug)
+            if (copied) mapping.set(src, copied)
+          }
+          bodyHtml = replaceImageSources(bodyHtml, mapping)
+        }
+      }
+
       const data = {
         clientId: owner,
         title: full.title || 'Untitled',
         slug: (full.slug && slugify(full.slug)) || slugify(full.title || externalId),
         excerpt: full.excerpt || null,
         metaDescription: full.meta_description || null,
-        heroImageUrl: full.hero_image_url || null,
+        heroImageUrl,
         languageCode: full.languageCode || null,
         orgWebsite: full.orgWebsite || null,
         seedKeyword: full.seedKeyword || null,
@@ -269,7 +301,7 @@ export async function syncSeoArticles(clientId?: string): Promise<SyncResult> {
         // must not blank the content of an article we already have in full.
         ...(needsBody
           ? {
-              contentHtml: full.content_html || null,
+              contentHtml: bodyHtml,
               contentMarkdown: full.content_markdown || null,
               jsonLd: (full.jsonLd as object) ?? undefined,
               faqJsonLd: (full.faqJsonLd as object) ?? undefined,

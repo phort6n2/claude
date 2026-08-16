@@ -1,6 +1,7 @@
 import { SiteBaseStyles, telHrefFor, type SiteClient } from '@/components/sites/shared'
 import { sitePaletteVars } from '@/lib/site-theme'
 import { sanitizeHtml } from '@/lib/sanitize-html'
+import { stripVendorLinks } from '@/lib/article-whitelabel'
 
 /**
  * The shop's article pages.
@@ -188,8 +189,9 @@ export function BlogArticle({
   }
 }) {
   // Never rendered raw. See lib/sanitize-html.ts — this HTML is written by a
-  // third party and served from the shop's own origin.
-  const html = sanitizeHtml(article.contentHtml)
+  // third party and served from the shop's own origin. Vendor links go first:
+  // the sanitiser asks whether markup can execute, not whose name is on it.
+  const html = sanitizeHtml(stripVendorLinks(article.contentHtml))
 
   return (
     <Shell client={client} basePath={basePath}>

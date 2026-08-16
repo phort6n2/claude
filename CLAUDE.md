@@ -67,6 +67,28 @@ both default `false`, both set on the admin Business tab:
 - `Client.smsCapable` — gates every "text us a photo" path. An `sms:` link to
   a landline is a dead end that costs the lead.
 
+### White label
+
+**A client must never learn which supplier produced their content.** Not
+BabyLoveGrowth, not RobinReach, not any writer or scheduler added later. The
+shops pay this platform; a supplier's name on their page is an invitation to
+go straight to the supplier.
+
+This is not satisfied by keeping vendor names out of UI copy — the strings
+were never the leak. `article-whitelabel.ts` handles the three that are, and
+anything new that renders third-party content has to handle all three:
+
+- **Images** are copied onto our own storage at sync, so no vendor CDN host
+  appears in a page source, a network tab or an `og:image`.
+- **JSON-LD** is scrubbed at render: `author`/`publisher`/`creator` and the
+  rest are rewritten to the shop, and any vendor URL is dropped. Machine
+  readable, indexed and invisible on screen is the worst combination.
+- **Links in the body** lose their `href` when they point at a vendor. The
+  sanitiser asks whether markup can execute, not whose name is on it.
+
+`VENDOR_HOSTS` is the list. Add every host a new vendor serves from, not just
+their apex.
+
 ### Security
 
 - **The repo is public.** Never commit credentials, and never paste key values
