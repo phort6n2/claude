@@ -7,26 +7,32 @@ import WebhookDestinationsManager from '@/components/admin/WebhookDestinationsMa
 import CopyField from '@/components/admin/CopyField'
 import LeadNotificationsCard from '@/components/admin/LeadNotificationsCard'
 import TrackingNumbersCard from '@/components/admin/TrackingNumbersCard'
+import CallCoachingToggle from '@/components/admin/CallCoachingToggle'
 
 /**
  * "Lead delivery" tab — everything touched when a client says "I stopped
  * getting leads": where leads are forwarded, which sites may post to us, and
  * call coaching.
  *
- * Webhook destinations apply immediately (they are verb buttons); the typed
- * fields below stage until Save.
+ * Ordered the way a shop is wired: where leads come FROM, then where they go,
+ * then who is told, with call tracking beside the coaching it feeds. Intake
+ * used to be last, which is the first thing configured for a new shop.
+ *
+ * Four save models lived on this page and only one of them said so. Each card
+ * now states its own behaviour in its subtitle, and the save bar is down to a
+ * single card — call coaching autosaves next to the tracking numbers it
+ * depends on rather than staging behind a button two sections away.
  */
 export default function ClientLeadsForm({
   client,
 }: {
   client: { id: string; slug: string; allowedOrigins: string[]; callCoachingEnabled: boolean | null }
 }) {
-  interface LeadsFields { allowedOrigins: string[]; callCoachingEnabled: boolean }
+  // Only the origins list stages now. Everything else on this tab either
+  // autosaves or has its own button, and each says which in its subtitle.
+  interface LeadsFields { allowedOrigins: string[] }
   const { values: formData, setField, dirtyFields, isDirty, changedPayload, commit, discard } =
-    useDirtyForm<LeadsFields>({
-      allowedOrigins: client.allowedOrigins || [],
-      callCoachingEnabled: client.callCoachingEnabled ?? true,
-    })
+    useDirtyForm<LeadsFields>({ allowedOrigins: client.allowedOrigins || [] })
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
 
@@ -67,7 +73,8 @@ export default function ClientLeadsForm({
         <div className="px-6 pt-5 pb-1">
           <h2 className="font-semibold text-gray-900">Lead alerts</h2>
           <p className="text-sm text-gray-500">
-            Who hears about a lead, and how fast
+            Who hears about a lead, and how fast.{' '}
+            <span className="text-gray-400">Saves when you press Save notifications.</span>
           </p>
         </div>
         <LeadNotificationsCard clientId={client.id} />
@@ -77,30 +84,23 @@ export default function ClientLeadsForm({
         <div className="px-6 pt-5 pb-1">
           <h2 className="font-semibold text-gray-900">Call tracking</h2>
           <p className="text-sm text-gray-500">
-            Twilio numbers that ring this shop, so calls become leads and get coached
+            Twilio numbers that ring this shop, so calls become leads and get coached.{' '}
+            <span className="text-gray-400">Saves as you change it.</span>
           </p>
         </div>
         <TrackingNumbersCard clientId={client.id} />
-      </section>
-
-      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
-        <div className="px-6 pt-5 pb-1">
-          <h2 className="font-semibold text-gray-900">Where leads go</h2>
-          <p className="text-sm text-gray-500">
-            Every lead is stored here first, then forwarded to each enabled destination. Changes
-            below apply immediately.
-          </p>
-        </div>
-        <div className="p-6 pt-4">
-          <WebhookDestinationsManager clientId={client.id} />
-        </div>
+        <CallCoachingToggle
+          clientId={client.id}
+          initialEnabled={client.callCoachingEnabled ?? true}
+        />
       </section>
 
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
         <div className="px-6 pt-5 pb-1">
           <h2 className="font-semibold text-gray-900">Where leads come from</h2>
           <p className="text-sm text-gray-500">
-            Sites allowed to post to this client&apos;s webhook, and the snippets to install.
+            Sites allowed to post to this client&apos;s webhook, and the snippets to install.{' '}
+            <span className="text-gray-400">Saves when you press Save changes.</span>
           </p>
         </div>
         <div className="p-6 pt-4 space-y-4">
@@ -134,22 +134,14 @@ export default function ClientLeadsForm({
 
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
         <div className="px-6 pt-5 pb-1">
-          <h2 className="font-semibold text-gray-900">Call coaching</h2>
-          <p className="text-sm text-gray-500">Score and coach recorded calls for this client.</p>
+          <h2 className="font-semibold text-gray-900">Where leads go</h2>
+          <p className="text-sm text-gray-500">
+            Every lead is stored here first, then forwarded to each enabled destination.{' '}
+            <span className="text-gray-400">Applies immediately.</span>
+          </p>
         </div>
         <div className="p-6 pt-4">
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formData.callCoachingEnabled ?? true}
-              onChange={(e) => updateField('callCoachingEnabled', e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600" />
-            <span className="ml-3 text-sm text-gray-700">
-              {formData.callCoachingEnabled ?? true ? 'Enabled' : 'Disabled'}
-            </span>
-          </label>
+          <WebhookDestinationsManager clientId={client.id} />
         </div>
       </section>
 
