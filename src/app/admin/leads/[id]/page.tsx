@@ -26,7 +26,7 @@ import {
   Code,
   Zap,
 } from 'lucide-react'
-import { STATUS_CONFIG, STATUS_OPTIONS } from '@/lib/lead-display'
+import { STATUS_CONFIG, STATUS_OPTIONS, relativeAge, statusStyle } from '@/lib/lead-display'
 import { Button } from '@/components/ui/Button'
 
 interface Lead {
@@ -79,6 +79,7 @@ export default function LeadDetailPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [saveState, setSaveState] = useState<{ ok: boolean; text: string } | null>(null)
 
   // Editable fields
   const [editFirstName, setEditFirstName] = useState('')
@@ -146,16 +147,26 @@ export default function LeadDetailPage() {
       if (response.ok) {
         const updated = await response.json()
         setLead(updated)
+        setSaveState({ ok: true, text: 'Saved.' })
+        setTimeout(() => setSaveState(null), 4000)
+      } else {
+        // Silence on failure was the old behaviour: the button returned to
+        // rest whether the write landed or not, so a rejected status change
+        // looked exactly like a successful one.
+        const data = await response.json().catch(() => ({}))
+        setSaveState({ ok: false, text: data.error || 'Could not save — nothing was changed.' })
       }
     } catch (error) {
       console.error('Failed to save:', error)
+      setSaveState({ ok: false, text: 'Could not save — nothing was changed.' })
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDelete() {
-    if (!confirm('Are you sure you want to delete this lead?')) return
+    if (!confirm('Delete this lead permanently? Its call recording and any booked value go with it.'))
+      return
 
     setDeleting(true)
     try {
@@ -229,13 +240,31 @@ export default function LeadDetailPage() {
       <div className="bg-white/80 backdrop-blur-md border-b sticky top-0 z-40 rounded-b-2xl">
         <div className="max-w-4xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <Link
-              href="/admin/leads"
-              className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Leads
-            </Link>
+            {/* The page you land on from every row used to open with a Back
+                link and a column of input boxes — no name, no status, no age.
+                Which lead you were looking at was only knowable by reading the
+                First Name field. */}
+            <div className="min-w-0">
+              <Link
+                href="/admin/leads"
+                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back to Leads
+              </Link>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <h1 className="text-lg font-bold text-gray-900 truncate">{fullName}</h1>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusStyle(lead.status).bgColor} ${statusStyle(lead.status).color}`}
+                >
+                  {statusStyle(lead.status).label}
+                </span>
+                <span className="text-xs text-gray-500" title={new Date(lead.createdAt).toLocaleString()}>
+                  {lead.client?.businessName ? `${lead.client.businessName} · ` : ''}
+                  {relativeAge(lead.createdAt)}
+                </span>
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -259,6 +288,13 @@ export default function LeadDetailPage() {
                   </>
                 )}
               </Button>
+              {saveState && (
+                <span
+                  className={`text-xs font-semibold ${saveState.ok ? 'text-green-700' : 'text-red-600'}`}
+                >
+                  {saveState.text}
+                </span>
+              )}
             </div>
           </div>
         </div>

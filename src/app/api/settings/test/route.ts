@@ -93,6 +93,29 @@ async function testLocalDominator(apiKey: string): Promise<{ success: boolean; m
   }
 }
 
+async function testDeepgram(apiKey: string): Promise<{ success: boolean; message: string }> {
+  try {
+    const res = await fetch('https://api.deepgram.com/v1/projects', {
+      headers: { Authorization: `Token ${apiKey}` },
+      signal: AbortSignal.timeout(15_000),
+    })
+    if (res.ok) {
+      const body = (await res.json().catch(() => null)) as { projects?: unknown[] } | null
+      const count = Array.isArray(body?.projects) ? body.projects.length : 0
+      return {
+        success: true,
+        message: count ? `Connected — ${count} project(s).` : 'Connected.',
+      }
+    }
+    if (res.status === 401 || res.status === 403) {
+      return { success: false, message: 'Rejected \u2014 check the key. It is sent as "Token <key>".' }
+    }
+    return { success: false, message: `Deepgram returned ${res.status}.` }
+  } catch {
+    return { success: false, message: 'Could not reach Deepgram.' }
+  }
+}
+
 export async function POST(request: Request) {
   const session = await auth()
   if (!session?.user) {
@@ -130,6 +153,9 @@ export async function POST(request: Request) {
       break
     case 'LOCALDOMINATOR_API_KEY':
       result = await testLocalDominator(apiKey)
+      break
+    case 'DEEPGRAM_API_KEY':
+      result = await testDeepgram(apiKey)
       break
     default:
       result = { success: false, message: 'Unknown setting key' }

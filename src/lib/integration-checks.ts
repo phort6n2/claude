@@ -327,6 +327,7 @@ export async function runIntegrationChecks(): Promise<IntegrationCheck[]> {
     purpose: 'Call recording transcription',
     impact: 'Call coaching stops at the download step — no transcript, no score.',
     severity: 'degraded',
+    href: SETTINGS,
     configured: !!deepgram,
     result: deepgram
       ? await probe(async () => {

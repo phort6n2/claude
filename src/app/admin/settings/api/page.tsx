@@ -15,6 +15,7 @@ import {
   Copy,
   ExternalLink,
 } from 'lucide-react'
+import { isSensitiveKey } from '@/lib/setting-keys'
 import { ALL_KEYS } from '@/lib/setting-keys'
 
 interface SetupStep {
@@ -65,6 +66,22 @@ const API_KEYS: ApiKeyConfig[] = [
       { text: 'Create Key, name it "glassleads", and copy it — it is shown once.' },
       { text: 'Make sure the workspace has credit, under Billing.' },
     ],
+  },
+  {
+    key: 'DEEPGRAM_API_KEY',
+    label: 'Deepgram API Key',
+    description: 'Transcribes call recordings — the first step of call coaching',
+    testable: true,
+    steps: [
+      {
+        text: 'Sign in to the Deepgram console and open API Keys.',
+        href: 'https://console.deepgram.com/',
+        linkLabel: 'console.deepgram.com',
+      },
+      { text: 'Create a key with Member permissions, then copy it — it is shown once.' },
+    ],
+    warning:
+      'Without it, a tracked call is still recorded and still attached to its lead, but never transcribed — so there is no transcript and no coaching score, and the analysis fails at the download step rather than reporting a missing key.',
   },
   {
     key: 'GOOGLE_PLACES_API_KEY',
@@ -626,7 +643,16 @@ export default function ApiSettingsPage() {
                         />
                       ) : (
                         <input
-                          type="text"
+                          // Masked for anything sensitive. The reveal path is
+                          // careful — one key at a time, auto-hidden after a
+                          // minute — and then the ENTRY path left a pasted
+                          // secret sitting in plain text on screen until the
+                          // page was navigated away from. autoComplete off so
+                          // the browser stops offering to save credentials it
+                          // has no business holding.
+                          type={isSensitiveKey(config.key) ? 'password' : 'text'}
+                          autoComplete="off"
+                          spellCheck={false}
                           value={setting.newValue}
                           onChange={(e) => updateNewValue(config.key, e.target.value)}
                           placeholder="Enter new value..."
