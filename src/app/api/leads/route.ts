@@ -113,11 +113,18 @@ export async function GET(request: NextRequest) {
       ])
     )
 
-    // Get summary stats
+    // Counted over the SAME rows the list shows. These pills omitted the
+    // duplicate filter, so they counted same-day duplicate rows the list
+    // itself hides: the totals did not add up to "All", and clicking a pill
+    // reading 9 produced 8 rows. A count that disagrees with the list beside
+    // it is worse than no count — it reads as leads that went missing.
     const stats = await withRetry(() =>
       prisma.lead.groupBy({
         by: ['status'],
-        where: clientId ? { clientId } : undefined,
+        where: {
+          ...(clientId ? { clientId } : {}),
+          ...(includeDuplicates ? {} : { duplicateOfLeadId: null }),
+        },
         _count: true,
       })
     )
