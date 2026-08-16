@@ -15,6 +15,7 @@ import ClientLocationsManager from '@/components/admin/ClientLocationsManager'
 interface ClientData {
   id: string
   slug?: string
+  status?: string
   businessName: string
   contactPerson: string | null
   phone: string
@@ -227,8 +228,14 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
               </div>
               {formData.googlePlaceId && (
                 <div className="mt-2 flex items-center justify-between text-sm">
+                  {/* Only claim a lookup just happened if one just happened.
+                      This rendered on every visit to the tab whenever a Place
+                      ID was stored, so the tab always opened announcing that
+                      it had populated fields it had not touched. */}
                   <span className="text-green-600 flex items-center gap-1">
-                    ✓ Business found - details populated below
+                    {placeSelected
+                      ? '✓ Business found — details populated below'
+                      : '✓ Linked to a Google listing'}
                   </span>
                   <button
                     type="button"
@@ -405,7 +412,7 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
       </section>
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
         <div className="px-6 pt-5 pb-1">
-          <h2 className="font-semibold text-gray-900">Location &amp; hours</h2>
+          <h2 className="font-semibold text-gray-900">Address &amp; timezone</h2>
           <p className="text-sm text-gray-500">Address, timezone, and Google listing</p>
         </div>
         <div className="p-6 pt-4 space-y-4">
@@ -530,11 +537,14 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
         <div className="px-6 pt-5 pb-1">
           <h2 className="font-semibold text-gray-900">Service Areas</h2>
           <p className="text-sm text-gray-500">The cities on their site, coverage band, and location pages</p>
-          <p className="text-xs text-gray-400 mt-1">{areaCount} {areaCount === 1 ? 'city' : 'cities'} · the first 5 also get their own location page.</p>
+          <p className="text-xs text-gray-400 mt-1">
+            {areaCount === 0
+              ? 'None yet. The first five added also get their own location page.'
+              : `${areaCount} ${areaCount === 1 ? 'city' : 'cities'} · the first 5 also get their own location page.`}
+          </p>
         </div>
         <div className="p-6 pt-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Service Areas</label>
                 <textarea
                   value={(formData.serviceAreas || []).join('\n')}
                   onChange={(e) =>
@@ -591,7 +601,9 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
                 </div>
               )}
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            {/* One column until there is room for three. At 900px the accent
+                hex input ran past the card's own border. */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Primary Color</label>
                 <div className="flex items-center gap-2">

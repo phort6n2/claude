@@ -32,8 +32,31 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
 
+    // Say WHICH field is missing. A blank business name used to fall through
+    // to the Prisma insert and come back as "Failed to create client" with a
+    // 500 — a message that names nothing, on a form with six sections and no
+    // field marked required.
+    const required: Array<[string, string]> = [
+      ['businessName', 'Business name'],
+      ['phone', 'Phone'],
+      ['email', 'Email'],
+    ]
+    const missing = required.filter(([key]) => !String(data[key] || '').trim()).map(([, label]) => label)
+    if (missing.length) {
+      return NextResponse.json(
+        { error: `${missing.join(', ')} ${missing.length > 1 ? 'are' : 'is'} required.` },
+        { status: 400 }
+      )
+    }
+
     // Generate slug from business name
     const slug = generateSlug(data.businessName)
+    if (!slug) {
+      return NextResponse.json(
+        { error: 'That business name has no letters or numbers in it, so it cannot make a web address.' },
+        { status: 400 }
+      )
+    }
 
     // Check if slug already exists
     const existing = await prisma.client.findUnique({

@@ -26,7 +26,18 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
   return (
     <div className="space-y-4">
-      <AdsTrackingCard clientId={client.id} clientPhone={client.phone} />
+      {/* Wrapped like its neighbour below. The tab used to open on an
+          untitled, unbounded block of network tabs while the card under it got
+          a proper heading. */}
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+        <div className="px-6 pt-5 pb-1">
+          <h2 className="font-semibold text-gray-900">Conversion tracking on the site</h2>
+          <p className="text-sm text-gray-500">
+            What the shop&apos;s site reports to each ad network when a lead comes in
+          </p>
+        </div>
+        <AdsTrackingCard clientId={client.id} clientPhone={client.phone} />
+      </section>
 
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
         <div className="px-6 pt-5 pb-1">

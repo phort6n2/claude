@@ -283,7 +283,10 @@ async function DashboardContent() {
                         {call.client.businessName}
                       </p>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        {call.outcome?.replace(/_/g, ' ') || 'No outcome recorded'}
+                        {call.outcome
+                          ? call.outcome.charAt(0) +
+                            call.outcome.slice(1).toLowerCase().replace(/_/g, ' ')
+                          : 'No outcome recorded'}
                       </p>
                       <p className="text-xs text-gray-400 mt-1">
                         {call.completedAt ? formatDateTime(call.completedAt) : ''}
@@ -302,64 +305,9 @@ async function DashboardContent() {
         </ContentCard>
       </div>
 
-      {/* Quick Actions */}
-      <div className="mt-8">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Link href="/admin/clients/new" className="group">
-            <div className="bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 hover:shadow-md transition-all">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
-                  <Users className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900 text-sm">Add Client</p>
-                  <p className="text-xs text-gray-500">New auto glass shop</p>
-                </div>
-              </div>
-            </div>
-          </Link>
-          <Link href="/admin/leads" className="group">
-            <div className="bg-white rounded-xl border border-gray-200 p-4 hover:border-green-300 hover:shadow-md transition-all">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
-                  <UserCheck className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900 text-sm">Leads</p>
-                  <p className="text-xs text-gray-500">All client leads</p>
-                </div>
-              </div>
-            </div>
-          </Link>
-          <Link href="/admin/call-coaching-insights" className="group">
-            <div className="bg-white rounded-xl border border-gray-200 p-4 hover:border-violet-300 hover:shadow-md transition-all">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-violet-100 rounded-lg group-hover:bg-violet-200 transition-colors">
-                  <PhoneCall className="h-5 w-5 text-violet-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900 text-sm">Call Coaching</p>
-                  <p className="text-xs text-gray-500">Grading insights</p>
-                </div>
-              </div>
-            </div>
-          </Link>
-          <Link href="/admin/webhook-status" className="group">
-            <div className="bg-white rounded-xl border border-gray-200 p-4 hover:border-amber-300 hover:shadow-md transition-all">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-100 rounded-lg group-hover:bg-amber-200 transition-colors">
-                  <Radio className="h-5 w-5 text-amber-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900 text-sm">Webhook Status</p>
-                  <p className="text-xs text-gray-500">Lead delivery health</p>
-                </div>
-              </div>
-            </div>
-          </Link>
-        </div>
-      </div>
+      {/* Quick Actions removed: four cards duplicating sidebar links that are
+          already one click away, costing ~200px on every visit to the page
+          most often opened to answer "what needs me today". */}
     </PageContainer>
   )
 }

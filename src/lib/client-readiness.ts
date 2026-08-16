@@ -149,7 +149,7 @@ export async function getClientReadiness(clientId: string): Promise<ReadinessRep
     'Opening hours',
     shopsWithoutHours.length === 0,
     shopsWithoutHours.length === locations.length
-      ? 'No opening hours on file — pull them from Google on the Business tab.'
+      ? 'No opening hours on file — pull them from Google in the Shops card on the Business tab.'
       : `${shopsWithoutHours.length} shop${shopsWithoutHours.length === 1 ? '' : 's'} missing hours: ${shopsWithoutHours.map((l) => l.label || l.city).join(', ')}.`,
     'recommended',
     `${base}/business`
@@ -178,9 +178,11 @@ export async function getClientReadiness(clientId: string): Promise<ReadinessRep
     !!reviews && !reviews.lastError,
     reviews?.lastError
       ? `Google returned: ${reviews.lastError}`
-      : 'No Place ID matched, so the site shows no rating anywhere.',
+      : 'No Place ID matched, so the site shows no rating anywhere. The Place ID is on the Business tab.',
     'required',
-    `${base}/site`
+    // Business, not Website: the Place ID this depends on lives there, and
+    // sending someone to a tab with no such field is a dead end.
+    `${base}/business`
   )
   add(
     'photos',

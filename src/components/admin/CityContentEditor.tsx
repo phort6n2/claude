@@ -125,7 +125,17 @@ export default function CityContentEditor({ clientId }: { clientId: string }) {
           <TriangleAlert size={16} className="mt-0.5 shrink-0" />
           <span>
             The city-content table doesn&apos;t exist in this database yet. Run{' '}
-            <code className="font-mono">/api/admin/setup-db</code> first.
+            <button
+              type="button"
+              onClick={async () => {
+                await fetch('/api/admin/setup-db', { method: 'POST' }).catch(() => {})
+                void load()
+              }}
+              className="underline underline-offset-2 font-semibold"
+            >
+              Set the database up now
+            </button>{' '}
+            — this runs the missing table creation, then reloads.
           </span>
         </div>
       )}
@@ -180,7 +190,14 @@ export default function CityContentEditor({ clientId }: { clientId: string }) {
                   : 'text-amber-700 bg-amber-50 border-amber-200'
               }`}
             >
-              {row.hasShop ? 'Shop here — always indexed' : row.indexable ? 'Indexed' : 'Noindex'}
+              {/* Not "Noindex". This editor is used by someone who does not
+                  need to know the tag's name, and it already says the useful
+                  version two lines down ("60 more to index"). */}
+              {row.hasShop
+                ? 'Shop here — always on Google'
+                : row.indexable
+                  ? 'On Google'
+                  : 'Not on Google yet'}
             </span>
           </div>
 
@@ -209,7 +226,20 @@ export default function CityContentEditor({ clientId }: { clientId: string }) {
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              onClick={() => draft(row)}
+              onClick={() => {
+                // Overwrites heading and body with model output, with no undo.
+                // Fine on an empty row; on a paragraph someone corrected by
+                // hand it is a silent loss.
+                if (
+                  row.body &&
+                  !confirm(
+                    `Replace the text for ${row.city} with a new draft? Anything you have written or corrected there is lost.`
+                  )
+                ) {
+                  return
+                }
+                void draft(row)
+              }}
               disabled={drafting === row.city}
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-300 text-sm hover:bg-gray-50 disabled:opacity-60"
             >

@@ -371,10 +371,15 @@ export default function AdsTrackingCard({
           id="ads-account"
           value={customerId}
           onChange={(e) => setCustomerId(e.target.value)}
-          disabled={accounts.length === 0}
-          className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+          className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500"
         >
-          <option value="">Not selected</option>
+          {/* Enabled even when empty. Greyed out with nothing in it reads as
+              broken; a named option says which of the two it is. */}
+          <option value="">
+            {accounts.length === 0
+              ? 'No accounts — add Google Ads credentials in Settings → API keys'
+              : 'Not selected'}
+          </option>
           {/* A previously saved account that no longer appears under the
               manager still has to be shown, or saving would silently clear it. */}
           {!accounts.some((a) => a.customerId === customerId) && customerId && (

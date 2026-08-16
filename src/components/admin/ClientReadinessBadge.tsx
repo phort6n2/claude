@@ -97,8 +97,10 @@ export default function ClientReadinessBadge({
         <ChevronDown className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
+      {/* Right-anchored: dropped from the left it landed squarely over the
+          tab bar, hiding the tabs it exists to send you to. */}
       {open && (
-        <div className="absolute left-0 top-full mt-2 z-30 w-[22rem] max-w-[calc(100vw-3rem)] rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 z-30 w-[22rem] max-w-[calc(100vw-3rem)] rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">
           <div className="max-h-[26rem] overflow-y-auto divide-y divide-gray-100">
             {open_.length === 0 && (
               <p className="p-4 text-sm text-gray-600">

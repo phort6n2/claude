@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Loader2, TrendingUp, AlertTriangle, CheckCircle2, Users } from 'lucide-react'
 
 interface Counted {
@@ -125,7 +126,28 @@ export default function CallCoachingInsightsPage() {
         <div className="text-sm text-red-600 py-4">Failed to load: {error}</div>
       )}
 
-      {data && !loading && (
+      {/* Say it once. With nothing analysed the page rendered its whole
+          skeleton in zeros — four 0 tiles, four empty bars, two "not enough
+          data" cards and an empty table — which reads as a broken page rather
+          than a feature that has not started. */}
+      {data && !loading && data.totals.callsAnalyzed === 0 && (
+        <div className="rounded-2xl border border-gray-200 bg-white p-6">
+          <h2 className="font-semibold text-gray-900">No calls analysed in the last 30 days</h2>
+          <p className="mt-1 text-sm text-gray-600 max-w-prose">
+            Coaching needs two things per shop: a tracking number with recording on, and the
+            coaching switch enabled — both on the client&apos;s <strong>Lead delivery</strong> tab.
+            Scores appear here a couple of minutes after the first real call.
+          </p>
+          <Link
+            href="/admin/clients"
+            className="mt-3 inline-block text-sm font-semibold text-blue-600 hover:underline"
+          >
+            Open clients →
+          </Link>
+        </div>
+      )}
+
+      {data && !loading && data.totals.callsAnalyzed > 0 && (
         <div className="space-y-6">
           <StatsHeader data={data} />
           <ScoreOutcomeCorrelation data={data} />
@@ -173,7 +195,7 @@ function StatsHeader({ data }: { data: InsightsData }) {
       <StatCard
         label="Leads with outcome"
         value={`${t.withTerminalLeadOutcome}/${t.callsAnalyzed}`}
-        subtitle="SOLD/LOST/QUOTED/UNQUALIFIED"
+        subtitle="of analysed calls, how many have a decided lead"
       />
       <StatCard
         label="Sold vs lost"
@@ -332,14 +354,23 @@ function PerClientLeaderboard({ rows }: { rows: PerClient[] }) {
                 <th className="py-2 pr-3 font-normal">Client</th>
                 <th className="py-2 px-3 text-right font-normal">Calls</th>
                 <th className="py-2 px-3 text-right font-normal">Avg score</th>
-                <th className="py-2 px-3 text-right font-normal">% AI booked</th>
+                <th className="py-2 px-3 text-right font-normal">Graded as booked</th>
                 <th className="py-2 pl-3 text-right font-normal">% actually sold</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((c) => (
                 <tr key={c.clientId} className="border-t border-gray-100">
-                  <td className="py-2 pr-3 text-gray-900">{c.businessName}</td>
+                  <td className="py-2 pr-3">
+                    {/* The client that needs coaching was a dead end — the
+                        whole point of the row is to go and do something. */}
+                    <Link
+                      href={`/admin/clients/${c.clientId}`}
+                      className="text-blue-600 hover:underline"
+                    >
+                      {c.businessName}
+                    </Link>
+                  </td>
                   <td className="py-2 px-3 text-right tabular-nums text-gray-700">
                     {c.totalCalls}
                   </td>
