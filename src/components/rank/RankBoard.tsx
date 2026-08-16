@@ -125,10 +125,44 @@ export default function RankBoard({ keywords }: { keywords: KeywordRuns[] }) {
             </>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-500">
-            {multiple ? `${active.runs.length} scans · ${run.label}` : run.label}
+        <div className="flex items-center gap-2">
+          {/* The step-back control lives HERE, not under the map. Their share
+              record is sometimes not populated for the newest run — the page
+              loads, their spinner never resolves, and it draws a default world
+              map. Stepping back a scan is the only workaround, so it cannot be
+              below a frame the height of the screen. */}
+          {multiple && (
+            <button
+              type="button"
+              aria-label="Previous scan"
+              disabled={index === 0}
+              onClick={() =>
+                setIndexes((prev) => ({ ...prev, [active.term]: Math.max(0, index - 1) }))
+              }
+              className="px-1.5 text-gray-500 hover:text-gray-900 disabled:opacity-30"
+            >
+              ‹
+            </button>
+          )}
+          <span className="text-xs text-gray-500 whitespace-nowrap">
+            {multiple ? `${run.label} (${index + 1}/${active.runs.length})` : run.label}
           </span>
+          {multiple && (
+            <button
+              type="button"
+              aria-label="Next scan"
+              disabled={index >= active.runs.length - 1}
+              onClick={() =>
+                setIndexes((prev) => ({
+                  ...prev,
+                  [active.term]: Math.min(active.runs.length - 1, index + 1),
+                }))
+              }
+              className="px-1.5 text-gray-500 hover:text-gray-900 disabled:opacity-30"
+            >
+              ›
+            </button>
+          )}
           {/* In the header, not under the map: the frame is 92vh and their
               own UI already occupies the bottom of it. */}
           {run.providerUrl && (
