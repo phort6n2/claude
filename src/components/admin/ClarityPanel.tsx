@@ -5,21 +5,30 @@ import { Button } from '@/components/ui/Button'
 import { CheckCircle, Loader2, XCircle } from 'lucide-react'
 
 /**
- * Microsoft Clarity for this shop.
+ * Microsoft Clarity for this shop — a panel inside the site-tracking card,
+ * beside Google Ads and Microsoft Advertising.
+ *
+ * It sits with them because from this screen all three are the same job:
+ * paste the id the platform gave you, for this one shop. What they DO differs
+ * — the other two report conversions, this one records behaviour — and the
+ * copy says so rather than letting the shared tab bar imply otherwise.
  *
  * Two fields that look alike and are not: the project id is public and ships
  * in their page source, the export token is a credential. They are entered
- * and stored differently, and the card says which is which — a screen that
+ * and stored differently, and the panel says which is which — a screen that
  * treats them the same is how a token ends up pasted into the id field.
  */
-export default function ClarityCard({
+export default function ClarityPanel({
   clientId,
   initialProjectId,
   initialMaskedToken,
+  onConfiguredChange,
 }: {
   clientId: string
   initialProjectId: string | null
   initialMaskedToken: string | null
+  /** Lets the tab bar's status dot follow a save without a reload. */
+  onConfiguredChange?: (configured: boolean) => void
 }) {
   const [projectId, setProjectId] = useState(initialProjectId || '')
   const [savedProjectId, setSavedProjectId] = useState(initialProjectId)
@@ -48,7 +57,10 @@ export default function ClarityCard({
         setOk(false)
         return
       }
-      if (kind === 'id') setSavedProjectId(data.clarityProjectId || null)
+      if (kind === 'id') {
+        setSavedProjectId(data.clarityProjectId || null)
+        onConfiguredChange?.(!!data.clarityProjectId)
+      }
       else {
         setMaskedToken(data.maskedToken || null)
         setTokenInput('')
@@ -87,12 +99,12 @@ export default function ClarityCard({
   }
 
   return (
-    <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-6">
-      <h2 className="font-semibold text-gray-900">Behaviour analytics (Clarity)</h2>
-      <p className="mt-1 text-sm text-gray-600 max-w-prose">
-        One Clarity project per shop, so their numbers are not averaged in with fourteen other
-        shops. Their quote form is excluded from recording, and the shop&apos;s privacy page says
-        a session-analytics tool is in use as soon as an id is saved here.
+    <div className="p-5 sm:p-6">
+      <p className="text-sm text-gray-600 max-w-prose">
+        Not conversion tracking — this records how visitors move through the pages, so you can see
+        what confuses them. One project per shop, so their numbers are not averaged in with
+        fourteen others. Their quote form is excluded from recording, and the shop&apos;s privacy
+        page says a session-analytics tool is in use as soon as an id is saved here.
       </p>
 
       <div className="mt-4">
@@ -184,6 +196,6 @@ export default function ClarityCard({
         limited to a few reads per project per day over the last three days. Whether a page change
         actually worked is answered in Google Ads, on search campaigns, not here.
       </p>
-    </section>
+    </div>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import ClarityPanel from '@/components/admin/ClarityPanel'
 import {
   CheckCircle2,
   ChevronDown,
@@ -54,6 +55,11 @@ const DEFAULT_BING_ACTION = 'submit_lead_form'
 const NETWORKS = [
   { id: 'google', label: 'Google Ads' },
   { id: 'microsoft', label: 'Microsoft Advertising' },
+  // Not an ad network, and it reports no conversions — but from this screen it
+  // is the same job as the other two: paste the id this platform gave you, for
+  // this one shop. Its own panel says what it actually does, so the shared tab
+  // bar cannot imply it is conversion tracking.
+  { id: 'clarity', label: 'Microsoft Clarity' },
 ] as const
 
 type NetworkId = (typeof NETWORKS)[number]['id']
@@ -87,11 +93,16 @@ function Steps({
 export default function AdsTrackingCard({
   clientId,
   clientPhone,
+  clarityProjectId = null,
+  clarityMaskedToken = null,
 }: {
   clientId: string
   /** Shown in the calls instructions so the number to enter is unambiguous. */
   clientPhone?: string
+  clarityProjectId?: string | null
+  clarityMaskedToken?: string | null
 }) {
+  const [clarityLive, setClarityLive] = useState(!!clarityProjectId)
   const [current, setCurrent] = useState<Parsed | null>(null)
   const [unavailable, setUnavailable] = useState(false)
   const [leadSnippet, setLeadSnippet] = useState('')
@@ -258,7 +269,12 @@ export default function AdsTrackingCard({
           stacking them made the tab unreadable. */}
       <div className="flex gap-1 border-b border-gray-200 -mb-px" role="tablist">
         {NETWORKS.map((net) => {
-          const live = net.id === 'google' ? leadLive || callLive : bingLive
+          const live =
+            net.id === 'google'
+              ? leadLive || callLive
+              : net.id === 'microsoft'
+                ? bingLive
+                : clarityLive
           const active = network === net.id
           return (
             <button
@@ -624,8 +640,11 @@ export default function AdsTrackingCard({
       </div>
       )}
 
-      {/* Applies to whichever networks are configured — one switch, because it
-          is one decision about what leaves the page, not a per-network dial. */}
+      {/* Applies to whichever AD networks are configured — one switch, because
+          it is one decision about what leaves the page, not a per-network dial.
+          Hidden on the Clarity tab: it reports no conversions, so the control
+          and its "applies to both networks" label are meaningless there. */}
+      {network !== 'clarity' && (
       <label className="flex items-start gap-2 text-sm text-gray-700 border-t border-gray-200 pt-4">
         <input
           type="checkbox"
@@ -645,8 +664,9 @@ export default function AdsTrackingCard({
           </span>
         </span>
       </label>
+      )}
 
-      {checks && (
+      {network !== 'clarity' && checks && (
         <div className="rounded-lg border border-gray-200 divide-y divide-gray-200 text-sm">
           <div className="px-3 py-2 text-xs text-gray-500">
             Checked the live page at {checkedHost || 'the site'}
@@ -675,6 +695,21 @@ export default function AdsTrackingCard({
         </div>
       )}
 
+      {/* Clarity saves itself — its two fields go to their own route, and it
+          carries its own buttons. The shared footer below belongs to the two
+          conversion panels and would be a dead "Save tracking" here. */}
+      {network === 'clarity' && (
+        <div className="-mx-5 sm:-mx-6 -mb-5 sm:-mb-6">
+          <ClarityPanel
+            clientId={clientId}
+            initialProjectId={clarityProjectId}
+            initialMaskedToken={clarityMaskedToken}
+            onConfiguredChange={setClarityLive}
+          />
+        </div>
+      )}
+
+      {network !== 'clarity' && (
       <div className="flex flex-wrap items-center gap-3 border-t border-gray-200 pt-4">
         <button
           type="button"
@@ -708,6 +743,7 @@ export default function AdsTrackingCard({
           </span>
         )}
       </div>
+      )}
     </div>
   )
 }

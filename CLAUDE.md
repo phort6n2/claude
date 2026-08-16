@@ -398,7 +398,12 @@ posts actually go up. We read it nightly and store what is new in
 ### Behaviour analytics (Microsoft Clarity)
 
 `components/sites/analytics.tsx` (the tag) and `lib/clarity.ts` (reading it
-back), switched on per shop from the admin Advertising tab.
+back). Set up per shop on the admin **Advertising** tab, as a third tab beside
+Google Ads and Microsoft Advertising — from that screen all three are the same
+job (paste the id this platform gave you, for this one shop), so the panel's
+own copy says what Clarity actually does rather than letting the shared tab bar
+imply it reports conversions. The ads-only controls (enhanced conversions, Save
+tracking, Check the live site) hide on that tab.
 
 - **One project per shop.** A merged project averages away exactly the
   differences worth acting on — different traffic, geography and pages.

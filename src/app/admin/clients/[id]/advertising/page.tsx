@@ -4,7 +4,6 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import AdsTrackingCard from '@/components/admin/AdsTrackingCard'
 import OfflineConversionsCard from '@/components/admin/OfflineConversionsCard'
-import ClarityCard from '@/components/admin/ClarityCard'
 import { decrypt } from '@/lib/encryption'
 import { requireAdminPage } from '@/lib/admin-guard'
 
@@ -45,12 +44,18 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           a proper heading. */}
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
         <div className="px-6 pt-5 pb-1">
-          <h2 className="font-semibold text-gray-900">Conversion tracking on the site</h2>
+          <h2 className="font-semibold text-gray-900">Tracking on the site</h2>
           <p className="text-sm text-gray-500">
-            What the shop&apos;s site reports to each ad network when a lead comes in
+            The tags this shop&apos;s site carries — what it reports to each ad network when a
+            lead comes in, and what it records about how visitors use the pages
           </p>
         </div>
-        <AdsTrackingCard clientId={client.id} clientPhone={client.phone} />
+        <AdsTrackingCard
+          clientId={client.id}
+          clientPhone={client.phone}
+          clarityProjectId={client.clarityProjectId}
+          clarityMaskedToken={maskedToken}
+        />
       </section>
 
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
@@ -63,12 +68,6 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         </div>
         <OfflineConversionsCard clientId={client.id} />
       </section>
-
-      <ClarityCard
-        clientId={client.id}
-        initialProjectId={client.clarityProjectId}
-        initialMaskedToken={maskedToken}
-      />
     </div>
   )
 }
