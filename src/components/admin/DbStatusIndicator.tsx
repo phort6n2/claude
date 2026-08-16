@@ -64,6 +64,12 @@ export default function DbStatusIndicator() {
 
   const status = statusConfig[dbStatus]
 
+  // A healthy database says nothing. This sat over the bottom-right corner of
+  // every page — on top of the last table row at narrower widths — reporting a
+  // latency in milliseconds, which is a developer's readout and not something
+  // anyone here can act on. It still appears the moment it matters.
+  if (dbStatus === 'connected') return null
+
   return (
     <div
       className={`fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg border px-3 py-2 shadow-lg ${status.bgColor}`}
@@ -71,9 +77,9 @@ export default function DbStatusIndicator() {
     >
       <Database className={`h-4 w-4 ${status.textColor}`} />
       <span className={`h-2.5 w-2.5 rounded-full ${status.color} ${dbStatus === 'checking' ? 'animate-pulse' : ''}`}></span>
-      <span className={`text-sm font-medium ${status.textColor}`}>
-        {dbStatus === 'connected' && dbLatency ? `${dbLatency}ms` : status.text}
-      </span>
+      {/* Only ever the words now — a latency reading was the healthy case,
+          and the healthy case no longer renders at all. */}
+      <span className={`text-sm font-medium ${status.textColor}`}>{status.text}</span>
       <button
         onClick={checkDbStatus}
         disabled={isRefreshing}

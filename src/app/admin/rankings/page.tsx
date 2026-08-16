@@ -54,8 +54,6 @@ export default async function AdminRankingsPage() {
         subtitle={`${tracked} of ${rows.length} clients with scan data · ${keywordCount} keywords`}
       />
       <div className="p-6 space-y-4">
-        <RankCampaignActions />
-
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -95,9 +93,19 @@ export default async function AdminRankingsPage() {
                           >
                             {row.businessName}
                           </Link>
-                          {!row.hasCampaign && (
-                            <span className="ml-2 text-xs text-amber-700">no campaign yet</span>
-                          )}
+                          {/* "No campaign" next to a row full of numbers reads
+                              as a contradiction. It means rankTrackingId is
+                              null, which is only news when there is also no
+                              history; with history it means the campaign was
+                              deleted and these scans have stopped extending. */}
+                          {!row.hasCampaign &&
+                            (row.scanCount === 0 ? (
+                              <span className="ml-2 text-xs text-amber-700">no campaign yet</span>
+                            ) : (
+                              <span className="ml-2 text-xs text-amber-700">
+                                campaign missing — history only
+                              </span>
+                            ))}
                         </td>
                       )}
                       <td className="px-4 py-3 text-gray-600">
@@ -142,10 +150,21 @@ export default async function AdminRankingsPage() {
             </table>
           </div>
         </div>
+        {/* Maintenance, below the thing the page is for. This opened on a
+            panel of campaign controls with a red "delete every campaign" zone,
+            which pushed the actual rankings below the fold on a laptop — a
+            page named Local Rankings whose rankings you had to scroll to. */}
+        <details className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+          <summary className="cursor-pointer select-none px-5 py-4 text-sm font-semibold text-gray-700 hover:text-gray-900">
+            Campaign controls
+          </summary>
+          <RankCampaignActions />
+        </details>
+
         <p className="mt-3 text-xs text-gray-500">
           Every tracked keyword, one row each. Clients are sorted by their <em>worst</em> keyword,
-          because that is the one worth a phone call. A negative change is an improvement — lower
-          average position means closer to the top of the map results.
+          because that is the one worth a phone call. Lower average position is better — 1.0 means
+          first place across the whole map.
         </p>
       </div>
     </div>
