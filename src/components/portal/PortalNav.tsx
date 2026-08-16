@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Inbox, Globe, Image as ImageIcon, MapPin } from 'lucide-react'
+import { Home, Inbox, Globe, Image as ImageIcon, MapPin, Sparkles } from 'lucide-react'
 
 /**
  * Portal navigation, named the way a shop owner talks. Bottom tab bar on a
@@ -16,6 +16,7 @@ const TABS = [
 ]
 
 const RANKINGS_TAB = { href: '/portal/rankings', label: 'Rankings', icon: MapPin }
+const ACTIVITY_TAB = { href: '/portal/activity', label: 'Activity', icon: Sparkles }
 
 /**
  * The flag is false until there is something behind the tab. A tab that
@@ -24,7 +25,9 @@ const RANKINGS_TAB = { href: '/portal/rankings', label: 'Rankings', icon: MapPin
  */
 function useTabs(showRankings: boolean) {
   const pathname = usePathname()
-  const tabs = [...TABS, ...(showRankings ? [RANKINGS_TAB] : [])]
+  // Activity is always offered: it has a floor (the day the site went live),
+  // so unlike Rankings it can never lead to an empty page.
+  const tabs = [...TABS, ACTIVITY_TAB, ...(showRankings ? [RANKINGS_TAB] : [])]
   const isActive = (tab: (typeof TABS)[number]) =>
     tab.exact ? pathname === tab.href : pathname.startsWith(tab.href)
   return { tabs, isActive }
