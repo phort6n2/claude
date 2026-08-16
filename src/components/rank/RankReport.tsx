@@ -147,7 +147,7 @@ export default async function RankReport({
     ? 'No share domain set (Settings → API keys → Rank report share domain).'
     : !campaignId
       ? 'This client has no Local Dominator campaign yet.'
-      : 'Local Dominator has not issued a campaign_link for this campaign yet — showing per-keyword maps instead.'
+      : 'Local Dominator has not issued a campaign share link for this campaign. Their API does not create one — opening the campaign once in their dashboard does. Do that, then press “Refresh map URLs” on Local Rankings, or paste the URL into Map URL below. Until then: per-keyword maps.'
 
   const keywords: KeywordRuns[] = [...byTerm.entries()].map(([term, list]) => {
     // Only the URLs and the three numbers travel to the browser — never the

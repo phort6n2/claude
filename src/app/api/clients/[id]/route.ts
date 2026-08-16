@@ -73,6 +73,19 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     }
 
     // Text fields that may be blanked to null.
+    // A bare token is as good as a URL: what gets copied out of Local
+    // Dominator is sometimes one and sometimes the other, and rejecting the
+    // wrong half of that is a pointless way to lose five minutes.
+    if (has('rankMapUrl')) {
+      const raw = String(data.rankMapUrl || '').trim()
+      const token = /^[0-9a-f-]{16,64}$/i.test(raw) ? raw : null
+      if (token) {
+        const { localDominatorShareHost } = await import('@/lib/local-dominator')
+        const host = await localDominatorShareHost()
+        data.rankMapUrl = host ? `https://${host}/${token}` : ''
+      }
+    }
+
     // Their all-keywords map is in this list, not the one below: it must be
     // clearable, so that emptying the field hands control back to the API
     // capture rather than pinning a stale URL forever.
