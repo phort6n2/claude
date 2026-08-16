@@ -5,6 +5,7 @@ import { withSitePhone } from '@/lib/site-phone'
 import { SiteUnavailable } from '@/components/sites/shared'
 import { BlogArticle } from '@/components/sites/blog'
 import { plainExcerpt } from '@/lib/sanitize-html'
+import { scrubJsonLd } from '@/lib/article-whitelabel'
 
 export const revalidate = 3600
 
@@ -103,9 +104,15 @@ export default async function ArticlePage({ params }: PageProps) {
   // Their schema markup, passed through as data. It describes the article,
   // not the business — the LocalBusiness block stays where it is built, on
   // the site pages, so nothing here can contradict the NAP.
-  const blocks = [article.jsonLd, article.faqJsonLd].filter(
-    (b): b is object => !!b && typeof b === 'object'
-  )
+  //
+  // Scrubbed first: author/publisher come back naming the writer, which is
+  // machine-readable, indexed, and invisible in the rendered page. The shop
+  // is credited instead — they publish it, under their name, on their
+  // domain.
+  const host = `${client.siteSubdomain || client.slug}.glassleads.app`
+  const blocks = [article.jsonLd, article.faqJsonLd]
+    .filter((b): b is object => !!b && typeof b === 'object')
+    .map((b) => scrubJsonLd(b, { businessName: client.businessName, host }))
 
   return (
     <>
