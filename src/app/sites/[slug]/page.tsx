@@ -287,7 +287,12 @@ export default async function ClientSitePage({ params }: PageProps) {
             <p className="mt-3 text-[15px] leading-[1.5] text-[var(--tx2)] max-w-[46ch] border-l-2 border-[var(--cta)] pl-3">
               {heroCostLineFor(client.state)}
             </p>
-            <div className="mt-5 mb-[18px] hidden lg:block">
+            {/* Shown on phones too. A mobile visitor met a ~950px form having
+                been given a headline and a price line and no evidence at all —
+                the proof sat about 1,500px below the fold. It is built from
+                the live Google feed and returns null when there is none, so a
+                shop with no reviews still shows nothing. */}
+            <div className="mt-5 mb-[18px]">
               <RatingChip reviews={reviews} client={client} />
             </div>
           </div>
