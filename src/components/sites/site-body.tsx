@@ -128,6 +128,11 @@ export function WidgetMount({ client, service }: { client: SiteClient; service?:
   return (
     <div
       data-glassleads-widget
+      // Excluded from session recording EXPLICITLY, not by trusting Clarity's
+      // default masking or a project setting somebody could flip in a
+      // dashboard we do not control. This subtree carries a real person's
+      // name, phone number and a photo of their car.
+      data-clarity-mask="true"
       {...(service ? { 'data-service': service } : {})}
       // Reserved for what it actually renders. 540px was the desktop card; on a
       // phone the mounted form is ~944px, so the page below grew 400px under

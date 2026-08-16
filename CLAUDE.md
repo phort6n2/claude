@@ -409,6 +409,38 @@ nothing may call their API per page view.
   live page, and cannot act on them. That is deliberate — read-only, no
   approvals, no scheduling.
 
+### Behaviour analytics (Microsoft Clarity)
+
+`components/sites/analytics.tsx` (the tag) and `lib/clarity.ts` (reading it
+back), switched on per shop from the admin Advertising tab.
+
+- **One project per shop.** A merged project averages away exactly the
+  differences worth acting on — different traffic, geography and pages.
+- **Two fields, treated differently.** `Client.clarityProjectId` is PUBLIC —
+  it ships in the page source, because that is how the collector identifies
+  itself — so it is stored in the clear. `Client.clarityApiToken` reads the
+  data back and is encrypted.
+- **The official snippet, inlined; not the npm package.** The package is a
+  wrapper over the same `window.clarity` queue and would need a client
+  component plus its bundle, on pages where hydration weight has been fought
+  over twice. The snippet defines the queue synchronously, so tags set on the
+  same tick are safe.
+- **Tags are the point:** `shop`, `page_type`, `paid_click`. Without them the
+  export API returns one undifferentiated pile per shop. `paid_click` is also
+  the join to Google Ads, and a paid session gets `upgrade()`d because at
+  auto-glass volumes an unprioritised replay is usually a bot.
+- **The API returns AGGREGATES, NOT RECORDINGS**, a few calls per project per
+  day, last three days only. Replays and heatmaps are dashboard-only, human-eye
+  things. A loop designed as "the model watches the recordings" is a loop that
+  invents its findings.
+- **The scoreboard is not in Clarity.** It is conversion rate in Google Ads on
+  SEARCH campaigns — PMax mixes placements the landing page did not cause.
+- Privacy: masking stays on, the quote form carries `data-clarity-mask` at its
+  container so it is excluded explicitly rather than by trusting a dashboard
+  setting, `identify()` is never called, and the shop's privacy page gains a
+  "How this site is measured" section — **only** for a shop that actually has
+  a project id, so no site claims a tool it does not use.
+
 ### Other pieces worth knowing
 
 - `wordmark.ts` / `wordmark-image.tsx` — generated wordmark for shops with no

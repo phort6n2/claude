@@ -33,6 +33,7 @@ async function getClient(slug: string) {
       accentColor: true,
       hasShopLocation: true,
       googleMapsUrl: true,
+      clarityProjectId: true,
     },
   })
 }

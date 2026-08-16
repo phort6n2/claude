@@ -1,4 +1,5 @@
 import { SiteBaseStyles, telHrefFor, type SiteClient } from '@/components/sites/shared'
+import { SiteAnalytics } from '@/components/sites/analytics'
 import { sitePaletteVars } from '@/lib/site-theme'
 
 /**
@@ -12,6 +13,7 @@ import { sitePaletteVars } from '@/lib/site-theme'
 export interface LegalClient extends SiteClient {
   email?: string | null
   siteSubdomain?: string | null
+  clarityProjectId?: string | null
 }
 
 function domainFor(client: LegalClient) {
@@ -39,6 +41,7 @@ export function LegalShell({
       style={palette as React.CSSProperties}
     >
       <SiteBaseStyles />
+      <SiteAnalytics projectId={client.clarityProjectId} slug={client.slug} pageType="legal" />
       <header className="border-b border-[var(--line)]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 min-h-[64px] flex items-center justify-between gap-4">
           <a href={basePath || '/'} className="font-bold no-underline text-[var(--brand)]">
@@ -163,8 +166,20 @@ export function PrivacyContent({ client }: { client: LegalClient }) {
           served through an image-delivery network.
         </p>
       </section>
+      {client.clarityProjectId && (
+        <section>
+          <h2>6. How this site is measured</h2>
+          <p>
+            We use a session-analytics service to see how visitors move through this site — which
+            pages get read, where people stop scrolling, and which buttons get tapped — so we can
+            fix what is confusing. It records page interactions, not the contents of the form:
+            what you type into the quote form is excluded from that recording, and we never
+            attach your name to it.
+          </p>
+        </section>
+      )}
       <section>
-        <h2>6. Your choices</h2>
+        <h2>{`${client.clarityProjectId ? 7 : 6}. Your choices`}</h2>
         <p>
           You can ask us what information we hold about your enquiry, ask us to correct it, or ask
           us to delete it — call {client.phone}

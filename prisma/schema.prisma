@@ -110,6 +110,13 @@ model Client {
   contentFeedError     String?
   feedItems            SiteFeedItem[]
 
+  /// Microsoft Clarity, one project per shop. The PROJECT ID is not a secret
+  /// — it ships in the page source of every landing page, because that is how
+  /// the collector identifies itself — so it is stored in the clear. The
+  /// EXPORT TOKEN reads the aggregates back and is a credential, so it is not.
+  clarityProjectId String?
+  clarityApiToken  String? // Encrypted
+
   // Brand Settings
   logoUrl        String?
   primaryColor   String? @default("#1e40af")
