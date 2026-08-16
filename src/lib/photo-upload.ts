@@ -1,6 +1,7 @@
 import { put, del, list } from '@vercel/blob'
 import sharp, { type Sharp, type Metadata } from 'sharp'
 import { wordmarkPng } from '@/lib/wordmark-image'
+import { toBlobBody } from '@/lib/blob-body'
 
 /** Enough of a client to draw their generated wordmark. */
 export interface WordmarkSource {
@@ -178,7 +179,9 @@ export async function processAndStorePhoto({
   try {
     // A random suffix keeps two uploads of "photo.jpg" from colliding, and
     // keeps the URL unguessable.
-    const blob = await put(`sites/${clientSlug}/${Date.now()}.jpg`, finalBuffer, {
+    // toBlobBody, not finalBuffer directly — see lib/blob-body.ts. sharp's
+    // pooled output is rejected by the fetch inside put().
+    const blob = await put(`sites/${clientSlug}/${Date.now()}.jpg`, toBlobBody(finalBuffer), {
       access: 'public',
       contentType: 'image/jpeg',
       addRandomSuffix: true,
@@ -240,7 +243,7 @@ export async function storeDamagePhoto({
   }
 
   try {
-    const blob = await put(`damage/${clientSlug}/${Date.now()}.jpg`, output, {
+    const blob = await put(`damage/${clientSlug}/${Date.now()}.jpg`, toBlobBody(output), {
       access: 'public',
       contentType: 'image/jpeg',
       addRandomSuffix: true,
