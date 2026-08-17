@@ -1,4 +1,4 @@
-import { Phone, MapPin, ShieldCheck, Check, MessageSquare, ArrowRight } from 'lucide-react'
+import { Phone, MapPin, ShieldCheck, Check, MessageSquare } from 'lucide-react'
 import { wordmarkParts } from '@/lib/wordmark'
 import { smsHref } from '@/lib/contact-links'
 import { mostMentionedName } from '@/lib/review-names'
@@ -1473,7 +1473,7 @@ export function SiteFooter({
   return (
     <footer className="bg-[var(--dark-2)] text-[var(--on-dark-2)] on-dark pt-11 pb-6 text-[15px]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-[1.9fr_1fr_1fr_1.2fr] lg:gap-9">
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr] lg:gap-9">
           <div>
             {client.logoUrl ? (
               // Plain on the dark band, like the reference — no white chip.
@@ -1511,123 +1511,46 @@ export function SiteFooter({
               )}
             </p>
           </div>
-          {((services && services.length > 0) || pages.length > 0) && (
+          {services && services.length > 0 && (
             <div>
-              {services && services.length > 0 && (
-                <>
-                  <h2 className="text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5">Services</h2>
-                  <ul className="list-none m-0 p-0 text-sm">
-                    {services.map((s) => (
-                      <li key={s.slug} className="mb-0.5">
-                        <a
-                          href={`${basePath || ''}/services/${s.slug}`}
-                          className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-[5px]"
-                        >
-                          {s.name}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-              {/* Kept pages sit UNDER the services in the same column rather
-                  than taking a column of their own. The footer grid is a
-                  fixed four-column shape that has been fought over twice; a
-                  fifth column that appears only for shops that came off an
-                  old site would be a different footer for those shops. */}
-              {pages.length > 0 && (
-                <>
-                  <h2
-                    className={`text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5 ${
-                      services && services.length > 0 ? 'mt-6' : ''
-                    }`}
-                  >
-                    More
-                  </h2>
-                  <ul className="list-none m-0 p-0 text-sm">
-                    {pages.map((p) => (
-                      <li key={p.path} className="mb-0.5">
-                        <a
-                          href={`${basePath || ''}${p.path}`}
-                          className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-[5px]"
-                        >
-                          {p.title}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
+              <h2 className="text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5">
+                Services
+              </h2>
+              <ul className="list-none m-0 p-0 text-sm">
+                {services.map((s) => (
+                  <li key={s.slug} className="mb-0.5">
+                    <a
+                      href={`${basePath || ''}/services/${s.slug}`}
+                      className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-[5px]"
+                    >
+                      {s.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
-          {/* Areas as a CARD, spanning the two columns the split halves used
-              to occupy.
-
-              They were two bare lists of city names, which is what a footer
-              does with a service area when nobody has thought about it: ten
-              words in a column, no reason to read them, and — on a shop with
-              five cities — an empty right half of the footer under them.
-
-              A card gives the list the one job it actually has. A visitor
-              scanning a footer for their own town is asking "do they come
-              here", so the card answers that in a sentence, shows the towns
-              as something you can pick out at a glance rather than read
-              top-to-bottom, and puts the next step in front of them. Towns
-              with a page of their own are links; the rest are plain, which is
-              the same rule as before — a name is not a promise of a page. */}
-          {areas && areas.length > 0 && (
-            <div className="md:col-span-2 lg:col-span-2 self-start p-5 rounded-[10px] bg-[var(--dark-3)] border border-[var(--line-on-dark)]">
-              <h2 className="text-white font-bold text-[13px] uppercase tracking-[.09em] m-0">
-                Areas we serve
+          {/* Kept pages take a column of their own now that the service areas
+              have left the grid. Stacked under the services they made one very
+              tall column beside empty space — and the towns they mostly name
+              are in the identity card below anyway. */}
+          {pages.length > 0 && (
+            <div>
+              <h2 className="text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5">
+                More
               </h2>
-              {/* Flag-gated: a shop without mobile service must not be made to
-                  say it comes to you. */}
-              <p className="mt-2 mb-0 text-sm leading-[1.6]">
-                {offersMobileService
-                  ? `We come to you across ${client.city} and the towns below — home, office or roadside.`
-                  : `Serving ${client.city}, ${client.state} and the towns below.`}
-              </p>
-              <ul className="mt-3.5 flex flex-wrap gap-2 list-none m-0 p-0 text-sm">
-                {areas.map((area) => {
-                  const slug = linkableCities
-                    ? locationPages(areas || []).find(
-                        (l) => l.area === area && linkableCities.has(l.area.trim().toLowerCase())
-                      )?.slug
-                    : locationPages(areas || []).find((l) => l.area === area)?.slug
-                  // Chips, not list rows, and the height is deliberate: the
-                  // old list put its padding on the li, leaving a tap target
-                  // about 20px tall on links meant to be hit with a thumb.
-                  const shape =
-                    'inline-flex items-center min-h-[40px] px-3.5 rounded-full border border-[var(--line-on-dark)]'
-                  return (
-                    <li key={area}>
-                      {slug ? (
-                        <a
-                          href={`${basePath || ''}/locations/${slug}`}
-                          className={`${shape} no-underline text-[var(--on-dark-2)] hover:text-white hover:border-[var(--gold-on-dark)]`}
-                        >
-                          {area}
-                        </a>
-                      ) : (
-                        <span className={`${shape} text-[var(--on-dark-2)]`}>{area}</span>
-                      )}
-                    </li>
-                  )
-                })}
+              <ul className="list-none m-0 p-0 text-sm">
+                {pages.map((p) => (
+                  <li key={p.path} className="mb-0.5">
+                    <a
+                      href={`${basePath || ''}${p.path}`}
+                      className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-[5px]"
+                    >
+                      {p.title}
+                    </a>
+                  </li>
+                ))}
               </ul>
-              {/* A LINK, not a button. The page's real CTA band sits directly
-                  above the footer and the sticky call bar is pinned over it on
-                  a phone, so a third filled button competed with both — and as
-                  a white pill on a dark footer it was the loudest thing on the
-                  page for a line that only says "ask if your town is missing".
-                  Styled like the footer's other links, which is what it is. */}
-              <a
-                href="#quote"
-                className="mt-4 inline-flex items-center gap-1.5 min-h-[44px] font-bold text-sm no-underline text-[var(--gold-on-dark)] hover:underline"
-              >
-                Not sure? Ask about your address
-                <ArrowRight className="h-4 w-4" />
-              </a>
             </div>
           )}
         </div>
@@ -1724,6 +1647,57 @@ export function SiteFooter({
                   </span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Where they go, as one line across the bottom of this card.
+              It has been three shapes now. Two bare columns of city names read
+              as filler and left half the footer empty; a box of its own in
+              that space was worse, a panel with nothing in it under a short
+              list. It belongs HERE, with the addresses and the phone — the
+              card that answers "who are you and where are you" should also
+              answer "and how far do you come", and as a sentence it takes one
+              line instead of a column.
+
+              Towns with a page of their own are links; the rest are plain.
+              Same rule as every version before this: a name in a service area
+              is not a promise of a page. */}
+          {areas && areas.length > 0 && (
+            <div className="lg:col-span-2 pt-4 border-t border-white/15">
+              <span className="text-white font-bold">
+                {offersMobileService ? 'We come to you in' : 'Serving'}
+              </span>{' '}
+              {areas.map((area, i) => {
+                const slug = linkableCities
+                  ? locationPages(areas || []).find(
+                      (l) => l.area === area && linkableCities.has(l.area.trim().toLowerCase())
+                    )?.slug
+                  : locationPages(areas || []).find((l) => l.area === area)?.slug
+                return (
+                  <span key={area}>
+                    {i > 0 && (
+                      <span aria-hidden="true" className="px-1.5 opacity-50">
+                        ·
+                      </span>
+                    )}
+                    {slug ? (
+                      <a
+                        href={`${basePath || ''}/locations/${slug}`}
+                        // Vertical padding so a run of inline links is still
+                        // hittable with a thumb. The list used to put its
+                        // padding on the <li>, leaving 20px targets, and that
+                        // is easy to reintroduce the moment it becomes a
+                        // sentence.
+                        className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-1.5"
+                      >
+                        {area}
+                      </a>
+                    ) : (
+                      <span className="inline-block py-1.5">{area}</span>
+                    )}
+                  </span>
+                )
+              })}
             </div>
           )}
         </div>
