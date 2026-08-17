@@ -840,6 +840,21 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
           // an arbitrary URL in the payload would let anyone who can post a
           // lead put an image of their choosing into a shop's inbox.
           damagePhotoUrl: ourBlobUrl(payload.damage_photo_url),
+          isCall: leadSource === 'PHONE',
+          // Rendered HERE because only this side knows the shop's timezone.
+          // A UTC stamp in the template would show a different hour to the
+          // person reading it, which on a "call them back now" alert is worse
+          // than no time at all.
+          calledAtLabel:
+            leadSource === 'PHONE'
+              ? new Intl.DateTimeFormat('en-US', {
+                  timeZone: client.timezone || 'America/Denver',
+                  weekday: 'short',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  timeZoneName: 'short',
+                }).format(new Date())
+              : undefined,
           leadUrl: `${process.env.APP_URL || 'https://glassleads.app'}/admin/leads/${lead.id}`,
           outcomeUrl: outcomeUrlFor(lead.id),
           decodedVehicle: decoded && !decoded.error ? decoded.headline : undefined,
