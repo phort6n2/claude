@@ -540,8 +540,31 @@ export function ReviewsBand({ reviews }: { reviews: ReviewsData | null }) {
   // business appears to say about itself to fill a row. One or two centre
   // instead.
   const quotes = reviews.quotes
-  const shownQuotes =
-    quotes.length >= 6 ? quotes.slice(0, 6) : quotes.length >= 3 ? quotes.slice(0, 3) : quotes
+  const target = quotes.length >= 6 ? 6 : quotes.length >= 3 ? 3 : quotes.length
+
+  /**
+   * Which three, when Google gives five.
+   *
+   * Not the three longest, which is what taking the head of a
+   * longest-first list did. Collision's five measure 496, 571, 663, 666 and
+   * 1183 characters, so the head was 1183/666/663 — the outlier plus two,
+   * and the cards share a row and stretch to the tallest, so that one review
+   * set the height of all three.
+   *
+   * The window with the smallest spread instead: 571/663/666 here. Same
+   * reviews, same order, no truncation — the evenness comes from WHICH ones
+   * are shown, not from cutting any of them short.
+   */
+  const byLength = [...quotes].sort((a, b) => (a.text?.length ?? 0) - (b.text?.length ?? 0))
+  let best = 0
+  for (let i = 0; i + target <= byLength.length; i++) {
+    const spread =
+      (byLength[i + target - 1].text?.length ?? 0) - (byLength[i].text?.length ?? 0)
+    const bestSpread =
+      (byLength[best + target - 1]?.text?.length ?? 0) - (byLength[best].text?.length ?? 0)
+    if (spread < bestSpread) best = i
+  }
+  const shownQuotes = target === 0 ? [] : byLength.slice(best, best + target)
   return (
     <section className="bg-[var(--s2)] border-t border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
