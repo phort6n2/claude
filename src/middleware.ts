@@ -56,6 +56,51 @@ function isAppPath(pathname: string): boolean {
   )
 }
 
+
+/**
+ * The URL shape a shop's ADS already point at.
+ *
+ * The template puts services under /services/ and locations under
+ * /locations/. Every site these replace puts them at the root:
+ * /windshield-repair, /auto-glass-repair-portland. At a cutover that
+ * difference is not cosmetic — it is every paid destination 404ing the moment
+ * DNS moves.
+ *
+ * So the flat shape is REWRITTEN, not redirected. The ad URL answers 200 with
+ * the right page at the address Google already has, which means nothing in
+ * the Ads account has to change at changeover: same final URLs, same Quality
+ * Score history, same landing-page experience. A redirect would work for a
+ * visitor and would still be a hop on a paid click and a changed destination
+ * in Google's eyes.
+ *
+ * Both shapes resolve. /services/x keeps working for anything already linked.
+ */
+const SERVICE_SLUGS = new Set([
+  'windshield-replacement',
+  'windshield-repair',
+  'rock-chip-repair',
+  'side-window-replacement',
+  'back-glass-replacement',
+  'sunroof-repair',
+  'adas-calibration',
+])
+
+/** The prefix these sites use for a city page. One constant, one edit. */
+const LOCATION_PREFIX = 'auto-glass-repair-'
+
+function flatToTemplatePath(pathname: string): string | null {
+  const bare = pathname.replace(/^\/+|\/+$/g, '')
+  if (!bare || bare.includes('/')) return null
+  if (SERVICE_SLUGS.has(bare)) return `/services/${bare}`
+  if (bare.startsWith(LOCATION_PREFIX)) {
+    const city = bare.slice(LOCATION_PREFIX.length)
+    // A city this shop does not serve simply 404s on the location route,
+    // which is the same answer it would have given before.
+    if (city) return `/locations/${city}`
+  }
+  return null
+}
+
 export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
   if (isAppPath(pathname)) return NextResponse.next()
@@ -75,7 +120,11 @@ export default function middleware(req: NextRequest) {
   }
 
   const url = req.nextUrl.clone()
-  url.pathname = pathname === '/' ? `/sites/${label}` : `/sites/${label}${pathname}`
+  // A flat ad URL maps onto the template route BEFORE the /sites/ rewrite, so
+  // both end up at the same handler and only the address differs.
+  const mapped = flatToTemplatePath(pathname)
+  const target = mapped || pathname
+  url.pathname = target === '/' ? `/sites/${label}` : `/sites/${label}${target}`
   return NextResponse.rewrite(url)
 }
 
