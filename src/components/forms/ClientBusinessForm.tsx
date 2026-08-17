@@ -64,6 +64,31 @@ interface PlacePrediction {
   secondaryText: string
 }
 
+/**
+ * The timezone a US state sits in, for the states this platform serves.
+ *
+ * Client.timezone defaults to America/Denver, which is silently wrong for
+ * every shop outside the Mountain zone — and nothing surfaces it until a
+ * timestamp is read by a person. A lead alert for a phone call now prints the
+ * time the customer rang, so a shop in Portland was being told a call came in
+ * at a Denver hour: an hour ahead, on the one message whose entire purpose is
+ * "ring them back now".
+ *
+ * Not enforced, only flagged. Several states straddle two zones and a shop
+ * knows which side of the line it is on better than a lookup table does.
+ */
+const STATE_TIMEZONES: Record<string, string> = {
+  OR: 'America/Los_Angeles', WA: 'America/Los_Angeles', CA: 'America/Los_Angeles',
+  NV: 'America/Los_Angeles', AZ: 'America/Phoenix',
+  UT: 'America/Denver', CO: 'America/Denver', MT: 'America/Denver',
+  ID: 'America/Denver', WY: 'America/Denver', NM: 'America/Denver',
+  TX: 'America/Chicago', IL: 'America/Chicago', MN: 'America/Chicago',
+  MO: 'America/Chicago', WI: 'America/Chicago', OK: 'America/Chicago',
+  NY: 'America/New_York', FL: 'America/New_York', GA: 'America/New_York',
+  NC: 'America/New_York', PA: 'America/New_York', OH: 'America/New_York',
+  MA: 'America/New_York', NJ: 'America/New_York', VA: 'America/New_York',
+}
+
 const TIMEZONE_OPTIONS = [
   { value: 'America/New_York', label: 'Eastern (America/New_York)' },
   { value: 'America/Chicago', label: 'Central (America/Chicago)' },
@@ -480,8 +505,23 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
                   ))}
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Used for same-day lead deduplication and date display.
+                  Used for same-day lead deduplication, date display, and the time a phone
+                  call is reported in the lead alert.
                 </p>
+                {(() => {
+                  const expected = STATE_TIMEZONES[(formData.state || '').toUpperCase()]
+                  if (!expected || expected === formData.timezone) return null
+                  const label =
+                    TIMEZONE_OPTIONS.find((t) => t.value === expected)?.label || expected
+                  return (
+                    <p className="mt-1.5 text-xs text-amber-800">
+                      This shop&apos;s address is in {formData.state}, which is normally{' '}
+                      <strong>{label}</strong>. Every time shown to them — including the
+                      &ldquo;called at&rdquo; line on a phone-call alert — uses the timezone
+                      selected here.
+                    </p>
+                  )
+                })()}
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
