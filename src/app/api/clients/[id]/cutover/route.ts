@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
 import { normalisePath } from '@/lib/url-parity'
 import { capturePage } from '@/lib/page-capture'
+import { splitKeptSections, dropKeptSections } from '@/lib/kept-content'
 import { validatePublicUrl } from '@/lib/site-import'
 
 export const dynamic = 'force-dynamic'
@@ -44,7 +45,14 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
       })
       .catch(() => []),
   ])
-  return NextResponse.json({ redirects, pages })
+  // The section breakdown travels with the list. Splitting the same HTML in
+  // the browser would be a second copy of the rule, and the trim action below
+  // addresses sections by index — the two have to agree or a trim removes the
+  // wrong piece.
+  return NextResponse.json({
+    redirects,
+    pages: pages.map((p) => ({ ...p, sections: splitKeptSections(p.bodyHtml || '') })),
+  })
 }
 
 /**
@@ -177,6 +185,35 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       .catch(() => null)
     if (!updated?.count) return NextResponse.json({ error: 'No page there.' }, { status: 404 })
     return NextResponse.json({ success: true, message: 'Saved.' })
+  }
+
+  if (action === 'trim') {
+    const drop: number[] = Array.isArray(body?.drop)
+      ? body.drop.filter((n: unknown) => Number.isInteger(n)).map(Number)
+      : []
+    if (drop.length === 0) return NextResponse.json({ error: 'Nothing to remove.' }, { status: 400 })
+    const existing = await prisma.clientPage
+      .findFirst({ where: { clientId: id, path: fromPath }, select: { bodyHtml: true } })
+      .catch(() => null)
+    if (!existing) return NextResponse.json({ error: 'No page there.' }, { status: 404 })
+    const before = splitKeptSections(existing.bodyHtml || '').length
+    const next = dropKeptSections(existing.bodyHtml || '', drop)
+    const after = splitKeptSections(next).length
+    // Counted, not assumed. An index that is not there removes nothing, and
+    // reporting the number ASKED FOR would say "Removed 1 section" to somebody
+    // whose page is unchanged.
+    const removed = before - after
+    if (removed === 0) {
+      return NextResponse.json({ error: 'Nothing matched — the page is unchanged.' }, { status: 400 })
+    }
+    await prisma.clientPage.updateMany({
+      where: { clientId: id, path: fromPath },
+      data: { bodyHtml: next || null },
+    })
+    return NextResponse.json({
+      success: true,
+      message: `Removed ${removed} section${removed === 1 ? '' : 's'}.`,
+    })
   }
 
   if (action === 'publish' || action === 'unpublish') {
