@@ -1,4 +1,5 @@
 import { Phone, MapPin, ShieldCheck, Check, MessageSquare } from 'lucide-react'
+import { servicePath, locationPath } from '@/lib/site-paths'
 import { ReviewsGrid } from '@/components/sites/reviews-grid'
 import { wordmarkParts } from '@/lib/wordmark'
 import { smsHref } from '@/lib/contact-links'
@@ -1300,7 +1301,7 @@ export function AreasBand({
               <li key={area}>
                 {slug && basePath !== undefined ? (
                   <a
-                    href={`${basePath}/locations/${slug}`}
+                    href={`${basePath}${locationPath(slug)}`}
                     className="underline decoration-[var(--line-on-dark)] underline-offset-[3px] hover:decoration-white"
                   >
                     {inner}
@@ -1523,7 +1524,7 @@ export function SiteFooter({
                 {services.map((s) => (
                   <li key={s.slug} className="mb-0.5">
                     <a
-                      href={`${basePath || ''}/services/${s.slug}`}
+                      href={`${basePath || ''}${servicePath(s.slug)}`}
                       className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-[5px]"
                     >
                       {s.name}
@@ -1685,7 +1686,7 @@ export function SiteFooter({
                     )}
                     {slug ? (
                       <a
-                        href={`${basePath || ''}/locations/${slug}`}
+                        href={`${basePath || ''}${locationPath(slug)}`}
                         // Vertical padding so a run of inline links is still
                         // hittable with a thumb. The list used to put its
                         // padding on the <li>, leaving 20px targets, and that

@@ -1,4 +1,5 @@
 import { headers } from 'next/headers'
+import { servicePath, locationPath } from '@/lib/site-paths'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
@@ -155,7 +156,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     twitter: { card: 'summary_large_image', title, description, images: [`${siteRoot}/api/site-og/${client.slug}`] },
     ...(robots ? { robots } : {}),
     alternates: {
-      canonical: `${stance.canonicalOrigin}/locations/${location.slug}`,
+      canonical: `${stance.canonicalOrigin}${locationPath(location.slug)}`,
     },
   }
 }
@@ -194,7 +195,7 @@ export default async function LocationPage({ params }: PageProps) {
     smsCapable: client.smsCapable,
   }
   const nav = prioritizeServices(services).slice(0, 4).map((s) => ({
-    href: `${basePath}/services/${s.slug}`,
+    href: `${basePath}${servicePath(s.slug)}`,
     label: s.name,
   }))
 
