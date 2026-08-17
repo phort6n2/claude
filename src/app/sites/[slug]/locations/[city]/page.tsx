@@ -74,6 +74,7 @@ async function getClient(slug: string) {
       status: true,
       businessName: true,
       phone: true,
+      siteDisplayPhone: true,
       email: true,
       streetAddress: true,
       city: true,

@@ -40,6 +40,7 @@ export default async function QuoteSentPage({ params, searchParams }: PageProps)
       status: true,
       businessName: true,
       phone: true,
+      siteDisplayPhone: true,
       email: true,
       streetAddress: true,
       city: true,

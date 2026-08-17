@@ -203,6 +203,11 @@ export const CUTOVER_SQL: string[] = [
   // the schema field have to travel in the same commit or every query against
   // ClientPage fails until it runs.
   `ALTER TABLE "ClientPage" ADD COLUMN IF NOT EXISTS "navLabel" TEXT`,
+  // A tracking number this app does not own. Same rule as every other column
+  // added after the fact: the schema field and this statement ship together,
+  // because Prisma selects every scalar and would otherwise fail every query
+  // against Client until it runs.
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "siteDisplayPhone" TEXT`,
 ]
 
 /** Everything the running code assumes exists. */

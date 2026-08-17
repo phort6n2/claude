@@ -7,6 +7,7 @@ import WebhookDestinationsManager from '@/components/admin/WebhookDestinationsMa
 import CopyField from '@/components/admin/CopyField'
 import LeadNotificationsCard from '@/components/admin/LeadNotificationsCard'
 import TrackingNumbersCard from '@/components/admin/TrackingNumbersCard'
+import SiteDisplayPhoneCard from '@/components/admin/SiteDisplayPhoneCard'
 import CallCoachingToggle from '@/components/admin/CallCoachingToggle'
 
 /**
@@ -26,7 +27,14 @@ import CallCoachingToggle from '@/components/admin/CallCoachingToggle'
 export default function ClientLeadsForm({
   client,
 }: {
-  client: { id: string; slug: string; allowedOrigins: string[]; callCoachingEnabled: boolean | null }
+  client: {
+    id: string
+    slug: string
+    allowedOrigins: string[]
+    callCoachingEnabled: boolean | null
+    phone?: string
+    siteDisplayPhone?: string | null
+  }
 }) {
   // Only the origins list stages now. Everything else on this tab either
   // autosaves or has its own button, and each says which in its subtitle.
@@ -89,6 +97,11 @@ export default function ClientLeadsForm({
           </p>
         </div>
         <TrackingNumbersCard clientId={client.id} />
+        <SiteDisplayPhoneCard
+          clientId={client.id}
+          initialValue={client.siteDisplayPhone ?? null}
+          realPhone={client.phone || 'the shop’s own number'}
+        />
         <CallCoachingToggle
           clientId={client.id}
           initialEnabled={client.callCoachingEnabled ?? true}

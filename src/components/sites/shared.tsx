@@ -1576,7 +1576,7 @@ export function SiteFooter({
               with a page of their own are links; the rest are plain, which is
               the same rule as before — a name is not a promise of a page. */}
           {areas && areas.length > 0 && (
-            <div className="md:col-span-2 lg:col-span-2 p-5 rounded-[10px] bg-[var(--dark-3)] border border-[var(--line-on-dark)]">
+            <div className="md:col-span-2 lg:col-span-2 self-start p-5 rounded-[10px] bg-[var(--dark-3)] border border-[var(--line-on-dark)]">
               <h2 className="text-white font-bold text-[13px] uppercase tracking-[.09em] m-0">
                 Areas we serve
               </h2>
@@ -1615,14 +1615,15 @@ export function SiteFooter({
                   )
                 })}
               </ul>
-              {/* Compact on purpose. The page's real CTA band sits directly
+              {/* A LINK, not a button. The page's real CTA band sits directly
                   above the footer and the sticky call bar is pinned over it on
-                  a phone; a third full-size button here competes with both
-                  instead of adding anything. This one only has to say where to
-                  go if your town is not on the list. */}
+                  a phone, so a third filled button competed with both — and as
+                  a white pill on a dark footer it was the loudest thing on the
+                  page for a line that only says "ask if your town is missing".
+                  Styled like the footer's other links, which is what it is. */}
               <a
                 href="#quote"
-                className="mt-4 inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-full bg-white text-[var(--dark-2,#111)] font-bold text-sm no-underline hover:opacity-90"
+                className="mt-4 inline-flex items-center gap-1.5 min-h-[44px] font-bold text-sm no-underline text-[var(--gold-on-dark)] hover:underline"
               >
                 Not sure? Ask about your address
                 <ArrowRight className="h-4 w-4" />
