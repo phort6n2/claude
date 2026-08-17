@@ -81,7 +81,18 @@ export interface RefreshResult {
  */
 export const REVIEW_REFRESH_MIN_HOURS = 168
 
-export async function refreshGbpReviews(clientId: string): Promise<RefreshResult> {
+/**
+ * `force` skips the once-a-week gate. It exists for one situation and is
+ * worth naming: the gate protects a paid API from being polled, but it also
+ * means a change to WHICH reviews qualify cannot reach a shop's page for up
+ * to seven days, because the stored quotes are only rewritten by a fetch. An
+ * admin clicking a button once is not the traffic the gate was built for.
+ * The weekly cron never passes it.
+ */
+export async function refreshGbpReviews(
+  clientId: string,
+  opts: { force?: boolean } = {}
+): Promise<RefreshResult> {
   const client = await prisma.client.findUnique({
     where: { id: clientId },
     select: { id: true, businessName: true, googlePlaceId: true },
@@ -95,7 +106,7 @@ export async function refreshGbpReviews(clientId: string): Promise<RefreshResult
   const existing = await prisma.clientGbpReviews
     .findUnique({ where: { clientId }, select: { fetchedAt: true, rating: true, reviewCount: true } })
     .catch(() => null)
-  if (existing?.fetchedAt) {
+  if (existing?.fetchedAt && !opts.force) {
     const hoursSince = (Date.now() - new Date(existing.fetchedAt).getTime()) / 3_600_000
     if (hoursSince < REVIEW_REFRESH_MIN_HOURS) {
       const hoursLeft = Math.ceil(REVIEW_REFRESH_MIN_HOURS - hoursSince)
@@ -181,6 +192,24 @@ export async function refreshGbpReviews(clientId: string): Promise<RefreshResult
   // Quote selection per the template's fetch-reviews.cjs: 5-star only (no
   // padding the wall with 4-star reviews), readable length, longest first —
   // a substantial review is more persuasive than a two-line one.
+  //
+  // THE LENGTH BOUNDS ARE A LAYOUT JUDGEMENT, NOT A TRUTH ONE, and the old
+  // ceiling was costing real cards. Google's Places API returns at most FIVE
+  // reviews for a place, so every one this filter drops is a fifth of the
+  // wall: Collision has 365 reviews at 4.9 and was rendering two.
+  //
+  // 400, not 650, and the direction is deliberate. The cards sit in one grid
+  // row and stretch to the tallest of them, so a single long review does not
+  // just take more space, it drags every card beside it down with it. A
+  // narrower band means the ones that qualify are all ROUGHLY THE SAME
+  // LENGTH, which is what makes the row look composed rather than ragged —
+  // and lowering the ceiling admits more reviews than raising it did, because
+  // most genuine ones are short.
+  //
+  // The five-star rule is NOT part of this and does not move. That one is a
+  // content decision about what a shop's page asserts, and loosening it to
+  // fill a grid would be choosing what a real business appears to say about
+  // itself for a layout reason.
   const quotes = (data.reviews || [])
     .map((r) => ({
       author: r.authorAttribution?.displayName || 'Google reviewer',
@@ -188,7 +217,7 @@ export async function refreshGbpReviews(clientId: string): Promise<RefreshResult
       text: (r.originalText?.text || r.text?.text || '').trim(),
       relativeTime: r.relativePublishTimeDescription || '',
     }))
-    .filter((r) => r.rating === 5 && r.text.length >= 40 && r.text.length <= 650)
+    .filter((r) => r.rating === 5 && r.text.length >= 40 && r.text.length <= 400)
     .sort((a, b) => b.text.length - a.text.length)
     // Six, not three: a wall of full-length reviews is the one proof asset a
     // national chain cannot match, and the page has room for two rows.
