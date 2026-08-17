@@ -37,7 +37,7 @@ import { heroCostLineFor } from '@/lib/insurance-rules'
 import { sitePaletteVars } from '@/lib/site-theme'
 import { getClientLocations } from '@/lib/client-locations'
 import { cityIsIndexable, faqForCity, getCityContent } from '@/lib/city-content'
-import { hostStanceFor, siteOriginFor } from '@/lib/site-origin'
+import { hostStanceFor, siteOriginFor, sitePathPrefixFor } from '@/lib/site-origin'
 import { getAdsTracking } from '@/lib/ads-tracking'
 import { GoogleTag } from '@/components/sites/GoogleTag'
 import { locationJsonLd } from '@/lib/site-schema'
@@ -184,7 +184,7 @@ export default async function LocationPage({ params }: PageProps) {
   if (!location) notFound()
 
   const services = servicesForClient(client as Record<ServiceFlag, boolean>)
-  const basePath = `/sites/${client.slug}`
+  const basePath = sitePathPrefixFor(client, (await headers()).get('host'))
   const palette = sitePaletteVars(client.primaryColor, client.accentColor)
   const flags = {
     offersMobileService: client.offersMobileService,
