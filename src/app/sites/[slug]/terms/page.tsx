@@ -60,7 +60,7 @@ export default async function TermsPage({ params }: PageProps) {
   client.phone = (await withSitePhone(client)).phone
   const [extras, keptPages] = await Promise.all([
     getSiteExtras(client.id),
-    keptPagesFor(client.id),
+    keptPagesFor(client.id, client.businessName),
   ])
 
   return (

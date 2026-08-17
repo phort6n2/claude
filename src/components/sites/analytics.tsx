@@ -31,7 +31,11 @@
  *   it only when that shop actually has one configured.
  */
 
-export type SitePageType = 'home' | 'service' | 'location' | 'legal' | 'blog'
+// 'kept' is its own value, not folded into 'legal' or 'service': these are
+// the pages carried over from a shop's old site, they are where live ads
+// already point, and how they convert against the template's own pages is
+// exactly the comparison worth being able to make.
+export type SitePageType = 'home' | 'service' | 'location' | 'legal' | 'blog' | 'kept'
 
 const LOADER = (projectId: string) =>
   `(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};` +

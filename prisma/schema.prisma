@@ -1178,6 +1178,10 @@ model ClientPage {
   /// Sanitised at render, never trusted as stored — see lib/sanitize-html.ts.
   bodyHtml        String?
 
+  /// Optional override for the footer menu link. Null means the label is
+  /// derived from the title — see shortLabel() in lib/site-pages.ts.
+  navLabel String?
+
   /// Where the content came from, so it can be re-pulled or checked.
   sourceUrl String?
 

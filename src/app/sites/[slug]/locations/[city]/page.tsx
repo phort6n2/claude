@@ -173,7 +173,7 @@ export default async function LocationPage({ params }: PageProps) {
     getClientLocations(client.id, client),
     getAdsTracking(client.id),
     getCityContent(client.id),
-    keptPagesFor(client.id),
+    keptPagesFor(client.id, client.businessName),
   ])
 
   // Shop cities are part of the coverage list and lead the location pages —

@@ -38,6 +38,7 @@ interface KeptPage {
   id: string
   path: string
   title: string
+  navLabel: string | null
   metaDescription: string | null
   bodyHtml: string | null
   publishedAt: string | null
@@ -76,7 +77,7 @@ export default function UrlParityCard({
   const [rowNote, setRowNote] = useState<Record<string, string>>({})
   /** Which kept page is open for reading. */
   const [open, setOpen] = useState<string | null>(null)
-  const [draft, setDraft] = useState<Record<string, { title: string; body: string }>>({})
+  const [draft, setDraft] = useState<Record<string, { title: string; label: string; body: string }>>({})
 
   const loadSetups = useCallback(async () => {
     try {
@@ -183,7 +184,14 @@ export default function UrlParityCard({
                 setDraft((d) =>
                   d[from]
                     ? d
-                    : { ...d, [from]: { title: page.title, body: page.bodyHtml || '' } }
+                    : {
+                        ...d,
+                        [from]: {
+                          title: page.title,
+                          label: page.navLabel || '',
+                          body: page.bodyHtml || '',
+                        },
+                      }
                 )
                 setOpen(open === from ? null : from)
               }}
@@ -276,18 +284,45 @@ export default function UrlParityCard({
               onChange={(e) =>
                 setDraft((d) => ({
                   ...d,
-                  [from]: { title: e.target.value, body: d[from]?.body ?? page.bodyHtml ?? '' },
+                  [from]: {
+                    title: e.target.value,
+                    label: d[from]?.label ?? page.navLabel ?? '',
+                    body: d[from]?.body ?? page.bodyHtml ?? '',
+                  },
                 }))
               }
               className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
               aria-label="Page title"
             />
+            <label className="block text-xs text-gray-600">
+              Footer menu label
+              <input
+                type="text"
+                value={draft[from]?.label ?? page.navLabel ?? ''}
+                placeholder="Left blank, shortened from the title automatically"
+                onChange={(e) =>
+                  setDraft((d) => ({
+                    ...d,
+                    [from]: {
+                      title: d[from]?.title ?? page.title,
+                      label: e.target.value,
+                      body: d[from]?.body ?? page.bodyHtml ?? '',
+                    },
+                  }))
+                }
+                className="mt-1 w-full border border-gray-300 rounded px-2 py-1 text-sm"
+              />
+            </label>
             <textarea
               value={draft[from]?.body ?? page.bodyHtml ?? ''}
               onChange={(e) =>
                 setDraft((d) => ({
                   ...d,
-                  [from]: { title: d[from]?.title ?? page.title, body: e.target.value },
+                  [from]: {
+                    title: d[from]?.title ?? page.title,
+                    label: d[from]?.label ?? page.navLabel ?? '',
+                    body: e.target.value,
+                  },
                 }))
               }
               rows={14}
@@ -304,6 +339,7 @@ export default function UrlParityCard({
               onClick={() =>
                 act(from, 'edit', {
                   title: draft[from]?.title ?? page.title,
+                  navLabel: draft[from]?.label ?? page.navLabel ?? '',
                   bodyHtml: draft[from]?.body ?? page.bodyHtml ?? '',
                 })
               }
