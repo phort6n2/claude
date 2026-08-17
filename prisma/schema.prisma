@@ -49,6 +49,13 @@ model Client {
   businessName  String
   contactPerson String?
   phone         String
+
+  /// A tracking number handled OUTSIDE this app (HighLevel, a call-tracking
+  /// vendor, a Google forwarding number). When set and no in-app tracking
+  /// number is flagged for the site, this is what every visible number on the
+  /// hosted pages becomes. `phone` stays the real line — it is what the
+  /// LocalBusiness schema and call-asset verification read.
+  siteDisplayPhone String?
   email         String
   streetAddress String
   city          String

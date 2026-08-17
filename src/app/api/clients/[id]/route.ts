@@ -96,6 +96,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       'websiteUrl',
       'logoUrl',
       'rankMapUrl',
+      'siteDisplayPhone',
     ] as const) {
       setIf(key, data[key] || null)
     }
