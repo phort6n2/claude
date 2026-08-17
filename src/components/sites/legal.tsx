@@ -25,12 +25,15 @@ export function LegalShell({
   title,
   basePath,
   registrationNumber,
+  pages = [],
   children,
 }: {
   client: LegalClient
   title: string
   basePath: string
   registrationNumber?: string | null
+  /** Pages kept from the shop's old site — the same list as the main footer. */
+  pages?: Array<{ path: string; title: string }>
   children: React.ReactNode
 }) {
   const palette = sitePaletteVars(client.primaryColor, client.accentColor)
@@ -79,6 +82,17 @@ export function LegalShell({
             · {client.phone}
           </div>
           {registrationNumber && <div>Registration No. {registrationNumber}</div>}
+          {/* This shell has no main footer, so a kept page reached from search
+              would otherwise be a dead end with one way back. */}
+          {pages.length > 0 && (
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              {pages.map((p) => (
+                <a key={p.path} href={`${basePath || ''}${p.path}`} className="text-[var(--brand)]">
+                  {p.title}
+                </a>
+              ))}
+            </div>
+          )}
           <div>
             © {year} {client.businessName}.{' '}
             <a href={basePath || '/'} className="text-[var(--brand)]">

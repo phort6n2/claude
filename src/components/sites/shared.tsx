@@ -1421,6 +1421,7 @@ export function SiteFooter({
   offersAdasCalibration,
   locations = [],
   linkableCities,
+  pages = [],
 }: {
   client: SiteClient
   extras?: SiteExtras | null
@@ -1432,6 +1433,8 @@ export function SiteFooter({
   offersAdasCalibration?: boolean
   locations?: SiteLocation[]
   linkableCities?: Set<string>
+  /** Pages kept from the shop's old site at their original addresses. */
+  pages?: Array<{ path: string; title: string }>
 }) {
   const year = new Date().getFullYear()
   const areaSplit: string[][] = []
@@ -1514,21 +1517,53 @@ export function SiteFooter({
               )}
             </p>
           </div>
-          {services && services.length > 0 && (
+          {((services && services.length > 0) || pages.length > 0) && (
             <div>
-              <h2 className="text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5">Services</h2>
-              <ul className="list-none m-0 p-0 text-sm">
-                {services.map((s) => (
-                  <li key={s.slug} className="mb-0.5">
-                    <a
-                      href={`${basePath || ''}/services/${s.slug}`}
-                      className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-[5px]"
-                    >
-                      {s.name}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              {services && services.length > 0 && (
+                <>
+                  <h2 className="text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5">Services</h2>
+                  <ul className="list-none m-0 p-0 text-sm">
+                    {services.map((s) => (
+                      <li key={s.slug} className="mb-0.5">
+                        <a
+                          href={`${basePath || ''}/services/${s.slug}`}
+                          className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-[5px]"
+                        >
+                          {s.name}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              {/* Kept pages sit UNDER the services in the same column rather
+                  than taking a column of their own. The footer grid is a
+                  fixed four-column shape that has been fought over twice; a
+                  fifth column that appears only for shops that came off an
+                  old site would be a different footer for those shops. */}
+              {pages.length > 0 && (
+                <>
+                  <h2
+                    className={`text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5 ${
+                      services && services.length > 0 ? 'mt-6' : ''
+                    }`}
+                  >
+                    More
+                  </h2>
+                  <ul className="list-none m-0 p-0 text-sm">
+                    {pages.map((p) => (
+                      <li key={p.path} className="mb-0.5">
+                        <a
+                          href={`${basePath || ''}${p.path}`}
+                          className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-[5px]"
+                        >
+                          {p.title}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </div>
           )}
           {/* The areas are pre-split into two halves so they can be two

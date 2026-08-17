@@ -6,6 +6,7 @@ import { SiteUnavailable } from '@/components/sites/shared'
 import { LegalShell } from '@/components/sites/legal'
 import { sanitizeHtml } from '@/lib/sanitize-html'
 import { normalisePath } from '@/lib/url-parity'
+import { keptPagesFor } from '@/lib/site-pages'
 
 export const dynamic = 'force-dynamic'
 
@@ -91,11 +92,19 @@ export default async function CatchAllPage({ params }: PageProps) {
 
   if (page) {
     client.phone = (await withSitePhone(client)).phone
+    // The other kept pages, so this one is not a dead end. Itself excluded —
+    // a link back to the page you are already on is noise.
+    const siblings = (await keptPagesFor(client.id)).filter((p) => p.path !== page.path)
     // Sanitised at render, never trusted as stored: this HTML came off
     // somebody else's website and is served from the shop's own origin.
     const html = sanitizeHtml(page.bodyHtml)
     return (
-      <LegalShell client={client} title={page.title} basePath={`/sites/${client.slug}`}>
+      <LegalShell
+        client={client}
+        title={page.title}
+        basePath={`/sites/${client.slug}`}
+        pages={siblings}
+      >
         {html ? (
           <div dangerouslySetInnerHTML={{ __html: html }} />
         ) : (
