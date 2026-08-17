@@ -35,7 +35,7 @@ import { heroCostLineFor } from '@/lib/insurance-rules'
 import { sitePaletteVars } from '@/lib/site-theme'
 import { getClientLocations } from '@/lib/client-locations'
 import { cityIsIndexable, getCityContent } from '@/lib/city-content'
-import { hostStanceFor, siteOriginFor } from '@/lib/site-origin'
+import { hostStanceFor, siteOriginFor, sitePathPrefixFor } from '@/lib/site-origin'
 import { getAdsTracking } from '@/lib/ads-tracking'
 import { GoogleTag } from '@/components/sites/GoogleTag'
 import { mergeServiceAreas } from '@/lib/site-locations'
@@ -169,7 +169,7 @@ export default async function ServicePage({ params }: PageProps) {
   // Shop cities are part of the coverage list and lead the location pages —
   // a city we have an address in outranks one we only drive to.
   const areas = mergeServiceAreas(client.serviceAreas || [], locations.map((l) => l.city))
-  const basePath = `/sites/${client.slug}`
+  const basePath = sitePathPrefixFor(client, (await headers()).get('host'))
   const palette = sitePaletteVars(client.primaryColor, client.accentColor)
   const flags = {
     offersMobileService: client.offersMobileService,

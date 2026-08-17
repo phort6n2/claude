@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import { prisma } from '@/lib/db'
+import { sitePathPrefixFor } from '@/lib/site-origin'
 import { withSitePhone } from '@/lib/site-phone'
 import { SiteUnavailable } from '@/components/sites/shared'
 import { LegalShell } from '@/components/sites/legal'
@@ -55,7 +57,7 @@ export default async function QuoteSentPage({ params, searchParams }: PageProps)
   if (client.status !== 'ACTIVE') return <SiteUnavailable />
 
   client.phone = (await withSitePhone(client)).phone
-  const basePath = `/sites/${client.slug}`
+  const basePath = sitePathPrefixFor(client, (await headers()).get('host'))
 
   return (
     <LegalShell client={client} title={problem ? 'That did not go through' : 'Request sent'} basePath={basePath}>

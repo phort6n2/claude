@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import { prisma } from '@/lib/db'
+import { sitePathPrefixFor } from '@/lib/site-origin'
 import { withSitePhone } from '@/lib/site-phone'
 import { SiteUnavailable } from '@/components/sites/shared'
 import { LegalShell, PrivacyContent } from '@/components/sites/legal'
@@ -58,6 +60,7 @@ export default async function PrivacyPage({ params }: PageProps) {
   if (client.status !== 'ACTIVE') return <SiteUnavailable />
   // Visitors see the tracking number when one is set; see lib/site-phone.ts.
   client.phone = (await withSitePhone(client)).phone
+  const basePath = sitePathPrefixFor(client, (await headers()).get('host'))
   const [extras, keptPages] = await Promise.all([
     getSiteExtras(client.id),
     keptPagesFor(client.id, client.businessName),
@@ -67,7 +70,7 @@ export default async function PrivacyPage({ params }: PageProps) {
     <LegalShell
       client={client}
       title="Privacy Policy"
-      basePath={`/sites/${client.slug}`}
+      basePath={basePath}
       registrationNumber={extras.registrationNumber}
       pages={keptPages}
     >

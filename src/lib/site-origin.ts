@@ -83,6 +83,45 @@ export interface HostStance {
  * second custom domain, or the /sites/{slug} preview path on the app host —
  * the page self-canonicalises and asks not to be indexed.
  */
+/**
+ * The prefix every internal link on this render needs.
+ *
+ * The SAME HTML serves two shapes of address. On a client host the middleware
+ * rewrites `/services/x` to `/sites/{slug}/services/x`, so a link there must
+ * be written `/services/x`. On the app host the page is reached at its real
+ * route, `/sites/{slug}/services/x`, and a link written `/services/x` would
+ * leave the site entirely.
+ *
+ * Baking `/sites/{slug}` in unconditionally was the old behaviour, and it was
+ * wrong on the host that matters: every internal link on a live client site —
+ * services, locations, privacy, kept pages — carried the prefix, so a visitor
+ * clicking any of them landed on `collision.glassleads.app/sites/collision-…`.
+ * Those addresses answer, which is why it went unnoticed, but they are not
+ * the ones the pages declare canonical. Google was being shown one URL in the
+ * canonical tag and a different one in every link to it.
+ *
+ * Only a host that provably belongs to THIS client drops the prefix. The app
+ * host, localhost and anything unrecognised keep it, because on those the
+ * prefixed route is the real one.
+ */
+export function sitePathPrefixFor(
+  client: OriginClient,
+  requestHost: string | null | undefined
+): string {
+  const host = bareHost(requestHost)
+  if (!host) return `/sites/${client.slug}`
+
+  if (client.domains?.some((d) => bareHost(d.domain) === host)) return ''
+
+  if (host.endsWith('.glassleads.app')) {
+    const label = host.slice(0, -'.glassleads.app'.length)
+    if (label && label === (client.siteSubdomain || '').toLowerCase()) return ''
+    if (label && label === client.slug.toLowerCase()) return ''
+  }
+
+  return `/sites/${client.slug}`
+}
+
 export function hostStanceFor(client: OriginClient, requestHost: string | null | undefined): HostStance {
   const canonicalHost = canonicalHostFor(client)
   const host = bareHost(requestHost)
