@@ -179,13 +179,38 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
     }
   }
 
-  async function setSiteNumber(numberId: string, useOnSite: boolean) {
+  /**
+   * Flipping this changes the number on every page of a live site, and it
+   * silently breaks something OUTSIDE this app if nobody follows up.
+   *
+   * A Google Ads call conversion action is configured with the number it
+   * should watch for. Change the number the site shows and that action is
+   * still watching the old one, so calls keep arriving and conversions stop
+   * being counted — which reads in Ads as the landing page having stopped
+   * working, days later, with nothing in this app to suggest otherwise. The
+   * confirm is the only moment anybody is guaranteed to be looking.
+   */
+  async function setSiteNumber(numberId: string, useOnSite: boolean, phoneNumber: string) {
+    if (
+      useOnSite &&
+      !confirm(
+        `Show ${phoneNumber} on the hosted site?\n\n` +
+          'Every phone a visitor sees becomes this number — header, hero, call buttons, ' +
+          'footer and the mobile bar.\n\n' +
+          'BEFORE YOU LEAVE ADS ALONE: the Google Ads call conversion action has to be ' +
+          `pointed at ${phoneNumber} too. It watches for a specific number, so until you ` +
+          'change it there, calls from the site will still come through and Ads will ' +
+          'count none of them.'
+      )
+    ) {
+      return
+    }
     await patchNumber(
       numberId,
       { useOnSite },
       useOnSite
-        ? 'The hosted site now shows this number everywhere a visitor sees a phone. Live within about five minutes.'
-        : 'The site is back to showing the shop\u2019s real line.'
+        ? `The site shows ${phoneNumber} now, live within about five minutes. Next: point the Google Ads call conversion action at it.`
+        : 'The site is back to showing the shop\u2019s real line. Check the Google Ads call conversion action still matches.'
     )
   }
 
@@ -287,7 +312,7 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
                 </label>
                 <button
                   type="button"
-                  onClick={() => setSiteNumber(n.id, !n.useOnSite)}
+                  onClick={() => setSiteNumber(n.id, !n.useOnSite, n.phoneNumber)}
                   className={`mt-1 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold border ${
                     n.useOnSite
                       ? 'bg-blue-50 border-blue-200 text-blue-700'
@@ -296,6 +321,20 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
                 >
                   {n.useOnSite ? '\u2713 Shown on the hosted site' : 'Show on the hosted site'}
                 </button>
+                {/* The confirm on the way in is a single moment; this is here
+                    every time anybody opens the tab. A call conversion action
+                    pointed at the wrong number fails silently and looks like
+                    the landing page went bad. */}
+                {n.useOnSite && (
+                  <p className="mt-1 text-xs text-amber-800 flex items-start gap-1.5">
+                    <TriangleAlert size={13} className="mt-0.5 shrink-0" />
+                    <span>
+                      The Google Ads call conversion action must be watching{' '}
+                      <strong>{n.phoneNumber}</strong>. If it still lists the old number, calls
+                      arrive and Ads counts none of them.
+                    </span>
+                  </p>
+                )}
                 {stats[n.phoneNumber] && (
                   <p className="text-xs text-gray-600 mt-0.5">
                     Last 30 days: <strong>{stats[n.phoneNumber].calls}</strong>{' '}
