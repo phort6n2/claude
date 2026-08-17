@@ -45,6 +45,19 @@ import { sanitizeHtml } from '@/lib/sanitize-html'
 import { retargetKeptHtml, keptChapters } from '@/lib/kept-content'
 import { hostedPathsFor } from '@/lib/url-parity'
 import { normalisePath } from '@/lib/url-parity'
+import LocationPage from '@/app/sites/[slug]/locations/[city]/page'
+
+/**
+ * The prefix a shop's old site used for a city page.
+ *
+ * Resolved HERE rather than in middleware, and that placement is the fix for
+ * a regression: middleware mapped every /auto-glass-repair-{city} to a
+ * location page, and Collision's /auto-glass-repair-hillsboro is a KEPT PAGE,
+ * so a working ad destination became a 404. Middleware has no database and
+ * cannot know which addresses a shop kept. This route already resolves kept
+ * pages first, so the specific decision always beats the pattern.
+ */
+const LOCATION_PREFIX = 'auto-glass-repair-'
 
 export const dynamic = 'force-dynamic'
 
@@ -203,6 +216,18 @@ export default async function CatchAllPage({ params }: PageProps) {
 
   if (!page) {
     if (redirect) permanentRedirect(redirect.toPath)
+
+    // A flat city URL the shop's ads point at. RENDERED, not redirected: a
+    // redirect is a changed destination in Google's eyes, and the whole point
+    // is that moving the domain costs no edits in the Ads account.
+    const flat = normalisePath(`/${(path || []).join('/')}`).slice(1)
+    if (flat.startsWith(LOCATION_PREFIX) && !flat.includes('/')) {
+      const city = flat.slice(LOCATION_PREFIX.length)
+      if (city) {
+        return <LocationPage params={Promise.resolve({ slug, city })} />
+      }
+    }
+
     notFound()
   }
 
