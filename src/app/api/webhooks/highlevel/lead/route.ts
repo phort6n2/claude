@@ -99,6 +99,23 @@ export async function OPTIONS(request: NextRequest) {
  * flat JSON payload — every field is read from the payload root before any
  * HighLevel-specific nesting is consulted, so the two paths converge.
  */
+/**
+ * A payload field as TEXT, or nothing.
+ *
+ * `String(value)` on an object returns the literal "[object Object]", and
+ * that is what a shop owner saw in a real lead alert: "Notes: [object
+ * Object]". HighLevel sends `notes` as a structured object on call-generated
+ * contacts, and any of these fields can arrive that way — so the coercion is
+ * shared rather than patched at the one field that was caught. Anything that
+ * is not already text becomes empty, and an empty field is simply left out of
+ * the alert.
+ */
+function text(value: unknown): string {
+  if (typeof value === 'string') return value.trim()
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  return ''
+}
+
 export async function POST(request: NextRequest) {
   const origin = request.headers.get('origin')
   const clientSlug = new URL(request.url).searchParams.get('client')
@@ -807,18 +824,18 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
 
       try {
         const result = await notifyLeadRecipients(client.id, client.businessName, {
-          name: String(payload.full_name || payload.first_name || '').trim(),
-          phone: String(payload.phone || payload.phone_formatted || '').trim(),
-          email: String(payload.email || '').trim(),
-          service: String(payload.service_label || payload.service || '').trim(),
-          vehicle: String(payload.vehicle || '').trim(),
-          postalCode: String(payload.postal_code || '').trim(),
-          message: String(payload.notes || payload.message || '').trim(),
-          source: String(payload.source_label || payload.contact_source || '').trim(),
-          vin: String(payload.vin || '').trim(),
-          insurance: String(payload.insurance_label || payload.insurance || '').trim(),
-          carrier: String(payload.carrier || payload.insurance_carrier || '').trim(),
-          landingPage: String(payload.landing_page || payload.page || '').trim(),
+          name: text(payload.full_name) || text(payload.first_name),
+          phone: text(payload.phone) || text(payload.phone_formatted),
+          email: text(payload.email),
+          service: text(payload.service_label) || text(payload.service),
+          vehicle: text(payload.vehicle),
+          postalCode: text(payload.postal_code),
+          message: text(payload.notes) || text(payload.message),
+          source: text(payload.source_label) || text(payload.contact_source),
+          vin: text(payload.vin),
+          insurance: text(payload.insurance_label) || text(payload.insurance),
+          carrier: text(payload.carrier) || text(payload.insurance_carrier),
+          landingPage: text(payload.landing_page) || text(payload.page),
           // Only ever our own storage. The alert renders this as an <img>, so
           // an arbitrary URL in the payload would let anyone who can post a
           // lead put an image of their choosing into a shop's inbox.

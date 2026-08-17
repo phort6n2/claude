@@ -17,7 +17,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
   try {
     const { id } = await params
-    const result = await refreshGbpReviews(id)
+    const body = await request.json().catch(() => ({}))
+    const result = await refreshGbpReviews(id, { force: body?.force === true })
     return NextResponse.json(result, { status: result.ok ? 200 : 400 })
   } catch (error) {
     console.error('Failed to refresh reviews:', error)

@@ -26,6 +26,7 @@ export default function ClientSiteForm({
   const [provisionMessage, setProvisionMessage] = useState<{ ok: boolean; text: string } | null>(null)
   const [reviewsMessage, setReviewsMessage] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [rateLimited, setRateLimited] = useState(false)
 
   // Staged client-record fields the importer may set; flushed by the content save.
   const [pendingLogo, setPendingLogo] = useState<string | null>(null)
@@ -81,13 +82,18 @@ export default function ClientSiteForm({
     }
   }
 
-  async function refreshReviews() {
+  async function refreshReviews(force = false) {
     setRefreshing(true)
     setReviewsMessage(null)
     try {
-      const res = await fetch(`/api/clients/${client.id}/refresh-reviews`, { method: 'POST' })
+      const res = await fetch(`/api/clients/${client.id}/refresh-reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force }),
+      })
       const data = await res.json()
       setReviewsMessage(data.message || (data.ok ? 'Reviews refreshed.' : 'Refresh failed.'))
+      setRateLimited(data.rateLimited === true)
     } catch {
       setReviewsMessage('Refresh failed.')
     } finally {
@@ -124,13 +130,28 @@ export default function ClientSiteForm({
             </button>
             <button
               type="button"
-              onClick={refreshReviews}
+              onClick={() => refreshReviews(false)}
               disabled={refreshing}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
             >
               {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Star className="h-4 w-4" />}
               Refresh Google reviews
             </button>
+            {/* Only after the weekly gate has actually refused. The gate is
+                there because every call costs money and review counts do not
+                move fast enough to justify polling — but it also holds back a
+                change to WHICH reviews qualify for up to seven days, since the
+                stored quotes are only rewritten by a fetch. */}
+            {rateLimited && (
+              <button
+                type="button"
+                onClick={() => refreshReviews(true)}
+                disabled={refreshing}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-300 bg-amber-50 text-sm font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+              >
+                Fetch anyway (costs a Places call)
+              </button>
+            )}
           </div>
           {provisionMessage && (
             <p className={`text-sm flex items-start gap-1.5 ${provisionMessage.ok ? 'text-green-700' : 'text-red-700'}`}>
