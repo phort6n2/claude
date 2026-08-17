@@ -30,6 +30,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
           id: true,
           path: true,
           title: true,
+          navLabel: true,
           metaDescription: true,
           // The body comes back with the list on purpose. The whole point of
           // holding a captured page is that somebody reads it before it
@@ -155,8 +156,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   }
 
   if (action === 'edit') {
-    const data: { title?: string; metaDescription?: string | null; bodyHtml?: string | null } = {}
+    const data: {
+      title?: string
+      navLabel?: string | null
+      metaDescription?: string | null
+      bodyHtml?: string | null
+    } = {}
     if (typeof body?.title === 'string' && body.title.trim()) data.title = body.title.trim()
+    // Empty clears the override and puts the derived label back, which is the
+    // only way to undo a bad one.
+    if (typeof body?.navLabel === 'string') data.navLabel = body.navLabel.trim() || null
     if (typeof body?.metaDescription === 'string')
       data.metaDescription = body.metaDescription.trim() || null
     if (typeof body?.bodyHtml === 'string') data.bodyHtml = body.bodyHtml.trim() || null

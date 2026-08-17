@@ -197,6 +197,12 @@ export const CUTOVER_SQL: string[] = [
     ALTER TABLE "ClientPage" ADD CONSTRAINT "ClientPage_clientId_fkey"
       FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE ON UPDATE CASCADE;
   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  // Added after ClientPage shipped, so it is an ALTER rather than part of the
+  // CREATE above — the CREATE is a no-op on every database that already has
+  // the table. Prisma selects every scalar on a model, so this statement and
+  // the schema field have to travel in the same commit or every query against
+  // ClientPage fails until it runs.
+  `ALTER TABLE "ClientPage" ADD COLUMN IF NOT EXISTS "navLabel" TEXT`,
 ]
 
 /** Everything the running code assumes exists. */
