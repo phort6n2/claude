@@ -210,7 +210,8 @@ export async function refreshGbpReviews(
   // content decision about what a shop's page asserts, and loosening it to
   // fill a grid would be choosing what a real business appears to say about
   // itself for a layout reason.
-  const quotes = (data.reviews || [])
+  const returned = data.reviews || []
+  const quotes = returned
     .map((r) => ({
       author: r.authorAttribution?.displayName || 'Google reviewer',
       rating: r.rating ?? 0,
@@ -243,7 +244,30 @@ export async function refreshGbpReviews(
     },
   })
 
-  return { ok: true, message: `Cached ${rating}★ (${reviewCount} reviews) from "${placeName}"`, placeName, rating, reviewCount }
+  // WHY THE WALL IS THE SIZE IT IS, in the message, every time.
+  //
+  // Two rounds were spent moving the length bounds to try to get a third card
+  // onto Collision's page, on the assumption that the filter was rejecting
+  // reviews. That was never checked, because the only place the answer exists
+  // is this response — and it is thrown away the moment the function returns.
+  // If Google is returning two reviews for a place, no filter will ever
+  // produce three, and widening one is a change made in the dark.
+  const fiveStar = returned.filter((r) => (r.rating ?? 0) === 5).length
+  const lengths = returned
+    .map((r) => (r.originalText?.text || r.text?.text || '').trim().length)
+    .sort((a, b) => a - b)
+  const detail =
+    `Google returned ${returned.length} review${returned.length === 1 ? '' : 's'} ` +
+    `(${fiveStar} five-star, lengths ${lengths.join('/') || '—'}); ` +
+    `${quotes.length} met the bar of 5★ and 30–450 characters.`
+
+  return {
+    ok: true,
+    message: `Cached ${rating}★ (${reviewCount} reviews) from "${placeName}". ${detail}`,
+    placeName,
+    rating,
+    reviewCount,
+  }
 }
 
 /**

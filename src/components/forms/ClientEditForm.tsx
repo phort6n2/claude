@@ -904,6 +904,7 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
     new Set(['business', 'location', 'branding', 'website', 'leadForwarding', 'callCoaching'])
   )
   const [reviewsMessage, setReviewsMessage] = useState<string | null>(null)
+  const [reviewsRateLimited, setReviewsRateLimited] = useState(false)
 
   // Subdomain provisioning state
   const [subdomainInput, setSubdomainInput] = useState(client?.siteSubdomain || '')
@@ -1177,14 +1178,28 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
                 Landing Page
               </a>
             )}
+            {/* The seven-day gate is there so a paid API is not polled. It is
+                not there to stop an operator: this route is admin-only (a
+                client portal cannot reach it), so the person clicking is the
+                person paying for the call. The override appears only once the
+                gate has actually refused, so the normal path stays the cheap
+                one. Without it a change to WHICH reviews qualify cannot reach
+                a page for a week, because the stored quotes are only rewritten
+                by a fetch. */}
             <button
               type="button"
               onClick={async () => {
                 setReviewsMessage('Refreshing…')
+                setReviewsRateLimited(false)
                 try {
-                  const res = await fetch(`/api/clients/${client!.id}/refresh-reviews`, { method: 'POST' })
+                  const res = await fetch(`/api/clients/${client!.id}/refresh-reviews`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ force: false }),
+                  })
                   const data = await res.json()
                   setReviewsMessage(data.message || data.error || 'Done')
+                  setReviewsRateLimited(data.rateLimited === true)
                 } catch {
                   setReviewsMessage('Refresh failed')
                 }
@@ -1194,6 +1209,29 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
               <Star className="h-4 w-4" />
               Refresh Google Reviews
             </button>
+            {reviewsRateLimited && (
+              <button
+                type="button"
+                onClick={async () => {
+                  setReviewsMessage('Fetching…')
+                  try {
+                    const res = await fetch(`/api/clients/${client!.id}/refresh-reviews`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ force: true }),
+                    })
+                    const data = await res.json()
+                    setReviewsMessage(data.message || data.error || 'Done')
+                    setReviewsRateLimited(false)
+                  } catch {
+                    setReviewsMessage('Refresh failed')
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"
+              >
+                Fetch anyway (costs a Places call)
+              </button>
+            )}
             {reviewsMessage && (
               <span className="text-xs text-gray-500">{reviewsMessage}</span>
             )}
