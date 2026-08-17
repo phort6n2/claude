@@ -1,4 +1,5 @@
 import { Phone, MapPin, ShieldCheck, Check, MessageSquare } from 'lucide-react'
+import { ReviewsGrid } from '@/components/sites/reviews-grid'
 import { wordmarkParts } from '@/lib/wordmark'
 import { smsHref } from '@/lib/contact-links'
 import { mostMentionedName } from '@/lib/review-names'
@@ -518,7 +519,6 @@ export function RatingChip({ reviews, client }: { reviews: ReviewsData | null; c
   )
 }
 
-const AVATAR_COLORS = ['#0B57D0', '#B3261E', '#146C2E', '#7B4397', '#B26A00']
 
 /** "What customers say" band on the s2 tint. Stripped without live data. */
 export function ReviewsBand({ reviews }: { reviews: ReviewsData | null }) {
@@ -540,31 +540,10 @@ export function ReviewsBand({ reviews }: { reviews: ReviewsData | null }) {
   // business appears to say about itself to fill a row. One or two centre
   // instead.
   const quotes = reviews.quotes
-  const target = quotes.length >= 6 ? 6 : quotes.length >= 3 ? 3 : quotes.length
-
-  /**
-   * Which three, when Google gives five.
-   *
-   * Not the three longest, which is what taking the head of a
-   * longest-first list did. Collision's five measure 496, 571, 663, 666 and
-   * 1183 characters, so the head was 1183/666/663 — the outlier plus two,
-   * and the cards share a row and stretch to the tallest, so that one review
-   * set the height of all three.
-   *
-   * The window with the smallest spread instead: 571/663/666 here. Same
-   * reviews, same order, no truncation — the evenness comes from WHICH ones
-   * are shown, not from cutting any of them short.
-   */
-  const byLength = [...quotes].sort((a, b) => (a.text?.length ?? 0) - (b.text?.length ?? 0))
-  let best = 0
-  for (let i = 0; i + target <= byLength.length; i++) {
-    const spread =
-      (byLength[i + target - 1].text?.length ?? 0) - (byLength[i].text?.length ?? 0)
-    const bestSpread =
-      (byLength[best + target - 1]?.text?.length ?? 0) - (byLength[best].text?.length ?? 0)
-    if (spread < bestSpread) best = i
-  }
-  const shownQuotes = target === 0 ? [] : byLength.slice(best, best + target)
+  // All of them, up to six. Choosing WHICH reviews to show was only ever a
+  // way to keep the cards the same height, and the cards clamp now — so a
+  // review Google returned is no longer dropped to make a row look tidy.
+  const shownQuotes = quotes.slice(0, 6)
   return (
     <section className="bg-[var(--s2)] border-t border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
@@ -577,48 +556,7 @@ export function ReviewsBand({ reviews }: { reviews: ReviewsData | null }) {
               : 'Pulled straight from our Google listing — real customers, real jobs.'
           }
         />
-        {shownQuotes.length > 0 && (
-          <div
-            className={`grid gap-5 ${
-              shownQuotes.length < 3
-                ? shownQuotes.length === 1
-                  ? 'max-w-xl mx-auto'
-                  : 'sm:grid-cols-2 max-w-3xl mx-auto'
-                : 'sm:grid-cols-2 lg:grid-cols-3'
-            }`}
-          >
-            {shownQuotes.map((q, i) => (
-              <figure
-                key={i}
-                className="p-5 rounded-[20px] border border-[var(--line-card)] shadow-sm bg-white flex flex-col m-0"
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <span
-                    className="h-9 w-9 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0"
-                    style={{ backgroundColor: AVATAR_COLORS[i % AVATAR_COLORS.length] }}
-                  >
-                    {(q.author || 'G')[0].toUpperCase()}
-                  </span>
-                  <span className="flex flex-col leading-tight min-w-0 flex-1">
-                    <span className="text-sm font-bold text-[var(--tx)] truncate">{q.author}</span>
-                    {q.relativeTime && (
-                      <span className="text-xs text-[var(--tx-muted)]">{q.relativeTime}</span>
-                    )}
-                  </span>
-                  <GoogleG size={16} />
-                </div>
-                <StarRow rating={q.rating} size={13} className="mb-2" />
-                <blockquote className="m-0 text-sm text-[var(--tx2)] flex-1 leading-relaxed">
-                  {/* Never clipped. The clip landed mid-sentence exactly where
-                      these reviews become persuasive — a technician talking a
-                      customer OUT of the cheaper job. Fetch already caps length
-                      at 650 characters, which is the real guard. */}
-                  “{q.text}”
-                </blockquote>
-              </figure>
-            ))}
-          </div>
-        )}
+        <ReviewsGrid quotes={shownQuotes} />
       </div>
     </section>
   )
@@ -662,21 +600,35 @@ export function StatBand({
       className="text-white on-dark"
       style={{ background: 'radial-gradient(120% 120% at 50% 0%, var(--dark-3), var(--dark))' }}
     >
-      <div
-        className="max-w-6xl mx-auto px-4 sm:px-6 py-14 grid grid-cols-2 gap-6 lg:[grid-template-columns:var(--stat-cols)]"
-        style={{ '--stat-cols': `repeat(${stats.length}, minmax(0,1fr))` } as React.CSSProperties}
-      >
-        {stats.map((s) => (
-          <div
-            key={s.label}
-            className="text-center rounded-[14px] border border-[var(--line-on-dark)] bg-white/[.04] py-6 px-3"
-          >
-            <div className="text-3xl font-extrabold tabular-nums">{s.big}</div>
-            <div className="mt-1.5 text-[13px] font-semibold text-[var(--on-dark-2)] uppercase tracking-wider">
-              {s.label}
-            </div>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
+        {/* ONE card, not two boxes. Split across "4.9 / Google rating" and
+            "366 / Google reviews" the two halves each read as a statistic,
+            and the thing a visitor is actually being told — this shop is
+            rated 4.9 by 366 people on Google — had to be reassembled from
+            them. Together, with the mark that makes it verifiable at a
+            glance, it is one claim with its source attached.
+
+            Still rendered only from the live cached feed: no feed, no band,
+            and every number here is Google's. */}
+        <div className="mx-auto max-w-2xl rounded-[18px] border border-[var(--line-on-dark)] bg-white/[.05] px-6 py-8 text-center">
+          <span className="inline-flex items-center gap-2.5 text-[13px] font-semibold uppercase tracking-wider text-[var(--on-dark-2)]">
+            <GoogleG size={20} />
+            Google reviews
+          </span>
+
+          <div className="mt-4 flex items-center justify-center gap-4">
+            <span className="text-[clamp(2.75rem,2rem+3vw,4.25rem)] font-extrabold leading-none tabular-nums">
+              {reviews!.rating.toFixed(1)}
+            </span>
+            <span className="flex flex-col items-start gap-1.5">
+              <StarRow rating={reviews!.rating} size={22} />
+              <span className="text-sm text-[var(--on-dark-2)]">
+                out of 5, from{' '}
+                <strong className="text-white tabular-nums">{reviews!.reviewCount}</strong> reviews
+              </span>
+            </span>
           </div>
-        ))}
+        </div>
       </div>
     </section>
   )
