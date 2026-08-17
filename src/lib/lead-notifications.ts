@@ -17,6 +17,8 @@ import { countSegments, fitSegments } from '@/lib/sms-segments'
  * and fall back to environment variables, the same pattern as the Places key.
  */
 
+import { formatPhoneDisplay } from '@/lib/lead-display'
+
 export interface LeadSummary {
   name: string
   phone: string
@@ -43,6 +45,14 @@ export interface LeadSummary {
    * linked, because the entire value of it is being able to look without
    * opening anything. */
   damagePhotoUrl?: string
+  /* True when this lead is an inbound phone call rather than a form. The
+     alert reads differently for one: there is no enquiry to read, the thing
+     that happened is that somebody rang. */
+  isCall?: boolean
+  /* When the call came in, already rendered in the SHOP's timezone. Formatted
+     at the call site because only that side knows the timezone; a UTC stamp
+     here would be a different hour to the person reading it. */
+  calledAtLabel?: string
   /* Decoded from the VIN. The calibration line is the reason this exists: it
    * is the priciest part of a modern windscreen job and the one most often
    * missed when quoting from the customer's description alone. */
@@ -85,7 +95,9 @@ function plainLines(lead: LeadSummary): string[] {
     lead.insurance && `Insurance: ${lead.insurance}`,
     lead.carrier && `Carrier: ${lead.carrier}`,
     lead.postalCode && `ZIP: ${lead.postalCode}`,
-    lead.phone && `Phone: ${lead.phone}`,
+    // Normalised for reading: an alert is scanned on a phone in seconds and
+    // +15035550100 is harder to take in than (503) 555-0100.
+    lead.phone && `Phone: ${formatPhoneDisplay(lead.phone) || lead.phone}`,
     lead.email && `Email: ${lead.email}`,
     lead.message && `Notes: ${lead.message}`,
     lead.source && `Source: ${lead.source}`,
@@ -159,10 +171,10 @@ function emailHtml(businessName: string, lead: LeadSummary): string {
   return `<!doctype html><html><body style="margin:0;background:#f6f7f9;font-family:-apple-system,Segoe UI,Roboto,sans-serif">
 <div style="max-width:520px;margin:0 auto;padding:24px">
   <div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:24px">
-    <p style="margin:0 0 4px;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6b7280">New lead</p>
-    <h1 style="margin:0 0 4px;font-size:22px;color:#111827">${esc(lead.name || 'New enquiry')}</h1>
-    <p style="margin:0 0 18px;color:#6b7280;font-size:14px">${esc(businessName)}</p>
-    ${tel ? `<a href="${esc(tel)}" style="display:block;text-align:center;background:#1d4ed8;color:#fff;text-decoration:none;font-weight:700;padding:14px;border-radius:10px;font-size:16px">Call ${esc(lead.phone)}</a>` : ''}
+    <p style="margin:0 0 4px;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6b7280">${lead.isCall ? 'Incoming phone call' : 'New lead'}</p>
+    <h1 style="margin:0 0 4px;font-size:22px;color:#111827">${esc(lead.name || (lead.isCall ? 'Incoming phone call' : 'New inquiry'))}</h1>
+    <p style="margin:0 0 18px;color:#6b7280;font-size:14px">${esc(businessName)}${lead.isCall && lead.calledAtLabel ? ` &middot; called ${esc(lead.calledAtLabel)}` : ''}</p>
+    ${tel ? `<a href="${esc(tel)}" style="display:block;text-align:center;background:#1d4ed8;color:#fff;text-decoration:none;font-weight:700;padding:14px;border-radius:10px;font-size:16px">Call ${esc(formatPhoneDisplay(lead.phone) || lead.phone)}</a>` : ''}
     ${sms ? `<a href="${esc(sms)}" style="display:block;text-align:center;background:#fff;color:#1d4ed8;border:1.5px solid #1d4ed8;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;font-size:16px;margin-top:8px">Text ${esc(lead.name?.trim().split(/\s+/)[0] || 'them')}</a>` : ''}
     ${
       lead.damagePhotoUrl
