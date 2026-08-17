@@ -527,6 +527,21 @@ export function ReviewsBand({ reviews }: { reviews: ReviewsData | null }) {
   // asserts nothing, and stays quiet unless a name genuinely recurs.
   const mostNamed = mostMentionedName(reviews?.quotes ?? [])
   if (!reviews) return null
+
+  // FULL ROWS ONLY: three, or six. The grid is three across on a wide screen,
+  // so four or five quotes leave a second row with a gap in it — which reads
+  // as a card that failed to load rather than as the wall being that size.
+  // Quantised down to the nearest three and capped at two rows.
+  //
+  // Fewer than three is not padded to three. Google's Places API returns at
+  // most five reviews for a place and the filter keeps the five-star ones of
+  // even length, so a shop can genuinely have two — and inventing a third, or
+  // dropping the standard to reach three, would be choosing what a real
+  // business appears to say about itself to fill a row. One or two centre
+  // instead.
+  const quotes = reviews.quotes
+  const shownQuotes =
+    quotes.length >= 6 ? quotes.slice(0, 6) : quotes.length >= 3 ? quotes.slice(0, 3) : quotes
   return (
     <section className="bg-[var(--s2)] border-t border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
@@ -539,24 +554,17 @@ export function ReviewsBand({ reviews }: { reviews: ReviewsData | null }) {
               : 'Pulled straight from our Google listing — real customers, real jobs.'
           }
         />
-        {reviews.quotes.length > 0 && (
-          // The column count follows the number of quotes. Google's Places API
-          // returns at most five reviews for a place and the filter above keeps
-          // only the five-star ones of readable length, so a shop can have 365
-          // reviews and legitimately yield two cards — and which five Google
-          // returns changes between refreshes, so the number moves on its own.
-          // A three-column grid holding two cards reads as a broken row; the
-          // same two centred read as the wall being that size today.
+        {shownQuotes.length > 0 && (
           <div
             className={`grid gap-5 ${
-              reviews.quotes.length === 1
-                ? 'max-w-xl mx-auto'
-                : reviews.quotes.length === 2
-                  ? 'sm:grid-cols-2 max-w-3xl mx-auto'
-                  : 'sm:grid-cols-2 lg:grid-cols-3'
+              shownQuotes.length < 3
+                ? shownQuotes.length === 1
+                  ? 'max-w-xl mx-auto'
+                  : 'sm:grid-cols-2 max-w-3xl mx-auto'
+                : 'sm:grid-cols-2 lg:grid-cols-3'
             }`}
           >
-            {reviews.quotes.slice(0, 6).map((q, i) => (
+            {shownQuotes.map((q, i) => (
               <figure
                 key={i}
                 className="p-5 rounded-[20px] border border-[var(--line-card)] shadow-sm bg-white flex flex-col m-0"
