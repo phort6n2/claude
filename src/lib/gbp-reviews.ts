@@ -211,18 +211,45 @@ export async function refreshGbpReviews(
   // fill a grid would be choosing what a real business appears to say about
   // itself for a layout reason.
   const returned = data.reviews || []
-  const quotes = returned
+  const inBand = returned
     .map((r) => ({
       author: r.authorAttribution?.displayName || 'Google reviewer',
       rating: r.rating ?? 0,
       text: (r.originalText?.text || r.text?.text || '').trim(),
       relativeTime: r.relativePublishTimeDescription || '',
     }))
-    .filter((r) => r.rating === 5 && r.text.length >= 30 && r.text.length <= 450)
+    .filter((r) => r.rating === 5 && r.text.length >= 25 && r.text.length <= 1500)
     .sort((a, b) => b.text.length - a.text.length)
     // Six, not three: a wall of full-length reviews is the one proof asset a
     // national chain cannot match, and the page has room for two rows.
     .slice(0, 6)
+
+  /**
+   * A LENGTH RULE MUST NEVER EMPTY THE WALL.
+   *
+   * It did. The ceiling was cut from 650 to 450 to make the cards more even,
+   * and Collision — 366 reviews, 4.9 — went from two cards to NONE, because
+   * both of the ones that had been showing were longer than 450. A layout
+   * preference silently deleted the single strongest proof asset on a live
+   * client's site.
+   *
+   * So the band is a PREFERENCE, not a gate. If nothing falls inside it, the
+   * five-star reviews are used as they come. The five-star rule is the real
+   * bar and it still holds — that one is about what the page asserts, not
+   * about what fits a card.
+   */
+  const quotes = inBand.length > 0
+    ? inBand
+    : returned
+        .map((r) => ({
+          author: r.authorAttribution?.displayName || 'Google reviewer',
+          rating: r.rating ?? 0,
+          text: (r.originalText?.text || r.text?.text || '').trim(),
+          relativeTime: r.relativePublishTimeDescription || '',
+        }))
+        .filter((r) => r.rating === 5 && r.text.length > 0)
+        .sort((a, b) => b.text.length - a.text.length)
+        .slice(0, 6)
 
   await prisma.clientGbpReviews.upsert({
     where: { clientId },
@@ -259,7 +286,7 @@ export async function refreshGbpReviews(
   const detail =
     `Google returned ${returned.length} review${returned.length === 1 ? '' : 's'} ` +
     `(${fiveStar} five-star, lengths ${lengths.join('/') || '—'}); ` +
-    `${quotes.length} met the bar of 5★ and 30–450 characters.`
+    `${quotes.length} met the bar of 5★ and 25–1500 characters.`
 
   return {
     ok: true,
