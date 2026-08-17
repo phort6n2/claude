@@ -50,7 +50,7 @@ export interface KeptIssue {
  */
 export function retargetKeptHtml(
   html: string,
-  opts: { phone?: string | null; servedPaths?: Iterable<string> }
+  opts: { phone?: string | null; servedPaths?: Iterable<string>; siteOwnsTracking?: boolean }
 ): string {
   if (!html) return ''
   const served = new Set(
@@ -62,7 +62,17 @@ export function retargetKeptHtml(
   // tel: anchors — href AND the number people read, which is usually the
   // anchor's own text. Rewriting one without the other shows a visitor one
   // number and dials another, which is worse than either mistake alone.
-  if (e164 && opts.phone) {
+  //
+  // ONLY when this app has a tracking number of its own on the site. The
+  // first version rewrote unconditionally and it was wrong in the one case
+  // that mattered: Collision has no in-app tracking number, and the number in
+  // their captured copy was a HighLevel tracking line feeding their Google
+  // Ads call conversions. Replacing it with the shop's real switchboard
+  // number swapped a MEASURED number for an unmeasured one — the exact
+  // failure the rewrite existed to prevent, pointing the other way. A number
+  // already in the copy is somebody's deliberate choice; it is only safe to
+  // override when we are overriding it with something tracked.
+  if (e164 && opts.phone && opts.siteOwnsTracking) {
     const display = opts.phone
     out = out.replace(/<a\b([^>]*?)href="tel:[^"]*"([^>]*)>([\s\S]*?)<\/a>/gi, (_m, a, b, text) => {
       const retargeted = text.replace(PHONE_TEXT, display)
@@ -161,4 +171,33 @@ export function dropKeptSections(html: string, drop: number[]): string {
     .filter((s) => !remove.has(s.index))
     .map((s) => s.html.trim())
     .join('\n')
+}
+
+
+/**
+ * The captured copy as CHAPTERS, the shape every other page type uses.
+ *
+ * A kept page must be indistinguishable in layout from a service or location
+ * page — same hero, same chapter block, same sections below. The copy was
+ * previously dropped into a prose column of its own, which is how it read as
+ * a wall of text bolted onto a template rather than part of one.
+ *
+ * The first piece is whatever preceded the source's first h2. It renders as
+ * headingless lead-in copy — the page's own H1 is already in the hero, and
+ * repeating it as a chapter heading put the same words on screen twice.
+ */
+export function keptChapters(
+  html: string
+): Array<{ heading: string; body: string; photoUrl: string; bodyHtml: string }> {
+  return splitKeptSections(html)
+    .map((section) => {
+      // The lead-in has no heading of its own and must not borrow the page's:
+      // the H1 is already on screen in the hero a few hundred pixels above.
+      const heading = section.heading === 'Opening text' ? '' : section.heading
+      // The h2 becomes the chapter's own heading, so it must not also stay
+      // inside the body or every chapter prints its title twice.
+      const bodyHtml = section.html.replace(/<h2[^>]*>[\s\S]*?<\/h2>/i, '').trim()
+      return { heading, body: '', photoUrl: '', bodyHtml }
+    })
+    .filter((c) => c.bodyHtml)
 }

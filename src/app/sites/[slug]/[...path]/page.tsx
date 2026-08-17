@@ -19,6 +19,7 @@ import {
   SiteBaseStyles,
   SkipLink,
   TrustRow,
+  ChapterSections,
   type ReviewsData,
   type ReviewQuote,
 } from '@/components/sites/shared'
@@ -41,7 +42,7 @@ import { getAdsTracking } from '@/lib/ads-tracking'
 import { GoogleTag } from '@/components/sites/GoogleTag'
 import { legalJsonLd } from '@/lib/site-schema'
 import { sanitizeHtml } from '@/lib/sanitize-html'
-import { retargetKeptHtml } from '@/lib/kept-content'
+import { retargetKeptHtml, keptChapters } from '@/lib/kept-content'
 import { hostedPathsFor } from '@/lib/url-parity'
 import { normalisePath } from '@/lib/url-parity'
 
@@ -205,7 +206,11 @@ export default async function CatchAllPage({ params }: PageProps) {
   }
 
   // Visitors see the tracking number when one is set; see lib/site-phone.ts.
+  // The real number is kept because whether the swap HAPPENED decides whether
+  // this app may overwrite a phone number sitting in the captured copy.
+  const realPhone = client.phone
   client.phone = (await withSitePhone(client)).phone
+  const siteOwnsTracking = client.phone !== realPhone
 
   const [reviews, extras, locations, adsTracking, cityContent, keptPages] = await Promise.all([
     getReviews(client.id),
@@ -256,6 +261,7 @@ export default async function CatchAllPage({ params }: PageProps) {
     .catch(() => [])
   const html = retargetKeptHtml(sanitizeHtml(page.bodyHtml), {
     phone: client.phone,
+    siteOwnsTracking,
     servedPaths: [
       ...hostedPathsFor({
         serviceAreas: client.serviceAreas || [],
@@ -365,24 +371,18 @@ export default async function CatchAllPage({ params }: PageProps) {
           <TrustRow items={trustItems} />
         </section>
 
-        {/* The page's own copy. Rendered as prose rather than through
-            ChapterSections because that component takes PLAIN TEXT and this is
-            arbitrary HTML off another site — feeding it through a text
-            renderer would print the tags on the page. */}
-        {html && (
-          <section className="bg-[var(--s1)] border-t border-[var(--line)]">
-            <div className="max-w-3xl mx-auto px-4 sm:px-6 py-14">
-              <div
-                className="text-[16px] text-[var(--tx2)] leading-relaxed [&>*+*]:mt-4 [&_h2]:text-[clamp(1.4rem,1.1rem+1.2vw,1.9rem)] [&_h2]:font-extrabold [&_h2]:tracking-tight [&_h2]:text-[var(--tx)] [&_h2]:mt-9 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:text-[var(--tx)] [&_h3]:mt-7 [&_ul]:pl-5 [&_ul]:list-disc [&_ol]:pl-5 [&_ol]:list-decimal [&_li]:mb-1 [&_a]:text-[var(--brand)] [&_a]:underline"
-                dangerouslySetInnerHTML={{ __html: html }}
-              />
-              <div className="mt-9 max-[719px]:flex max-[719px]:flex-col max-[719px]:[&>a]:w-full flex flex-wrap gap-3">
-                <CtaButton href="#quote">Get my free quote</CtaButton>
-                <CallButton client={client} withLabel />
-              </div>
-            </div>
-          </section>
-        )}
+        {/* The page's own copy, in the SAME chapter block a service page
+            uses — same grid, same alternating photos, same type. A kept page
+            has to be indistinguishable in layout from one the template wrote;
+            it previously had a prose column of its own, which is exactly what
+            made it read as a wall bolted onto the page. */}
+        <ChapterSections
+          client={client}
+          chapters={keptChapters(html)}
+          fallbackPhotos={
+            extras.bodyPhotos.length ? extras.bodyPhotos : extras.galleryPhotos.slice(1)
+          }
+        />
 
         <SiteBody
           client={client}
