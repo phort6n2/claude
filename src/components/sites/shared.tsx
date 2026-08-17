@@ -540,7 +540,22 @@ export function ReviewsBand({ reviews }: { reviews: ReviewsData | null }) {
           }
         />
         {reviews.quotes.length > 0 && (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          // The column count follows the number of quotes. Google's Places API
+          // returns at most five reviews for a place and the filter above keeps
+          // only the five-star ones of readable length, so a shop can have 365
+          // reviews and legitimately yield two cards — and which five Google
+          // returns changes between refreshes, so the number moves on its own.
+          // A three-column grid holding two cards reads as a broken row; the
+          // same two centred read as the wall being that size today.
+          <div
+            className={`grid gap-5 ${
+              reviews.quotes.length === 1
+                ? 'max-w-xl mx-auto'
+                : reviews.quotes.length === 2
+                  ? 'sm:grid-cols-2 max-w-3xl mx-auto'
+                  : 'sm:grid-cols-2 lg:grid-cols-3'
+            }`}
+          >
             {reviews.quotes.slice(0, 6).map((q, i) => (
               <figure
                 key={i}
@@ -1663,7 +1678,7 @@ export function SiteFooter({
               Same rule as every version before this: a name in a service area
               is not a promise of a page. */}
           {areas && areas.length > 0 && (
-            <div className="lg:col-span-2 pt-4 border-t border-white/15">
+            <div className="lg:col-span-2 pt-4 border-t border-white/15 text-center">
               <span className="text-white font-bold">
                 {offersMobileService ? 'We come to you in' : 'Serving'}
               </span>{' '}
