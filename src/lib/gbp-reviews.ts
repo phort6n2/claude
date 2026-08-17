@@ -217,7 +217,7 @@ export async function refreshGbpReviews(
       text: (r.originalText?.text || r.text?.text || '').trim(),
       relativeTime: r.relativePublishTimeDescription || '',
     }))
-    .filter((r) => r.rating === 5 && r.text.length >= 40 && r.text.length <= 400)
+    .filter((r) => r.rating === 5 && r.text.length >= 30 && r.text.length <= 450)
     .sort((a, b) => b.text.length - a.text.length)
     // Six, not three: a wall of full-length reviews is the one proof asset a
     // national chain cannot match, and the page has room for two rows.
