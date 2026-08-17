@@ -32,21 +32,33 @@ function isAppHost(host: string): boolean {
 
 const APP_HOSTS = new Set(['glassleads.app', 'www.glassleads.app'])
 
+/**
+ * Paths that belong to the APP even when requested on a client host.
+ *
+ * The widget posts leads to /api on whatever origin the page is served from,
+ * robots.txt and sitemap.xml are host-aware routes of their own, and widget.js
+ * is served at the root. Rewriting any of those into /sites/{slug}/... breaks
+ * lead capture on every site at once, so the list is deliberately explicit
+ * rather than a clever pattern.
+ */
+function isAppPath(pathname: string): boolean {
+  return (
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/_next/') ||
+    pathname === '/widget.js' ||
+    pathname === '/robots.txt' ||
+    pathname === '/sitemap.xml' ||
+    pathname.startsWith('/o/') ||
+    pathname.startsWith('/r/') ||
+    pathname.startsWith('/sites/') ||
+    // A request for a file is a request for a file.
+    /\.[a-z0-9]+$/i.test(pathname)
+  )
+}
+
 export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
-  if (
-    pathname !== '/' &&
-    !pathname.startsWith('/services/') &&
-    !pathname.startsWith('/locations/') &&
-    // Where a no-JavaScript form submission lands. Without this it is only
-    // reachable at /sites/{slug}/quote-sent, and the redirect goes to the
-    // shop's own host.
-    pathname !== '/quote-sent' &&
-    pathname !== '/privacy' &&
-    pathname !== '/terms'
-  ) {
-    return NextResponse.next()
-  }
+  if (isAppPath(pathname)) return NextResponse.next()
 
   const host = (req.headers.get('host') || '').split(':')[0].toLowerCase()
   if (isAppHost(host)) return NextResponse.next()
@@ -67,13 +79,18 @@ export default function middleware(req: NextRequest) {
   return NextResponse.rewrite(url)
 }
 
+/**
+ * EVERYTHING on a client host now, not a fixed list of page types.
+ *
+ * A shop replacing an old site keeps some of its addresses — a page they kept
+ * at its original path, or a 301 for one they did not. Those paths are
+ * arbitrary and stored per client, so the middleware cannot enumerate them; it
+ * has to hand anything unrecognised to the catch-all route, which looks them
+ * up and 404s if there is nothing there.
+ *
+ * The app host short-circuits on the very first check inside, so the admin and
+ * portal are untouched by the wider matcher.
+ */
 export const config = {
-  matcher: [
-    '/',
-    '/services/:path*',
-    '/locations/:path*',
-    '/quote-sent',
-    '/privacy',
-    '/terms',
-  ],
+  matcher: ['/((?!_next/static|_next/image).*)'],
 }
