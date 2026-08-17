@@ -34,11 +34,20 @@ interface Redirect {
   toPath: string
 }
 
+interface KeptSection {
+  index: number
+  heading: string
+  chars: number
+  duplicates: string | null
+  issues: Array<{ kind: string; detail: string }>
+}
+
 interface KeptPage {
   id: string
   path: string
   title: string
   navLabel: string | null
+  sections: KeptSection[]
   metaDescription: string | null
   bodyHtml: string | null
   publishedAt: string | null
@@ -119,7 +128,7 @@ export default function UrlParityCard({
     }
   }
 
-  async function act(from: string, action: string, extra: Record<string, string> = {}) {
+  async function act(from: string, action: string, extra: Record<string, unknown> = {}) {
     setRowBusy(from)
     setRowNote((n) => ({ ...n, [from]: '' }))
     try {
@@ -130,6 +139,16 @@ export default function UrlParityCard({
       })
       const data = await res.json().catch(() => ({}))
       setRowNote((n) => ({ ...n, [from]: data.message || data.error || 'Done.' }))
+      // A trim rewrites the body server-side, so the draft this card is
+      // holding is now the pre-trim copy. Leaving it would put the removed
+      // sections straight back on the next Save.
+      if (action === 'trim') {
+        setDraft((d) => {
+          const next = { ...d }
+          delete next[from]
+          return next
+        })
+      }
       await loadSetups()
     } catch {
       setRowNote((n) => ({ ...n, [from]: 'That did not go through.' }))
@@ -294,6 +313,67 @@ export default function UrlParityCard({
               className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
               aria-label="Page title"
             />
+            {page.sections?.length > 0 && (
+              <div className="border border-gray-200 rounded bg-white p-2.5">
+                <p className="text-xs font-semibold text-gray-900">
+                  What is on this page ({page.sections.length} section
+                  {page.sections.length === 1 ? '' : 's'})
+                </p>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Anything marked below is already said further down the page by the site
+                  itself. Removing it shortens the page without losing anything a visitor
+                  would miss.
+                </p>
+                <ul className="mt-2 space-y-1.5">
+                  {page.sections.map((sec) => (
+                    <li key={sec.index} className="flex items-start gap-2 text-xs">
+                      <button
+                        type="button"
+                        disabled={working}
+                        onClick={() => act(from, 'trim', { drop: [sec.index] })}
+                        className="shrink-0 font-semibold text-red-700 hover:underline disabled:opacity-50"
+                      >
+                        Remove
+                      </button>
+                      <span className="min-w-0">
+                        <span className="text-gray-900">{sec.heading}</span>{' '}
+                        <span className="text-gray-400">{sec.chars} chars</span>
+                        {sec.duplicates && (
+                          <span className="ml-1.5 inline-block bg-amber-50 text-amber-800 rounded px-1 py-0.5 text-[10px] font-semibold">
+                            repeats {sec.duplicates}
+                          </span>
+                        )}
+                        {sec.issues.map((iss) => (
+                          <span
+                            key={iss.kind}
+                            className="ml-1.5 inline-block bg-red-50 text-red-700 rounded px-1 py-0.5 text-[10px] font-semibold"
+                            title={iss.detail}
+                          >
+                            {iss.kind === 'rating' ? 'states a rating' : 'has a phone number'}
+                          </span>
+                        ))}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {page.sections.some((sec) => sec.duplicates) && (
+                  <button
+                    type="button"
+                    disabled={working}
+                    onClick={() =>
+                      act(from, 'trim', {
+                        drop: page.sections.filter((sec) => sec.duplicates).map((sec) => sec.index),
+                      })
+                    }
+                    className="mt-2 text-xs font-semibold text-blue-700 hover:underline disabled:opacity-50"
+                  >
+                    Remove all {page.sections.filter((sec) => sec.duplicates).length} that repeat
+                    the site
+                  </button>
+                )}
+              </div>
+            )}
+
             <label className="block text-xs text-gray-600">
               Footer menu label
               <input

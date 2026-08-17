@@ -41,6 +41,8 @@ import { getAdsTracking } from '@/lib/ads-tracking'
 import { GoogleTag } from '@/components/sites/GoogleTag'
 import { legalJsonLd } from '@/lib/site-schema'
 import { sanitizeHtml } from '@/lib/sanitize-html'
+import { retargetKeptHtml } from '@/lib/kept-content'
+import { hostedPathsFor } from '@/lib/url-parity'
 import { normalisePath } from '@/lib/url-parity'
 
 export const dynamic = 'force-dynamic'
@@ -243,8 +245,26 @@ export default async function CatchAllPage({ params }: PageProps) {
 
   const heading = stripSeoTail(page.title, client.businessName)
   // Sanitised at render, never trusted as stored: this HTML came off somebody
-  // else's website and is served from the shop's own origin.
-  const html = sanitizeHtml(page.bodyHtml)
+  // else's website and is served from the shop's own origin. Then retargeted —
+  // its links and its phone number belong to the OLD site, and both are wrong
+  // here in ways that do not look wrong. See lib/kept-content.ts.
+  const publishedPaths = await prisma.clientPage
+    .findMany({
+      where: { clientId: client.id, publishedAt: { not: null } },
+      select: { path: true },
+    })
+    .catch(() => [])
+  const html = retargetKeptHtml(sanitizeHtml(page.bodyHtml), {
+    phone: client.phone,
+    servedPaths: [
+      ...hostedPathsFor({
+        serviceAreas: client.serviceAreas || [],
+        shopCities: locations.map((l) => l.city),
+        flags: client as unknown as Record<ServiceFlag, boolean>,
+      }),
+      ...publishedPaths.map((p) => p.path),
+    ],
+  })
   const siteOrigin = siteOriginFor(client)
   const jsonLd = legalJsonLd({
     origin: siteOrigin,
