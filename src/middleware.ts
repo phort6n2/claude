@@ -92,12 +92,18 @@ function flatToTemplatePath(pathname: string): string | null {
   const bare = pathname.replace(/^\/+|\/+$/g, '')
   if (!bare || bare.includes('/')) return null
   if (SERVICE_SLUGS.has(bare)) return `/services/${bare}`
-  if (bare.startsWith(LOCATION_PREFIX)) {
-    const city = bare.slice(LOCATION_PREFIX.length)
-    // A city this shop does not serve simply 404s on the location route,
-    // which is the same answer it would have given before.
-    if (city) return `/locations/${city}`
-  }
+  // LOCATION PATHS ARE NOT MAPPED HERE, and the reason is a regression this
+  // caused: /auto-glass-repair-hillsboro is one of Collision's KEPT PAGES, and
+  // rewriting it to /locations/hillsboro — a city with no page — turned a
+  // working 200 into a 404. Middleware cannot know which paths a shop has
+  // kept without a database it has no business touching, and a kept page must
+  // always win: it is the more specific, more recent decision.
+  //
+  // Services are safe to map here because their slugs are a fixed list that
+  // the capture flow never produces. Flat CITY urls belong in the catch-all
+  // route, which already resolves kept pages first and can see the client's
+  // real location list. See OPEN-ITEMS.
+  void LOCATION_PREFIX
   return null
 }
 
