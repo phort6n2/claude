@@ -1860,7 +1860,23 @@ export function ChapterSections({
   fallbackPhotos,
   client,
 }: {
-  chapters: Array<{ heading: string; body: string; photoUrl: string }>
+  chapters: Array<{
+    heading: string
+    body: string
+    photoUrl: string
+    /**
+     * Pre-sanitised markup, for copy that is not plain paragraphs.
+     *
+     * Only kept pages use it. Their copy came off another site as HTML with
+     * lists and emphasis in it, and it has to appear in THIS block — same
+     * grid, same photo alternation, same type — because the whole point is
+     * that a page carried over is indistinguishable in layout from one the
+     * template wrote. Flattening it to text to fit `body` would have dropped
+     * the lists; forking the layout to render it would have been a second
+     * chapter block to keep in step with this one.
+     */
+    bodyHtml?: string
+  }>
   fallbackPhotos: Array<{ url: string; alt: string }>
   /** When provided, a CTA row closes the block so the story the reader just
       finished has somewhere to convert. */
@@ -1878,18 +1894,30 @@ export function ChapterSections({
           const isLast = i === chapters.length - 1
           return (
             <div
-              key={chapter.heading}
+              key={`${i}-${chapter.heading}`}
               className={`grid gap-8 items-start ${photo ? 'lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]' : ''}`}
             >
               <div className={photo && i % 2 === 1 ? 'lg:order-2' : ''}>
-                <h2 className="text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight m-0">
-                  {chapter.heading}
-                </h2>
-                {paragraphs.map((p, j) => (
-                  <p key={j} className="mt-4 mb-0 text-[15px] text-[var(--tx2)] leading-relaxed max-w-[62ch]">
-                    {p.trim()}
-                  </p>
-                ))}
+                {/* A chapter without a heading is lead-in copy that came
+                    before the source's first heading. Printing the page title
+                    again above it would put the H1 on screen twice. */}
+                {chapter.heading && (
+                  <h2 className="text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight m-0">
+                    {chapter.heading}
+                  </h2>
+                )}
+                {chapter.bodyHtml ? (
+                  <div
+                    className="mt-4 text-[15px] text-[var(--tx2)] leading-relaxed max-w-[62ch] [&>*+*]:mt-4 [&_h3]:font-bold [&_h3]:text-[var(--tx)] [&_h3]:mt-6 [&_ul]:pl-5 [&_ul]:list-disc [&_ol]:pl-5 [&_ol]:list-decimal [&_li]:mb-1 [&_a]:text-[var(--brand)] [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-[var(--line)] [&_blockquote]:pl-4 [&_blockquote]:italic"
+                    dangerouslySetInnerHTML={{ __html: chapter.bodyHtml }}
+                  />
+                ) : (
+                  paragraphs.map((p, j) => (
+                    <p key={j} className="mt-4 mb-0 text-[15px] text-[var(--tx2)] leading-relaxed max-w-[62ch]">
+                      {p.trim()}
+                    </p>
+                  ))
+                )}
                 {/* On a wide screen the CTA belongs HERE, under the words that
                     just earned it. A photo is a fixed 4:3 and the prose beside
                     it is usually shorter, so a full-width row after the grid
