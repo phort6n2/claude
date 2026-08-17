@@ -77,10 +77,21 @@ export async function GET(request: NextRequest) {
   const areas = mergeServiceAreas(client.serviceAreas || [], shopCities.map((s) => s.city))
   const cityContent = await getCityContent(client.id)
 
+  // Pages kept from the shop's old site at their original addresses. Only the
+  // published ones — a held page 404s, and a sitemap entry for a 404 is how a
+  // crawler learns to trust the file less.
+  const keptPages = await prisma.clientPage
+    .findMany({
+      where: { clientId: client.id, publishedAt: { not: null } },
+      select: { path: true, updatedAt: true },
+      orderBy: { path: 'asc' },
+    })
+    .catch(() => [])
+
   const origin = `https://${host}`
   const lastmod = client.updatedAt.toISOString()
-  const entry = (path: string, priority: string, freq: string) =>
-    `  <url><loc>${origin}${path}</loc><lastmod>${lastmod}</lastmod><changefreq>${freq}</changefreq><priority>${priority}</priority></url>`
+  const entry = (path: string, priority: string, freq: string, modified = lastmod) =>
+    `  <url><loc>${origin}${path}</loc><lastmod>${modified}</lastmod><changefreq>${freq}</changefreq><priority>${priority}</priority></url>`
 
   const urls = [
     entry('/', '1.0', 'weekly'),
@@ -93,6 +104,7 @@ export async function GET(request: NextRequest) {
     ...locationPages(areas)
       .filter((l) => cityIsIndexable(l.area, cityContent, shopCities.map((s) => s.city)))
       .map((l) => entry(`/locations/${l.slug}`, '0.7', 'monthly')),
+    ...keptPages.map((p) => entry(p.path, '0.6', 'monthly', p.updatedAt.toISOString())),
     entry('/privacy', '0.1', 'yearly'),
     entry('/terms', '0.1', 'yearly'),
   ]

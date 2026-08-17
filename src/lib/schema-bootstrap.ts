@@ -163,6 +163,42 @@ export const CLARITY_HISTORY_SQL: string[] = [
   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
 ]
 
+export const CUTOVER_SQL: string[] = [
+  `CREATE TABLE IF NOT EXISTS "ClientRedirect" (
+     "id"        TEXT NOT NULL,
+     "clientId"  TEXT NOT NULL,
+     "fromPath"  TEXT NOT NULL,
+     "toPath"    TEXT NOT NULL,
+     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     CONSTRAINT "ClientRedirect_pkey" PRIMARY KEY ("id")
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "ClientRedirect_clientId_fromPath_key" ON "ClientRedirect"("clientId", "fromPath")`,
+  `CREATE INDEX IF NOT EXISTS "ClientRedirect_clientId_idx" ON "ClientRedirect"("clientId")`,
+  `DO $$ BEGIN
+    ALTER TABLE "ClientRedirect" ADD CONSTRAINT "ClientRedirect_clientId_fkey"
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `CREATE TABLE IF NOT EXISTS "ClientPage" (
+     "id"              TEXT NOT NULL,
+     "clientId"        TEXT NOT NULL,
+     "path"            TEXT NOT NULL,
+     "title"           TEXT NOT NULL,
+     "metaDescription" TEXT,
+     "bodyHtml"        TEXT,
+     "sourceUrl"       TEXT,
+     "publishedAt"     TIMESTAMP(3),
+     "createdAt"       TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     "updatedAt"       TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     CONSTRAINT "ClientPage_pkey" PRIMARY KEY ("id")
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "ClientPage_clientId_path_key" ON "ClientPage"("clientId", "path")`,
+  `CREATE INDEX IF NOT EXISTS "ClientPage_clientId_publishedAt_idx" ON "ClientPage"("clientId", "publishedAt")`,
+  `DO $$ BEGIN
+    ALTER TABLE "ClientPage" ADD CONSTRAINT "ClientPage_clientId_fkey"
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+]
+
 /** Everything the running code assumes exists. */
 export const BOOTSTRAP_SQL: string[] = [
   ...CALL_TRACKING_SQL,
@@ -174,6 +210,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...CLARITY_SQL,
   ...CLARITY_HISTORY_SQL,
   ...RESPONSE_TIME_SQL,
+  ...CUTOVER_SQL,
 ]
 
 /**

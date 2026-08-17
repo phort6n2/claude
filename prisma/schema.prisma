@@ -111,6 +111,10 @@ model Client {
   clarityApiToken  String? // Encrypted
   clarityDays      ClarityDay[]
 
+  /// Addresses carried over from a site this one replaced.
+  redirects   ClientRedirect[]
+  customPages ClientPage[]
+
   // Brand Settings
   logoUrl        String?
   primaryColor   String? @default("#1e40af")
@@ -1129,4 +1133,61 @@ model ClarityDay {
 
   @@unique([clientId, day])
   @@index([clientId, day])
+}
+
+/// An address from the shop's previous site that should not die.
+///
+/// A cutover breaks every old URL at once — live ad final URLs, search
+/// results, directory links, their own Business Profile. A 301 keeps the
+/// visitor and hands most of the ranking to the new page.
+model ClientRedirect {
+  id String @id @default(cuid())
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  /// Old path, normalised: leading slash, no trailing slash, lowercase.
+  fromPath String
+  /// Where it goes. A path on this site, not a full URL.
+  toPath   String
+
+  createdAt DateTime @default(now())
+
+  @@unique([clientId, fromPath])
+  @@index([clientId])
+}
+
+/// A page kept at its original address rather than redirected away.
+///
+/// The template's page types — home, service, location, legal — cover what
+/// every shop needs. This is for the ones a particular shop had and wants to
+/// keep: an insurance-claims explainer, a regional page that ranks. It renders
+/// in the same shell as everything else, so it cannot look like a stray page
+/// bolted onto the site.
+model ClientPage {
+  id String @id @default(cuid())
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  /// The address it answers on, matching the old site exactly.
+  path String
+
+  title           String
+  metaDescription String?
+  /// Sanitised at render, never trusted as stored — see lib/sanitize-html.ts.
+  bodyHtml        String?
+
+  /// Where the content came from, so it can be re-pulled or checked.
+  sourceUrl String?
+
+  /// Null until it is allowed to serve. Imported content is HELD by default:
+  /// it is somebody else's copy about a real business and wants reading first.
+  publishedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([clientId, path])
+  @@index([clientId, publishedAt])
 }
