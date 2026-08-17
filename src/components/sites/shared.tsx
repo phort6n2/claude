@@ -540,10 +540,15 @@ export function ReviewsBand({ reviews }: { reviews: ReviewsData | null }) {
   // business appears to say about itself to fill a row. One or two centre
   // instead.
   const quotes = reviews.quotes
-  // All of them, up to six. Choosing WHICH reviews to show was only ever a
-  // way to keep the cards the same height, and the cards clamp now — so a
-  // review Google returned is no longer dropped to make a row look tidy.
-  const shownQuotes = quotes.slice(0, 6)
+  // ONE ROW OF THREE. Two rows were only ever reachable at six, and six is
+  // not reachable at all: the Places API returns at most five reviews for a
+  // place however many the business has, so a second row could never be full
+  // and a four- or five-card wall leaves a hole in it.
+  //
+  // Which three no longer needs deciding — the cards clamp to the same height
+  // whatever the length, so this is the top of the stored list, which is
+  // longest-first and therefore the most substantial three.
+  const shownQuotes = quotes.slice(0, 3)
   return (
     <section className="bg-[var(--s2)] border-t border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
