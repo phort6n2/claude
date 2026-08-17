@@ -486,6 +486,7 @@ export function SiteChrome({
   basePath,
   locations = [],
   linkableCities,
+  pages = [],
 }: {
   client: SiteClient
   flags: SiteFlags
@@ -496,6 +497,7 @@ export function SiteChrome({
   basePath: string
   locations?: SiteLocation[]
   linkableCities?: Set<string>
+  pages?: Array<{ path: string; title: string }>
 }) {
   return (
     <>
@@ -510,6 +512,7 @@ export function SiteChrome({
         offersAdasCalibration={flags.offersAdasCalibration}
         locations={locations}
         linkableCities={linkableCities}
+        pages={pages}
       />
       <MobileCallBar client={client} quoteHref="#quote" smsCapable={flags.smsCapable} />
     </>

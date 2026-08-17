@@ -39,6 +39,7 @@ import { hostStanceFor, siteOriginFor } from '@/lib/site-origin'
 import { getAdsTracking } from '@/lib/ads-tracking'
 import { GoogleTag } from '@/components/sites/GoogleTag'
 import { mergeServiceAreas } from '@/lib/site-locations'
+import { keptPagesFor } from '@/lib/site-pages'
 import { serviceJsonLd } from '@/lib/site-schema'
 
 /**
@@ -156,12 +157,13 @@ export default async function ServicePage({ params }: PageProps) {
   client.phone = (await withSitePhone(client)).phone
   if (!client[page.flag]) notFound()
 
-  const [reviews, extras, locations, adsTracking, cityContent] = await Promise.all([
+  const [reviews, extras, locations, adsTracking, cityContent, keptPages] = await Promise.all([
     getReviews(client.id),
     getSiteExtras(client.id),
     getClientLocations(client.id, client),
     getAdsTracking(client.id),
     getCityContent(client.id),
+    keptPagesFor(client.id),
   ])
   const services = servicesForClient(client as Record<ServiceFlag, boolean>)
   // Shop cities are part of the coverage list and lead the location pages —
@@ -352,6 +354,7 @@ export default async function ServicePage({ params }: PageProps) {
         basePath={basePath}
         locations={locations}
         linkableCities={linkableCities}
+        pages={keptPages}
       />
 
       <WidgetScript client={client} basePath={basePath} />

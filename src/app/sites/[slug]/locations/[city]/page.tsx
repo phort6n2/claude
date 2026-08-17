@@ -6,6 +6,7 @@ import { SiteAnalytics } from '@/components/sites/analytics'
 import { withSitePhone } from '@/lib/site-phone'
 import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
 import { findLocation, mergeServiceAreas } from '@/lib/site-locations'
+import { keptPagesFor } from '@/lib/site-pages'
 import {
   UtilBar,
   SiteHeader,
@@ -166,12 +167,13 @@ export default async function LocationPage({ params }: PageProps) {
   // Visitors see the tracking number when one is set; see lib/site-phone.ts.
   client.phone = (await withSitePhone(client)).phone
 
-  const [reviews, extras, locations, adsTracking, cityContent] = await Promise.all([
+  const [reviews, extras, locations, adsTracking, cityContent, keptPages] = await Promise.all([
     getReviews(client.id),
     getSiteExtras(client.id),
     getClientLocations(client.id, client),
     getAdsTracking(client.id),
     getCityContent(client.id),
+    keptPagesFor(client.id),
   ])
 
   // Shop cities are part of the coverage list and lead the location pages —
@@ -393,6 +395,7 @@ export default async function LocationPage({ params }: PageProps) {
         basePath={basePath}
         locations={locations}
         linkableCities={linkableCities}
+        pages={keptPages}
       />
 
       <WidgetScript client={client} basePath={basePath} />

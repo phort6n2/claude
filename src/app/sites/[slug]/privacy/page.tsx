@@ -5,6 +5,7 @@ import { withSitePhone } from '@/lib/site-phone'
 import { SiteUnavailable } from '@/components/sites/shared'
 import { LegalShell, PrivacyContent } from '@/components/sites/legal'
 import { getSiteExtras } from '@/lib/site-content'
+import { keptPagesFor } from '@/lib/site-pages'
 
 export const revalidate = 3600
 
@@ -57,7 +58,10 @@ export default async function PrivacyPage({ params }: PageProps) {
   if (client.status !== 'ACTIVE') return <SiteUnavailable />
   // Visitors see the tracking number when one is set; see lib/site-phone.ts.
   client.phone = (await withSitePhone(client)).phone
-  const extras = await getSiteExtras(client.id)
+  const [extras, keptPages] = await Promise.all([
+    getSiteExtras(client.id),
+    keptPagesFor(client.id),
+  ])
 
   return (
     <LegalShell
@@ -65,6 +69,7 @@ export default async function PrivacyPage({ params }: PageProps) {
       title="Privacy Policy"
       basePath={`/sites/${client.slug}`}
       registrationNumber={extras.registrationNumber}
+      pages={keptPages}
     >
       <PrivacyContent client={client} />
     </LegalShell>
