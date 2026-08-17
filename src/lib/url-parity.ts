@@ -1,4 +1,5 @@
 import { validatePublicUrl } from '@/lib/site-import'
+import { servicePath, locationPath } from '@/lib/site-paths'
 import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
 import { locationPages, mergeServiceAreas } from '@/lib/site-locations'
 
@@ -181,8 +182,8 @@ export function hostedPathsFor(client: ParityClient): string[] {
   const areas = mergeServiceAreas(client.serviceAreas || [], client.shopCities || [])
   return [
     '/',
-    ...servicesForClient(client.flags).map((s) => `/services/${s.slug}`),
-    ...locationPages(areas).map((l) => `/locations/${l.slug}`),
+    ...servicesForClient(client.flags).map((s) => servicePath(s.slug)),
+    ...locationPages(areas).map((l) => locationPath(l.slug)),
     '/privacy',
     '/terms',
   ]

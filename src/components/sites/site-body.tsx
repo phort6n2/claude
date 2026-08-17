@@ -1,3 +1,4 @@
+import { servicePath } from '@/lib/site-paths'
 import {
   ArrowRight,
   Car,
@@ -371,7 +372,7 @@ export function SiteBody({
                 return (
                   <a
                     key={s.slug}
-                    href={`${basePath}/services/${s.slug}`}
+                    href={`${basePath}${servicePath(s.slug)}`}
                     className="group p-6 rounded-[20px] border border-[var(--line-card)] bg-white shadow-sm hover:shadow-md hover:border-[var(--line-strong)] hover:-translate-y-0.5 transition-all no-underline"
                   >
                     <div className="h-10 w-10 rounded-[14px] flex items-center justify-center mb-4 bg-[var(--tint)]">

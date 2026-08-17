@@ -1,4 +1,5 @@
 import { headers } from 'next/headers'
+import { servicePath } from '@/lib/site-paths'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
@@ -182,7 +183,7 @@ export default async function ClientSitePage({ params }: PageProps) {
     smsCapable: client.smsCapable,
   }
   const nav = prioritizeServices(services).slice(0, 4).map((s) => ({
-    href: `${basePath}/services/${s.slug}`,
+    href: `${basePath}${servicePath(s.slug)}`,
     label: s.name,
   }))
 

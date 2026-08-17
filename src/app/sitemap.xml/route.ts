@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { servicePath, locationPath } from '@/lib/site-paths'
 import { prisma } from '@/lib/db'
 import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
 import { locationPages, mergeServiceAreas } from '@/lib/site-locations'
@@ -96,14 +97,14 @@ export async function GET(request: NextRequest) {
   const urls = [
     entry('/', '1.0', 'weekly'),
     ...servicesForClient(client as unknown as Record<ServiceFlag, boolean>).map((s) =>
-      entry(`/services/${s.slug}`, '0.8', 'monthly')
+      entry(servicePath(s.slug), '0.8', 'monthly')
     ),
     // Only cities the page can say something specific about. A sitemap entry
     // for a page carrying noindex asks the crawler to index what the page
     // tells it not to.
     ...locationPages(areas)
       .filter((l) => cityIsIndexable(l.area, cityContent, shopCities.map((s) => s.city)))
-      .map((l) => entry(`/locations/${l.slug}`, '0.7', 'monthly')),
+      .map((l) => entry(locationPath(l.slug), '0.7', 'monthly')),
     ...keptPages.map((p) => entry(p.path, '0.6', 'monthly', p.updatedAt.toISOString())),
     entry('/privacy', '0.1', 'yearly'),
     entry('/terms', '0.1', 'yearly'),
