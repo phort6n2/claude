@@ -47,6 +47,7 @@ export default async function QuoteSentPage({ params, searchParams }: PageProps)
       state: true,
       postalCode: true,
       logoUrl: true,
+      footerLogoUrl: true,
       primaryColor: true,
       accentColor: true,
       hasShopLocation: true,

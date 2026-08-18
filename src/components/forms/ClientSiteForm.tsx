@@ -6,6 +6,8 @@ import SiteContentEditor from '@/components/admin/SiteContentEditor'
 import CustomDomainsCard from '@/components/admin/CustomDomainsCard'
 import CityContentEditor from '@/components/admin/CityContentEditor'
 import PhotoManager from '@/components/admin/PhotoManager'
+import LogoCard from '@/components/admin/LogoCard'
+import ServiceAreaPlanner from '@/components/admin/ServiceAreaPlanner'
 
 /**
  * "Website" tab — the client's hosted site: which address it lives at, and
@@ -19,7 +21,15 @@ import PhotoManager from '@/components/admin/PhotoManager'
 export default function ClientSiteForm({
   client,
 }: {
-  client: { id: string; slug: string; siteSubdomain: string | null; logoUrl: string | null; serviceAreas: string[] }
+  client: {
+    id: string
+    slug: string
+    businessName: string
+    siteSubdomain: string | null
+    logoUrl: string | null
+    footerLogoUrl: string | null
+    serviceAreas: string[]
+  }
 }) {
   const [subdomainInput, setSubdomainInput] = useState(client.siteSubdomain || '')
   const [provisioning, setProvisioning] = useState(false)
@@ -178,6 +188,21 @@ export default function ClientSiteForm({
 
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
         <div className="px-6 pt-5 pb-1">
+          <h2 className="font-semibold text-gray-900">Logo</h2>
+          <p className="text-sm text-gray-500">
+            What the header and the footer draw — and what watermarks the photos
+          </p>
+        </div>
+        <LogoCard
+          clientId={client.id}
+          headerLogoUrl={pendingLogo || client.logoUrl}
+          footerLogoUrl={client.footerLogoUrl}
+          businessName={client.businessName}
+        />
+      </section>
+
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+        <div className="px-6 pt-5 pb-1">
           <h2 className="font-semibold text-gray-900">Photos</h2>
           <p className="text-sm text-gray-500">
             Real photos of the shop and the work, watermarked with the logo
@@ -197,9 +222,10 @@ export default function ClientSiteForm({
         <div className="px-6 pt-5 pb-1">
           <h2 className="font-semibold text-gray-900">Location pages</h2>
           <p className="text-sm text-gray-500">
-            What each city page says that no other city page does
+            Which cities get a page, and what each one says that no other says
           </p>
         </div>
+        <ServiceAreaPlanner clientId={client.id} serviceAreas={client.serviceAreas || []} />
         <CityContentEditor clientId={client.id} />
       </section>
 

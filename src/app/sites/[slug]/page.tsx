@@ -89,6 +89,7 @@ async function getClient(slug: string) {
       postalCode: true,
       country: true,
       logoUrl: true,
+      footerLogoUrl: true,
       primaryColor: true,
       secondaryColor: true,
       accentColor: true,
