@@ -186,7 +186,7 @@ export default function ClientSiteForm({
         <PhotoManager
           listUrl={`/api/clients/${client.id}/photos`}
           uploadUrl={`/api/clients/${client.id}/photos`}
-          deleteUrl={(photoId) => `/api/clients/${client.id}/photos?photoId=${photoId}`}
+          deleteUrl={`/api/clients/${client.id}/photos`}
           patchUrl={`/api/clients/${client.id}/photos`}
           hasLogo={!!(pendingLogo || client.logoUrl)}
           emptyHint="The first photo becomes the washed background behind the hero; the rest fill the gallery. Photos of the actual van, bay and vehicles beat stock every time."

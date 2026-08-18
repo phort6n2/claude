@@ -35,7 +35,7 @@ export default async function PortalPhotosPage() {
         <PhotoManager
           listUrl="/api/portal/photos"
           uploadUrl="/api/portal/photos"
-          deleteUrl={(photoId) => `/api/portal/photos?photoId=${photoId}`}
+          deleteUrl="/api/portal/photos"
           hasLogo={!!client?.logoUrl}
           emptyHint="Photos of your own vehicles, your bay and your team are what make the page look like a real business. Every photo gets your logo added automatically."
         />
