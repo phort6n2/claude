@@ -32,8 +32,17 @@ export default function PhotoManager({
 }: {
   listUrl: string
   uploadUrl: string
-  /** Given a photo id, the URL that removes it. */
-  deleteUrl: (photoId: string) => string
+  /**
+   * The endpoint that removes a photo; the id is appended as ?photoId=.
+   *
+   * A STRING, not a function that builds one. It was a function, which works
+   * from the admin — that mount sits inside a 'use client' component — and
+   * threw on the portal, where the page is a Server Component and React
+   * cannot serialise a function across that boundary. The whole Photos tab
+   * 500'd before rendering. A prop shape that is only valid from some callers
+   * is a trap for the next caller, so it is data now.
+   */
+  deleteUrl: string
   /** Absent in the portal, where alt text is edited by us, not the client. */
   patchUrl?: string
   hasLogo: boolean
@@ -90,7 +99,10 @@ export default function PhotoManager({
     if (!confirm('Remove this photo from the site?')) return
     setBusy(photo.id)
     try {
-      const res = await fetch(deleteUrl(photo.id), { method: 'DELETE' })
+      const sep = deleteUrl.includes('?') ? '&' : '?'
+      const res = await fetch(`${deleteUrl}${sep}photoId=${encodeURIComponent(photo.id)}`, {
+        method: 'DELETE',
+      })
       if (!res.ok) throw new Error((await res.json()).error || 'Could not remove')
       await load()
     } catch (err) {
