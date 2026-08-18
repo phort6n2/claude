@@ -235,6 +235,26 @@ the block that talks about the business rather than the customer, and ahead of
 the proof it stood between a paid visitor and every section that answers
 "what will this cost me".
 
+**Two logo slots, set on the Website tab** (`LogoCard`, `/api/clients/[id]/logo`).
+`Client.logoUrl` is the header's, drawn on white and also used as the photo
+watermark and the JSON-LD `logo`. `Client.footerLogoUrl` is only for the dark
+footer band, and is empty for most shops — it exists because a logo that is
+dark ink on transparency, which is most of them, is invisible down there. A
+pasted address is COPIED to blob storage rather than referenced: these
+addresses are usually on the old site this platform is replacing, and the
+week it is switched off is the week the logo would vanish. When the copy
+cannot be made the original is kept and the card says so.
+
+**Which cities get pages is edited here too** (`ServiceAreaPlanner`). The
+first `LOCATION_PAGE_LIMIT` of `Client.serviceAreas` (after shop cities merge
+in front) get a page; the rest are coverage-band text, and the card marks
+which is which. "Suggest nearby cities" (`nearby-cities.ts`) asks the model
+for towns near the shop and then **geocodes every name it returns** — the
+candidate survives only if Google resolves it to a real locality, and the
+distance that orders the list is measured rather than claimed. It writes
+nothing: coverage is a business fact, and a town twenty minutes away across a
+river they never cross looks exactly like one they serve daily.
+
 ### The importer
 
 `site-import.ts` crawls a shop's existing website and drafts their content.

@@ -34,6 +34,8 @@ export interface SiteClient {
   state: string
   postalCode: string
   logoUrl: string | null
+  /** Only for the dark footer band; falls back to logoUrl. */
+  footerLogoUrl: string | null
   primaryColor: string | null
   accentColor: string | null
   hasShopLocation: boolean
@@ -1441,6 +1443,11 @@ export function SiteFooter({
   pages?: Array<{ path: string; title: string }>
 }) {
   const year = new Date().getFullYear()
+  // The footer band is dark, and most shop logos are dark ink on
+  // transparency — the file that looks right in the header can be a black
+  // rectangle's worth of nothing down here. A shop whose logo survives both
+  // backgrounds sets no second file and this falls through to the header's.
+  const footerLogo = client.footerLogoUrl || client.logoUrl
   // Identity-bar trust items: restate claims made further up the page —
   // every one data-backed, never a third-party mark.
   const barTrust = [
@@ -1479,11 +1486,11 @@ export function SiteFooter({
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr] lg:gap-9">
           <div>
-            {client.logoUrl ? (
+            {footerLogo ? (
               // Plain on the dark band, like the reference — no white chip.
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={client.logoUrl}
+                src={footerLogo}
                 alt={client.businessName}
                 className="h-10 w-auto max-w-[220px] object-contain mb-3.5"
               />

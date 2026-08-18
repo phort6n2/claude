@@ -32,6 +32,7 @@ async function getClient(slug: string) {
       state: true,
       postalCode: true,
       logoUrl: true,
+      footerLogoUrl: true,
       primaryColor: true,
       accentColor: true,
       hasShopLocation: true,

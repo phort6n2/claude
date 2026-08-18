@@ -38,6 +38,8 @@ const WATERMARK_OPACITY = 0.85
 export const MAX_DAMAGE_UPLOAD_BYTES = 12 * 1024 * 1024
 /** Enough to tell a chip from a crack and see where on the glass it sits. */
 const DAMAGE_DIMENSION = 1600
+/** Twice the widest slot the header gives a logo; same as the importer's. */
+const LOGO_DIMENSION = 480
 
 export interface ProcessedPhoto {
   url: string
@@ -251,6 +253,68 @@ export async function storeDamagePhoto({
     return { ok: true, url: blob.url, bytes: output.byteLength }
   } catch (error) {
     console.error('[Damage photo] Blob upload failed:', error)
+    return { ok: false, error: 'Upload failed. Please try again.' }
+  }
+}
+
+/**
+ * Store a logo the admin uploaded by hand.
+ *
+ * Not a photo, and it must not go down the photo path: no watermark (it IS
+ * the watermark), no JPEG (a logo without its transparency gets a white box
+ * around it, which on the dark footer band is the whole logo ruined), and no
+ * enlargement — a small crisp file stays small rather than being blown up
+ * into a blurry one.
+ *
+ * 480px matches what the importer mirrors, which is twice the widest slot the
+ * header gives a logo.
+ */
+export async function storeLogoUpload({
+  file,
+  clientSlug,
+}: {
+  file: ArrayBuffer
+  clientSlug: string
+}): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  if (!blobConfigured()) {
+    return {
+      ok: false,
+      error:
+        'Image storage is not configured. Create a Blob store on the Vercel project (Storage → Create → Blob); it adds BLOB_READ_WRITE_TOKEN automatically. You can paste a URL instead.',
+    }
+  }
+  if (file.byteLength > MAX_UPLOAD_BYTES) {
+    return { ok: false, error: 'That file is larger than 15 MB.' }
+  }
+
+  let output: Buffer
+  try {
+    const image = sharp(Buffer.from(file), { failOn: 'none' })
+    const meta = await image.metadata()
+    if (!meta.width || !meta.height) throw new Error('no dimensions')
+    output = await image
+      .resize({ width: Math.min(meta.width, LOGO_DIMENSION), fit: 'inside', withoutEnlargement: true })
+      .png({ compressionLevel: 9 })
+      .toBuffer()
+  } catch {
+    // sharp reads SVG only when its build has librsvg, which Vercel's does not
+    // guarantee — and an SVG that fails here fails silently as a broken image
+    // in the header, so it is named rather than lumped in with "not an image".
+    return {
+      ok: false,
+      error: "That file couldn't be read as an image. PNG or JPEG works; export an SVG to PNG first.",
+    }
+  }
+
+  try {
+    const blob = await put(`sites/${clientSlug}/logo/${Date.now()}.png`, toBlobBody(output), {
+      access: 'public',
+      contentType: 'image/png',
+      addRandomSuffix: true,
+    })
+    return { ok: true, url: blob.url }
+  } catch (error) {
+    console.error('[Logo] Blob upload failed:', error)
     return { ok: false, error: 'Upload failed. Please try again.' }
   }
 }

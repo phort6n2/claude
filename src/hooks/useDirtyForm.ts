@@ -15,6 +15,20 @@ import { useUnsavedWork } from '@/components/admin/UnsavedWorkGuard'
 export function useDirtyForm<T extends object>(initial: T) {
   const [values, setValues] = useState<T>(initial)
   const baseline = useRef<T>(initial)
+  /**
+   * Bumped by commit(), and a dependency of the dirty calculation below.
+   *
+   * WITHOUT IT A SAVED FORM STAYS DIRTY FOREVER. commit() with no argument
+   * settles on the object `values` already holds, so `setValues(settled)`
+   * passes React the identical reference and React bails out of the
+   * re-render. The memo below is keyed on `values`, which has not changed, so
+   * it hands back the cached dirty set — still full — and every later attempt
+   * to switch tabs is blocked by work that was saved minutes ago.
+   *
+   * The baseline is a ref because it must not itself trigger renders. This
+   * counter is the one thing that has to say "the baseline moved".
+   */
+  const [baselineVersion, setBaselineVersion] = useState(0)
 
   const isEqual = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
 
@@ -24,7 +38,7 @@ export function useDirtyForm<T extends object>(initial: T) {
       if (!isEqual(values[key], baseline.current[key])) out.add(String(key))
     }
     return out
-  }, [values])
+  }, [values, baselineVersion])
 
   const isDirty = dirtyFields.size > 0
 
@@ -44,9 +58,13 @@ export function useDirtyForm<T extends object>(initial: T) {
     const settled = next ?? values
     baseline.current = settled
     setValues(settled)
+    setBaselineVersion((v) => v + 1)
   }, [values])
 
-  const discard = useCallback(() => setValues(baseline.current), [])
+  const discard = useCallback(() => {
+    setValues(baseline.current)
+    setBaselineVersion((v) => v + 1)
+  }, [])
 
   // Report upward so the client tab bar can stop a soft navigation too.
   // beforeunload below covers leaving the DOCUMENT; switching tabs inside the

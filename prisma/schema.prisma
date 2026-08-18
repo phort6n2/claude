@@ -123,7 +123,13 @@ model Client {
   customPages ClientPage[]
 
   // Brand Settings
-  logoUrl        String?
+  logoUrl String?
+  /// The logo the FOOTER draws, when the header's own logo cannot be used
+  /// there. The footer band is dark; a logo drawn in black on transparency
+  /// disappears into it, which is most of the logo files a shop actually
+  /// owns. Empty means "use logoUrl", so a shop whose logo works on both
+  /// backgrounds sets nothing.
+  footerLogoUrl  String?
   primaryColor   String? @default("#1e40af")
   secondaryColor String? @default("#3b82f6")
   accentColor    String? @default("#f59e0b")
