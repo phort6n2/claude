@@ -46,8 +46,8 @@ import { sanitizeHtml } from '@/lib/sanitize-html'
 import { retargetKeptHtml, keptChapters } from '@/lib/kept-content'
 import { hostedPathsFor } from '@/lib/url-parity'
 import { normalisePath } from '@/lib/url-parity'
-import LocationPage from '@/app/sites/[slug]/locations/[city]/page'
-import ServicePage from '@/app/sites/[slug]/services/[service]/page'
+import LocationPage, { generateMetadata as locationMetadata } from '@/app/sites/[slug]/locations/[city]/page'
+import ServicePage, { generateMetadata as serviceMetadata } from '@/app/sites/[slug]/services/[service]/page'
 import { getServicePage } from '@/lib/site-services'
 import { cityFromPath } from '@/lib/site-paths'
 
@@ -169,7 +169,29 @@ async function resolve(slug: string, segments: string[]) {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug, path } = await params
   const { client, page } = await resolve(slug, path)
-  if (!client || !page) return { title: 'Not Found' }
+  if (!client) return { title: 'Not Found' }
+
+  // THE SAME FALLTHROUGH THE PAGE BELOW USES, and it has to be here too.
+  //
+  // Without it the two disagreed: the page rendered the city (or service)
+  // perfectly while this returned the 404's metadata, so every flat city URL
+  // on every site — the addresses the ads point at and the footer links to —
+  // came back titled "Not Found", with no canonical, no description and no
+  // OG image. A crawler reads the head; a visitor reads the tab. Both were
+  // told the page did not exist while looking straight at it.
+  //
+  // Delegating rather than rebuilding: those routes already compute the city
+  // and service metadata, including the canonical-host stance, and a second
+  // copy here is what drifts.
+  if (!page) {
+    const flat = normalisePath(`/${(path || []).join('/')}`).slice(1)
+    const city = cityFromPath(flat)
+    if (city) return locationMetadata({ params: Promise.resolve({ slug, city }) })
+    if (getServicePage(flat)) {
+      return serviceMetadata({ params: Promise.resolve({ slug, service: flat }) })
+    }
+    return { title: 'Not Found' }
+  }
 
   // Which host is this request on? Only the canonical one may be indexed;
   // every other host self-canonicalises and asks to stay out of the index.
