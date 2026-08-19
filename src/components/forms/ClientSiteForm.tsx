@@ -226,7 +226,7 @@ export default function ClientSiteForm({
           </p>
         </div>
         <ServiceAreaPlanner clientId={client.id} serviceAreas={client.serviceAreas || []} />
-        <CityContentEditor clientId={client.id} />
+        <CityContentEditor clientId={client.id} previewBase={`/sites/${client.slug}`} />
       </section>
 
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
