@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { CheckCircle2, Loader2, MapPin, Sparkles, TriangleAlert } from 'lucide-react'
+import { locationPath } from '@/lib/site-paths'
 
 /**
  * Per-city copy for the location pages.
@@ -27,7 +28,19 @@ interface CityRow {
   indexable: boolean
 }
 
-export default function CityContentEditor({ clientId }: { clientId: string }) {
+export default function CityContentEditor({
+  clientId,
+  previewBase,
+}: {
+  clientId: string
+  /**
+   * Where these pages can be opened, e.g. `/sites/{slug}`. The app host is
+   * used rather than the client's own domain because it serves every client
+   * whether or not a domain has been pointed yet — which is exactly when
+   * somebody is in here checking the pages.
+   */
+  previewBase?: string
+}) {
   const [cities, setCities] = useState<CityRow[] | null>(null)
   const [minWords, setMinWords] = useState(60)
   const [unavailable, setUnavailable] = useState(false)
@@ -142,7 +155,7 @@ export default function CityContentEditor({ clientId }: { clientId: string }) {
 
       {cities.length === 0 ? (
         <p className="text-sm text-gray-500">
-          No location pages yet — add service areas on the Business tab.
+          No location pages yet — add the cities above and each one gets a page.
         </p>
       ) : (
         <div
@@ -181,7 +194,24 @@ export default function CityContentEditor({ clientId }: { clientId: string }) {
             <div className="flex items-center gap-2">
               <MapPin size={15} className="text-gray-400" />
               <span className="font-medium text-gray-900">{row.city}</span>
-              <code className="font-mono text-xs text-gray-400">/locations/{row.slug}</code>
+              {/* The address the page actually answers on, built by the same
+                  helper the site, the sitemap and the canonical use. It was a
+                  hardcoded "/locations/{slug}" and stayed that way through the
+                  cutover, so every row on this card named an address the live
+                  site had stopped using — read as "the URLs are all wrong",
+                  which is what it was. */}
+              {previewBase ? (
+                <a
+                  href={`${previewBase}${locationPath(row.slug)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-mono text-xs text-gray-400 hover:text-blue-600 hover:underline"
+                >
+                  {locationPath(row.slug)}
+                </a>
+              ) : (
+                <code className="font-mono text-xs text-gray-400">{locationPath(row.slug)}</code>
+              )}
             </div>
             <span
               className={`text-[11px] font-bold uppercase tracking-wide rounded px-1.5 py-0.5 border ${
