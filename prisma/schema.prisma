@@ -582,6 +582,18 @@ model ClientNotification {
   emailTo      String[] @default([])
 
   /**
+   * Whether an INBOUND CALL sends an email alert. On by default, because
+   * that is what every existing client already gets.
+   *
+   * Off is a real preference, not a bug: a shop whose phone is answered by a
+   * person gets nothing from an email saying the phone rang — they were on
+   * it. The same shop still wants the form alerts, which nobody is watching
+   * for. SMS is unaffected either way; a text about a call that was missed is
+   * the one worth having.
+   */
+  emailCallLeads Boolean @default(true)
+
+  /**
    * The paid add-on. Off by default and switchable only by an admin — email
    * is included with every plan, SMS is billed monthly, so turning it on is a
    * commercial decision rather than a client preference.

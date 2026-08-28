@@ -220,6 +220,16 @@ export const SITE_BRANDING_SQL: string[] = [
   `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "footerLogoUrl" TEXT`,
 ]
 
+/**
+ * Per-client notification preferences added after ClientNotification shipped.
+ * Same rule as every column above: Prisma selects every scalar on the model,
+ * so this statement and the schema field travel in the same commit or every
+ * query against ClientNotification fails until it has run.
+ */
+export const NOTIFICATION_PREFS_SQL: string[] = [
+  `ALTER TABLE "ClientNotification" ADD COLUMN IF NOT EXISTS "emailCallLeads" BOOLEAN NOT NULL DEFAULT true`,
+]
+
 /** Everything the running code assumes exists. */
 export const BOOTSTRAP_SQL: string[] = [
   ...CALL_TRACKING_SQL,
@@ -233,6 +243,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...RESPONSE_TIME_SQL,
   ...CUTOVER_SQL,
   ...SITE_BRANDING_SQL,
+  ...NOTIFICATION_PREFS_SQL,
 ]
 
 /**

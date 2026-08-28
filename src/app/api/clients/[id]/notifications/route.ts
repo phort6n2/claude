@@ -30,6 +30,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
       notification: {
         emailEnabled: row?.emailEnabled ?? false,
         emailTo: row?.emailTo ?? [],
+        emailCallLeads: row?.emailCallLeads ?? true,
         smsEnabled: row?.smsEnabled ?? false,
         smsTo: row?.smsTo ?? [],
         smsActivatedAt: row?.smsActivatedAt ?? null,
@@ -94,6 +95,9 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     const data = {
       emailEnabled,
       emailTo,
+      // Defaults to on when the caller says nothing, which is what every
+      // client had before the switch existed.
+      emailCallLeads: body.emailCallLeads !== false,
       smsEnabled,
       smsTo,
       smsActivatedAt,
@@ -119,17 +123,46 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
   return NextResponse.json({ ok: true })
 }
 
-/** POST — send a test alert to the saved recipients, and report what happened. */
-export async function POST(_request: NextRequest, { params }: RouteContext) {
+/**
+ * POST — send a test alert to the saved recipients, and report what happened.
+ *
+ * `{ kind: "call" }` sends the INBOUND CALL variant instead of the form one.
+ * Not decoration: a call alert is a different message (different eyebrow,
+ * the time they rang) and it is the only one the "Email phone calls too"
+ * switch touches — so this is how an admin proves that switch does what the
+ * label says, rather than waiting for a real call to find out.
+ */
+export async function POST(request: NextRequest, { params }: RouteContext) {
   const denied = await requireAdmin()
   if (denied) return denied
 
   const { id } = await params
   const client = await prisma.client.findUnique({
     where: { id },
-    select: { businessName: true, phone: true },
+    select: { businessName: true, phone: true, timezone: true },
   })
   if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+
+  const body = await request.json().catch(() => ({}))
+  const isCall = body?.kind === 'call'
+  // Formatted here, in the shop's own zone, exactly as the intake does it for
+  // a real call — the whole point of the line is that it reads as the local
+  // time the customer rang, not the time where this server happens to run.
+  const calledAtLabel = isCall
+    ? (() => {
+        try {
+          return new Intl.DateTimeFormat('en-US', {
+            weekday: 'short',
+            hour: 'numeric',
+            minute: '2-digit',
+            timeZoneName: 'short',
+            timeZone: client.timezone || 'America/Denver',
+          }).format(new Date())
+        } catch {
+          return undefined
+        }
+      })()
+    : undefined
 
   // The test must be a faithful replica of a real alert — every button, every
   // row. A test that omits pieces is how missing pieces go unnoticed, and
@@ -153,7 +186,9 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
   const outcomeUrl = latestLead ? outcomeUrlFor(latestLead.id) : null
 
   const result = await notifyNewLead(id, client.businessName, {
-    name: 'Test Lead',
+    isCall,
+    calledAtLabel,
+    name: isCall ? 'Test Caller' : 'Test Lead',
     phone,
     email: 'webhook-test@glassleads.app',
     service: 'Windshield Replacement',
@@ -162,7 +197,7 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
     message: outcomeUrl
       ? 'This is a test alert from glassleads.app. Safe to ignore. The booked buttons below point at this client\u2019s most recent lead.'
       : 'This is a test alert from glassleads.app. Safe to ignore. Real alerts also carry one-tap \u201cWe booked it\u201d buttons \u2014 they appear once this client has a lead to point them at.',
-    source: 'Admin test',
+    source: isCall ? 'Admin test — inbound call' : 'Admin test',
     leadUrl: null,
     vin: '5NMS3CAD4LH123456',
     insurance: 'Filing through insurance',
@@ -173,6 +208,7 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
 
   return NextResponse.json({
     ok: result.errors.length === 0,
+    kind: isCall ? 'call' : 'form',
     emailSent: result.emailSent,
     smsSent: result.smsSent,
     errors: result.errors,
