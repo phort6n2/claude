@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Loader2, Mail, MessageSquare, Send, TriangleAlert } from 'lucide-react'
+import { Loader2, Mail, MessageSquare, Phone, Send, TriangleAlert } from 'lucide-react'
 import { RecipientList } from '@/components/admin/RecipientList'
 
 /**
@@ -20,6 +20,7 @@ import { RecipientList } from '@/components/admin/RecipientList'
 interface State {
   emailEnabled: boolean
   emailTo: string[]
+  emailCallLeads: boolean
   smsEnabled: boolean
   smsTo: string[]
   smsActivatedAt: string | null
@@ -46,6 +47,7 @@ export default function LeadNotificationsCard({ clientId }: { clientId: string }
         data.notification || {
           emailEnabled: false,
           emailTo: [],
+          emailCallLeads: true,
           smsEnabled: false,
           smsTo: [],
           smsActivatedAt: null,
@@ -59,6 +61,7 @@ export default function LeadNotificationsCard({ clientId }: { clientId: string }
       setState({
         emailEnabled: false,
         emailTo: [],
+        emailCallLeads: true,
         smsEnabled: false,
         smsTo: [],
         smsActivatedAt: null,
@@ -101,11 +104,15 @@ export default function LeadNotificationsCard({ clientId }: { clientId: string }
     }
   }
 
-  async function sendTest() {
+  async function sendTest(kind: 'form' | 'call' = 'form') {
     setTesting(true)
     setMessage(null)
     try {
-      const res = await fetch(`/api/clients/${clientId}/notifications`, { method: 'POST' })
+      const res = await fetch(`/api/clients/${clientId}/notifications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind }),
+      })
       const data = await res.json()
       const bits = [
         data.emailSent ? `${data.emailSent} email` : null,
@@ -115,7 +122,10 @@ export default function LeadNotificationsCard({ clientId }: { clientId: string }
         ok: data.ok && bits.length > 0,
         text: bits.length
           ? `Sent ${bits.join(' and ')}.${data.errors?.length ? ` Problems: ${data.errors.join(' · ')}` : ''}`
-          : data.errors?.join(' · ') || 'Nothing was sent — no recipients saved.',
+          : data.errors?.join(' · ') ||
+            (kind === 'call' && !state?.emailCallLeads && state?.emailEnabled
+              ? 'Nothing was sent — phone-call emails are switched off for this client, which is what that switch does.'
+              : 'Nothing was sent — no recipients saved.'),
       })
       await load()
     } catch (err) {
@@ -174,6 +184,28 @@ export default function LeadNotificationsCard({ clientId }: { clientId: string }
           placeholder="dispatch@theshop.com"
           addLabel="Add another email address"
         />
+        {/* Under the recipients, because it narrows what THEY get rather than
+            being a second channel. Nested and only shown when email is on, so
+            it cannot read as a setting that does something on its own. */}
+        {state.emailEnabled && (
+          <label className="flex items-start gap-2 ml-6">
+            <input
+              type="checkbox"
+              checked={state.emailCallLeads}
+              onChange={(e) => set('emailCallLeads', e.target.checked)}
+              className="mt-1"
+            />
+            <span className="text-sm">
+              <span className="font-medium text-gray-900">Email phone calls too</span>
+              <span className="block text-xs text-gray-500">
+                On: every tracked call emails the same alert a form does. Off: only form
+                submissions email, and calls are left to the Call Coaching tab. A shop whose
+                phone is always answered gets nothing from an email saying it rang. SMS alerts
+                are unaffected either way.
+              </span>
+            </span>
+          </label>
+        )}
         {!providers.email && (
           <p className="text-xs text-amber-700">
             No Resend key saved yet — add it under Settings → API keys or these won&apos;t send.
@@ -270,12 +302,24 @@ export default function LeadNotificationsCard({ clientId }: { clientId: string }
         </button>
         <button
           type="button"
-          onClick={sendTest}
+          onClick={() => sendTest('form')}
           disabled={testing}
           className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-gray-300 text-sm hover:bg-gray-50 disabled:opacity-60"
         >
           {testing ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
           Send test
+        </button>
+        {/* The call variant is a different message, and the only one the
+            phone-call switch above touches — so it is testable rather than
+            something you find out about on a real call. */}
+        <button
+          type="button"
+          onClick={() => sendTest('call')}
+          disabled={testing}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-gray-300 text-sm hover:bg-gray-50 disabled:opacity-60"
+        >
+          <Phone size={14} />
+          Send test call alert
         </button>
         {message && (
           <span className={`text-sm ${message.ok ? 'text-green-700' : 'text-red-600'}`}>

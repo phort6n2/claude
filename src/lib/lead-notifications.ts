@@ -233,7 +233,12 @@ export async function notifyNewLead(
   // photo of their car, so a default recipient is a way for that to reach
   // somebody nobody chose. An unconfigured client sends nothing and says so on
   // its readiness badge, which is the correct failure.
-  const emails = config.emailEnabled ? config.emailTo.filter(Boolean) : []
+  // A shop can turn OFF the email for inbound calls while keeping it for
+  // forms. The phone ringing is not news to a shop whose phone is answered by
+  // a person; a form submitted at 9pm is. SMS is deliberately not gated by
+  // this — a text about a call is what surfaces the one nobody picked up.
+  const emailThisOne = config.emailEnabled && !(lead.isCall && !config.emailCallLeads)
+  const emails = emailThisOne ? config.emailTo.filter(Boolean) : []
   const numbers = config.smsEnabled ? config.smsTo.filter(Boolean) : []
   if (emails.length === 0 && numbers.length === 0) return result
 
