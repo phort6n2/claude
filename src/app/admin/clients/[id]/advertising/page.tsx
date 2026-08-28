@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import AdsTrackingCard from '@/components/admin/AdsTrackingCard'
+import ConversionStandardCard from '@/components/admin/ConversionStandardCard'
 import { decrypt } from '@/lib/encryption'
 import { requireAdminPage } from '@/lib/admin-guard'
 
@@ -55,6 +56,17 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           clarityProjectId={client.clarityProjectId}
           clarityMaskedToken={maskedToken}
         />
+      </section>
+
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+        <div className="px-6 pt-5 pb-1">
+          <h2 className="font-semibold text-gray-900">Conversion setup in Google Ads</h2>
+          <p className="text-sm text-gray-500">
+            The same four conversion actions, named the same way, in every client&apos;s account —
+            checked against the live account
+          </p>
+        </div>
+        <ConversionStandardCard clientId={client.id} />
       </section>
     </div>
   )

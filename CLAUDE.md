@@ -288,6 +288,27 @@ click window (85 days used against Google's 90), not already uploaded.
 `location.fieldPathElements` — a 200 does not mean success. "Check without
 sending" runs `validateOnly` and leaves no trace.
 
+**One conversion setup in every account** — `google-ads-conventions.ts` holds
+it, `docs/GOOGLE-ADS-SETUP.md` is the human checklist. Four actions, same
+names everywhere: **AGMP Lead Form**, **AGMP Call From Ads**, **AGMP Website
+Call** (all Primary) and **AGMP Sale** (the upload target, Secondary until a
+shop has the volume for value bidding). They sit in four different categories
+on purpose — Primary/Secondary is set per `CATEGORY~ORIGIN` goal, not per
+action, so two lead actions in one category cannot be told apart by bidding.
+
+- The audit **reads only**, on the Advertising tab per client and at
+  `/api/admin/google-ads/conversion-audit` for all of them. An audit that
+  fixes things is one nobody can run to find out what is wrong.
+- **Rename, never recreate.** History, volume and bidding learning live on the
+  action; a fresh one starts from zero and re-enters learning. So a right-shape
+  action under a wrong name is reported as a rename, naming the action.
+- Reading the API: int64 fields (`clickThroughLookbackWindowDays`,
+  `phoneCallDurationSeconds`) come back as **strings**, and
+  `customer_conversion_goal.biddable` is **omitted when false** — a missing key
+  is Secondary, not unknown. Both were found against live accounts.
+- `compareToStandard()` is pure, separate from the fetch, so the rules can be
+  re-checked against saved rows from a real account without credentials.
+
 ### Local rank tracking
 
 `local-dominator.ts` plus the webhook at
