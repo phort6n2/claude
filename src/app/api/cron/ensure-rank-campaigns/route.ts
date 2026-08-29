@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ensureRankCampaigns } from '@/lib/rank-campaigns'
 import { siteOriginFor } from '@/lib/site-origin'
+import { appOrigin } from '@/lib/app-origin'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -27,11 +28,7 @@ async function handle(request: NextRequest) {
 
   // The webhook has to point at a host Local Dominator can reach, which is
   // the deployment's public origin rather than whatever host called the cron.
-  const origin =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : new URL(request.url).origin)
+  const origin = appOrigin()
 
   try {
     const result = await ensureRankCampaigns(origin)

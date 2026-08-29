@@ -47,6 +47,13 @@ const READS: Tool[] = [
     what: 'Every client with a linked Ads account, checked against the four AGMP conversion actions — names, settings, which goals bid, and anything counting the same lead twice.',
   },
   {
+    key: 'runs',
+    name: 'Rank runs: what does Local Dominator still hold?',
+    path: '/api/admin/rank-campaigns/runs',
+    method: 'GET',
+    what: 'Every run their campaign record carries, against the ones we stored, and the shape of one — so a run we never received can be identified and, if the shape allows, recovered without paying for a re-scan. Defaults to the first SEO client; add ?clientId= for a specific one.',
+  },
+  {
     key: 'inspect',
     name: 'Rank payload: what shape are the stored scans?',
     path: '/api/admin/rank-campaigns/inspect',

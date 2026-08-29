@@ -450,6 +450,28 @@ export async function getScheduledScanSchedule(id: string): Promise<CampaignSche
   }
 }
 
+/**
+ * The `runs` array their campaign record carries.
+ *
+ * Returned raw and untouched. The webhook payload is already known not to
+ * match their documented shape, so nothing here assumes this one does either
+ * — the caller describes what arrived rather than parsing a guess, which is
+ * the same rule /rank-campaigns/inspect follows for stored payloads.
+ */
+export async function campaignRuns(scheduledScanId: string): Promise<unknown[] | null> {
+  try {
+    const res = await ldFetch(
+      `/v1/scheduled-scans/${encodeURIComponent(scheduledScanId)}?date_range=MAX`
+    )
+    if (!res.ok) return null
+    const body = (await res.json().catch(() => null)) as Record<string, unknown> | null
+    const runs = body?.runs
+    return Array.isArray(runs) ? runs : null
+  } catch {
+    return null
+  }
+}
+
 export interface CampaignShareLinks {
   /**
    * The campaign's own token — the ONE to embed. On our white-label host it
