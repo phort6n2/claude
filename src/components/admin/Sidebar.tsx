@@ -19,6 +19,7 @@ import {
   PhoneCall,
   Target,
   HardDrive,
+  ClipboardList,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -45,6 +46,7 @@ const navigation: NavSection[] = [
     title: 'CRM',
     items: [
       { name: 'Clients', href: '/admin/clients', icon: Users },
+      { name: 'Onboarding', href: '/admin/intakes', icon: ClipboardList },
       { name: 'Leads', href: '/admin/leads', icon: UserCheck },
       { name: 'Master Leads', href: '/master-leads', icon: Smartphone, external: true },
       { name: 'Call Coaching', href: '/admin/call-coaching-insights', icon: PhoneCall },
