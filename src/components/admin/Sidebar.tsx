@@ -20,6 +20,7 @@ import {
   Target,
   HardDrive,
   ClipboardList,
+  Wrench,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -60,6 +61,7 @@ const navigation: NavSection[] = [
       { name: 'Lead capture', href: '/admin/webhook-status', icon: Radio },
       { name: 'Conversion tracking', href: '/admin/conversion-health', icon: Target },
       { name: 'Storage', href: '/admin/storage', icon: HardDrive },
+      { name: 'Maintenance', href: '/admin/maintenance', icon: Wrench },
     ],
   },
   {
