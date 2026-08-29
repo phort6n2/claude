@@ -29,6 +29,37 @@ interface RouteContext {
  * scheme documented. The secret is derived, never stored, and the raw
  * clientId alone is not enough to write anything.
  */
+/**
+ * Record what arrived, whatever it was.
+ *
+ * A week of scans went missing and there was no way to tell "they never
+ * posted" from "they posted something we could not read": both paths write a
+ * console line, and runtime logs keep a day. By the time a flat chart is
+ * noticed the evidence is gone.
+ *
+ * Never throws and never blocks the response — a logging table that can fail
+ * a webhook is worse than no logging table.
+ */
+async function note(
+  clientId: string,
+  status: string,
+  extra: { runUuid?: string | null; records?: number; detail?: string } = {}
+) {
+  try {
+    await prisma.rankWebhookLog.create({
+      data: {
+        clientId,
+        status,
+        runUuid: extra.runUuid || null,
+        records: extra.records ?? 0,
+        detail: extra.detail?.slice(0, 500) || null,
+      },
+    })
+  } catch {
+    // Table may not exist yet on a fresh deploy; the delivery still counts.
+  }
+}
+
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const { clientId } = await params
   const token = request.nextUrl.searchParams.get('t') || ''
@@ -39,20 +70,30 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       select: { id: true, googlePlaceId: true },
     })
     .catch(() => null)
-  if (!client) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!client) {
+    await note(clientId, 'unknown-client')
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
 
   const { rankWebhookToken } = await import('@/lib/local-rank-token')
   if (!rankWebhookToken.verify(clientId, token)) {
+    await note(clientId, 'unauthorized', { detail: token ? 'token did not verify' : 'no token in URL' })
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const body = await request.json().catch(() => null)
-  if (!body) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  if (!body) {
+    await note(clientId, 'bad-json')
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
 
   const runUuid = String(
     body.run_uuid || body.runUuid || body.scan_id || body.scanId || ''
   ).trim()
   if (!runUuid) {
+    // The keys that WERE present, because the next time this happens the
+    // question is which key their run id moved to.
+    await note(clientId, 'no-run-id', { detail: `keys: ${Object.keys(body).join(', ')}` })
     return NextResponse.json({ error: 'Missing run identifier' }, { status: 400 })
   }
 
@@ -63,6 +104,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     // A run that completed with nothing is not an error on our side; log it
     // and return 200 so the provider does not retry a payload we cannot use.
     console.warn(`[LocalRank] run ${runUuid} for ${clientId} carried no heatmap records`)
+    await note(clientId, 'no-records', { runUuid, detail: `keys: ${Object.keys(body).join(', ')}` })
     return NextResponse.json({ ok: true, stored: 0 })
   }
 
@@ -110,5 +152,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   }
 
   console.log(`[LocalRank] ${clientId} run ${runUuid}: stored ${stored}/${records.length}`)
+  await note(clientId, 'stored', { runUuid, records: stored, detail: `${stored} of ${records.length} records` })
   return NextResponse.json({ ok: true, stored })
 }
