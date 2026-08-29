@@ -573,6 +573,35 @@ model ClientGbpReviews {
 }
 
 // ============================================
+// INBOUND RANK WEBHOOK LOG
+//
+// One row per POST from Local Dominator, INCLUDING the ones we reject.
+//
+// The reason it exists: a week of scans went missing and there was no way to
+// tell "they never posted" from "they posted something we could not read".
+// Both are logged to the console, and Vercel keeps runtime logs for a day —
+// so by the time anyone notices a flat chart, the evidence has aged out and
+// the only honest answer is a shrug.
+//
+// Deliberately append-only and tiny: what arrived, when, and what we did with
+// it. The successful payloads are already stored in full on LocalRankScan.
+// ============================================
+
+model RankWebhookLog {
+  id       String  @id @default(cuid())
+  clientId String
+  runUuid  String?
+  /// stored | no-records | no-run-id | unauthorized | bad-json | unknown-client
+  status   String
+  records  Int     @default(0)
+  detail   String?
+
+  createdAt DateTime @default(now())
+
+  @@index([clientId, createdAt])
+}
+
+// ============================================
 // CLIENT INTAKE
 //
 // A new shop fills this in themselves, from a link in their welcome email.

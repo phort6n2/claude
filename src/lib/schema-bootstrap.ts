@@ -267,6 +267,25 @@ export const SITE_SCRIPTS_SQL: string[] = [
   `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "ga4MeasurementId" TEXT`,
 ]
 
+/**
+ * Inbound rank-webhook deliveries. A new table, and the point of it is that
+ * it outlives the runtime logs — so it has to exist before the next delivery,
+ * not after somebody notices a flat chart.
+ */
+export const RANK_WEBHOOK_LOG_SQL: string[] = [
+  `CREATE TABLE IF NOT EXISTS "RankWebhookLog" (
+     "id"        TEXT NOT NULL,
+     "clientId"  TEXT NOT NULL,
+     "runUuid"   TEXT,
+     "status"    TEXT NOT NULL,
+     "records"   INTEGER NOT NULL DEFAULT 0,
+     "detail"    TEXT,
+     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     CONSTRAINT "RankWebhookLog_pkey" PRIMARY KEY ("id")
+   )`,
+  `CREATE INDEX IF NOT EXISTS "RankWebhookLog_clientId_createdAt_idx" ON "RankWebhookLog"("clientId", "createdAt")`,
+]
+
 /** Everything the running code assumes exists. */
 export const BOOTSTRAP_SQL: string[] = [
   ...CALL_TRACKING_SQL,
@@ -283,6 +302,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...NOTIFICATION_PREFS_SQL,
   ...CLIENT_INTAKE_SQL,
   ...SITE_SCRIPTS_SQL,
+  ...RANK_WEBHOOK_LOG_SQL,
 ]
 
 /**

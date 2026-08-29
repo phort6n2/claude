@@ -67,6 +67,16 @@ export async function GET(request: NextRequest) {
 
   const storedUuids = new Set(stored.map((s) => s.runUuid))
 
+  // Every delivery we saw, including the ones we rejected. Empty for a
+  // period before this table existed — which is exactly the gap it closes.
+  const deliveries = await prisma.rankWebhookLog
+    .findMany({
+      where: { clientId: client.id },
+      orderBy: { createdAt: 'desc' },
+      take: 25,
+    })
+    .catch(() => [])
+
   return NextResponse.json({
     client: client.businessName,
     campaignId: client.rankTrackingId,
@@ -75,6 +85,10 @@ export async function GET(request: NextRequest) {
     // than against their documentation, which the webhook payload already
     // proved does not match what they send.
     runShape: runs?.length ? shapeOf(runs[0]) : null,
+    // The runs verbatim. They are summaries — uuid, timestamps, a count and
+    // an average — so this is a few hundred bytes, not a grid, and the VALUES
+    // are what say whether a run we never received produced anything at all.
+    theirRunsRaw: runs,
     theirRuns: (runs || []).map((run) => {
       const r = (run || {}) as Record<string, unknown>
       const id = String(r.id ?? r.run_uuid ?? r.uuid ?? '')
@@ -85,6 +99,7 @@ export async function GET(request: NextRequest) {
         keys: Object.keys(r),
       }
     }),
+    deliveries,
     ourScans: stored.map((s) => ({
       runUuid: s.runUuid,
       searchTerm: s.searchTerm,
