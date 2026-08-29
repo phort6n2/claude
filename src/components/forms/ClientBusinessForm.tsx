@@ -5,6 +5,7 @@ import { Search, Loader2, X } from 'lucide-react'
 import { useDirtyForm, confirmDiscard } from '@/hooks/useDirtyForm'
 import SaveBar from '@/components/forms/SaveBar'
 import ClientLocationsManager from '@/components/admin/ClientLocationsManager'
+import { errorFrom } from '@/lib/http-error'
 
 /**
  * "Business" tab — the facts about the shop: identity, address, what they
@@ -187,10 +188,10 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(changedPayload()),
       })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to save')
-      }
+      // Not res.json() — a route that fails before it can answer sends back
+      // an HTML error page, and parsing that reported "Unexpected token '<'"
+      // to whoever was trying to save.
+      if (!res.ok) throw new Error(await errorFrom(res))
       commit()
       setMessage({ ok: true, text: 'Saved. Site updates within about 5 minutes.' })
       setTimeout(() => setMessage(null), 4000)
