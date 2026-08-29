@@ -137,6 +137,32 @@ should upload to them — `AGMP Sale` is the upload target now.
 
 ---
 
+## Google Analytics, and not counting a lead twice
+
+GA4 goes on the site from the app (Advertising tab → Google Analytics), one
+property per shop, riding the same `gtag.js` the Ads tag already loads.
+Linking the property to the Ads account is a step only Google's UI can do:
+Ads → Tools → Data manager → Google Analytics (GA4) → Link.
+
+**Do not import GA4 conversions as Primary.** Once the property is linked,
+Google offers to import GA4 events as conversion actions. An imported
+`generate_lead` or `purchase` is the SAME form submission `AGMP Lead Form`
+already reported — two actions counting one lead. Smart Bidding reads that as
+two wins and bids to a number that does not exist, and it looks like
+performance improving.
+
+Nothing in this platform can create one of these: the offline upload writes to
+a single Ads conversion action over the API and cannot reach Analytics at all.
+They only ever arrive from a click in the Ads UI.
+
+Both live accounts already carry a dormant GA4 import — "… (web) purchase",
+type `GOOGLE_ANALYTICS_4_PURCHASE`, status HIDDEN. Dormant is correct. **Leave
+them that way.** The audit reports one that is merely dormant as a note, one
+that is enabled but Secondary as acceptable, and one that is enabled AND
+Primary as a failure.
+
+---
+
 ## What the audit checks
 
 For each of the four: that it exists, that it is named exactly right, and that
@@ -144,7 +170,9 @@ counting, click window and call length match. Then:
 
 - the goal for each action is Primary or Secondary as the table says;
 - the app's own offline conversion action points at `AGMP Sale`;
-- any other `AGMP …` action in the account is listed, with a note.
+- any other `AGMP …` action in the account is listed, with a note;
+- any GA4-imported action, and whether it is dormant, observed or bidding;
+- any other live action sitting in a goal the standard already owns.
 
 It reads only. An audit that fixes things is one nobody can run to find out
 what is wrong.
