@@ -346,10 +346,25 @@ and posts each finished run back, so nothing is polled.
   white-label host they render the same way (verified: 200,
   `frame-ancestors *`). That is the default view — one keyword per tab — and
   it stays current on its own.
-- The all-keywords map is the only thing that needs the manual step: open the
-  campaign in Local Dominator then "Refresh map URLs", or paste it into the
-  client's **Map URL** field, which takes the bare token too. Do not spend
-  another afternoon looking for an automatic route without new evidence.
+- The all-keywords map is the only thing that needs the manual step, and it is
+  a PASTE: open the campaign in Local Dominator, copy the address, drop it into
+  **Rankings → All-keywords map** on the client. Re-confirmed 2026-08-29 across
+  all six live campaigns — `hasCampaignLink: false` on every one, detail
+  `share_links` only ever `[image_link, dynamic_url]`, list endpoint empty. Try
+  "Refresh map URLs" first anyway; it costs one press and stores anything the
+  API does offer.
+- **The paste survives.** Both the daily sweep and map-status only write when
+  they FIND a link (`if (!url || url === client.rankMapUrl) continue`), and for
+  these campaigns they find none — so a pasted URL is not overwritten. Clearing
+  the field hands control back to the automatic capture.
+- The field takes **any of the three forms** and keeps only the token: the bare
+  token, our white-label URL, or their dashboard URL with its `taskId` and
+  `link` parameters. That last one is what somebody actually has in their hand,
+  and it was the one form the original regex rejected — storing the pasted
+  string verbatim, which would have put `app.localdominator.co` in a client's
+  portal. `rankMapTokenFrom()` reduces all three server-side.
+- Do not spend another afternoon looking for an automatic route without new
+  evidence.
 - The sweep only CREATES for clients with no `rankTrackingId`; it never
   touches an existing campaign. Changing an existing one goes through PATCH:
   `syncCampaignTier` on a tier flip, `/respace` for geometry, `/reschedule`
