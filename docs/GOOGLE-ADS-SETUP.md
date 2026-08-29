@@ -128,12 +128,46 @@ If two enabled actions have the same shape, keep the one carrying the history,
 rename it, and **pause** the other. Pausing keeps its past conversions in the
 reports; removing takes them with it.
 
-### Legacy names
+### `AGMP Call` and `AGMP Form` — HighLevel's, and being retired
 
-`AGMP Call` and `AGMP Form` are upload actions from before this convention.
-They are recognised by the audit and listed as "other AGMP actions" rather than
-flagged as strangers. Leave them enabled if they hold history, but nothing
-should upload to them — `AGMP Sale` is the upload target now.
+`AGMP Call` fires when a call reaches a **HighLevel tracking number**;
+HighLevel uploads it. `AGMP Form` is the same path for form fills. Both sit in
+**Converted lead**, which is right for them: a lead that arrived by phone or
+form, not the tag-measured event.
+
+They are LEGACY. Call tracking is moving to Twilio numbers inside this app,
+where Google counts the call itself through `AGMP Website Call`. Nothing new
+should be pointed at them, and no new account should get them.
+
+**One call conversion per shop.** A shop still on HighLevel has `AGMP Call`
+and no website-call action — correct, and the audit says so rather than
+nagging. A shop moved across has `AGMP Website Call` and `AGMP Call` sitting
+Secondary with its history. Both bidding at once means one inbound call is two
+conversions: the shop looks like it is doing twice the business and Smart
+Bidding pays for it. It is invisible in the Ads UI, because the two actions
+are in different categories and neither looks like a duplicate of the other.
+
+#### Moving one shop from HighLevel to a Twilio number
+
+Order matters — steps 1 and 3 are what keep the count honest.
+
+1. **In this app:** buy or assign the tracking number and flag it for the
+   site. The site now shows the Twilio number, so HighLevel's number pool is
+   out of the picture. Do this FIRST: while HighLevel is still swapping the
+   number on the page, do not add Google's website-call action — two swap
+   systems competing for one number is a broken phone number on the page, not
+   just bad data.
+2. **In Ads:** create `AGMP Website Call` naming the Twilio number the site
+   now shows, and paste its `send_to` into the app.
+3. **In Ads:** set the **Converted lead** goal to **Secondary**. `AGMP Call`
+   keeps every conversion it has ever recorded and stops bidding. Do not
+   remove or pause the action — removing takes its history out of the reports.
+4. **In HighLevel:** stop the conversion upload, so it stops adding rows to an
+   action nobody is bidding on.
+5. Re-run the audit. "Counting the same lead twice" should be empty.
+
+Once the last shop is across, `AGMP Call` and `AGMP Form` can be dropped from
+`LEGACY_PAIRS` and this section deleted.
 
 ---
 

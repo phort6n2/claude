@@ -302,6 +302,15 @@ action, so two lead actions in one category cannot be told apart by bidding.
 - **Rename, never recreate.** History, volume and bidding learning live on the
   action; a fresh one starts from zero and re-enters learning. So a right-shape
   action under a wrong name is reported as a rename, naming the action.
+- **`AGMP Call` / `AGMP Form` are HighLevel's uploads and are LEGACY.** They
+  sit in Converted lead — a lead that arrived by phone or form — and they are
+  being retired as every client moves onto a Twilio tracking number in this
+  app. ONE call conversion per shop: HighLevel's number means `AGMP Call`, a
+  number from this app means `AGMP Website Call`. Both bidding counts one call
+  twice, and it is invisible in the Ads UI because the two sit in different
+  categories. The migration order is in `docs/GOOGLE-ADS-SETUP.md`; the part
+  that bites is that Google's number swap must not be configured while
+  HighLevel's pool is still swapping the same number.
 - Reading the API: int64 fields (`clickThroughLookbackWindowDays`,
   `phoneCallDurationSeconds`) come back as **strings**, and
   `customer_conversion_goal.biddable` is **omitted when false** — a missing key
