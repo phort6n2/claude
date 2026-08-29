@@ -53,6 +53,7 @@ interface Finding {
 interface Audit {
   customerId: string
   findings: Finding[]
+  doubleCounting: string[]
   goalIssues: string[]
   extras: Array<{ id: string; name: string; note: string }>
   clean: boolean
@@ -227,6 +228,25 @@ export default function ConversionStandardCard({ clientId }: { clientId: string 
           )
         })}
       </div>
+
+      {!!audit?.doubleCounting?.length && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-1">
+          <p className="text-sm font-semibold text-amber-900">Counting the same lead twice</p>
+          <ul className="list-disc ml-4 text-sm text-amber-900 space-y-1">
+            {audit.doubleCounting.map((issue) => (
+              <li key={issue}>{issue}</li>
+            ))}
+          </ul>
+          {/* Nothing in this app can create these. They come from linking a
+              GA4 property and accepting Google's offer to import its events,
+              at which point the same form submission is reported twice and
+              bidding treats it as two wins. */}
+          <p className="text-xs text-amber-900/80">
+            Nothing in this app uploads to Analytics — it writes to one Ads action over the API.
+            These come from importing GA4 events in the Ads UI.
+          </p>
+        </div>
+      )}
 
       {!!audit?.goalIssues.length && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-1">

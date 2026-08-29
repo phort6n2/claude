@@ -180,6 +180,12 @@ export interface ConversionFinding {
 export interface ConversionAudit {
   customerId: string
   findings: ConversionFinding[]
+  /**
+   * Actions that would count a lead this setup already counts. Kept apart
+   * from goalIssues because the fix is different: these are things to switch
+   * OFF or hold at Secondary, not settings to correct.
+   */
+  doubleCounting: string[]
   /** Goal keys whose biddability disagrees with the standard. */
   goalIssues: string[]
   /** AGMP-prefixed actions that are not part of the standard. */
@@ -249,8 +255,7 @@ export async function auditConversionSetup(
             conversion_action.counting_type,
             conversion_action.click_through_lookback_window_days,
             conversion_action.phone_call_duration_seconds
-     FROM conversion_action
-     WHERE conversion_action.status = 'ENABLED'`
+     FROM conversion_action`
   )
   if (!listed.ok) return listed
 
@@ -285,7 +290,12 @@ export function compareToStandard(
   goalRows: Record<string, unknown>[] | null,
   options: { offlineConversionActionId?: string | null } = {}
 ): ConversionAudit {
-  const actions = readActions(actionRows)
+  const all = readActions(actionRows)
+  // Matching only ever considers ENABLED actions: telling someone to rename a
+  // paused action is telling them to rename a thing that counts nothing.
+  // The checks further down read `all`, because a DORMANT GA4 import is worth
+  // seeing before somebody switches it on.
+  const actions = all.filter((a) => a.status === 'ENABLED')
   const claimed = new Set<string>()
 
   const findings: ConversionFinding[] = CONVERSION_STANDARD.map((spec) => {
@@ -424,7 +434,68 @@ export function compareToStandard(
     }
   }
 
-  const clean = findings.every((f) => f.state === 'ok') && goalIssues.length === 0
+  /**
+   * COUNTING THE SAME LEAD TWICE.
+   *
+   * Nothing in this app can create these — it uploads to one action id over
+   * the Ads API and cannot reach Analytics at all. They arrive from a click
+   * in the Google Ads UI: once a GA4 property is linked, Google offers to
+   * import its events as conversion actions, and an imported "generate_lead"
+   * or "purchase" is the SAME form submission the AGMP tag already reported.
+   *
+   * Two of them count it. Smart Bidding treats that as two wins and bids to
+   * a number that does not exist, and it looks like performance improving.
+   *
+   * Both of these accounts already carry a GA4 import, dormant. Dormant is
+   * fine and is reported as such; ENABLED and biddable is the failure.
+   */
+  const goalBiddable = new Map<string, boolean>()
+  if (goalRows) {
+    for (const row of goalRows) {
+      const g = (row as { customerConversionGoal?: Record<string, unknown> }).customerConversionGoal
+      if (g) goalBiddable.set(`${str(g.category)}~${str(g.origin)}`, g.biddable === true)
+    }
+  }
 
-  return { customerId, findings, goalIssues, extras, clean }
+  const doubleCounting: string[] = []
+  for (const action of all) {
+    if (!/ANALYTICS/i.test(action.type)) continue
+    const key = `${action.category}~${action.origin}`
+    if (action.status !== 'ENABLED') {
+      doubleCounting.push(
+        `"${action.name}" is a GA4 import and is ${action.status.toLowerCase()} — leave it that way. Enabling it would count leads the AGMP actions already count.`
+      )
+    } else if (goalBiddable.get(key)) {
+      doubleCounting.push(
+        `"${action.name}" is a GA4 import, ENABLED, and its goal (${key}) is Primary — it is bidding on leads the AGMP actions already report. Set the goal Secondary, or pause the action.`
+      )
+    } else {
+      doubleCounting.push(
+        `"${action.name}" is a GA4 import and is enabled but Secondary — it is observed, not bid on. Acceptable; do not promote it.`
+      )
+    }
+  }
+
+  // The same trap without GA4 in it: any other live action sitting in a goal
+  // this standard already owns counts the same event a second time.
+  const standardKeys = new Set(CONVERSION_STANDARD.map((s) => `${s.category}~${s.origin}`))
+  for (const action of actions) {
+    if (claimed.has(action.id)) continue
+    if (/ANALYTICS/i.test(action.type)) continue
+    const key = `${action.category}~${action.origin}`
+    if (!standardKeys.has(key)) continue
+    if (!goalBiddable.get(key)) continue
+    doubleCounting.push(
+      `"${action.name}" is enabled in ${key}, the same goal as one of the AGMP actions, and that goal is Primary — check it is not reporting the same lead.`
+    )
+  }
+
+  const clean =
+    findings.every((f) => f.state === 'ok') &&
+    goalIssues.length === 0 &&
+    // A dormant GA4 import is a note, not a fault. Anything live in a goal we
+    // already own is.
+    !doubleCounting.some((d) => d.includes('ENABLED') || d.includes('is enabled in'))
+
+  return { customerId, findings, goalIssues, extras, doubleCounting, clean }
 }
