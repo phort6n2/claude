@@ -93,11 +93,15 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     // wrong half of that is a pointless way to lose five minutes.
     if (has('rankMapUrl')) {
       const raw = String(data.rankMapUrl || '').trim()
-      const token = /^[0-9a-f-]{16,64}$/i.test(raw) ? raw : null
-      if (token) {
-        const { localDominatorShareHost } = await import('@/lib/local-dominator')
+      if (raw) {
+        const { localDominatorShareHost, rankMapTokenFrom } = await import('@/lib/local-dominator')
+        const token = rankMapTokenFrom(raw)
         const host = await localDominatorShareHost()
-        data.rankMapUrl = host ? `https://${host}/${token}` : ''
+        // A pasted address is reduced to its token and rebuilt on OUR host.
+        // Storing what was pasted would put app.localdominator.co in a client's
+        // portal the first time somebody copies the URL out of the map they
+        // are looking at — which is exactly how it would happen.
+        data.rankMapUrl = token && host ? `https://${host}/${token}` : ''
       }
     }
 

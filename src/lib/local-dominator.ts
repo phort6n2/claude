@@ -114,6 +114,44 @@ export async function localDominatorShareHost(): Promise<string | null> {
   return /^[a-z0-9.-]+\.[a-z]{2,}$/.test(host) ? host : null
 }
 
+/**
+ * The campaign's share token, out of whatever got pasted.
+ *
+ * Three forms arrive, and only one of them used to be accepted:
+ *
+ *   1e164f…                                    the bare token
+ *   https://ranking.…com/1e164f…               our white-label URL
+ *   https://app.localdominator.co/…?link=1e164f…&taskId=…   their dashboard
+ *
+ * The third is the one somebody actually has in their hands, because it is
+ * what the address bar says when they are looking at the map — and it was the
+ * one form that fell through, storing THEIR host to be embedded in a client's
+ * portal. That is the failure the white-label rule exists to prevent, arriving
+ * through the field meant to enforce it.
+ *
+ * `taskId` is deliberately ignored: it identifies the map on their side and
+ * the white-label host does not take it. Only `link` travels.
+ */
+export function rankMapTokenFrom(raw: string): string | null {
+  const value = (raw || '').trim()
+  if (!value) return null
+
+  const isToken = (candidate: string) => /^[0-9a-f-]{16,64}$/i.test(candidate)
+  if (isToken(value)) return value
+
+  try {
+    const url = new URL(value)
+    const link = url.searchParams.get('link')
+    if (link && isToken(link)) return link
+    // Our own form is the token as the whole path.
+    const last = url.pathname.split('/').filter(Boolean).pop() || ''
+    if (isToken(last)) return last
+  } catch {
+    // Not a URL and not a token.
+  }
+  return null
+}
+
 async function ldFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const key = await localDominatorKey()
   if (!key) throw new Error('LOCALDOMINATOR_API_KEY is not configured')
