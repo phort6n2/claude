@@ -156,9 +156,30 @@ export const CONVERSION_STANDARD: ConversionSpec[] = [
  * that months of conversion history are sitting on.
  */
 export const LEGACY_NAMES: Record<string, string> = {
-  'AGMP Call': 'An older upload action. Superseded by AGMP Sale; leave it enabled if it holds history, but nothing should upload to it.',
-  'AGMP Form': 'An older upload action. Superseded by AGMP Sale; leave it enabled if it holds history, but nothing should upload to it.',
+  'AGMP Call':
+    "HighLevel's upload: it fires when a call reaches a HighLevel tracking number. Its category is Converted lead, which is right for it — it is a lead that arrived by phone, not the tag-measured call event. Not superseded by AGMP Sale. What it DOES collide with is AGMP Website Call, which counts the same inbound call once a shop moves onto a tracking number from this app. One or the other, never both.",
+  'AGMP Form':
+    'The same upload path for form fills, and it counts the same submission as AGMP Lead Form. One or the other.',
 }
+
+/**
+ * The upload actions HighLevel writes to, paired with the tag action that
+ * reports the same event once a shop is on this platform's own tracking.
+ *
+ * THE MIGRATION THIS DESCRIBES. Call tracking used to be HighLevel's: their
+ * number, their upload, landing in AGMP Call. It is moving to Twilio numbers
+ * in this app, with Google counting the call itself through AGMP Website
+ * Call. During the move both can be live, and then one inbound call is two
+ * conversions — the shop looks like it is doing twice the business and Smart
+ * Bidding pays accordingly.
+ *
+ * Not a fault by itself: a shop still on HighLevel SHOULD have AGMP Call and
+ * no website-call action. The fault is both at once, both bidding.
+ */
+const LEGACY_PAIRS: Array<{ legacy: string; supersededBy: string; event: string }> = [
+  { legacy: 'AGMP Call', supersededBy: 'website-call', event: 'inbound call' },
+  { legacy: 'AGMP Form', supersededBy: 'lead-form', event: 'form submission' },
+]
 
 export type FindingState = 'ok' | 'settings' | 'rename' | 'missing' | 'duplicate'
 
@@ -472,6 +493,36 @@ export function compareToStandard(
     } else {
       doubleCounting.push(
         `"${action.name}" is a GA4 import and is enabled but Secondary — it is observed, not bid on. Acceptable; do not promote it.`
+      )
+    }
+  }
+
+  // HighLevel's uploads against this platform's own tracking. Both live and
+  // both bidding is one event counted twice — and it is invisible in the Ads
+  // UI, because the two actions sit in different categories and neither looks
+  // like a duplicate of the other.
+  for (const pair of LEGACY_PAIRS) {
+    const legacy = all.find(
+      (a) => a.name.trim().toLowerCase() === pair.legacy.toLowerCase() && a.status === 'ENABLED'
+    )
+    if (!legacy) continue
+    const legacyBids = goalBiddable.get(`${legacy.category}~${legacy.origin}`) === true
+    const replacement = findings.find((f) => f.key === pair.supersededBy)
+    const replacementLive = !!replacement?.actionId
+    const replacementBids =
+      goalBiddable.get(
+        `${CONVERSION_STANDARD.find((c) => c.key === pair.supersededBy)?.category}~${
+          CONVERSION_STANDARD.find((c) => c.key === pair.supersededBy)?.origin
+        }`
+      ) === true
+
+    if (legacyBids && replacementLive && replacementBids) {
+      doubleCounting.push(
+        `"${pair.legacy}" (HighLevel's upload) and "${replacement?.actionName || pair.supersededBy}" are both enabled and both bidding — one ${pair.event} counts twice. Keep whichever matches how this shop is actually tracked: HighLevel's number means ${pair.legacy}, a tracking number from this app means the other. Set the loser's goal to Secondary rather than removing it, so its history stays in the reports.`
+      )
+    } else if (legacyBids && !replacementLive) {
+      doubleCounting.push(
+        `"${pair.legacy}" is HighLevel's upload and is the only ${pair.event} conversion here — correct for a shop still on HighLevel tracking. When this shop moves to a tracking number from this app, this one goes Secondary as the other goes live.`
       )
     }
   }
