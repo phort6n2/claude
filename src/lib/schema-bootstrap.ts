@@ -230,6 +230,32 @@ export const NOTIFICATION_PREFS_SQL: string[] = [
   `ALTER TABLE "ClientNotification" ADD COLUMN IF NOT EXISTS "emailCallLeads" BOOLEAN NOT NULL DEFAULT true`,
 ]
 
+/**
+ * Client intake drafts. A new table, so this is a CREATE rather than the
+ * usual ALTER — but it ships the same way, because the route that reads it
+ * fails until it exists.
+ */
+export const CLIENT_INTAKE_SQL: string[] = [
+  `CREATE TABLE IF NOT EXISTS "ClientIntake" (
+     "id"           TEXT NOT NULL,
+     "businessName" TEXT NOT NULL,
+     "email"        TEXT NOT NULL,
+     "seo"          BOOLEAN NOT NULL DEFAULT false,
+     "kind"         TEXT NOT NULL DEFAULT 'NEW',
+     "status"       TEXT NOT NULL DEFAULT 'SENT',
+     "answers"      JSONB,
+     "sentAt"       TIMESTAMP(3),
+     "startedAt"    TIMESTAMP(3),
+     "submittedAt"  TIMESTAMP(3),
+     "approvedAt"   TIMESTAMP(3),
+     "clientId"     TEXT,
+     "createdAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     "updatedAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     CONSTRAINT "ClientIntake_pkey" PRIMARY KEY ("id")
+   )`,
+  `CREATE INDEX IF NOT EXISTS "ClientIntake_status_idx" ON "ClientIntake"("status")`,
+]
+
 /** Everything the running code assumes exists. */
 export const BOOTSTRAP_SQL: string[] = [
   ...CALL_TRACKING_SQL,
@@ -244,6 +270,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...CUTOVER_SQL,
   ...SITE_BRANDING_SQL,
   ...NOTIFICATION_PREFS_SQL,
+  ...CLIENT_INTAKE_SQL,
 ]
 
 /**

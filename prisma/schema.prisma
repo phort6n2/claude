@@ -561,6 +561,65 @@ model ClientGbpReviews {
 }
 
 // ============================================
+// CLIENT INTAKE
+//
+// A new shop fills this in themselves, from a link in their welcome email.
+//
+// It is deliberately NOT a Client row. Everything the shop types lands here
+// as a draft and stays here until an admin approves it — because these sites
+// speak on behalf of a real business in a regulated trade, and a shop typing
+// "same day, we pay your deductible" into a form must not be able to put that
+// on a page. Approval is what creates the Client.
+//
+// The invite link carries its own authority (see lib/intake-token.ts), so a
+// shop owner does not need an account before they have an account.
+// ============================================
+
+model ClientIntake {
+  id String @id @default(cuid())
+
+  /// Who it was sent to. Enough to address the email and label the row; the
+  /// real record is whatever they type.
+  businessName String
+  email        String
+
+  /// The done-for-you SEO plan asks for more, so the form has two shapes.
+  seo Boolean @default(false)
+
+  /// NEW  — a shop that does not exist in the app yet. Approval creates them.
+  /// EXISTING — a shop already set up by an admin who has never logged in.
+  ///
+  /// A different job, not a different form: their answers are PREFILLED from
+  /// the record we already hold, so the ask is "correct anything wrong and
+  /// tell us where your leads should go", not "type your address again".
+  /// Approval applies the diff to the client that already exists.
+  kind String @default("NEW")
+
+  /// SENT → STARTED → SUBMITTED → APPROVED. A string rather than an enum so
+  /// the bootstrap SQL stays a plain CREATE TABLE.
+  status String @default("SENT")
+
+  /// Exactly what they typed, as they typed it. Never copied onto a Client
+  /// until someone has read it.
+  answers Json?
+
+  sentAt      DateTime?
+  startedAt   DateTime?
+  submittedAt DateTime?
+  approvedAt  DateTime?
+
+  /// For an EXISTING intake this is set when the invite is created and is
+  /// what gets updated on approval. For a NEW one it is empty until approval
+  /// creates the client, so an intake can always be traced to what it became.
+  clientId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+// ============================================
 // LEAD NOTIFICATIONS (email + SMS)
 //
 // Speed to first contact decides whether a glass lead converts — the shop
