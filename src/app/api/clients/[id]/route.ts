@@ -2,8 +2,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { normalizeAllowedOrigins } from '@/lib/webhook-forwarding'
 import { requireAdmin, scrubClient } from '@/lib/admin-guard'
-import { deleteClientCompletely } from '@/lib/client-teardown'
 export const dynamic = 'force-dynamic'
+
+/**
+ * client-teardown is imported INSIDE the DELETE handler, not at the top.
+ *
+ * It reaches photo-upload for the blob purge, which loads sharp, which loads
+ * libvips as a native binding. A top-level import puts that binding in the
+ * module graph of every method on this route — so a saved timezone, the most
+ * ordinary write in the admin, was evaluating an image library it has no use
+ * for. When the binding failed to load in a lambda ("libvips-cpp.so: cannot
+ * open shared object file") the route 500'd, Next could not find its own
+ * 500.html, and the browser got an HTML error page. The admin form asked that
+ * page for JSON and reported: Unexpected token '<'.
+ *
+ * Deleting a client still pays for the load, which is right — that one
+ * actually deletes photos.
+ */
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -215,6 +230,7 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     )
   }
 
+  const { deleteClientCompletely } = await import('@/lib/client-teardown')
   const result = await deleteClientCompletely(id)
   if (!result.ok) {
     console.error('Failed to delete client:', result.error)

@@ -9,6 +9,7 @@ import LeadNotificationsCard from '@/components/admin/LeadNotificationsCard'
 import TrackingNumbersCard from '@/components/admin/TrackingNumbersCard'
 import SiteDisplayPhoneCard from '@/components/admin/SiteDisplayPhoneCard'
 import CallCoachingToggle from '@/components/admin/CallCoachingToggle'
+import { errorFrom } from '@/lib/http-error'
 
 /**
  * "Lead delivery" tab — everything touched when a client says "I stopped
@@ -58,10 +59,10 @@ export default function ClientLeadsForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(changedPayload()),
       })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to save')
-      }
+      // Not res.json() — a route that fails before it can answer sends back
+      // an HTML error page, and parsing that reported "Unexpected token '<'"
+      // to whoever was trying to save.
+      if (!res.ok) throw new Error(await errorFrom(res))
       commit()
       setMessage({ ok: true, text: 'Saved.' })
       setTimeout(() => setMessage(null), 4000)
