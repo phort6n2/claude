@@ -41,6 +41,7 @@ import { cityIsIndexable, getCityContent } from '@/lib/city-content'
 import { hostStanceFor, siteOriginFor, sitePathPrefixFor } from '@/lib/site-origin'
 import { getAdsTracking } from '@/lib/ads-tracking'
 import { GoogleTag } from '@/components/sites/GoogleTag'
+import { CustomScripts } from '@/components/sites/CustomScripts'
 import { legalJsonLd } from '@/lib/site-schema'
 import { sanitizeHtml } from '@/lib/sanitize-html'
 import { retargetKeptHtml, keptChapters } from '@/lib/kept-content'
@@ -114,6 +115,8 @@ async function getClient(slug: string) {
       country: true,
       logoUrl: true,
       footerLogoUrl: true,
+      headScripts: true,
+      bodyEndScripts: true,
       primaryColor: true,
       secondaryColor: true,
       accentColor: true,
@@ -332,6 +335,7 @@ export default async function CatchAllPage({ params }: PageProps) {
       <SiteBaseStyles />
       <SiteAnalytics projectId={client.clarityProjectId} slug={client.slug} pageType="kept" />
       <GoogleTag tracking={adsTracking} />
+      <CustomScripts head={client.headScripts} bodyEnd={client.bodyEndScripts} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

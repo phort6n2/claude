@@ -37,6 +37,7 @@ import { cityIsIndexable, getCityContent } from '@/lib/city-content'
 import { hostStanceFor, siteOriginFor, sitePathPrefixFor } from '@/lib/site-origin'
 import { getAdsTracking } from '@/lib/ads-tracking'
 import { GoogleTag } from '@/components/sites/GoogleTag'
+import { CustomScripts } from '@/components/sites/CustomScripts'
 import { mergeServiceAreas } from '@/lib/site-locations'
 import { keptPagesFor } from '@/lib/site-pages'
 import { homeJsonLd } from '@/lib/site-schema'
@@ -90,6 +91,8 @@ async function getClient(slug: string) {
       country: true,
       logoUrl: true,
       footerLogoUrl: true,
+      headScripts: true,
+      bodyEndScripts: true,
       primaryColor: true,
       secondaryColor: true,
       accentColor: true,
@@ -241,6 +244,7 @@ export default async function ClientSitePage({ params }: PageProps) {
         pageType="home"
       />
       <GoogleTag tracking={adsTracking} />
+      <CustomScripts head={client.headScripts} bodyEnd={client.bodyEndScripts} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

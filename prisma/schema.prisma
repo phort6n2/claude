@@ -139,6 +139,18 @@ model Client {
   // Client Portal
   portalPassword String? // Encrypted
 
+  /// Markup the OWNER pastes into every page of this shop's site: a
+  /// verification tag, a remarketing pixel, a chat widget. Admin-only — never
+  /// exposed in the client portal, because this is arbitrary script on a live
+  /// business's site and the blast radius is the whole page.
+  ///
+  /// Scripts pasted here are re-emitted through next/script rather than
+  /// injected as HTML, because markup set with dangerouslySetInnerHTML does
+  /// not execute — a pasted tag would sit in the DOM looking installed and do
+  /// nothing, which is the worst possible failure for a verification tag.
+  headScripts    String?
+  bodyEndScripts String?
+
   // Browser origins allowed to POST leads directly to the webhook (CORS).
   // Managed in the admin UI; unioned with the hardcoded fallback list in the
   // webhook route so an empty database can never lock out a known site.
@@ -906,6 +918,17 @@ model ClientAdsTracking {
    * ten-digit id checks someone else's conversions and looks fine doing it.
    */
   googleAdsCustomerId String?
+
+  /// GA4 measurement ID ("G-XXXXXXX"). Public by design — it ships in the
+  /// page source — so it is stored in the clear like the Ads conversion ID.
+  ///
+  /// It rides on the SAME gtag.js the Ads tag already loads: one loader, two
+  /// config lines. Loading a second copy of gtag for Analytics is the usual
+  /// mistake and it costs a request on every page for nothing.
+  ///
+  /// Linking the property to the Ads account is done in the Google UI and
+  /// cannot be done from here — see docs/GOOGLE-ADS-SETUP.md.
+  ga4MeasurementId String?
 
   /**
    * The UPLOAD_CLICKS conversion action that booked jobs are uploaded to.
