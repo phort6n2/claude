@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
 import { getScheduledScanSchedule, updateScheduledScan } from '@/lib/local-dominator'
 import { rankWebhookUrl } from '@/lib/local-rank-token'
+import { appOrigin } from '@/lib/app-origin'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -25,17 +26,20 @@ export const maxDuration = 300
  *
  * PATCH rather than delete-and-recreate: the campaign keeps its id, its
  * history and its credits.
+ *
+ * WHAT IT FIXED THE FIRST TIME IT RAN. Every campaign was registered on
+ * `agmp-paa-pro.vercel.app`, a Vercel deployment URL, because the origin used
+ * to come from VERCEL_PROJECT_PRODUCTION_URL. This project has Vercel
+ * Authentication on for everything except custom domains, so their scheduler
+ * met an SSO challenge on every delivery and a week of scans was lost with no
+ * error on either side. appOrigin() now refuses to build a webhook URL on
+ * that host at all.
  */
 export async function POST(request: NextRequest) {
   const denied = await requireAdmin()
   if (denied) return denied
 
-  const origin =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.APP_URL ||
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : new URL(request.url).origin)
+  const origin = appOrigin()
 
   const clients = await prisma.client
     .findMany({

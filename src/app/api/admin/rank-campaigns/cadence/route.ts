@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
 import { campaignDetail, getScheduledScanSchedule, SCAN_PRESETS } from '@/lib/local-dominator'
 import { rankWebhookUrl } from '@/lib/local-rank-token'
+import { appOrigin, isProtectedHost } from '@/lib/app-origin'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -71,12 +72,7 @@ export async function GET() {
     // What they would post to, against what we would accept today. The token
     // is derived rather than stored, so these can drift apart without anyone
     // touching the campaign.
-    const origin =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      process.env.APP_URL ||
-      (process.env.VERCEL_PROJECT_PRODUCTION_URL
-        ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-        : 'https://glassleads.app')
+    const origin = appOrigin()
     let ourWebhookUrl: string | null = null
     try {
       ourWebhookUrl = rankWebhookUrl(origin, client.id)
@@ -88,7 +84,15 @@ export async function GET() {
       !!theirWebhookUrl && !!ourWebhookUrl && theirWebhookUrl.trim() === ourWebhookUrl.trim()
 
     const notes: string[] = []
-    if (theirWebhookUrl && ourWebhookUrl && !webhookMatches) {
+    if (isProtectedHost(theirWebhookUrl)) {
+      // The failure that actually happened, and it does not look like a
+      // failure from either side: the host answers, it just answers with an
+      // SSO challenge instead of the route. Vercel Authentication on this
+      // project covers every deployment URL except the custom domains.
+      notes.push(
+        'They post to a *.vercel.app host, which sits behind Vercel Authentication — every delivery meets an SSO page instead of the webhook, and nothing is logged as an error. Re-register on the custom domain with /api/admin/rank-campaigns/rewebhook.'
+      )
+    } else if (theirWebhookUrl && ourWebhookUrl && !webhookMatches) {
       notes.push(
         'The webhook URL they hold is NOT the one we would accept today — every finished run is being posted somewhere we reject. Re-register with /api/admin/rank-campaigns/rewebhook.'
       )

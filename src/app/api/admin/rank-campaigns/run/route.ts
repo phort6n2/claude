@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-guard'
 import { ensureRankCampaigns } from '@/lib/rank-campaigns'
+import { appOrigin } from '@/lib/app-origin'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -20,11 +21,7 @@ export async function POST(request: NextRequest) {
   if (denied) return denied
 
   // The webhook URL has to be one Local Dominator can reach from outside.
-  const origin =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : new URL(request.url).origin)
+  const origin = appOrigin()
 
   try {
     const result = await ensureRankCampaigns(origin)
