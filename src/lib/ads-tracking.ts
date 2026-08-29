@@ -29,6 +29,12 @@ export interface AdsTracking {
   bingUetTagId: string | null
   /** Event goal action name that Microsoft matches the lead against. */
   bingLeadEventAction: string | null
+  /**
+   * GA4 measurement id. Stands alone: a shop can run Analytics with no ad
+   * account at all, which is the normal state of a site before its first
+   * campaign.
+   */
+  ga4MeasurementId: string | null
 }
 
 /** "AW-123456789" — anything else is a typo we refuse to emit. */
@@ -51,6 +57,12 @@ export async function getAdsTracking(clientId: string): Promise<AdsTracking | nu
     ? (row.bingLeadEventAction || '').trim() || 'submit_lead_form'
     : null
 
+  // "G-XXXXXXX". Anything else is a typo, and a typo'd measurement id is a
+  // site that reports to nowhere while looking instrumented.
+  const ga4MeasurementId = /^G-[A-Z0-9]{6,12}$/i.test((row.ga4MeasurementId || '').trim())
+    ? (row.ga4MeasurementId as string).trim().toUpperCase()
+    : null
+
   const empty = {
     conversionId: '',
     leadSendTo: null,
@@ -61,12 +73,14 @@ export async function getAdsTracking(clientId: string): Promise<AdsTracking | nu
     enhancedConversions: row.enhancedConversions,
     bingUetTagId,
     bingLeadEventAction,
+    ga4MeasurementId,
   }
 
-  if (!row.conversionId) return bingUetTagId ? empty : null
+  // Analytics alone is a complete reason to load the tag.
+  if (!row.conversionId) return bingUetTagId || ga4MeasurementId ? empty : null
 
   const conversionId = row.conversionId.trim()
-  if (!isConversionId(conversionId)) return bingUetTagId ? empty : null
+  if (!isConversionId(conversionId)) return bingUetTagId || ga4MeasurementId ? empty : null
 
   const label = (value: string | null) => {
     const trimmed = (value || '').trim()
@@ -81,7 +95,7 @@ export async function getAdsTracking(clientId: string): Promise<AdsTracking | nu
   // An ID with no lead label can still legitimately exist — a client who only
   // reports calls from the page — but an ID with neither has nothing to
   // report, so there is no reason to load the tag at all.
-  if (!leadSendTo && !callSendTo) return bingUetTagId ? empty : null
+  if (!leadSendTo && !callSendTo) return bingUetTagId || ga4MeasurementId ? empty : null
 
   return {
     conversionId,
@@ -93,5 +107,6 @@ export async function getAdsTracking(clientId: string): Promise<AdsTracking | nu
     enhancedConversions: row.enhancedConversions,
     bingUetTagId,
     bingLeadEventAction,
+    ga4MeasurementId,
   }
 }

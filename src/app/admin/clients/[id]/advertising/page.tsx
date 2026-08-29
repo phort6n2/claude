@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import AdsTrackingCard from '@/components/admin/AdsTrackingCard'
 import ConversionStandardCard from '@/components/admin/ConversionStandardCard'
+import AnalyticsCard from '@/components/admin/AnalyticsCard'
 import { decrypt } from '@/lib/encryption'
 import { requireAdminPage } from '@/lib/admin-guard'
 
@@ -26,6 +27,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       phone: true,
       clarityProjectId: true,
       clarityApiToken: true,
+      adsTracking: { select: { ga4MeasurementId: true } },
     },
   })
   if (!client) notFound()
@@ -55,6 +57,19 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           clientPhone={client.phone}
           clarityProjectId={client.clarityProjectId}
           clarityMaskedToken={maskedToken}
+        />
+      </section>
+
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+        <div className="px-6 pt-5 pb-1">
+          <h2 className="font-semibold text-gray-900">Google Analytics</h2>
+          <p className="text-sm text-gray-500">
+            One GA4 property per shop, on the same tag the ads already load
+          </p>
+        </div>
+        <AnalyticsCard
+          clientId={client.id}
+          measurementId={client.adsTracking?.ga4MeasurementId ?? null}
         />
       </section>
 

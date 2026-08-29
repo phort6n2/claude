@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
 import { campaignDetail, getScheduledScanSchedule, SCAN_PRESETS } from '@/lib/local-dominator'
+import { rankWebhookUrl } from '@/lib/local-rank-token'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -67,7 +68,31 @@ export async function GET() {
       prisma.localRankScan.count({ where: { clientId: client.id } }).catch(() => 0),
     ])
 
+    // What they would post to, against what we would accept today. The token
+    // is derived rather than stored, so these can drift apart without anyone
+    // touching the campaign.
+    const origin =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.APP_URL ||
+      (process.env.VERCEL_PROJECT_PRODUCTION_URL
+        ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+        : 'https://glassleads.app')
+    let ourWebhookUrl: string | null = null
+    try {
+      ourWebhookUrl = rankWebhookUrl(origin, client.id)
+    } catch {
+      ourWebhookUrl = null
+    }
+    const theirWebhookUrl = schedule?.webhookUrl ?? null
+    const webhookMatches =
+      !!theirWebhookUrl && !!ourWebhookUrl && theirWebhookUrl.trim() === ourWebhookUrl.trim()
+
     const notes: string[] = []
+    if (theirWebhookUrl && ourWebhookUrl && !webhookMatches) {
+      notes.push(
+        'The webhook URL they hold is NOT the one we would accept today — every finished run is being posted somewhere we reject. Re-register with /api/admin/rank-campaigns/rewebhook.'
+      )
+    }
     if (schedule?.scheduling && schedule.scheduling !== expected.cron) {
       notes.push(
         `Their schedule is "${schedule.scheduling}", the ${tier} tier expects "${expected.cron}". Fix with /api/admin/rank-campaigns/reschedule.`
@@ -99,6 +124,10 @@ export async function GET() {
       theirLastRun: detail.lastRunDate,
       ourScanCount: storedCount,
       ourLastScan: stored?.scannedAt ?? null,
+      theirWebhookUrl,
+      ourWebhookUrl,
+      webhookMatches,
+      theirBodyKeys: schedule?.bodyKeys ?? [],
       hasMapUrl: !!client.rankMapUrl,
       notes,
     })

@@ -256,6 +256,17 @@ export const CLIENT_INTAKE_SQL: string[] = [
   `CREATE INDEX IF NOT EXISTS "ClientIntake_status_idx" ON "ClientIntake"("status")`,
 ]
 
+/**
+ * Owner-pasted site scripts and the GA4 measurement id. Columns on existing
+ * tables, so the same rule as everything above: they ship with the code that
+ * selects them.
+ */
+export const SITE_SCRIPTS_SQL: string[] = [
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "headScripts" TEXT`,
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "bodyEndScripts" TEXT`,
+  `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "ga4MeasurementId" TEXT`,
+]
+
 /** Everything the running code assumes exists. */
 export const BOOTSTRAP_SQL: string[] = [
   ...CALL_TRACKING_SQL,
@@ -271,6 +282,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...SITE_BRANDING_SQL,
   ...NOTIFICATION_PREFS_SQL,
   ...CLIENT_INTAKE_SQL,
+  ...SITE_SCRIPTS_SQL,
 ]
 
 /**

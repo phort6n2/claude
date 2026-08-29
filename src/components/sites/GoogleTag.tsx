@@ -42,6 +42,7 @@ export function GoogleTag({ tracking }: { tracking: AdsTracking | null }) {
     enhancedConversions,
     bingUetTagId,
     bingLeadEventAction,
+    ga4MeasurementId,
   } = tracking
 
   return (
@@ -53,9 +54,10 @@ export function GoogleTag({ tracking }: { tracking: AdsTracking | null }) {
           enhanced={enhancedConversions}
         />
       )}
-      {conversionId ? (
+      {conversionId || ga4MeasurementId ? (
         <GoogleAdsTag
           conversionId={conversionId}
+          ga4MeasurementId={ga4MeasurementId}
           leadSendTo={leadSendTo}
           leadValue={leadValue}
           leadCurrency={leadCurrency}
@@ -70,6 +72,7 @@ export function GoogleTag({ tracking }: { tracking: AdsTracking | null }) {
 
 function GoogleAdsTag({
   conversionId,
+  ga4MeasurementId,
   leadSendTo,
   leadValue,
   leadCurrency,
@@ -78,6 +81,7 @@ function GoogleAdsTag({
   enhancedConversions,
 }: {
   conversionId: string
+  ga4MeasurementId: string | null
   leadSendTo: string | null
   leadValue: number | null
   leadCurrency: string | null
@@ -87,10 +91,14 @@ function GoogleAdsTag({
 }) {
   return (
     <>
+      {/* ONE loader for both products. gtag.js is loaded once, with
+          whichever id exists, and each product gets its own config line
+          below. Loading a second copy for Analytics is the usual mistake and
+          it costs a request on every page for nothing. */}
       <Script
         id="gl-gtag-src"
         strategy="afterInteractive"
-        src={`https://www.googletagmanager.com/gtag/js?id=${conversionId}`}
+        src={`https://www.googletagmanager.com/gtag/js?id=${conversionId || ga4MeasurementId}`}
       />
       <Script id="gl-gtag-init" strategy="afterInteractive">
         {`
@@ -98,9 +106,20 @@ window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 window.gtag = window.gtag || gtag;
 gtag('js', new Date());
-gtag('config', ${JSON.stringify(conversionId)}${
-          enhancedConversions ? ', { allow_enhanced_conversions: true }' : ''
-        });
+${
+  conversionId
+    ? `gtag('config', ${JSON.stringify(conversionId)}${
+        enhancedConversions ? ', { allow_enhanced_conversions: true }' : ''
+      });`
+    : ''
+}
+${
+  // Analytics is configured separately from Ads and reports page views by
+  // itself. Linking the property to the Ads account happens in Google's own
+  // UI — nothing here can do it, and pretending otherwise would leave
+  // somebody believing it was handled.
+  ga4MeasurementId ? `gtag('config', ${JSON.stringify(ga4MeasurementId)});` : ''
+}
 ${
   callSendTo && callPhoneNumber
     ? `// Calls from a website: Google swaps this number on the page and reports

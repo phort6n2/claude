@@ -30,6 +30,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
         callPhoneNumber: row?.callPhoneNumber || '',
         enhancedConversions: row?.enhancedConversions ?? true,
         bingUetTagId: row?.bingUetTagId || '',
+        ga4MeasurementId: row?.ga4MeasurementId || '',
         bingLeadEventAction: row?.bingLeadEventAction || '',
         googleAdsCustomerId: row?.googleAdsCustomerId || '',
       },
@@ -111,6 +112,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     bingUetTagId: string | null
     bingLeadEventAction: string | null
     googleAdsCustomerId: string | null
+    ga4MeasurementId: string | null
   } = {
     // Both conversions live in one Ads account, so the account id survives as
     // long as either of them does.
@@ -124,6 +126,13 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     bingUetTagId,
     bingLeadEventAction,
     googleAdsCustomerId,
+    // Analytics is not a conversion. It survives clearing the Ads snippets,
+    // because a shop that stops advertising has not stopped wanting to know
+    // what their site does — and it is only rewritten when the key is
+    // actually present, so a save from the ads panel cannot blank it.
+    ga4MeasurementId: Object.prototype.hasOwnProperty.call(body, 'ga4MeasurementId')
+      ? str(body.ga4MeasurementId) || null
+      : (existing?.ga4MeasurementId ?? null),
   }
 
   if (leadInput) {

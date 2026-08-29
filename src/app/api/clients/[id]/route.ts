@@ -129,6 +129,11 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       'accentColor',
       'timezone',
       'status',
+      // Owner-pasted tag markup. Admin-only by virtue of this route's guard —
+      // the portal has no path to it, which is the point: this is arbitrary
+      // script on a live business's site.
+      'headScripts',
+      'bodyEndScripts',
     ] as const) {
       setIf(key, data[key])
     }

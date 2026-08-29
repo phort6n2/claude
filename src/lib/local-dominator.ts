@@ -335,6 +335,12 @@ export interface ScheduledScanPatch {
   scheduling?: string
   distance?: number
   gridSize?: number
+  /**
+   * Where finished runs are posted. Set once at creation and otherwise never
+   * touched — until the derived token behind it stops matching, at which
+   * point every delivery is rejected and re-registering is the only fix.
+   */
+  webhookUrl?: string
 }
 
 /**
@@ -363,6 +369,7 @@ export async function updateScheduledScan(
   if (patch.scheduling) body.scheduling = patch.scheduling
   if (patch.distance !== undefined) body.distance = patch.distance
   if (patch.gridSize !== undefined) body.grid_size = patch.gridSize
+  if (patch.webhookUrl) body.webhook_url = patch.webhookUrl
 
   if (Object.keys(body).length === 0) return { ok: false, error: 'Nothing to change.' }
 
@@ -401,6 +408,20 @@ export interface CampaignSchedule {
   scheduling: string | null
   schedulingType: string | null
   nextRunAt: string | null
+  /**
+   * The webhook URL THEY hold for this campaign — the one their scheduler
+   * actually posts each finished run to.
+   *
+   * Read back because it is registered once, at creation, and never
+   * re-registered. Our token is derived from a server secret rather than
+   * stored, so anything that changes which secret is picked (a new env var
+   * higher in the fallback chain, a rotated key) silently invalidates every
+   * URL they hold. The runs then keep happening and every delivery 401s,
+   * which looks exactly like "the rank map stopped updating".
+   */
+  webhookUrl: string | null
+  /** Top-level keys of their response, for reading a shape rather than guessing it. */
+  bodyKeys: string[]
 }
 
 /**
@@ -421,6 +442,8 @@ export async function getScheduledScanSchedule(id: string): Promise<CampaignSche
       scheduling: str(body.scheduling),
       schedulingType: str(body.scheduling_type),
       nextRunAt: str(body.next_run_at),
+      webhookUrl: str(body.webhook_url) || str(body.webhookUrl) || str(body.callback_url),
+      bodyKeys: Object.keys(body),
     }
   } catch {
     return null

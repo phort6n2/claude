@@ -8,6 +8,7 @@ import CityContentEditor from '@/components/admin/CityContentEditor'
 import PhotoManager from '@/components/admin/PhotoManager'
 import LogoCard from '@/components/admin/LogoCard'
 import ServiceAreaPlanner from '@/components/admin/ServiceAreaPlanner'
+import SiteScriptsCard from '@/components/admin/SiteScriptsCard'
 
 /**
  * "Website" tab — the client's hosted site: which address it lives at, and
@@ -29,6 +30,8 @@ export default function ClientSiteForm({
     logoUrl: string | null
     footerLogoUrl: string | null
     serviceAreas: string[]
+    headScripts: string | null
+    bodyEndScripts: string | null
   }
 }) {
   const [subdomainInput, setSubdomainInput] = useState(client.siteSubdomain || '')
@@ -215,6 +218,21 @@ export default function ClientSiteForm({
           patchUrl={`/api/clients/${client.id}/photos`}
           hasLogo={!!(pendingLogo || client.logoUrl)}
           emptyHint="The first photo becomes the washed background behind the hero; the rest fill the gallery. Photos of the actual van, bay and vehicles beat stock every time."
+        />
+      </section>
+
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+        <div className="px-6 pt-5 pb-1">
+          <h2 className="font-semibold text-gray-900">Custom scripts</h2>
+          <p className="text-sm text-gray-500">
+            Tags you want on every page of this shop&apos;s site — yours to set, not the
+            client&apos;s
+          </p>
+        </div>
+        <SiteScriptsCard
+          clientId={client.id}
+          headScripts={client.headScripts}
+          bodyEndScripts={client.bodyEndScripts}
         />
       </section>
 
