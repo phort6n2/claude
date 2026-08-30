@@ -1,4 +1,4 @@
-import { canViewSite, isPreview } from '@/lib/site-preview'
+import { canViewSite, isPreview, siteIsLive } from '@/lib/site-preview'
 import PreviewBanner from '@/components/sites/PreviewBanner'
 import { headers } from 'next/headers'
 import { servicePath } from '@/lib/site-paths'
@@ -170,7 +170,7 @@ export default async function ClientSitePage({ params }: PageProps) {
   // looking at it, and flipping ACTIVE "just to look" is how half-built
   // sites used to go live. Everyone else keeps getting the holding page.
   const preview = await isPreview(client.status)
-  if (client.status !== 'ACTIVE' && !preview) return <SiteUnavailable />
+  if (!siteIsLive(client.status) && !preview) return <SiteUnavailable />
 
   const [reviews, extras, locations, adsTracking, cityContent, keptPages] = await Promise.all([
     getReviews(client.id),

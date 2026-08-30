@@ -1,3 +1,4 @@
+import { siteIsLive } from '@/lib/site-preview'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
     },
   })
 
-  if (!client || client.status !== 'ACTIVE') {
+  if (!client || !siteIsLive(client.status)) {
     return NextResponse.json({ error: 'Client not found' }, { status: 404, headers: CORS })
   }
 

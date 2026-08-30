@@ -1,3 +1,4 @@
+import { LIVE_STATUSES } from '@/lib/site-preview'
 import { NextRequest } from 'next/server'
 import { servicePath, locationPath } from '@/lib/site-paths'
 import { prisma } from '@/lib/db'
@@ -40,8 +41,8 @@ export async function GET(request: NextRequest) {
 
   const client = await prisma.client.findFirst({
     where: label
-      ? { OR: [{ slug: label }, { siteSubdomain: label }], status: 'ACTIVE' }
-      : { domains: { some: { domain: bare } }, status: 'ACTIVE' },
+      ? { OR: [{ slug: label }, { siteSubdomain: label }], status: { in: [...LIVE_STATUSES] } }
+      : { domains: { some: { domain: bare } }, status: { in: [...LIVE_STATUSES] } },
     select: {
       id: true,
       slug: true,

@@ -191,7 +191,7 @@ export default async function PortalHomePage() {
           <Globe className="h-4 w-4" />
           Your website
         </div>
-        {client?.status !== 'ACTIVE' ? (
+        {client?.status === 'PAUSED' ? (
           <p className="text-amber-700">
             Your site is paused. Get in touch and we&apos;ll switch it back on.
           </p>

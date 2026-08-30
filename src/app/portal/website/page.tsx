@@ -49,7 +49,7 @@ export default async function PortalWebsitePage() {
         </p>
       </div>
 
-      {client?.status !== 'ACTIVE' && (
+      {client?.status === 'PAUSED' && (
         <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Your site is paused right now, so these changes will save but won&apos;t be visible until
           it&apos;s switched back on. Give us a call.

@@ -95,10 +95,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         data: {
           ...core,
           slug,
-          // ONBOARDING, not ACTIVE. Approving the answers is not the same as
-          // declaring the site finished — photos, logo and the Google Ads
-          // wiring still happen after this, and a client that goes live the
-          // moment a form is approved is one that goes live half-built.
+          // ONBOARDING, not ACTIVE — the label that says setup is unfinished.
+          // The SITE serves either way (siteIsLive() treats both as live, by
+          // the owner's call): empty sections strip themselves, so a site
+          // being built is leaner, never broken. What the label still gates
+          // is operational: readiness prompts, and the rank-campaign sweep
+          // which only takes ACTIVE clients.
           status: 'ONBOARDING',
           seoClient: intake.seo,
         },
