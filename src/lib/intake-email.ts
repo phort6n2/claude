@@ -54,7 +54,7 @@ export function welcomeEmailBody(
   const greeting = `Matt here, at Auto Glass Marketing Pros — really glad to be working with ${esc(input.businessName)}.`
   const lead = isExisting
     ? `Your site and lead tracking are already built and running. The next step is yours, and it is a quick one: this link checks that what we hold is right, and tells us where your leads should go.`
-    : `The next step is yours, and it is the one everything else is built from: the form asks for what your site needs — your address, what you work on, the towns you cover — and takes about ten minutes.`
+    : `The next step is yours, and it is the one everything else is built from: the form asks for what your Google Ads landing site needs — your address, what you work on, the towns you cover — and takes about ten minutes.`
 
   const cta = isExisting ? 'Check my details' : 'Start the form'
 
@@ -148,10 +148,13 @@ export async function sendWelcomeEmail(
       // the email is from one.
       from: `Matt at Auto Glass Marketing Pros <${address}>`,
       to: [input.to],
+      // "Google Ads landing site", because that is what a new shop signed up
+      // expecting — most arrive for the ads management, and a subject about
+      // "your site" reads like a website pitch they did not order.
       subject:
         input.kind === 'EXISTING'
           ? `${input.businessName} — switch on your lead alerts`
-          : `${input.businessName} — let's get your site built`,
+          : `${input.businessName} — let's build your Google Ads landing site`,
       html,
       text,
     })
