@@ -15,7 +15,15 @@
  * template already gates real behaviour on them.
  */
 
-export type FieldKind = 'text' | 'email' | 'tel' | 'textarea' | 'list' | 'boolean' | 'select'
+export type FieldKind =
+  | 'text'
+  | 'email'
+  | 'tel'
+  | 'textarea'
+  | 'list'
+  | 'boolean'
+  | 'select'
+  | 'hours'
 
 export interface IntakeField {
   key: string
@@ -143,8 +151,8 @@ export const INTAKE_SECTIONS: IntakeSection[] = [
       {
         key: 'hours',
         label: 'Opening hours',
-        kind: 'textarea',
-        placeholder: 'Mon–Fri 8:00 AM – 5:00 PM, Sat 9:00 AM – 2:00 PM',
+        kind: 'hours',
+        help: 'Tick the days you take work and set the times. Your site prints exactly what you set here.',
       },
       {
         key: 'warrantyTitle',

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { AlertCircle, Check, Loader2 } from 'lucide-react'
 import type { IntakeSection } from '@/lib/client-intake'
 import { errorFrom } from '@/lib/http-error'
+import { isHoursSchedule } from '@/lib/business-hours'
+import HoursGrid from '@/components/HoursGrid'
 
 /**
  * Read what the shop said, correct it, then approve.
@@ -143,6 +145,19 @@ export default function IntakeReview({
                       />
                       <span className="text-gray-900">{value === true ? 'Yes' : 'No'}</span>
                     </label>
+                  ) : field.kind === 'hours' ? (
+                    <div className="sm:pt-2">
+                      <HoursGrid
+                        value={isHoursSchedule(value) ? value : {}}
+                        disabled={approved}
+                        onChange={(schedule) => set(field.key, schedule)}
+                      />
+                      {typeof value === 'string' && value.trim() && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          They typed this before the editor existed: &ldquo;{value}&rdquo;
+                        </p>
+                      )}
+                    </div>
                   ) : field.kind === 'list' ? (
                     <ListArea
                       value={value}
