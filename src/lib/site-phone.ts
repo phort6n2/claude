@@ -45,5 +45,8 @@ export async function withSitePhone<
     return { ...client, phone: formatPhoneDisplay(external) || external }
   }
 
-  return client
+  // The shop's own line, exactly as typed into the intake — which can be
+  // "3215995777". Every path out of here formats for display; tel: links
+  // are unaffected because telHref strips to digits anyway.
+  return { ...client, phone: formatPhoneDisplay(client.phone) || client.phone }
 }

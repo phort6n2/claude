@@ -1,3 +1,4 @@
+import { formatPhoneDisplay } from '@/lib/lead-display'
 import { canViewSite, isPreview, siteIsLive } from '@/lib/site-preview'
 import PreviewBanner from '@/components/sites/PreviewBanner'
 import { headers } from 'next/headers'
@@ -143,7 +144,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const siteRoot = stance.canonicalOrigin
   const robots = stance.isCanonicalHost ? undefined : { index: false, follow: true }
   const title = `${client.businessName} | Auto Glass Repair & Replacement in ${client.city}, ${client.state}`
-  const description = `Fast, professional windshield repair and replacement in ${client.city}, ${client.state}. Free quotes, insurance assistance${client.offersMobileService ? ', mobile service to your home or office' : ''}. Call ${client.phone}.`
+  const description = `Fast, professional windshield repair and replacement in ${client.city}, ${client.state}. Free quotes, insurance assistance${client.offersMobileService ? ', mobile service to your home or office' : ''}. Call ${formatPhoneDisplay(client.phone) || client.phone}.`
 
   return {
     title,

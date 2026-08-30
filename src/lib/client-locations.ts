@@ -1,3 +1,4 @@
+import { formatPhoneDisplay } from '@/lib/lead-display'
 import { prisma } from '@/lib/db'
 
 /**
@@ -75,7 +76,7 @@ export async function getClientLocations(
       state: row.state,
       postalCode: row.postalCode,
       country: row.country || 'US',
-      phone: row.phone || fallback.phone,
+      phone: formatPhoneDisplay(row.phone || fallback.phone) || row.phone || fallback.phone,
       hours: row.hours,
       googleMapsUrl: row.googleMapsUrl,
       rating: row.gbpRating,
@@ -96,7 +97,7 @@ export async function getClientLocations(
       state: fallback.state,
       postalCode: fallback.postalCode,
       country: fallback.country || 'US',
-      phone: fallback.phone,
+      phone: formatPhoneDisplay(fallback.phone) || fallback.phone,
       hours: null,
       googleMapsUrl: fallback.googleMapsUrl,
       // The client-level rating is rendered by the page itself from

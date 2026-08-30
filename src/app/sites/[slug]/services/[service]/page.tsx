@@ -1,3 +1,4 @@
+import { formatPhoneDisplay } from '@/lib/lead-display'
 import { canViewSite, isPreview, siteIsLive } from '@/lib/site-preview'
 import PreviewBanner from '@/components/sites/PreviewBanner'
 import { headers } from 'next/headers'
@@ -136,7 +137,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const siteRoot = stance.canonicalOrigin
   const robots = stance.isCanonicalHost ? undefined : { index: false, follow: true }
   const title = `${page.name} in ${client.city}, ${client.state} | ${client.businessName}`
-  const description = `${page.short} Free quotes from ${client.businessName} in ${client.city}. Call ${client.phone}.`
+  const description = `${page.short} Free quotes from ${client.businessName} in ${client.city}. Call ${formatPhoneDisplay(client.phone) || client.phone}.`
   return {
     title,
     description,
