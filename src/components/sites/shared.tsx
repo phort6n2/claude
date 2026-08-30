@@ -970,11 +970,21 @@ export function MapSection({
     )
   }
   const lead = ordered[0]
-  const query = lead
-    ? mapQuery(client.businessName, lead)
-    : encodeURIComponent(
-        `${client.businessName}, ${client.streetAddress}, ${client.city}, ${client.state} ${client.postalCode}`
-      )
+  // A name-based map query only lands on THIS shop when Google actually
+  // knows this shop — searching the name of a business with no Business
+  // Profile snaps the pin to whichever similar-sounding shop Google does
+  // know, which put a competitor's listing on a client's own page. With no
+  // profile signal (no Maps URL, no reviews), the embed shows the service
+  // area instead: their city, zoomed out — true, useful, nobody else's pin.
+  const hasProfile = !!client.googleMapsUrl || !!reviews
+  const areaQuery = `${encodeURIComponent(`${lead?.city || client.city}, ${lead?.state || client.state}`)}&z=10`
+  const query = hasProfile
+    ? lead
+      ? mapQuery(client.businessName, lead)
+      : encodeURIComponent(
+          `${client.businessName}, ${client.streetAddress}, ${client.city}, ${client.state} ${client.postalCode}`
+        )
+    : areaQuery
   return (
     <section className="border-t border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
@@ -1488,11 +1498,22 @@ export function SiteFooter({
           <div>
             {footerLogo ? (
               // Plain on the dark band, like the reference — no white chip.
+              //
+              // When this is the HEADER's logo standing in (no footer file
+              // uploaded), it is repainted white in CSS: brightness(0) turns
+              // every visible pixel black, invert(1) flips them white, and
+              // the alpha channel is untouched — so dark ink on transparency,
+              // which is most shop logos, comes out perfectly legible here
+              // with nothing generated or stored. A deliberately uploaded
+              // footer logo renders exactly as given.
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={footerLogo}
                 alt={client.businessName}
                 className="h-10 w-auto max-w-[220px] object-contain mb-3.5"
+                style={
+                  client.footerLogoUrl ? undefined : { filter: 'brightness(0) invert(1)' }
+                }
               />
             ) : (
               <div className="mb-3">

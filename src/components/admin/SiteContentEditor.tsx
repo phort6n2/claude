@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Trash2, Loader2, Globe, Check, AlertCircle } from 'lucide-react'
+import { Trash2, Loader2, Globe, Check, AlertCircle, Sparkles } from 'lucide-react'
 import { errorFrom } from '@/lib/http-error'
 
 /**
@@ -74,6 +74,27 @@ export default function SiteContentEditor({
   const [importing, setImporting] = useState(false)
   const [warrantyTitle, setWarrantyTitle] = useState('')
   const [warrantyText, setWarrantyText] = useState('')
+  const [expandingWarranty, setExpandingWarranty] = useState(false)
+  const [expandError, setExpandError] = useState<string | null>(null)
+
+  async function expandWarranty() {
+    setExpandingWarranty(true)
+    setExpandError(null)
+    try {
+      const res = await fetch(`/api/clients/${clientId}/expand-warranty`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: warrantyTitle, text: warrantyText }),
+      })
+      if (!res.ok) throw new Error(await errorFrom(res, 'Could not expand it'))
+      const data = await res.json()
+      if (typeof data.text === 'string' && data.text.trim()) setWarrantyText(data.text.trim())
+    } catch (err) {
+      setExpandError(err instanceof Error ? err.message : 'Failed')
+    } finally {
+      setExpandingWarranty(false)
+    }
+  }
   const [footerBlurb, setFooterBlurb] = useState('')
   const [registrationName, setRegistrationName] = useState('')
   const [registrationNumber, setRegistrationNumber] = useState('')
@@ -423,6 +444,26 @@ export default function SiteContentEditor({
           value={warrantyText}
           onChange={(e) => setWarrantyText(e.target.value)}
         />
+        <div className="mt-2 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={expandWarranty}
+            disabled={expandingWarranty || (!warrantyText.trim() && !warrantyTitle.trim())}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+          >
+            {expandingWarranty ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
+            Expand into full terms
+          </button>
+          <span className="text-xs text-gray-400">
+            Rewrites what&apos;s typed into plain terms — it never adds durations or coverage the
+            shop didn&apos;t state. Read it before you move on.
+          </span>
+        </div>
+        {expandError && <p className="text-xs text-red-600 mt-1">{expandError}</p>}
       </div>
 
       {/* FAQ */}

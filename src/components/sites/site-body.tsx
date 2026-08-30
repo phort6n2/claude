@@ -10,6 +10,7 @@ import {
   ScanLine,
   CheckCircle2,
   Truck,
+  MapPin,
   ShieldCheck,
   BadgeCheck,
   Clock,
@@ -364,7 +365,7 @@ export function SiteBody({
             <SectionHead
               eyebrow="Services"
               title={currentServiceSlug ? 'Everything we handle' : 'What we handle'}
-              lead="Not sure whether yours is a repair or a replacement? Send a photo with your quote and we'll tell you \u2014 a chip caught early is a great deal cheaper than the crack it turns into."
+              lead="Not sure whether yours is a repair or a replacement? Send a photo with your quote and we'll tell you — a chip caught early is a great deal cheaper than the crack it turns into."
             />
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {gridServices.map((s) => {
@@ -406,6 +407,33 @@ export function SiteBody({
                   </h3>
                   <p className="text-[var(--tx-muted)] text-sm mt-1.5 mb-0">
                     Home, office, or roadside — the shop comes to you.
+                  </p>
+                  <span className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-[var(--brand)]">
+                    Get a quote
+                    <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
+                </a>
+              )}
+              {/* A shop that ticked only one or two services leaves the grid
+                  looking abandoned rather than focused. The filler card is
+                  built ONLY from data already on the record — city, state —
+                  and points at the quote form, so it claims nothing the shop
+                  never said. It disappears the moment a third real card
+                  exists. */}
+              {gridServices.length + (flags.offersMobileService ? 1 : 0) < 3 && (
+                <a
+                  href="#quote"
+                  className="group p-6 rounded-[20px] border border-[var(--line-card)] bg-white shadow-sm hover:shadow-md hover:border-[var(--line-strong)] hover:-translate-y-0.5 transition-all no-underline"
+                >
+                  <div className="h-10 w-10 rounded-[14px] flex items-center justify-center mb-4 bg-[var(--tint)]">
+                    <MapPin className="h-5 w-5 text-[var(--brand)]" />
+                  </div>
+                  <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold text-[var(--tx)] m-0">
+                    Local Auto Glass Experts
+                  </h3>
+                  <p className="text-[var(--tx-muted)] text-sm mt-1.5 mb-0">
+                    Based in {client.city}, {client.state} — talk to the shop doing the work and get
+                    a straight answer on repair versus replacement.
                   </p>
                   <span className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-[var(--brand)]">
                     Get a quote
