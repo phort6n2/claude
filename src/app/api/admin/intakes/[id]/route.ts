@@ -10,6 +10,7 @@ import {
   siteContentFromAnswers,
   type IntakeAnswers,
 } from '@/lib/client-intake'
+import { hoursAnswerText } from '@/lib/business-hours'
 
 export const dynamic = 'force-dynamic'
 
@@ -117,6 +118,38 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         update: content,
         create: { clientId, ...content },
       })
+    }
+
+    // Opening hours land on the primary shop. They were being collected and
+    // then dropped — hours live on ClientLocation, which nothing here wrote.
+    // For a one-shop client with no rows this creates the primary row from
+    // the address just approved; a client whose rows already exist gets the
+    // hours applied to the primary and nothing else touched. Mobile-only
+    // shops skip this: the site shows hours on shop cards, and they have no
+    // shop card to show.
+    const hours = hoursAnswerText(answers.hours)
+    if (hours && core.hasShopLocation) {
+      const primary = await prisma.clientLocation.findFirst({
+        where: { clientId },
+        orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
+        select: { id: true },
+      })
+      if (primary) {
+        await prisma.clientLocation.update({ where: { id: primary.id }, data: { hours } })
+      } else {
+        await prisma.clientLocation.create({
+          data: {
+            clientId,
+            label: core.city,
+            streetAddress: core.streetAddress,
+            city: core.city,
+            state: core.state,
+            postalCode: core.postalCode,
+            hours,
+            isPrimary: true,
+          },
+        })
+      }
     }
 
     await prisma.clientIntake.update({

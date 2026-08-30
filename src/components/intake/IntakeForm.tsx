@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AlertCircle, Check, ChevronRight, Loader2, ShieldCheck } from 'lucide-react'
 import type { IntakeSection } from '@/lib/client-intake'
+import { isHoursSchedule } from '@/lib/business-hours'
+import HoursGrid from '@/components/HoursGrid'
 
 /**
  * The form a shop fills in from their welcome email.
@@ -244,6 +246,19 @@ function Field({
   if (field.kind === 'list') {
     return (
       <ListField field={field} value={value} onChange={onChange} label={label} help={help} box={box} />
+    )
+  }
+
+  if (field.kind === 'hours') {
+    return (
+      <div>
+        {label}
+        {help}
+        <HoursGrid
+          value={isHoursSchedule(value) ? value : {}}
+          onChange={(schedule) => onChange(field.key, schedule)}
+        />
+      </div>
     )
   }
 
