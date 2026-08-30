@@ -127,6 +127,64 @@ export function welcomeEmailBody(
   return { html, text }
 }
 
+/**
+ * Tell the OPERATOR a form came back. The intake list shows "Waiting on you",
+ * but only to someone already looking at it — and a submitted form is a shop
+ * at peak momentum, so the review should happen while they still remember
+ * filling it in. Same ADMIN_EMAIL convention as the delivery alerts, and it
+ * never throws: losing the submission over a notification email would be
+ * backwards.
+ */
+export async function sendIntakeSubmittedEmail(input: {
+  intakeId: string
+  businessName: string
+  email: string
+  kind: string
+  seo: boolean
+}): Promise<{ sent: boolean; error?: string }> {
+  const to = process.env.ADMIN_EMAIL || process.env.MASTER_LEADS_EMAIL
+  if (!to) return { sent: false, error: 'No ADMIN_EMAIL configured' }
+
+  const apiKey = await secret('RESEND_API_KEY')
+  if (!apiKey) return { sent: false, error: 'RESEND_API_KEY is not configured' }
+
+  const base = process.env.APP_URL || 'https://glassleads.app'
+  const reviewUrl = `${base}/admin/intakes/${input.intakeId}`
+  const label = input.kind === 'EXISTING' ? 'existing client' : 'new shop'
+
+  try {
+    const configured = (await secret('RESEND_FROM')) || 'GlassLeads <leads@glassleads.app>'
+    const address = /<([^>]+)>/.exec(configured)?.[1] || configured
+    const { Resend } = await import('resend')
+    const resend = new Resend(apiKey)
+    const sent = await resend.emails.send({
+      from: `GlassLeads <${address}>`,
+      to: [to],
+      subject: `${input.businessName} submitted their intake — review it`,
+      html: `<!doctype html>
+<html><body style="margin:0;padding:24px;background:#f6f7f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#111827">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:28px">
+    <h1 style="margin:0 0 12px;font-size:20px">${esc(input.businessName)} finished the form</h1>
+    <p style="margin:0 0 18px;font-size:15px;line-height:1.55">${esc(label)}${input.seo ? ' · SEO plan' : ''} · sent to ${esc(input.email)}. Nothing goes live until you approve it.</p>
+    <p style="margin:0 0 18px">
+      <a href="${esc(reviewUrl)}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:10px;font-size:15px">Review the answers</a>
+    </p>
+    <p style="margin:0;font-size:13px;word-break:break-all;color:#6b7280"><a href="${esc(reviewUrl)}" style="color:#2563eb">${esc(reviewUrl)}</a></p>
+  </div>
+</body></html>`,
+      text: [
+        `${input.businessName} finished the intake form (${label}${input.seo ? ', SEO plan' : ''}).`,
+        '',
+        reviewUrl,
+      ].join('\n'),
+    })
+    if (sent.error) return { sent: false, error: sent.error.message }
+    return { sent: true }
+  } catch (error) {
+    return { sent: false, error: error instanceof Error ? error.message : 'send failed' }
+  }
+}
+
 export async function sendWelcomeEmail(
   input: WelcomeEmailInput
 ): Promise<{ ok: boolean; error?: string }> {
