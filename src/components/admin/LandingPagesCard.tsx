@@ -52,11 +52,43 @@ const LEVEL_LABEL: Record<LandingRow['level'], string> = {
   sitelink: 'Sitelink',
 }
 
+/** Rows with no campaign (account-level sitelinks) group under this label. */
+const ACCOUNT_LEVEL = 'Account-level sitelinks'
+
 export default function LandingPagesCard({ clientId }: { clientId: string }) {
   const [audit, setAudit] = useState<Audit | null>(null)
   const [reason, setReason] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [showClean, setShowClean] = useState(false)
+  // Campaigns the operator has unticked — a branding campaign that points at
+  // a partner page on purpose, a test they know about. Kept per client in
+  // localStorage: it is a viewing preference for one admin, not a fact about
+  // the account, and a DB column would promote it to one.
+  const [excluded, setExcluded] = useState<Set<string>>(new Set())
+  const storageKey = `ads-landing-excluded:${clientId}`
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(storageKey) || '[]')
+      if (Array.isArray(stored)) setExcluded(new Set(stored.filter((v) => typeof v === 'string')))
+    } catch {
+      /* fresh browser, nothing stored */
+    }
+  }, [storageKey])
+
+  const toggleCampaign = (name: string) => {
+    setExcluded((prev) => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      try {
+        localStorage.setItem(storageKey, JSON.stringify([...next]))
+      } catch {
+        /* private mode — the tick still works for this visit */
+      }
+      return next
+    })
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -79,8 +111,19 @@ export default function LandingPagesCard({ clientId }: { clientId: string }) {
     load()
   }, [load])
 
-  const offRows = audit?.rows.filter((row) => !row.ok) ?? []
-  const cleanRows = audit?.rows.filter((row) => row.ok) ?? []
+  const campaignOf = (row: LandingRow) => row.campaign || ACCOUNT_LEVEL
+  const campaigns = [...new Set((audit?.rows ?? []).map(campaignOf))].sort((a, b) =>
+    a === ACCOUNT_LEVEL ? 1 : b === ACCOUNT_LEVEL ? -1 : a.localeCompare(b)
+  )
+  const included = (audit?.rows ?? []).filter((row) => !excluded.has(campaignOf(row)))
+  const offRows = included.filter((row) => !row.ok)
+  const cleanRows = included.filter((row) => row.ok)
+  const strayHosts = [
+    ...new Set(
+      offRows.flatMap((row) => row.urls.filter((u) => !u.ok)).map((u) => u.host || 'unparseable URL')
+    ),
+  ]
+  const excludedCount = (audit?.rows.length ?? 0) - included.length
 
   return (
     <div className="p-6 pt-4 space-y-4">
@@ -88,8 +131,12 @@ export default function LandingPagesCard({ clientId }: { clientId: string }) {
         <p className="text-sm text-gray-600">
           {audit ? (
             <>
-              Checked <span className="font-semibold">{audit.checked}</span> live ads, asset groups
-              and sitelinks against{' '}
+              Checked <span className="font-semibold">{included.length}</span> live ads, asset
+              groups and sitelinks
+              {excludedCount > 0 && (
+                <span className="text-gray-400"> ({excludedCount} in unticked campaigns hidden)</span>
+              )}{' '}
+              against{' '}
               <span className="font-mono text-xs">{audit.allowedHosts.join(', ') || '(no hosts set)'}</span>
             </>
           ) : (
@@ -120,19 +167,46 @@ export default function LandingPagesCard({ clientId }: { clientId: string }) {
         </p>
       )}
 
-      {audit && audit.offTarget === 0 && (
+      {audit && campaigns.length > 1 && (
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            Campaigns in this check
+          </p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+            {campaigns.map((name) => (
+              <label key={name} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!excluded.has(name)}
+                  onChange={() => toggleCampaign(name)}
+                  className="h-4 w-4"
+                />
+                <span className={excluded.has(name) ? 'text-gray-400 line-through' : 'text-gray-800'}>
+                  {name}
+                </span>
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 mt-2">
+            Untick a campaign to leave it out of the verdict — for one that points elsewhere on
+            purpose. Remembered on this browser only.
+          </p>
+        </div>
+      )}
+
+      {audit && offRows.length === 0 && included.length > 0 && (
         <p className="text-sm text-green-700 flex items-center gap-1.5">
           <CheckCircle2 size={15} /> Every live click lands on this client&apos;s own pages.
         </p>
       )}
 
-      {audit && audit.offTarget > 0 && (
+      {audit && offRows.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5">
             <AlertCircle size={15} />
-            {audit.offTarget} of {audit.checked} point somewhere else
-            {audit.strayHosts.length > 0 && (
-              <span className="font-normal text-red-600">— {audit.strayHosts.join(', ')}</span>
+            {offRows.length} of {included.length} point somewhere else
+            {strayHosts.length > 0 && (
+              <span className="font-normal text-red-600">— {strayHosts.join(', ')}</span>
             )}
           </p>
           {offRows.map((row, index) => (
