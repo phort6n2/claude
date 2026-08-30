@@ -1,4 +1,4 @@
-import { isPreview } from '@/lib/site-preview'
+import { isPreview, siteIsLive } from '@/lib/site-preview'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
@@ -58,7 +58,7 @@ export default async function QuoteSentPage({ params, searchParams }: PageProps)
   })
   if (!client) notFound()
   const preview = await isPreview(client.status)
-  if (client.status !== 'ACTIVE' && !preview) return <SiteUnavailable />
+  if (!siteIsLive(client.status) && !preview) return <SiteUnavailable />
 
   client.phone = (await withSitePhone(client)).phone
   const basePath = sitePathPrefixFor(client, (await headers()).get('host'))

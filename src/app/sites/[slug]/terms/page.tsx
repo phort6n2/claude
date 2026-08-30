@@ -1,4 +1,4 @@
-import { canViewSite, isPreview } from '@/lib/site-preview'
+import { canViewSite, isPreview, siteIsLive } from '@/lib/site-preview'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
@@ -61,7 +61,7 @@ export default async function TermsPage({ params }: PageProps) {
   const client = await getClient(slug)
   if (!client) notFound()
   const preview = await isPreview(client.status)
-  if (client.status !== 'ACTIVE' && !preview) return <SiteUnavailable />
+  if (!siteIsLive(client.status) && !preview) return <SiteUnavailable />
   // Visitors see the tracking number when one is set; see lib/site-phone.ts.
   client.phone = (await withSitePhone(client)).phone
   const basePath = sitePathPrefixFor(client, (await headers()).get('host'))

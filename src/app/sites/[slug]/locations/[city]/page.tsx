@@ -1,4 +1,4 @@
-import { canViewSite, isPreview } from '@/lib/site-preview'
+import { canViewSite, isPreview, siteIsLive } from '@/lib/site-preview'
 import PreviewBanner from '@/components/sites/PreviewBanner'
 import { headers } from 'next/headers'
 import { servicePath, locationPath } from '@/lib/site-paths'
@@ -172,7 +172,7 @@ export default async function LocationPage({ params }: PageProps) {
   const client = await getClient(slug)
   if (!client) notFound()
   const preview = await isPreview(client.status)
-  if (client.status !== 'ACTIVE' && !preview) return <SiteUnavailable />
+  if (!siteIsLive(client.status) && !preview) return <SiteUnavailable />
   // Visitors see the tracking number when one is set; see lib/site-phone.ts.
   client.phone = (await withSitePhone(client)).phone
 

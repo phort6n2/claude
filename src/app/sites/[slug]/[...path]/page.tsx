@@ -1,4 +1,4 @@
-import { isPreview } from '@/lib/site-preview'
+import { isPreview, siteIsLive } from '@/lib/site-preview'
 import PreviewBanner from '@/components/sites/PreviewBanner'
 import { headers } from 'next/headers'
 import { servicePath } from '@/lib/site-paths'
@@ -234,7 +234,7 @@ export default async function CatchAllPage({ params }: PageProps) {
   const { client, page, redirect } = await resolve(slug, path)
   if (!client) notFound()
   const preview = await isPreview(client.status)
-  if (client.status !== 'ACTIVE' && !preview) return <SiteUnavailable />
+  if (!siteIsLive(client.status) && !preview) return <SiteUnavailable />
 
   if (!page) {
     if (redirect) permanentRedirect(redirect.toPath)

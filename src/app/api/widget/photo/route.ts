@@ -1,3 +1,4 @@
+import { siteIsLive } from '@/lib/site-preview'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { storeDamagePhoto, MAX_DAMAGE_UPLOAD_BYTES } from '@/lib/photo-upload'
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
   const client = await prisma.client
     .findUnique({ where: { slug }, select: { slug: true, status: true } })
     .catch(() => null)
-  if (!client || client.status !== 'ACTIVE') {
+  if (!client || !siteIsLive(client.status)) {
     return NextResponse.json({ error: 'Client not found' }, { status: 404, headers })
   }
 
