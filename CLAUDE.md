@@ -341,6 +341,13 @@ action, so two lead actions in one category cannot be told apart by bidding.
 - The audit **reads only**, on the Advertising tab per client and at
   `/api/admin/google-ads/conversion-audit` for all of them. An audit that
   fixes things is one nobody can run to find out what is wrong.
+- **Landing pages are audited too** (`google-ads-landing.ts`, "Where the ads
+  land" on the Advertising tab): every ENABLED ad (`final_urls` AND
+  `final_mobile_urls`), PMax asset group, and sitelink at all three
+  attachment levels, judged against the client's subdomain and custom
+  domains. A click landing anywhere else spends the same money with none of
+  the tracking, and Google cannot flag it because it does not know which
+  host is ours. Enabled-only on purpose — paused strays are noise.
 - **Rename, never recreate.** History, volume and bidding learning live on the
   action; a fresh one starts from zero and re-enters learning. So a right-shape
   action under a wrong name is reported as a rename, naming the action.
