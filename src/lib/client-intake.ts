@@ -106,6 +106,13 @@ export const INTAKE_SECTIONS: IntakeSection[] = [
       { key: 'offersBackWindowRepair', label: 'Back glass replacement', kind: 'boolean' },
       { key: 'offersSunroofRepair', label: 'Sunroof glass', kind: 'boolean' },
       { key: 'offersAdasCalibration', label: 'ADAS calibration', kind: 'boolean' },
+    ],
+  },
+  {
+    key: 'reach',
+    title: 'Where you work',
+    blurb: 'How customers get to you, and the towns your site should claim.',
+    fields: [
       {
         key: 'hasShopLocation',
         label: 'Customers can come to a shop',
@@ -117,6 +124,7 @@ export const INTAKE_SECTIONS: IntakeSection[] = [
         key: 'serviceAreas',
         label: 'Towns you cover',
         kind: 'list',
+        placeholder: 'One town per line',
         help: 'The first five get their own page. List the ones you actually work in — being nearby is not the same as serving it.',
       },
     ],

@@ -242,19 +242,8 @@ function Field({
   }
 
   if (field.kind === 'list') {
-    const entries = Array.isArray(value) ? (value as string[]) : []
     return (
-      <label className="block">
-        {label}
-        {help}
-        <textarea
-          value={entries.join('\n')}
-          onChange={(e) => onChange(field.key, e.target.value.split('\n').map((v) => v.trim()).filter(Boolean))}
-          rows={4}
-          placeholder="One per line"
-          className={box}
-        />
-      </label>
+      <ListField field={field} value={value} onChange={onChange} label={label} help={help} box={box} />
     )
   }
 
@@ -304,6 +293,61 @@ function Field({
         value={typeof value === 'string' ? value : ''}
         onChange={(e) => onChange(field.key, e.target.value)}
         placeholder={field.placeholder}
+        className={box}
+      />
+    </label>
+  )
+}
+
+/**
+ * A list typed as free text.
+ *
+ * WHAT IS SHOWN IS THE RAW TEXT, and the parsed list rides along beside it.
+ * The old version rendered the parsed list back into the textarea on every
+ * keystroke, and the per-entry trim ate the trailing space the instant it was
+ * typed — so "Colorado Springs" could never be entered at all. The person on
+ * this form is a shop owner typing town names; a form that refuses the space
+ * bar reads as broken, because it is.
+ *
+ * Commas work as separators too, because "Denver, Aurora, Lakewood" is how
+ * people actually type a list when nobody tells them otherwise.
+ */
+function ListField({
+  field,
+  value,
+  onChange,
+  label,
+  help,
+  box,
+}: {
+  field: IntakeSection['fields'][number]
+  value: unknown
+  onChange: (key: string, value: unknown) => void
+  label: React.ReactNode
+  help: React.ReactNode
+  box: string
+}) {
+  const [raw, setRaw] = useState(() =>
+    Array.isArray(value) ? (value as string[]).join('\n') : ''
+  )
+  return (
+    <label className="block">
+      {label}
+      {help}
+      <textarea
+        value={raw}
+        onChange={(e) => {
+          setRaw(e.target.value)
+          onChange(
+            field.key,
+            e.target.value
+              .split(/[\n,]/)
+              .map((v) => v.trim())
+              .filter(Boolean)
+          )
+        }}
+        rows={4}
+        placeholder={field.placeholder || 'One per line'}
         className={box}
       />
     </label>
