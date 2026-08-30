@@ -213,6 +213,9 @@ model Client {
 
   // Admin Push Notification Subscriptions
   adminPushSubscriptions AdminPushSubscriptionClient[]
+
+  // Day-one walkthrough state, portal-side
+  onboarding ClientOnboarding?
 }
 
 enum ClientStatus {
@@ -658,6 +661,32 @@ model ClientIntake {
   updatedAt DateTime @updatedAt
 
   @@index([status])
+}
+
+/// The day-one walkthrough, from the shop's side of the portal.
+///
+/// Only what CANNOT be derived is stored. Whether a lead has arrived, or been
+/// called, the database already knows; whether the shop actually received a
+/// test alert or put the portal on their phone, only they do — so those are
+/// stamps they set themselves. A checklist that re-asks what the data
+/// already answers trains people to tick without reading.
+model ClientOnboarding {
+  id       String @id @default(cuid())
+  clientId String @unique
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  /// When the portal last fired the test alert, for rate limiting.
+  testAlertSentAt DateTime?
+  /// They pressed "it arrived" — proof the whitelist worked end to end.
+  alertsConfirmedAt DateTime?
+  /// They put the portal on their phone's home screen. Self-reported; there
+  /// is no honest way to detect it.
+  appInstalledAt DateTime?
+  /// They closed the walkthrough. Dismissed is a decision, not a completion.
+  dismissedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ============================================

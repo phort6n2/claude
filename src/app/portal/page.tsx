@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { Inbox, Phone, Globe, TrendingUp, ArrowRight, Star } from 'lucide-react'
 import { getPortalSession } from '@/lib/portal-auth'
 import { prisma } from '@/lib/db'
+import { deliverabilityGuide } from '@/lib/alert-deliverability'
+import GettingStartedCard from '@/components/portal/GettingStartedCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -64,6 +66,34 @@ export default async function PortalHomePage() {
     prisma.clientGbpReviews.findUnique({ where: { clientId: session.clientId } }).catch(() => null),
   ])
 
+  // The walkthrough's state. Two of its steps are derived — a lead exists,
+  // and a lead has been acted on — so the card can tick itself the moment the
+  // product does its job.
+  const [onboarding, notification, totalLeads, actionedLeads, guide] = await Promise.all([
+    prisma.clientOnboarding.findUnique({ where: { clientId: session.clientId } }).catch(() => null),
+    prisma.clientNotification
+      .findUnique({
+        where: { clientId: session.clientId },
+        select: { emailEnabled: true, emailTo: true, smsEnabled: true, smsTo: true },
+      })
+      .catch(() => null),
+    prisma.lead.count({ where: { clientId: session.clientId } }).catch(() => 0),
+    prisma.lead
+      .count({
+        where: {
+          clientId: session.clientId,
+          OR: [{ firstTouchedAt: { not: null } }, { status: { not: 'NEW' } }],
+        },
+      })
+      .catch(() => 0),
+    deliverabilityGuide().catch(() => null),
+  ])
+
+  const alertsConfirmed = !!onboarding?.alertsConfirmedAt
+  const appInstalled = !!onboarding?.appInstalledAt
+  const walkthroughDone = alertsConfirmed && appInstalled && totalLeads > 0 && actionedLeads > 0
+  const showWalkthrough = !onboarding?.dismissedAt && !walkthroughDone
+
   const delta = thisWeek - lastWeek
   const siteUrl = client?.siteSubdomain
     ? `https://${client.siteSubdomain}.glassleads.app`
@@ -96,6 +126,33 @@ export default async function PortalHomePage() {
           </span>
           <ArrowRight className="h-5 w-5" />
         </Link>
+      )}
+
+      {/* Below the waiting-leads banner on purpose: a lead that needs a call
+          outranks set-up, always. */}
+      {showWalkthrough && (
+        <GettingStartedCard
+          senders={
+            guide?.senders ?? { emailAddress: null, emailName: 'AUTO GLASS LEAD', smsNumber: null }
+          }
+          emailSteps={guide?.email ?? []}
+          smsSteps={guide?.sms ?? []}
+          recipients={{
+            emails: notification?.emailEnabled ? (notification?.emailTo ?? []) : [],
+            phones: notification?.smsEnabled ? (notification?.smsTo ?? []) : [],
+          }}
+          hasRecipients={
+            !!(
+              (notification?.emailEnabled && (notification?.emailTo?.length ?? 0) > 0) ||
+              (notification?.smsEnabled && (notification?.smsTo?.length ?? 0) > 0)
+            )
+          }
+          testSentAt={onboarding?.testAlertSentAt?.toISOString() ?? null}
+          alertsConfirmed={alertsConfirmed}
+          appInstalled={appInstalled}
+          hasLead={totalLeads > 0}
+          hasActioned={actionedLeads > 0}
+        />
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
