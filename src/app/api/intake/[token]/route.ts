@@ -84,5 +84,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     data: { answers: answers as never, status: 'SUBMITTED', submittedAt: new Date() },
   })
 
+  // Tell the admin — on the TRANSITION only, so pressing submit twice (or
+  // re-submitting after an edit) does not stack emails. The result is
+  // ignored on purpose: the submission is saved either way, and the intake
+  // list still shows "Waiting on you" if the email never arrives.
+  if (intake.status !== 'SUBMITTED') {
+    const { sendIntakeSubmittedEmail } = await import('@/lib/intake-email')
+    await sendIntakeSubmittedEmail({
+      intakeId: intake.id,
+      businessName: intake.businessName,
+      email: intake.email,
+      kind: intake.kind,
+      seo: intake.seo,
+    }).catch(() => null)
+  }
+
   return NextResponse.json({ ok: true })
 }
