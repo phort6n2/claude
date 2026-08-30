@@ -75,14 +75,18 @@ export async function runCallAnalysisPipeline(callAnalysisId: string): Promise<b
     return false
   }
 
-  const deepgramKey = process.env.DEEPGRAM_API_KEY
-  const anthropicKey = process.env.ANTHROPIC_API_KEY
+  // Settings → API keys first, env second — a key saved through the
+  // Settings screen must work here too, not only for the features that
+  // happened to read the table.
+  const { secretSetting } = await import('@/lib/secret-settings')
+  const deepgramKey = await secretSetting('DEEPGRAM_API_KEY')
+  const anthropicKey = await secretSetting('ANTHROPIC_API_KEY')
   if (!deepgramKey) {
-    await markFailed(callAnalysisId, 'DEEPGRAM_API_KEY is not configured')
+    await markFailed(callAnalysisId, 'No Deepgram API key configured (Settings → API keys)')
     return false
   }
   if (!anthropicKey) {
-    await markFailed(callAnalysisId, 'ANTHROPIC_API_KEY is not configured')
+    await markFailed(callAnalysisId, 'No Anthropic API key configured (Settings → API keys)')
     return false
   }
 

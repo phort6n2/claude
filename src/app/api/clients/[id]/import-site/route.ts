@@ -5,8 +5,11 @@ import { importSiteContent, looksLikeForeignMark } from '@/lib/site-import'
 import { mirrorImages, mirrorRemoteImage } from '@/lib/photo-mirror'
 
 export const dynamic = 'force-dynamic'
-// Crawl (up to 5 pages) + model extraction can exceed the default budget.
-export const maxDuration = 120
+// Crawl (up to 5 pages) + the model reading up to 24 images + mirroring the
+// kept photos to blob storage, all in one request. 120 was measured too
+// tight on slow shop hosts, and a platform timeout surfaces to the admin as
+// a bare "Import failed" with everything half-done.
+export const maxDuration = 300
 
 interface RouteContext {
   params: Promise<{ id: string }>

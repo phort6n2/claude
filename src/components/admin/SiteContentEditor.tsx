@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Trash2, Loader2, Globe, Check, AlertCircle } from 'lucide-react'
+import { errorFrom } from '@/lib/http-error'
 
 /**
  * Editorial content for a client's hosted site. Owns its own load/save
@@ -206,11 +207,14 @@ export default function SiteContentEditor({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: importUrl }),
       })
-      const data = await res.json()
+      // errorFrom, because a platform timeout answers with an HTML page and
+      // res.json() on that throws — the admin then saw "Import failed" with
+      // no hint the function simply ran out of time.
       if (!res.ok) {
-        setMessage({ ok: false, text: data.error || 'Import failed' })
+        setMessage({ ok: false, text: await errorFrom(res, 'Import failed') })
         return
       }
+      const data = await res.json()
       const d = data.draft
       if (d.warrantyTitle) setWarrantyTitle(d.warrantyTitle)
       if (d.warrantyText) setWarrantyText(d.warrantyText)
