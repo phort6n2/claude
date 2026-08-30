@@ -392,8 +392,14 @@ export async function importSiteContent(
   const check = validatePublicUrl(rawUrl)
   if (!check.ok) return { ok: false, error: check.error }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) return { ok: false, error: 'ANTHROPIC_API_KEY is not configured' }
+  // Settings → API keys first, env second — the same resolution the other
+  // model-backed features use. Reading only the env is how a key saved
+  // through the Settings screen "did not exist" for this one feature.
+  const { secretSetting } = await import('@/lib/secret-settings')
+  const apiKey = await secretSetting('ANTHROPIC_API_KEY')
+  if (!apiKey) {
+    return { ok: false, error: 'No Anthropic API key configured (Settings → API keys).' }
+  }
 
   const mainHtml = await fetchHtml(check.url)
   if (!mainHtml) {
@@ -616,6 +622,12 @@ ${pages.map((p) => `=== ${p.url} ===\n${p.text}`).join('\n\n')}`
     }
   } catch (err) {
     console.error('[SiteImport] Extraction failed:', err)
-    return { ok: false, error: 'Extraction failed — try again in a minute' }
+    // The real reason travels to the admin. "Try again in a minute" was
+    // hiding an expired API key behind advice that could never help.
+    const detail = err instanceof Error ? err.message : ''
+    return {
+      ok: false,
+      error: detail ? `Extraction failed: ${detail}` : 'Extraction failed — try again in a minute',
+    }
   }
 }
