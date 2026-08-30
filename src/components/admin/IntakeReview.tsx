@@ -36,6 +36,7 @@ export default function IntakeReview({
   const [answers, setAnswers] = useState<Answers>(initialAnswers)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [inviteNote, setInviteNote] = useState<{ clientId: string; note: string } | null>(null)
   const approved = status === 'APPROVED'
 
   const set = (key: string, value: unknown) => {
@@ -54,6 +55,14 @@ export default function IntakeReview({
       })
       if (!res.ok) throw new Error(await errorFrom(res, 'Could not approve this'))
       const data = await res.json()
+      // An invite that did not send is worth stopping for — the approval is
+      // done either way, but "the shop got their email" is exactly the kind
+      // of thing that gets assumed. Redirecting past the warning is how.
+      if (data.followUp && data.followUp.emailed === false && data.followUp.note) {
+        setInviteNote({ clientId: data.clientId, note: data.followUp.note })
+        setSaving(false)
+        return
+      }
       router.push(`/admin/clients/${data.clientId}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed')
@@ -131,7 +140,23 @@ export default function IntakeReview({
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {approved ? (
+      {inviteNote && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="font-medium flex items-center gap-1.5">
+            <AlertCircle size={15} /> Approved — but the shop was not emailed.
+          </p>
+          <p className="mt-1">{inviteNote.note}</p>
+          <button
+            type="button"
+            onClick={() => router.push(`/admin/clients/${inviteNote.clientId}`)}
+            className="mt-2 text-sm font-semibold text-amber-900 underline"
+          >
+            Go to the client
+          </button>
+        </div>
+      )}
+
+      {approved || inviteNote ? (
         <p className="text-sm text-green-700 flex items-center gap-1.5">
           <Check size={15} /> Approved — this is a client now.
         </p>

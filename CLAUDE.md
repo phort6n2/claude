@@ -255,6 +255,46 @@ distance that orders the list is measured rather than claimed. It writes
 nothing: coverage is a business fact, and a town twenty minutes away across a
 river they never cross looks exactly like one they serve daily.
 
+### Onboarding (intake → approval → walkthrough)
+
+`client-intake.ts` (ONE field list read by the form, the review page and the
+mapper), `intake-token.ts` + `/welcome/[token]` (the public form; the link
+carries its own authority), `/admin/intakes` (review), `intake-email.ts` (the
+invite), `portal-email.ts` (approval + login emails), and the portal-side
+walkthrough (`GettingStartedCard`, `/api/portal/onboarding`,
+`ClientOnboarding`).
+
+- **Nothing is real until an admin approves.** Submit writes a draft; approve
+  copies it onto a Client (NEW → created as ONBOARDING, EXISTING → diff
+  applied), sets alert recipients, then creates a portal `ClientUser` for the
+  intake's email and sends the "you're in" email with a magic link. That email
+  goes to the address the intake was SENT to — the one that has proven it
+  reaches a human — not the business email typed into the form.
+- **Approval never fails on the email.** The invite result rides back as
+  `followUp`; the review screen stops and shows it when nothing was sent. An
+  intake email already attached to another client's login is reported, not
+  reassigned.
+- **The portal signs in by emailed link, and that is the front door.**
+  Intake-created users have no password. `/portal/login` defaults to
+  "email me a sign-in link" (password behind a toggle), `request-link`
+  actually sends the email (it used to log it to the console and answer
+  "sent"), and the response is identical for known and unknown addresses —
+  the endpoint is public, and a distinguishable miss is a directory of who
+  uses the platform. The verify PAGE posts JSON to the verify API; that API
+  had only a GET, so every magic link died on a 405. Both handlers exist now;
+  don't remove either.
+- **The walkthrough is four steps, two of which tick themselves.** Prove a
+  test alert arrives (the shop presses "it arrived" — a 200 from Resend and a
+  message a human saw are different facts, and the gap is the spam folder),
+  put the portal on the home screen, then "first lead" and "first lead acted
+  on" complete from data. Stored stamps live in `ClientOnboarding`
+  (bootstrap: `CLIENT_ONBOARDING_SQL`); derived states are never stored.
+- **The portal test button and the admin test button send the SAME message**
+  (`test-alert.ts`). A test that only nearly matches a real alert re-creates
+  the bug the faithful-replica rule exists to prevent. The send-test action
+  refuses to stamp when nothing was handed to a provider — "sent, go check"
+  about a message that never left teaches a shop to distrust the checklist.
+
 ### The importer
 
 `site-import.ts` crawls a shop's existing website and drafts their content.

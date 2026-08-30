@@ -286,6 +286,29 @@ export const RANK_WEBHOOK_LOG_SQL: string[] = [
   `CREATE INDEX IF NOT EXISTS "RankWebhookLog_clientId_createdAt_idx" ON "RankWebhookLog"("clientId", "createdAt")`,
 ]
 
+/**
+ * The portal's day-one walkthrough. A new table rather than columns on
+ * Client, so existing Client queries keep working even before this SQL runs.
+ */
+export const CLIENT_ONBOARDING_SQL: string[] = [
+  `CREATE TABLE IF NOT EXISTS "ClientOnboarding" (
+     "id"                TEXT NOT NULL,
+     "clientId"          TEXT NOT NULL,
+     "testAlertSentAt"   TIMESTAMP(3),
+     "alertsConfirmedAt" TIMESTAMP(3),
+     "appInstalledAt"    TIMESTAMP(3),
+     "dismissedAt"       TIMESTAMP(3),
+     "createdAt"         TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     "updatedAt"         TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     CONSTRAINT "ClientOnboarding_pkey" PRIMARY KEY ("id")
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "ClientOnboarding_clientId_key" ON "ClientOnboarding"("clientId")`,
+  `DO $$ BEGIN
+    ALTER TABLE "ClientOnboarding" ADD CONSTRAINT "ClientOnboarding_clientId_fkey"
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+]
+
 /** Everything the running code assumes exists. */
 export const BOOTSTRAP_SQL: string[] = [
   ...CALL_TRACKING_SQL,
@@ -303,6 +326,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...CLIENT_INTAKE_SQL,
   ...SITE_SCRIPTS_SQL,
   ...RANK_WEBHOOK_LOG_SQL,
+  ...CLIENT_ONBOARDING_SQL,
 ]
 
 /**
