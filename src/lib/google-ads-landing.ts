@@ -98,7 +98,10 @@ export async function auditLandingUrls(
   // audit that skipped it would pass exactly the ads most likely to be wrong.
   const ads = await adsSearch(
     customerId,
-    `SELECT campaign.name, ad_group.name, ad_group_ad.ad.name, ad_group_ad.ad.type,
+    // GAQL wants every field the WHERE clause names to also be SELECTed —
+    // found live: "The following field must be present in SELECT clause".
+    `SELECT campaign.name, campaign.status, ad_group.name, ad_group.status,
+            ad_group_ad.status, ad_group_ad.ad.name, ad_group_ad.ad.type,
             ad_group_ad.ad.final_urls, ad_group_ad.ad.final_mobile_urls
      FROM ad_group_ad
      WHERE campaign.status = 'ENABLED' AND ad_group.status = 'ENABLED'
@@ -123,7 +126,8 @@ export async function auditLandingUrls(
   // Performance Max sends clicks through asset groups, not ads.
   const assetGroups = await adsSearch(
     customerId,
-    `SELECT campaign.name, asset_group.name, asset_group.final_urls
+    `SELECT campaign.name, campaign.status, asset_group.name, asset_group.status,
+            asset_group.final_urls
      FROM asset_group
      WHERE campaign.status = 'ENABLED' AND asset_group.status = 'ENABLED'`
   )
@@ -141,14 +145,18 @@ export async function auditLandingUrls(
   // Sitelinks are their own clickable URLs and attach at three levels; an
   // account-level sitelink pointing at the old site rides on EVERY campaign.
   const sitelinkQueries = [
-    `SELECT asset.sitelink_asset.link_text, asset.final_urls
+    `SELECT customer_asset.field_type, customer_asset.status,
+            asset.sitelink_asset.link_text, asset.final_urls
      FROM customer_asset
      WHERE customer_asset.field_type = 'SITELINK' AND customer_asset.status = 'ENABLED'`,
-    `SELECT campaign.name, asset.sitelink_asset.link_text, asset.final_urls
+    `SELECT campaign.name, campaign.status, campaign_asset.field_type, campaign_asset.status,
+            asset.sitelink_asset.link_text, asset.final_urls
      FROM campaign_asset
      WHERE campaign_asset.field_type = 'SITELINK' AND campaign_asset.status = 'ENABLED'
        AND campaign.status = 'ENABLED'`,
-    `SELECT campaign.name, ad_group.name, asset.sitelink_asset.link_text, asset.final_urls
+    `SELECT campaign.name, campaign.status, ad_group.name, ad_group.status,
+            ad_group_asset.field_type, ad_group_asset.status,
+            asset.sitelink_asset.link_text, asset.final_urls
      FROM ad_group_asset
      WHERE ad_group_asset.field_type = 'SITELINK' AND ad_group_asset.status = 'ENABLED'
        AND campaign.status = 'ENABLED' AND ad_group.status = 'ENABLED'`,
