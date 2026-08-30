@@ -1,3 +1,4 @@
+import { canViewSite, isPreview } from '@/lib/site-preview'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
@@ -45,7 +46,7 @@ async function getClient(slug: string) {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params
   const client = await getClient(slug)
-  if (!client || client.status !== 'ACTIVE') return { title: 'Not Found' }
+  if (!client || !(await canViewSite(client.status))) return { title: 'Not Found' }
   return {
     title: `Privacy Policy | ${client.businessName}`,
     robots: { index: false },
@@ -59,7 +60,8 @@ export default async function PrivacyPage({ params }: PageProps) {
   const { slug } = await params
   const client = await getClient(slug)
   if (!client) notFound()
-  if (client.status !== 'ACTIVE') return <SiteUnavailable />
+  const preview = await isPreview(client.status)
+  if (client.status !== 'ACTIVE' && !preview) return <SiteUnavailable />
   // Visitors see the tracking number when one is set; see lib/site-phone.ts.
   client.phone = (await withSitePhone(client)).phone
   const basePath = sitePathPrefixFor(client, (await headers()).get('host'))

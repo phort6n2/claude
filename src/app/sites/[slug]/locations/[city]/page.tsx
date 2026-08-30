@@ -1,3 +1,5 @@
+import { canViewSite, isPreview } from '@/lib/site-preview'
+import PreviewBanner from '@/components/sites/PreviewBanner'
 import { headers } from 'next/headers'
 import { servicePath, locationPath } from '@/lib/site-paths'
 import { notFound } from 'next/navigation'
@@ -125,7 +127,7 @@ async function getReviews(clientId: string): Promise<ReviewsData | null> {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug, city } = await params
   const client = await getClient(slug)
-  if (!client || client.status !== 'ACTIVE') return { title: 'Not Found' }
+  if (!client || !(await canViewSite(client.status))) return { title: 'Not Found' }
   const locations = await getClientLocations(client.id, client)
   const location = findLocation(
     mergeServiceAreas(client.serviceAreas || [], locations.map((l) => l.city)),
@@ -169,7 +171,8 @@ export default async function LocationPage({ params }: PageProps) {
   const { slug, city } = await params
   const client = await getClient(slug)
   if (!client) notFound()
-  if (client.status !== 'ACTIVE') return <SiteUnavailable />
+  const preview = await isPreview(client.status)
+  if (client.status !== 'ACTIVE' && !preview) return <SiteUnavailable />
   // Visitors see the tracking number when one is set; see lib/site-phone.ts.
   client.phone = (await withSitePhone(client)).phone
 
@@ -270,6 +273,7 @@ export default async function LocationPage({ params }: PageProps) {
       className="gl-site min-h-screen bg-[var(--paper)] text-[var(--tx)] leading-[1.62]"
       style={palette as React.CSSProperties}
     >
+      {preview && <PreviewBanner status={client.status} />}
       <SiteBaseStyles />
       <SiteAnalytics
         projectId={client.clarityProjectId}
