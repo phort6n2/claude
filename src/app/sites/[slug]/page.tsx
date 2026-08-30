@@ -1,3 +1,5 @@
+import { canViewSite, isPreview } from '@/lib/site-preview'
+import PreviewBanner from '@/components/sites/PreviewBanner'
 import { headers } from 'next/headers'
 import { servicePath } from '@/lib/site-paths'
 import { notFound } from 'next/navigation'
@@ -132,7 +134,7 @@ async function getReviews(clientId: string): Promise<ReviewsData | null> {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params
   const client = await getClient(slug)
-  if (!client || client.status !== 'ACTIVE') return { title: 'Not Found' }
+  if (!client || !(await canViewSite(client.status))) return { title: 'Not Found' }
 
   // Which host is this request on? Only the canonical one may be indexed;
   // every other host self-canonicalises and asks to stay out of the index.
@@ -164,7 +166,11 @@ export default async function ClientSitePage({ params }: PageProps) {
   const client = await getClient(slug)
 
   if (!client) notFound()
-  if (client.status !== 'ACTIVE') return <SiteUnavailable />
+  // Admins see the full render of a not-live site — building one requires
+  // looking at it, and flipping ACTIVE "just to look" is how half-built
+  // sites used to go live. Everyone else keeps getting the holding page.
+  const preview = await isPreview(client.status)
+  if (client.status !== 'ACTIVE' && !preview) return <SiteUnavailable />
 
   const [reviews, extras, locations, adsTracking, cityContent, keptPages] = await Promise.all([
     getReviews(client.id),
@@ -237,6 +243,7 @@ export default async function ClientSitePage({ params }: PageProps) {
       className="gl-site min-h-screen bg-[var(--paper)] text-[var(--tx)] leading-[1.62]"
       style={palette as React.CSSProperties}
     >
+      {preview && <PreviewBanner status={client.status} />}
       <SiteBaseStyles />
       <SiteAnalytics
         projectId={client.clarityProjectId}

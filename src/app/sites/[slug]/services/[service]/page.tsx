@@ -1,3 +1,5 @@
+import { canViewSite, isPreview } from '@/lib/site-preview'
+import PreviewBanner from '@/components/sites/PreviewBanner'
 import { headers } from 'next/headers'
 import { servicePath } from '@/lib/site-paths'
 import { notFound } from 'next/navigation'
@@ -125,7 +127,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug, service } = await params
   const page = getServicePage(service)
   const client = await getClient(slug)
-  if (!page || !client || client.status !== 'ACTIVE') return { title: 'Not Found' }
+  if (!page || !client || !(await canViewSite(client.status))) return { title: 'Not Found' }
 
   // Which host is this request on? Only the canonical one may be indexed;
   // every other host self-canonicalises and asks to stay out of the index.
@@ -158,7 +160,8 @@ export default async function ServicePage({ params }: PageProps) {
 
   const client = await getClient(slug)
   if (!client) notFound()
-  if (client.status !== 'ACTIVE') return <SiteUnavailable />
+  const preview = await isPreview(client.status)
+  if (client.status !== 'ACTIVE' && !preview) return <SiteUnavailable />
   // Visitors see the tracking number when one is set; see lib/site-phone.ts.
   client.phone = (await withSitePhone(client)).phone
   if (!client[page.flag]) notFound()
@@ -228,6 +231,7 @@ export default async function ServicePage({ params }: PageProps) {
       className="gl-site min-h-screen bg-[var(--paper)] text-[var(--tx)] leading-[1.62]"
       style={palette as React.CSSProperties}
     >
+      {preview && <PreviewBanner status={client.status} />}
       <SiteBaseStyles />
       <SiteAnalytics
         projectId={client.clarityProjectId}

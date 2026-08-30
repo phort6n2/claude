@@ -1,3 +1,5 @@
+import { isPreview } from '@/lib/site-preview'
+import PreviewBanner from '@/components/sites/PreviewBanner'
 import { headers } from 'next/headers'
 import { servicePath } from '@/lib/site-paths'
 import { notFound, permanentRedirect } from 'next/navigation'
@@ -231,7 +233,8 @@ export default async function CatchAllPage({ params }: PageProps) {
   const { slug, path } = await params
   const { client, page, redirect } = await resolve(slug, path)
   if (!client) notFound()
-  if (client.status !== 'ACTIVE') return <SiteUnavailable />
+  const preview = await isPreview(client.status)
+  if (client.status !== 'ACTIVE' && !preview) return <SiteUnavailable />
 
   if (!page) {
     if (redirect) permanentRedirect(redirect.toPath)
@@ -332,6 +335,7 @@ export default async function CatchAllPage({ params }: PageProps) {
       className="gl-site min-h-screen bg-[var(--paper)] text-[var(--tx)] leading-[1.62]"
       style={palette as React.CSSProperties}
     >
+      {preview && <PreviewBanner status={client.status} />}
       <SiteBaseStyles />
       <SiteAnalytics projectId={client.clarityProjectId} slug={client.slug} pageType="kept" />
       <GoogleTag tracking={adsTracking} />
