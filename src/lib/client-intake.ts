@@ -119,19 +119,13 @@ export const INTAKE_SECTIONS: IntakeSection[] = [
   {
     key: 'handling',
     title: 'How you handle a job',
-    blurb: 'These two change what the site is allowed to say on your behalf.',
+    blurb: 'What you say here changes what the site is allowed to say on your behalf.',
     fields: [
       {
         key: 'filesInsuranceClaims',
         label: 'You deal with the insurance company directly',
         kind: 'boolean',
         help: 'On: the site says you handle the claim. Off: it says you will check the coverage and give the carrier what it needs. We will not claim the first unless you tell us it is true.',
-      },
-      {
-        key: 'smsCapable',
-        label: 'Your number can receive text messages',
-        kind: 'boolean',
-        help: 'Off means the site never offers "text us a photo" — a text to a landline is a lead that vanishes.',
       },
       {
         key: 'hours',
@@ -271,7 +265,12 @@ export function clientFromAnswers(answers: IntakeAnswers) {
     offersRockChipRepair: bool(answers.offersRockChipRepair),
     offersAdasCalibration: bool(answers.offersAdasCalibration),
     filesInsuranceClaims: bool(answers.filesInsuranceClaims),
-    smsCapable: bool(answers.smsCapable),
+    // smsCapable is deliberately NOT here. The site's displayed number is a
+    // tracking number, and tracking numbers do not receive texts — so the
+    // shop's answer about their own line would gate a path that dials a
+    // different one. The flag stays admin-set on the Business tab, and
+    // because this map also feeds the EXISTING prefill, leaving it out means
+    // approval never overwrites what the admin chose.
   }
 }
 
