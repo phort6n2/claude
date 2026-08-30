@@ -44,11 +44,17 @@ export interface WelcomeEmailInput {
   kind: 'NEW' | 'EXISTING'
 }
 
-function body(input: WelcomeEmailInput, senderEmail: string | null, senderSms: string | null) {
+/** Exported so the message can be previewed and tested without sending. */
+export function welcomeEmailBody(
+  input: WelcomeEmailInput,
+  senderEmail: string | null,
+  senderSms: string | null
+) {
   const isExisting = input.kind === 'EXISTING'
+  const greeting = `Matt here, at Auto Glass Marketing Pros — really glad to be working with ${esc(input.businessName)}.`
   const lead = isExisting
-    ? `Your site and lead tracking are already built and running. This link switches on the part you use — checking what we hold is right, and telling us where your leads should go.`
-    : `This is where we start. The form asks for what your site needs — your address, what you work on, the towns you cover — and takes about ten minutes.`
+    ? `Your site and lead tracking are already built and running. The next step is yours, and it is a quick one: this link checks that what we hold is right, and tells us where your leads should go.`
+    : `The next step is yours, and it is the one everything else is built from: the form asks for what your site needs — your address, what you work on, the towns you cover — and takes about ten minutes.`
 
   const cta = isExisting ? 'Check my details' : 'Start the form'
 
@@ -66,10 +72,20 @@ function body(input: WelcomeEmailInput, senderEmail: string | null, senderSms: s
     .filter(Boolean)
     .join('')
 
+  // The logo is white ink on transparency, so it gets its own dark band —
+  // the same way the admin sidebar draws it. Absolute URL, because an email
+  // client has no origin to resolve against.
+  const base = process.env.APP_URL || 'https://glassleads.app'
+
   const html = `<!doctype html>
 <html><body style="margin:0;padding:24px;background:#f6f7f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#111827">
-  <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:28px">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden">
+    <div style="background:#111827;padding:22px 28px;text-align:center">
+      <img src="${esc(base)}/logo.png" alt="Auto Glass Marketing Pros" width="190" style="display:inline-block;max-width:190px;height:auto" />
+    </div>
+    <div style="padding:28px">
     <h1 style="margin:0 0 12px;font-size:22px">${esc(input.businessName)}</h1>
+    <p style="margin:0 0 12px;font-size:16px;line-height:1.55">${greeting}</p>
     <p style="margin:0 0 18px;font-size:16px;line-height:1.55">${lead}</p>
     <p style="margin:0 0 24px">
       <a href="${esc(input.url)}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;font-weight:600;padding:13px 22px;border-radius:10px;font-size:16px">${cta}</a>
@@ -85,12 +101,16 @@ function body(input: WelcomeEmailInput, senderEmail: string | null, senderSms: s
     </div>`
         : ''
     }
-    <p style="margin:22px 0 0;font-size:13px;color:#6b7280">The link is yours alone — don't forward it. Reply to this email if anything looks wrong.</p>
+    <p style="margin:22px 0 0;font-size:15px;line-height:1.5">— Matt<br /><span style="color:#6b7280;font-size:13px">Auto Glass Marketing Pros</span></p>
+    <p style="margin:14px 0 0;font-size:13px;color:#6b7280">The link is yours alone — don't forward it. Reply to this email and it comes straight to me.</p>
+    </div>
   </div>
 </body></html>`
 
   const text = [
     input.businessName,
+    '',
+    greeting.replace(/<[^>]+>/g, ''),
     '',
     lead.replace(/<[^>]+>/g, ''),
     '',
@@ -98,6 +118,8 @@ function body(input: WelcomeEmailInput, senderEmail: string | null, senderSms: s
     '',
     senderEmail ? `Add ${senderEmail} to your contacts — every lead alert comes from it.` : '',
     senderSms ? `Save ${senderSms} as a contact for text alerts.` : '',
+    '',
+    '— Matt, Auto Glass Marketing Pros',
   ]
     .filter(Boolean)
     .join('\n')
@@ -114,7 +136,7 @@ export async function sendWelcomeEmail(
   const guide = await deliverabilityGuide()
   const configured = (await secret('RESEND_FROM')) || 'GlassLeads <leads@glassleads.app>'
   const address = /<([^>]+)>/.exec(configured)?.[1] || configured
-  const { html, text } = body(input, guide.senders.emailAddress, guide.senders.smsNumber)
+  const { html, text } = welcomeEmailBody(input, guide.senders.emailAddress, guide.senders.smsNumber)
 
   try {
     const { Resend } = await import('resend')
@@ -122,8 +144,9 @@ export async function sendWelcomeEmail(
     const sent = await resend.emails.send({
       // Same address the lead alerts come from, on purpose: this email asks
       // them to whitelist it, and arriving from anywhere else would teach the
-      // inbox to trust the wrong sender.
-      from: `Auto Glass Marketing Pros <${address}>`,
+      // inbox to trust the wrong sender. The display name is a person because
+      // the email is from one.
+      from: `Matt at Auto Glass Marketing Pros <${address}>`,
       to: [input.to],
       subject:
         input.kind === 'EXISTING'

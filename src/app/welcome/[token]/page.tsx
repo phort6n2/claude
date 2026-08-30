@@ -34,9 +34,16 @@ export default async function WelcomePage({ params }: { params: Promise<{ token:
     <main className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-xl mx-auto">
         <header className="mb-6">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-blue-700">
-            Auto Glass Marketing Pros
-          </p>
+          {/* The logo is white ink on transparency, so it draws on its own
+              dark band — same treatment as the admin sidebar. */}
+          <div className="bg-gray-900 rounded-2xl px-6 py-5 mb-5 flex justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.png"
+              alt="Auto Glass Marketing Pros"
+              className="h-16 w-auto"
+            />
+          </div>
           <h1 className="text-2xl font-bold text-gray-900 mt-1">{intake.businessName}</h1>
           <p className="text-sm text-gray-600 mt-2 leading-relaxed">
             {intake.kind === 'EXISTING'
