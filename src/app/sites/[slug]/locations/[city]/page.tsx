@@ -1,3 +1,4 @@
+import { formatPhoneDisplay } from '@/lib/lead-display'
 import { canViewSite, isPreview, siteIsLive } from '@/lib/site-preview'
 import PreviewBanner from '@/components/sites/PreviewBanner'
 import { headers } from 'next/headers'
@@ -148,7 +149,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     cityIsIndexable(location.area, cityContent, locations.map((l) => l.city))
   const robots = indexable ? undefined : { index: false, follow: true }
   const title = `Auto Glass in ${location.area}, ${client.state} | ${client.businessName}`
-  const description = `Windshield repair and replacement in ${location.area}, ${client.state}${client.offersMobileService ? ' — mobile service to your home or office' : ''}. Free quotes from ${client.businessName}. Call ${client.phone}.`
+  const description = `Windshield repair and replacement in ${location.area}, ${client.state}${client.offersMobileService ? ' — mobile service to your home or office' : ''}. Free quotes from ${client.businessName}. Call ${formatPhoneDisplay(client.phone) || client.phone}.`
   return {
     title,
     description,

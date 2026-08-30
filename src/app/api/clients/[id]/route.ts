@@ -187,6 +187,14 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       data: patch,
     })
 
+    // A logo that just arrived (usually from the importer's draft saving
+    // through this route) gets its white footer copy derived. Self-guarding:
+    // does nothing when a footer logo already exists or the image is opaque.
+    if (has('logoUrl') && client.logoUrl) {
+      const { deriveFooterLogo } = await import('@/lib/footer-logo')
+      await deriveFooterLogo(id)
+    }
+
     // Moving a shop between tiers has to reach the scan itself: four keywords
     // and weekly instead of two and monthly. Otherwise the plan changes, the
     // invoice changes, and the campaign carries on exactly as it was.

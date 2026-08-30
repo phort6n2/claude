@@ -49,6 +49,27 @@ const GENERIC_TOKENS = new Set([
   'mobile', '&',
 ])
 
+/**
+ * Second guard: does the place sit at this business's address?
+ *
+ * The name guard alone let "Diamond Glass Company Inc" stand in for
+ * "Diamond Auto Glass" — one shared distinctive token ("diamond") cleared
+ * the bar, and a competitor's pin and rating rendered on a client's page.
+ * Street numbers are the cheap evidence names cannot fake: when both sides
+ * state one and they differ, this is a different building and therefore a
+ * different business. Profiles with a hidden address (mobile-only) have no
+ * number and are left to the name guard.
+ */
+export function placeAddressConflicts(
+  clientStreet: string | null | undefined,
+  formattedAddress: string | null | undefined
+): boolean {
+  const ours = /^\s*(\d+)/.exec(clientStreet || '')?.[1]
+  const theirs = /^\s*(\d+)/.exec(formattedAddress || '')?.[1]
+  if (!ours || !theirs) return false
+  return ours !== theirs
+}
+
 export function placeNameMatchesClient(businessName: string, placeName: string): boolean {
   const tokenize = (s: string) =>
     s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean)
@@ -95,7 +116,7 @@ export async function refreshGbpReviews(
 ): Promise<RefreshResult> {
   const client = await prisma.client.findUnique({
     where: { id: clientId },
-    select: { id: true, businessName: true, googlePlaceId: true },
+    select: { id: true, businessName: true, googlePlaceId: true, streetAddress: true },
   })
   if (!client) return { ok: false, message: 'Client not found' }
   if (!client.googlePlaceId) {
@@ -175,10 +196,18 @@ export async function refreshGbpReviews(
   }
 
   const placeName = data.displayName?.text || ''
-  if (!placeNameMatchesClient(client.businessName, placeName)) {
-    const message = `Place ID resolved to "${placeName}", which does not look like "${client.businessName}". Not caching — check the Place ID.`
-    await recordError(message)
-    return { ok: false, message, placeName }
+  const guardFailure = !placeNameMatchesClient(client.businessName, placeName)
+    ? `Place ID resolved to "${placeName}", which does not look like "${client.businessName}". Not caching — check the Place ID.`
+    : placeAddressConflicts(client.streetAddress, data.formattedAddress)
+      ? `Place ID resolved to "${placeName}" at "${data.formattedAddress}", a different street number than this client's address — that is a different business. Not caching; check the Place ID.`
+      : null
+  if (guardFailure) {
+    await recordError(guardFailure)
+    // A cache written before the guard got smarter is a competitor's rating
+    // still rendering on this client's site. Refusing to refresh it is not
+    // enough — it has to go.
+    await prisma.clientGbpReviews.deleteMany({ where: { clientId } }).catch(() => {})
+    return { ok: false, message: guardFailure, placeName }
   }
 
   const rating = data.rating
@@ -313,6 +342,7 @@ export async function refreshLocationGbpReviews(locationId: string): Promise<Ref
       select: {
         id: true,
         label: true,
+        streetAddress: true,
         googlePlaceId: true,
         gbpFetchedAt: true,
         gbpRating: true,
@@ -357,6 +387,7 @@ export async function refreshLocationGbpReviews(locationId: string): Promise<Ref
   let data: {
     error?: { status?: string; message?: string }
     displayName?: { text?: string }
+    formattedAddress?: string
     rating?: number
     userRatingCount?: number
   }
@@ -366,7 +397,7 @@ export async function refreshLocationGbpReviews(locationId: string): Promise<Ref
       {
         headers: {
           'X-Goog-Api-Key': apiKey,
-          'X-Goog-FieldMask': 'displayName,rating,userRatingCount',
+          'X-Goog-FieldMask': 'displayName,formattedAddress,rating,userRatingCount',
           Accept: 'application/json',
         },
         signal: AbortSignal.timeout(10_000),
@@ -385,10 +416,22 @@ export async function refreshLocationGbpReviews(locationId: string): Promise<Ref
   }
 
   const placeName = data.displayName?.text || ''
-  if (!placeNameMatchesClient(location.client.businessName, placeName)) {
-    const message = `Place ID resolved to "${placeName}", which does not look like "${location.client.businessName}". Not caching — check the Place ID.`
-    await recordError(message)
-    return { ok: false, message, placeName }
+  const locationGuardFailure = !placeNameMatchesClient(location.client.businessName, placeName)
+    ? `Place ID resolved to "${placeName}", which does not look like "${location.client.businessName}". Not caching — check the Place ID.`
+    : placeAddressConflicts(location.streetAddress, data.formattedAddress)
+      ? `Place ID resolved to "${placeName}" at "${data.formattedAddress}", a different street number than this shop — that is a different business. Not caching; check the Place ID.`
+      : null
+  if (locationGuardFailure) {
+    await recordError(locationGuardFailure)
+    // Same rule as the client-level cache: a rating adopted before the guard
+    // got smarter must not keep rendering.
+    await prisma.clientLocation
+      .update({
+        where: { id: locationId },
+        data: { gbpRating: null, gbpReviewCount: null, gbpPlaceName: null },
+      })
+      .catch(() => {})
+    return { ok: false, message: locationGuardFailure, placeName }
   }
 
   const rating = data.rating

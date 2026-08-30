@@ -822,12 +822,95 @@ function warrantyStatesTerms(text: string | null | undefined): boolean {
  * the claim — a warranty headline without its terms is the compliance failure
  * the landing-template rules exist to prevent.
  */
+/**
+ * The warranty badge — an ORIGINAL shield drawn in SVG, in the spirit of the
+ * gold-shield badges auto glass sites love, and deliberately not any
+ * particular one of them: those are other businesses' artwork, and the
+ * popular ones hardcode "LIFETIME", which would pin a lifetime claim on
+ * every shop including the ones whose warranty says nothing of the sort.
+ * This one renders the shop's OWN warranty title, so the badge can never
+ * out-claim the text beside it. No stars — five gold stars on a badge read
+ * as a rating, and ratings here come only from the live Google feed.
+ */
+function WarrantyBadge({ title }: { title: string }) {
+  // "Lifetime Workmanship Warranty" → shield says "LIFETIME WORKMANSHIP",
+  // ribbon says "WARRANTY". A title that IS just "Warranty" keeps a generic
+  // shield line.
+  const withoutWord = title.replace(/\bwarranty\b/gi, '').replace(/\s+/g, ' ').trim()
+  const shieldWords = (withoutWord || 'Our').toUpperCase().split(' ').slice(0, 3)
+  return (
+    <svg viewBox="0 0 240 230" role="img" aria-label={title} className="w-40 md:w-48 h-auto shrink-0 mx-auto">
+      {/* Gold rim */}
+      <path
+        d="M120 6 L214 34 V118 C214 168 174 204 120 222 C66 204 26 168 26 118 V34 Z"
+        fill="#d4a437"
+      />
+      <path
+        d="M120 16 L204 41 V117 C204 162 168 195 120 211 C72 195 36 162 36 117 V41 Z"
+        fill="#f3cd6b"
+      />
+      {/* Dark face */}
+      <path
+        d="M120 24 L196 47 V116 C196 157 163 187 120 202 C77 187 44 157 44 116 V47 Z"
+        fill="#1c2431"
+      />
+      {/* Check mark where the reference put stars — a mark of assurance,
+          not a rating */}
+      <path
+        d="M104 62 l10 10 l22 -22"
+        stroke="#f3cd6b"
+        strokeWidth="7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      {shieldWords.map((word, i) => (
+        <text
+          key={word + i}
+          x="120"
+          y={104 + i * 24}
+          textAnchor="middle"
+          fill="#ffffff"
+          fontFamily="inherit"
+          fontWeight="800"
+          fontSize={word.length >= 10 ? 17 : 22}
+          letterSpacing="0.5"
+          // Long words squeeze to the shield's face instead of escaping it —
+          // "WORKMANSHIP" was clipping the rim.
+          {...(word.length >= 10 ? { textLength: 140, lengthAdjust: 'spacingAndGlyphs' } : {})}
+        >
+          {word}
+        </text>
+      ))}
+      {/* Ribbon */}
+      <path d="M14 158 L54 150 V186 L14 194 L28 176 Z" fill="var(--cta-b, #991b1b)" />
+      <path d="M226 158 L186 150 V186 L226 194 L212 176 Z" fill="var(--cta-b, #991b1b)" />
+      <rect x="40" y="148" width="160" height="40" rx="4" fill="var(--cta, #b91c1c)" />
+      <text
+        x="120"
+        y="175"
+        textAnchor="middle"
+        fill="#ffffff"
+        fontFamily="inherit"
+        fontWeight="800"
+        fontSize="24"
+        letterSpacing="1.5"
+      >
+        WARRANTY
+      </text>
+    </svg>
+  )
+}
+
 export function WarrantyBand({ extras }: { extras: SiteExtras | null }) {
   if (!extras?.warrantyText) return null
   return (
     <section className="bg-[var(--tint)] border-b border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-12 lg:items-center">
         <div>
+          <div className="mb-6">
+            <WarrantyBadge title={extras.warrantyTitle || 'Warranty'} />
+          </div>
           <Eyebrow>Our warranty</Eyebrow>
           <h2 className="text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight text-[var(--tx)] m-0">
             {extras.warrantyTitle || 'What the warranty covers'}
@@ -1498,22 +1581,17 @@ export function SiteFooter({
           <div>
             {footerLogo ? (
               // Plain on the dark band, like the reference — no white chip.
-              //
-              // When this is the HEADER's logo standing in (no footer file
-              // uploaded), it is repainted white in CSS: brightness(0) turns
-              // every visible pixel black, invert(1) flips them white, and
-              // the alpha channel is untouched — so dark ink on transparency,
-              // which is most shop logos, comes out perfectly legible here
-              // with nothing generated or stored. A deliberately uploaded
-              // footer logo renders exactly as given.
+              // The white version is GENERATED, not filtered: a CSS
+              // brightness(0) invert(1) was tried and turned every opaque
+              // logo into a blank rectangle, because a filter cannot know
+              // which pixels are background. deriveFooterLogo() reads the
+              // pixels instead — transparent logos get a white copy stored
+              // as footerLogoUrl at save time; opaque ones render as-is.
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={footerLogo}
                 alt={client.businessName}
                 className="h-10 w-auto max-w-[220px] object-contain mb-3.5"
-                style={
-                  client.footerLogoUrl ? undefined : { filter: 'brightness(0) invert(1)' }
-                }
               />
             ) : (
               <div className="mb-3">

@@ -30,6 +30,13 @@ function slotOf(value: unknown): Slot | null {
 
 async function apply(clientId: string, slot: Slot, url: string | null) {
   await prisma.client.update({ where: { id: clientId }, data: { [SLOTS[slot]]: url } })
+  // A new header logo (or a cleared footer slot) is the moment to derive the
+  // footer's white copy — self-guarding, and never overwrites an uploaded
+  // footer file. Dynamic import keeps sharp out of this route's module load.
+  if ((slot === 'header' && url) || (slot === 'footer' && !url)) {
+    const { deriveFooterLogo } = await import('@/lib/footer-logo')
+    await deriveFooterLogo(clientId)
+  }
 }
 
 /**
