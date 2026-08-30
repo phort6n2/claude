@@ -27,6 +27,20 @@ export function toE164(raw: string | null | undefined): string | null {
   return null
 }
 
+/**
+ * The same number, shaped for human eyes: "(805) 500-0225". The inverse
+ * concern of toE164 — instructions that say "save +18055000225 as a contact"
+ * read like machine output, and the person following them is retyping the
+ * number into a contacts app by hand. Anything that is not a US number comes
+ * back untouched rather than half-formatted.
+ */
+export function formatUsPhone(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const e164 = toE164(raw)
+  const match = e164 ? /^\+1(\d{3})(\d{3})(\d{4})$/.exec(e164) : null
+  return match ? `(${match[1]}) ${match[2]}-${match[3]}` : raw
+}
+
 /** `tel:` href, or null when the number is unusable. */
 export function telHref(phone: string | null | undefined): string | null {
   const e164 = toE164(phone)

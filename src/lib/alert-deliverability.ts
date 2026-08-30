@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { decrypt } from '@/lib/encryption'
+import { formatUsPhone } from '@/lib/contact-links'
 
 /**
  * Tell a shop to let our alerts through, and say exactly how.
@@ -51,7 +52,11 @@ export interface AlertSenders {
 export async function alertSenders(): Promise<AlertSenders> {
   const configured = (await setting('RESEND_FROM')) || 'GlassLeads <leads@glassleads.app>'
   const emailAddress = /<([^>]+)>/.exec(configured)?.[1] || configured
-  const smsNumber = await setting('TWILIO_FROM_NUMBER')
+  // Stored in E.164 because Twilio requires it; shown as a human would write
+  // it, because a person is retyping it into their contacts by hand. Every
+  // surface that names this number reads it from here, so the formatting
+  // happens once.
+  const smsNumber = formatUsPhone(await setting('TWILIO_FROM_NUMBER'))
   return {
     emailAddress: emailAddress || null,
     // Fixed, and worth naming in the instructions — a shop owner triages by
