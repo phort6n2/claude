@@ -54,7 +54,12 @@ export const INTAKE_SECTIONS: IntakeSection[] = [
     blurb: 'The details that appear on your site and on Google.',
     fields: [
       { key: 'businessName', label: 'Business name', kind: 'text', required: true },
-      { key: 'contactPerson', label: 'Who we talk to', kind: 'text' },
+      {
+        key: 'contactPerson',
+        label: 'Main business contact',
+        kind: 'text',
+        help: 'Who we talk to about your site, your ads and your leads.',
+      },
       {
         key: 'phone',
         label: 'Main phone number',
