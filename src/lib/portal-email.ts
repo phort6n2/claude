@@ -115,28 +115,24 @@ export async function sendMagicLinkEmail(input: {
 }
 
 /**
- * Sent when an intake is approved — the walkthrough's opening move.
- *
- * It answers exactly three questions: did my form go through (yes, and it is
- * now your account), where do I stand (site being built, or details applied),
- * and what do I do next (open the portal; it walks you through the rest).
- * The checklist itself lives in the portal, not here — an email cannot know
- * what they have already done by the time it is read.
+ * The invite the OPERATOR sends when setup is done — not an approval
+ * side-effect. By the time this goes out the account is real and the pieces
+ * are wired, so the copy can say "ready" and mean it. It answers three
+ * questions: you're in, here is the door, and here is the five-minute list
+ * waiting inside. The checklist itself lives in the portal, not here — an
+ * email cannot know what they have already done by the time it is read.
  */
-export async function sendApprovedEmail(input: {
+export async function sendPortalReadyEmail(input: {
   to: string
   businessName: string
   /** Magic-link URL when one could be minted; the plain login page if not. */
   url: string
-  kind: 'NEW' | 'EXISTING'
 }): Promise<{ ok: boolean; error?: string }> {
-  const isExisting = input.kind === 'EXISTING'
-  const lead = isExisting
-    ? 'Your details are checked and applied, and your lead alerts now go where you told us. Your portal is ready.'
-    : 'Everything you gave us is checked and in. We are building your site from it now, and you will hear from us when it is ready to look at. Your portal is already live — leads land there the moment the phone starts ringing.'
+  const lead =
+    'Matt here — your setup is done, and your portal is ready. Every quote request and call lands there the moment it happens, and it is where you mark what turned into work.'
 
   const html = shell(`
-    <h1 style="margin:0 0 12px;font-size:22px">${esc(input.businessName)} — you're in</h1>
+    <h1 style="margin:0 0 12px;font-size:22px">${esc(input.businessName)} — your portal is ready</h1>
     <p style="margin:0 0 18px;font-size:16px;line-height:1.55">${lead}</p>
     ${button(input.url, 'Open my portal')}
     <p style="margin:0 0 6px;font-size:13px;color:#6b7280">Or paste this into your browser:</p>
@@ -145,23 +141,24 @@ export async function sendApprovedEmail(input: {
       <p style="margin:0 0 10px;font-weight:700;font-size:15px">Do this first</p>
       <p style="margin:0;font-size:14px;line-height:1.55;color:#374151">The portal opens with a short set-up list: send yourself a test lead alert to prove it reaches your phone, and put the portal on your home screen so a new lead is one tap away. Five minutes, once.</p>
     </div>
-    <p style="margin:22px 0 0;font-size:13px;color:#6b7280">The sign-in link expires in 24 hours — after that, enter your email at the portal login and a fresh one arrives. Reply to this email if anything looks wrong.</p>`)
+    <p style="margin:22px 0 0;font-size:15px;line-height:1.5">— Matt<br /><span style="color:#6b7280;font-size:13px">Auto Glass Marketing Pros</span></p>
+    <p style="margin:14px 0 0;font-size:13px;color:#6b7280">The sign-in link expires in 24 hours — after that, enter your email at the portal login and a fresh one arrives. Reply to this email and it comes straight to me.</p>`)
 
   const text = [
-    `${input.businessName} — you're in`,
+    `${input.businessName} — your portal is ready`,
     '',
     lead,
     '',
     input.url,
     '',
     'The sign-in link expires in 24 hours; after that, request a fresh one at the portal login page.',
+    '',
+    '— Matt, Auto Glass Marketing Pros',
   ].join('\n')
 
   return sendMail({
     to: input.to,
-    subject: isExisting
-      ? `${input.businessName} — your portal is ready`
-      : `${input.businessName} — approved, and your portal is live`,
+    subject: `${input.businessName} — your portal is ready`,
     html,
     text,
   })

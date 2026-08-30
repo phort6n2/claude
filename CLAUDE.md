@@ -266,14 +266,16 @@ walkthrough (`GettingStartedCard`, `/api/portal/onboarding`,
 
 - **Nothing is real until an admin approves.** Submit writes a draft; approve
   copies it onto a Client (NEW → created as ONBOARDING, EXISTING → diff
-  applied), sets alert recipients, then creates a portal `ClientUser` for the
-  intake's email and sends the "you're in" email with a magic link. That email
-  goes to the address the intake was SENT to — the one that has proven it
-  reaches a human — not the business email typed into the form.
-- **Approval never fails on the email.** The invite result rides back as
-  `followUp`; the review screen stops and shows it when nothing was sent. An
-  intake email already attached to another client's login is reported, not
-  reassigned.
+  applied), sets alert recipients, and puts hours on the primary location.
+- **Approval emails the shop NOTHING.** The portal invite is a manual send —
+  the Portal invite card on the client Overview (`portal-invite.ts`,
+  `/api/clients/[id]/portal-invite`), pressed when the operator decides the
+  setup is worth a first look. The card leans on the readiness count as its
+  prompt but never blocks the send. It prefills the address the intake was
+  SENT to — the one that has proven it reaches a human — creates the
+  `ClientUser`, and mails the "portal is ready" note with a magic link.
+  Re-sending mints a fresh link for the same account. An email already
+  attached to another client's login is reported, not reassigned.
 - **The portal signs in by emailed link, and that is the front door.**
   Intake-created users have no password. `/portal/login` defaults to
   "email me a sign-in link" (password behind a toggle), `request-link`
