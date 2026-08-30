@@ -17,6 +17,44 @@ import { errorFrom } from '@/lib/http-error'
 
 type Answers = Record<string, unknown>
 
+/**
+ * Shows the raw text, reports the parsed list. Re-rendering the parsed list
+ * into the textarea trims the trailing space as it is typed, which makes
+ * two-word towns untypeable — the same bug the shop-facing form had.
+ */
+function ListArea({
+  value,
+  disabled,
+  className,
+  onParsed,
+}: {
+  value: unknown
+  disabled: boolean
+  className: string
+  onParsed: (entries: string[]) => void
+}) {
+  const [raw, setRaw] = useState(() =>
+    Array.isArray(value) ? (value as string[]).join('\n') : ''
+  )
+  return (
+    <textarea
+      value={raw}
+      disabled={disabled}
+      rows={3}
+      onChange={(e) => {
+        setRaw(e.target.value)
+        onParsed(
+          e.target.value
+            .split(/[\n,]/)
+            .map((v) => v.trim())
+            .filter(Boolean)
+        )
+      }}
+      className={className}
+    />
+  )
+}
+
 export default function IntakeReview({
   intakeId,
   sections,
@@ -106,14 +144,11 @@ export default function IntakeReview({
                       <span className="text-gray-900">{value === true ? 'Yes' : 'No'}</span>
                     </label>
                   ) : field.kind === 'list' ? (
-                    <textarea
-                      value={(Array.isArray(value) ? (value as string[]) : []).join('\n')}
+                    <ListArea
+                      value={value}
                       disabled={approved}
-                      rows={3}
-                      onChange={(e) =>
-                        set(field.key, e.target.value.split('\n').map((v) => v.trim()).filter(Boolean))
-                      }
                       className={common}
+                      onParsed={(entries) => set(field.key, entries)}
                     />
                   ) : field.kind === 'textarea' ? (
                     <textarea
