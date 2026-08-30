@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import AdsTrackingCard from '@/components/admin/AdsTrackingCard'
 import ConversionStandardCard from '@/components/admin/ConversionStandardCard'
+import LandingPagesCard from '@/components/admin/LandingPagesCard'
 import AnalyticsCard from '@/components/admin/AnalyticsCard'
 import { decrypt } from '@/lib/encryption'
 import { requireAdminPage } from '@/lib/admin-guard'
@@ -82,6 +83,18 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           </p>
         </div>
         <ConversionStandardCard clientId={client.id} />
+      </section>
+
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+        <div className="px-6 pt-5 pb-1">
+          <h2 className="font-semibold text-gray-900">Where the ads land</h2>
+          <p className="text-sm text-gray-500">
+            Every live ad, PMax asset group and sitelink must point at this client&apos;s hosted
+            site — their subdomain or their own domain. A click landing anywhere else spends the
+            same money with none of the tracking.
+          </p>
+        </div>
+        <LandingPagesCard clientId={client.id} />
       </section>
     </div>
   )

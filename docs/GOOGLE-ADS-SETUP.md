@@ -210,3 +210,31 @@ counting, click window and call length match. Then:
 
 It reads only. An audit that fixes things is one nobody can run to find out
 what is wrong.
+
+## Where the ads land
+
+The other half of the standard: every live click must arrive on the
+app-hosted site, because that page carries the tracking number, the
+attribution capture and the coached layout. An ad pointing at the shop's old
+website or a HighLevel funnel spends the same money and feeds a page with
+none of the wiring — and nothing inside Google Ads will ever flag it,
+because Google does not know which host is ours.
+
+The "Where the ads land" card on the client's Advertising tab reads:
+
+- every **enabled ad's** `final_urls` and `final_mobile_urls` (mobile
+  override included on purpose — most auto-glass traffic is phones);
+- every **Performance Max asset group's** URLs, since PMax sends clicks
+  through those rather than ads;
+- every **sitelink** attached at account, campaign or ad-group level — an
+  account-level sitelink pointing at the old site rides on every campaign.
+
+Each URL is judged against the client's own hosts: their
+`{sub}.glassleads.app` subdomain and every custom domain on the record
+(`www.` ignored). Off-target rows are listed with the campaign, the ad or
+sitelink name and the exact URL, plus the stray hosts by name — which is
+usually the old website, and the fix is editing those URLs in Google Ads.
+
+Live things only: a paused ad pointing at the wrong page costs nothing, and
+listing it would bury the rows spending money right now. Reads only, like
+the conversion audit and for the same reason.
