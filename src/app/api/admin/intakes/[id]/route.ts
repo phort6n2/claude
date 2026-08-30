@@ -157,24 +157,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       data: { status: 'APPROVED', approvedAt: new Date(), clientId, answers: answers as never },
     })
 
-    // The walkthrough starts here: a portal account for whoever filled the
-    // form, and the "you're in" email carrying a signed-in link to it. Sent
-    // to the address the intake went to — the one address that has already
-    // proven it reaches a human — not the business email off the form.
-    //
-    // Failures are reported, never fatal: the approval already happened, and
-    // un-approving a client because an email bounced would be backwards. The
-    // admin sees what did not send and the login page can mint a fresh link
-    // any time.
-    const followUp = await sendPortalInvite(
-      clientId,
-      intake.email,
-      core.businessName,
-      core.contactPerson,
-      intake.kind
-    )
-
-    return NextResponse.json({ ok: true, clientId, followUp })
+    // DELIBERATELY NO EMAIL TO THE SHOP. Approval makes their answers the
+    // record; it does not open the door. The portal invite is a manual send
+    // from the client page, after the operator decides the setup is worth a
+    // first look — an invite fired here would land while the site is still
+    // half-built, and first impressions are the product.
+    return NextResponse.json({ ok: true, clientId })
   } catch (error) {
     console.error('Failed to approve intake:', error)
     return NextResponse.json(
@@ -206,60 +194,3 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
   }
 }
 
-/**
- * A portal account for the person who filled the form, and the email that
- * hands them the door. Returns what happened rather than throwing — by the
- * time this runs the approval is already real.
- */
-async function sendPortalInvite(
-  clientId: string,
-  email: string,
-  businessName: string,
-  name: string | null,
-  kind: string
-): Promise<{ emailed: boolean; to?: string; note?: string }> {
-  const addr = email.toLowerCase().trim()
-  try {
-    const existing = await prisma.clientUser.findUnique({
-      where: { email: addr },
-      select: { clientId: true },
-    })
-    // Emails are one login each, platform-wide. An address already attached
-    // to ANOTHER client is not silently reassigned — that would swap someone
-    // out of their own portal because a form reused their email.
-    if (existing && existing.clientId !== clientId) {
-      return {
-        emailed: false,
-        note: `${addr} already signs in to a different client's portal, so no invite was sent. Add a different address on the Users tab.`,
-      }
-    }
-    if (!existing) {
-      await prisma.clientUser.create({ data: { clientId, email: addr, name: name || null } })
-    }
-
-    const { createMagicLink } = await import('@/lib/portal-auth')
-    const { portalVerifyUrl, sendApprovedEmail } = await import('@/lib/portal-email')
-    const link = await createMagicLink(addr)
-    const base = process.env.APP_URL || 'https://glassleads.app'
-    // A link that could not be minted degrades to the login page, where a
-    // fresh one is self-serve — never a broken button in the one email that
-    // announces the account works.
-    const url = link.success && link.token ? portalVerifyUrl(link.token) : `${base}/portal/login`
-
-    const sent = await sendApprovedEmail({
-      to: addr,
-      businessName,
-      url,
-      kind: kind === 'EXISTING' ? 'EXISTING' : 'NEW',
-    })
-    if (!sent.ok) {
-      return { emailed: false, note: `Approved, but the portal email failed: ${sent.error}` }
-    }
-    return { emailed: true, to: addr }
-  } catch (error) {
-    return {
-      emailed: false,
-      note: `Approved, but the portal invite failed: ${error instanceof Error ? error.message : 'unknown error'}`,
-    }
-  }
-}

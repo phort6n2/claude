@@ -15,8 +15,10 @@ import {
 import { prisma } from '@/lib/db'
 import { getSiteExtras } from '@/lib/site-content'
 import CopyField from '@/components/admin/CopyField'
+import PortalInviteCard from '@/components/admin/PortalInviteCard'
 import { requireAdminPage } from '@/lib/admin-guard'
 import { formatMinutes, getResponseTime } from '@/lib/response-time'
+import { getClientReadiness } from '@/lib/client-readiness'
 
 /**
  * Client overview — "is this client OK, and where do I go?".
@@ -92,7 +94,7 @@ export default async function ClientOverviewPage({ params }: PageProps) {
   if (!client) notFound()
 
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-  const [leadCount, lastLead, reviews, destinations, extras, userCount, response] =
+  const [leadCount, lastLead, reviews, destinations, extras, portalUser, response, readiness, intake] =
     await Promise.all([
     prisma.lead.count({ where: { clientId: id, createdAt: { gte: weekAgo } } }),
     prisma.lead.findFirst({
@@ -117,8 +119,24 @@ export default async function ClientOverviewPage({ params }: PageProps) {
       })
       .catch(() => []),
     getSiteExtras(id),
-    prisma.clientUser.count({ where: { clientId: id } }).catch(() => 0),
+    prisma.clientUser
+      .findFirst({
+        where: { clientId: id },
+        orderBy: { createdAt: 'asc' },
+        select: { email: true, lastLoginAt: true },
+      })
+      .catch(() => null),
     getResponseTime(id).catch(() => null),
+    getClientReadiness(id).catch(() => null),
+    // The address the intake invite went to — the one that has proven it
+    // reaches a human — as the prefill for the portal invite.
+    prisma.clientIntake
+      .findFirst({
+        where: { clientId: id },
+        orderBy: { createdAt: 'desc' },
+        select: { email: true },
+      })
+      .catch(() => null),
   ])
 
   const base = `/admin/clients/${id}`
@@ -292,16 +310,15 @@ export default async function ClientOverviewPage({ params }: PageProps) {
           <p>cities · first 5 get location pages</p>
         </Card>
 
-        <Card
-          title="Portal users"
-          icon={CheckCircle2}
-          tone={userCount ? 'ok' : 'idle'}
-          href={`${base}/users`}
-          linkLabel="Manage users"
-        >
-          <p className="text-2xl font-bold text-gray-900">{userCount}</p>
-          <p>{userCount === 1 ? 'person can' : 'people can'} log in to the client portal</p>
-        </Card>
+        <PortalInviteCard
+          clientId={id}
+          defaultEmail={intake?.email || client.email}
+          defaultName={client.contactPerson || ''}
+          invited={!!portalUser}
+          invitedEmail={portalUser?.email ?? null}
+          lastLoginAt={portalUser?.lastLoginAt?.toISOString() ?? null}
+          requiredOpen={readiness?.requiredOpen ?? 0}
+        />
       </div>
 
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
