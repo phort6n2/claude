@@ -152,6 +152,28 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 }
 
 /**
+ * DELETE — take an intake off the list.
+ *
+ * Only the intake row goes. A client an approval created stays a client —
+ * deleting the paperwork does not un-create the business. What deletion DOES
+ * revoke is the invite link: the token resolves by row id, so a deleted
+ * intake's link dies with it, which is also the way to kill an invite that
+ * went to the wrong address.
+ */
+export async function DELETE(_request: NextRequest, { params }: RouteContext) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
+  const { id } = await params
+  try {
+    await prisma.clientIntake.delete({ where: { id } })
+    return NextResponse.json({ ok: true })
+  } catch {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+}
+
+/**
  * A portal account for the person who filled the form, and the email that
  * hands them the door. Returns what happened rather than throwing — by the
  * time this runs the approval is already real.

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Check, Copy, Loader2, Mail, Send, TriangleAlert } from 'lucide-react'
+import { Check, Copy, Loader2, Mail, Send, Trash2, TriangleAlert } from 'lucide-react'
 
 /**
  * Invites out, drafts back.
@@ -43,6 +43,7 @@ export default function IntakesManager({
   const [sending, setSending] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   const [mode, setMode] = useState<'existing' | 'new'>('existing')
   const [clientId, setClientId] = useState('')
@@ -91,6 +92,31 @@ export default function IntakesManager({
       setMessage({ ok: false, text: err instanceof Error ? err.message : 'Failed' })
     } finally {
       setSending(false)
+    }
+  }
+
+  async function remove(intake: Intake) {
+    // The confirm names what actually happens, because the two cases feel
+    // opposite: pre-approval it revokes a live invite link; post-approval it
+    // only clears the row and the client is untouched.
+    const warning =
+      intake.status === 'APPROVED'
+        ? `Remove ${intake.businessName} from this list? The client stays — only the intake record goes.`
+        : `Delete the invite for ${intake.businessName}? Their link stops working immediately.`
+    if (!window.confirm(warning)) return
+    setDeleting(intake.id)
+    setMessage(null)
+    try {
+      const res = await fetch(`/api/admin/intakes/${intake.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Could not delete it.')
+      }
+      await load()
+    } catch (err) {
+      setMessage({ ok: false, text: err instanceof Error ? err.message : 'Failed' })
+    } finally {
+      setDeleting(null)
     }
   }
 
@@ -250,6 +276,24 @@ export default function IntakesManager({
                   {intake.status === 'SUBMITTED' ? 'Review' : 'Open'}
                 </Link>
               )}
+
+              <button
+                type="button"
+                onClick={() => remove(intake)}
+                disabled={deleting !== null}
+                title={
+                  intake.status === 'APPROVED'
+                    ? 'Remove from this list (the client stays)'
+                    : 'Delete the invite — the link stops working'
+                }
+                className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-50"
+              >
+                {deleting === intake.id ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <Trash2 size={15} />
+                )}
+              </button>
             </div>
           )
         })}
