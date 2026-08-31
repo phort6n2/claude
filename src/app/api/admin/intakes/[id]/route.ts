@@ -122,6 +122,19 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       })
     }
 
+    // The Google Ads account number links the account for the conversion
+    // audit and offline uploads. Only a clean 10-digit id is written — the
+    // raw answer stays on the intake for the review screen either way — and
+    // an id already on the record is never overwritten by a blank.
+    const adsId = String(answers.googleAdsCustomerId || '').replace(/\D/g, '')
+    if (adsId.length === 10) {
+      await prisma.clientAdsTracking.upsert({
+        where: { clientId },
+        update: { googleAdsCustomerId: adsId },
+        create: { clientId, googleAdsCustomerId: adsId },
+      })
+    }
+
     // Opening hours land on the primary shop. They were being collected and
     // then dropped — hours live on ClientLocation, which nothing here wrote.
     // For a one-shop client with no rows this creates the primary row from
