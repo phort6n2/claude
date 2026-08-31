@@ -839,7 +839,7 @@ function WarrantyBadge({ title }: { title: string }) {
   const withoutWord = title.replace(/\bwarranty\b/gi, '').replace(/\s+/g, ' ').trim()
   const shieldWords = (withoutWord || 'Our').toUpperCase().split(' ').slice(0, 3)
   return (
-    <svg viewBox="0 0 240 230" role="img" aria-label={title} className="w-40 md:w-48 h-auto shrink-0 mx-auto">
+    <svg viewBox="0 0 240 230" role="img" aria-label={title} className="w-32 md:w-36 h-auto shrink-0 mx-auto">
       {/* Gold rim */}
       <path
         d="M120 6 L214 34 V118 C214 168 174 204 120 222 C66 204 26 168 26 118 V34 Z"
@@ -908,9 +908,6 @@ export function WarrantyBand({ extras }: { extras: SiteExtras | null }) {
     <section className="bg-[var(--tint)] border-b border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-12 lg:items-center">
         <div>
-          <div className="mb-6">
-            <WarrantyBadge title={extras.warrantyTitle || 'Warranty'} />
-          </div>
           <Eyebrow>Our warranty</Eyebrow>
           <h2 className="text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight text-[var(--tx)] m-0">
             {extras.warrantyTitle || 'What the warranty covers'}
@@ -934,9 +931,12 @@ export function WarrantyBand({ extras }: { extras: SiteExtras | null }) {
               : 'The cover this shop offers, in their own words.'}
           </p>
         </div>
-        <div className="bg-white rounded-[20px] border border-[var(--line-card)] shadow-sm p-6 md:p-8">
-          <ShieldCheck className="h-8 w-8 mb-3 text-[var(--brand)]" />
-          <p className="m-0 text-[15px] text-[var(--tx2)] leading-relaxed whitespace-pre-line">
+        {/* The badge sits ON the terms card, like a seal on the document it
+            certifies — floating alone in a column it read as a sticker that
+            missed its page. Side by side on desktop, stacked on a phone. */}
+        <div className="bg-white rounded-[20px] border border-[var(--line-card)] shadow-sm p-6 md:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-6">
+          <WarrantyBadge title={extras.warrantyTitle || 'Warranty'} />
+          <p className="m-0 text-[15px] text-[var(--tx2)] leading-relaxed whitespace-pre-line sm:pt-2">
             {extras.warrantyText}
           </p>
         </div>
@@ -1056,10 +1056,15 @@ export function MapSection({
   // A name-based map query only lands on THIS shop when Google actually
   // knows this shop — searching the name of a business with no Business
   // Profile snaps the pin to whichever similar-sounding shop Google does
-  // know, which put a competitor's listing on a client's own page. With no
-  // profile signal (no Maps URL, no reviews), the embed shows the service
-  // area instead: their city, zoomed out — true, useful, nobody else's pin.
-  const hasProfile = !!client.googleMapsUrl || !!reviews
+  // know, which put a competitor's listing on a client's own page.
+  //
+  // The signal is the REVIEWS CACHE, not the stored Maps URL: a cache row
+  // only exists after the refresh guard verified the place's name and street
+  // number, whereas the URL is whatever somebody pasted — and the first
+  // thing pasted for a shop with no profile was a similar-sounding
+  // competitor. Until the guard has proven the listing, the embed shows the
+  // service area: their city, zoomed out — true, useful, nobody else's pin.
+  const hasProfile = !!reviews
   const areaQuery = `${encodeURIComponent(`${lead?.city || client.city}, ${lead?.state || client.state}`)}&z=10`
   const query = hasProfile
     ? lead
@@ -1152,7 +1157,10 @@ export function MapSection({
                 </div>
               </div>
             )}
-            {(lead?.googleMapsUrl || client.googleMapsUrl) && (
+            {/* "OUR listing" is a claim; the reviews cache is the proof. An
+                unverified pasted URL once pointed this button at a
+                similar-sounding competitor. */}
+            {!!reviews && (lead?.googleMapsUrl || client.googleMapsUrl) && (
               <a
                 href={lead?.googleMapsUrl || client.googleMapsUrl || '#'}
                 target="_blank"
@@ -1536,11 +1544,13 @@ export function SiteFooter({
   pages?: Array<{ path: string; title: string }>
 }) {
   const year = new Date().getFullYear()
-  // The footer band is dark, and most shop logos are dark ink on
-  // transparency — the file that looks right in the header can be a black
-  // rectangle's worth of nothing down here. A shop whose logo survives both
-  // backgrounds sets no second file and this falls through to the header's.
-  const footerLogo = client.footerLogoUrl || client.logoUrl
+  // ONLY a footer-fit file renders here — never the header's logo as a
+  // guess. The header file on this dark band is wrong in both directions:
+  // dark ink on transparency vanishes, an opaque logo becomes a white
+  // rectangle. deriveFooterLogo() fills footerLogoUrl automatically for
+  // transparent logos; everyone else gets the wordmark, which is live white
+  // text and always legible.
+  const footerLogo = client.footerLogoUrl
   // Identity-bar trust items: restate claims made further up the page —
   // every one data-backed, never a third-party mark.
   const barTrust = [

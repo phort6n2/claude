@@ -71,6 +71,14 @@ const READS: Tool[] = [
 
 const WRITES: Tool[] = [
   {
+    key: 'derive-footer-logos',
+    name: 'Generate white footer logos for every client',
+    path: '/api/admin/derive-footer-logos',
+    method: 'POST',
+    what: 'For each client with a header logo and no footer logo: if the image has real transparency, a white copy is generated and stored as the footer logo. Opaque logos are skipped and those footers show the wordmark.',
+    cost: 'Writes footerLogoUrl and uploads one PNG per derived logo to blob storage. Never overwrites a footer logo that already exists. Safe to run twice.',
+  },
+  {
     key: 'rewebhook',
     name: 'Re-register the rank webhook on every campaign',
     path: '/api/admin/rank-campaigns/rewebhook',
