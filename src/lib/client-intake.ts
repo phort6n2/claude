@@ -100,6 +100,13 @@ export const INTAKE_SECTIONS: IntakeSection[] = [
         kind: 'text',
         help: 'Paste the link to your listing on Google Maps. It is where your rating and reviews come from.',
       },
+      {
+        key: 'googleAdsCustomerId',
+        label: 'Google Ads account number',
+        kind: 'text',
+        placeholder: '123-456-7890',
+        help: 'Sign in at ads.google.com — the 10-digit number sits in the top-right corner, next to your profile picture (it also shows under the ? help icon as "Customer ID"). No Google Ads account yet? Leave this blank.',
+      },
     ],
   },
   {

@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
   if (clientId) {
     const client = await prisma.client.findUnique({
       where: { id: clientId },
-      include: { notification: true, siteContent: true },
+      include: { notification: true, siteContent: true, adsTracking: true },
     })
     if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
 
@@ -77,6 +77,7 @@ export async function POST(request: NextRequest) {
       notifyEmails: client.notification?.emailTo || [],
       notifyPhones: client.notification?.smsTo || [],
       emailCallLeads: client.notification?.emailCallLeads ?? true,
+      googleAdsCustomerId: client.adsTracking?.googleAdsCustomerId || '',
     }
   }
 
