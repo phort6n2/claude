@@ -234,18 +234,7 @@ export interface DailyRunSummary {
 }
 
 export async function runDailyAdsChecks(): Promise<DailyRunSummary> {
-  const clients = await prisma.client.findMany({
-    where: {
-      status: { in: ['ACTIVE', 'ONBOARDING'] },
-      adsTracking: { googleAdsCustomerId: { not: null } },
-    },
-    select: {
-      id: true,
-      businessName: true,
-      adsTracking: { select: { googleAdsCustomerId: true } },
-    },
-    orderBy: { businessName: 'asc' },
-  })
+  const clients = await listAdsClients()
 
   const yesterday = dayString(1)
   const windowStart = dayString(8)
@@ -326,88 +315,123 @@ export async function runDailyAdsChecks(): Promise<DailyRunSummary> {
       summary.errors.push({ client: client.businessName, error: changes.error })
     }
 
-    const produced = new Set<string>()
-    for (const draft of drafts) {
-      const dedupeKey = `${client.id}:${draft.check}:${draft.entity}`
-      produced.add(dedupeKey)
-      const existing = await prisma.adsFinding
-        .findUnique({ where: { dedupeKey }, select: { id: true, status: true } })
-        .catch(() => null)
-      if (!existing) {
-        await prisma.adsFinding.create({
-          data: {
-            clientId: client.id,
-            customerId,
-            cadence: 'DAILY',
-            check: draft.check,
-            dedupeKey,
-            severity: draft.severity,
-            title: draft.title,
-            detail: draft.detail,
-            evidence: draft.evidence as never,
-          },
-        })
-        summary.newFindings.push({
-          clientId: client.id,
-          clientName: client.businessName,
-          check: draft.check,
-          severity: draft.severity,
-          title: draft.title,
-          detail: draft.detail,
-        })
-      } else if (existing.status === 'OPEN') {
-        // Still true: freshen the numbers, keep one row.
-        await prisma.adsFinding.update({
-          where: { id: existing.id },
-          data: {
-            lastSeenAt: new Date(),
-            detail: draft.detail,
-            evidence: draft.evidence as never,
-          },
-        })
-        summary.stillOpen += 1
-      } else if (existing.status === 'RESOLVED') {
-        // It came back. Reopen the same row so the history is one thread.
-        await prisma.adsFinding.update({
-          where: { id: existing.id },
-          data: {
-            status: 'OPEN',
-            resolvedAt: null,
-            lastSeenAt: new Date(),
-            detail: draft.detail,
-            evidence: draft.evidence as never,
-          },
-        })
-        summary.newFindings.push({
-          clientId: client.id,
-          clientName: client.businessName,
-          check: draft.check,
-          severity: draft.severity,
-          title: `${draft.title} (returned)`,
-          detail: draft.detail,
-        })
-      }
-      // DISMISSED: the operator said stop telling me. Honoured while it lasts.
-    }
-
-    // Auto-resolve what this run no longer sees — only for checks that ran.
-    const open = await prisma.adsFinding
-      .findMany({
-        where: { clientId: client.id, cadence: 'DAILY', status: 'OPEN' },
-        select: { id: true, dedupeKey: true, check: true },
-      })
-      .catch(() => [])
-    for (const finding of open) {
-      if (!ranChecks.has(finding.check) || produced.has(finding.dedupeKey)) continue
-      await prisma.adsFinding.update({
-        where: { id: finding.id },
-        data: { status: 'RESOLVED', resolvedAt: new Date() },
-      })
-      summary.resolved += 1
-    }
+    await fileFindings(client, customerId, 'DAILY', drafts, ranChecks, summary)
   }
 
   return summary
+}
+
+/**
+ * File drafts against the findings table with the full lifecycle: create new,
+ * freshen OPEN, reopen RESOLVED, honour DISMISSED, and auto-resolve what
+ * this run no longer sees — resolving only for checks whose fetch actually
+ * ran, so an API hiccup can never read as all-clear. Shared by every
+ * cadence; the pipeline is the same whether the check is a spend cliff or a
+ * playbook rule.
+ */
+export async function fileFindings(
+  client: { id: string; businessName: string },
+  customerId: string,
+  cadence: 'DAILY' | 'WEEKLY' | 'MONTHLY',
+  drafts: FindingDraft[],
+  ranChecks: Set<string>,
+  summary: Pick<DailyRunSummary, 'newFindings' | 'resolved' | 'stillOpen'>
+): Promise<void> {
+  const produced = new Set<string>()
+  for (const draft of drafts) {
+    const dedupeKey = `${client.id}:${draft.check}:${draft.entity}`
+    produced.add(dedupeKey)
+    const existing = await prisma.adsFinding
+      .findUnique({ where: { dedupeKey }, select: { id: true, status: true } })
+      .catch(() => null)
+    if (!existing) {
+      await prisma.adsFinding.create({
+        data: {
+          clientId: client.id,
+          customerId,
+          cadence,
+          check: draft.check,
+          dedupeKey,
+          severity: draft.severity,
+          title: draft.title,
+          detail: draft.detail,
+          evidence: draft.evidence as never,
+        },
+      })
+      summary.newFindings.push({
+        clientId: client.id,
+        clientName: client.businessName,
+        check: draft.check,
+        severity: draft.severity,
+        title: draft.title,
+        detail: draft.detail,
+      })
+    } else if (existing.status === 'OPEN') {
+      // Still true: freshen the numbers, keep one row.
+      await prisma.adsFinding.update({
+        where: { id: existing.id },
+        data: {
+          lastSeenAt: new Date(),
+          detail: draft.detail,
+          evidence: draft.evidence as never,
+        },
+      })
+      summary.stillOpen += 1
+    } else if (existing.status === 'RESOLVED') {
+      // It came back. Reopen the same row so the history is one thread.
+      await prisma.adsFinding.update({
+        where: { id: existing.id },
+        data: {
+          status: 'OPEN',
+          resolvedAt: null,
+          lastSeenAt: new Date(),
+          detail: draft.detail,
+          evidence: draft.evidence as never,
+        },
+      })
+      summary.newFindings.push({
+        clientId: client.id,
+        clientName: client.businessName,
+        check: draft.check,
+        severity: draft.severity,
+        title: `${draft.title} (returned)`,
+        detail: draft.detail,
+      })
+    }
+    // DISMISSED: the operator said stop telling me. Honoured while it lasts.
+  }
+
+  // Auto-resolve what this run no longer sees — only for checks that ran.
+  const open = await prisma.adsFinding
+    .findMany({
+      where: { clientId: client.id, cadence, status: 'OPEN' },
+      select: { id: true, dedupeKey: true, check: true },
+    })
+    .catch(() => [])
+  for (const finding of open) {
+    if (!ranChecks.has(finding.check) || produced.has(finding.dedupeKey)) continue
+    await prisma.adsFinding.update({
+      where: { id: finding.id },
+      data: { status: 'RESOLVED', resolvedAt: new Date() },
+    })
+    summary.resolved += 1
+  }
+}
+
+/** Every client whose account the sweeps should read. */
+export async function listAdsClients() {
+  return prisma.client.findMany({
+    where: {
+      status: { in: ['ACTIVE', 'ONBOARDING'] },
+      adsTracking: { googleAdsCustomerId: { not: null } },
+    },
+    select: {
+      id: true,
+      businessName: true,
+      adsTracking: { select: { googleAdsCustomerId: true } },
+    },
+    orderBy: { businessName: 'asc' },
+  })
 }
 
 // ---------------------------------------------------------------------------
