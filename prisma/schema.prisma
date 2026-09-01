@@ -216,6 +216,9 @@ model Client {
 
   // Day-one walkthrough state, portal-side
   onboarding ClientOnboarding?
+
+  // Scheduled Google Ads checks file what needs action here
+  adsFindings AdsFinding[]
 }
 
 enum ClientStatus {
@@ -687,6 +690,50 @@ model ClientOnboarding {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// One thing a scheduled Google Ads check says needs action.
+///
+/// A FINDING, not a log line: it stays OPEN until the condition clears
+/// (auto-RESOLVED by the next run) or the operator dismisses it. The dedupe
+/// key keeps a condition that persists for a week as ONE row whose
+/// lastSeenAt moves, not seven rows — an inbox that refills with what you
+/// already read teaches you to stop reading it.
+///
+/// Every finding carries its EVIDENCE (the window, the numbers, the raw
+/// comparison) because a recommendation without its sample size is how three
+/// wrong calls got made on 30-day data in one sitting. Later cadences add
+/// `action`: the exact mutation payload approval would replay — never
+/// derived again at execution time.
+model AdsFinding {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  customerId String
+  /// DAILY / WEEKLY / MONTHLY — which sweep files it.
+  cadence String
+  /// Machine key of the check ("spend-cliff", "disapproved-ads", …).
+  check String
+  /// clientId + check + entity, so a persisting condition updates in place.
+  dedupeKey String @unique
+  /// ALERT (money is burning now) or REVIEW (look when you're at the desk).
+  severity String
+
+  title  String
+  detail String
+  /// Window, sample sizes, the numbers the claim rests on. Raw, recomputable.
+  evidence Json?
+
+  /// OPEN → RESOLVED (condition gone on a later run) or DISMISSED (operator).
+  status      String    @default("OPEN")
+  firstSeenAt DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+  resolvedAt  DateTime?
+  dismissedAt DateTime?
+
+  @@index([status, lastSeenAt])
+  @@index([clientId, status])
 }
 
 // ============================================

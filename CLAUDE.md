@@ -317,6 +317,34 @@ walkthrough (`GettingStartedCard`, `/api/portal/onboarding`,
 - Prompt bias is **keep by default**. A drop-biased prompt once kept 1 photo
   of 17 by judging filenames it could not judge.
 
+### Google Ads scheduled checks (the heartbeat)
+
+`google-ads-checks.ts`, the `AdsFinding` table (bootstrap: `ADS_FINDING_SQL`),
+the morning cron `/api/cron/ads-daily`, and `/admin/ads-findings` ("Ads:
+needs action" in the sidebar). Replaces the n8n/Airtable idea on purpose:
+the credentials, the scheduler, the queue and the surface all already lived
+in this app.
+
+- **A finding is a structured claim with its evidence attached** — window,
+  sample sizes, the numbers — never prose. Evaluators are pure (rows in,
+  drafts out) so thresholds are testable against saved API responses.
+- **Findings dedupe and live a lifecycle.** A persisting condition is ONE
+  row whose `lastSeenAt` moves. It auto-RESOLVES when a run stops seeing it
+  (only for checks whose fetch succeeded — an API hiccup must not read as
+  all-clear), reopens the same row if it returns, and DISMISSED means "known,
+  stop telling me" and is honoured until it resolves.
+- **DAILY is anomalies only** — spend cliff/spike vs the prior-7 mean (with
+  a $10/day floor so small campaigns stay silent), disapproved ads,
+  budget-capped campaigns, account conversions gone to zero after a real
+  prior week, and change_event edits by anyone (budget edits escalate to
+  ALERT — the $150→$1 case). Slower checks belong to future WEEKLY/MONTHLY
+  sweeps so the daily signal stays scary.
+- **The digest emails ADMIN_EMAIL only when something NEW appeared**, so an
+  empty morning sends nothing and the email means something.
+- Read-only so far. The planned approve→execute layer must carry the exact
+  mutation payload on the finding and replay it — never re-derive at
+  execution time — and prefer reversible actions (pause over remove).
+
 ### Google Ads offline conversions
 
 `google-ads.ts` (`API_VERSION`, bumped roughly yearly — v21 sunset
