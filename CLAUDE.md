@@ -341,6 +341,17 @@ in this app.
   sweeps so the daily signal stays scary.
 - **The digest emails ADMIN_EMAIL only when something NEW appeared**, so an
   empty morning sends nothing and the email means something.
+- **WEEKLY is the optimization playbook** (`google-ads-playbook.ts`): the
+  bidding maturity ladder (clicks → Maximize Conversions at ~20
+  conversions → consider tCPA at 30, set AT/above observed CPA), budget
+  under 2× target, search partners / Display expansion / geo-interest
+  leaks, PMax URL expansion, and negatives candidates gated at 2× the
+  campaign's observed CPA. Every recommendation is cooldown-checked
+  against 30 days of change_event first — bidding touched inside 14 days
+  means silence, and an unreadable change history means NO recommendations
+  for that account. Thresholds are named constants;
+  `docs/GOOGLE-ADS-PLAYBOOK.md` carries the expert sourcing, confidence
+  labels and the disagreements.
 - Read-only so far. The planned approve→execute layer must carry the exact
   mutation payload on the finding and replay it — never re-derive at
   execution time — and prefer reversible actions (pause over remove).
