@@ -309,6 +309,35 @@ export const CLIENT_ONBOARDING_SQL: string[] = [
   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
 ]
 
+/** Findings filed by the scheduled Google Ads checks. */
+export const ADS_FINDING_SQL: string[] = [
+  `CREATE TABLE IF NOT EXISTS "AdsFinding" (
+     "id"          TEXT NOT NULL,
+     "clientId"    TEXT NOT NULL,
+     "customerId"  TEXT NOT NULL,
+     "cadence"     TEXT NOT NULL,
+     "check"       TEXT NOT NULL,
+     "dedupeKey"   TEXT NOT NULL,
+     "severity"    TEXT NOT NULL,
+     "title"       TEXT NOT NULL,
+     "detail"      TEXT NOT NULL,
+     "evidence"    JSONB,
+     "status"      TEXT NOT NULL DEFAULT 'OPEN',
+     "firstSeenAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     "lastSeenAt"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     "resolvedAt"  TIMESTAMP(3),
+     "dismissedAt" TIMESTAMP(3),
+     CONSTRAINT "AdsFinding_pkey" PRIMARY KEY ("id")
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "AdsFinding_dedupeKey_key" ON "AdsFinding"("dedupeKey")`,
+  `CREATE INDEX IF NOT EXISTS "AdsFinding_status_lastSeenAt_idx" ON "AdsFinding"("status", "lastSeenAt")`,
+  `CREATE INDEX IF NOT EXISTS "AdsFinding_clientId_status_idx" ON "AdsFinding"("clientId", "status")`,
+  `DO $$ BEGIN
+    ALTER TABLE "AdsFinding" ADD CONSTRAINT "AdsFinding_clientId_fkey"
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+]
+
 /** Everything the running code assumes exists. */
 export const BOOTSTRAP_SQL: string[] = [
   ...CALL_TRACKING_SQL,
@@ -327,6 +356,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...SITE_SCRIPTS_SQL,
   ...RANK_WEBHOOK_LOG_SQL,
   ...CLIENT_ONBOARDING_SQL,
+  ...ADS_FINDING_SQL,
 ]
 
 /**

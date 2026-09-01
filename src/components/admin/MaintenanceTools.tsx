@@ -71,6 +71,14 @@ const READS: Tool[] = [
 
 const WRITES: Tool[] = [
   {
+    key: 'ads-daily-run',
+    name: 'Google Ads: run the daily anomaly checks now',
+    path: '/api/admin/ads-findings/run',
+    method: 'POST',
+    what: 'The same sweep the morning cron runs: spend cliffs and spikes, disapproved ads, budget-capped campaigns, conversions gone quiet, and edits by other people. Files findings and sends the digest email if anything new appeared.',
+    cost: 'Reads every linked Ads account (four queries each) and writes finding rows. Sends the digest email when there is something new to say.',
+  },
+  {
     key: 'derive-footer-logos',
     name: 'Generate white footer logos for every client',
     path: '/api/admin/derive-footer-logos',
