@@ -30,16 +30,22 @@ import {
  * there, and the finding text quotes the new one automatically.
  */
 
+/**
+ * Thresholds, each traceable to docs/GOOGLE-ADS-PLAYBOOK.md where the
+ * expert sourcing (and the disagreements) live.
+ */
 export const PLAYBOOK_THRESHOLDS = {
-  /** Under this many conversions in 30 days, smart bidding targets are
-   * guessing. Google's own guidance and most practitioners put the floor
-   * for tCPA in the 15–30 range; low-volume local accounts sit at the
-   * bottom of it. */
+  /** Google's hard floor for tCPA is 15 conversions/30d; consensus comfort
+   * is 30. An EXISTING target below 15 is flagged as clearly premature —
+   * the 15–30 band is grey and stays quiet. */
   MIN_CONVERSIONS_FOR_TCPA: 15,
-  /** At this volume a campaign still on Maximize Clicks is leaving the
-   * conversion signal unused. */
-  GRADUATE_TO_MAX_CONVERSIONS: 30,
-  /** Days to leave a campaign alone after any bidding change. */
+  /** Practitioner majority moves clicks-bidding to Maximize Conversions at
+   * 15–25 accumulated conversions; 20 is the middle of that band. */
+  GRADUATE_FROM_CLICKS: 20,
+  /** ADDING a target wants the consensus 30/30d, not the floor. */
+  CONSIDER_TCPA_AT: 30,
+  /** Days to leave a campaign alone after any bidding change. Google says
+   * up to 3 weeks; 7 minimum / 14 preferred is the practitioner rule. */
   BIDDING_COOLDOWN_DAYS: 14,
   /** Days before ANY same-area recommendation repeats after a change. */
   SETTING_COOLDOWN_DAYS: 30,
@@ -48,9 +54,13 @@ export const PLAYBOOK_THRESHOLDS = {
   MIN_CAMPAIGN_AGE_DAYS: 21,
   /** PMax needs longer: judge nothing before six weeks. */
   PMAX_MIN_AGE_DAYS: 42,
-  /** A search term must burn this much over 30 days with zero conversions
-   * before it becomes a negatives candidate. */
-  NEGATIVE_CANDIDATE_MIN_SPEND: 25,
+  /** A zero-conversion search term is a negatives CANDIDATE at 2× the
+   * campaign's observed CPA (consensus band is 2–3×) — statistics, not
+   * annoyance, is the bar. Where the campaign has no CPA yet, the flat
+   * floor stands in. Intent-based negatives (wrong service, DIY, jobs)
+   * are a human call at any spend and are not automated here. */
+  NEGATIVE_CANDIDATE_CPA_MULTIPLE: 2,
+  NEGATIVE_CANDIDATE_MIN_SPEND: 50,
   NEGATIVE_CANDIDATE_MIN_CLICKS: 8,
 } as const
 
@@ -72,6 +82,7 @@ export interface CampaignState {
   ageDays: number
   conversions30: number
   cost30: number
+  dailyBudget: number | null
   searchPartners: boolean
   displayExpansion: boolean
   geoTargetType: string
@@ -105,6 +116,9 @@ export function parseCampaignRows(rows: Row[]): CampaignState[] {
       ageDays,
       conversions30: num(get(row, 'metrics.conversions')),
       cost30: micros(get(row, 'metrics.costMicros')),
+      dailyBudget: num(get(row, 'campaignBudget.amountMicros'))
+        ? micros(get(row, 'campaignBudget.amountMicros'))
+        : null,
       searchPartners: get(row, 'campaign.networkSettings.targetPartnerSearchNetwork') === true,
       displayExpansion: get(row, 'campaign.networkSettings.targetContentNetwork') === true,
       geoTargetType: str(get(row, 'campaign.geoTargetTypeSetting.positiveGeoTargetType')),
@@ -211,11 +225,32 @@ export function evaluatePlaybook(
             evidence: { ...evidenceBase, threshold: T.MIN_CONVERSIONS_FOR_TCPA },
           })
       }
+      // A target the budget cannot explore. Google's floor is a daily budget
+      // of 2x the target CPA (practitioners say 3-5x); below 2x the bidder
+      // cannot finish a day's auction exploration and volume starves.
+      if (
+        c.targetCpa !== null &&
+        c.dailyBudget !== null &&
+        c.dailyBudget < 2 * c.targetCpa &&
+        c.conversions30 >= T.MIN_CONVERSIONS_FOR_TCPA
+      ) {
+        const cooldown = inBiddingCooldown(c)
+        if (cooldown !== null) hold(c, 'budget-below-target', cooldown)
+        else
+          drafts.push({
+            check: 'budget-below-target',
+            severity: 'REVIEW',
+            entity: `campaign:${c.id}`,
+            title: `${c.name}: daily budget under 2× the target CPA`,
+            detail: `Budget $${c.dailyBudget.toFixed(0)}/day against a $${c.targetCpa.toFixed(0)} target — Google's own floor is 2×, practitioners prefer 3–5×. Either raise the budget (≤20% steps) or raise/remove the target; at this ratio the bidder cannot explore enough auctions in a day.`,
+            evidence: { ...evidenceBase, dailyBudget: c.dailyBudget, floor: 2 * c.targetCpa },
+          })
+      }
       // Rung up: clicks-bidding on a campaign that converts.
       if (
         isSearch &&
         c.biddingStrategyType === 'TARGET_SPEND' &&
-        c.conversions30 >= T.GRADUATE_TO_MAX_CONVERSIONS
+        c.conversions30 >= T.GRADUATE_FROM_CLICKS
       ) {
         const cooldown = inBiddingCooldown(c)
         if (cooldown !== null) hold(c, 'graduate-bidding', cooldown)
@@ -226,14 +261,14 @@ export function evaluatePlaybook(
             entity: `campaign:${c.id}`,
             title: `${c.name}: ready to graduate from Maximize Clicks`,
             detail: `${c.conversions30.toFixed(0)} conversions in 30 days on click-based bidding. That is enough signal for Maximize Conversions — clicks-bidding at this volume optimises for the wrong thing. One change, then leave it ${T.BIDDING_COOLDOWN_DAYS} days to learn.`,
-            evidence: { ...evidenceBase, threshold: T.GRADUATE_TO_MAX_CONVERSIONS },
+            evidence: { ...evidenceBase, threshold: T.GRADUATE_FROM_CLICKS },
           })
       }
       // Rung up: mature Maximize Conversions that could take a target.
       if (
         c.biddingStrategyType === 'MAXIMIZE_CONVERSIONS' &&
         c.targetCpa === null &&
-        c.conversions30 >= T.GRADUATE_TO_MAX_CONVERSIONS &&
+        c.conversions30 >= T.CONSIDER_TCPA_AT &&
         observedCpa !== null
       ) {
         const cooldown = inBiddingCooldown(c)
@@ -244,8 +279,8 @@ export function evaluatePlaybook(
             severity: 'REVIEW',
             entity: `campaign:${c.id}`,
             title: `${c.name}: volume now supports a target CPA`,
-            detail: `${c.conversions30.toFixed(0)} conversions in 30 days at an observed $${observedCpa.toFixed(0)} CPA. A target set AT the observed number (not the wished-for one) gives the bidding a constraint without starving it. Start at ~$${observedCpa.toFixed(0)} and move it no more than 15–20% at a time, ${T.BIDDING_COOLDOWN_DAYS}+ days apart.`,
-            evidence: { ...evidenceBase, threshold: T.GRADUATE_TO_MAX_CONVERSIONS },
+            detail: `${c.conversions30.toFixed(0)} conversions in 30 days at an observed $${observedCpa.toFixed(0)} CPA. Set the target at or 10–20% ABOVE the observed number — never below it, and never at the wished-for price — then walk it down 10–15% at a time, ${T.BIDDING_COOLDOWN_DAYS}+ days apart, stopping when volume sags.`,
+            evidence: { ...evidenceBase, threshold: T.CONSIDER_TCPA_AT },
           })
       }
     }
@@ -312,22 +347,35 @@ export function evaluatePlaybook(
   }
 
   // --- Search terms burning money with nothing to show -------------------
+  // The bar is statistical, not annoyance: ~2x the campaign's observed CPA
+  // spent with nothing back is unlikely to be a winner at lead-gen
+  // conversion rates. Below that, a term is noise, and negating noise is
+  // the over-optimization the research warns about.
+  const cpaByCampaign = new Map<string, number>()
+  for (const c of campaigns) {
+    if (c.conversions30 > 0) cpaByCampaign.set(c.id, c.cost30 / c.conversions30)
+  }
   const byCampaign = new Map<
     string,
-    { name: string; terms: Array<{ term: string; cost: number; clicks: number }> }
+    { name: string; threshold: number; terms: Array<{ term: string; cost: number; clicks: number }> }
   >()
   for (const row of searchTermRows) {
     const cost = micros(get(row, 'metrics.costMicros'))
     const clicks = num(get(row, 'metrics.clicks'))
     const conversions = num(get(row, 'metrics.conversions'))
     if (conversions > 0) continue
-    if (cost < T.NEGATIVE_CANDIDATE_MIN_SPEND || clicks < T.NEGATIVE_CANDIDATE_MIN_CLICKS) continue
-    const id = str(get(row, 'campaign.id'))
-    const entry = byCampaign.get(id) || { name: str(get(row, 'campaign.name')), terms: [] }
+    const campaignId = str(get(row, 'campaign.id'))
+    const cpa = cpaByCampaign.get(campaignId)
+    const threshold = cpa
+      ? Math.max(T.NEGATIVE_CANDIDATE_MIN_SPEND, T.NEGATIVE_CANDIDATE_CPA_MULTIPLE * cpa)
+      : T.NEGATIVE_CANDIDATE_MIN_SPEND
+    if (cost < threshold || clicks < T.NEGATIVE_CANDIDATE_MIN_CLICKS) continue
+    const entry =
+      byCampaign.get(campaignId) || { name: str(get(row, 'campaign.name')), threshold, terms: [] }
     entry.terms.push({ term: str(get(row, 'searchTermView.searchTerm')), cost, clicks })
-    byCampaign.set(id, entry)
+    byCampaign.set(campaignId, entry)
   }
-  for (const [id, { name, terms }] of byCampaign) {
+  for (const [id, { name, threshold, terms }] of byCampaign) {
     const sorted = terms.sort((a, b) => b.cost - a.cost).slice(0, 10)
     const total = terms.reduce((a, t) => a + t.cost, 0)
     drafts.push({
@@ -335,14 +383,15 @@ export function evaluatePlaybook(
       severity: 'REVIEW',
       entity: `campaign:${id}`,
       title: `${name}: $${total.toFixed(0)} on search terms that never convert`,
-      detail: `${terms.length} term${terms.length === 1 ? '' : 's'} each with ≥$${T.NEGATIVE_CANDIDATE_MIN_SPEND} spend and ≥${T.NEGATIVE_CANDIDATE_MIN_CLICKS} clicks over 30 days, zero conversions. Top: ${sorted
+      detail: `${terms.length} term${terms.length === 1 ? '' : 's'} each with ≥$${threshold.toFixed(0)} spend (2× this campaign's observed CPA, or the $${T.NEGATIVE_CANDIDATE_MIN_SPEND} floor) and ≥${T.NEGATIVE_CANDIDATE_MIN_CLICKS} clicks over 30 days, zero conversions. Top: ${sorted
         .slice(0, 3)
         .map((t) => `"${t.term}" ($${t.cost.toFixed(0)})`)
         .join(', ')}. Review for negatives — the full list is in the evidence.`,
       evidence: {
         window: 'last 30 days',
         thresholds: {
-          minSpend: T.NEGATIVE_CANDIDATE_MIN_SPEND,
+          spendThreshold: Number(threshold.toFixed(2)),
+          basis: `max($${T.NEGATIVE_CANDIDATE_MIN_SPEND}, ${T.NEGATIVE_CANDIDATE_CPA_MULTIPLE}× observed CPA)`,
           minClicks: T.NEGATIVE_CANDIDATE_MIN_CLICKS,
         },
         terms: sorted,
@@ -356,6 +405,7 @@ export function evaluatePlaybook(
 
 export const WEEKLY_CHECKS = [
   'tcpa-before-data',
+  'budget-below-target',
   'graduate-bidding',
   'consider-tcpa',
   'search-partners-on',
@@ -396,7 +446,7 @@ export async function runWeeklyPlaybook(): Promise<WeeklyRunSummary> {
               campaign.network_settings.target_partner_search_network,
               campaign.network_settings.target_content_network,
               campaign.geo_target_type_setting.positive_geo_target_type,
-              campaign.url_expansion_opt_out,
+              campaign.url_expansion_opt_out, campaign_budget.amount_micros,
               metrics.conversions, metrics.cost_micros
        FROM campaign
        WHERE campaign.status = 'ENABLED' AND segments.date DURING LAST_30_DAYS`
