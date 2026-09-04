@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
 import { normalisePath, hostedPathsFor } from '@/lib/url-parity'
-import { readPathOverrides, pathOverrideProblem } from '@/lib/site-paths'
+import { readPathOverrides, pathOverrideProblem, keptPathProblem } from '@/lib/site-paths'
 import type { ServiceFlag } from '@/lib/site-services'
 import { capturePage } from '@/lib/page-capture'
 import { splitKeptSections, dropKeptSections } from '@/lib/kept-content'
@@ -220,6 +220,19 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   }
 
   if (action === 'page') {
+    // A page here could never be seen — middleware resolves the address to a
+    // service page before this app's routing runs. Refused rather than
+    // created, because the failure is silent: the page stores, publishes,
+    // lists in the sitemap and links in the footer, and serves somebody
+    // else's content to everyone who clicks it.
+    const shadowed = keptPathProblem(fromPath)
+    if (shadowed) {
+      return NextResponse.json(
+        { error: `${shadowed} Redirect this address instead, or move the service page onto it.` },
+        { status: 400 }
+      )
+    }
+
     const sourceUrl: string =
       typeof body?.sourceUrl === 'string' && body.sourceUrl
         ? body.sourceUrl

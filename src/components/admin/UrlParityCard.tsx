@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { pathOverrideProblem } from '@/lib/site-paths'
+import { pathOverrideProblem, keptPathProblem } from '@/lib/site-paths'
 import { Button } from '@/components/ui/Button'
 import { Loader2, TriangleAlert, CircleCheck } from 'lucide-react'
 
@@ -600,6 +600,17 @@ export default function UrlParityCard({
             {decidedOutsideReport.map((path) => (
               <div key={path} className="flex flex-col gap-1">
                 <span className="font-mono text-xs text-gray-900 break-all">{path}</span>
+                {/* A page that can never be reached, said where the operator
+                    is looking at it. Two of these were live on a real site,
+                    published and linked in the footer, serving the windshield
+                    page to everyone who clicked them — with nothing anywhere
+                    that would have told anybody. */}
+                {pageFor(path) && keptPathProblem(path) && (
+                  <p className="text-xs text-amber-800 flex items-start gap-1.5">
+                    <TriangleAlert className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>{keptPathProblem(path)} Redirect it, or move the service page onto it.</span>
+                  </p>
+                )}
                 <Controls from={path} suggested={redirectFor(path)?.toPath ?? null} />
               </div>
             ))}

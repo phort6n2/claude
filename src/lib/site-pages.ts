@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { keptPathProblem } from '@/lib/site-paths'
 
 /**
  * Pages a shop kept from their old site, for the footer.
@@ -198,8 +199,18 @@ export async function keptPagesFor(
       take: 8,
     })
     .catch(() => [])
-  return rows.map((r) => ({
-    path: r.path,
-    title: r.navLabel?.trim() || shortLabel(r.title, businessName),
-  }))
+  return (
+    rows
+      // A page at one of the template's own service addresses is never
+      // reached — middleware sends that address to the service page. Linking
+      // it in the footer of every page means a visitor who clicks "Auto Glass
+      // Repair" lands on the windshield page instead, which looks like a
+      // broken site rather than a routing rule. The admin surfaces these; the
+      // site does not advertise them.
+      .filter((r) => !keptPathProblem(r.path))
+      .map((r) => ({
+        path: r.path,
+        title: r.navLabel?.trim() || shortLabel(r.title, businessName),
+      }))
+  )
 }

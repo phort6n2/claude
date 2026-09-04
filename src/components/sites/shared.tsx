@@ -243,7 +243,7 @@ export function CtaButton({
     <a
       href={href}
       className={`inline-flex items-center justify-center gap-2.5 min-h-[52px] px-6 rounded-[14px] font-bold text-[17px] no-underline hover:-translate-y-px transition-transform ${
-        onDark ? 'text-[var(--dark-2,#111)] bg-white' : 'text-white'
+        onDark ? 'text-[var(--dark-2,#111)] bg-white' : 'text-[var(--on-cta)]'
       } ${block ? 'flex w-full' : ''}`}
       style={
         onDark
@@ -365,7 +365,7 @@ export function Wordmark({
   return (
     <span className="flex items-center gap-2.5 min-w-0">
       <span
-        className={`${badge} rounded-full shrink-0 grid place-items-center font-extrabold text-white tracking-tight`}
+        className={`${badge} rounded-full shrink-0 grid place-items-center font-extrabold text-[var(--on-cta)] tracking-tight`}
         style={{
           background: 'linear-gradient(180deg, var(--cta), var(--cta-b))',
           boxShadow: 'var(--sh-cta), inset 0 1px 0 rgba(255,255,255,.25)',
@@ -474,14 +474,14 @@ export function SiteHeader({
             sticky mobile bar covers phones. */}
         <a
           href="#quote"
-          className={`${nav && nav.length > 0 ? 'lg:ml-2 ' : ''}${reviews ? '' : 'lg:ml-auto '}hidden lg:inline-flex items-center min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] text-white shrink-0 no-underline`}
+          className={`${nav && nav.length > 0 ? 'lg:ml-2 ' : ''}${reviews ? '' : 'lg:ml-auto '}hidden lg:inline-flex items-center min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] text-[var(--on-cta)] shrink-0 no-underline`}
           style={{ background: 'linear-gradient(180deg, var(--cta), var(--cta-b))', boxShadow: 'var(--sh-cta), inset 0 1px 0 rgba(255,255,255,.2)' }}
         >
           Get my free quote
         </a>
         <a
           href={telHrefFor(client.phone)}
-          className={`${reviews ? '' : 'ml-auto lg:ml-0 '}inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] shrink-0 no-underline bg-white text-[var(--cta)] border-[1.5px] border-[var(--cta)] shadow-[0_1px_2px_rgba(11,27,43,.16)] hover:bg-[var(--s1)] transition-colors max-lg:bg-[var(--cta)] max-lg:text-[var(--on-cta)]`}
+          className={`${reviews ? '' : 'ml-auto lg:ml-0 '}inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] shrink-0 no-underline bg-white text-[var(--cta-on-light)] border-[1.5px] border-[var(--cta)] shadow-[0_1px_2px_rgba(11,27,43,.16)] hover:bg-[var(--s1)] transition-colors max-lg:bg-[var(--cta)] max-lg:text-[var(--on-cta)]`}
         >
           <Phone className="h-4 w-4" />
           {/* "Call", not a bare glyph. The number itself only fits from sm
@@ -700,8 +700,10 @@ export function ProcessSection({
               className="gl-step grid grid-cols-[48px_minmax(0,1fr)] gap-4 items-start md:block"
             >
               <div
-                className={`gl-step-n h-12 w-12 rounded-full flex items-center justify-center text-white text-lg font-extrabold tabular-nums ${
-                  i === steps.length - 1 ? 'bg-[var(--cta)]' : 'bg-[var(--dark)]'
+                className={`gl-step-n h-12 w-12 rounded-full flex items-center justify-center text-lg font-extrabold tabular-nums ${
+                  i === steps.length - 1
+                    ? 'bg-[var(--cta)] text-[var(--on-cta)]'
+                    : 'bg-[var(--dark)] text-white'
                 }`}
               >
                 {i + 1}

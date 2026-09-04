@@ -124,6 +124,25 @@ function readableOn(c: Rgb): Rgb {
   return luminance(c) > 0.4 ? BLACK : WHITE
 }
 
+function contrast(a: Rgb, b: Rgb): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+  return (hi + 0.05) / (lo + 0.05)
+}
+
+/**
+ * The CTA colour used as TEXT on a white surface, or near-black when it
+ * cannot be read there.
+ *
+ * The header's phone button is white with the brand colour as its text — at
+ * 5:1 for a deep red that is the brand doing its job, and at 1.17:1 for a
+ * yellow it is an invisible phone number in a sticky header, on the highest
+ * value action this trade has. The border stays the brand colour either way,
+ * so the button still reads as theirs.
+ */
+function ctaOnLight(cta: Rgb, fallback: Rgb): Rgb {
+  return contrast(cta, WHITE) >= 4.5 ? cta : fallback
+}
+
 export const SITE_THEME_DEFAULT_PRIMARY = '#1e40af'
 export const SITE_THEME_DEFAULT_ACCENT = '#f59e0b'
 
@@ -220,6 +239,7 @@ export function sitePaletteVars(
     '--accent': accent,
     '--on-accent': readableOn(accent),
     '--on-cta': readableOn(cta),
+    '--cta-on-light': ctaOnLight(cta, mix({ r: 18, g: 18, b: 18 }, brand, 0.055)),
     '--brand-pale': [WHITE, brand, 0.18],
   }
 

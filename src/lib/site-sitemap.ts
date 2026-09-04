@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db'
-import { servicePath, locationPath, readPathOverrides } from '@/lib/site-paths'
+import { servicePath, locationPath, readPathOverrides, keptPathProblem } from '@/lib/site-paths'
 import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
 import { locationPages, mergeServiceAreas } from '@/lib/site-locations'
 import { canonicalHostFor } from '@/lib/site-origin'
@@ -160,7 +160,7 @@ export async function siteSitemap(
     ),
     ...indexable.map((l) => at(locationPath(l.slug, overrides), 'city', '0.7', 'monthly')),
     ...keptPages
-      .filter((p) => p.publishedAt)
+      .filter((p) => p.publishedAt && !keptPathProblem(p.path))
       .map((p) => at(p.path, 'kept', '0.6', 'monthly', p.updatedAt.toISOString())),
     at('/privacy', 'legal', '0.1', 'yearly'),
     at('/terms', 'legal', '0.1', 'yearly'),
@@ -179,6 +179,16 @@ export async function siteSitemap(
         path: p.path,
         group: 'kept' as const,
         reason: 'Held, not published — the address 404s until you publish it.',
+      })),
+    // Listing one of these would tell a crawler an address is this page while
+    // the address actually serves a service page. It is also the only place
+    // an operator can find out the page exists and cannot be reached.
+    ...keptPages
+      .filter((p) => p.publishedAt && keptPathProblem(p.path))
+      .map((p) => ({
+        path: p.path,
+        group: 'kept' as const,
+        reason: `${keptPathProblem(p.path)} Redirect the address instead, or move the service page onto it from Check the old site's addresses.`,
       })),
   ]
 
