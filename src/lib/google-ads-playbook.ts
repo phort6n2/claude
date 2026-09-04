@@ -5,6 +5,13 @@ import {
   type DailyRunSummary,
   type FindingDraft,
 } from '@/lib/google-ads-checks'
+import { auditConversionSetup } from '@/lib/google-ads-conventions'
+import {
+  auditCampaignGoals,
+  campaignGoalDrafts,
+  standardRefsFrom,
+  CAMPAIGN_GOAL_CHECK,
+} from '@/lib/google-ads-campaign-goals'
 
 /**
  * The optimization playbook: WEEKLY rules that reason the way a careful
@@ -419,6 +426,45 @@ export interface WeeklyRunSummary extends DailyRunSummary {
   heldByCooldown: Array<{ client: string; campaign: string; rule: string; daysAgo: number }>
 }
 
+/**
+ * Are this account's campaigns actually bidding to the AGMP conversions?
+ *
+ * Its own fileFindings call, so a failure anywhere else in the weekly run
+ * cannot swallow it — and so its auto-resolve only ever touches its own
+ * check. When the account cannot be READ, nothing is filed and nothing is
+ * resolved: an API hiccup must never read as "the campaigns are fine now".
+ */
+async function checkCampaignGoals(
+  client: { id: string; businessName: string },
+  customerId: string,
+  summary: WeeklyRunSummary
+): Promise<void> {
+  const setup = await auditConversionSetup(customerId)
+  if (!setup.ok) {
+    summary.errors.push({
+      client: client.businessName,
+      error: `conversion setup unreadable, campaign goals not checked: ${setup.error}`,
+    })
+    return
+  }
+  const goals = await auditCampaignGoals(customerId, standardRefsFrom(setup.audit))
+  if (!goals.ok) {
+    summary.errors.push({
+      client: client.businessName,
+      error: `campaign conversion goals unreadable: ${goals.error}`,
+    })
+    return
+  }
+  await fileFindings(
+    client,
+    customerId,
+    'WEEKLY',
+    campaignGoalDrafts(goals.report),
+    new Set([CAMPAIGN_GOAL_CHECK]),
+    summary
+  )
+}
+
 export async function runWeeklyPlaybook(): Promise<WeeklyRunSummary> {
   const clients = await listAdsClients()
   const summary: WeeklyRunSummary = {
@@ -436,6 +482,13 @@ export async function runWeeklyPlaybook(): Promise<WeeklyRunSummary> {
   for (const client of clients) {
     const customerId = client.adsTracking?.googleAdsCustomerId as string
     const ranChecks = new Set<string>()
+
+    // FIRST, and filed on its own, because it must survive the two `continue`s
+    // below: a campaign that ignores the conversions this platform installs is
+    // true whether or not the change history could be read, and the cooldown
+    // rules that gate the playbook's RECOMMENDATIONS have nothing to say about
+    // a misconfiguration.
+    await checkCampaignGoals(client, customerId, summary)
 
     const campaignRows = await adsSearch(
       customerId,
