@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+
 import { useEffect, useState } from 'react'
 import ClarityPanel from '@/components/admin/ClarityPanel'
 import OfflineConversionsCard from '@/components/admin/OfflineConversionsCard'
@@ -94,12 +96,15 @@ function Steps({
 export default function AdsTrackingCard({
   clientId,
   clientPhone,
+  siteTrackingNumber,
   clarityProjectId = null,
   clarityMaskedToken = null,
 }: {
   clientId: string
   /** Shown in the calls instructions so the number to enter is unambiguous. */
   clientPhone?: string
+  /** The Twilio number the site currently shows, formatted. Null = none yet. */
+  siteTrackingNumber?: string | null
   clarityProjectId?: string | null
   clarityMaskedToken?: string | null
 }) {
@@ -507,6 +512,28 @@ export default function AdsTrackingCard({
         <h3 className="font-medium text-gray-900">
           Calls from the website <span className="font-normal text-gray-400">— optional</span>
         </h3>
+        {!siteTrackingNumber && (
+          <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900">
+            <p className="m-0 font-semibold">Buy the tracking number first.</p>
+            <p className="m-0 mt-1">
+              This conversion works by swapping the number printed on the site, so it has to be
+              set up <em>against</em> the number the site will keep showing. Do it in the other
+              order and you paste the shop&apos;s real line into Google, then change the site
+              number afterwards — and Google stops finding the number it was told to swap.
+            </p>
+            <p className="m-0 mt-1">
+              Go to{' '}
+              <Link
+                href={`/admin/clients/${clientId}/leads-setup`}
+                className="font-semibold underline"
+              >
+                Leads &amp; calls
+              </Link>{' '}
+              → Tracking numbers, buy a number, and tick <strong>Show on the site</strong>. Then
+              come back here.
+            </p>
+          </div>
+        )}
         <Steps title="How to create it in Google Ads">
           <ol className="list-decimal ml-5 space-y-1.5">
             <li>
@@ -519,9 +546,21 @@ export default function AdsTrackingCard({
               rather than calls).
             </li>
             <li>
-              Enter the phone number <strong>exactly as it appears on the site</strong> — the main
-              number shown in the header. If the digits or formatting differ, Google won&apos;t
-              find it on the page and nothing will be swapped or counted.
+              Enter the phone number <strong>exactly as it appears on the site</strong>
+              {siteTrackingNumber ? (
+                <>
+                  {' '}— which is the tracking number{' '}
+                  <strong className="font-mono">{siteTrackingNumber}</strong>, not the shop&apos;s
+                  own line. Type it in that format; if the digits or formatting differ, Google
+                  won&apos;t find it on the page and nothing will be swapped or counted.
+                </>
+              ) : (
+                <>
+                  {' '}— once a tracking number is assigned above, that is the number to enter, not
+                  the shop&apos;s own line. If the digits or formatting differ, Google won&apos;t
+                  find it on the page and nothing will be swapped or counted.
+                </>
+              )}
             </li>
             <li>
               Call length to count as a conversion: 60 seconds is a reasonable floor for this
@@ -538,7 +577,9 @@ export default function AdsTrackingCard({
             <strong>Before you turn this on:</strong> Google works by replacing the number on the
             page with a forwarding number. Don&apos;t run it on a number that HighLevel&apos;s
             Number Pool is also swapping — two systems rewriting one number is a broken phone
-            number on the page, not just double-counted data. And a number used as a Google call
+            number on the page, not just double-counted data. Move the shop onto the Twilio
+            tracking number here FIRST, and stop HighLevel&apos;s upload, before creating this
+            action (the order is in docs/GOOGLE-ADS-SETUP.md). And a number used as a Google call
             asset has to stay visible and unswapped, or asset verification fails.
           </p>
         </Steps>
