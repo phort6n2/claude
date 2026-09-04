@@ -1917,11 +1917,20 @@ export function SiteFooter({
           )}
         </div>
 
-        <div className="mt-8 pt-5 border-t border-[var(--line-on-dark)] text-[12.5px] leading-[1.6] grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        {/* CENTRED ON A PHONE, and left/right on a wide screen. Stacked at
+            390px this was two ragged left-aligned blocks under a full-width
+            rule, with the legal links hanging off the left edge — the last
+            thing on the page, and the part that looks unfinished if it is not
+            deliberate. Nothing centres above lg, where the two halves go back
+            to being opposite ends of one line. */}
+        <div className="mt-8 pt-5 border-t border-[var(--line-on-dark)] text-[12.5px] leading-[1.6] grid gap-3 text-center lg:text-left lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div>
             © {year} {client.businessName}. All rights reserved.{' '}
-            <span className="whitespace-nowrap">
-              ·{' '}
+            {/* Its own line on a phone, where the two do not fit side by side.
+                The separator comes with it and is dropped there — a line that
+                begins with a stray "·" reads as a bullet that lost its list. */}
+            <span className="block whitespace-nowrap lg:inline">
+              <span className="hidden lg:inline">·</span>{' '}
               {/* Deliberately a followed link: every client site vouching for
                   the platform is the point of the attribution. */}
               <a
@@ -1934,7 +1943,7 @@ export function SiteFooter({
               </a>
             </span>
           </div>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap justify-center gap-4 lg:justify-start">
             <a
               href={`${basePath || ''}/privacy`}
               className="underline text-[var(--on-dark-2)] hover:text-white"
