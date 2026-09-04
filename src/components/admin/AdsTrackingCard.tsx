@@ -791,8 +791,10 @@ export default function AdsTrackingCard({
               )}
             </li>
             <li>
-              Call length to count as a conversion: 60 seconds is a reasonable floor for this
-              trade — long enough to exclude misdials, short enough to keep real enquiries.
+              Call length to count as a conversion: <strong>10 seconds</strong>. Shorter than
+              Google&apos;s default 15 on purpose — at these volumes bidding is starved of
+              conversions long before it is fooled by a bad one, and plenty of real enquiries in
+              this trade are over in fifteen seconds. The audit below checks for 10.
             </li>
             <li>
               <strong>Create and continue</strong> → <strong>Install the tag yourself</strong>, and
@@ -864,7 +866,11 @@ export default function AdsTrackingCard({
             Name it <ActionName name={CONVERSION_NAMES.callFromAds} /> — exactly that, every
             account.
           </li>
-          <li>Set the minimum call length that counts — 60 seconds pairs well with the website one.</li>
+          <li>
+            Set the minimum call length that counts to <strong>10 seconds</strong> — the same as
+            the website one, or the same inbound call counts differently depending on which way it
+            arrived.
+          </li>
           <li>
             Create it. There is no snippet and nothing to paste here: the ad does the reporting.
           </li>

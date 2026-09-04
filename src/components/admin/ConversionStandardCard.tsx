@@ -45,6 +45,8 @@ export default function ConversionStandardCard() {
 
   const standard = shared?.standard ?? null
   const audit = shared?.audit ?? null
+  const campaignGoals = shared?.campaignGoals ?? null
+  const campaignGoalsError = shared?.campaignGoalsError ?? null
   const reason = shared?.reason ?? null
   const loading = shared?.loading ?? false
   const load = shared?.refresh ?? (async () => {})
@@ -213,6 +215,65 @@ export default function ConversionStandardCard() {
               <li key={issue}>{issue}</li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* HAVING the actions is not the same as BIDDING to them. A campaign
+          can carry its own conversion goals that override the account's, and
+          then the quote form is measured and ignored on every campaign that
+          spends money — invisible in the Ads UI unless you open each campaign
+          and read its goals against a list. */}
+      {(campaignGoals || campaignGoalsError) && (
+        <div className="rounded-xl border border-gray-200 p-4 space-y-2">
+          <p className="text-sm font-semibold text-gray-900">
+            Campaigns bidding to these
+            {campaignGoals && !campaignGoals.ok && (
+              <span className="ml-2 text-[11px] font-bold uppercase tracking-wide rounded px-1.5 py-0.5 border text-amber-700 bg-amber-50 border-amber-200">
+                {campaignGoals.problems.length} to fix
+              </span>
+            )}
+          </p>
+          <p className="text-xs text-gray-500">
+            An action can exist, be named right and count correctly, and still be Secondary on the
+            campaign that spends the money — biddability is set per goal, and a campaign may carry
+            its own set that overrides the account default.
+          </p>
+
+          {campaignGoalsError && (
+            <p className="text-sm text-amber-900 rounded border border-amber-200 bg-amber-50 p-2">
+              {campaignGoalsError} Nothing about the campaigns could be read, so this is not an
+              all-clear.
+            </p>
+          )}
+          {campaignGoals?.note && <p className="text-sm text-gray-600">{campaignGoals.note}</p>}
+
+          {campaignGoals?.campaigns.map((c) => (
+            <div key={c.campaignId} className="rounded-lg border border-gray-200 p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                {c.problem ? (
+                  <AlertCircle size={15} className="shrink-0 text-amber-600" />
+                ) : (
+                  <CheckCircle2 size={15} className="shrink-0 text-green-600" />
+                )}
+                <span className="text-sm font-medium text-gray-900">{c.name}</span>
+                <span className="text-xs text-gray-500">
+                  {c.channel.replace(/_/g, ' ').toLowerCase()} ·{' '}
+                  {c.level === 'CAMPAIGN'
+                    ? 'own conversion goals'
+                    : c.level === 'CUSTOMER'
+                      ? 'account-default goals'
+                      : 'goal source unknown'}
+                  {c.customGoalName ? ` · custom goal “${c.customGoalName}”` : ''}
+                </span>
+              </div>
+              {c.bidding.length > 0 && (
+                <p className="mt-1 text-xs text-gray-600">
+                  Bidding to: <span className="font-mono">{c.bidding.join(', ')}</span>
+                </p>
+              )}
+              {c.problem && <p className="mt-1 text-sm text-amber-900">{c.problem}</p>}
+            </div>
+          ))}
         </div>
       )}
 

@@ -7,7 +7,7 @@ import { CONVERSION_NAMES, CONVERSION_PREFIX } from '@/lib/google-ads-conversion
  * The problem this solves is not tidiness. Every account was set up by
  * whoever happened to be doing it that week, so the same event is called
  * "Calls from ads" in one account and "Call from Ads" in the next, counts a
- * call after 15 seconds here and 10 there, and looks back 30 days in one
+ * call after 60 seconds here and 10 there, and looks back 30 days in one
  * place and 7 in another. Nothing is visibly broken, and yet no two accounts
  * can be compared, no report can be written that spans them, and nobody can
  * answer "is this shop tracking properly?" without opening the account and
@@ -100,14 +100,19 @@ export const CONVERSION_STANDARD: ConversionSpec[] = [
     fires: 'Someone taps the call asset in the ad itself, without landing on the site.',
     countingType: 'ONE_PER_CLICK',
     clickLookbackDays: 30,
-    // 15 is Google's own default and the number that filters the wrong-number
-    // and instant-hangup calls without discarding a real one.
-    callSeconds: 15,
+    // 10, not Google's default 15. These are low-volume local accounts where
+    // Smart Bidding is starved of conversions long before it is fooled by a
+    // bad one, and a real auto-glass enquiry is often over in fifteen seconds
+    // — year, make, model, "can you do Tuesday". The cost is that a few
+    // wrong numbers get counted; the benefit is enough countable calls for
+    // bidding to learn from at all. Set deliberately; do not "correct" it
+    // back to 15.
+    callSeconds: 10,
     biddable: true,
     setup: [
       'Goals → Conversions → New conversion action → Phone calls → Calls from ads using call assets.',
       `Name: ${CONVERSION_NAMES.callFromAds}.`,
-      'Count a call after 15 seconds. Count: One. Click-through window: 30 days.',
+      'Count a call after 10 seconds. Count: One. Click-through window: 30 days.',
       'Requires a call asset on the campaign — without one this action exists and never fires.',
     ],
   },
@@ -120,13 +125,16 @@ export const CONVERSION_STANDARD: ConversionSpec[] = [
     fires: 'Someone calls the number shown on the site after arriving from an ad.',
     countingType: 'ONE_PER_CLICK',
     clickLookbackDays: 30,
-    callSeconds: 15,
+    // The same 10 seconds as the call-from-ads action above, and for the same
+    // reason — the two must agree, or one inbound call counts differently
+    // depending on which way it arrived.
+    callSeconds: 10,
     biddable: true,
     setup: [
       'Goals → Conversions → New conversion action → Phone calls → Calls to a phone number on your website.',
       `Name: ${CONVERSION_NAMES.websiteCall}.`,
       'THE NUMBER MUST BE THE ONE THE SITE ACTUALLY SHOWS. If a tracking number is set in this app, the site shows that number — the conversion action has to name it, or Google swaps a number the page never displays and the action never fires.',
-      'Count a call after 15 seconds. Count: One. Click-through window: 30 days.',
+      'Count a call after 10 seconds. Count: One. Click-through window: 30 days.',
       'Paste the snippet\'s send_to into the app on the Advertising tab.',
     ],
   },

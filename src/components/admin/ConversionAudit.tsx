@@ -54,9 +54,33 @@ export interface ConversionAudit {
   clean: boolean
 }
 
+/** One enabled campaign, and which of the four it actually bids to. */
+export interface CampaignGoalView {
+  campaignId: string
+  name: string
+  channel: string
+  level: 'CUSTOMER' | 'CAMPAIGN' | 'UNKNOWN'
+  customGoalName?: string
+  bidding: string[]
+  ignored: string[]
+  premature: string[]
+  problem: string | null
+  fixWhere: string
+}
+
+export interface CampaignGoalReport {
+  campaigns: CampaignGoalView[]
+  problems: CampaignGoalView[]
+  ok: boolean
+  note: string | null
+}
+
 export interface ConversionAuditState {
   standard: ConversionSpecView[] | null
   audit: ConversionAudit | null
+  /** Which campaigns bid to the four — null when it could not be read. */
+  campaignGoals: CampaignGoalReport | null
+  campaignGoalsError: string | null
   /** Why there is no audit — no account linked, or Google could not be read. */
   reason: string | null
   loading: boolean
@@ -74,6 +98,8 @@ export function ConversionAuditProvider({
 }) {
   const [standard, setStandard] = useState<ConversionSpecView[] | null>(null)
   const [audit, setAudit] = useState<ConversionAudit | null>(null)
+  const [campaignGoals, setCampaignGoals] = useState<CampaignGoalReport | null>(null)
+  const [campaignGoalsError, setCampaignGoalsError] = useState<string | null>(null)
   const [reason, setReason] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -83,11 +109,15 @@ export function ConversionAuditProvider({
       const data = await (await fetch(`/api/clients/${clientId}/ads-conversions`)).json()
       setStandard(data.standard || [])
       setAudit(data.audit || null)
+      setCampaignGoals(data.campaignGoals || null)
+      setCampaignGoalsError(data.campaignGoalsError || null)
       setReason(data.reason || null)
       return { audit: (data.audit || null) as ConversionAudit | null, reason: (data.reason || null) as string | null }
     } catch {
       const failed = 'Could not reach Google Ads.'
       setAudit(null)
+      setCampaignGoals(null)
+      setCampaignGoalsError(failed)
       setReason(failed)
       return { audit: null, reason: failed }
     } finally {
@@ -100,7 +130,11 @@ export function ConversionAuditProvider({
   }, [refresh])
 
   return (
-    <Ctx.Provider value={{ standard, audit, reason, loading, refresh }}>{children}</Ctx.Provider>
+    <Ctx.Provider
+      value={{ standard, audit, campaignGoals, campaignGoalsError, reason, loading, refresh }}
+    >
+      {children}
+    </Ctx.Provider>
   )
 }
 
