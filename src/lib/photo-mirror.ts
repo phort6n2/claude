@@ -103,17 +103,31 @@ export async function mirrorRemoteImage(
       ? await pipeline.png({ compressionLevel: 9 }).toBuffer()
       : await pipeline.jpeg({ quality: 82, mozjpeg: true }).toBuffer()
 
+    let marked = false
     if (!isLogo && brand) {
       // Measured after the resize, like the upload path: the mark is sized
       // against the image that will actually be stored.
       const out = await sharp(output).metadata()
       if (out.width && out.height) {
-        output = await stampWatermark(output, out.width, out.height, brand.logoUrl, brand.wordmark)
+        const stamped = await stampWatermark(
+          output,
+          out.width,
+          out.height,
+          brand.logoUrl,
+          brand.wordmark
+        )
+        marked = stamped !== output
+        output = stamped
       }
     }
 
     const blob = await put(
-      `sites/${clientSlug}/imported/${Date.now()}.${isLogo ? 'png' : 'jpg'}`,
+      // WHETHER IT CARRIES THE MARK IS IN THE PATH, not in a column. The
+      // photo rows are deleted and recreated wholesale by the site-content
+      // save, so any flag stored beside a photo is lost the next time
+      // somebody edits the page — and the backfill would then stamp it a
+      // second time. The URL survives, because it IS the photo.
+      `sites/${clientSlug}/${isLogo ? 'imported' : marked ? 'imported-wm' : 'imported'}/${Date.now()}.${isLogo ? 'png' : 'jpg'}`,
       toBlobBody(output),
       {
         access: 'public',
