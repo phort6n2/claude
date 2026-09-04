@@ -41,11 +41,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'A URL is required' }, { status: 400 })
     }
 
-    const result = await importSiteContent(body.url, {
-      name: client.businessName,
-      city: client.city,
-      state: client.state,
-    })
+    // `html` is the admin pasting the page a blocked site would not give us.
+    const providedHtml = typeof body.html === 'string' ? body.html : undefined
+    const result = await importSiteContent(
+      body.url,
+      { name: client.businessName, city: client.city, state: client.state },
+      providedHtml
+    )
     if (!result.ok) {
       // Every refusal is logged with the URL that caused it. The message
       // already reaches the admin; without this it reaches nobody who can

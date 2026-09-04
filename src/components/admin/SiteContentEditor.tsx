@@ -71,6 +71,11 @@ export default function SiteContentEditor({
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
   const [saveStatus, setSaveStatus] = useState<{ kind: 'saved' | 'warning' | 'error'; text: string } | null>(null)
   const [importUrl, setImportUrl] = useState('')
+  // The escape hatch for a site that refuses this app's server. Opened
+  // automatically when a fetch is blocked, since that is the moment it is
+  // the answer rather than clutter.
+  const [pastedHtml, setPastedHtml] = useState('')
+  const [showPaste, setShowPaste] = useState(false)
   const [importing, setImporting] = useState(false)
   const [warrantyTitle, setWarrantyTitle] = useState('')
   const [warrantyText, setWarrantyText] = useState('')
@@ -226,13 +231,22 @@ export default function SiteContentEditor({
       const res = await fetch(`/api/clients/${clientId}/import-site`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: importUrl }),
+        body: JSON.stringify({
+          url: importUrl,
+          ...(pastedHtml.trim() ? { html: pastedHtml } : {}),
+        }),
       })
       // errorFrom, because a platform timeout answers with an HTML page and
       // res.json() on that throws — the admin then saw "Import failed" with
       // no hint the function simply ran out of time.
       if (!res.ok) {
-        setMessage({ ok: false, text: await errorFrom(res, 'Import failed') })
+        const text = await errorFrom(res, 'Import failed')
+        // A block is not a dead end — it is the one failure the paste box
+        // solves, so open it rather than leaving the admin to find it.
+        if (/refused the request|blocking automated|did not respond/i.test(text)) {
+          setShowPaste(true)
+        }
+        setMessage({ ok: false, text })
         return
       }
       const data = await res.json()
@@ -247,6 +261,7 @@ export default function SiteContentEditor({
         setPhotos(d.photos)
         importedPhotosRef.current = true
       }
+      setPastedHtml('')
       if (d.logoUrl && onLogoFound) onLogoFound(d.logoUrl)
       if (Array.isArray(d.serviceAreas) && d.serviceAreas.length && onAreasFound) {
         onAreasFound(d.serviceAreas)
@@ -320,6 +335,41 @@ export default function SiteContentEditor({
             It is deliberately NOT the autosave status line: that one clears
             itself after a moment, and the list of what was imported is worth
             reading for longer than that. */}
+        <div className="mt-2">
+          <button
+            type="button"
+            onClick={() => setShowPaste((v) => !v)}
+            className="text-xs font-medium text-blue-700 hover:underline"
+          >
+            {showPaste ? 'Hide the paste box' : "Site blocking us? Paste the page instead"}
+          </button>
+          {showPaste && (
+            <div className="mt-1.5">
+              <p className="text-xs text-gray-600 mb-1">
+                Some sites (Cloudflare, security plugins) refuse this app&apos;s server while
+                opening fine in your browser — that is about our server&apos;s address, not
+                anything we can send. Open the site, press{' '}
+                <strong>Ctrl/Cmd&nbsp;+&nbsp;U</strong> to view the source, select all, and paste
+                it here. Keep the address above filled in: image and link paths are resolved
+                against it. Only this one page is read — nothing else is crawled.
+              </p>
+              <textarea
+                className={`${inputCls} font-mono text-[11px]`}
+                rows={5}
+                spellCheck={false}
+                placeholder="Paste the page source here…"
+                value={pastedHtml}
+                onChange={(e) => setPastedHtml(e.target.value)}
+                disabled={importing}
+              />
+              {pastedHtml.trim() && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {pastedHtml.length.toLocaleString()} characters ready — press Import.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
         {message && (
           <p
             className={`mt-2 mb-0 text-xs flex items-start gap-1.5 ${

@@ -448,7 +448,20 @@ const asStr = (v: unknown, max: number): string | null =>
 
 export async function importSiteContent(
   rawUrl: string,
-  business: { name: string; city: string; state: string }
+  business: { name: string; city: string; state: string },
+  /**
+   * The page's HTML, supplied by the admin instead of fetched.
+   *
+   * Cloudflare and friends block by IP reputation, not by header — a site
+   * that opens instantly in the admin's browser can refuse this app's
+   * serverless egress outright, and no User-Agent fixes that. So the admin
+   * can hand over the page they are already looking at. The URL is still
+   * required: relative image and link paths resolve against it.
+   *
+   * Only the pasted page is read — nothing is crawled — because the whole
+   * point is that we cannot reach the site.
+   */
+  providedHtml?: string
 ): Promise<{ ok: true; draft: ImportedSiteContent } | { ok: false; error: string }> {
   const check = validatePublicUrl(rawUrl)
   if (!check.ok) return { ok: false, error: check.error }
@@ -462,15 +475,22 @@ export async function importSiteContent(
     return { ok: false, error: 'No Anthropic API key configured (Settings → API keys).' }
   }
 
-  const mainFetch = await fetchHtml(check.url)
-  if (!mainFetch.ok) {
-    const reason = describeFetchFailure(mainFetch.failure, check.url.toString())
-    // Logged as well as returned: a failure nobody can see in the runtime
-    // logs is one that has to be reproduced before it can be diagnosed.
-    console.warn(`[SiteImport] fetch failed: ${reason}`)
-    return { ok: false, error: reason }
+  const pasted = (providedHtml || '').trim()
+  let mainHtml: string
+  if (pasted) {
+    mainHtml = pasted.slice(0, MAX_PAGE_BYTES)
+    console.log(`[SiteImport] using pasted page for ${check.url} (${pasted.length} chars)`)
+  } else {
+    const mainFetch = await fetchHtml(check.url)
+    if (!mainFetch.ok) {
+      const reason = describeFetchFailure(mainFetch.failure, check.url.toString())
+      // Logged as well as returned: a failure nobody can see in the runtime
+      // logs is one that has to be reproduced before it can be diagnosed.
+      console.warn(`[SiteImport] fetch failed: ${reason}`)
+      return { ok: false, error: reason }
+    }
+    mainHtml = mainFetch.html
   }
-  const mainHtml = mainFetch.html
 
   const warnings: string[] = []
   const logoUrl = findLogo(mainHtml, check.url, business.name)
@@ -480,7 +500,10 @@ export async function importSiteContent(
   const photoMap = new Map<string, { url: string; alt: string }>()
   for (const p of findPhotoCandidates(mainHtml, check.url)) photoMap.set(p.url, p)
 
-  const extraLinks = findContentLinks(mainHtml, check.url)
+  // Nothing is crawled off a pasted page: if the site refused us once it
+  // will refuse the warranty page too, and four guaranteed failures is just
+  // latency.
+  const extraLinks = pasted ? [] : findContentLinks(mainHtml, check.url)
   const extraPages = await Promise.all(
     extraLinks.map(async (link) => {
       const result = await fetchHtml(link)
