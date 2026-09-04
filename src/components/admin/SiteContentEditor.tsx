@@ -76,6 +76,8 @@ export default function SiteContentEditor({
   // the answer rather than clutter.
   const [pastedHtml, setPastedHtml] = useState('')
   const [showPaste, setShowPaste] = useState(false)
+  /** Which button is spinning, so only that one shows its progress. */
+  const [importSource, setImportSource] = useState<'fetch' | 'paste'>('fetch')
   const [importing, setImporting] = useState(false)
   const [warrantyTitle, setWarrantyTitle] = useState('')
   const [warrantyText, setWarrantyText] = useState('')
@@ -223,9 +225,16 @@ export default function SiteContentEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapshot, loading])
 
-  async function importFromSite() {
+  /**
+   * `source` is explicit rather than inferred from whether the paste box
+   * happens to hold something: two buttons, two behaviours, no guessing
+   * about which one a press meant.
+   */
+  async function importFromSite(source: 'fetch' | 'paste' = 'fetch') {
     if (!importUrl.trim() || importing) return
+    if (source === 'paste' && !pastedHtml.trim()) return
     setImporting(true)
+    setImportSource(source)
     setMessage(null)
     try {
       const res = await fetch(`/api/clients/${clientId}/import-site`, {
@@ -233,7 +242,7 @@ export default function SiteContentEditor({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           url: importUrl,
-          ...(pastedHtml.trim() ? { html: pastedHtml } : {}),
+          ...(source === 'paste' ? { html: pastedHtml } : {}),
         }),
       })
       // errorFrom, because a platform timeout answers with an HTML page and
@@ -321,12 +330,16 @@ export default function SiteContentEditor({
           />
           <button
             type="button"
-            onClick={importFromSite}
+            onClick={() => importFromSite('fetch')}
             disabled={importing || !importUrl.trim()}
             className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
           >
-            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
-            {importing ? 'Reading site…' : 'Import'}
+            {importing && importSource === 'fetch' ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Globe className="h-4 w-4" />
+            )}
+            {importing && importSource === 'fetch' ? 'Reading site…' : 'Import'}
           </button>
         </div>
         {/* The import's own outcome, which used to be set on every path and
@@ -362,11 +375,31 @@ export default function SiteContentEditor({
                 onChange={(e) => setPastedHtml(e.target.value)}
                 disabled={importing}
               />
-              {pastedHtml.trim() && (
-                <p className="text-xs text-gray-500 mt-1">
-                  {pastedHtml.length.toLocaleString()} characters ready — press Import.
-                </p>
-              )}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => importFromSite('paste')}
+                  disabled={importing || !pastedHtml.trim() || !importUrl.trim()}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {importing && importSource === 'paste' ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Globe className="h-4 w-4" />
+                  )}
+                  {importing && importSource === 'paste' ? 'Reading page…' : 'Import pasted page'}
+                </button>
+                {pastedHtml.trim() && (
+                  <span className="text-xs text-gray-500">
+                    {pastedHtml.length.toLocaleString()} characters
+                  </span>
+                )}
+                {pastedHtml.trim() && !importUrl.trim() && (
+                  <span className="text-xs text-amber-700">
+                    Fill in the address above — image and link paths resolve against it.
+                  </span>
+                )}
+              </div>
             </div>
           )}
         </div>
