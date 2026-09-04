@@ -45,10 +45,14 @@ const nextConfig: NextConfig = {
     '/api/clients/[id]/wordmark': ['./src/assets/**', ...SHARP_FILES],
     '/api/clients/[id]/photos': ['./src/assets/**', ...SHARP_FILES],
     '/api/portal/photos': ['./src/assets/**', ...SHARP_FILES],
-    '/api/clients/[id]/import-site': SHARP_FILES,
+    // Needs the fonts too: an imported photo is stamped on the way in, and a
+    // shop with no logo is stamped with their generated wordmark, which reads
+    // its font by path.
+    '/api/clients/[id]/import-site': ['./src/assets/**', ...SHARP_FILES],
     '/api/clients/[id]/logo': SHARP_FILES,
     '/api/clients/[id]': SHARP_FILES,
     '/api/admin/derive-footer-logos': SHARP_FILES,
+    '/api/admin/restamp-photos': ['./src/assets/**', ...SHARP_FILES],
     '/api/admin/mirror-photos': SHARP_FILES,
     '/api/widget/photo': SHARP_FILES,
   },
