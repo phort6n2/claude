@@ -47,6 +47,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       state: client.state,
     })
     if (!result.ok) {
+      // Every refusal is logged with the URL that caused it. The message
+      // already reaches the admin; without this it reaches nobody who can
+      // read it afterwards, which is how "the importer is broken again"
+      // became unanswerable twice.
+      console.warn(`[SiteImport] refused ${body.url}: ${result.error}`)
       return NextResponse.json({ error: result.error }, { status: 422 })
     }
 
