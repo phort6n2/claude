@@ -245,6 +245,20 @@ addresses are usually on the old site this platform is replacing, and the
 week it is switched off is the week the logo would vanish. When the copy
 cannot be made the original is kept and the card says so.
 
+**A cutover has THREE answers per old address, not two** (`UrlParityCard`,
+`/api/clients/[id]/cutover`). Redirect it, build a page at it, or — when the
+template already has that page under a different name — **move the page onto
+the old address**. `Client.pathOverrides` holds `{ template path: old
+address }` (bootstrap: `PATH_OVERRIDE_SQL`), and `site-paths.ts` is where
+every link, canonical, sitemap entry and schema URL asks for it, so the two
+can never drift. The template path 308s to the override: ONE address per
+page, always, or the ranking splits between two of them, which is the thing
+the whole module exists to prevent. Refused, in `pathOverrideProblem()`: an
+address that is one of the template's own service slugs or an alias of one,
+and anything shaped like a city page — **middleware rewrites both before any
+of this app's routing sees them, and middleware cannot read the database**,
+so such an override would be accepted and then silently ignored.
+
 **Which cities get pages is edited here too** (`ServiceAreaPlanner`). The
 first `LOCATION_PAGE_LIMIT` of `Client.serviceAreas` (after shop cities merge
 in front) get a page; the rest are coverage-band text, and the card marks

@@ -53,7 +53,7 @@ import { normalisePath } from '@/lib/url-parity'
 import LocationPage, { generateMetadata as locationMetadata } from '@/app/sites/[slug]/locations/[city]/page'
 import ServicePage, { generateMetadata as serviceMetadata } from '@/app/sites/[slug]/services/[service]/page'
 import { getServicePage } from '@/lib/site-services'
-import { cityFromPath } from '@/lib/site-paths'
+import { cityFromPath, canonicalForCustom, readPathOverrides } from '@/lib/site-paths'
 
 
 export const dynamic = 'force-dynamic'
@@ -135,6 +135,7 @@ async function getClient(slug: string) {
       filesInsuranceClaims: true,
       smsCapable: true,
       serviceAreas: true,
+      pathOverrides: true,
       googleMapsUrl: true,
       clarityProjectId: true,
     },
@@ -190,7 +191,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // and service metadata, including the canonical-host stance, and a second
   // copy here is what drifts.
   if (!page) {
-    const flat = normalisePath(`/${(path || []).join('/')}`).slice(1)
+    const flatPath = normalisePath(`/${(path || []).join('/')}`)
+    // A template page MOVED to one of the old site's addresses. Resolved
+    // ahead of the built-in shapes because it is the more specific rule, and
+    // its metadata has to come from the page it actually is.
+    const moved = canonicalForCustom(flatPath, readPathOverrides(client.pathOverrides))
+    const flat = (moved || flatPath).slice(1)
     const city = cityFromPath(flat)
     if (city) return locationMetadata({ params: Promise.resolve({ slug, city }) })
     if (getServicePage(flat)) {
@@ -245,15 +251,21 @@ export default async function CatchAllPage({ params }: PageProps) {
     // A flat city URL the shop's ads point at. RENDERED, not redirected: a
     // redirect is a changed destination in Google's eyes, and the whole point
     // is that moving the domain costs no edits in the Ads account.
-    const flat = normalisePath(`/${(path || []).join('/')}`).slice(1)
+    const flatPath = normalisePath(`/${(path || []).join('/')}`)
+    // A template page moved onto one of the old site's addresses. Same
+    // reasoning as the flat city URL above, taken one step further: the page
+    // IS this address now, so it renders here and the template address 308s
+    // the other way.
+    const moved = canonicalForCustom(flatPath, readPathOverrides(client.pathOverrides))
+    const flat = (moved || flatPath).slice(1)
     const city = cityFromPath(flat)
-    if (city) return <LocationPage params={Promise.resolve({ slug, city })} />
+    if (city) return <LocationPage params={Promise.resolve({ slug, city })} atOverride={!!moved} />
     // Services resolve here as well as in middleware. Middleware only runs on
     // a client host, so without this the flat links would 404 on the
     // /sites/{slug} preview — the one place an operator checks the site
     // before pointing a domain at it.
     if (getServicePage(flat)) {
-      return <ServicePage params={Promise.resolve({ slug, service: flat })} />
+      return <ServicePage params={Promise.resolve({ slug, service: flat })} atOverride={!!moved} />
     }
 
     notFound()
@@ -286,7 +298,7 @@ export default async function CatchAllPage({ params }: PageProps) {
     smsCapable: client.smsCapable,
   }
   const nav = prioritizeServices(services).slice(0, 4).map((s) => ({
-    href: `${basePath}${servicePath(s.slug)}`,
+    href: `${basePath}${servicePath(s.slug, readPathOverrides(client.pathOverrides))}`,
     label: s.name,
   }))
   const linkableCities = new Set(

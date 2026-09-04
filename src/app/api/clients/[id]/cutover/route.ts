@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
-import { normalisePath } from '@/lib/url-parity'
+import { normalisePath, hostedPathsFor } from '@/lib/url-parity'
+import { readPathOverrides, pathOverrideProblem } from '@/lib/site-paths'
+import type { ServiceFlag } from '@/lib/site-services'
 import { capturePage } from '@/lib/page-capture'
 import { splitKeptSections, dropKeptSections } from '@/lib/kept-content'
 import { validatePublicUrl } from '@/lib/site-import'
@@ -19,7 +21,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
   if (denied) return denied
   const { id } = await params
 
-  const [redirects, pages] = await Promise.all([
+  const [redirects, pages, client] = await Promise.all([
     prisma.clientRedirect
       .findMany({ where: { clientId: id }, orderBy: { fromPath: 'asc' } })
       .catch(() => []),
@@ -44,6 +46,9 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
         },
       })
       .catch(() => []),
+    prisma.client
+      .findUnique({ where: { id }, select: { pathOverrides: true } })
+      .catch(() => null),
   ])
   // The section breakdown travels with the list. Splitting the same HTML in
   // the browser would be a second copy of the rule, and the trim action below
@@ -51,6 +56,16 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
   // wrong piece.
   return NextResponse.json({
     redirects,
+    // Template pages already moved onto an old address, as
+    // { "/car-window-repair": "/side-window-replacement" } — keyed by the
+    // address the operator is looking at, which is the way round the report
+    // reads them.
+    moved: Object.fromEntries(
+      Object.entries(readPathOverrides(client?.pathOverrides)).map(([template, custom]) => [
+        custom,
+        template,
+      ])
+    ),
     pages: pages.map((p) => ({ ...p, sections: splitKeptSections(p.bodyHtml || '') })),
   })
 }
@@ -109,6 +124,99 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       update: { toPath },
     })
     return NextResponse.json({ success: true, message: `${fromPath} now goes to ${toPath}.` })
+  }
+
+  /**
+   * MOVE an existing template page onto this old address.
+   *
+   * The third answer to "what happens to this URL", and the best one when the
+   * new site already has the same page under a different name: the shop's old
+   * /car-window-repair becomes the address of our side-window page. No
+   * redirect hop on a paid click, no new address whose history starts today —
+   * the page simply lives where their links, their ranking and their ads
+   * already point.
+   *
+   * `to` is the TEMPLATE path being moved. It is stored the other way round
+   * (template → old address) because that is the direction every link, the
+   * canonical and the sitemap need to look it up.
+   */
+  if (action === 'rename') {
+    const templatePath = typeof body?.to === 'string' ? normalisePath(body.to) : ''
+    if (!templatePath) return NextResponse.json({ error: 'Need the page to move.' }, { status: 400 })
+
+    const full = await prisma.client.findUnique({ where: { id } })
+    if (!full) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    const shopCities = await prisma.clientLocation
+      .findMany({ where: { clientId: id }, select: { city: true } })
+      .catch(() => [])
+    const overrides = readPathOverrides(full.pathOverrides)
+    const hosted = hostedPathsFor({
+      serviceAreas: full.serviceAreas || [],
+      shopCities: shopCities.map((s) => s.city),
+      flags: full as unknown as Record<ServiceFlag, boolean>,
+      // Deliberately WITHOUT the current overrides: `hosted` is used to check
+      // the template page exists and that the new address is not already a
+      // page, and both questions are about the template's own shape.
+    })
+    if (!hosted.includes(templatePath)) {
+      return NextResponse.json(
+        { error: `${templatePath} is not a page this site builds, so there is nothing to move.` },
+        { status: 400 }
+      )
+    }
+    const problem = pathOverrideProblem(
+      fromPath,
+      templatePath,
+      hosted.filter((p) => p !== templatePath)
+    )
+    if (problem) return NextResponse.json({ error: problem }, { status: 400 })
+
+    const existingPage = await prisma.clientPage
+      .findFirst({ where: { clientId: id, path: fromPath } })
+      .catch(() => null)
+    if (existingPage) {
+      return NextResponse.json(
+        { error: 'A kept page already answers on that address, and it wins. Delete it first.' },
+        { status: 409 }
+      )
+    }
+    const clash = Object.entries(overrides).find(
+      ([canonical, custom]) => custom === fromPath && canonical !== templatePath
+    )
+    if (clash) {
+      return NextResponse.json(
+        { error: `${fromPath} is already where ${clash[0]} lives.` },
+        { status: 409 }
+      )
+    }
+
+    await prisma.client.update({
+      where: { id },
+      data: { pathOverrides: { ...overrides, [templatePath]: fromPath } },
+    })
+    // A redirect for the same address would be a rule that can never fire —
+    // the page answers there now.
+    await prisma.clientRedirect.deleteMany({ where: { clientId: id, fromPath } }).catch(() => {})
+
+    return NextResponse.json({
+      success: true,
+      message: `${templatePath} now lives at ${fromPath}. Every link, the sitemap and the canonical use the new address, and ${templatePath} sends its traffic there.`,
+    })
+  }
+
+  /** Undo a move: the page goes back to its template address. */
+  if (action === 'unrename') {
+    const full = await prisma.client.findUnique({ where: { id }, select: { pathOverrides: true } })
+    const overrides = readPathOverrides(full?.pathOverrides)
+    const entry = Object.entries(overrides).find(([, custom]) => custom === fromPath)
+    if (!entry) return NextResponse.json({ error: 'No page is moved to there.' }, { status: 404 })
+    const next = { ...overrides }
+    delete next[entry[0]]
+    await prisma.client.update({ where: { id }, data: { pathOverrides: next } })
+    return NextResponse.json({
+      success: true,
+      message: `${entry[0]} is back at its own address. ${fromPath} now 404s unless you redirect it.`,
+    })
   }
 
   if (action === 'page') {

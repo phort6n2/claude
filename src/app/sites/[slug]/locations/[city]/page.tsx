@@ -2,8 +2,8 @@ import { formatPhoneDisplay } from '@/lib/lead-display'
 import { canViewSite, isPreview, siteIsLive } from '@/lib/site-preview'
 import PreviewBanner from '@/components/sites/PreviewBanner'
 import { headers } from 'next/headers'
-import { servicePath, locationPath } from '@/lib/site-paths'
-import { notFound } from 'next/navigation'
+import { servicePath, locationPath, readPathOverrides } from '@/lib/site-paths'
+import { notFound, permanentRedirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
 import { SiteAnalytics } from '@/components/sites/analytics'
@@ -60,6 +60,8 @@ export const revalidate = 300
 
 interface PageProps {
   params: Promise<{ slug: string; city: string }>
+  /** See the note on ServicePage: stops the override redirect looping. */
+  atOverride?: boolean
 }
 
 async function getClient(slug: string) {
@@ -105,6 +107,7 @@ async function getClient(slug: string) {
       filesInsuranceClaims: true,
       smsCapable: true,
       serviceAreas: true,
+      pathOverrides: true,
       googleMapsUrl: true,
       clarityProjectId: true,
     },
@@ -165,12 +168,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     twitter: { card: 'summary_large_image', title, description, images: [`${siteRoot}/api/site-og/${client.slug}`] },
     ...(robots ? { robots } : {}),
     alternates: {
-      canonical: `${stance.canonicalOrigin}${locationPath(location.slug)}`,
+      canonical: `${stance.canonicalOrigin}${locationPath(location.slug, readPathOverrides(client.pathOverrides))}`,
     },
   }
 }
 
-export default async function LocationPage({ params }: PageProps) {
+export default async function LocationPage({ params, atOverride }: PageProps) {
   const { slug, city } = await params
   const client = await getClient(slug)
   if (!client) notFound()
@@ -195,6 +198,14 @@ export default async function LocationPage({ params }: PageProps) {
   const location = findLocation(areas, city)
   if (!location) notFound()
 
+  // Moved onto one of the old site's addresses — see ServicePage. One address
+  // per page: the template one sends its traffic there and stops answering.
+  const overrides = readPathOverrides(client.pathOverrides)
+  const moved = overrides[locationPath(location.slug)]
+  if (moved && !atOverride) {
+    permanentRedirect(`${sitePathPrefixFor(client, (await headers()).get('host'))}${moved}`)
+  }
+
   const services = servicesForClient(client as Record<ServiceFlag, boolean>)
   const basePath = sitePathPrefixFor(client, (await headers()).get('host'))
   const palette = sitePaletteVars(client.primaryColor, client.accentColor)
@@ -205,7 +216,7 @@ export default async function LocationPage({ params }: PageProps) {
     smsCapable: client.smsCapable,
   }
   const nav = prioritizeServices(services).slice(0, 4).map((s) => ({
-    href: `${basePath}${servicePath(s.slug)}`,
+    href: `${basePath}${servicePath(s.slug, overrides)}`,
     label: s.name,
   }))
 

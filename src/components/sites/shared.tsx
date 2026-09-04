@@ -1,5 +1,5 @@
 import { Phone, MapPin, ShieldCheck, Check, MessageSquare } from 'lucide-react'
-import { servicePath, locationPath } from '@/lib/site-paths'
+import { servicePath, locationPath, readPathOverrides } from '@/lib/site-paths'
 import { ReviewsGrid } from '@/components/sites/reviews-grid'
 import { wordmarkParts } from '@/lib/wordmark'
 import { smsHref } from '@/lib/contact-links'
@@ -40,6 +40,14 @@ export interface SiteClient {
   accentColor: string | null
   hasShopLocation: boolean
   googleMapsUrl: string | null
+  /**
+   * Pages moved onto an address the shop's old site used. Carried on the
+   * client so every link built anywhere in the template points at the address
+   * the page is actually served at — a link to the template path would 308,
+   * and a site whose own nav bounces through redirects is a site that lost
+   * the reason for the rename.
+   */
+  pathOverrides?: unknown
 }
 
 export interface ReviewQuote {
@@ -1410,7 +1418,7 @@ export function AreasBand({
               <li key={area}>
                 {slug && basePath !== undefined ? (
                   <a
-                    href={`${basePath}${locationPath(slug)}`}
+                    href={`${basePath}${locationPath(slug, readPathOverrides(client.pathOverrides))}`}
                     className="underline decoration-[var(--line-on-dark)] underline-offset-[3px] hover:decoration-white"
                   >
                     {inner}
@@ -1663,7 +1671,7 @@ export function SiteFooter({
                 {services.map((s) => (
                   <li key={s.slug} className="mb-0.5 break-inside-avoid">
                     <a
-                      href={`${basePath || ''}${servicePath(s.slug)}`}
+                      href={`${basePath || ''}${servicePath(s.slug, readPathOverrides(client.pathOverrides))}`}
                       className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-[5px]"
                     >
                       {s.name}
@@ -1837,7 +1845,7 @@ export function SiteFooter({
                     )}
                     {slug ? (
                       <a
-                        href={`${basePath || ''}${locationPath(slug)}`}
+                        href={`${basePath || ''}${locationPath(slug, readPathOverrides(client.pathOverrides))}`}
                         // Vertical padding so a run of inline links is still
                         // hittable with a thumb. The list used to put its
                         // padding on the <li>, leaving 20px targets, and that
