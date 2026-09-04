@@ -50,6 +50,8 @@ export interface ParityReport {
   message: string
   /** Where the old URLs were read from — the sitemap is far better than a crawl. */
   source: 'sitemap' | 'crawl' | 'none'
+  /** Which sitemap answered, so the operator can see what was actually read. */
+  sitemapUrl?: string | null
   oldUrlCount: number
   mappings: UrlMapping[]
   /** Convenience: the ones that need a human decision. */
@@ -109,38 +111,92 @@ function overlap(a: Set<string>, b: Set<string>): number {
   return shared / Math.min(a.size, b.size)
 }
 
+/**
+ * Read one sitemap and return the page paths in it, following a sitemap index
+ * one level down. Returns an empty array for anything that is not a sitemap,
+ * so a 404 page and a stray HTML file cannot be mistaken for one.
+ */
+async function readSitemap(url: string): Promise<string[]> {
+  const body = await fetchText(url)
+  if (!body || !/<urlset|<sitemapindex/i.test(body)) return []
+  const locs = [...body.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)].map((m) => m[1])
+
+  // A sitemap index points at more sitemaps rather than listing pages.
+  const nested = locs.filter((l) => /\.xml($|\?)/i.test(l)).slice(0, 10)
+  const all = locs.filter((l) => !/\.xml($|\?)/i.test(l))
+  for (const child of nested) {
+    const childBody = await fetchText(child)
+    if (!childBody) continue
+    all.push(
+      ...[...childBody.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)]
+        .map((m) => m[1])
+        .filter((l) => !/\.xml($|\?)/i.test(l))
+    )
+  }
+  return [
+    ...new Set(
+      all
+        .map((u) => {
+          try {
+            return normalisePath(new URL(u).pathname)
+          } catch {
+            return null
+          }
+        })
+        .filter((p): p is string => !!p)
+    ),
+  ]
+}
+
+/** Does this address look like a sitemap rather than a page? */
+export function looksLikeSitemap(url: URL): boolean {
+  const path = url.pathname.toLowerCase()
+  return path.endsWith('.xml') || path.endsWith('.xml.gz') || /sitemap/.test(path)
+}
+
+/**
+ * Where a site's sitemap actually lives, in the order worth trying.
+ *
+ * /sitemap.xml alone was the whole of this, and it is the one WordPress has
+ * not used by default since 5.5 (/wp-sitemap.xml), nor Yoast (/sitemap_index.xml),
+ * nor Squarespace or Wix consistently. Those sites fell back to a crawl and
+ * reported half their pages, quietly. robots.txt is asked first because it is
+ * the site's own answer to this exact question.
+ */
+async function sitemapCandidates(origin: string): Promise<string[]> {
+  const fromRobots: string[] = []
+  const robots = await fetchText(`${origin}/robots.txt`)
+  if (robots) {
+    for (const [, value] of robots.matchAll(/^\s*sitemap:\s*(\S+)\s*$/gim)) {
+      try {
+        fromRobots.push(new URL(value, origin).toString())
+      } catch {
+        // A malformed Sitemap: line is not a reason to give up on the rest.
+      }
+    }
+  }
+  return [
+    ...fromRobots.slice(0, 5),
+    `${origin}/sitemap.xml`,
+    `${origin}/sitemap_index.xml`,
+    `${origin}/wp-sitemap.xml`,
+    `${origin}/sitemap-index.xml`,
+    `${origin}/sitemap1.xml`,
+  ]
+}
+
 /** Every address the old site advertises, sitemap first. */
 async function collectOldUrls(
   origin: string
-): Promise<{ paths: string[]; source: ParityReport['source'] }> {
+): Promise<{ paths: string[]; source: ParityReport['source']; sitemapUrl?: string }> {
   // A sitemap is the site's own statement of what it has. A crawl only finds
   // what happens to be linked, and misses anything reachable from a menu that
   // needs JavaScript — which on an old agency site is most of it.
-  const sitemap = await fetchText(`${origin}/sitemap.xml`)
-  if (sitemap && /<urlset|<sitemapindex/i.test(sitemap)) {
-    const locs = [...sitemap.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)].map((m) => m[1])
-
-    // A sitemap index points at more sitemaps rather than listing pages.
-    const nested = locs.filter((l) => /\.xml($|\?)/i.test(l)).slice(0, 10)
-    const direct = locs.filter((l) => !/\.xml($|\?)/i.test(l))
-    const all = [...direct]
-    for (const child of nested) {
-      const body = await fetchText(child)
-      if (!body) continue
-      all.push(
-        ...[...body.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)]
-          .map((m) => m[1])
-          .filter((l) => !/\.xml($|\?)/i.test(l))
-      )
+  for (const candidate of await sitemapCandidates(origin)) {
+    const paths = await readSitemap(candidate)
+    if (paths.length > 0) {
+      return { paths: paths.slice(0, MAX_PAGES), source: 'sitemap', sitemapUrl: candidate }
     }
-    const paths = [...new Set(all.map((u) => {
-      try {
-        return normalisePath(new URL(u).pathname)
-      } catch {
-        return null
-      }
-    }).filter((p): p is string => !!p))]
-    if (paths.length > 0) return { paths: paths.slice(0, MAX_PAGES), source: 'sitemap' }
   }
 
   // No usable sitemap: follow same-host links, breadth first, bounded.
@@ -271,11 +327,45 @@ export async function checkUrlParity(
   }
 
   const origin = safe.url.origin
-  const { paths, source } = await collectOldUrls(origin)
+
+  // A pasted SITEMAP is read as the sitemap, not as a page on a site whose
+  // sitemap we then go looking for. It is the most complete answer available —
+  // the site's own list — and on a site that keeps it somewhere unusual it is
+  // the only way to get the full set.
+  let paths: string[]
+  let source: ParityReport['source']
+  let sitemapUrl: string | null = null
+  if (looksLikeSitemap(safe.url)) {
+    sitemapUrl = safe.url.toString()
+    paths = await readSitemap(sitemapUrl)
+    source = paths.length > 0 ? 'sitemap' : 'none'
+    if (paths.length === 0) {
+      // Deliberately NOT falling back to a crawl. Somebody who pasted a
+      // sitemap needs to know that address did not answer with one — silently
+      // doing something else is how you get a short list nobody questions.
+      return {
+        ok: false,
+        message:
+          'That address did not return a sitemap. Check it opens in a browser and shows XML — or paste the site address instead and its sitemap will be looked for.',
+        source: 'none',
+        sitemapUrl,
+        oldUrlCount: 0,
+        mappings: [],
+        unmatched: [],
+      }
+    }
+  } else {
+    const found = await collectOldUrls(origin)
+    paths = found.paths
+    source = found.source
+    sitemapUrl = found.sitemapUrl ?? null
+  }
+
   if (paths.length === 0) {
     return {
       ok: false,
-      message: 'Could not read any pages from that site — no sitemap and no followable links.',
+      message:
+        'Could not read any pages from that site — no sitemap at any of the usual addresses, nothing in robots.txt, and no followable links. If you know where their sitemap is, paste that address instead.',
       source: 'none',
       oldUrlCount: 0,
       mappings: [],
@@ -297,14 +387,23 @@ export async function checkUrlParity(
     { exact: 0, strong: 0, weak: 0, none: 0 }
   )
 
+  // Naming the sitemap that answered matters: "found via their sitemap" is
+  // unfalsifiable, and the difference between 12 addresses and 120 is usually
+  // which sitemap got read.
+  const via =
+    source === 'sitemap'
+      ? `their sitemap (${sitemapUrl})`
+      : 'a crawl of their links — no sitemap answered, so this may be short'
+
   return {
     ok: true,
     source,
+    sitemapUrl,
     oldUrlCount: paths.length,
     mappings,
     unmatched,
     message:
-      `${paths.length} address${paths.length === 1 ? '' : 'es'} found via ${source === 'sitemap' ? 'their sitemap' : 'a crawl'}. ` +
+      `${paths.length} address${paths.length === 1 ? '' : 'es'} found via ${via}. ` +
       `${counts.exact} already exist, ${counts.strong} have a clear home, ` +
       `${counts.weak} need a look, ${counts.none} have nowhere to go.`,
   }
