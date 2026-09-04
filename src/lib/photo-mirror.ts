@@ -1,6 +1,7 @@
 import { put } from '@vercel/blob'
 import sharp from 'sharp'
 import { validatePublicUrl } from '@/lib/site-import'
+import { stampWatermark, type WordmarkSource } from '@/lib/photo-upload'
 import { toBlobBody } from '@/lib/blob-body'
 
 /**
@@ -55,7 +56,14 @@ function isOurs(url: string): boolean {
 export async function mirrorRemoteImage(
   sourceUrl: string,
   clientSlug: string,
-  kind: 'photo' | 'logo' = 'photo'
+  kind: 'photo' | 'logo' = 'photo',
+  /**
+   * The shop's mark, for photos. An uploaded photo has always carried it and
+   * an IMPORTED one never did — the same gallery, two behaviours, and the
+   * difference only visible with two photos side by side. Omitted for a logo,
+   * which cannot sensibly be stamped with itself.
+   */
+  brand?: { logoUrl: string | null; wordmark?: WordmarkSource }
 ): Promise<string | null> {
   if (!sourceUrl || isOurs(sourceUrl)) return null
 
@@ -91,9 +99,18 @@ export async function mirrorRemoteImage(
       fit: 'inside',
       withoutEnlargement: true,
     })
-    const output = isLogo
+    let output: Buffer = isLogo
       ? await pipeline.png({ compressionLevel: 9 }).toBuffer()
       : await pipeline.jpeg({ quality: 82, mozjpeg: true }).toBuffer()
+
+    if (!isLogo && brand) {
+      // Measured after the resize, like the upload path: the mark is sized
+      // against the image that will actually be stored.
+      const out = await sharp(output).metadata()
+      if (out.width && out.height) {
+        output = await stampWatermark(output, out.width, out.height, brand.logoUrl, brand.wordmark)
+      }
+    }
 
     const blob = await put(
       `sites/${clientSlug}/imported/${Date.now()}.${isLogo ? 'png' : 'jpg'}`,
@@ -121,13 +138,14 @@ export async function mirrorRemoteImage(
 export async function mirrorImages<T extends { url: string }>(
   items: T[],
   clientSlug: string,
+  brand?: { logoUrl: string | null; wordmark?: WordmarkSource },
   concurrency = 3
 ): Promise<T[]> {
   const out = [...items]
   for (let i = 0; i < out.length; i += concurrency) {
     const slice = out.slice(i, i + concurrency)
     const copied = await Promise.all(
-      slice.map((item) => mirrorRemoteImage(item.url, clientSlug).catch(() => null))
+      slice.map((item) => mirrorRemoteImage(item.url, clientSlug, 'photo', brand).catch(() => null))
     )
     copied.forEach((url, j) => {
       if (url) out[i + j] = { ...out[i + j], url }

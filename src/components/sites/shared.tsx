@@ -84,7 +84,7 @@ const SITE_BASE_CSS = `
 .gl-site a{text-decoration-thickness:1.5px;text-underline-offset:3px}
 .gl-site h1,.gl-site h2,.gl-site h3{text-wrap:balance}
 /* Skip link: visually hidden until keyboard focus. */
-.gl-skip{position:absolute;left:-9999px;top:0;z-index:100;background:var(--cta);color:#fff;font-weight:700;padding:12px 18px;border-radius:0 0 10px 0;text-decoration:none}
+.gl-skip{position:absolute;left:-9999px;top:0;z-index:100;background:var(--cta);color:var(--on-cta);font-weight:700;padding:12px 18px;border-radius:0 0 10px 0;text-decoration:none}
 .gl-skip:focus{left:0}
 /* Header scroll shadow paints on a compositable ::after opacity layer, and
    all scroll-driven motion respects prefers-reduced-motion. */
@@ -285,7 +285,7 @@ export function CallButton({
       className={`inline-flex items-center justify-center gap-2.5 min-h-[52px] px-6 rounded-[14px] font-bold text-[17px] no-underline shadow-[0_1px_2px_rgba(11,27,43,.16)] transition-colors ${
         onDark
           ? 'bg-transparent text-white border-[1.5px] border-white/70 hover:bg-white/10'
-          : 'text-white bg-[var(--cta)] border-[1.5px] border-[var(--cta)] hover:bg-[var(--cta-b)] hover:border-[var(--cta-b)]'
+          : 'text-[var(--on-cta)] bg-[var(--cta)] border-[1.5px] border-[var(--cta)] hover:bg-[var(--cta-b)] hover:border-[var(--cta-b)]'
       } ${block ? 'flex w-full' : ''}`}
     >
       <Phone className="h-[18px] w-[18px]" />
@@ -481,7 +481,7 @@ export function SiteHeader({
         </a>
         <a
           href={telHrefFor(client.phone)}
-          className={`${reviews ? '' : 'ml-auto lg:ml-0 '}inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] shrink-0 no-underline bg-white text-[var(--cta)] border-[1.5px] border-[var(--cta)] shadow-[0_1px_2px_rgba(11,27,43,.16)] hover:bg-[var(--s1)] transition-colors max-lg:bg-[var(--cta)] max-lg:text-white`}
+          className={`${reviews ? '' : 'ml-auto lg:ml-0 '}inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] shrink-0 no-underline bg-white text-[var(--cta)] border-[1.5px] border-[var(--cta)] shadow-[0_1px_2px_rgba(11,27,43,.16)] hover:bg-[var(--s1)] transition-colors max-lg:bg-[var(--cta)] max-lg:text-[var(--on-cta)]`}
         >
           <Phone className="h-4 w-4" />
           {/* "Call", not a bare glyph. The number itself only fits from sm
@@ -1951,7 +1951,7 @@ export function MobileCallBar({
     >
       <a
         href={telHrefFor(client.phone)}
-        className="min-h-[50px] rounded-[14px] font-bold text-base text-white text-center flex items-center justify-center gap-2 no-underline bg-[var(--cta)] hover:bg-[var(--cta-b)]"
+        className="min-h-[50px] rounded-[14px] font-bold text-base text-[var(--on-cta)] text-center flex items-center justify-center gap-2 no-underline bg-[var(--cta)] hover:bg-[var(--cta-b)]"
       >
         <Phone className="h-4 w-4" /> Call Now
       </a>

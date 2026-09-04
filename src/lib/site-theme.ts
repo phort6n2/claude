@@ -104,6 +104,26 @@ function fromHsl(h: number, s: number, l: number): Rgb {
 const WHITE: Rgb = { r: 255, g: 255, b: 255 }
 const BLACK: Rgb = { r: 0, g: 0, b: 0 }
 
+/** WCAG relative luminance, for choosing text that can be read on a fill. */
+function luminance({ r, g, b }: Rgb): number {
+  const f = (v: number) => {
+    const s = v / 255
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+  }
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+}
+
+/**
+ * Black or white, whichever can be read on this fill.
+ *
+ * The template assumed white text on every button because the brand was
+ * always a deep colour. A yellow button with white text is unreadable, and a
+ * yellow button is exactly what a black-and-yellow shop should have.
+ */
+function readableOn(c: Rgb): Rgb {
+  return luminance(c) > 0.4 ? BLACK : WHITE
+}
+
 export const SITE_THEME_DEFAULT_PRIMARY = '#1e40af'
 export const SITE_THEME_DEFAULT_ACCENT = '#f59e0b'
 
@@ -118,21 +138,56 @@ export function sitePaletteVars(
   const brand = parseHex(primaryColor || '') || parseHex(SITE_THEME_DEFAULT_PRIMARY)!
   const accent = parseHex(accentColor || '') || parseHex(SITE_THEME_DEFAULT_ACCENT)!
 
+  const brandHsl = hslOf(brand)
+  const accentHsl = hslOf(accent)
+
+  /**
+   * A BRAND WITH NO COLOUR IN IT HANDS ITS JOB TO THE ACCENT.
+   *
+   * Every derived tint here is the brand's own hue, so a black, white or
+   * charcoal brand derives a site with no colour anywhere: black buttons,
+   * grey eyebrows, grey icons. That is correct for the tints — a grey line
+   * should stay grey — and wrong for the two or three places a brand is
+   * supposed to be recognisable. An auto glass shop whose whole identity is
+   * black and yellow got a black-and-grey site and one 9% wash of yellow.
+   *
+   * So when the brand is neutral and the accent is not, the accent carries
+   * the colour: the call-to-action fill, the eyebrow and icon colour on dark
+   * bands, and the phone links. Deliberately NOT anything on a light
+   * background — a mid-tone accent as body text or a link on white is the
+   * one way this makes a site less readable rather than more branded.
+   *
+   * A saturated brand is untouched: `useAccent` is false and every value
+   * below is what it was.
+   */
+  const brandIsNeutral = brandHsl.s < 0.12
+  const accentUsable = accentHsl.s > 0.25
+  const useAccent = brandIsNeutral && accentUsable
+
   // Buttons carry white text, so a light brand color is darkened until the
   // pair holds up — the template's "darkened until white text passes AA" rule.
-  const cta = lightness(brand) > 0.45 ? withLightness(brand, 0.38) : brand
+  // An accent CTA keeps its own colour and takes readable text instead: the
+  // point of a yellow button is that it is yellow.
+  const cta = useAccent
+    ? accent
+    : lightness(brand) > 0.45
+      ? withLightness(brand, 0.38)
+      : brand
 
   // Tinted grays (lines, muted text, dark-band text) carry only the brand's
   // HUE at a low fixed saturation — mixing the fully saturated brand reads
   // pink/garish as the base lightens. S/L pairs are sampled from the
   // reference build; saturation scales down for weakly saturated brands.
-  const brandHsl = hslOf(brand)
   const satScale = Math.min(1, brandHsl.s / 0.75)
   const hueTint = (l: number, s: number) => fromHsl(brandHsl.h, s * satScale, l)
 
+  // On a dark band the accent has to be light enough to read. Lifted rather
+  // than rejected: a deep accent is still the shop's colour, it just cannot
+  // be printed at that lightness on near-black.
+  const accentOnDark = accentHsl.l < 0.55 ? withLightness(accent, 0.62) : accent
+
   // The warm accent band only works with a warm accent; a cool or red accent
   // would collapse into the other tints, so fall back to the reference sand.
-  const accentHsl = hslOf(accent)
   const warmOk = accentHsl.h >= 20 && accentHsl.h <= 60 && accentHsl.s > 0.2
   const tintWarm = warmOk ? mix(WHITE, accent, 0.09) : parseHex('#FBF3EC')!
 
@@ -161,7 +216,10 @@ export function sitePaletteVars(
     // Light brand accent for dark bands. Hue-tinted like the other derived
     // tints (full-saturation lightening reads neon); L/S chosen so 13px bold
     // eyebrow text clears 4.5:1 on --dark-3.
-    '--brand-light': hueTint(0.72, 0.5),
+    '--brand-light': useAccent ? accentOnDark : hueTint(0.72, 0.5),
+    '--accent': accent,
+    '--on-accent': readableOn(accent),
+    '--on-cta': readableOn(cta),
     '--brand-pale': [WHITE, brand, 0.18],
   }
 
@@ -173,7 +231,10 @@ export function sitePaletteVars(
   // success green for checkmarks — same on every brand, per the template.
   out['--gold'] = '#F5A524'
   out['--gold-stroke'] = '#A15C06'
-  out['--gold-on-dark'] = '#FFC53D'
+  // The shop's own accent when it has one that reads on dark; otherwise the
+  // template's gold. These are the phone links in the top bar and the footer,
+  // which is the most-looked-at coloured thing on the page.
+  out['--gold-on-dark'] = useAccent ? toHex(accentOnDark) : '#FFC53D'
   out['--success'] = '#0F7A3D'
   out['--on-dark'] = '#FFFFFF'
   // Focus ring color and the brand-tinted CTA shadow, per the reference.
@@ -181,4 +242,20 @@ export function sitePaletteVars(
   const ctaRgb = `${Math.round(cta.r)},${Math.round(cta.g)},${Math.round(cta.b)}`
   out['--sh-cta'] = `0 1px 1px rgba(0,0,0,.18), 0 6px 14px -4px rgba(${ctaRgb},.34)`
   return out
+}
+
+/**
+ * The button colour a widget should use, by the same rule the site uses.
+ *
+ * The embeddable form built its button from primaryColor, so a black-and-
+ * yellow shop got a black button under a yellow page. Same input, same
+ * decision, one place: whatever the site paints its call-to-action, the
+ * widget paints its submit.
+ */
+export function widgetCtaColors(
+  primaryColor: string | null,
+  accentColor: string | null
+): { ctaColor: string; ctaTextColor: string } {
+  const vars = sitePaletteVars(primaryColor, accentColor)
+  return { ctaColor: vars['--cta'], ctaTextColor: vars['--on-cta'] }
 }

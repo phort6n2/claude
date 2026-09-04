@@ -194,6 +194,12 @@ const WIDGET_SOURCE = String.raw`(function () {
   }
 
   function buildStyles(cfg) {
+    // The button colour the SITE decided, sent with the config. A widget that
+    // derived it from primaryColor gave a black-and-yellow shop a black submit
+    // under a yellow page — same input, two answers. Falls back to the old
+    // derivation for an embed served a config from before this existed.
+    var btnBg = cfg.ctaColor || ensureDark(cfg.primaryColor);
+    var btnText = cfg.ctaTextColor || '#fff';
     return '' +
       ':host{all:initial}' +
       '*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}' +
@@ -254,7 +260,7 @@ const WIDGET_SOURCE = String.raw`(function () {
       '.radio{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;background:#fff;border:1.5px solid #7C8FA3;border-radius:14px;cursor:pointer;font-size:15px;color:#1a1a1a}' +
       '.radio input{width:18px;height:18px;min-height:0;accent-color:' + cfg.primaryColor + ';margin:0;appearance:auto;-webkit-appearance:auto}' +
       '.radio:has(input:checked){border-color:' + cfg.primaryColor + ';background:' + rgba(cfg.primaryColor, 0.08) + ';font-weight:600}' +
-      '.btn{width:100%;min-height:56px;margin-top:18px;padding:14px;border:0;border-radius:14px;font-size:17.5px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(180deg,' + cfg.primaryColor + ',' + darken(cfg.primaryColor, 0.17) + ');box-shadow:0 6px 14px -4px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.2)}' +
+      '.btn{width:100%;min-height:56px;margin-top:18px;padding:14px;border:0;border-radius:14px;font-size:17.5px;font-weight:700;color:' + btnText + ';cursor:pointer;background:linear-gradient(180deg,' + btnBg + ',' + darken(btnBg, 0.17) + ');box-shadow:0 6px 14px -4px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.2)}' +
       '.btn:disabled{opacity:.6;cursor:default}' +
       '.micro{font-size:13px;color:#5c5c5c;text-align:center;margin-top:12px;line-height:1.5}' +
       '.consent{font-size:12px;color:#6e6e6e;margin-top:12px;line-height:1.5}' +

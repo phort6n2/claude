@@ -1,4 +1,5 @@
 import { siteIsLive } from '@/lib/site-preview'
+import { widgetCtaColors } from '@/lib/site-theme'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
@@ -78,6 +79,7 @@ export async function GET(request: NextRequest) {
       primaryColor: client.primaryColor || '#1e40af',
       secondaryColor: client.secondaryColor || '#3b82f6',
       accentColor: client.accentColor || '#f59e0b',
+      ...widgetCtaColors(client.primaryColor, client.accentColor),
       services,
       offersMobileService: client.offersMobileService,
       smsCapable: client.smsCapable,
