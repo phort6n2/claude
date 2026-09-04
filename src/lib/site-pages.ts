@@ -44,6 +44,38 @@ function stripStateTail(value: string): string {
 }
 
 /**
+ * The pitch an SEO title wraps around the subject.
+ *
+ * These titles are written for a search result, not a menu: "Fast Auto Glass
+ * Repair Service", "Affordable Back Glass Replacement Near Me". The adjective
+ * and the trailing "Service" are the same word on every page, so in a list of
+ * eight they are the part that makes them hard to tell apart — the subject is
+ * what is left.
+ *
+ * "Mobile" and "Free" are deliberately NOT in the list. Mobile service is a
+ * different job from shop service, and a free quote is an offer; both are the
+ * subject rather than decoration around it.
+ */
+const SALES_PREFIX =
+  /^(?:the\s+)?(?:fast|quick|speedy|affordable|cheap|low\s+cost|best|top|top[\s-]rated|expert|professional|quality|reliable|trusted|premier|premium|local|emergency|same[\s-]day|24\/7)\s+/i
+const SALES_SUFFIX = /[\s,-]+(?:services?|solutions?|specialists?|experts?|near\s+me|near\s+you)$/i
+
+function stripSalesWords(value: string): string {
+  let out = value.trim()
+  // Looped: "Fast Affordable Auto Glass Repair" carries two of them.
+  for (let i = 0; i < 3; i++) {
+    const next = out.replace(SALES_PREFIX, '').trim()
+    if (next === out) break
+    // Never let the pitch eat the whole label.
+    if (next.split(/\s+/).length < 2) break
+    out = next
+  }
+  const trimmed = out.replace(SALES_SUFFIX, '').trim()
+  if (trimmed.split(/\s+/).length >= 2) out = trimmed
+  return out
+}
+
+/**
  * A captured title with the tail an SEO title carries taken off it.
  *
  * These came off the old site and read
@@ -108,7 +140,15 @@ export function shortLabel(title: string, businessName?: string | null): string 
   // to the untouched title. That page was live in the footer, three lines
   // long, when the rest of the list was already short.
   let label = stripSeoTail(full, businessName)
-  label = label.replace(/^auto\s+glass\b[\s:,-]*/i, '').trim()
+  label = stripSalesWords(label)
+  // A leading "Auto Glass" only comes off when there is still a subject
+  // underneath it. "Auto Glass Repair Hillsboro" is a page about Hillsboro
+  // and reads fine as "Repair Hillsboro"; "Auto Glass Repair" is a page about
+  // auto glass repair, and cutting it to "Repair" names nothing — next to
+  // "Back Glass Repair" and "Car Window Repair" in the same menu it is the
+  // one label a visitor cannot tell apart from the others.
+  const withoutPrefix = label.replace(/^auto\s+glass\b[\s:,-]*/i, '').trim()
+  if (withoutPrefix && withoutPrefix.split(/\s+/).length >= 2) label = withoutPrefix
   label = stripStateTail(label)
   label = label.replace(/^[\s,:—–-]+|[\s,:—–-]+$/g, '').replace(/\s+/g, ' ')
 
