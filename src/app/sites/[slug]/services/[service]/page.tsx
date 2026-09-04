@@ -129,6 +129,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const page = getServicePage(service)
   const client = await getClient(slug)
   if (!page || !client || !(await canViewSite(client.status))) return { title: 'Not Found' }
+  // Tracked number in the description — see the note on the home page.
+  const sitePhone = (await withSitePhone(client)).phone
 
   // Which host is this request on? Only the canonical one may be indexed;
   // every other host self-canonicalises and asks to stay out of the index.
@@ -137,7 +139,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const siteRoot = stance.canonicalOrigin
   const robots = stance.isCanonicalHost ? undefined : { index: false, follow: true }
   const title = `${page.name} in ${client.city}, ${client.state} | ${client.businessName}`
-  const description = `${page.short} Free quotes from ${client.businessName} in ${client.city}. Call ${formatPhoneDisplay(client.phone) || client.phone}.`
+  const description = `${page.short} Free quotes from ${client.businessName} in ${client.city}. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
   return {
     title,
     description,

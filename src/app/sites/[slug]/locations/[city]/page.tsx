@@ -135,6 +135,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     city
   )
   if (!location) return { title: 'Not Found' }
+  // Tracked number in the description — see the note on the home page.
+  const sitePhone = (await withSitePhone(client)).phone
 
   // Which host is this request on? Only the canonical one may be indexed;
   // every other host self-canonicalises and asks to stay out of the index.
@@ -149,7 +151,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     cityIsIndexable(location.area, cityContent, locations.map((l) => l.city))
   const robots = indexable ? undefined : { index: false, follow: true }
   const title = `Auto Glass in ${location.area}, ${client.state} | ${client.businessName}`
-  const description = `Windshield repair and replacement in ${location.area}, ${client.state}${client.offersMobileService ? ' — mobile service to your home or office' : ''}. Free quotes from ${client.businessName}. Call ${formatPhoneDisplay(client.phone) || client.phone}.`
+  const description = `Windshield repair and replacement in ${location.area}, ${client.state}${client.offersMobileService ? ' — mobile service to your home or office' : ''}. Free quotes from ${client.businessName}. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
   return {
     title,
     description,
