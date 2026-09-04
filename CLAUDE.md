@@ -339,6 +339,19 @@ in this app.
   prior week, and change_event edits by anyone (budget edits escalate to
   ALERT — the $150→$1 case). Slower checks belong to future WEEKLY/MONTHLY
   sweeps so the daily signal stays scary.
+- **The same sweep runs SITE checks for every live client**, ads-managed or
+  not (`runSiteContentChecks`) — the sidebar item is "Needs action", not
+  "Ads", for that reason. So far: `rogue-phone-number` (`rogue-numbers.ts`),
+  which reads every piece of editorial copy — warranty, footer blurb, FAQ,
+  story sections, city copy, published kept pages — for a phone number that
+  is not the one the site shows. The template's own numbers are swapped at
+  the data layer; free text is not, and an imported FAQ answer ending "just
+  to call: (949) 775-1661" is a paid click arriving on a line nothing
+  records. Nothing else would ever notice: the number is real, it belongs to
+  the shop, and it renders exactly as written. The regex is deliberately
+  strict — a bare run of ten digits is more often an order number — and
+  `scripts/check-rogue-numbers.ts` holds the traps it must not fire on (year
+  ranges, prices, ZIP+4, VINs, dates).
 - **The digest emails ADMIN_EMAIL only when something NEW appeared**, so an
   empty morning sends nothing and the email means something.
 - **WEEKLY is the optimization playbook** (`google-ads-playbook.ts`): the

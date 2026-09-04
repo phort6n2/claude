@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { adsSearch } from '@/lib/google-ads'
 import { secretSetting } from '@/lib/secret-settings'
+import { evaluateRogueNumbers, editorialFields } from '@/lib/rogue-numbers'
 
 /**
  * The Google Ads heartbeat: scheduled checks that file FINDINGS.
@@ -361,7 +362,72 @@ export async function runDailyAdsChecks(): Promise<DailyRunSummary> {
     await fileFindings(client, customerId, 'DAILY', drafts, ranChecks, summary)
   }
 
+  await runSiteContentChecks(summary)
   return summary
+}
+
+/**
+ * Site-copy checks, for EVERY live client rather than only the ones running
+ * ads. An untracked number printed in an FAQ costs a shop the same call
+ * whether or not this platform manages their Google account, and the sweep
+ * that already runs every morning is the only thing that looks at fifteen
+ * sites without being asked.
+ *
+ * Filed through the same pipeline, so it dedupes, auto-resolves when the copy
+ * is fixed, and can be dismissed. Its own fileFindings call is safe alongside
+ * the ads one: auto-resolve only touches checks named in `ranChecks`.
+ */
+export async function runSiteContentChecks(
+  summary: Pick<DailyRunSummary, 'newFindings' | 'resolved' | 'stillOpen'>
+): Promise<void> {
+  const clients = await prisma.client
+    .findMany({
+      where: { status: { in: ['ACTIVE', 'ONBOARDING'] } },
+      select: {
+        id: true,
+        businessName: true,
+        phone: true,
+        siteDisplayPhone: true,
+        adsTracking: { select: { googleAdsCustomerId: true } },
+        trackingNumbers: {
+          where: { active: true, useOnSite: true },
+          select: { phoneNumber: true },
+          take: 1,
+        },
+        siteContent: {
+          select: { warrantyText: true, footerBlurb: true, faq: true, chapters: true },
+        },
+        cityContent: { select: { city: true, body: true } },
+        customPages: {
+          where: { publishedAt: { not: null } },
+          select: { path: true, title: true, bodyHtml: true },
+        },
+      },
+      orderBy: { businessName: 'asc' },
+    })
+    .catch(() => [])
+
+  for (const client of clients) {
+    // The number the SITE shows, resolved the same way site-phone does it.
+    const siteNumber =
+      client.trackingNumbers[0]?.phoneNumber || client.siteDisplayPhone || client.phone
+    const drafts = evaluateRogueNumbers({
+      fields: editorialFields({
+        content: client.siteContent,
+        cityContent: client.cityContent,
+        keptPages: client.customPages,
+      }),
+      siteNumber,
+    })
+    await fileFindings(
+      client,
+      client.adsTracking?.googleAdsCustomerId || '',
+      'DAILY',
+      drafts,
+      new Set(['rogue-phone-number']),
+      summary
+    )
+  }
 }
 
 /**

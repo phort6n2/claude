@@ -45,10 +45,12 @@ export default async function Page() {
     <div className="p-6 max-w-4xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Google Ads: needs action</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Needs action</h1>
           <p className="text-sm text-gray-500 mt-1">
-            The daily anomaly check runs every morning and emails you anything new. Every finding
-            carries its evidence — the window and the numbers the claim rests on.
+            The daily check runs every morning and emails you anything new. Every finding carries
+            its evidence — the window and the numbers the claim rests on. Mostly Google Ads
+            anomalies, plus site checks that run for every client whether or not this platform
+            manages their ads.
           </p>
         </div>
         <RunAdsChecksButton />
