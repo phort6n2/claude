@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Loader2, Phone, Trash2, TriangleAlert, CircleCheck } from 'lucide-react'
+import { formatPhoneDisplay } from '@/lib/lead-display'
 
 /**
  * Tracking numbers for a client.
@@ -261,21 +262,50 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
               <Phone size={16} className="mt-0.5 text-gray-400 shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-gray-900 text-sm">
-                  {n.phoneNumber}
+                  {formatPhoneDisplay(n.phoneNumber)}
                   {n.label && <span className="text-gray-500 font-normal"> · {n.label}</span>}
                   {!n.active && <span className="text-amber-600 font-normal"> · paused</span>}
                 </p>
-                <label className="mt-1 flex items-center gap-2 text-xs text-gray-600">
-                  Rings
+                {/* The one setting on this row somebody comes here to change:
+                    where a tracked number actually rings. It used to be the
+                    bare word "Rings" beside a box of raw E.164, which reads as
+                    a printed fact rather than a field you may edit. Spelled
+                    out, formatted like every other number in the app, and it
+                    says when the change takes effect — because "does this
+                    apply to the call happening right now" is the question a
+                    shop changing their line at 4pm is actually asking. */}
+                <label className="mt-1.5 block text-xs font-semibold text-gray-700">
+                  Calls ring
                   <input
                     key={`${n.id}-fwd-${n.forwardTo}`}
-                    defaultValue={n.forwardTo}
+                    defaultValue={formatPhoneDisplay(n.forwardTo)}
+                    aria-label={`Where ${formatPhoneDisplay(n.phoneNumber)} forwards to`}
+                    placeholder="(555) 555-5555"
+                    onKeyDown={(e) => {
+                      // Enter saves. Blur-only meant pressing it did nothing at
+                      // all, which reads as the field being dead.
+                      if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+                    }}
                     onBlur={(e) => {
                       const value = e.target.value.trim()
-                      if (value && value !== n.forwardTo) patchNumber(n.id, { forwardTo: value })
+                      // Compared as digits: the box shows (503) 555-0100 and
+                      // the row holds +15035550100, so a string compare called
+                      // every blur a change and re-saved on every click away.
+                      const typed = value.replace(/\D/g, '').replace(/^1/, '')
+                      const saved = n.forwardTo.replace(/\D/g, '').replace(/^1/, '')
+                      if (typed && typed !== saved) {
+                        patchNumber(
+                          n.id,
+                          { forwardTo: value },
+                          `Calls to ${formatPhoneDisplay(n.phoneNumber)} now ring ${formatPhoneDisplay(value)}, starting with the next call. Calls already in progress finish where they are.`
+                        )
+                      }
                     }}
-                    className="w-36 px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500"
+                    className="ml-2 w-40 px-2 py-1 border border-gray-300 rounded text-xs font-normal focus:ring-2 focus:ring-blue-500"
                   />
+                  <span className="ml-2 font-normal text-gray-500">
+                    the shop&apos;s real line · applies from the next call
+                  </span>
                 </label>
                 <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
                   <label className="flex items-center gap-1.5 text-xs text-gray-600">
@@ -330,7 +360,7 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
                     <TriangleAlert size={13} className="mt-0.5 shrink-0" />
                     <span>
                       The Google Ads call conversion action must be watching{' '}
-                      <strong>{n.phoneNumber}</strong>. If it still lists the old number, calls
+                      <strong>{formatPhoneDisplay(n.phoneNumber)}</strong>. If it still lists the old number, calls
                       arrive and Ads counts none of them.
                     </span>
                   </p>

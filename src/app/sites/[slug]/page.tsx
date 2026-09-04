@@ -136,6 +136,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params
   const client = await getClient(slug)
   if (!client || !(await canViewSite(client.status))) return { title: 'Not Found' }
+  // The number in a DESCRIPTION is the one a searcher dials straight out of
+  // the result or the link preview, so it is the tracked one — this is ad
+  // copy, not the NAP citation. The LocalBusiness schema below still carries
+  // the shop's real line, which is what search cross-checks against their
+  // Business Profile.
+  const sitePhone = (await withSitePhone(client)).phone
 
   // Which host is this request on? Only the canonical one may be indexed;
   // every other host self-canonicalises and asks to stay out of the index.
@@ -144,7 +150,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const siteRoot = stance.canonicalOrigin
   const robots = stance.isCanonicalHost ? undefined : { index: false, follow: true }
   const title = `${client.businessName} | Auto Glass Repair & Replacement in ${client.city}, ${client.state}`
-  const description = `Fast, professional windshield repair and replacement in ${client.city}, ${client.state}. Free quotes, insurance assistance${client.offersMobileService ? ', mobile service to your home or office' : ''}. Call ${formatPhoneDisplay(client.phone) || client.phone}.`
+  const description = `Fast, professional windshield repair and replacement in ${client.city}, ${client.state}. Free quotes, insurance assistance${client.offersMobileService ? ', mobile service to your home or office' : ''}. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
 
   return {
     title,

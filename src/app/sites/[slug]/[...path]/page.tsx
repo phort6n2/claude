@@ -204,11 +204,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const stance = hostStanceFor(client, (await headers()).get('host'))
   const siteRoot = stance.canonicalOrigin
   const robots = stance.isCanonicalHost ? undefined : { index: false, follow: true }
+  // Tracked number in the description — see the note on the home page.
+  const sitePhone = (await withSitePhone(client)).phone
   const heading = stripSeoTail(page.title, client.businessName)
   const title = `${heading} | ${client.businessName}`
   const description =
     page.metaDescription ||
-    `${heading} from ${client.businessName} in ${client.city}, ${client.state}. Free quotes. Call ${formatPhoneDisplay(client.phone) || client.phone}.`
+    `${heading} from ${client.businessName} in ${client.city}, ${client.state}. Free quotes. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
   return {
     title,
     description,

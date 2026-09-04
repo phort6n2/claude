@@ -275,7 +275,37 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   if ('forwardTo' in body) {
     const forwardTo = toE164(String(body.forwardTo || ''))
     if (!forwardTo) {
-      return NextResponse.json({ error: 'That forwarding number is not usable.' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'That forwarding number is not usable — give a full 10-digit US number.' },
+        { status: 400 }
+      )
+    }
+    // Loop guards. POST has had these since it was written; PATCH did not, and
+    // PATCH is the path an admin actually uses to change where a live number
+    // rings. A number forwarding to itself, or to another tracking number that
+    // forwards on, is a call that never reaches the shop — and it is silent:
+    // the caller hears ringing, the shop hears nothing, and the lead is lost
+    // with a recording of nobody.
+    const row = await prisma.trackingNumber
+      .findFirst({ where: { id: numberId, clientId: id }, select: { phoneNumber: true } })
+      .catch(() => null)
+    if (!row) return NextResponse.json({ error: 'That number is not on this client.' }, { status: 404 })
+    if (row.phoneNumber === forwardTo) {
+      return NextResponse.json(
+        { error: 'A tracking number cannot forward to itself. That is a loop.' },
+        { status: 400 }
+      )
+    }
+    const alsoTracked = await prisma.trackingNumber
+      .findUnique({ where: { phoneNumber: forwardTo }, select: { phoneNumber: true } })
+      .catch(() => null)
+    if (alsoTracked) {
+      return NextResponse.json(
+        {
+          error: `${forwardTo} is itself a tracking number in this app, so the call would be forwarded straight back out. Forward to the shop's real line.`,
+        },
+        { status: 400 }
+      )
     }
     data.forwardTo = forwardTo
   }
