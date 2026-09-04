@@ -105,6 +105,30 @@ export const MIDDLEWARE_FLAT_PATHS = new Set([
   'windshield-chip-repair',
 ])
 
+/**
+ * Why a KEPT PAGE at this address can never be seen, or null when it can.
+ *
+ * Middleware rewrites the flat service slugs and their aliases to the template
+ * route before any of this app's routing runs, and it cannot read the database
+ * to know a shop kept a page there. So a kept page at /auto-glass-repair is
+ * stored, published, listed in the sitemap and linked in the footer — and
+ * serves the windshield page to everyone who clicks it. Found on a live site:
+ * two of Auto Glass Kings' eight kept pages were pointing at somebody else's
+ * content, and nothing anywhere said so.
+ *
+ * City paths are NOT a problem: middleware deliberately leaves them alone so
+ * that a kept page wins, which is the behaviour this rule protects.
+ */
+export function keptPathProblem(path: string): string | null {
+  const clean = normaliseSitePath(path)
+  const bare = clean.slice(1)
+  if (!bare || bare.includes('/')) return null
+  if (MIDDLEWARE_FLAT_PATHS.has(bare)) {
+    return `${clean} is one of the template's own service addresses. It is resolved before a kept page can answer, so this page would never be seen — the service page shows instead.`
+  }
+  return null
+}
+
 export function pathOverrideProblem(
   custom: string,
   canonical: string,
