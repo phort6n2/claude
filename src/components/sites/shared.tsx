@@ -1614,13 +1614,15 @@ export function SiteFooter({
    * columns are ~330px each and nothing wraps.
    */
   const servicesBand = !!services && services.length >= 5
-  // With the services in their own band the row is brand + "More", and it
-  // keeps that shape even when there is no "More": an empty right-hand cell
-  // shows nothing, while a full-width brand column would stretch the blurb
-  // into one very long line.
+  // With the services in a band, the brand block gets a row to ITSELF and the
+  // two link lists share the band below it. Brand-beside-"More" was the first
+  // shape and it left a hole you could park a car in: eight kept pages made
+  // that column tall, the brand block is four short lines, and a grid row is
+  // as tall as its tallest cell — so the bottom two-thirds of the left column
+  // was empty dark space above the services.
   const linkColumns =
     servicesBand || !hasMoreColumn
-      ? 'lg:grid-cols-[1.6fr_1fr]'
+      ? 'lg:grid-cols-1'
       : 'lg:grid-cols-[1.7fr_1.15fr_0.85fr]'
 
   const servicesBlock = services && services.length > 0 && (
@@ -1640,6 +1642,26 @@ export function SiteFooter({
               className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-[5px]"
             >
               {s.name}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+
+  const moreBlock = pages.length > 0 && (
+    <div>
+      <h2 className="text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5">
+        More
+      </h2>
+      <ul className="list-none m-0 p-0 text-sm">
+        {pages.map((p) => (
+          <li key={p.path} className="mb-0.5">
+            <a
+              href={`${basePath || ''}${p.path}`}
+              className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-[5px]"
+            >
+              {p.title}
             </a>
           </li>
         ))}
@@ -1672,7 +1694,10 @@ export function SiteFooter({
               </div>
             )}
             {extras?.footerBlurb && (
-              <p className="text-sm leading-[1.6] m-0 mb-3">{extras.footerBlurb}</p>
+              // Capped: the brand block spans the footer when the services sit
+              // in their own band, and an uncapped line of body text across
+              // 1100px is unreadable however short the sentence is.
+              <p className="text-sm leading-[1.6] m-0 mb-3 max-w-[62ch]">{extras.footerBlurb}</p>
             )}
             <p className="m-0 text-sm leading-[1.6]">
               <a
@@ -1694,36 +1719,27 @@ export function SiteFooter({
               )}
             </p>
           </div>
+          {/* Both lists move to the band below once the services need it —
+              see linkColumns. Kept pages have a column of their own either
+              way: stacked under the services they made one very tall column
+              beside empty space. */}
           {!servicesBand && servicesBlock}
-          {/* Kept pages take a column of their own now that the service areas
-              have left the grid. Stacked under the services they made one very
-              tall column beside empty space — and the towns they mostly name
-              are in the identity card below anyway. */}
-          {pages.length > 0 && (
-            <div>
-              <h2 className="text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5">
-                More
-              </h2>
-              <ul className="list-none m-0 p-0 text-sm">
-                {pages.map((p) => (
-                  <li key={p.path} className="mb-0.5">
-                    <a
-                      href={`${basePath || ''}${p.path}`}
-                      className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-[5px]"
-                    >
-                      {p.title}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {!servicesBand && moreBlock}
         </div>
-        {/* Services, when there are enough of them to want the width. Below
-            the brand row rather than beside it — see the note on
-            servicesBand: three columns need the full container, and inside
-            the row they would be under 100px each. */}
-        {servicesBand && <div className="mt-8">{servicesBlock}</div>}
+        {/* The links, when the services need the width: three columns of
+            services and the kept pages beside them, under a brand block that
+            now has the row to itself. Three columns need the full container —
+            inside the brand row they would be under 100px each. */}
+        {servicesBand && (
+          <div
+            className={`mt-8 grid gap-8 lg:gap-9 ${
+              hasMoreColumn ? 'lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]' : ''
+            }`}
+          >
+            {servicesBlock}
+            {moreBlock}
+          </div>
+        )}
         {/* Identity bar — who the business is and how to reach it, with a
             data-backed trust grid beside it. The phone here is a plain,
             un-swapped instance so call-asset verification can always read
