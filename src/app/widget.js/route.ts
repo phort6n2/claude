@@ -539,6 +539,21 @@ const WIDGET_SOURCE = String.raw`(function () {
     // told people to skip the best feature on the form.
     var photoField = field('Photo of the damage <span class="opt">— usually saves a callback</span>', photoWrap);
     photoField.className = 'photo-field';
+    /* THE LABEL HAS TO POINT AT THE INPUT, NOT THE WRAPPER.
+       Every other field hands the field() helper its own control, so label[for]
+       lands on something labelable. This one hands it a div holding the hidden
+       file input and the button that proxies it — so the label pointed at a div,
+       and the real <input type="file"> had no accessible name at all. Found
+       by PageSpeed's agent-accessibility audit ("Form elements must have
+       labels"), which is a fair complaint from anything reading the page
+       through the accessibility tree rather than looking at it: the visible
+       button says what it does, and the control it drives said nothing.
+       Re-pointing it also makes tapping the label open the picker. */
+    var photoLabel = photoField.querySelector('label');
+    if (photoLabel) {
+      photoInput.id = photoWrap.id ? photoWrap.id + '-input' : 'gl-photo-input';
+      photoLabel.setAttribute('for', photoInput.id);
+    }
     form.appendChild(photoField);
 
     var vinField = field('VIN <span class="opt">— optional, gets us the exact glass</span>', vin);
