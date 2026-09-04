@@ -107,6 +107,9 @@ async function getClient(slug: string) {
       filesInsuranceClaims: true,
       smsCapable: true,
       serviceAreas: true,
+      // Headlines only — see lib/site-area.ts. Required by AreaNaming, so a
+      // page that forgets it cannot compile.
+      marketArea: true,
       pathOverrides: true,
       googleMapsUrl: true,
       clarityProjectId: true,

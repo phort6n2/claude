@@ -116,6 +116,9 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       'logoUrl',
       'rankMapUrl',
       'siteDisplayPhone',
+      // Clearable on purpose: emptying it puts the headlines back on the
+      // shop's own city, which is where every site started.
+      'marketArea',
     ] as const) {
       setIf(key, data[key] || null)
     }

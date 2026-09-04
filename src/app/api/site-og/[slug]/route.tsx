@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og'
 import { prisma } from '@/lib/db'
 import { sitePaletteVars } from '@/lib/site-theme'
+import { areaWithState } from '@/lib/site-area'
 
 export const runtime = 'nodejs'
 export const revalidate = 3600
@@ -19,6 +20,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
       businessName: true,
       city: true,
       state: true,
+      // The share card is an ad, so it names the area the site sells to —
+      // the same words as the H1 somebody is about to land on.
+      marketArea: true,
       phone: true,
       primaryColor: true,
       accentColor: true,
@@ -65,7 +69,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
               fontWeight: 700,
             }}
           >
-            {client.city}, {client.state} auto glass
+            {areaWithState(client)} auto glass
           </div>
           <div
             style={{

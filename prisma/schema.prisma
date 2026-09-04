@@ -67,6 +67,12 @@ model Client {
   hasShopLocation        Boolean  @default(true)
   offersMobileService    Boolean  @default(false)
   serviceAreas           String[] // Array of cities/neighborhoods
+  /// What the site's HEADLINES call the area this shop covers — "Orange
+  /// County" for a shop whose address is in Huntington Beach. Empty means the
+  /// shop's own city, which is what every site did before this existed.
+  /// Headlines and page titles only: the address, the schema and the contact
+  /// cards keep the real city. See lib/site-area.ts.
+  marketArea             String?
   /// Template pages moved to an address the shop's old site used, as
   /// { "/side-window-replacement": "/car-window-repair" }. See lib/site-paths.
   pathOverrides          Json?
