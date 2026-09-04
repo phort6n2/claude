@@ -160,8 +160,9 @@ export default function ServiceAreaPlanner({
           })}
         </div>
         <p className="text-xs text-gray-500 mt-2">
-          The first {PAGE_LIMIT} cities get their own page (marked). The rest appear in the
-          coverage band and the footer.
+          Every city here gets its own page — a real destination for an ad. A page with no
+          shop and no city copy of its own is served but kept out of Google&apos;s index until
+          you write it; it still converts paid traffic in the meantime.
         </p>
       </div>
 
