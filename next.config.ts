@@ -1,5 +1,17 @@
 import type { NextConfig } from "next";
 
+// EVERYTHING BELOW DEPENDS ON THE BUILD RUNNING ON WEBPACK — `next build
+// --webpack` in package.json. Next 16 builds with Turbopack by default, and a
+// Turbopack build SILENTLY IGNORES outputFileTracingIncludes. It is silent in
+// the worst way: the trace still lists sharp's JS and its package.json, just
+// not libvips-cpp.so, so the function deploys and then dies at module load
+// with ERR_DLOPEN_FAILED. Every image feature in production — wordmarks,
+// photo uploads, the white footer logo, the importer's mirroring — was broken
+// this way, and the entries below had been sitting here for days doing
+// nothing. Proof, if this ever needs re-checking: build both ways and read
+// .next/server/app/**/route.js.nft.json — webpack lists
+// @img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.3, Turbopack does not.
+//
 // sharp's linux-x64 native binaries, forced into every function that touches
 // image processing. The build tracer misses the transitively-optional
 // @img/* packages on some routes, and the function then dies at module load

@@ -653,6 +653,24 @@ client says the leads are bad.
   Satori cannot read the WOFF2 `next/font` emits, and the font is read by
   path — so its routes are listed in `outputFileTracingIncludes` in
   `next.config.ts`. Miss that and it 500s in production while working in dev.
+- **The build runs on webpack (`next build --webpack`), and it has to.** Next
+  16 defaults to Turbopack, and a Turbopack build **ignores
+  `outputFileTracingIncludes`** — silently, and in the shape most likely to
+  fool you: the trace still carries sharp's JS and `package.json`, just not
+  `libvips-cpp.so`, so the function deploys and dies at module load with
+  `ERR_DLOPEN_FAILED`. That took out every image path in production at once —
+  wordmarks, photo uploads, the white footer logo, the importer's mirroring —
+  while the config entries meant to prevent exactly that sat in the file doing
+  nothing. To re-check after any Next upgrade: build both ways and read
+  `.next/server/app/**/route.js.nft.json` for
+  `@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.*`. Present on webpack,
+  absent on Turbopack.
+- **Anything image-shaped must be optional at the call site.** A `sharp`
+  failure has to degrade, never fail the write it decorates. The white footer
+  logo is derived inside a `try` at every call site *including the dynamic
+  `import()` itself* — the lib's own catch cannot catch a module that fails to
+  load — because that unguarded import 500'd `PUT /api/clients/[id]`, which
+  discarded whole website imports.
 - **Fonts are bundled, never fetched at build.** `layout.tsx` loads Inter and
   Inter Tight through `next/font/local` from `src/assets/fonts/`, because
   `next/font/google` downloads from `fonts.gstatic.com` while the build runs.
