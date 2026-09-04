@@ -212,6 +212,39 @@ export function evaluateAccountChanges(rows: Row[], yesterday: string): FindingD
   return findings
 }
 
+/**
+ * The website-call conversion is watching a number the site does not show.
+ *
+ * Google swaps ONE number on the page and reports calls to it. Set the
+ * action up against the shop's old line, then move the site onto a tracking
+ * number, and Google finds nothing to swap — no swap, no reported call,
+ * while the Ads UI still shows the action as installed. Needs no API call:
+ * both numbers are already ours.
+ */
+export function evaluateCallNumberMismatch(input: {
+  conversionNumber: string | null
+  siteNumber: string | null
+}): FindingDraft[] {
+  const last10 = (v: string | null) => (v || '').replace(/\D/g, '').slice(-10)
+  const watching = last10(input.conversionNumber)
+  const showing = last10(input.siteNumber)
+  if (!watching || !showing || watching === showing) return []
+  return [
+    {
+      check: 'call-number-mismatch',
+      severity: 'ALERT',
+      entity: 'account',
+      title: 'Website calls are not being counted — wrong number on the conversion',
+      detail: `The Google call conversion watches for ${input.conversionNumber}, but the site shows ${input.siteNumber}. Google only swaps a number it finds on the page, so no website call is being reported. Edit the conversion action's phone number to the one the site shows.`,
+      evidence: {
+        conversionNumber: input.conversionNumber,
+        siteNumber: input.siteNumber,
+        why: 'Google Ads website-call conversions replace a specific number printed on the page',
+      },
+    },
+  ]
+}
+
 // ---------------------------------------------------------------------------
 // The runner: fetch per account, evaluate, file, auto-resolve, summarize.
 // ---------------------------------------------------------------------------
@@ -298,6 +331,16 @@ export async function runDailyAdsChecks(): Promise<DailyRunSummary> {
     } else {
       summary.errors.push({ client: client.businessName, error: statuses.error })
     }
+
+    // Costs nothing — both numbers are already in our database — so it runs
+    // even when Google is unreachable today.
+    drafts.push(
+      ...evaluateCallNumberMismatch({
+        conversionNumber: client.adsTracking?.callPhoneNumber ?? null,
+        siteNumber: client.trackingNumbers[0]?.phoneNumber ?? null,
+      })
+    )
+    ranChecks.add('call-number-mismatch')
 
     const changes = await adsSearch(
       customerId,
@@ -428,7 +471,12 @@ export async function listAdsClients() {
     select: {
       id: true,
       businessName: true,
-      adsTracking: { select: { googleAdsCustomerId: true } },
+      adsTracking: { select: { googleAdsCustomerId: true, callPhoneNumber: true } },
+      trackingNumbers: {
+        where: { active: true, useOnSite: true },
+        select: { phoneNumber: true },
+        take: 1,
+      },
     },
     orderBy: { businessName: 'asc' },
   })

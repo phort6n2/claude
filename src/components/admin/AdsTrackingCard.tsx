@@ -3,6 +3,7 @@
 import Link from 'next/link'
 
 import { useEffect, useState } from 'react'
+import { formatPhoneDisplay } from '@/lib/lead-display'
 import ClarityPanel from '@/components/admin/ClarityPanel'
 import OfflineConversionsCard from '@/components/admin/OfflineConversionsCard'
 import {
@@ -280,6 +281,16 @@ export default function AdsTrackingCard({
   const callLive = !!current?.callConversionLabel && !!current?.callPhoneNumber
   const bingLive = !!current?.bingUetTagId
 
+  // The silent killer: Google watches for ONE number on the page. If the
+  // conversion was set up against the shop's old line and the site has since
+  // moved to a tracking number, Google never finds its number, never swaps,
+  // and counts nothing — while the reporting looks configured.
+  const digits = (v: string | null | undefined) => (v || '').replace(/\D/g, '').slice(-10)
+  const callNumberMismatch =
+    callLive &&
+    !!siteTrackingNumber &&
+    digits(current?.callPhoneNumber) !== digits(siteTrackingNumber)
+
   return (
     <div className="p-6 pt-4 space-y-5">
       {unavailable && (
@@ -509,6 +520,26 @@ export default function AdsTrackingCard({
 
       {/* ---- Calls ---- */}
       <div className="space-y-2">
+        {callNumberMismatch && (
+          <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900">
+            <p className="m-0 font-semibold">
+              These calls are not being counted — wrong number on the conversion.
+            </p>
+            <p className="m-0 mt-1">
+              Google is watching for{' '}
+              <strong className="font-mono">{formatPhoneDisplay(current?.callPhoneNumber)}</strong>,
+              but the site shows{' '}
+              <strong className="font-mono">{siteTrackingNumber}</strong>. It only swaps a number
+              it can find on the page, so nothing is being swapped and no website call is being
+              reported.
+            </p>
+            <p className="m-0 mt-1">
+              Fix it in Google Ads: edit that conversion action&apos;s phone number to{' '}
+              <strong className="font-mono">{siteTrackingNumber}</strong>, then paste the snippet
+              below again.
+            </p>
+          </div>
+        )}
         <h3 className="font-medium text-gray-900">
           Calls from the website <span className="font-normal text-gray-400">— optional</span>
         </h3>
@@ -602,8 +633,24 @@ export default function AdsTrackingCard({
         </p>
         <ol className="list-decimal ml-5 space-y-1.5">
           <li>
-            In the campaign, add a <strong>Call asset</strong> (Assets → Calls) with the main
-            number{clientPhone ? <> — <code className="font-mono text-xs">{clientPhone}</code></> : null}.
+            In the campaign, add a <strong>Call asset</strong> (Assets → Calls) with{' '}
+            {siteTrackingNumber ? (
+              <>
+                the tracking number{' '}
+                <strong className="font-mono">{siteTrackingNumber}</strong> — the number this
+                shop&apos;s site shows. Calls through it are recorded and coached like every other
+                tracked call.
+              </>
+            ) : (
+              <>
+                the main number
+                {clientPhone ? (
+                  <> — <strong className="font-mono">{formatPhoneDisplay(clientPhone)}</strong></>
+                ) : null}
+                . Once a tracking number is assigned it replaces this everywhere on the site, and
+                the asset has to be updated to match.
+              </>
+            )}
           </li>
           <li>
             Turn on <strong>call reporting</strong> on the asset. Google then shows a forwarding
@@ -620,8 +667,19 @@ export default function AdsTrackingCard({
         </ol>
         <p className="rounded border border-gray-300 bg-white p-2">
           Worth knowing: the number on a call asset must appear on the website too, and Google
-          verifies that by looking for it. Keep it visible and unswapped — which is exactly why
-          the site&apos;s footer prints one plain, un-rewritten copy of the main number.
+          verifies that by looking for it.{' '}
+          {siteTrackingNumber ? (
+            <>
+              With a tracking number assigned, every visible number on the site is{' '}
+              <strong className="font-mono">{siteTrackingNumber}</strong> — so that is the one to
+              put on the asset. The shop&apos;s real line stays in the page&apos;s structured data
+              for local search, which is not what this verification reads.
+            </>
+          ) : (
+            <>
+              Whatever number the asset carries has to be the number the pages actually print.
+            </>
+          )}
         </p>
       </Steps>
 
