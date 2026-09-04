@@ -2022,12 +2022,31 @@ export interface TrustItem {
  * short, factual claims. Items come from the client's flags — never claims
  * the data can't back.
  */
+/**
+ * The row is as wide as it has cards, and no wider.
+ *
+ * Fixed at lg:grid-cols-4 it rendered a four-cell frame however many items
+ * survived the dedupe, and the empty cells showed the container's line colour
+ * through the gap-px trick — half a row of grey slab on the live site, which
+ * reads as two cards that failed to load. Tailwind needs the class names
+ * whole, so they are a lookup rather than a template string.
+ */
+const TRUST_COLS: Record<number, string> = {
+  1: '',
+  2: 'sm:grid-cols-2',
+  3: 'sm:grid-cols-2 lg:grid-cols-3',
+  4: 'sm:grid-cols-2 lg:grid-cols-4',
+}
+
 export function TrustRow({ items }: { items: TrustItem[] }) {
-  if (items.length === 0) return null
+  const shown = items.slice(0, 4)
+  if (shown.length === 0) return null
   return (
     <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 mt-[26px]">
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-[var(--line-card)] border border-[var(--line-card)] rounded-[14px] overflow-hidden">
-        {items.slice(0, 4).map((item) => (
+      <div
+        className={`grid ${TRUST_COLS[shown.length] || TRUST_COLS[4]} gap-px bg-[var(--line-card)] border border-[var(--line-card)] rounded-[14px] overflow-hidden`}
+      >
+        {shown.map((item) => (
           <div key={item.title} className="bg-white px-4 py-3.5 flex items-start gap-2.5 min-w-0">
             <span className="shrink-0 mt-0.5 text-[var(--brand)]">{item.icon}</span>
             <span className="min-w-0">

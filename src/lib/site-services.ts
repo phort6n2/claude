@@ -179,6 +179,60 @@ export function servicesForClient(flags: Record<ServiceFlag, boolean>): ServiceP
   return SERVICE_PAGES.filter((s) => flags[s.flag])
 }
 
-export function getServicePage(slug: string): ServicePage | undefined {
-  return SERVICE_PAGES.find((s) => s.slug === slug)
+/**
+ * Addresses the shops' OLD sites used for a service this template names
+ * differently — every key is a live final URL in a client's Ads account.
+ *
+ * Each one carries its own NAME, and that is the point of the map rather than
+ * just a redirect table. Somebody who searched "auto glass replacement",
+ * clicked an ad pointing at /auto-glass-replacement, and landed on a page
+ * headed "Windshield Replacement" has been told, in the largest words on the
+ * screen, that they are somewhere else. The page underneath is the right one;
+ * only its title was wrong. Message match on a paid click is not decoration —
+ * it is the first thing the visitor checks and the thing Google's landing
+ * page experience score reads.
+ *
+ * The names are written out, never derived from the slug. Title-casing turns
+ * "adas-calibration" into "Adas Calibration", and the list is short and fixed.
+ */
+export const SERVICE_ALIASES: Record<string, { service: string; name: string }> = {
+  'auto-glass-replacement': { service: 'windshield-replacement', name: 'Auto Glass Replacement' },
+  'mobile-windshield-replacement': {
+    service: 'windshield-replacement',
+    name: 'Mobile Windshield Replacement',
+  },
+  'auto-glass-repair': { service: 'windshield-repair', name: 'Auto Glass Repair' },
+  'mobile-windshield-repair': { service: 'windshield-repair', name: 'Mobile Windshield Repair' },
+  'windshield-crack-repair': { service: 'windshield-repair', name: 'Windshield Crack Repair' },
+  'windshield-chip-repair': { service: 'rock-chip-repair', name: 'Windshield Chip Repair' },
 }
+
+/**
+ * The page an address serves — its own slug, or the one it is an alias for.
+ *
+ * Aliases resolve here rather than only in middleware, so the flat address
+ * also works on the /sites/{slug} preview, which is the one place an operator
+ * checks a site before pointing a domain at it.
+ */
+export function getServicePage(slug: string): ServicePage | undefined {
+  const direct = SERVICE_PAGES.find((s) => s.slug === slug)
+  if (direct) return direct
+  const alias = SERVICE_ALIASES[slug]
+  return alias ? SERVICE_PAGES.find((s) => s.slug === alias.service) : undefined
+}
+
+/**
+ * What the page calls itself AT THIS ADDRESS.
+ *
+ * The service's own name everywhere except an alias, where it is the alias's
+ * name — the words the visitor typed and the ad promised.
+ */
+export function serviceHeading(slug: string): string {
+  return SERVICE_ALIASES[slug]?.name || getServicePage(slug)?.name || ''
+}
+
+/** Every flat address middleware resolves to a service page. */
+export const FLAT_SERVICE_PATHS: string[] = [
+  ...SERVICE_PAGES.map((s) => s.slug),
+  ...Object.keys(SERVICE_ALIASES),
+]

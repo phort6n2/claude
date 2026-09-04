@@ -1,3 +1,8 @@
+// The one list of flat service addresses, shared with the middleware that
+// rewrites them. It was written out here as well, and a copy of a list whose
+// whole job is to match another list is a copy that eventually does not.
+import { FLAT_SERVICE_PATHS } from '@/lib/site-services'
+
 /**
  * The addresses these sites use for services and cities.
  *
@@ -89,21 +94,7 @@ export function canonicalForCustom(path: string, overrides?: PathOverrides): str
  * address in that list would silently keep serving the old page: rejected
  * here rather than accepted and quietly ignored.
  */
-export const MIDDLEWARE_FLAT_PATHS = new Set([
-  'windshield-replacement',
-  'windshield-repair',
-  'rock-chip-repair',
-  'side-window-replacement',
-  'back-glass-replacement',
-  'sunroof-repair',
-  'adas-calibration',
-  'auto-glass-replacement',
-  'mobile-windshield-replacement',
-  'auto-glass-repair',
-  'mobile-windshield-repair',
-  'windshield-crack-repair',
-  'windshield-chip-repair',
-])
+export const MIDDLEWARE_FLAT_PATHS = new Set(FLAT_SERVICE_PATHS)
 
 /**
  * Why a KEPT PAGE at this address can never be seen, or null when it can.
