@@ -155,6 +155,11 @@ export default function SiteContentEditor({
   // null = still hydrating; the first post-load render records the baseline
   // instead of saving it back, so loading a client never counts as an edit.
   const lastSavedRef = useRef<string | null>(null)
+  // The same value as a piece of state, so the footer can SAY whether there
+  // are unsaved changes. A ref alone cannot: it never re-renders, so the bar
+  // read "Changes save automatically" whether or not a save had happened.
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null)
+  const dirty = savedSnapshot !== null && snapshot !== savedSnapshot
   const persistRef = useRef(persistClientFields)
   persistRef.current = persistClientFields
   const savingRef = useRef(false)
@@ -162,6 +167,12 @@ export default function SiteContentEditor({
   // True only between an import landing photos in state and the save that
   // persists them. Nothing else in this editor may write the photo table.
   const importedPhotosRef = useRef(false)
+  // Set by an import: the draft must reach the database NOW, not 1.2 seconds
+  // from now. An operator who moves to another tab inside that debounce takes
+  // the whole import with them — every tab here is its own route, so the
+  // component unmounts and the timer is cleared. That is the "it imported but
+  // it did not save" report, and it left no trace anywhere to explain itself.
+  const saveImmediatelyRef = useRef(false)
 
   async function saveNow() {
     if (savingRef.current) {
@@ -191,16 +202,23 @@ export default function SiteContentEditor({
       if (res.ok) {
         importedPhotosRef.current = false
         lastSavedRef.current = snap
+        setSavedSnapshot(snap)
         setSaveStatus(
           data.warning
             ? { kind: 'warning', text: data.warning }
             : { kind: 'saved', text: 'Saved — the site updates within about 5 minutes.' }
         )
       } else {
-        setSaveStatus({ kind: 'error', text: data.error || 'Failed to save' })
+        setSaveStatus({ kind: 'error', text: `${data.error || 'Failed to save'} — press Save now to try again.` })
       }
     } catch {
-      setSaveStatus({ kind: 'error', text: 'Failed to save — your edits are still here, keep typing to retry.' })
+      // A failed save arms no new timer: the text on screen has not changed,
+      // so the autosave effect has nothing to react to. Without the button
+      // beside this message the edits were simply stuck.
+      setSaveStatus({
+        kind: 'error',
+        text: 'Failed to save — your edits are still here. Press Save now to try again.',
+      })
     } finally {
       savingRef.current = false
       setSaving(false)
@@ -217,13 +235,35 @@ export default function SiteContentEditor({
     if (loading) return
     if (lastSavedRef.current === null) {
       lastSavedRef.current = snapshot
+      setSavedSnapshot(snapshot)
       return
     }
-    if (snapshot === lastSavedRef.current) return
+    if (snapshot === lastSavedRef.current) {
+      saveImmediatelyRef.current = false
+      return
+    }
+    // An import applies its fields in one batch, so this effect runs once with
+    // everything it found already in `payloadRef` — which is why the flag is
+    // consumed here rather than saveNow() being called from the import itself,
+    // where the refs would still hold the pre-import document.
+    if (saveImmediatelyRef.current) {
+      saveImmediatelyRef.current = false
+      void saveNow()
+      return
+    }
     const timer = setTimeout(() => void saveNow(), 1200)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapshot, loading])
+
+  // Closing the tab or following a link with a save still pending is the one
+  // way out of this card that no amount of debounce-tightening covers.
+  useEffect(() => {
+    if (!dirty && !saving) return
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault()
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty, saving])
 
   /**
    * `source` is explicit rather than inferred from whether the paste box
@@ -270,6 +310,9 @@ export default function SiteContentEditor({
         setPhotos(d.photos)
         importedPhotosRef.current = true
       }
+      // Committed on the next render rather than 1.2s later. Read the comment
+      // on saveImmediatelyRef: the debounce was long enough to walk away from.
+      saveImmediatelyRef.current = true
       setPastedHtml('')
       if (d.logoUrl && onLogoFound) onLogoFound(d.logoUrl)
       if (Array.isArray(d.serviceAreas) && d.serviceAreas.length && onAreasFound) {
@@ -292,7 +335,7 @@ export default function SiteContentEditor({
         ok: true,
         text:
           (found.length
-            ? `Imported (${found.join(', ')}) from ${d.pagesCrawled.length} page(s). Review below and delete anything wrong — it saves automatically.`
+            ? `Imported (${found.join(', ')}) from ${d.pagesCrawled.length} page(s) — saving now. Review below and delete anything wrong; the bar at the bottom says when it is saved.`
             : `Read ${d.pagesCrawled.length} page(s) but found nothing usable to import.`) + warnings,
       })
     } catch {
@@ -648,27 +691,42 @@ export default function SiteContentEditor({
 
       {/* Autosave status. Sticky so the operator can see a failed save from
           anywhere in this long form — a silent failure at the bottom of an
-          off-screen footer is a lost afternoon of edits. */}
-      <div className="sticky bottom-0 -mx-6 px-6 py-2 bg-white/95 border-t border-gray-100 flex items-center gap-2 text-sm">
+          off-screen footer is a lost afternoon of edits.
+
+          The button is not decoration next to autosave. A save that fails
+          arms no retry (nothing on screen changed, so the effect has nothing
+          to fire on), and an import the operator walks away from inside the
+          debounce is gone. Both had no recourse at all: there was no way to
+          press save. */}
+      <div className="sticky bottom-0 -mx-6 px-6 py-2 bg-white/95 border-t border-gray-100 flex items-center gap-3 text-sm">
+        <button
+          type="button"
+          onClick={() => void saveNow()}
+          disabled={saving || (!dirty && saveStatus?.kind !== 'error')}
+          className="shrink-0 px-3 py-1.5 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40"
+        >
+          Save now
+        </button>
         {saving ? (
           <span className="flex items-center gap-1.5 text-gray-500">
             <Loader2 className="h-4 w-4 animate-spin" /> Saving…
           </span>
+        ) : saveStatus?.kind === 'error' ? (
+          <span className="flex items-center gap-1.5 text-red-600">
+            <AlertCircle className="h-4 w-4" />
+            {saveStatus.text}
+          </span>
+        ) : dirty ? (
+          // Ahead of a stored "Saved" on purpose: a green tick above unsaved
+          // edits is the message that makes somebody close the tab.
+          <span className="text-amber-600">Unsaved changes — saving in a moment.</span>
         ) : saveStatus ? (
           <span
             className={`flex items-center gap-1.5 ${
-              saveStatus.kind === 'saved'
-                ? 'text-green-600'
-                : saveStatus.kind === 'warning'
-                  ? 'text-amber-600'
-                  : 'text-red-600'
+              saveStatus.kind === 'warning' ? 'text-amber-600' : 'text-green-600'
             }`}
           >
-            {saveStatus.kind === 'error' ? (
-              <AlertCircle className="h-4 w-4" />
-            ) : (
-              <Check className="h-4 w-4" />
-            )}
+            <Check className="h-4 w-4" />
             {saveStatus.text}
           </span>
         ) : (
