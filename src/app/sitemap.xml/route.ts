@@ -1,11 +1,7 @@
 import { LIVE_STATUSES } from '@/lib/site-preview'
 import { NextRequest } from 'next/server'
-import { servicePath, locationPath } from '@/lib/site-paths'
 import { prisma } from '@/lib/db'
-import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
-import { locationPages, mergeServiceAreas } from '@/lib/site-locations'
-import { canonicalHostFor } from '@/lib/site-origin'
-import { cityIsIndexable, getCityContent } from '@/lib/city-content'
+import { siteSitemap } from '@/lib/site-sitemap'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,7 +11,12 @@ export const dynamic = 'force-dynamic'
  * A client subdomain gets that client's own page set; the app host gets an
  * empty sitemap (the admin app is not for indexing). Reads the Host header
  * directly rather than going through the middleware rewrite, so it works for
- * subdomains and, later, custom domains.
+ * subdomains and for custom domains.
+ *
+ * The page list itself lives in lib/site-sitemap so the Website tab can show
+ * a person exactly what this file tells a crawler. Two implementations of
+ * "what pages does this site have" would drift, and the first anyone would
+ * hear of it is a client asking why a page is not in Google.
  */
 function clientLabelFromHost(host: string): string | null {
   const bare = host.split(':')[0].toLowerCase()
@@ -43,73 +44,19 @@ export async function GET(request: NextRequest) {
     where: label
       ? { OR: [{ slug: label }, { siteSubdomain: label }], status: { in: [...LIVE_STATUSES] } }
       : { domains: { some: { domain: bare } }, status: { in: [...LIVE_STATUSES] } },
-    select: {
-      id: true,
-      slug: true,
-      domains: {
-        where: { isPrimary: true },
-        select: { domain: true, verified: true, misconfigured: true },
-        take: 1,
-      },
-      siteSubdomain: true,
-      updatedAt: true,
-      serviceAreas: true,
-      offersWindshieldRepair: true,
-      offersWindshieldReplacement: true,
-      offersSideWindowRepair: true,
-      offersBackWindowRepair: true,
-      offersSunroofRepair: true,
-      offersRockChipRepair: true,
-      offersAdasCalibration: true,
-      offersMobileService: true,
-    },
+    select: { id: true },
   })
   if (!client) return xml('')
 
-  // Only the canonical host lists URLs. A sitemap on a host whose pages carry
-  // noindex asks the crawler to index what the pages tell it not to, which is
-  // a contradiction it resolves by trusting neither.
-  if (bare !== canonicalHostFor(client)) return xml('')
-
-  // Shop cities get pages ahead of coverage-only cities, so the sitemap has
-  // to resolve the same merged list the router does.
-  const shopCities = await prisma.clientLocation
-    .findMany({ where: { clientId: client.id }, select: { city: true } })
-    .catch(() => [])
-  const areas = mergeServiceAreas(client.serviceAreas || [], shopCities.map((s) => s.city))
-  const cityContent = await getCityContent(client.id)
-
-  // Pages kept from the shop's old site at their original addresses. Only the
-  // published ones — a held page 404s, and a sitemap entry for a 404 is how a
-  // crawler learns to trust the file less.
-  const keptPages = await prisma.clientPage
-    .findMany({
-      where: { clientId: client.id, publishedAt: { not: null } },
-      select: { path: true, updatedAt: true },
-      orderBy: { path: 'asc' },
-    })
-    .catch(() => [])
-
-  const origin = `https://${host}`
-  const lastmod = client.updatedAt.toISOString()
-  const entry = (path: string, priority: string, freq: string, modified = lastmod) =>
-    `  <url><loc>${origin}${path}</loc><lastmod>${modified}</lastmod><changefreq>${freq}</changefreq><priority>${priority}</priority></url>`
-
-  const urls = [
-    entry('/', '1.0', 'weekly'),
-    ...servicesForClient(client as unknown as Record<ServiceFlag, boolean>).map((s) =>
-      entry(servicePath(s.slug), '0.8', 'monthly')
-    ),
-    // Only cities the page can say something specific about. A sitemap entry
-    // for a page carrying noindex asks the crawler to index what the page
-    // tells it not to.
-    ...locationPages(areas)
-      .filter((l) => cityIsIndexable(l.area, cityContent, shopCities.map((s) => s.city)))
-      .map((l) => entry(locationPath(l.slug), '0.7', 'monthly')),
-    ...keptPages.map((p) => entry(p.path, '0.6', 'monthly', p.updatedAt.toISOString())),
-    entry('/privacy', '0.1', 'yearly'),
-    entry('/terms', '0.1', 'yearly'),
-  ]
-
-  return xml(urls.join('\n'))
+  // The host is passed through: only the canonical one lists URLs, and that
+  // rule lives with the list rather than here.
+  const { entries } = await siteSitemap(client.id, host)
+  return xml(
+    entries
+      .map(
+        (e) =>
+          `  <url><loc>${e.loc}</loc><lastmod>${e.lastmod}</lastmod><changefreq>${e.changefreq}</changefreq><priority>${e.priority}</priority></url>`
+      )
+      .join('\n')
+  )
 }

@@ -443,6 +443,12 @@ export default function UrlParityCard({
         should land. Then either send the address somewhere on the new site, or keep the page at
         its own address and pull the old copy across.
       </p>
+      <p className="mt-1.5 text-sm text-gray-600 max-w-prose">
+        Paste the site address and its sitemap is looked for — robots.txt first, then the
+        usual addresses. <strong>Paste their sitemap directly</strong> (…/sitemap.xml,
+        /sitemap_index.xml, /wp-sitemap.xml) and it is read as-is, which is the complete list
+        rather than whatever happens to be linked from the menu.
+      </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
         <input
@@ -450,7 +456,7 @@ export default function UrlParityCard({
           inputMode="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://theiroldsite.com"
+          placeholder="https://theiroldsite.com  —  or their sitemap.xml"
           className="flex-1 min-w-[260px] border border-gray-300 rounded-lg px-3 py-2 text-sm"
         />
         <Button onClick={run} disabled={busy}>
