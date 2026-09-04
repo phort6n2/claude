@@ -32,6 +32,9 @@ function isAppHost(host: string): boolean {
 
 const APP_HOSTS = new Set(['glassleads.app', 'www.glassleads.app'])
 
+/** The one path every browser asks for whether or not it read the page. */
+const FAVICON = '/favicon.ico'
+
 /**
  * Paths that belong to the APP even when requested on a client host.
  *
@@ -129,7 +132,10 @@ function flatToTemplatePath(pathname: string): string | null {
 
 export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
-  if (isAppPath(pathname)) return NextResponse.next()
+  // /favicon.ico is checked below, BEFORE isAppPath — it ends in an extension,
+  // so the "a request for a file is a request for a file" rule would hand a
+  // client host the platform's own icon route, which has nothing there.
+  if (pathname !== FAVICON && isAppPath(pathname)) return NextResponse.next()
 
   const host = (req.headers.get('host') || '').split(':')[0].toLowerCase()
   if (isAppHost(host)) return NextResponse.next()
@@ -146,6 +152,16 @@ export default function middleware(req: NextRequest) {
   }
 
   const url = req.nextUrl.clone()
+  // THE ROOT FAVICON, which plenty of things ask for without reading the page
+  // first: a browser restoring a tab from history or a bookmark, and every
+  // scraper and favicon service that only ever tries /favicon.ico. The pages
+  // carry a <link rel="icon"> at the client's own icon route, so a browser
+  // that loads the page is already right — this is for everything that does
+  // not, and it 404'd on every client host until now.
+  if (pathname === FAVICON) {
+    url.pathname = `/sites/${label}/icon`
+    return NextResponse.rewrite(url)
+  }
   // A flat ad URL maps onto the template route BEFORE the /sites/ rewrite, so
   // both end up at the same handler and only the address differs.
   const mapped = flatToTemplatePath(pathname)

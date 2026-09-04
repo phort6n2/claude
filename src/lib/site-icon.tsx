@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { prisma } from '@/lib/db'
+import { siteClientWhere } from '@/lib/site-client'
 import { sitePaletteVars } from '@/lib/site-theme'
 
 /**
@@ -12,7 +13,7 @@ import { sitePaletteVars } from '@/lib/site-theme'
  */
 export async function renderSiteIcon(slug: string, px: number) {
   const client = await prisma.client.findFirst({
-    where: { OR: [{ slug }, { siteSubdomain: slug }] },
+    where: siteClientWhere(slug),
     select: { businessName: true, logoUrl: true, primaryColor: true, accentColor: true },
   })
 
