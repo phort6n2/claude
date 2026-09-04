@@ -1,5 +1,5 @@
 import type { SiteExtras } from '@/lib/site-content'
-import { servicePath, locationPath } from '@/lib/site-paths'
+import { servicePath, locationPath, readPathOverrides } from '@/lib/site-paths'
 
 /**
  * JSON-LD for hosted client sites.
@@ -43,6 +43,8 @@ export interface SchemaClient {
   googleMapsUrl: string | null
   serviceAreas?: string[]
   hasShopLocation?: boolean
+  /** So every URL in the graph is the address the page is actually served at. */
+  pathOverrides?: unknown
 }
 
 export interface SchemaService {
@@ -170,7 +172,7 @@ function businessEntity(
         '@type': 'Service',
         name: s.name,
         serviceType: s.name,
-        url: `${origin}${servicePath(s.slug)}`,
+        url: `${origin}${servicePath(s.slug, readPathOverrides(client.pathOverrides))}`,
         provider: { '@id': businessId(origin) },
       })),
     }
@@ -226,7 +228,7 @@ export function serviceJsonLd({
   client: SchemaClient
   service: SchemaService
 }) {
-  const url = `${origin}${servicePath(service.slug)}`
+  const url = `${origin}${servicePath(service.slug, readPathOverrides(client.pathOverrides))}`
   const svc: Record<string, unknown> = {
     '@type': 'Service',
     '@id': `${url}#service`,
@@ -269,7 +271,7 @@ export function locationJsonLd({
   /** A real shop physically in this city, if the client has one. */
   shop?: SchemaLocation | null
 }) {
-  const url = `${origin}${locationPath(slug)}`
+  const url = `${origin}${locationPath(slug, readPathOverrides(client.pathOverrides))}`
   // A shop in this city is a place; reference that place. Absent one, the
   // city is coverage — the one business, plus the area it serves.
   const subjectId =

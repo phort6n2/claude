@@ -338,8 +338,18 @@ export const ADS_FINDING_SQL: string[] = [
   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
 ]
 
+/**
+ * A template page served at an address the shop's old site used, so the URL
+ * their ads and their rankings already point at keeps working as the page
+ * itself rather than as a redirect to it. See lib/site-paths.
+ */
+export const PATH_OVERRIDE_SQL: string[] = [
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "pathOverrides" JSONB`,
+]
+
 /** Everything the running code assumes exists. */
 export const BOOTSTRAP_SQL: string[] = [
+  ...PATH_OVERRIDE_SQL,
   ...CALL_TRACKING_SQL,
   ...OFFLINE_CONVERSION_SQL,
   ...CLAIM_FLAGS_SQL,

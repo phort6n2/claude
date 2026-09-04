@@ -67,6 +67,9 @@ model Client {
   hasShopLocation        Boolean  @default(true)
   offersMobileService    Boolean  @default(false)
   serviceAreas           String[] // Array of cities/neighborhoods
+  /// Template pages moved to an address the shop's old site used, as
+  /// { "/side-window-replacement": "/car-window-repair" }. See lib/site-paths.
+  pathOverrides          Json?
   insuranceRelationships String[]
 
   // Services Offered

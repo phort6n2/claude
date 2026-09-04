@@ -2,8 +2,8 @@ import { formatPhoneDisplay } from '@/lib/lead-display'
 import { canViewSite, isPreview, siteIsLive } from '@/lib/site-preview'
 import PreviewBanner from '@/components/sites/PreviewBanner'
 import { headers } from 'next/headers'
-import { servicePath } from '@/lib/site-paths'
-import { notFound } from 'next/navigation'
+import { servicePath, readPathOverrides } from '@/lib/site-paths'
+import { notFound, permanentRedirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
 import { SiteAnalytics } from '@/components/sites/analytics'
@@ -57,6 +57,12 @@ export const revalidate = 300
 
 interface PageProps {
   params: Promise<{ slug: string; service: string }>
+  /**
+   * True when the catch-all is rendering this page at the shop's own address
+   * for it (see Client.pathOverrides). Without it the redirect below would
+   * fire on the very address it redirects TO, which is a loop.
+   */
+  atOverride?: boolean
 }
 
 async function getClient(slug: string) {
@@ -103,6 +109,7 @@ async function getClient(slug: string) {
       filesInsuranceClaims: true,
       smsCapable: true,
       serviceAreas: true,
+      pathOverrides: true,
       googleMapsUrl: true,
       clarityProjectId: true,
     },
@@ -152,17 +159,29 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     },
     twitter: { card: 'summary_large_image', title, description, images: [`${siteRoot}/api/site-og/${client.slug}`] },
     ...(robots ? { robots } : {}),
-    alternates: { canonical: `${stance.canonicalOrigin}${servicePath(page.slug)}` },
+    alternates: {
+      canonical: `${stance.canonicalOrigin}${servicePath(page.slug, readPathOverrides(client.pathOverrides))}`,
+    },
   }
 }
 
-export default async function ServicePage({ params }: PageProps) {
+export default async function ServicePage({ params, atOverride }: PageProps) {
   const { slug, service } = await params
   const page = getServicePage(service)
   if (!page) notFound()
 
   const client = await getClient(slug)
   if (!client) notFound()
+
+  // This page has been moved onto an address the shop's old site used, so the
+  // template address is no longer where it lives. ONE address per page: two
+  // that both answer 200 split the ranking between them, which is the whole
+  // thing an override exists to avoid.
+  const overrides = readPathOverrides(client.pathOverrides)
+  const moved = overrides[`/${page.slug}`]
+  if (moved && !atOverride) {
+    permanentRedirect(`${sitePathPrefixFor(client, (await headers()).get('host'))}${moved}`)
+  }
   const preview = await isPreview(client.status)
   if (!siteIsLive(client.status) && !preview) return <SiteUnavailable />
   // Visitors see the tracking number when one is set; see lib/site-phone.ts.
@@ -192,7 +211,7 @@ export default async function ServicePage({ params }: PageProps) {
   const nav = prioritizeServices(services)
     .filter((s) => s.slug !== page.slug)
     .slice(0, 4)
-    .map((s) => ({ href: `${basePath}${servicePath(s.slug)}`, label: s.name }))
+    .map((s) => ({ href: `${basePath}${servicePath(s.slug, overrides)}`, label: s.name }))
 
   const siteOrigin = siteOriginFor(client)
   const jsonLd = serviceJsonLd({
