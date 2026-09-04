@@ -107,28 +107,89 @@ export function validatePublicUrl(raw: string): { ok: true; url: URL } | { ok: f
   return { ok: true, url: parsed }
 }
 
-async function fetchHtml(url: URL): Promise<string | null> {
+/**
+ * Fetch a page, and SAY WHY when it cannot be fetched.
+ *
+ * This used to return null for five unrelated failures — blocked, missing,
+ * timed out, not HTML, redirected somewhere private — and the caller turned
+ * all five into one sentence about the page being "not reachable, not HTML,
+ * or too slow". That sentence is unactionable: the fix for a 403 (the site
+ * refuses robots) is nothing like the fix for a typo in the URL.
+ *
+ * The User-Agent is a real browser string on purpose. Shop sites on Wix,
+ * Squarespace, GoDaddy and anything behind Cloudflare routinely 403 an
+ * obvious bot — and this fetch is not crawling, it is one page an admin
+ * explicitly asked for, on a site the client owns.
+ */
+const BROWSER_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+
+type FetchFailure =
+  | { kind: 'status'; status: number }
+  | { kind: 'not-html'; contentType: string }
+  | { kind: 'redirect-blocked'; to: string }
+  | { kind: 'timeout' }
+  | { kind: 'network'; message: string }
+
+type FetchResult = { ok: true; html: string } | { ok: false; failure: FetchFailure }
+
+/** The failure, in the words of somebody who has to act on it. */
+export function describeFetchFailure(failure: FetchFailure, url: string): string {
+  switch (failure.kind) {
+    case 'status':
+      if (failure.status === 403 || failure.status === 401) {
+        return `${url} refused the request (HTTP ${failure.status}) — the site is blocking automated visits, usually Cloudflare or a security plugin. Open it in a browser to confirm it loads, then paste the page's content in by hand, or ask the shop's host to allow it.`
+      }
+      if (failure.status === 404) {
+        return `${url} returned 404 — check the address; the site may have moved or the page may be gone.`
+      }
+      if (failure.status >= 500) {
+        return `${url} returned HTTP ${failure.status} — their server is erroring. Worth trying again in a few minutes.`
+      }
+      return `${url} returned HTTP ${failure.status}.`
+    case 'not-html':
+      return `${url} did not return a web page (content type "${failure.contentType}"). Point this at the site's home page rather than a PDF or a file.`
+    case 'redirect-blocked':
+      return `${url} redirected to ${failure.to}, which is not a public address we will fetch.`
+    case 'timeout':
+      return `${url} did not respond within ${Math.round(FETCH_TIMEOUT_MS / 1000)} seconds. Their host may be slow — try again, and if it keeps timing out the site is probably too slow to import.`
+    case 'network':
+      return `${url} could not be reached (${failure.message}). Check the address is right and the site is up.`
+  }
+}
+
+async function fetchHtml(url: URL): Promise<FetchResult> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
   try {
     const res = await fetch(url.toString(), {
       signal: controller.signal,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; GlassLeadsImporter/1.0)',
-        Accept: 'text/html,application/xhtml+xml',
+        'User-Agent': BROWSER_UA,
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
       },
       redirect: 'follow',
     })
-    if (!res.ok) return null
+    if (!res.ok) return { ok: false, failure: { kind: 'status', status: res.status } }
     // Redirects are followed — re-check the landing host against the guard.
     const finalCheck = validatePublicUrl(res.url || url.toString())
-    if (!finalCheck.ok) return null
+    if (!finalCheck.ok) {
+      return { ok: false, failure: { kind: 'redirect-blocked', to: res.url || url.toString() } }
+    }
     const type = res.headers.get('content-type') || ''
-    if (!type.includes('html')) return null
+    if (!type.includes('html')) {
+      return { ok: false, failure: { kind: 'not-html', contentType: type || 'unknown' } }
+    }
     const text = await res.text()
-    return text.slice(0, MAX_PAGE_BYTES)
-  } catch {
-    return null
+    return { ok: true, html: text.slice(0, MAX_PAGE_BYTES) }
+  } catch (err) {
+    const aborted = err instanceof Error && err.name === 'AbortError'
+    if (aborted) return { ok: false, failure: { kind: 'timeout' } }
+    return {
+      ok: false,
+      failure: { kind: 'network', message: err instanceof Error ? err.message : 'request failed' },
+    }
   } finally {
     clearTimeout(timer)
   }
@@ -401,10 +462,15 @@ export async function importSiteContent(
     return { ok: false, error: 'No Anthropic API key configured (Settings → API keys).' }
   }
 
-  const mainHtml = await fetchHtml(check.url)
-  if (!mainHtml) {
-    return { ok: false, error: 'Could not fetch that page (not reachable, not HTML, or too slow)' }
+  const mainFetch = await fetchHtml(check.url)
+  if (!mainFetch.ok) {
+    const reason = describeFetchFailure(mainFetch.failure, check.url.toString())
+    // Logged as well as returned: a failure nobody can see in the runtime
+    // logs is one that has to be reproduced before it can be diagnosed.
+    console.warn(`[SiteImport] fetch failed: ${reason}`)
+    return { ok: false, error: reason }
   }
+  const mainHtml = mainFetch.html
 
   const warnings: string[] = []
   const logoUrl = findLogo(mainHtml, check.url, business.name)
@@ -417,8 +483,9 @@ export async function importSiteContent(
   const extraLinks = findContentLinks(mainHtml, check.url)
   const extraPages = await Promise.all(
     extraLinks.map(async (link) => {
-      const html = await fetchHtml(link)
-      return html ? { link, html } : null
+      const result = await fetchHtml(link)
+      // A linked page that will not load costs that page, never the import.
+      return result.ok ? { link, html: result.html } : null
     })
   )
   for (const extra of extraPages) {
