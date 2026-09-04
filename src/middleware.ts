@@ -1,4 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
+// Pure data with no imports of its own, so it is safe in the Edge bundle —
+// and it means the flat addresses are defined once rather than in a list here
+// and another in site-paths that had to be kept in step by hand.
+import { FLAT_SERVICE_PATHS } from '@/lib/site-services'
 
 /**
  * Host-based routing for hosted client landing pages.
@@ -78,43 +82,23 @@ function isAppPath(pathname: string): boolean {
  *
  * Both shapes resolve. /services/x keeps working for anything already linked.
  */
-const SERVICE_SLUGS = new Set([
-  'windshield-replacement',
-  'windshield-repair',
-  'rock-chip-repair',
-  'side-window-replacement',
-  'back-glass-replacement',
-  'sunroof-repair',
-  'adas-calibration',
-])
+const SERVICE_SLUGS = new Set(FLAT_SERVICE_PATHS)
 
 /** The prefix these sites use for a city page. One constant, one edit. */
 const LOCATION_PREFIX = 'auto-glass-repair-'
 
-/**
- * The words an old site used for a service this template names differently.
- *
- * These are ad destinations, not guesses: every key is a live final URL in
- * Collision's account. "Mobile" is a flag on this template rather than a page
- * of its own, and chip/crack are the same job as a rock chip or a repair — so
- * they land on the page that answers the search, at the address the ad
- * already uses.
- */
-const SERVICE_ALIASES: Record<string, string> = {
-  'auto-glass-replacement': 'windshield-replacement',
-  'mobile-windshield-replacement': 'windshield-replacement',
-  'auto-glass-repair': 'windshield-repair',
-  'mobile-windshield-repair': 'windshield-repair',
-  'windshield-crack-repair': 'windshield-repair',
-  'windshield-chip-repair': 'rock-chip-repair',
-}
-
 function flatToTemplatePath(pathname: string): string | null {
   const bare = pathname.replace(/^\/+|\/+$/g, '')
   if (!bare || bare.includes('/')) return null
+  // THE REQUESTED WORD IS CARRIED THROUGH, not swapped for the service's own
+  // slug. An alias used to be rewritten to /services/windshield-replacement,
+  // so the page had no way of knowing it had been asked for as "auto glass
+  // replacement" and headed itself "Windshield Replacement" — telling a
+  // visitor who clicked an ad for the first thing that they had landed on the
+  // second. The route resolves the alias itself (getServicePage) and names
+  // the page after the address (serviceHeading); the canonical still points
+  // at the template path, so only one of the two is indexed.
   if (SERVICE_SLUGS.has(bare)) return `/services/${bare}`
-  const alias = SERVICE_ALIASES[bare]
-  if (alias) return `/services/${alias}`
   // LOCATION PATHS ARE NOT MAPPED HERE, and the reason is a regression this
   // caused: /auto-glass-repair-hillsboro is one of Collision's KEPT PAGES, and
   // rewriting it to /locations/hillsboro — a city with no page — turned a

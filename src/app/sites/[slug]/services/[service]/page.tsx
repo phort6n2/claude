@@ -9,7 +9,12 @@ import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
 import { SiteAnalytics } from '@/components/sites/analytics'
 import { withSitePhone } from '@/lib/site-phone'
-import { getServicePage, servicesForClient, type ServiceFlag } from '@/lib/site-services'
+import {
+  getServicePage,
+  servicesForClient,
+  serviceHeading,
+  type ServiceFlag,
+} from '@/lib/site-services'
 import {
   UtilBar,
   SiteHeader,
@@ -149,7 +154,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const stance = hostStanceFor(client, (await headers()).get('host'))
   const siteRoot = stance.canonicalOrigin
   const robots = stance.isCanonicalHost ? undefined : { index: false, follow: true }
-  const title = `${page.name} in ${areaWithState(client)} | ${client.businessName}`
+  // The words of THIS address, which is what an ad promised and what the
+  // visitor searched — see SERVICE_ALIASES.
+  const heading = serviceHeading(service)
+  const title = `${heading} in ${areaWithState(client)} | ${client.businessName}`
   const description = `${page.short} Free quotes from ${client.businessName} in ${headlineArea(client)}. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
   return {
     title,
@@ -212,6 +220,11 @@ export default async function ServicePage({ params, atOverride }: PageProps) {
     filesInsuranceClaims: client.filesInsuranceClaims,
     smsCapable: client.smsCapable,
   }
+  // What this page calls itself at the address it was asked for. The JSON-LD
+  // and the widget below keep the service's canonical name: one is a machine
+  // record cross-checked against the canonical URL, and the other is the
+  // value written onto the lead, which has to read the same for every shop.
+  const heading = serviceHeading(service)
   const nav = prioritizeServices(services)
     .filter((s) => s.slug !== page.slug)
     .slice(0, 4)
@@ -314,7 +327,7 @@ export default async function ServicePage({ params, atOverride }: PageProps) {
             {/* The area, not the address — same reason as the homepage H1.
                 The eyebrow directly above still names the city. */}
             <h1 className="text-[clamp(1.875rem,1.35rem+2.6vw,3.4rem)] font-extrabold leading-[1.08] tracking-[-.02em] text-[var(--tx)]">
-              {page.name} in {headlineArea(client)}
+              {heading} in {headlineArea(client)}
             </h1>
             <p className="mt-4 text-[17px] leading-[1.55] text-[var(--tx2)] max-w-[48ch]">
               {page.heroLine}
