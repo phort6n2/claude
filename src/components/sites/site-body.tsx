@@ -312,17 +312,25 @@ export function buildTrustItems(
     // The price promise is true of all of them and answers a bigger question.
     { icon: <Clock className="h-5 w-5" />, title: 'Free quote first', text: 'A real price before anything is booked' },
   ]
-    .filter((item) => {
-      const topics = topicsIn(`${item.title} ${item.text}`)
-      for (const t of topics) if (spoken.has(t)) return false
-      return true
-    })
+    // AVOIDING THE BULLETS IS A PREFERENCE, NOT A VETO.
+    //
+    // It used to drop any item whose topic the bullets above already covered,
+    // and on a shop whose three bullets happened to cover mobile, ADAS and
+    // the warranty that left two — a half-empty strip on a live site.
+    //
+    // The dedupe is still right about which items are worth the most: a card
+    // saying something the visitor has not already read two inches higher
+    // earns its place, so those go first. But "say something new" was never
+    // worth spending half the row on, and a repeated line in a different
+    // shape is a reminder rather than filler. So the echoes fill the rest.
+    .sort((a, b) => Number(echoes(a, spoken)) - Number(echoes(b, spoken)))
     .slice(0, 4)
-    // Two is the fewest that reads as a row. One lonely chip under three
-    // bullets looks like the others failed to load, so the strip stands down
-    // rather than half-appearing — the same all-or-nothing rule the page
-    // already applies when a shop wrote no bullets at all.
-    .reduce<TrustItem[]>((kept, item, _i, all) => (all.length >= 2 ? [...kept, item] : kept), [])
+}
+
+/** Does this card say something the hero bullets have already said? */
+function echoes(item: TrustItem, spoken: Set<string>): boolean {
+  for (const t of topicsIn(`${item.title} ${item.text}`)) if (spoken.has(t)) return true
+  return false
 }
 
 /** Hero bullets fallback when the client hasn't written their own. */
