@@ -1316,12 +1316,18 @@ function LocationCard({
         )}
       </address>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {/* The SITE's number, not this shop's own line. Every visible number
+            on these pages is the tracked one (site-phone swaps it at the data
+            layer) — a per-location line printed here is the one call the ads
+            paid for that nothing can count. location.phone still goes into the
+            JSON-LD, where NAP consistency needs the real number and no human
+            reads it. */}
         <a
-          href={telHrefFor(location.phone)}
+          href={telHrefFor(client.phone)}
           className="inline-flex items-center min-h-[44px] -my-2 inline-flex items-center gap-1.5 text-sm font-bold no-underline text-[var(--brand)] hover:underline"
         >
           <Phone className="h-3.5 w-3.5" />
-          {location.phone}
+          {client.phone}
         </a>
         <a
           href={
@@ -1584,10 +1590,27 @@ export function SiteFooter({
       : []),
   ].slice(0, 4)
 
+  // The link columns are sized to what this shop actually has. A three-column
+  // template with nothing in the third column left a third of the footer
+  // empty beside a single tall list of services, which is what most shops
+  // look like — "More" only appears once a client has kept pages.
+  const hasMoreColumn = pages.length > 0
+  const linkColumns = hasMoreColumn
+    ? 'lg:grid-cols-[1.7fr_1.15fr_0.85fr]'
+    : 'lg:grid-cols-[1.6fr_1fr]'
+  // Two columns of services — only from lg, only with enough of them to fill
+  // both (five splits 3/2; three would split 2/1 and read as a mistake), and
+  // only when "More" is not also taking a column. Measured: with all three
+  // columns present each half is ~145px and "Windshield Replacement" wraps
+  // onto two lines, which looks worse than the tall single column it
+  // replaced. Without "More" the same list has ~200px a side and sits flat.
+  const serviceColumns =
+    services && services.length >= 5 && !hasMoreColumn ? 'lg:columns-2 lg:gap-x-8' : ''
+
   return (
     <footer className="bg-[var(--dark-2)] text-[var(--on-dark-2)] on-dark pt-11 pb-6 text-[15px]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr] lg:gap-9">
+        <div className={`grid gap-8 md:grid-cols-2 lg:gap-9 ${linkColumns}`}>
           <div>
             {footerLogo ? (
               // Plain on the dark band, like the reference — no white chip.
@@ -1636,9 +1659,9 @@ export function SiteFooter({
               <h2 className="text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5">
                 Services
               </h2>
-              <ul className="list-none m-0 p-0 text-sm">
+              <ul className={`list-none m-0 p-0 text-sm ${serviceColumns}`}>
                 {services.map((s) => (
-                  <li key={s.slug} className="mb-0.5">
+                  <li key={s.slug} className="mb-0.5 break-inside-avoid">
                     <a
                       href={`${basePath || ''}${servicePath(s.slug)}`}
                       className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-[5px]"
@@ -1681,11 +1704,16 @@ export function SiteFooter({
             (16 CCR § 3371.2-style requirements), rendered only when set. */}
         <div
           className={`mt-6 p-5 rounded-[10px] bg-[var(--dark-3)] border border-[var(--line-on-dark)] text-[13px] leading-[1.6] grid gap-4 lg:gap-8 lg:px-6 ${
-            // Two address blocks need room; at the single-shop column width
-            // they wrap mid-street.
-            locations.length > 1
-              ? 'lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start'
-              : 'lg:grid-cols-[minmax(240px,1fr)_minmax(0,1.5fr)] lg:items-center'
+            // Sized to the number of shops. Two address blocks need room; at
+            // the single-shop column width they wrap mid-street. THREE need
+            // more again — at the two-shop width the third dropped onto a row
+            // of its own and left a block of empty card beside it, which was
+            // the most obvious thing in the footer.
+            locations.length > 2
+              ? 'lg:grid-cols-[minmax(0,2.1fr)_minmax(0,1fr)] lg:items-start'
+              : locations.length > 1
+                ? 'lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start'
+                : 'lg:grid-cols-[minmax(240px,1fr)_minmax(0,1.5fr)] lg:items-center'
           }`}
         >
           <div>
@@ -1705,7 +1733,12 @@ export function SiteFooter({
                 made a two-shop footer genuinely hard to read. */}
             {client.hasShopLocation &&
               (locations.length > 1 ? (
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div
+                  className={`mt-3 grid gap-3 sm:grid-cols-2 ${
+                    // Three across on a wide screen instead of 2 + a gap.
+                    locations.length > 2 ? 'lg:grid-cols-3' : ''
+                  }`}
+                >
                   {locations.map((location) => (
                     <div
                       key={location.id}
@@ -1720,17 +1753,12 @@ export function SiteFooter({
                       {location.hours && (
                         <div className="opacity-75">{location.hours}</div>
                       )}
-                      {/* Only when this shop has its own line. Repeating the
-                          main number under every address just reprints the
-                          line directly above it. */}
-                      {location.phone !== client.phone && (
-                        <a
-                          href={telHrefFor(location.phone)}
-                          className="inline-flex items-center min-h-[44px] -my-2 no-underline text-[var(--gold-on-dark)]"
-                        >
-                          {location.phone}
-                        </a>
-                      )}
+                      {/* No per-shop number here. It used to print this
+                          location's own line, which is the shop's real number
+                          and NOT the tracked one — an untracked call on a page
+                          that exists to be advertised. The tracked number is
+                          on the line directly above these blocks, so nothing
+                          is lost. It survives in the JSON-LD for NAP. */}
                     </div>
                   ))}
                 </div>
@@ -1757,7 +1785,14 @@ export function SiteFooter({
             )}
           </div>
           {barTrust.length > 0 && (
-            <div className="grid gap-3 pt-4 border-t border-white/15 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-4 lg:pt-0 lg:pl-8 lg:border-t-0 lg:border-l lg:border-white/15">
+            <div
+              className={`grid gap-3 pt-4 border-t border-white/15 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-4 lg:pt-0 lg:pl-8 lg:border-t-0 lg:border-l lg:border-white/15 ${
+                // Three shops take most of the card's width, so these stack
+                // in one column rather than being squeezed into two — a 2×2
+                // grid holding three items leaves its own hole.
+                locations.length > 2 ? 'lg:grid-cols-1' : ''
+              }`}
+            >
               {barTrust.map((item) => (
                 <div key={item.b} className="grid grid-cols-[auto_minmax(0,1fr)] gap-2.5 items-center">
                   <span className="shrink-0">{item.icon}</span>
