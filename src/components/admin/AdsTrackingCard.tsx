@@ -112,6 +112,7 @@ export default function AdsTrackingCard({
   const [bingTagId, setBingTagId] = useState('')
   const [bingAction, setBingAction] = useState('')
   const [customerId, setCustomerId] = useState('')
+  const [accountStatus, setAccountStatus] = useState<null | 'saving' | 'saved' | 'failed'>(null)
   const [accounts, setAccounts] = useState<AdsAccount[]>([])
   const [accountsError, setAccountsError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -177,7 +178,10 @@ export default function AdsTrackingCard({
    * conversions, because the boxes are blanked after every successful save.
    * Removing one is now a deliberate act with its own button.
    */
-  async function save(clear?: { lead?: boolean; call?: boolean }) {
+  async function save(
+    clear?: { lead?: boolean; call?: boolean },
+    overrideCustomerId?: string
+  ): Promise<boolean> {
     setSaving(true)
     setMessage(null)
     try {
@@ -192,7 +196,9 @@ export default function AdsTrackingCard({
           enhancedConversions: enhanced,
           bingUetTagId: bingTagId,
           bingLeadEventAction: bingAction,
-          googleAdsCustomerId: customerId,
+          // The account picker autosaves; React state has not settled by the
+          // time it calls this, so the fresh value rides in directly.
+          googleAdsCustomerId: overrideCustomerId ?? customerId,
         }),
       })
       const data = await res.json()
@@ -208,11 +214,27 @@ export default function AdsTrackingCard({
             ? 'Removed. The tag updates on the site within about 5 minutes.'
             : 'Saved. The tag updates on the site within about 5 minutes.',
       })
+      return true
     } catch (err) {
       setMessage({ ok: false, text: err instanceof Error ? err.message : 'Failed to save' })
+      return false
     } finally {
       setSaving(false)
     }
+  }
+
+  /**
+   * The account picker saves ITSELF. It sat a full screen above the "Save
+   * tracking" button, which visually belongs to the snippet boxes — so the
+   * selection looked unsaveable and was quietly lost. One pick, one save,
+   * status right here (§6: newer cards autosave with a status line).
+   */
+  async function saveAccount(next: string) {
+    setCustomerId(next)
+    setAccountStatus('saving')
+    const ok = await save(undefined, next)
+    setAccountStatus(ok ? 'saved' : 'failed')
+    if (ok) setTimeout(() => setAccountStatus(null), 4000)
   }
 
   /**
@@ -383,11 +405,22 @@ export default function AdsTrackingCard({
       <div className="space-y-1">
         <label className="block text-sm font-medium text-gray-700" htmlFor="ads-account">
           Google Ads account <span className="font-normal text-gray-400">— optional</span>
+          {accountStatus === 'saving' && (
+            <span className="ml-2 text-xs font-normal text-gray-500">Saving…</span>
+          )}
+          {accountStatus === 'saved' && (
+            <span className="ml-2 text-xs font-normal text-green-700">Saved</span>
+          )}
+          {accountStatus === 'failed' && (
+            <span className="ml-2 text-xs font-normal text-red-600">
+              Could not save — see the message below
+            </span>
+          )}
         </label>
         <select
           id="ads-account"
           value={customerId}
-          onChange={(e) => setCustomerId(e.target.value)}
+          onChange={(e) => void saveAccount(e.target.value)}
           className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500"
         >
           {/* Enabled even when empty. Greyed out with nothing in it reads as
