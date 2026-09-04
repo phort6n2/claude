@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { prisma } from '@/lib/db'
+import { siteClientWhere } from '@/lib/site-client'
 import { sitePaletteVars } from '@/lib/site-theme'
 import { areaWithState } from '@/lib/site-area'
 
@@ -15,7 +16,7 @@ export const revalidate = 3600
 export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const client = await prisma.client.findFirst({
-    where: { OR: [{ slug }, { siteSubdomain: slug }] },
+    where: siteClientWhere(slug),
     select: {
       businessName: true,
       city: true,
@@ -36,7 +37,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   }
 
   const reviews = await prisma.clientGbpReviews
-    .findFirst({ where: { client: { OR: [{ slug }, { siteSubdomain: slug }] } } })
+    .findFirst({ where: { client: siteClientWhere(slug) } })
     .catch(() => null)
 
   const palette = sitePaletteVars(client.primaryColor, client.accentColor)

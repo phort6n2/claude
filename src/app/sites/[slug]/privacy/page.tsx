@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { prisma } from '@/lib/db'
+import { siteClientWhere } from '@/lib/site-client'
 import { sitePathPrefixFor } from '@/lib/site-origin'
 import { withSitePhone } from '@/lib/site-phone'
 import { SiteUnavailable } from '@/components/sites/shared'
@@ -18,7 +19,7 @@ interface PageProps {
 
 async function getClient(slug: string) {
   return prisma.client.findFirst({
-    where: { OR: [{ slug }, { siteSubdomain: slug }] },
+    where: siteClientWhere(slug),
     select: {
       id: true,
       slug: true,
