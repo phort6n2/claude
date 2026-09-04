@@ -259,11 +259,41 @@ export function prioritizeServices(services: Array<{ slug: string; name: string;
 }
 
 /** Four-item trust strip content — only claims the client's data can back. */
+/**
+ * What a strip item and a hero bullet are ABOUT, so the two cannot say the
+ * same thing twice.
+ *
+ * The strip sits directly under the hero bullets — about 600px apart on a
+ * phone, back to back on screens two and three. A shop that wrote "Mobile
+ * service at no extra charge", "Insurance billed directly" and "Lifetime
+ * workmanship warranty" then met "Mobile service / Insurance or cash /
+ * Lifetime warranty", which reads as the page repeating itself, and one pair
+ * of them mildly disagreed.
+ */
+const TRUST_TOPICS: Array<[string, RegExp]> = [
+  ['mobile', /\bmobile\b|come to (you|your)/i],
+  ['adas', /\badas\b|calibrat/i],
+  ['insurance', /insur|claim|carrier|deductible/i],
+  ['warranty', /warrant|guarantee/i],
+  ['quote', /\bquotes?\b|\bprice|estimate/i],
+]
+
+function topicsIn(text: string): Set<string> {
+  const found = new Set<string>()
+  for (const [topic, pattern] of TRUST_TOPICS) if (pattern.test(text)) found.add(topic)
+  return found
+}
+
 export function buildTrustItems(
   client: SiteClient,
   flags: SiteFlags,
-  extras: SiteExtras
+  extras: SiteExtras,
+  /** The hero bullets this page is showing, so the strip can avoid them. */
+  bullets: Array<{ lead: string; text?: string }> = []
 ): TrustItem[] {
+  const spoken = new Set<string>()
+  for (const b of bullets) for (const t of topicsIn(`${b.lead} ${b.text || ''}`)) spoken.add(t)
+
   return [
     ...(flags.offersMobileService
       ? [{ icon: <Truck className="h-5 w-5" />, title: 'Mobile service', text: 'We come to your home or work' }]
@@ -281,7 +311,18 @@ export function buildTrustItems(
     // promise the platform cannot make on behalf of fifteen different shops.
     // The price promise is true of all of them and answers a bigger question.
     { icon: <Clock className="h-5 w-5" />, title: 'Free quote first', text: 'A real price before anything is booked' },
-  ].slice(0, 4)
+  ]
+    .filter((item) => {
+      const topics = topicsIn(`${item.title} ${item.text}`)
+      for (const t of topics) if (spoken.has(t)) return false
+      return true
+    })
+    .slice(0, 4)
+    // Two is the fewest that reads as a row. One lonely chip under three
+    // bullets looks like the others failed to load, so the strip stands down
+    // rather than half-appearing — the same all-or-nothing rule the page
+    // already applies when a shop wrote no bullets at all.
+    .reduce<TrustItem[]>((kept, item, _i, all) => (all.length >= 2 ? [...kept, item] : kept), [])
 }
 
 /** Hero bullets fallback when the client hasn't written their own. */
@@ -378,7 +419,7 @@ export function SiteBody({
                     href={`${basePath}${servicePath(s.slug, readPathOverrides(client.pathOverrides))}`}
                     className="group p-6 rounded-[20px] border border-[var(--line-card)] bg-white shadow-sm hover:shadow-md hover:border-[var(--line-strong)] hover:-translate-y-0.5 transition-all no-underline"
                   >
-                    <div className="h-10 w-10 rounded-[14px] flex items-center justify-center mb-4 bg-[var(--tint)]">
+                    <div className="h-10 w-10 rounded-[14px] flex items-center justify-center mb-4 bg-[var(--tint-accent)]">
                       <Icon className="h-5 w-5 text-[var(--brand)]" />
                     </div>
                     <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold text-[var(--tx)] m-0">
@@ -401,7 +442,7 @@ export function SiteBody({
                   href="#quote"
                   className="group p-6 rounded-[20px] border border-[var(--line-card)] bg-white shadow-sm hover:shadow-md hover:border-[var(--line-strong)] hover:-translate-y-0.5 transition-all no-underline"
                 >
-                  <div className="h-10 w-10 rounded-[14px] flex items-center justify-center mb-4 bg-[var(--tint)]">
+                  <div className="h-10 w-10 rounded-[14px] flex items-center justify-center mb-4 bg-[var(--tint-accent)]">
                     <Truck className="h-5 w-5 text-[var(--brand)]" />
                   </div>
                   <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold text-[var(--tx)] m-0">
@@ -427,7 +468,7 @@ export function SiteBody({
                   href="#quote"
                   className="group p-6 rounded-[20px] border border-[var(--line-card)] bg-white shadow-sm hover:shadow-md hover:border-[var(--line-strong)] hover:-translate-y-0.5 transition-all no-underline"
                 >
-                  <div className="h-10 w-10 rounded-[14px] flex items-center justify-center mb-4 bg-[var(--tint)]">
+                  <div className="h-10 w-10 rounded-[14px] flex items-center justify-center mb-4 bg-[var(--tint-accent)]">
                     <MapPin className="h-5 w-5 text-[var(--brand)]" />
                   </div>
                   <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold text-[var(--tx)] m-0">

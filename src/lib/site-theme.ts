@@ -236,6 +236,15 @@ export function sitePaletteVars(
     // tints (full-saturation lightening reads neon); L/S chosen so 13px bold
     // eyebrow text clears 4.5:1 on --dark-3.
     '--brand-light': useAccent ? accentOnDark : hueTint(0.72, 0.5),
+    // The icon tiles in the card grids. On a saturated brand this is exactly
+    // --tint and nothing changes; on a neutral one it is the only colour in
+    // the whole light half of the page, which was six grey tiles with black
+    // glyphs — the single largest "any shop" signal on the site. A FILL only:
+    // the glyph on top stays dark, because a mid-tone accent as a glyph on
+    // white is the unreadable case this file exists to avoid.
+    '--tint-accent': useAccent
+      ? mix(WHITE, accent, 0.3)
+      : ([WHITE, brand, 0.105] as [Rgb, Rgb, number]),
     '--accent': accent,
     '--on-accent': readableOn(accent),
     '--on-cta': readableOn(cta),

@@ -200,12 +200,17 @@ const WIDGET_SOURCE = String.raw`(function () {
     // derivation for an embed served a config from before this existed.
     var btnBg = cfg.ctaColor || ensureDark(cfg.primaryColor);
     var btnText = cfg.ctaTextColor || '#fff';
+    // The required-field asterisk is small text on white, so it takes the
+    // brand only when the brand can be read there. The focus ring below keeps
+    // primaryColor deliberately: a pale accent is a weak focus indicator, and
+    // that one is an accessibility control rather than a brand surface.
+    var reqMark = ensureDark(cfg.primaryColor);
     return '' +
       ':host{all:initial}' +
       '*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}' +
       // Card mirrors the landing-template quote card (.qc): white, brand top
       // border, no dark header band.
-      '.card{background:#fff;border:1px solid #e2d8d8;border-top:4px solid ' + cfg.primaryColor + ';border-radius:20px;box-shadow:0 2px 4px rgba(20,20,20,.04),0 10px 20px -6px rgba(20,20,20,.08),0 28px 56px -18px rgba(20,20,20,.15);overflow:hidden;max-width:430px;width:100%}' +
+      '.card{background:#fff;border:1px solid #e2d8d8;border-top:4px solid ' + btnBg + ';border-radius:20px;box-shadow:0 2px 4px rgba(20,20,20,.04),0 10px 20px -6px rgba(20,20,20,.08),0 28px 56px -18px rgba(20,20,20,.15);overflow:hidden;max-width:430px;width:100%}' +
       '.head{padding:20px 22px 0;color:#1a1a1a}' +
       '.head h3{margin:0;font-size:20px;font-weight:800;letter-spacing:-.02em}' +
       '.head p{margin:4px 0 0;font-size:14px;color:#5c5c5c;line-height:1.5}' +
@@ -216,7 +221,7 @@ const WIDGET_SOURCE = String.raw`(function () {
       '.row+.row,.row+div,div+.row{margin-top:14px}' +
       '.field{min-width:0}' +
       'label{display:block;font-size:14px;font-weight:600;color:#1a1a1a;margin:0 0 6px}' +
-      '.req{color:' + cfg.primaryColor + ';margin-left:2px}' +
+      '.req{color:' + reqMark + ';margin-left:2px}' +
       '.opt{color:#6e6e6e;font-weight:400}' +
       'input,select,textarea{width:100%;min-height:50px;padding:13px 14px;border:1.5px solid #7C8FA3;border-radius:14px;font-size:16.5px;line-height:1.3;background:#fff;color:#1a1a1a;appearance:none;-webkit-appearance:none;transition:border-color .12s ease,box-shadow .12s ease}' +
       'input::placeholder,textarea::placeholder{color:#5E6D7C;opacity:1}' +

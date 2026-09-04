@@ -259,8 +259,10 @@ export default async function LocationPage({ params, atOverride }: PageProps) {
   // different set of reasons. When it did not, both are derived from the same
   // flags and say the same four things twice — so the strip stands down.
   const wroteOwnBullets = extras.heroBullets.length > 0
-  const trustItems = wroteOwnBullets ? buildTrustItems(client, flags, extras) : []
   const heroBullets = wroteOwnBullets ? extras.heroBullets : defaultHeroBullets(flags)
+  // The strip is told what the bullets above it already say, so the two
+  // cannot repeat each other — see TRUST_TOPICS.
+  const trustItems = wroteOwnBullets ? buildTrustItems(client, flags, extras, heroBullets) : []
 
   // The client's own words about this city lead the page when they exist, and
   // are what makes it an indexable page rather than the template renamed.
@@ -352,12 +354,6 @@ export default async function LocationPage({ params, atOverride }: PageProps) {
               {`Windshield repair and replacement in ${location.area}`}
             </h1>
             <p className="mt-4 text-[17px] leading-[1.55] text-[var(--tx2)] max-w-[48ch]">{heroSub}</p>
-            <p className="mt-3 text-[15px] leading-[1.5] text-[var(--tx2)] max-w-[46ch] border-l-2 border-[var(--cta)] pl-3">
-              {heroCostLineFor(client.state)}
-            </p>
-            <div className="mt-5 mb-[18px]">
-              <RatingChip reviews={reviews} client={client} />
-            </div>
           </div>
 
           <div id="quote" className="w-full scroll-mt-24 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:justify-self-end">
@@ -365,6 +361,19 @@ export default async function LocationPage({ params, atOverride }: PageProps) {
           </div>
 
           <div className="lg:col-start-1 lg:row-start-2">
+            {/* MOVED BELOW THE FORM ON A PHONE, by sitting in the hero's second
+                row: on mobile the grid is one column, so this lands after the
+                form instead of pushing it off the screen. Measured at 390px,
+                505px of headline, lead, cost line and rating sat above the
+                form and the first input was below the fold. Desktop is
+                unchanged — both rows are the same column, so the order a
+                visitor reads is identical. */}
+            <p className="mt-3 text-[15px] leading-[1.5] text-[var(--tx2)] max-w-[46ch] border-l-2 border-[var(--cta)] pl-3">
+              {heroCostLineFor(client.state)}
+            </p>
+            <div className="mt-5 mb-[18px]">
+              <RatingChip reviews={reviews} client={client} />
+            </div>
             <ul className="space-y-2.5 list-none p-0 m-0 max-w-xl">
               {heroBullets.map((b) => (
                 <li key={b.lead} className="flex items-start gap-2.5 text-[var(--tx2)]">
@@ -377,7 +386,14 @@ export default async function LocationPage({ params, atOverride }: PageProps) {
               ))}
             </ul>
             <div className="mt-6 max-[719px]:flex max-[719px]:flex-col max-[719px]:[&>a]:w-full flex flex-wrap gap-3">
-              <CtaButton href="#quote">Get my free quote</CtaButton>
+              {/* Desktop only. On a phone the form is ABOVE this, so tapping
+                  "Get my free quote" scrolled the visitor back up to a form
+                  they had already scrolled past — and its label repeated the
+                  submit button they passed on the way. The call button stays:
+                  it is the one action the form does not already offer. */}
+              <span className="hidden lg:contents">
+                <CtaButton href="#quote">Get my free quote</CtaButton>
+              </span>
               <CallButton client={client} withLabel />
             </div>
           </div>

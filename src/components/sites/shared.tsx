@@ -859,16 +859,20 @@ function WarrantyBadge({ title }: { title: string }) {
         d="M120 16 L204 41 V117 C204 162 168 195 120 211 C72 195 36 162 36 117 V41 Z"
         fill="#f3cd6b"
       />
-      {/* Dark face */}
+      {/* Dark face, brand-tinted. Fixed navy on a page with no navy in it was
+          the most off-brand object on the site; --dark is the same near-black
+          the page's own dark bands use. The RIM stays metal: rim, face and
+          ribbon are three different roles, and painting two of them the brand
+          colour collapses the seal into a monochrome sticker. */}
       <path
         d="M120 24 L196 47 V116 C196 157 163 187 120 202 C77 187 44 157 44 116 V47 Z"
-        fill="#1c2431"
+        fill="var(--dark, #1c2431)"
       />
       {/* Check mark where the reference put stars — a mark of assurance,
           not a rating */}
       <path
         d="M104 62 l10 10 l22 -22"
-        stroke="#f3cd6b"
+        stroke="var(--brand-light, #f3cd6b)"
         strokeWidth="7"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -896,11 +900,13 @@ function WarrantyBadge({ title }: { title: string }) {
       <path d="M14 158 L54 150 V186 L14 194 L28 176 Z" fill="var(--cta-b, #991b1b)" />
       <path d="M226 158 L186 150 V186 L226 194 L212 176 Z" fill="var(--cta-b, #991b1b)" />
       <rect x="40" y="148" width="160" height="40" rx="4" fill="var(--cta, #b91c1c)" />
+      {/* The ribbon is painted --cta, so this is the one text on the badge
+          that has to follow it: white on a yellow ribbon measured 1.17:1. */}
       <text
         x="120"
         y="175"
         textAnchor="middle"
-        fill="#ffffff"
+        fill="var(--on-cta, #ffffff)"
         fontFamily="inherit"
         fontWeight="800"
         fontSize="24"
@@ -1504,6 +1510,12 @@ export function FinalCta({ client }: { client: SiteClient; quoteHref?: string })
       style={{ background: 'radial-gradient(120% 90% at 50% 0%, var(--dark-3), var(--dark-2))' }}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 text-center">
+        {/* NO LOGO HERE, and it was tried. This is the placement a UI review
+            picked as the one that earns it — a full-bleed dark band, centred,
+            at the final ask. In place it reads as the same mark twice: the
+            footer's brand row sits about 370px below this, on the same screen,
+            with only the two buttons between them. The mark on this page is
+            the header and the footer; the closing band's job is the ask. */}
         <Eyebrow center onDark>
           Ready when you are
         </Eyebrow>
