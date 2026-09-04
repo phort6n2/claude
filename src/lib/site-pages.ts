@@ -61,7 +61,15 @@ const SALES_PREFIX =
 const SALES_SUFFIX = /[\s,-]+(?:services?|solutions?|specialists?|experts?|near\s+me|near\s+you)$/i
 
 function stripSalesWords(value: string): string {
-  let out = value.trim()
+  // Trailing punctuation FIRST. These titles really read "Fast Back Glass
+  // Repair Service - | Auto Glass Kings": the SEO tail is cut at the pipe and
+  // leaves a dangling hyphen, which is not visible in the rendered label
+  // because it is trimmed at the end — but it sits between "Service" and the
+  // end of the string while this runs, so the suffix rule matched nothing and
+  // every label kept the word it exists to remove. Found by reading the live
+  // titles; my first cases were reconstructed from the rendered text, which
+  // is exactly the input that cannot show this.
+  let out = value.replace(/^[\s,:—–-]+|[\s,:—–-]+$/g, '').trim()
   // Looped: "Fast Affordable Auto Glass Repair" carries two of them.
   for (let i = 0; i < 3; i++) {
     const next = out.replace(SALES_PREFIX, '').trim()
@@ -98,6 +106,11 @@ export function stripSeoTail(title: string, businessName?: string | null): strin
     out = out.replace(new RegExp(`\\s*\\b${escaped}\\b\\s*`, 'ig'), ' ').trim()
   }
   out = stripStateTail(out).replace(/\s+/g, ' ').trim()
+  // A dangling separator, which these titles really do carry: cutting
+  // "Fast Back Glass Repair Service - | Auto Glass Kings" at the pipe leaves
+  // the hyphen behind, and it was rendering as the last character of the H1
+  // on every one of those pages.
+  out = out.replace(/^[\s,:—–-]+|[\s,:—–-]+$/g, '').trim()
   return out.length >= 3 ? out : full
 }
 
