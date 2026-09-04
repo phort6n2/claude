@@ -4,12 +4,18 @@ import Link from 'next/link'
 
 import { useEffect, useState } from 'react'
 import { formatPhoneDisplay } from '@/lib/lead-display'
+// The exact names the audit further down this page matches on. Imported, not
+// typed out: instructions that name an action and a checker that looks for a
+// different one is the failure the whole convention exists to prevent.
+import { CONVERSION_NAMES } from '@/lib/google-ads-conversion-names'
 import ClarityPanel from '@/components/admin/ClarityPanel'
 import OfflineConversionsCard from '@/components/admin/OfflineConversionsCard'
+import { useConversionAudit } from '@/components/admin/ConversionAudit'
 import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  Circle,
   Loader2,
   MinusCircle,
   Stethoscope,
@@ -91,6 +97,181 @@ function Steps({
       </button>
       {open && <div className="px-4 pb-3 pt-1 text-sm text-gray-700 space-y-2">{children}</div>}
     </div>
+  )
+}
+
+/**
+ * The name to type into Google Ads, shown as a value rather than as prose.
+ *
+ * Selectable monospace on purpose — this is meant to be copied into the Ads
+ * UI character for character, and a name in body text with a capital letter
+ * dropped is one the audit below reports as a stranger.
+ */
+function ActionName({ name }: { name: string }) {
+  return (
+    <strong className="font-mono rounded bg-white px-1 py-0.5 ring-1 ring-gray-300">{name}</strong>
+  )
+}
+
+/**
+ * Why the name is not a free choice, said once per set of steps.
+ *
+ * It sits with the steps rather than only on the audit card: by the time
+ * somebody reads the audit, the action already exists under whatever name
+ * they picked, and the fix is a rename in a different product.
+ */
+function NamingNote() {
+  return (
+    <p className="rounded border border-gray-300 bg-white p-2">
+      <strong>Use these names exactly.</strong> Every account this platform manages carries the
+      same four actions, and <em>Conversion setup in Google Ads</em> further down this page checks
+      the live account against those names — a different name reads there as an unknown action and
+      as a missing one of ours. If an action of the right shape already exists under another name,{' '}
+      <strong>rename it, don&apos;t create a second one</strong>: the history, volume and bidding
+      learning live on the action, and a fresh one starts from zero.
+    </p>
+  )
+}
+
+/**
+ * The instructions for creating ONE conversion action, wrapped in a checklist
+ * that hides them once the account proves the job is done.
+ *
+ * WHAT "DONE" MEANS, AND WHY IT IS NOT A STORED TICK. The box is not a note
+ * that somebody says they did it — pressing it re-reads the live Google Ads
+ * account and ticks only if the action is actually there under the name the
+ * audit further down this page matches on. Nothing is stored: the account is
+ * the record, so a conversion action deleted or renamed next month brings
+ * these steps straight back rather than leaving a tick behind claiming a
+ * setup that no longer exists.
+ *
+ * The steps stay open whenever the answer is anything but yes — including
+ * "we could not ask", which is not the same as no and must never read as
+ * done. Once hidden they are one press from coming back; an operator
+ * re-checking somebody else's setup needs them.
+ */
+function SetupBlock({
+  actionKey,
+  actionName,
+  snippet,
+  children,
+}: {
+  actionKey: string
+  actionName: string
+  /** The paste step this block also covers, or null when it has none. */
+  snippet: { done: boolean; label: string } | null
+  children: React.ReactNode
+}) {
+  const shared = useConversionAudit()
+  const [checking, setChecking] = useState(false)
+  const [missed, setMissed] = useState<string | null>(null)
+  const [showAnyway, setShowAnyway] = useState(false)
+
+  const finding = shared?.audit?.findings.find((f) => f.key === actionKey)
+  // `settings` counts as created: the action exists under the right name and
+  // what is left is a correction the audit below spells out — re-reading the
+  // creation steps is not what fixes a wrong call length.
+  const created = finding?.state === 'ok' || finding?.state === 'settings'
+  const done = created && (!snippet || snippet.done)
+
+  async function check() {
+    if (!shared) return
+    setChecking(true)
+    setMissed(null)
+    const fresh = await shared.refresh()
+    const f = fresh.audit?.findings.find((x) => x.key === actionKey)
+    if (!(f?.state === 'ok' || f?.state === 'settings')) {
+      setMissed(
+        !fresh.audit
+          ? `${fresh.reason || 'Google Ads could not be read.'} Until that is sorted this cannot be confirmed, so the steps stay open.`
+          : (f?.state === 'rename' || f?.state === 'duplicate') && f.fix
+            ? f.fix
+            : `Account ${fresh.audit.customerId} has no conversion action called ${actionName}. If you have just created it, wait a minute and check again — Google's API lags the screen you created it on.`
+      )
+    }
+    setChecking(false)
+  }
+
+  return (
+    <>
+      <div className="rounded-lg border border-gray-200 bg-white p-3 text-sm space-y-2">
+        <ul className="space-y-1.5">
+          <li className="flex items-start gap-2">
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={created}
+              onClick={check}
+              disabled={checking || !shared}
+              className="mt-0.5 shrink-0 disabled:opacity-50"
+              title={created ? 'Found in the account' : 'Check the account for it'}
+            >
+              {checking ? (
+                <Loader2 size={16} className="animate-spin text-gray-400" />
+              ) : created ? (
+                <CheckCircle2 size={16} className="text-green-600" />
+              ) : (
+                <Circle size={16} className="text-gray-400" />
+              )}
+            </button>
+            <span className={created ? 'text-gray-600' : 'text-gray-900'}>
+              Created in Google Ads as <ActionName name={actionName} />
+              {created && finding?.actionName ? (
+                <span className="text-gray-500"> — found in the account</span>
+              ) : null}
+              {!created && (
+                <>
+                  {' '}
+                  <button
+                    type="button"
+                    onClick={check}
+                    disabled={checking || !shared}
+                    className="font-semibold text-blue-700 hover:underline disabled:opacity-50"
+                  >
+                    {checking ? 'Checking the account…' : 'I’ve done this — check'}
+                  </button>
+                </>
+              )}
+            </span>
+          </li>
+          {snippet && (
+            <li className="flex items-start gap-2">
+              {snippet.done ? (
+                <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-green-600" />
+              ) : (
+                <Circle size={16} className="mt-0.5 shrink-0 text-gray-400" />
+              )}
+              <span className={snippet.done ? 'text-gray-600' : 'text-gray-900'}>
+                {snippet.label}
+                {snippet.done ? <span className="text-gray-500"> — saved</span> : null}
+              </span>
+            </li>
+          )}
+        </ul>
+
+        {missed && (
+          <p className="m-0 rounded border border-red-300 bg-red-50 p-2 text-red-900">{missed}</p>
+        )}
+
+        {finding?.state === 'settings' && (
+          <p className="m-0 rounded border border-amber-300 bg-amber-50 p-2 text-amber-900">
+            It exists under the right name, but some of its settings differ —{' '}
+            <em>Conversion setup in Google Ads</em>, further down this page, lists exactly which.
+          </p>
+        )}
+
+        {done && (
+          <button
+            type="button"
+            onClick={() => setShowAnyway(!showAnyway)}
+            className="text-xs font-medium text-gray-500 hover:text-gray-900 hover:underline"
+          >
+            {showAnyway ? 'Hide the steps' : 'Show the steps anyway'}
+          </button>
+        )}
+      </div>
+      {(!done || showAnyway) && children}
+    </>
   )
 }
 
@@ -467,6 +648,11 @@ export default function AdsTrackingCard({
       {/* ---- Form leads ---- */}
       <div className="space-y-2">
         <h3 className="font-medium text-gray-900">Form lead conversion</h3>
+        <SetupBlock
+          actionKey="lead-form"
+          actionName={CONVERSION_NAMES.leadForm}
+          snippet={{ done: leadLive, label: 'Event snippet pasted below' }}
+        >
         <Steps title="How to create it in Google Ads" defaultOpen={!leadLive}>
           <ol className="list-decimal ml-5 space-y-1.5">
             <li>
@@ -479,8 +665,8 @@ export default function AdsTrackingCard({
               installed by this app, not by the scan.
             </li>
             <li>
-              Goal category: <strong>Submit lead form</strong>. Name it something you&apos;ll
-              recognise later, e.g. &ldquo;Quote form — landing page&rdquo;.
+              Goal category: <strong>Submit lead form</strong>. Name it{' '}
+              <ActionName name={CONVERSION_NAMES.leadForm} /> — exactly that, every account.
             </li>
             <li>
               Value: enter your average job value if you know it, otherwise{' '}
@@ -507,7 +693,9 @@ export default function AdsTrackingCard({
             </li>
             <li>Paste the whole block below and save. The angle brackets and script tags are fine.</li>
           </ol>
+          <NamingNote />
         </Steps>
+        </SetupBlock>
         <textarea
           value={leadSnippet}
           onChange={(e) => setLeadSnippet(e.target.value)}
@@ -565,6 +753,11 @@ export default function AdsTrackingCard({
             </p>
           </div>
         )}
+        <SetupBlock
+          actionKey="website-call"
+          actionName={CONVERSION_NAMES.websiteCall}
+          snippet={{ done: callLive, label: 'Snippet with the phone number pasted below' }}
+        >
         <Steps title="How to create it in Google Ads">
           <ol className="list-decimal ml-5 space-y-1.5">
             <li>
@@ -575,6 +768,10 @@ export default function AdsTrackingCard({
               Choose <strong>Calls from a website</strong> (not &ldquo;Calls from ads&rdquo;,
               which needs no tag, and not &ldquo;Clicks on your number&rdquo;, which counts taps
               rather than calls).
+            </li>
+            <li>
+              Name it <ActionName name={CONVERSION_NAMES.websiteCall} /> — exactly that, every
+              account.
             </li>
             <li>
               Enter the phone number <strong>exactly as it appears on the site</strong>
@@ -604,6 +801,7 @@ export default function AdsTrackingCard({
             </li>
             <li>Paste it below and save.</li>
           </ol>
+          <NamingNote />
           <p className="mt-2 rounded border border-amber-300 bg-amber-50 p-2 text-amber-900">
             <strong>Before you turn this on:</strong> Google works by replacing the number on the
             page with a forwarding number. Don&apos;t run it on a number that HighLevel&apos;s
@@ -614,6 +812,7 @@ export default function AdsTrackingCard({
             asset has to stay visible and unswapped, or asset verification fails.
           </p>
         </Steps>
+        </SetupBlock>
         <textarea
           value={callSnippet}
           onChange={(e) => setCallSnippet(e.target.value)}
@@ -625,6 +824,7 @@ export default function AdsTrackingCard({
       </div>
 
       {/* ---- Recommended: calls from ads ---- */}
+      <SetupBlock actionKey="call-from-ads" actionName={CONVERSION_NAMES.callFromAds} snippet={null}>
       <Steps title="Recommended: also turn on “Calls from ads” (no tag needed)">
         <p>
           This one is separate from everything above and needs nothing installed — Google reports
@@ -660,11 +860,16 @@ export default function AdsTrackingCard({
             Goals → Conversions → <strong>+ New conversion action</strong> →{' '}
             <strong>Phone calls</strong> → <strong>Calls from ads</strong>.
           </li>
+          <li>
+            Name it <ActionName name={CONVERSION_NAMES.callFromAds} /> — exactly that, every
+            account.
+          </li>
           <li>Set the minimum call length that counts — 60 seconds pairs well with the website one.</li>
           <li>
             Create it. There is no snippet and nothing to paste here: the ad does the reporting.
           </li>
         </ol>
+        <NamingNote />
         <p className="rounded border border-gray-300 bg-white p-2">
           Worth knowing: the number on a call asset must appear on the website too, and Google
           verifies that by looking for it.{' '}
@@ -682,6 +887,7 @@ export default function AdsTrackingCard({
           )}
         </p>
       </Steps>
+      </SetupBlock>
 
       {/* Uploading booked jobs is Google-only — there is no Microsoft
           equivalent and Clarity has nothing to do with it — so it belongs

@@ -1,4 +1,5 @@
 import { adsSearch } from '@/lib/google-ads'
+import { CONVERSION_NAMES, CONVERSION_PREFIX } from '@/lib/google-ads-conversion-names'
 
 /**
  * ONE conversion setup, identical in every client's Google Ads account.
@@ -26,8 +27,11 @@ import { adsSearch } from '@/lib/google-ads'
  * names it, for exactly that reason.
  */
 
-/** Every action this platform owns starts with this. */
-export const CONVERSION_PREFIX = 'AGMP'
+// The names themselves live in google-ads-conversion-names.ts, which imports
+// nothing — the Advertising tab's setup instructions are a client component
+// and cannot import this file, which talks to the Ads API. Re-exported so
+// this stays the one place server code asks for the convention.
+export { CONVERSION_PREFIX }
 
 export interface ConversionSpec {
   key: string
@@ -68,7 +72,7 @@ export interface ConversionSpec {
 export const CONVERSION_STANDARD: ConversionSpec[] = [
   {
     key: 'lead-form',
-    name: 'AGMP Lead Form',
+    name: CONVERSION_NAMES.leadForm,
     category: 'SUBMIT_LEAD_FORM',
     type: 'WEBPAGE',
     origin: 'WEBSITE',
@@ -81,7 +85,7 @@ export const CONVERSION_STANDARD: ConversionSpec[] = [
     setup: [
       'Goals → Conversions → New conversion action → Website.',
       'Scan the shop\'s site URL, then "Add a conversion action manually".',
-      'Goal: Submit lead form. Name: AGMP Lead Form.',
+      `Goal: Submit lead form. Name: ${CONVERSION_NAMES.leadForm}.`,
       'Value: "Don\'t use a value" — the value comes from the booked job, not the form.',
       'Count: One. Click-through window: 90 days. Attribution: data-driven.',
       'Take the tag\'s send_to (AW-xxx/LABEL) and paste it into the app on the Advertising tab; the site fires it on submit.',
@@ -89,7 +93,7 @@ export const CONVERSION_STANDARD: ConversionSpec[] = [
   },
   {
     key: 'call-from-ads',
-    name: 'AGMP Call From Ads',
+    name: CONVERSION_NAMES.callFromAds,
     category: 'PHONE_CALL_LEAD',
     type: 'AD_CALL',
     origin: 'CALL_FROM_ADS',
@@ -102,14 +106,14 @@ export const CONVERSION_STANDARD: ConversionSpec[] = [
     biddable: true,
     setup: [
       'Goals → Conversions → New conversion action → Phone calls → Calls from ads using call assets.',
-      'Name: AGMP Call From Ads.',
+      `Name: ${CONVERSION_NAMES.callFromAds}.`,
       'Count a call after 15 seconds. Count: One. Click-through window: 30 days.',
       'Requires a call asset on the campaign — without one this action exists and never fires.',
     ],
   },
   {
     key: 'website-call',
-    name: 'AGMP Website Call',
+    name: CONVERSION_NAMES.websiteCall,
     category: 'PHONE_CALL_LEAD',
     type: 'WEBSITE_CALL',
     origin: 'WEBSITE',
@@ -120,7 +124,7 @@ export const CONVERSION_STANDARD: ConversionSpec[] = [
     biddable: true,
     setup: [
       'Goals → Conversions → New conversion action → Phone calls → Calls to a phone number on your website.',
-      'Name: AGMP Website Call.',
+      `Name: ${CONVERSION_NAMES.websiteCall}.`,
       'THE NUMBER MUST BE THE ONE THE SITE ACTUALLY SHOWS. If a tracking number is set in this app, the site shows that number — the conversion action has to name it, or Google swaps a number the page never displays and the action never fires.',
       'Count a call after 15 seconds. Count: One. Click-through window: 30 days.',
       'Paste the snippet\'s send_to into the app on the Advertising tab.',
@@ -128,7 +132,7 @@ export const CONVERSION_STANDARD: ConversionSpec[] = [
   },
   {
     key: 'sale',
-    name: 'AGMP Sale',
+    name: CONVERSION_NAMES.sale,
     category: 'PURCHASE',
     type: 'UPLOAD_CLICKS',
     origin: 'WEBSITE',
@@ -139,7 +143,7 @@ export const CONVERSION_STANDARD: ConversionSpec[] = [
     biddable: false,
     setup: [
       'Goals → Conversions → New conversion action → Import → Manual import using API or uploads.',
-      'Goal: Purchase. Name: AGMP Sale.',
+      `Goal: Purchase. Name: ${CONVERSION_NAMES.sale}.`,
       'Value: use different values for each conversion — the app sends the real job value.',
       'Count: One. Click-through window: 90 days.',
       'Set it as the offline conversion action on this client\'s Advertising tab, or nothing uploads to it.',
