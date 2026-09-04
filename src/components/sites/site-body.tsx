@@ -1,4 +1,5 @@
 import { servicePath, readPathOverrides } from '@/lib/site-paths'
+import { widgetCtaColors } from '@/lib/site-theme'
 import {
   ArrowRight,
   Car,
@@ -92,6 +93,7 @@ export function buildWidgetConfig(client: WidgetClient, privacyUrl?: string) {
     phone: client.phone,
     primaryColor: client.primaryColor || '#1e40af',
     secondaryColor: client.secondaryColor || '#3b82f6',
+    ...widgetCtaColors(client.primaryColor ?? null, client.accentColor ?? null),
     services,
     offersMobileService: !!client.offersMobileService,
     // Gates every "text us a photo" path. An sms: link pointed at a landline
@@ -168,7 +170,7 @@ export function WidgetMount({ client, service }: { client: SiteClient; service?:
         <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">
           <label>Leave this empty<input name="_hp" tabindex="-1" autocomplete="off" /></label>
         </div>
-        <button type="submit" class="mt-1 flex items-center justify-center min-h-[52px] rounded-[14px] font-bold text-white border-0 cursor-pointer" style="background:linear-gradient(180deg, var(--cta), var(--cta-b))">Get my free quote</button>
+        <button type="submit" class="mt-1 flex items-center justify-center min-h-[52px] rounded-[14px] font-bold border-0 cursor-pointer" style="color:var(--on-cta);background:linear-gradient(180deg, var(--cta), var(--cta-b))">Get my free quote</button>
       </form>
       <a href="tel:${esc(tel)}" class="mt-3 flex items-center justify-center min-h-[52px] rounded-[14px] font-bold no-underline text-[var(--brand)] border border-[var(--line-card)]">Or call ${esc(client.phone)}</a>
     </div>`

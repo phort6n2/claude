@@ -30,7 +30,15 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const { id } = await params
     const client = await prisma.client.findUnique({
       where: { id },
-      select: { slug: true, businessName: true, city: true, state: true, logoUrl: true },
+      select: {
+        slug: true,
+        businessName: true,
+        city: true,
+        state: true,
+        logoUrl: true,
+        primaryColor: true,
+        accentColor: true,
+      },
     })
     if (!client) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 })
@@ -62,7 +70,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     // on one live site, and it breaks silently the day they redesign. Anything
     // that cannot be copied keeps its original URL — a hot-linked photo beats
     // no photo.
-    result.draft.photos = await mirrorImages(result.draft.photos, client.slug)
+    // Marked with the shop's logo on the way in, the same as an uploaded
+    // photo — or with their generated wordmark when they have no logo yet.
+    result.draft.photos = await mirrorImages(result.draft.photos, client.slug, {
+      logoUrl: client.logoUrl,
+      wordmark: {
+        businessName: client.businessName,
+        primaryColor: client.primaryColor,
+        accentColor: client.accentColor,
+      },
+    })
     if (result.draft.logoUrl) {
       const mirrored = await mirrorRemoteImage(result.draft.logoUrl, client.slug, 'logo')
       if (mirrored) result.draft.logoUrl = mirrored

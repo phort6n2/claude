@@ -103,6 +103,48 @@ async function buildWatermark(
 }
 
 /**
+ * Put the shop's mark in the corner of a JPEG that is already the right size.
+ *
+ * Shared with the importer's mirror, which had no watermark at all — so an
+ * uploaded photo carried the shop's logo and an IMPORTED one did not, on the
+ * same gallery, and the difference was invisible until somebody looked at two
+ * photos side by side. Same mark, same corner, whichever door the photo came
+ * in through.
+ *
+ * Returns the original buffer when there is nothing to stamp with or the
+ * stamp fails: an unmarked photo is a cosmetic loss, a lost photo is not.
+ */
+export async function stampWatermark(
+  jpeg: Buffer,
+  width: number,
+  height: number,
+  logoUrl: string | null,
+  wordmark?: WordmarkSource
+): Promise<Buffer> {
+  try {
+    const watermark = await buildWatermark(logoUrl, width, wordmark)
+    if (!watermark) return jpeg
+    const mark = await sharp(watermark).metadata()
+    if (!mark.width || !mark.height) return jpeg
+    // Positioned by offset rather than gravity so it sits inside a margin
+    // instead of flush against the corner.
+    const pad = Math.round(width * WATERMARK_PAD)
+    return await sharp(jpeg)
+      .composite([
+        {
+          input: watermark,
+          top: Math.max(0, height - mark.height - pad),
+          left: Math.max(0, width - mark.width - pad),
+        },
+      ])
+      .jpeg({ quality: 82, mozjpeg: true })
+      .toBuffer()
+  } catch {
+    return jpeg
+  }
+}
+
+/**
  * Normalise, watermark and store one uploaded photo.
  *
  * @param logoUrl the client's logo. When absent, the generated wordmark is
@@ -157,26 +199,10 @@ export async function processAndStorePhoto({
   const width = resizedMeta.width || MAX_DIMENSION
   const height = resizedMeta.height || MAX_DIMENSION
 
-  const watermark = await buildWatermark(logoUrl, width, wordmark)
-  let finalBuffer = resizedBuffer
-  if (watermark) {
-    const mark = await sharp(watermark).metadata()
-    if (mark.width && mark.height) {
-      // Positioned by offset rather than gravity so it sits inside a margin
-      // instead of flush against the corner.
-      const pad = Math.round(width * WATERMARK_PAD)
-      finalBuffer = await sharp(resizedBuffer)
-        .composite([
-          {
-            input: watermark,
-            top: Math.max(0, height - mark.height - pad),
-            left: Math.max(0, width - mark.width - pad),
-          },
-        ])
-        .jpeg({ quality: 82, mozjpeg: true })
-        .toBuffer()
-    }
-  }
+  const finalBuffer = await stampWatermark(resizedBuffer, width, height, logoUrl, wordmark)
+  // The stamp returns the original buffer when it could not mark the photo,
+  // so identity is the honest test of whether one was applied.
+  const watermarked = finalBuffer !== resizedBuffer
 
   try {
     // A random suffix keeps two uploads of "photo.jpg" from colliding, and
@@ -195,7 +221,7 @@ export async function processAndStorePhoto({
         width,
         height,
         bytes: finalBuffer.byteLength,
-        watermarked: !!watermark,
+        watermarked,
       },
     }
   } catch (error) {
