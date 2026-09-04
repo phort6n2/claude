@@ -1,4 +1,5 @@
 import { formatPhoneDisplay } from '@/lib/lead-display'
+import { areaWithState, servingLine } from '@/lib/site-area'
 import { isPreview, siteIsLive } from '@/lib/site-preview'
 import PreviewBanner from '@/components/sites/PreviewBanner'
 import { headers } from 'next/headers'
@@ -135,6 +136,9 @@ async function getClient(slug: string) {
       filesInsuranceClaims: true,
       smsCapable: true,
       serviceAreas: true,
+      // Headlines only — see lib/site-area.ts. Required by AreaNaming, so a
+      // page that forgets it cannot compile.
+      marketArea: true,
       pathOverrides: true,
       googleMapsUrl: true,
       clarityProjectId: true,
@@ -216,7 +220,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const title = `${heading} | ${client.businessName}`
   const description =
     page.metaDescription ||
-    `${heading} from ${client.businessName} in ${client.city}, ${client.state}. Free quotes. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
+    `${heading} from ${client.businessName} in ${areaWithState(client)}. Free quotes. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
   return {
     title,
     description,
@@ -365,11 +369,7 @@ export default async function CatchAllPage({ params }: PageProps) {
       <SkipLink />
       <UtilBar
         client={client}
-        note={
-          client.offersMobileService
-            ? `Mobile service across ${client.city} & nearby — we come to your home or workplace`
-            : `Serving ${client.city}, ${client.state} and nearby`
-        }
+        note={servingLine(client, client.offersMobileService)}
       />
       <SiteHeader client={client} basePath={basePath} reviews={reviews} nav={nav} />
 

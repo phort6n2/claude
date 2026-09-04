@@ -3,6 +3,7 @@ import { servicePath, locationPath, readPathOverrides } from '@/lib/site-paths'
 import { ReviewsGrid } from '@/components/sites/reviews-grid'
 import { wordmarkParts } from '@/lib/wordmark'
 import { smsHref } from '@/lib/contact-links'
+import { headlineArea, servingShort } from '@/lib/site-area'
 import { mostMentionedName } from '@/lib/review-names'
 import type { SiteExtras, FaqItem } from '@/lib/site-content'
 import { locationPages } from '@/lib/site-locations'
@@ -33,6 +34,8 @@ export interface SiteClient {
   city: string
   state: string
   postalCode: string
+  /** What the headlines call the area. Empty = the city. See lib/site-area. */
+  marketArea: string | null
   logoUrl: string | null
   /** Only for the dark footer band; falls back to logoUrl. */
   footerLogoUrl: string | null
@@ -1405,8 +1408,8 @@ export function AreasBand({
             Areas we serve
           </h2>
           <p className="mt-3 mb-0 text-[17px] leading-[1.55] text-[var(--on-dark-2)]">
-            {client.city} and the surrounding communities — if you’re close but don’t see your
-            city, call and ask.
+            {headlineArea(client)} and the surrounding communities — if you’re close but don’t see
+            your city, call and ask.
           </p>
         </div>
         <ul
@@ -1776,7 +1779,7 @@ export function SiteFooter({
           <div>
             <b className="text-white">{client.businessName}</b>
             <br />
-            Serving {client.city}, {client.state} and nearby:{' '}
+            Serving {servingShort(client)}:{' '}
             <a
               href={telHrefFor(client.phone)}
               className="inline-flex items-center min-h-[44px] -my-2 font-bold no-underline text-[var(--gold-on-dark)]"

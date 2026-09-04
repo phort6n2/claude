@@ -1,4 +1,5 @@
 import { formatPhoneDisplay } from '@/lib/lead-display'
+import { headlineArea, areaWithState, servingLine } from '@/lib/site-area'
 import { canViewSite, isPreview, siteIsLive } from '@/lib/site-preview'
 import PreviewBanner from '@/components/sites/PreviewBanner'
 import { headers } from 'next/headers'
@@ -111,6 +112,9 @@ async function getClient(slug: string) {
       filesInsuranceClaims: true,
       smsCapable: true,
       serviceAreas: true,
+      // Headlines only — see lib/site-area.ts. Required by AreaNaming, so a
+      // page that forgets it cannot compile.
+      marketArea: true,
       pathOverrides: true,
       googleMapsUrl: true,
       clarityProjectId: true,
@@ -150,8 +154,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const stance = hostStanceFor(client, (await headers()).get('host'))
   const siteRoot = stance.canonicalOrigin
   const robots = stance.isCanonicalHost ? undefined : { index: false, follow: true }
-  const title = `${client.businessName} | Auto Glass Repair & Replacement in ${client.city}, ${client.state}`
-  const description = `Fast, professional windshield repair and replacement in ${client.city}, ${client.state}. Free quotes, insurance assistance${client.offersMobileService ? ', mobile service to your home or office' : ''}. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
+  // The area the shop SELLS to, which is the shop's city unless an operator
+  // has said otherwise — see lib/site-area.ts. The schema below still carries
+  // the real locality.
+  const area = areaWithState(client)
+  const title = `${client.businessName} | Auto Glass Repair & Replacement in ${area}`
+  const description = `Fast, professional windshield repair and replacement in ${area}. Free quotes, insurance assistance${client.offersMobileService ? ', mobile service to your home or office' : ''}. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
 
   return {
     title,
@@ -227,9 +235,14 @@ export default async function ClientSitePage({ params }: PageProps) {
   // windshield — it reads as an unknown surcharge — while mobile service is
   // the strongest thing a glass shop can say and answers "do I lose a day of
   // work". ADAS earns its place further down, as an objection it removes.
+  // The AREA, not the address. A shop in Huntington Beach working the whole
+  // county tells three quarters of its visitors they are on the wrong site by
+  // putting its own city here. The eyebrow above keeps the city, so the page
+  // still says plainly where these people are.
+  const area = headlineArea(client)
   const heroTitle = client.offersMobileService
-    ? `Cracked windshield in ${client.city}? We come to you.`
-    : `Windshield repair and replacement in ${client.city}`
+    ? `Cracked windshield in ${area}? We come to you.`
+    : `Windshield repair and replacement in ${area}`
 
   // Cities the site is willing to link to: a shop is there, or the client has
   // written something specific about it.
@@ -270,11 +283,7 @@ export default async function ClientSitePage({ params }: PageProps) {
       <SkipLink />
       <UtilBar
         client={client}
-        note={
-          client.offersMobileService
-            ? `Mobile service across ${client.city} & nearby — we come to your home or workplace`
-            : `Serving ${client.city}, ${client.state} and nearby`
-        }
+        note={servingLine(client, client.offersMobileService)}
       />
       <SiteHeader client={client} basePath={basePath} reviews={reviews} nav={nav} />
 
@@ -322,7 +331,7 @@ export default async function ClientSitePage({ params }: PageProps) {
               Free quote before you commit to anything — we&apos;ll tell you what your insurance
               covers and what you&apos;d actually pay.
               {client.offersMobileService
-                ? ` We come to your home, office or roadside in ${client.city}.`
+                ? ` We come to your home, office or roadside across ${area}.`
                 : ` Bring it to our ${client.city} shop and we'll take it from there.`}
             </p>
           </div>

@@ -1,4 +1,5 @@
 import { formatPhoneDisplay } from '@/lib/lead-display'
+import { headlineArea, areaWithState, servingLine } from '@/lib/site-area'
 import { canViewSite, isPreview, siteIsLive } from '@/lib/site-preview'
 import PreviewBanner from '@/components/sites/PreviewBanner'
 import { headers } from 'next/headers'
@@ -109,6 +110,9 @@ async function getClient(slug: string) {
       filesInsuranceClaims: true,
       smsCapable: true,
       serviceAreas: true,
+      // Headlines only — see lib/site-area.ts. Required by AreaNaming, so a
+      // page that forgets it cannot compile.
+      marketArea: true,
       pathOverrides: true,
       googleMapsUrl: true,
       clarityProjectId: true,
@@ -145,8 +149,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const stance = hostStanceFor(client, (await headers()).get('host'))
   const siteRoot = stance.canonicalOrigin
   const robots = stance.isCanonicalHost ? undefined : { index: false, follow: true }
-  const title = `${page.name} in ${client.city}, ${client.state} | ${client.businessName}`
-  const description = `${page.short} Free quotes from ${client.businessName} in ${client.city}. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
+  const title = `${page.name} in ${areaWithState(client)} | ${client.businessName}`
+  const description = `${page.short} Free quotes from ${client.businessName} in ${headlineArea(client)}. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
   return {
     title,
     description,
@@ -272,11 +276,7 @@ export default async function ServicePage({ params, atOverride }: PageProps) {
       <SkipLink />
       <UtilBar
         client={client}
-        note={
-          client.offersMobileService
-            ? `Mobile service across ${client.city} & nearby — we come to your home or workplace`
-            : `Serving ${client.city}, ${client.state} and nearby`
-        }
+        note={servingLine(client, client.offersMobileService)}
       />
       <SiteHeader client={client} basePath={basePath} reviews={reviews} nav={nav} />
 
@@ -311,8 +311,10 @@ export default async function ServicePage({ params, atOverride }: PageProps) {
             <Eyebrow>
               {client.city}, {client.state}
             </Eyebrow>
+            {/* The area, not the address — same reason as the homepage H1.
+                The eyebrow directly above still names the city. */}
             <h1 className="text-[clamp(1.875rem,1.35rem+2.6vw,3.4rem)] font-extrabold leading-[1.08] tracking-[-.02em] text-[var(--tx)]">
-              {page.name} in {client.city}
+              {page.name} in {headlineArea(client)}
             </h1>
             <p className="mt-4 text-[17px] leading-[1.55] text-[var(--tx2)] max-w-[48ch]">
               {page.heroLine}
