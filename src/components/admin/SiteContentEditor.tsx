@@ -314,6 +314,26 @@ export default function SiteContentEditor({
             {importing ? 'Reading site…' : 'Import'}
           </button>
         </div>
+        {/* The import's own outcome, which used to be set on every path and
+            rendered on none — so a refusal looked like the button simply
+            stopping, and a successful import never showed what it found.
+            It is deliberately NOT the autosave status line: that one clears
+            itself after a moment, and the list of what was imported is worth
+            reading for longer than that. */}
+        {message && (
+          <p
+            className={`mt-2 mb-0 text-xs flex items-start gap-1.5 ${
+              message.ok ? 'text-green-700' : 'text-red-700'
+            }`}
+          >
+            {message.ok ? (
+              <Check className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            ) : (
+              <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            )}
+            <span>{message.text}</span>
+          </p>
+        )}
       </div>
 
       {/* Hero bullets */}
