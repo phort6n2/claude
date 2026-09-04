@@ -7,6 +7,7 @@ import ConversionStandardCard from '@/components/admin/ConversionStandardCard'
 import LandingPagesCard from '@/components/admin/LandingPagesCard'
 import AnalyticsCard from '@/components/admin/AnalyticsCard'
 import { decrypt } from '@/lib/encryption'
+import { formatPhoneDisplay } from '@/lib/lead-display'
 import { requireAdminPage } from '@/lib/admin-guard'
 
 /**
@@ -29,9 +30,22 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       clarityProjectId: true,
       clarityApiToken: true,
       adsTracking: { select: { ga4MeasurementId: true } },
+      // The number the SITE shows. Google's website-call conversion works by
+      // swapping the number printed on the page, so the instructions have to
+      // name that number — and the whole call setup is premature until a
+      // tracking number exists to name. See docs/GOOGLE-ADS-SETUP.md.
+      trackingNumbers: {
+        where: { active: true, useOnSite: true },
+        select: { phoneNumber: true, label: true },
+        take: 1,
+      },
     },
   })
   if (!client) notFound()
+
+  const siteNumber = client.trackingNumbers[0]?.phoneNumber
+    ? formatPhoneDisplay(client.trackingNumbers[0].phoneNumber)
+    : null
 
   const token = client.clarityApiToken ? decrypt(client.clarityApiToken) : null
   const maskedToken = token
@@ -56,6 +70,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         <AdsTrackingCard
           clientId={client.id}
           clientPhone={client.phone}
+          siteTrackingNumber={siteNumber}
           clarityProjectId={client.clarityProjectId}
           clarityMaskedToken={maskedToken}
         />
