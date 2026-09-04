@@ -1,6 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
+import {
+  useConversionAudit,
+  type ConversionFinding as Finding,
+} from '@/components/admin/ConversionAudit'
 import {
   AlertCircle,
   CheckCircle2,
@@ -24,41 +28,9 @@ import {
  * "missing".
  */
 
-interface Spec {
-  key: string
-  name: string
-  category: string
-  type: string
-  origin: string
-  fires: string
-  countingType: string
-  clickLookbackDays: number
-  callSeconds?: number
-  biddable: boolean
-  setup: string[]
-}
-
-interface Finding {
-  key: string
-  name: string
-  state: 'ok' | 'settings' | 'rename' | 'missing' | 'duplicate'
-  actionId?: string
-  actionName?: string
-  fix?: string
-  differences: string[]
-  setup: string[]
-  fires: string
-}
-
-interface Audit {
-  customerId: string
-  findings: Finding[]
-  doubleCounting: string[]
-  goalIssues: string[]
-  extras: Array<{ id: string; name: string; note: string }>
-  clean: boolean
-}
-
+// The shapes live with the provider that fetches them — the instructions card
+// above reads the same findings, and two copies of these types is how the two
+// cards come to disagree about what a state means.
 const STATE_STYLE: Record<Finding['state'], { label: string; cls: string }> = {
   ok: { label: 'Set up', cls: 'text-green-700 bg-green-50 border-green-200' },
   settings: { label: 'Wrong settings', cls: 'text-amber-700 bg-amber-50 border-amber-200' },
@@ -67,30 +39,15 @@ const STATE_STYLE: Record<Finding['state'], { label: string; cls: string }> = {
   missing: { label: 'Missing', cls: 'text-red-700 bg-red-50 border-red-200' },
 }
 
-export default function ConversionStandardCard({ clientId }: { clientId: string }) {
-  const [standard, setStandard] = useState<Spec[] | null>(null)
-  const [audit, setAudit] = useState<Audit | null>(null)
-  const [reason, setReason] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+export default function ConversionStandardCard() {
+  const shared = useConversionAudit()
   const [open, setOpen] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const data = await (await fetch(`/api/clients/${clientId}/ads-conversions`)).json()
-      setStandard(data.standard || [])
-      setAudit(data.audit || null)
-      setReason(data.reason || null)
-    } catch {
-      setReason('Could not reach Google Ads.')
-    } finally {
-      setLoading(false)
-    }
-  }, [clientId])
-
-  useEffect(() => {
-    load()
-  }, [load])
+  const standard = shared?.standard ?? null
+  const audit = shared?.audit ?? null
+  const reason = shared?.reason ?? null
+  const loading = shared?.loading ?? false
+  const load = shared?.refresh ?? (async () => {})
 
   if (loading && !standard) {
     return (
