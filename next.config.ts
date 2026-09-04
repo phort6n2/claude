@@ -25,12 +25,18 @@ const nextConfig: NextConfig = {
   // dev. Traced for the route that serves it and for the photo upload paths
   // that use it as a watermark.
   outputFileTracingIncludes: {
-    '/api/clients/[id]/wordmark': ['./src/assets/**'],
+    // The wordmark route reaches sharp through wordmark-image, and was
+    // 500ing on libvips in production with only its fonts listed here. Every
+    // entry below was found the same way — in the runtime logs, after the
+    // route had already failed in front of somebody. The list must cover
+    // EVERY route that reaches sharp, directly or through a lib.
+    '/api/clients/[id]/wordmark': ['./src/assets/**', ...SHARP_FILES],
     '/api/clients/[id]/photos': ['./src/assets/**', ...SHARP_FILES],
     '/api/portal/photos': ['./src/assets/**', ...SHARP_FILES],
     '/api/clients/[id]/import-site': SHARP_FILES,
     '/api/clients/[id]/logo': SHARP_FILES,
     '/api/clients/[id]': SHARP_FILES,
+    '/api/admin/derive-footer-logos': SHARP_FILES,
     '/api/admin/mirror-photos': SHARP_FILES,
     '/api/widget/photo': SHARP_FILES,
   },

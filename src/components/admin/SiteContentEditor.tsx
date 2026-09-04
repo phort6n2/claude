@@ -190,27 +190,46 @@ export default function SiteContentEditor({
     const { photos: importedPhotos, ...rest } = payloadRef.current
     const body = importedPhotosRef.current ? { ...rest, photos: importedPhotos } : rest
     try {
-      // Client-record fields first: if this fails the operator must know
-      // before we report success on the content half.
-      if (persistRef.current) await persistRef.current()
+      // Content FIRST. It used to be second, behind the client-record fields,
+      // "so the operator knows before we report success" — and then the client
+      // route started 500ing on a logo it could not recolour, that throw
+      // aborted this function before the content PUT ran, and a whole website
+      // import was gone. The bulky, hard-to-reproduce half is written first;
+      // the other half reports itself separately below.
       const res = await fetch(`/api/clients/${clientId}/site-content`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
       const data = await res.json()
-      if (res.ok) {
-        importedPhotosRef.current = false
-        lastSavedRef.current = snap
-        setSavedSnapshot(snap)
-        setSaveStatus(
-          data.warning
-            ? { kind: 'warning', text: data.warning }
-            : { kind: 'saved', text: 'Saved — the site updates within about 5 minutes.' }
-        )
-      } else {
+      if (!res.ok) {
         setSaveStatus({ kind: 'error', text: `${data.error || 'Failed to save'} — press Save now to try again.` })
+        return
       }
+      importedPhotosRef.current = false
+      lastSavedRef.current = snap
+      setSavedSnapshot(snap)
+
+      // The client-record half: an imported logo and service areas. Its own
+      // failure is reported with what the server actually said, and leaves the
+      // status in `error` so Save now stays live to retry it — the content PUT
+      // above simply rewrites the same document, so retrying costs nothing.
+      if (persistRef.current) {
+        try {
+          await persistRef.current()
+        } catch (err) {
+          setSaveStatus({
+            kind: 'error',
+            text: `Site content saved. ${err instanceof Error ? err.message : 'The logo and service areas did not save'} — press Save now to retry that part.`,
+          })
+          return
+        }
+      }
+      setSaveStatus(
+        data.warning
+          ? { kind: 'warning', text: data.warning }
+          : { kind: 'saved', text: 'Saved — the site updates within about 5 minutes.' }
+      )
     } catch {
       // A failed save arms no new timer: the text on screen has not changed,
       // so the autosave effect has nothing to react to. Without the button

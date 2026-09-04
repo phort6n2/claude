@@ -33,9 +33,16 @@ async function apply(clientId: string, slot: Slot, url: string | null) {
   // A new header logo (or a cleared footer slot) is the moment to derive the
   // footer's white copy — self-guarding, and never overwrites an uploaded
   // footer file. Dynamic import keeps sharp out of this route's module load.
+  // Guarded: the logo itself is saved above, and a failure to derive its white
+  // copy must not report the upload as failed. deriveFooterLogo catches its
+  // own errors but cannot catch this import failing to LOAD sharp.
   if ((slot === 'header' && url) || (slot === 'footer' && !url)) {
-    const { deriveFooterLogo } = await import('@/lib/footer-logo')
-    await deriveFooterLogo(clientId)
+    try {
+      const { deriveFooterLogo } = await import('@/lib/footer-logo')
+      await deriveFooterLogo(clientId)
+    } catch (err) {
+      console.warn('[Logo] skipped the white footer logo:', err)
+    }
   }
 }
 

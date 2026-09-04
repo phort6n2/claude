@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Loader2, Check, AlertCircle, Star } from 'lucide-react'
 import SiteContentEditor from '@/components/admin/SiteContentEditor'
+import { errorFrom } from '@/lib/http-error'
 import CustomDomainsCard from '@/components/admin/CustomDomainsCard'
 import CityContentEditor from '@/components/admin/CityContentEditor'
 import PhotoManager from '@/components/admin/PhotoManager'
@@ -59,7 +60,14 @@ export default function ClientSiteForm({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patch),
     })
-    if (!res.ok) throw new Error('Failed to save imported logo/service areas')
+    if (!res.ok) {
+      // Carrying what the server said, not a fixed sentence. "Failed to save
+      // imported logo/service areas" was true and useless: the actual cause
+      // was a 500 from a missing image library, and nothing on screen could
+      // have told anybody that.
+      const detail = await errorFrom(res, `the server answered ${res.status}`)
+      throw new Error(`The imported logo and service areas did not save — ${detail}`)
+    }
     setPendingLogo(null)
     setPendingAreas(null)
   }

@@ -190,22 +190,44 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     // A logo that just arrived (usually from the importer's draft saving
     // through this route) gets its white footer copy derived. Self-guarding:
     // does nothing when a footer logo already exists or the image is opaque.
+    //
+    // Guarded HERE as well, because deriveFooterLogo's own try/catch is inside
+    // the function and cannot catch this `import()` failing to LOAD. It loads
+    // sharp, and sharp's native binary has gone missing from a deployed
+    // function more than once (ERR_DLOPEN_FAILED, libvips-cpp.so) — a runtime
+    // dynamic import is not reliably traced into the bundle the way a
+    // top-level one is. Unguarded, that 500'd the whole client update, which
+    // in the site editor discarded an entire website import because a logo
+    // could not be recoloured. The row is already written by this point; a
+    // footer copy is a nicety and must never be able to fail the save.
     if (has('logoUrl') && client.logoUrl) {
-      const { deriveFooterLogo } = await import('@/lib/footer-logo')
-      await deriveFooterLogo(id)
+      try {
+        const { deriveFooterLogo } = await import('@/lib/footer-logo')
+        await deriveFooterLogo(id)
+      } catch (err) {
+        console.warn('[Client] skipped the white footer logo:', err)
+      }
     }
 
     // Moving a shop between tiers has to reach the scan itself: four keywords
     // and weekly instead of two and monthly. Otherwise the plan changes, the
     // invoice changes, and the campaign carries on exactly as it was.
+    // Reported back, never fatal — for the same reason as the footer logo
+    // above: the client row is already saved, and a rank vendor being down
+    // must not read to the admin as "the save failed".
     let campaignSync: string | null = null
     if (before && has('seoClient') && before.seoClient !== client.seoClient) {
-      const { syncCampaignTier } = await import('@/lib/rank-campaigns')
-      const synced = await syncCampaignTier(id)
-      campaignSync = synced.message
-      console.log(
-        `[RankCampaigns] ${client.businessName} tier → ${client.seoClient ? 'seo' : 'standard'}: ${synced.message}`
-      )
+      try {
+        const { syncCampaignTier } = await import('@/lib/rank-campaigns')
+        const synced = await syncCampaignTier(id)
+        campaignSync = synced.message
+        console.log(
+          `[RankCampaigns] ${client.businessName} tier → ${client.seoClient ? 'seo' : 'standard'}: ${synced.message}`
+        )
+      } catch (err) {
+        campaignSync = 'Saved, but the rank campaign could not be updated to the new tier — check Rankings.'
+        console.error('[RankCampaigns] tier sync failed:', err)
+      }
     }
 
     return NextResponse.json({ ...client, campaignSync })
