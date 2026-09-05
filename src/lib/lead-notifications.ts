@@ -17,7 +17,7 @@ import { countSegments, fitSegments } from '@/lib/sms-segments'
  * and fall back to environment variables, the same pattern as the Places key.
  */
 
-import { formatPhoneDisplay } from '@/lib/lead-display'
+import { formatPhoneDisplay, properCase } from '@/lib/lead-display'
 
 export interface LeadAttribution {
   gclid?: string | null
@@ -352,8 +352,18 @@ export interface NotifyResult {
 export async function notifyNewLead(
   clientId: string,
   businessName: string,
-  lead: LeadSummary
+  raw: LeadSummary
 ): Promise<NotifyResult> {
+  // Tidied ONCE, here, so the email, the SMS and the pre-written text to the
+  // customer all read the same. These two fields are the only free text a
+  // customer types that this platform then puts in front of somebody — the
+  // service, the insurance and the carrier all come from our own lists and
+  // are already cased. The stored lead keeps what they actually typed.
+  const lead: LeadSummary = {
+    ...raw,
+    name: properCase(raw.name),
+    vehicle: properCase(raw.vehicle),
+  }
   const result: NotifyResult = { emailSent: 0, smsSent: 0, errors: [] }
 
   const config = await prisma.clientNotification.findUnique({ where: { clientId } }).catch(() => null)
