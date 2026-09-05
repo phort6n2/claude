@@ -185,7 +185,14 @@ function plainLines(lead: LeadSummary): string[] {
 function smsBody(businessName: string, lead: LeadSummary): string {
   return fitSegments(
     [
-      `${lead.name || 'New lead'} ${lead.phone || ''}`.trim(),
+      // FORMATTED, not E.164. The number arrives as +15037416823 and that is
+      // what the alert used to read — a wall of digits somebody has to parse
+      // before they can dial it, on the one line the whole message exists
+      // for. The two extra characters are free in every sense that matters
+      // here: parentheses, the hyphen and the space are all GSM-7 basic, so
+      // the encoding does not change, and fitSegments still guarantees the
+      // one segment.
+      `${lead.name || 'New lead'} ${formatPhoneDisplay(lead.phone) || lead.phone || ''}`.trim(),
       [lead.service, lead.vehicle].filter(Boolean).join(', '),
       lead.postalCode ? `ZIP ${lead.postalCode}` : '',
       businessName,
