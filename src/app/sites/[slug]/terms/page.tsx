@@ -24,6 +24,8 @@ async function getClient(slug: string) {
       id: true,
       slug: true,
       siteSubdomain: true,
+      // So the policy names the address the reader is on.
+      domains: { where: { isPrimary: true }, select: { domain: true, verified: true, misconfigured: true }, take: 1 },
       status: true,
       businessName: true,
       phone: true,

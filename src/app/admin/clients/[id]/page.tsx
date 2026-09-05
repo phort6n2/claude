@@ -19,6 +19,7 @@ import PortalInviteCard from '@/components/admin/PortalInviteCard'
 import { requireAdminPage } from '@/lib/admin-guard'
 import { formatMinutes, getResponseTime } from '@/lib/response-time'
 import { getClientReadiness } from '@/lib/client-readiness'
+import { siteLinkFor, siteHostLabel, PRIMARY_DOMAIN_SELECT } from '@/lib/site-origin'
 
 /**
  * Client overview — "is this client OK, and where do I go?".
@@ -90,7 +91,12 @@ export default async function ClientOverviewPage({ params }: PageProps) {
   await requireAdminPage()
 
   const { id } = await params
-  const client = await prisma.client.findUnique({ where: { id } })
+  // domains, so every address shown on this page is the one the client's
+  // customers actually see once a custom domain is live.
+  const client = await prisma.client.findUnique({
+    where: { id },
+    include: { domains: PRIMARY_DOMAIN_SELECT },
+  })
   if (!client) notFound()
 
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
@@ -140,9 +146,7 @@ export default async function ClientOverviewPage({ params }: PageProps) {
   ])
 
   const base = `/admin/clients/${id}`
-  const siteUrl = client.siteSubdomain
-    ? `https://${client.siteSubdomain}.glassleads.app`
-    : null
+  const siteUrl = client.siteSubdomain || client.domains.length ? siteLinkFor(client) : null
 
   // Lead delivery health
   const enabled = destinations.filter((d) => d.enabled)
@@ -287,7 +291,7 @@ export default async function ClientOverviewPage({ params }: PageProps) {
         >
           {siteUrl ? (
             <a href={siteUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 break-all">
-              {client.siteSubdomain}.glassleads.app
+              {siteHostLabel(client)}
             </a>
           ) : (
             <p>No subdomain connected yet.</p>

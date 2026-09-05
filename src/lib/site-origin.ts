@@ -63,6 +63,39 @@ export function siteOriginFor(client: OriginClient): string {
   return `https://${canonicalHostFor(client)}`
 }
 
+/**
+ * Where to send somebody who wants to LOOK at this shop's site.
+ *
+ * Almost the canonical origin, with one difference that matters: a client
+ * with no subdomain provisioned yet has no working host at all, so the link
+ * falls back to the /sites/{slug} preview path on the app itself. That is why
+ * this exists rather than every caller reaching for siteOriginFor.
+ *
+ * Use it for ANY link or address shown to a person — "View site" in the admin
+ * header, the client's own portal, the overview card. Each of those built the
+ * subdomain URL by hand, so attaching a custom domain changed the site and
+ * left every link to it pointing at the old address; the client opened their
+ * portal and saw the platform's subdomain where their own domain should be.
+ */
+export function siteLinkFor(client: OriginClient): string {
+  const custom = liveCustomHostFor(client)
+  if (custom) return `https://${custom}`
+  if (client.siteSubdomain) return `https://${client.siteSubdomain}.glassleads.app`
+  return `/sites/${client.slug}`
+}
+
+/** The same address without the scheme, for when it is shown rather than followed. */
+export function siteHostLabel(client: OriginClient): string {
+  return siteLinkFor(client).replace(/^https:\/\//, '')
+}
+
+/** What a page query has to select for any of the above to see a custom domain. */
+export const PRIMARY_DOMAIN_SELECT = {
+  where: { isPrimary: true },
+  select: { domain: true, verified: true, misconfigured: true },
+  take: 1,
+} as const
+
 /** Strip the port and lowercase, so a Host header compares cleanly. */
 export function bareHost(host: string | null | undefined): string {
   return (host || '').split(':')[0].toLowerCase()
