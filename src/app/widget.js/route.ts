@@ -212,7 +212,7 @@ const WIDGET_SOURCE = String.raw`(function () {
       // border, no dark header band.
       '.card{background:#fff;border:1px solid #e2d8d8;border-top:4px solid ' + btnBg + ';border-radius:20px;box-shadow:0 2px 4px rgba(20,20,20,.04),0 10px 20px -6px rgba(20,20,20,.08),0 28px 56px -18px rgba(20,20,20,.15);overflow:hidden;max-width:430px;width:100%}' +
       '.head{padding:20px 22px 0;color:#1a1a1a}' +
-      '.head h3{margin:0;font-size:20px;font-weight:800;letter-spacing:-.02em}' +
+      '.head h2{margin:0;font-size:20px;font-weight:800;letter-spacing:-.02em}' +
       '.head p{margin:4px 0 0;font-size:14px;color:#5c5c5c;line-height:1.5}' +
       '.body{padding:14px 22px 22px}' +
       // Rows stack on narrow embeds and go two-up when the card is wide
@@ -271,7 +271,7 @@ const WIDGET_SOURCE = String.raw`(function () {
       '.consent{font-size:12px;color:#6e6e6e;margin-top:12px;line-height:1.5}' +
       '.ok{padding:28px 22px;text-align:center}' +
       '.ok .big{width:56px;height:56px;margin:0 auto;border-radius:999px;display:flex;align-items:center;justify-content:center;color:' + cfg.primaryColor + ';background:' + rgba(cfg.primaryColor, 0.1) + '}' +
-      '.ok h4{margin:14px 0 8px;font-size:18px;color:#1a1a1a}' +
+      '.ok h3{margin:14px 0 8px;font-size:18px;color:#1a1a1a}' +
       '.ok p{margin:0;font-size:16px;color:#5c5c5c}' +
       '.ok a{display:block;margin-top:16px;padding:14px;min-height:52px;border-radius:14px;font-weight:700;font-size:16px;color:#fff;text-decoration:none;background:linear-gradient(180deg,' + cfg.primaryColor + ',' + darken(cfg.primaryColor, 0.17) + ');box-shadow:0 6px 14px -4px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.2)}' +
       '.err{display:none;margin-top:12px;padding:12px 14px;border-radius:10px;background:#FEF2F2;border:1px solid #E3A9A5;color:#B3261E;font-size:14px}' +
@@ -660,7 +660,11 @@ const WIDGET_SOURCE = String.raw`(function () {
     var card = el('div'); card.className = 'card';
     var headwrap = el('div'); headwrap.className = 'headwrap';
     var head = el('div'); head.className = 'head';
-    head.appendChild(el('h3', { text: 'Get your free quote' }));
+    // h2, not h3: the page's H1 is the hero headline directly above, and
+    // a jump straight to h3 is a level skipped — flagged by PageSpeed's
+    // heading-order audit, and the thing a screen-reader user navigating by
+    // heading actually trips over.
+    head.appendChild(el('h2', { text: 'Get your free quote' }));
     head.appendChild(el('p', { text: "Four quick questions. We'll confirm what your insurance covers before anything is booked — no obligation." }));
     headwrap.appendChild(head);
     card.appendChild(headwrap);
@@ -770,14 +774,14 @@ const WIDGET_SOURCE = String.raw`(function () {
            directly above the tick, that they had not. That reads as a failed
            submission and produces a duplicate lead or a needless call. */
         head.innerHTML = '';
-        head.appendChild(el('h3', { text: 'Request sent' }));
+        head.appendChild(el('h2', { text: 'Request sent' }));
         var first = (data.full_name || '').split(' ')[0] || 'there';
         var ok = el('div', { role: 'status', 'aria-live': 'polite' }); ok.className = 'ok';
         ok.appendChild(el('div', {
           class: 'big',
           html: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
         }));
-        var okHead = el('h4', { text: "You're all set, " + first + '.', tabindex: '-1' });
+        var okHead = el('h3', { text: "You're all set, " + first + '.', tabindex: '-1' });
         ok.appendChild(okHead);
         ok.appendChild(el('p', {
           text: 'Your request is with ' + cfg.businessName + '.' + (cfg.phone
