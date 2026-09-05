@@ -5,6 +5,7 @@ import { getPortalSession } from '@/lib/portal-auth'
 import { prisma } from '@/lib/db'
 import { deliverabilityGuide } from '@/lib/alert-deliverability'
 import GettingStartedCard from '@/components/portal/GettingStartedCard'
+import { siteLinkFor, PRIMARY_DOMAIN_SELECT } from '@/lib/site-origin'
 
 export const dynamic = 'force-dynamic'
 
@@ -61,7 +62,9 @@ export default async function PortalHomePage() {
       .catch(() => ({ _sum: { saleValue: null }, _count: 0 })),
     prisma.client.findUnique({
       where: { id: session.clientId },
-      select: { slug: true, siteSubdomain: true, status: true },
+      // domains, or the client opens their own portal after a cutover and
+      // sees the platform's subdomain where their domain should be.
+      select: { slug: true, siteSubdomain: true, status: true, domains: PRIMARY_DOMAIN_SELECT },
     }),
     prisma.clientGbpReviews.findUnique({ where: { clientId: session.clientId } }).catch(() => null),
   ])
@@ -95,11 +98,7 @@ export default async function PortalHomePage() {
   const showWalkthrough = !onboarding?.dismissedAt && !walkthroughDone
 
   const delta = thisWeek - lastWeek
-  const siteUrl = client?.siteSubdomain
-    ? `https://${client.siteSubdomain}.glassleads.app`
-    : client
-      ? `/sites/${client.slug}`
-      : null
+  const siteUrl = client ? siteLinkFor(client) : null
 
   return (
     <div className="space-y-5">
