@@ -38,6 +38,12 @@ const html = emailHtml('Auto Glass Kings', {
     'https://autoglassking.com/auto-glass-repair?gc_id=23874534588&g_special_campaign=true&gad_source=1&gad_campaignid=23355809702&gbraid=0AAAAA0tjR5mGv57JFPnlO3hacvvrfUvoTq&gclid=EAIaIQobChMIwZvomJLWlgMVLChECB21qzATEAAYBCAAEgIb-_D_BwE',
   damagePhotoUrl: '',
   isCall: false,
+  attribution: {
+    gclid: 'EAIaIQobChMIwZvomJLWlgMVLChECB21qzATEAAYBCAAEgIb-_D_BwE',
+    utmSource: 'google',
+    utmMedium: 'cpc',
+    utmCampaign: 'AGMP Lead Gen',
+  },
 })
 
 writeFileSync(out, html)
