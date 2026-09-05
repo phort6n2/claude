@@ -137,7 +137,43 @@ function smsBody(businessName: string, lead: LeadSummary): string {
   )
 }
 
-function emailHtml(businessName: string, lead: LeadSummary): string {
+/**
+ * The landing page as a person reads it: host and path, no query string.
+ *
+ * WHY THIS EXISTS. The full URL carries the ad click — gclid, gbraid,
+ * campaignid, gad_source — which makes it a couple of hundred characters with
+ * nowhere to break. A table cell holding a string that cannot wrap is a table
+ * as wide as that string, and iOS Mail renders the table at its natural width
+ * and then scales it down to fit the screen. So one invisible value decided
+ * the type size of every field in the alert: the job, the vehicle, the ZIP
+ * and the phone number all rendered at about half size while the name and the
+ * buttons around them were fine.
+ *
+ * Nobody reading a lead alert needs the click id. It is stored on the lead and
+ * uploaded to Google from there, and the plain-text part of this same email
+ * still carries the URL in full for anyone debugging attribution.
+ */
+function readablePage(url: string): string {
+  try {
+    const parsed = new URL(url)
+    const path = parsed.pathname === '/' ? '' : parsed.pathname
+    return `${parsed.host}${path}`
+  } catch {
+    // Not a URL we can parse — drop the query string by hand rather than
+    // handing the table the whole thing back.
+    return url.split('?')[0]
+  }
+}
+
+/**
+ * Exported ONLY so it can be looked at without sending one.
+ *
+ * scripts/preview-lead-email.ts renders it at phone width. There was no way
+ * to see this email except by mailing a real alert to a real inbox, which is
+ * how it went a year with a details table rendering at half size on the
+ * device every one of them is read on.
+ */
+export function emailHtml(businessName: string, lead: LeadSummary): string {
   const esc = (v: string) =>
     v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
   const rows = plainLines(lead)
@@ -146,7 +182,11 @@ function emailHtml(businessName: string, lead: LeadSummary): string {
     .filter((line) => !line.startsWith('Photo: '))
     .map((line) => {
       const [label, ...rest] = line.split(': ')
-      return `<tr><td style="padding:6px 16px 6px 0;color:#6b7280;white-space:nowrap">${esc(label)}</td><td style="padding:6px 0;color:#111827">${esc(rest.join(': '))}</td></tr>`
+      const raw = rest.join(': ')
+      const value = label === 'Page' ? readablePage(raw) : raw
+      // break-word on the value, and a fixed layout on the table below: one
+      // long value must never be allowed to set the width of the alert again.
+      return `<tr><td style="padding:7px 14px 7px 0;color:#6b7280;width:92px;vertical-align:top">${esc(label)}</td><td style="padding:7px 0;color:#111827;word-break:break-word;overflow-wrap:anywhere">${esc(value)}</td></tr>`
     })
     .join('')
   const tel = telHref(lead.phone)
@@ -186,7 +226,10 @@ function emailHtml(businessName: string, lead: LeadSummary): string {
         ? `<p style="margin:18px 0 0;padding:11px 13px;background:#FEF3C7;border:1px solid #FCD34D;border-radius:10px;font-size:14px;color:#78350F"><strong>${esc(lead.calibration)}</strong> &mdash; quote the calibration, not just the glass.</p>`
         : ''
     }
-    <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:18px">${rows}</table>
+    <!-- table-layout:fixed so the column widths come from this row and not
+         from the longest value in the table; 15px because this is read on a
+         phone, at arm's length, in a hurry. -->
+    <table style="width:100%;table-layout:fixed;border-collapse:collapse;font-size:15px;line-height:1.45;margin-top:18px">${rows}</table>
     ${
       lead.outcomeUrl
         ? `<div style="margin:20px 0 0;padding:16px 0 0;border-top:1px solid #e5e7eb">
