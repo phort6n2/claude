@@ -250,7 +250,7 @@ export function emailHtml(businessName: string, lead: LeadSummary): string {
       const value = label === 'Page' ? readablePage(raw) : raw
       // break-word on the value, and a fixed layout on the table below: one
       // long value must never be allowed to set the width of the alert again.
-      return `<tr><td style="padding:7px 14px 7px 0;color:#6b7280;width:92px;vertical-align:top">${esc(label)}</td><td style="padding:7px 0;color:#111827;word-break:break-word;overflow-wrap:anywhere">${esc(value)}</td></tr>`
+      return `<tr><td class="gl-label" style="padding:7px 14px 7px 0;color:#6b7280;width:92px;vertical-align:top">${esc(label)}</td><td style="padding:7px 0;color:#111827;word-break:break-word;overflow-wrap:anywhere">${esc(value)}</td></tr>`
     })
     .join('')
   const ad = adSourceOf(lead.attribution)
@@ -273,9 +273,24 @@ export function emailHtml(businessName: string, lead: LeadSummary): string {
       vehicle: lead.vehicle,
     })
   )
-  return `<!doctype html><html><body style="margin:0;background:#f6f7f9;font-family:-apple-system,Segoe UI,Roboto,sans-serif">
-<div style="max-width:520px;margin:0 auto;padding:24px">
-  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:24px">
+  return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+/* THE PHONE GETS ITS WIDTH BACK.
+   The inline padding below is the desktop shape and the fallback for any
+   client that strips this block; on a 390px screen it spent 96px — a quarter
+   of the screen — on two nested margins, and the details were reading in a
+   column barely wide enough for "Not sure yet about insurance". The card is
+   centred at 520px on a desktop either way, so the margin only ever mattered
+   here. !important because the inline styles it overrides cannot be removed:
+   a client that ignores this block has to keep working. */
+@media only screen and (max-width:480px) {
+  .gl-wrap { padding: 8px !important; }
+  .gl-card { padding: 16px !important; }
+  .gl-label { width: 84px !important; padding-right: 10px !important; }
+}
+</style></head><body style="margin:0;background:#f6f7f9;font-family:-apple-system,Segoe UI,Roboto,sans-serif">
+<div class="gl-wrap" style="max-width:520px;margin:0 auto;padding:20px">
+  <div class="gl-card" style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:22px">
     <p style="margin:0 0 4px;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6b7280">${lead.isCall ? 'Incoming phone call' : 'New lead'}</p>
     <h1 style="margin:0 0 4px;font-size:22px;color:#111827">${esc(lead.name || (lead.isCall ? 'Incoming phone call' : 'New inquiry'))}</h1>
     <p style="margin:0 0 ${ad ? '12' : '18'}px;color:#6b7280;font-size:14px">${esc(businessName)}${lead.isCall && lead.calledAtLabel ? ` &middot; called ${esc(lead.calledAtLabel)}` : ''}</p>
