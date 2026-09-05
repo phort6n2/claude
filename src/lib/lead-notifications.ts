@@ -19,6 +19,52 @@ import { countSegments, fitSegments } from '@/lib/sms-segments'
 
 import { formatPhoneDisplay } from '@/lib/lead-display'
 
+export interface LeadAttribution {
+  gclid?: string | null
+  gbraid?: string | null
+  wbraid?: string | null
+  utmSource?: string | null
+  utmMedium?: string | null
+  utmCampaign?: string | null
+}
+
+/**
+ * Did this lead arrive on an ad click, and whose ad?
+ *
+ * WHY IT IS ON THE ALERT AT ALL. A shop paying for Google Ads sees a phone
+ * ringing and a form arriving and has no way to tell which of them the ads
+ * bought. The click id is captured, travels with the lead and is uploaded
+ * back to Google when the job books — the whole attribution loop runs on it —
+ * and the one person who never saw any of it was the shop owner reading the
+ * alert. "Are these leads coming from the ads?" is the question behind most
+ * of the calls this platform gets, and the answer was already in the record.
+ *
+ * A GOOGLE CLICK ID IS PROOF. Google mints gclid/gbraid/wbraid on an ad click
+ * and nowhere else, so its presence is not an inference. The UTM fallback
+ * below is the shop's own tagging rather than Google's word for it, which is
+ * good enough for a label but is why it is second.
+ *
+ * Anything else returns null and the alert says nothing, rather than guessing.
+ * Telling a shop a lead came from their ads when it came from their Business
+ * Profile is worse than staying quiet: they judge the spend on this.
+ */
+export function adSourceOf(
+  attribution?: LeadAttribution | null
+): { network: string; campaign: string | null } | null {
+  if (!attribution) return null
+  const campaign = attribution.utmCampaign?.trim() || null
+  if (attribution.gclid || attribution.gbraid || attribution.wbraid) {
+    return { network: 'Google Ads', campaign }
+  }
+  const source = (attribution.utmSource || '').toLowerCase()
+  const medium = (attribution.utmMedium || '').toLowerCase()
+  const paid = /cpc|ppc|paid|adwords/.test(medium)
+  if (!paid) return null
+  if (/google|adwords/.test(source)) return { network: 'Google Ads', campaign }
+  if (/bing|microsoft|msn/.test(source)) return { network: 'Microsoft Ads', campaign }
+  return null
+}
+
 export interface LeadSummary {
   name: string
   phone: string
@@ -41,6 +87,10 @@ export interface LeadSummary {
   insurance?: string
   carrier?: string
   landingPage?: string
+  /* What brought them, as captured on the lead. Passed raw rather than as a
+   * finished label so the rule for "this was an ad click" lives in one place
+   * — see adSourceOf below. */
+  attribution?: LeadAttribution
   /* The customer's own photo of the damage. Rendered in the email rather than
    * linked, because the entire value of it is being able to look without
    * opening anything. */
@@ -101,6 +151,13 @@ function plainLines(lead: LeadSummary): string[] {
     lead.email && `Email: ${lead.email}`,
     lead.message && `Notes: ${lead.message}`,
     lead.source && `Source: ${lead.source}`,
+    // The HTML alert renders this as a badge instead — see emailHtml — so it
+    // is filtered out of the table there. It stays here for the plain-text
+    // part, which has no badges and is what a forwarded copy carries.
+    (() => {
+      const ad = adSourceOf(lead.attribution)
+      return ad && `Ad click: ${ad.network}${ad.campaign ? ` — ${ad.campaign}` : ''}`
+    })(),
     lead.landingPage && `Page: ${lead.landingPage}`,
     lead.damagePhotoUrl && `Photo: ${lead.damagePhotoUrl}`,
   ].filter(Boolean) as string[]
@@ -179,7 +236,7 @@ export function emailHtml(businessName: string, lead: LeadSummary): string {
   const rows = plainLines(lead)
     // The photo is rendered as an image below, so a row repeating its URL
     // would just be a long unreadable string in the middle of the details.
-    .filter((line) => !line.startsWith('Photo: '))
+    .filter((line) => !line.startsWith('Photo: ') && !line.startsWith('Ad click: '))
     .map((line) => {
       const [label, ...rest] = line.split(': ')
       const raw = rest.join(': ')
@@ -189,6 +246,7 @@ export function emailHtml(businessName: string, lead: LeadSummary): string {
       return `<tr><td style="padding:7px 14px 7px 0;color:#6b7280;width:92px;vertical-align:top">${esc(label)}</td><td style="padding:7px 0;color:#111827;word-break:break-word;overflow-wrap:anywhere">${esc(value)}</td></tr>`
     })
     .join('')
+  const ad = adSourceOf(lead.attribution)
   const tel = telHref(lead.phone)
   // The alert is read on a phone within a minute or two of the enquiry, which
   // makes it the best place the platform has to put a reply one tap away. The
@@ -213,7 +271,17 @@ export function emailHtml(businessName: string, lead: LeadSummary): string {
   <div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:24px">
     <p style="margin:0 0 4px;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6b7280">${lead.isCall ? 'Incoming phone call' : 'New lead'}</p>
     <h1 style="margin:0 0 4px;font-size:22px;color:#111827">${esc(lead.name || (lead.isCall ? 'Incoming phone call' : 'New inquiry'))}</h1>
-    <p style="margin:0 0 18px;color:#6b7280;font-size:14px">${esc(businessName)}${lead.isCall && lead.calledAtLabel ? ` &middot; called ${esc(lead.calledAtLabel)}` : ''}</p>
+    <p style="margin:0 0 ${ad ? '12' : '18'}px;color:#6b7280;font-size:14px">${esc(businessName)}${lead.isCall && lead.calledAtLabel ? ` &middot; called ${esc(lead.calledAtLabel)}` : ''}</p>
+    ${
+      /* THE ANSWER TO "ARE THE ADS WORKING", ON THE ALERT ITSELF. High enough
+         to be read before the buttons, because it changes how the call is
+         handled: this one was paid for. The campaign is named when the ad
+         tagged itself; the badge stands alone when only the click id came
+         through, which is the common case. */
+      ad
+        ? `<p style="margin:0 0 18px"><span style="display:inline-block;background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700">&#9679; From your ${esc(ad.network)}${ad.campaign ? ` &middot; ${esc(ad.campaign)}` : ''}</span></p>`
+        : ''
+    }
     ${tel ? `<a href="${esc(tel)}" style="display:block;text-align:center;background:#1d4ed8;color:#fff;text-decoration:none;font-weight:700;padding:14px;border-radius:10px;font-size:16px">Call ${esc(formatPhoneDisplay(lead.phone) || lead.phone)}</a>` : ''}
     ${sms ? `<a href="${esc(sms)}" style="display:block;text-align:center;background:#fff;color:#1d4ed8;border:1.5px solid #1d4ed8;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;font-size:16px;margin-top:8px">Text ${esc(lead.name?.trim().split(/\s+/)[0] || 'them')}</a>` : ''}
     ${
