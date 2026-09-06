@@ -6,6 +6,7 @@ import {
   twiml,
   xmlEscape,
 } from '@/lib/twilio-voice'
+import { recordCall } from '@/lib/call-lead'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,7 +42,11 @@ export async function POST(request: Request) {
     .findUnique({
       where: { phoneNumber: to },
       include: {
-        client: { select: { id: true, slug: true, businessName: true, status: true } },
+        // timezone for recordCall's alert, which formats the call time in the
+        // shop's own zone rather than the server's.
+        client: {
+          select: { id: true, slug: true, businessName: true, status: true, timezone: true },
+        },
       },
     })
     .catch((err) => {
@@ -101,6 +106,27 @@ export async function POST(request: Request) {
   parts.push(
     `<Dial ${dialAttrs.join(' ')}><Number${numberAttrs}>${xmlEscape(number.forwardTo)}</Number></Dial>`
   )
+
+  /**
+   * WRITE THE LEAD NOW, not when the call ends.
+   *
+   * The row used to be created only by the status callback, which made that
+   * one webhook the single point of failure for whether a call existed at
+   * all. A 97-second answered call from an ad went missing exactly that way:
+   * the customer got through, the shop had the conversation, and the leads
+   * list had nothing — noticed only by somebody comparing Google's call
+   * column against the app by hand.
+   *
+   * Idempotent on the CallSid, so the status callback still owns the outcome
+   * and the alert; this only guarantees the call is on the record. Wrapped and
+   * never awaited into the failure path: a database that is having a bad
+   * minute must not stop the phone from ringing at the shop.
+   */
+  try {
+    await recordCall(number, { callSid, from, to, status: null, durationSeconds: null })
+  } catch (error) {
+    console.error(`[Twilio Voice] Could not record call ${callSid}:`, error)
+  }
 
   console.log(
     `[Twilio Voice] ${from} → ${to} (${number.client.businessName}) forwarding to ${number.forwardTo}`

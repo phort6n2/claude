@@ -237,6 +237,20 @@ function readablePage(url: string): string {
  * how it went a year with a details table rendering at half size on the
  * device every one of them is read on.
  */
+
+/**
+ * Who the Text button says it is texting.
+ *
+ * It takes the first word of the lead's name, which is right for a form —
+ * "Text William" — and absurd for a call, where the name is a label this
+ * platform wrote: "Text Answered", "Text Missed". A call has no name until
+ * somebody rings back and asks for one.
+ */
+function textButtonName(lead: LeadSummary): string {
+  if (lead.isCall) return 'the caller'
+  return lead.name?.trim().split(/\s+/)[0] || 'them'
+}
+
 export function emailHtml(businessName: string, lead: LeadSummary): string {
   const esc = (v: string) =>
     v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -305,7 +319,7 @@ export function emailHtml(businessName: string, lead: LeadSummary): string {
         : ''
     }
     ${tel ? `<a href="${esc(tel)}" style="display:block;text-align:center;background:#1d4ed8;color:#fff;text-decoration:none;font-weight:700;padding:14px;border-radius:10px;font-size:16px">Call ${esc(formatPhoneDisplay(lead.phone) || lead.phone)}</a>` : ''}
-    ${sms ? `<a href="${esc(sms)}" style="display:block;text-align:center;background:#fff;color:#1d4ed8;border:1.5px solid #1d4ed8;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;font-size:16px;margin-top:8px">Text ${esc(lead.name?.trim().split(/\s+/)[0] || 'them')}</a>` : ''}
+    ${sms ? `<a href="${esc(sms)}" style="display:block;text-align:center;background:#fff;color:#1d4ed8;border:1.5px solid #1d4ed8;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;font-size:16px;margin-top:8px">Text ${esc(textButtonName(lead))}</a>` : ''}
     ${
       lead.damagePhotoUrl
         ? `<a href="${esc(lead.damagePhotoUrl)}" style="display:block;margin-top:18px;text-decoration:none"><img src="${esc(lead.damagePhotoUrl)}" alt="Photo of the damage" width="472" style="width:100%;max-width:472px;border-radius:10px;border:1px solid #e5e7eb;display:block"><span style="display:block;margin-top:6px;font-size:12px;color:#6b7280">Photo sent by the customer — tap to open full size</span></a>`
@@ -334,7 +348,7 @@ export function emailHtml(businessName: string, lead: LeadSummary): string {
     }
     ${lead.leadUrl ? `<p style="margin:18px 0 0"><a href="${esc(lead.leadUrl)}" style="color:#1d4ed8;font-size:14px">Open this lead</a></p>` : ''}
   </div>
-  <p style="text-align:center;color:#9ca3af;font-size:12px;margin:16px 0 0">Sent by glassleads.app the moment the form was submitted.</p>
+  <p style="text-align:center;color:#9ca3af;font-size:12px;margin:16px 0 0">Sent by glassleads.app the moment the ${lead.isCall ? 'call ended' : 'form was submitted'}.</p>
 </div></body></html>`
 }
 
@@ -352,7 +366,20 @@ export interface NotifyResult {
 export async function notifyNewLead(
   clientId: string,
   businessName: string,
-  raw: LeadSummary
+  raw: LeadSummary,
+  /**
+   * What KIND of alert this is, which is one decision with two consequences.
+   *
+   * 'urgent' is the default and everything a lead has always been: somebody
+   * needs to act, so it goes out by email AND text and the subject says so.
+   *
+   * 'record' is an alert nobody has to act on — today, a call the shop
+   * answered. The email still goes, because the shop wants the number and the
+   * time; the SMS does not, because that channel buzzes a pocket and is
+   * billed per segment. Passing it as one word rather than two flags keeps
+   * the two consequences from drifting apart.
+   */
+  options: { kind?: 'urgent' | 'record' } = {}
 ): Promise<NotifyResult> {
   // Tidied ONCE, here, so the email, the SMS and the pre-written text to the
   // customer all read the same. These two fields are the only free text a
@@ -382,7 +409,8 @@ export async function notifyNewLead(
   // this — a text about a call is what surfaces the one nobody picked up.
   const emailThisOne = config.emailEnabled && !(lead.isCall && !config.emailCallLeads)
   const emails = emailThisOne ? config.emailTo.filter(Boolean) : []
-  const numbers = config.smsEnabled ? config.smsTo.filter(Boolean) : []
+  const isRecord = options.kind === 'record'
+  const numbers = config.smsEnabled && !isRecord ? config.smsTo.filter(Boolean) : []
   if (emails.length === 0 && numbers.length === 0) return result
 
   if (emails.length > 0) {
@@ -402,7 +430,13 @@ export async function notifyNewLead(
         const sent = await resend.emails.send({
           from,
           to: emails,
-          subject: `[NEW LEAD - ${businessName}] - Call Immediately`,
+          // "Call Immediately" on a call the shop just answered is the kind
+          // of subject line that teaches people to stop reading subject
+          // lines. A record says it is a record, in the inbox list, before
+          // anything is opened.
+          subject: isRecord
+            ? `[CALL ANSWERED - ${businessName}] - For your records`
+            : `[NEW LEAD - ${businessName}] - Call Immediately`,
           html: emailHtml(businessName, lead),
           text: [`New lead — ${businessName}`, lead.name, ...plainLines(lead)]
             .filter(Boolean)
