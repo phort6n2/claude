@@ -434,6 +434,9 @@ export interface WeeklyRunSummary extends DailyRunSummary {
  * check. When the account cannot be READ, nothing is filed and nothing is
  * resolved: an API hiccup must never read as "the campaigns are fine now".
  */
+/** The account-level call conversion action, checked with the campaign goals. */
+const CALL_SETTING_CHECK = 'call-conversion-action'
+
 async function checkCampaignGoals(
   client: { id: string; businessName: string },
   customerId: string,
@@ -455,12 +458,26 @@ async function checkCampaignGoals(
     })
     return
   }
+  // The account-level call setting rides along: the same fetch already read
+  // it, and it is the same kind of fault — everything looks configured and
+  // the calls are landing somewhere else.
+  const drafts = [
+    ...campaignGoalDrafts(goals.report),
+    ...setup.audit.accountSettings.map((detail) => ({
+      check: CALL_SETTING_CHECK,
+      severity: 'REVIEW' as const,
+      entity: `customer:${customerId}`,
+      title: 'Calls from ads are not reporting to AGMP Call From Ads',
+      detail,
+      evidence: { customerId, setting: 'Goals → Conversions → Settings → Call conversion action' },
+    })),
+  ]
   await fileFindings(
     client,
     customerId,
     'WEEKLY',
-    campaignGoalDrafts(goals.report),
-    new Set([CAMPAIGN_GOAL_CHECK]),
+    drafts,
+    new Set([CAMPAIGN_GOAL_CHECK, CALL_SETTING_CHECK]),
     summary
   )
 }

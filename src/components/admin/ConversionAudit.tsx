@@ -50,6 +50,8 @@ export interface ConversionAudit {
   findings: ConversionFinding[]
   doubleCounting: string[]
   goalIssues: string[]
+  /** Account-level settings, fixed on a different screen from the actions. */
+  accountSettings?: string[]
   extras: Array<{ id: string; name: string; note: string }>
   clean: boolean
 }

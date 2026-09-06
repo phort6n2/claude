@@ -95,6 +95,24 @@ inherits.
 3. Count a call after **10 seconds**. Count: **One**. Click window: **30 days**.
 4. The campaign needs a **call asset** or this never fires. An account with
    this action and no call asset looks configured and reports nothing.
+5. **Then point the account at it.** Goals → Conversions → **Settings** →
+   *Additional settings* → **Call conversion action** → `AGMP Call From Ads`.
+
+   This one is easy to miss — it is a settings page rather than part of
+   creating the action, and nothing in the conversion list shows it. It is
+   ACCOUNT-LEVEL: every call asset that has not been given its own action
+   reports to whatever is named here, so an account can hold all four actions,
+   perfectly configured, and send every call from every ad to a different
+   action or to Google's own default. Found on a live account by opening the
+   page and reading it.
+
+   Also on that page: **call conversion reporting** has to be on, or nothing a
+   call asset produces reaches the action at all.
+
+   The audit checks both, under "Account settings" on the Advertising tab, and
+   the weekly sweep files it as `call-conversion-action`. It stays quiet when
+   the setting points at the right action under an old name — the rename
+   finding covers that, and the setting follows the action through a rename.
 
 ### 4. AGMP Website Call
 
