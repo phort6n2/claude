@@ -526,12 +526,13 @@ function HeaderLogo({
   size?: 'sm' | 'md'
 }) {
   const [imageError, setImageError] = useState(false)
-  const sizeClasses = size === 'sm' ? 'h-8 w-8 text-sm' : 'h-10 w-10 text-lg'
 
+  // The MONOGRAM is a circle, because an initial on a brand colour is an
+  // avatar and that is what avatars look like.
   if (!logoUrl || imageError) {
     return (
       <div
-        className={`${sizeClasses} rounded-full flex items-center justify-center text-white font-bold flex-shrink-0`}
+        className={`${size === 'sm' ? 'h-8 w-8 text-sm' : 'h-10 w-10 text-lg'} rounded-full flex items-center justify-center text-white font-bold flex-shrink-0`}
         style={{ backgroundColor: primaryColor || '#1e40af' }}
       >
         {businessName[0] || '?'}
@@ -539,11 +540,20 @@ function HeaderLogo({
     )
   }
 
+  // A REAL LOGO IS NOT. It was drawn square, cropped to fill and clipped to a
+  // circle, which for a wordmark — and almost every one of these shops has a
+  // wordmark — kept the middle few letters and threw the rest away: "AUTO
+  // GLASS KINGS" arrived in the client's own portal as "J GL / KIN".
+  //
+  // So the height is fixed and the width runs, capped so a very wide mark
+  // cannot push the business name off a phone. object-contain, no rounding:
+  // a logo is a picture of a brand, not a face.
   return (
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       src={logoUrl}
       alt={businessName}
-      className={`${sizeClasses} rounded-full object-cover flex-shrink-0`}
+      className={`${size === 'sm' ? 'h-8' : 'h-10'} w-auto max-w-[132px] object-contain flex-shrink-0`}
       onError={() => setImageError(true)}
     />
   )
