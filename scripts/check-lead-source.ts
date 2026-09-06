@@ -52,6 +52,26 @@ check(
   badge({ utmSource: 'bing', utmMedium: 'cpc' }),
   'PAID Microsoft Ads'
 )
+// The live case this was written for: a Bing Ads lead the admin list called
+// Microsoft Ads and the email said nothing about at all.
+check('an msclkid alone is proof', badge({ msclkid: 'abc123' }), 'PAID Microsoft Ads')
+check('a ttclid alone is proof', badge({ ttclid: 'abc123' }), 'PAID TikTok Ads')
+check(
+  'msclkid with the campaign tagged',
+  badge({ msclkid: 'abc123', utmCampaign: 'Windshield — Bing' }),
+  'PAID Microsoft Ads · Windshield — Bing'
+)
+check('utm_source=adwords is Google Ads, not "Adwords"', badge({ utmSource: 'adwords', utmMedium: 'ppc' }), 'PAID Google Ads')
+check(
+  'a paid source we cannot name stays off the paid badge',
+  badge({ utmMedium: 'cpc' }),
+  'TAG cpc'
+)
+check(
+  'a paid source that is not a search engine still reads as a sentence',
+  badge({ utmSource: 'facebook', utmMedium: 'paid_social' }),
+  'PAID Facebook Ads'
+)
 
 // --- the client's own tagged links ----------------------------------------
 // Verbatim, because "gbp_aliso_viejo" is the string they typed into the link

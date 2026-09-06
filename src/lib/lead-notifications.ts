@@ -18,11 +18,18 @@ import { countSegments, fitSegments } from '@/lib/sms-segments'
  */
 
 import { formatPhoneDisplay, properCase } from '@/lib/lead-display'
+import { paidAdSource } from '@/lib/lead-channel'
 
 export interface LeadAttribution {
   gclid?: string | null
   gbraid?: string | null
   wbraid?: string | null
+  /* Microsoft's and TikTok's click ids. They have no Lead column of their own
+   * — they ride in formData — and the alert had no idea they existed, which
+   * is how a Bing Ads lead read "Microsoft Ads" in the admin list and carried
+   * no badge at all on the email the shop actually opens. */
+  msclkid?: string | null
+  ttclid?: string | null
   utmSource?: string | null
   utmMedium?: string | null
   utmCampaign?: string | null
@@ -44,10 +51,12 @@ export interface LeadAttribution {
  * alert. "Are these leads coming from the ads?" is the question behind most
  * of the calls this platform gets, and the answer was already in the record.
  *
- * A GOOGLE CLICK ID IS PROOF. Google mints gclid/gbraid/wbraid on an ad click
- * and nowhere else, so its presence is not an inference. The UTM fallback
- * below is the shop's own tagging rather than Google's word for it, which is
- * good enough for a label but is why it is second.
+ * A CLICK ID IS PROOF. Google mints gclid/gbraid/wbraid on an ad click and
+ * nowhere else, and the same is true of Microsoft's msclkid and TikTok's
+ * ttclid, so their presence is not an inference. UTM tagging is second: it is
+ * the shop's own word rather than the network's, good enough for a label.
+ * fbclid is deliberately NOT proof — Facebook stamps it on organic post links
+ * too. All of that lives in lead-channel.ts, which this defers to.
  *
  * Anything else returns null and the alert says nothing, rather than guessing.
  * Telling a shop a lead came from their ads when it came from their Business
@@ -57,17 +66,21 @@ export function adSourceOf(
   attribution?: LeadAttribution | null
 ): { network: string; campaign: string | null } | null {
   if (!attribution) return null
-  const campaign = attribution.utmCampaign?.trim() || null
-  if (attribution.gclid || attribution.gbraid || attribution.wbraid) {
-    return { network: 'Google Ads', campaign }
-  }
-  const source = (attribution.utmSource || '').toLowerCase()
-  const medium = (attribution.utmMedium || '').toLowerCase()
-  const paid = /cpc|ppc|paid|adwords/.test(medium)
-  if (!paid) return null
-  if (/google|adwords/.test(source)) return { network: 'Google Ads', campaign }
-  if (/bing|microsoft|msn/.test(source)) return { network: 'Microsoft Ads', campaign }
-  return null
+  /* ONE RULE, SHARED WITH THE LEAD LIST. This used to be its own smaller copy
+     that knew only Google's three click ids, and the two answers disagreed in
+     the worst possible direction: the admin badge said "Microsoft Ads" and the
+     email the shop actually reads said nothing at all, on a lead their Bing
+     spend had paid for. Both sides now ask paidAdSource. */
+  const paid = paidAdSource(attribution)
+  /* Paid, but nothing names the network — utm_medium=cpc with no source. The
+     green badge is a claim about a specific ad account, so it stays quiet;
+     taggedSourceOf below still reports whatever the link was tagged with. */
+  if (!paid || !paid.network) return null
+  /* The click-id labels already read "Google Ads" / "Microsoft Ads"; a network
+     derived from a utm_source is a bare name, and "From your Facebook" is not
+     a sentence. */
+  const network = /ads$/i.test(paid.network) ? paid.network : `${paid.network} Ads`
+  return { network, campaign: paid.campaign }
 }
 
 /** One tag value, made safe to drop into an email or a text message. */

@@ -850,6 +850,11 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
             gclid,
             gbraid,
             wbraid,
+            // No Lead columns of their own — they were captured into formData
+            // and stopped there, so a Bing Ads lead reached the shop's inbox
+            // looking untracked while the admin list called it Microsoft Ads.
+            msclkid: text(formData.msclkid) || null,
+            ttclid: text(formData.ttclid) || null,
             utmSource,
             utmMedium,
             utmCampaign,
