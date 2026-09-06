@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
 import { auditConversionSetup, CONVERSION_STANDARD } from '@/lib/google-ads-conventions'
+import { auditCampaignGoals, standardRefsFrom } from '@/lib/google-ads-campaign-goals'
 
 export const dynamic = 'force-dynamic'
-// Two API calls to Google, and their search endpoint is not fast.
+// Several API calls to Google, and their search endpoint is not fast.
 export const maxDuration = 60
 
 /**
@@ -44,5 +45,18 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ standard: CONVERSION_STANDARD, audit: null, reason: result.error })
   }
 
-  return NextResponse.json({ standard: CONVERSION_STANDARD, audit: result.audit })
+  // Whether the CAMPAIGNS bid to those actions is a separate question with a
+  // separate answer: biddability lives on a category goal, and a campaign may
+  // carry its own set that overrides the account's. An account can pass the
+  // audit above while every campaign that spends money optimises to something
+  // else. Failing to read it is not "no problems" — the card says which.
+  const refs = standardRefsFrom(result.audit)
+  const campaigns = await auditCampaignGoals(tracking.googleAdsCustomerId, refs)
+
+  return NextResponse.json({
+    standard: CONVERSION_STANDARD,
+    audit: result.audit,
+    campaignGoals: campaigns.ok ? campaigns.report : null,
+    campaignGoalsError: campaigns.ok ? null : campaigns.error,
+  })
 }

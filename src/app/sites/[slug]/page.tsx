@@ -1,8 +1,9 @@
 import { formatPhoneDisplay } from '@/lib/lead-display'
+import { headlineArea, areaWithState, servingLine } from '@/lib/site-area'
 import { canViewSite, isPreview, siteIsLive } from '@/lib/site-preview'
 import PreviewBanner from '@/components/sites/PreviewBanner'
 import { headers } from 'next/headers'
-import { servicePath } from '@/lib/site-paths'
+import { servicePath, readPathOverrides } from '@/lib/site-paths'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
@@ -111,6 +112,10 @@ async function getClient(slug: string) {
       filesInsuranceClaims: true,
       smsCapable: true,
       serviceAreas: true,
+      // Headlines only — see lib/site-area.ts. Required by AreaNaming, so a
+      // page that forgets it cannot compile.
+      marketArea: true,
+      pathOverrides: true,
       googleMapsUrl: true,
       clarityProjectId: true,
     },
@@ -149,8 +154,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const stance = hostStanceFor(client, (await headers()).get('host'))
   const siteRoot = stance.canonicalOrigin
   const robots = stance.isCanonicalHost ? undefined : { index: false, follow: true }
-  const title = `${client.businessName} | Auto Glass Repair & Replacement in ${client.city}, ${client.state}`
-  const description = `Fast, professional windshield repair and replacement in ${client.city}, ${client.state}. Free quotes, insurance assistance${client.offersMobileService ? ', mobile service to your home or office' : ''}. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
+  // The area the shop SELLS to, which is the shop's city unless an operator
+  // has said otherwise — see lib/site-area.ts. The schema below still carries
+  // the real locality.
+  const area = areaWithState(client)
+  const title = `${client.businessName} | Auto Glass Repair & Replacement in ${area}`
+  const description = `Fast, professional windshield repair and replacement in ${area}. Free quotes, insurance assistance${client.offersMobileService ? ', mobile service to your home or office' : ''}. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
 
   return {
     title,
@@ -200,7 +209,7 @@ export default async function ClientSitePage({ params }: PageProps) {
     smsCapable: client.smsCapable,
   }
   const nav = prioritizeServices(services).slice(0, 4).map((s) => ({
-    href: `${basePath}${servicePath(s.slug)}`,
+    href: `${basePath}${servicePath(s.slug, readPathOverrides(client.pathOverrides))}`,
     label: s.name,
   }))
 
@@ -226,9 +235,14 @@ export default async function ClientSitePage({ params }: PageProps) {
   // windshield — it reads as an unknown surcharge — while mobile service is
   // the strongest thing a glass shop can say and answers "do I lose a day of
   // work". ADAS earns its place further down, as an objection it removes.
+  // The AREA, not the address. A shop in Huntington Beach working the whole
+  // county tells three quarters of its visitors they are on the wrong site by
+  // putting its own city here. The eyebrow above keeps the city, so the page
+  // still says plainly where these people are.
+  const area = headlineArea(client)
   const heroTitle = client.offersMobileService
-    ? `Cracked windshield in ${client.city}? We come to you.`
-    : `Windshield repair and replacement in ${client.city}`
+    ? `Cracked windshield in ${area}? We come to you.`
+    : `Windshield repair and replacement in ${area}`
 
   // Cities the site is willing to link to: a shop is there, or the client has
   // written something specific about it.
@@ -242,8 +256,10 @@ export default async function ClientSitePage({ params }: PageProps) {
   // different set of reasons. When it did not, both are derived from the same
   // flags and say the same four things twice — so the strip stands down.
   const wroteOwnBullets = extras.heroBullets.length > 0
-  const trustItems = wroteOwnBullets ? buildTrustItems(client, flags, extras) : []
   const heroBullets = wroteOwnBullets ? extras.heroBullets : defaultHeroBullets(flags)
+  // The strip is told what the bullets above it already say, so the two
+  // cannot repeat each other — see TRUST_TOPICS.
+  const trustItems = wroteOwnBullets ? buildTrustItems(client, flags, extras, heroBullets) : []
 
   return (
     <div
@@ -267,11 +283,7 @@ export default async function ClientSitePage({ params }: PageProps) {
       <SkipLink />
       <UtilBar
         client={client}
-        note={
-          client.offersMobileService
-            ? `Mobile service across ${client.city} & nearby — we come to your home or workplace`
-            : `Serving ${client.city}, ${client.state} and nearby`
-        }
+        note={servingLine(client, client.offersMobileService)}
       />
       <SiteHeader client={client} basePath={basePath} reviews={reviews} nav={nav} />
 
@@ -319,9 +331,25 @@ export default async function ClientSitePage({ params }: PageProps) {
               Free quote before you commit to anything — we&apos;ll tell you what your insurance
               covers and what you&apos;d actually pay.
               {client.offersMobileService
-                ? ` We come to your home, office or roadside in ${client.city}.`
+                ? ` We come to your home, office or roadside across ${area}.`
                 : ` Bring it to our ${client.city} shop and we'll take it from there.`}
             </p>
+          </div>
+
+          {/* Quote widget — above the fold on desktop, right under the
+              headline on mobile */}
+          <div id="quote" className="w-full scroll-mt-24 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:justify-self-end">
+            <WidgetMount client={client} />
+          </div>
+
+          <div className="lg:col-start-1 lg:row-start-2">
+            {/* MOVED BELOW THE FORM ON A PHONE, by sitting in the hero's second
+                row: on mobile the grid is one column, so this lands after the
+                form instead of pushing it off the screen. Measured at 390px,
+                505px of headline, lead, cost line and rating sat above the
+                form and the first input was below the fold. Desktop is
+                unchanged — both rows are the same column, so the order a
+                visitor reads is identical. */}
             {/* The money question, answered in the first screen instead of
                 section eight. State-aware, no per-shop data, and already
                 through compliance review in insurance-rules.ts. */}
@@ -336,15 +364,6 @@ export default async function ClientSitePage({ params }: PageProps) {
             <div className="mt-5 mb-[18px]">
               <RatingChip reviews={reviews} client={client} />
             </div>
-          </div>
-
-          {/* Quote widget — above the fold on desktop, right under the
-              headline on mobile */}
-          <div id="quote" className="w-full scroll-mt-24 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:justify-self-end">
-            <WidgetMount client={client} />
-          </div>
-
-          <div className="lg:col-start-1 lg:row-start-2">
             <ul className="space-y-2.5 list-none p-0 m-0 max-w-xl">
               {heroBullets.map((b) => (
                 <li key={b.lead} className="flex items-start gap-2.5 text-[var(--tx2)]">
@@ -357,7 +376,14 @@ export default async function ClientSitePage({ params }: PageProps) {
               ))}
             </ul>
             <div className="mt-6 max-[719px]:flex max-[719px]:flex-col max-[719px]:[&>a]:w-full flex flex-wrap gap-3">
-              <CtaButton href="#quote">Get my free quote</CtaButton>
+              {/* Desktop only. On a phone the form is ABOVE this, so tapping
+                  "Get my free quote" scrolled the visitor back up to a form
+                  they had already scrolled past — and its label repeated the
+                  submit button they passed on the way. The call button stays:
+                  it is the one action the form does not already offer. */}
+              <span className="hidden lg:contents">
+                <CtaButton href="#quote">Get my free quote</CtaButton>
+              </span>
               <CallButton client={client} withLabel />
             </div>
           </div>

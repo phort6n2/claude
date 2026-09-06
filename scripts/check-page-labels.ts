@@ -30,6 +30,30 @@ const cases: Array<[string, string, string]> = [
   ['Auto Glass', 'Auto Glass', 'Auto Glass'],
   ['Collision Auto Glass & Calibration', 'Collision Auto Glass & Calibration', 'Collision Auto Glass & Calibration'],
   ['', '', ''],
+  // The REAL titles from the live site, dangling hyphen and all. The first
+  // version of these cases was reconstructed from the rendered labels, so it
+  // could not show the trailing "-" that was stopping the suffix rule.
+  ['Fast Auto Glass Repair Service - | Auto Glass Kings', 'Fast Auto Glass Repair Service', 'Auto Glass Repair'],
+  ['Fast Back Glass Repair Service - | Auto Glass Kings', 'Fast Back Glass Repair Service', 'Back Glass Repair'],
+  ['Fast Car Window Replacement Service - | Auto Glass Kings', 'Fast Car Window Replacement Service', 'Car Window Replacement'],
+  ['Free Auto Glass Quote - | Auto Glass Kings', 'Free Auto Glass Quote', 'Free Auto Glass Quote'],
+  ['Mobile Auto Glass Service - | Auto Glass Kings', 'Mobile Auto Glass Service', 'Mobile Auto Glass'],
+  // Auto Glass Kings' kept pages, which are the reason the sales-word rules
+  // exist: eight footer links that all began "Fast" and all ended "Service",
+  // so the words telling them apart were in the middle.
+  ['Fast Auto Glass Repair Service', 'Fast Auto Glass Repair Service', 'Auto Glass Repair'],
+  ['Fast Auto Glass Replacement Service', 'Fast Auto Glass Replacement Service', 'Auto Glass Replacement'],
+  ['Fast Back Glass Repair Service', 'Fast Back Glass Repair Service', 'Back Glass Repair'],
+  ['Fast Car Window Repair Service', 'Fast Car Window Repair Service', 'Car Window Repair'],
+  ['Fast Door Glass Repair Service', 'Fast Door Glass Repair Service', 'Door Glass Repair'],
+  ['Affordable Windshield Replacement Near Me', 'Affordable Windshield Replacement Near Me', 'Windshield Replacement'],
+  // NOT stripped: mobile is a different job, and a free quote is the offer.
+  ['Mobile Auto Glass Service', 'Mobile Auto Glass Service', 'Mobile Auto Glass'],
+  ['Free Auto Glass Quote', 'Free Auto Glass Quote', 'Free Auto Glass Quote'],
+  // The leading "Auto Glass" comes off only when a subject survives it.
+  ['Auto Glass Repair', 'Auto Glass Repair', 'Auto Glass Repair'],
+  // A page that is nothing but the pitch keeps its words rather than emptying.
+  ['Fast Service', 'Fast Service', 'Fast Service'],
   // long one gets cut on a word boundary
   ['Everything You Ever Wanted To Know About Laminated Windshield Glass', 'Everything You Ever Wanted To Know About Laminated Windshield Glass', 'Everything You Ever Wanted To Know…'],
 ]

@@ -235,6 +235,23 @@ the block that talks about the business rather than the customer, and ahead of
 the proof it stood between a paid visitor and every section that answers
 "what will this cost me".
 
+**Headlines name an AREA, not the address** (`site-area.ts`, `Client.marketArea`,
+edited on the Website tab; bootstrap: `MARKET_AREA_SQL`). A shop sits in one
+city and sells to a region — Auto Glass Kings are in Huntington Beach and work
+Orange County — and an H1 naming the city tells most of the people who land on
+it they are on the wrong site. Set the field and the H1s, page titles, meta
+descriptions, the top bar and the OG card say the region; leave it empty and
+everything reads exactly as it did, from `Client.city`. It touches **only**
+what a headline says: the address, the LocalBusiness `addressLocality`, the
+contact and location cards, the legal pages and the city pages keep the real
+city, because those are NAP facts cross-checked against the Business Profile,
+and the eyebrow above each H1 keeps it too. `AreaNaming.marketArea` is
+deliberately REQUIRED rather than optional — every site page loads its client
+through an explicit Prisma `select`, and an optional field made a page that
+forgot it compile cleanly and render the city forever, which is exactly how
+this shipped wrong the first time. It is a claim about coverage, so it is
+typed by an operator and never inferred.
+
 **Two logo slots, set on the Website tab** (`LogoCard`, `/api/clients/[id]/logo`).
 `Client.logoUrl` is the header's, drawn on white and also used as the photo
 watermark and the JSON-LD `logo`. `Client.footerLogoUrl` is only for the dark
@@ -244,6 +261,20 @@ pasted address is COPIED to blob storage rather than referenced: these
 addresses are usually on the old site this platform is replacing, and the
 week it is switched off is the week the logo would vanish. When the copy
 cannot be made the original is kept and the card says so.
+
+**A cutover has THREE answers per old address, not two** (`UrlParityCard`,
+`/api/clients/[id]/cutover`). Redirect it, build a page at it, or — when the
+template already has that page under a different name — **move the page onto
+the old address**. `Client.pathOverrides` holds `{ template path: old
+address }` (bootstrap: `PATH_OVERRIDE_SQL`), and `site-paths.ts` is where
+every link, canonical, sitemap entry and schema URL asks for it, so the two
+can never drift. The template path 308s to the override: ONE address per
+page, always, or the ranking splits between two of them, which is the thing
+the whole module exists to prevent. Refused, in `pathOverrideProblem()`: an
+address that is one of the template's own service slugs or an alias of one,
+and anything shaped like a city page — **middleware rewrites both before any
+of this app's routing sees them, and middleware cannot read the database**,
+so such an override would be accepted and then silently ignored.
 
 **Which cities get pages is edited here too** (`ServiceAreaPlanner`). The
 first `LOCATION_PAGE_LIMIT` of `Client.serviceAreas` (after shop cities merge

@@ -1,4 +1,5 @@
 import { adsSearch } from '@/lib/google-ads'
+import { CONVERSION_NAMES, CONVERSION_PREFIX } from '@/lib/google-ads-conversion-names'
 
 /**
  * ONE conversion setup, identical in every client's Google Ads account.
@@ -6,7 +7,7 @@ import { adsSearch } from '@/lib/google-ads'
  * The problem this solves is not tidiness. Every account was set up by
  * whoever happened to be doing it that week, so the same event is called
  * "Calls from ads" in one account and "Call from Ads" in the next, counts a
- * call after 15 seconds here and 10 there, and looks back 30 days in one
+ * call after 60 seconds here and 10 there, and looks back 30 days in one
  * place and 7 in another. Nothing is visibly broken, and yet no two accounts
  * can be compared, no report can be written that spans them, and nobody can
  * answer "is this shop tracking properly?" without opening the account and
@@ -26,8 +27,11 @@ import { adsSearch } from '@/lib/google-ads'
  * names it, for exactly that reason.
  */
 
-/** Every action this platform owns starts with this. */
-export const CONVERSION_PREFIX = 'AGMP'
+// The names themselves live in google-ads-conversion-names.ts, which imports
+// nothing — the Advertising tab's setup instructions are a client component
+// and cannot import this file, which talks to the Ads API. Re-exported so
+// this stays the one place server code asks for the convention.
+export { CONVERSION_PREFIX }
 
 export interface ConversionSpec {
   key: string
@@ -68,7 +72,7 @@ export interface ConversionSpec {
 export const CONVERSION_STANDARD: ConversionSpec[] = [
   {
     key: 'lead-form',
-    name: 'AGMP Lead Form',
+    name: CONVERSION_NAMES.leadForm,
     category: 'SUBMIT_LEAD_FORM',
     type: 'WEBPAGE',
     origin: 'WEBSITE',
@@ -81,7 +85,7 @@ export const CONVERSION_STANDARD: ConversionSpec[] = [
     setup: [
       'Goals → Conversions → New conversion action → Website.',
       'Scan the shop\'s site URL, then "Add a conversion action manually".',
-      'Goal: Submit lead form. Name: AGMP Lead Form.',
+      `Goal: Submit lead form. Name: ${CONVERSION_NAMES.leadForm}.`,
       'Value: "Don\'t use a value" — the value comes from the booked job, not the form.',
       'Count: One. Click-through window: 90 days. Attribution: data-driven.',
       'Take the tag\'s send_to (AW-xxx/LABEL) and paste it into the app on the Advertising tab; the site fires it on submit.',
@@ -89,46 +93,54 @@ export const CONVERSION_STANDARD: ConversionSpec[] = [
   },
   {
     key: 'call-from-ads',
-    name: 'AGMP Call From Ads',
+    name: CONVERSION_NAMES.callFromAds,
     category: 'PHONE_CALL_LEAD',
     type: 'AD_CALL',
     origin: 'CALL_FROM_ADS',
     fires: 'Someone taps the call asset in the ad itself, without landing on the site.',
     countingType: 'ONE_PER_CLICK',
     clickLookbackDays: 30,
-    // 15 is Google's own default and the number that filters the wrong-number
-    // and instant-hangup calls without discarding a real one.
-    callSeconds: 15,
+    // 10, not Google's default 15. These are low-volume local accounts where
+    // Smart Bidding is starved of conversions long before it is fooled by a
+    // bad one, and a real auto-glass enquiry is often over in fifteen seconds
+    // — year, make, model, "can you do Tuesday". The cost is that a few
+    // wrong numbers get counted; the benefit is enough countable calls for
+    // bidding to learn from at all. Set deliberately; do not "correct" it
+    // back to 15.
+    callSeconds: 10,
     biddable: true,
     setup: [
       'Goals → Conversions → New conversion action → Phone calls → Calls from ads using call assets.',
-      'Name: AGMP Call From Ads.',
-      'Count a call after 15 seconds. Count: One. Click-through window: 30 days.',
+      `Name: ${CONVERSION_NAMES.callFromAds}.`,
+      'Count a call after 10 seconds. Count: One. Click-through window: 30 days.',
       'Requires a call asset on the campaign — without one this action exists and never fires.',
     ],
   },
   {
     key: 'website-call',
-    name: 'AGMP Website Call',
+    name: CONVERSION_NAMES.websiteCall,
     category: 'PHONE_CALL_LEAD',
     type: 'WEBSITE_CALL',
     origin: 'WEBSITE',
     fires: 'Someone calls the number shown on the site after arriving from an ad.',
     countingType: 'ONE_PER_CLICK',
     clickLookbackDays: 30,
-    callSeconds: 15,
+    // The same 10 seconds as the call-from-ads action above, and for the same
+    // reason — the two must agree, or one inbound call counts differently
+    // depending on which way it arrived.
+    callSeconds: 10,
     biddable: true,
     setup: [
       'Goals → Conversions → New conversion action → Phone calls → Calls to a phone number on your website.',
-      'Name: AGMP Website Call.',
+      `Name: ${CONVERSION_NAMES.websiteCall}.`,
       'THE NUMBER MUST BE THE ONE THE SITE ACTUALLY SHOWS. If a tracking number is set in this app, the site shows that number — the conversion action has to name it, or Google swaps a number the page never displays and the action never fires.',
-      'Count a call after 15 seconds. Count: One. Click-through window: 30 days.',
+      'Count a call after 10 seconds. Count: One. Click-through window: 30 days.',
       'Paste the snippet\'s send_to into the app on the Advertising tab.',
     ],
   },
   {
     key: 'sale',
-    name: 'AGMP Sale',
+    name: CONVERSION_NAMES.sale,
     category: 'PURCHASE',
     type: 'UPLOAD_CLICKS',
     origin: 'WEBSITE',
@@ -139,7 +151,7 @@ export const CONVERSION_STANDARD: ConversionSpec[] = [
     biddable: false,
     setup: [
       'Goals → Conversions → New conversion action → Import → Manual import using API or uploads.',
-      'Goal: Purchase. Name: AGMP Sale.',
+      `Goal: Purchase. Name: ${CONVERSION_NAMES.sale}.`,
       'Value: use different values for each conversion — the app sends the real job value.',
       'Count: One. Click-through window: 90 days.',
       'Set it as the offline conversion action on this client\'s Advertising tab, or nothing uploads to it.',
@@ -209,6 +221,12 @@ export interface ConversionAudit {
   doubleCounting: string[]
   /** Goal keys whose biddability disagrees with the standard. */
   goalIssues: string[]
+  /**
+   * Account-level plumbing that decides whether an action ever fires, as
+   * opposed to whether it is set up right. Kept apart from goalIssues because
+   * it is fixed on a different screen — Goals → Conversions → Settings.
+   */
+  accountSettings: string[]
   /** AGMP-prefixed actions that are not part of the standard. */
   extras: Array<{ id: string; name: string; note: string }>
   /** True when nothing needs doing. */
@@ -290,9 +308,33 @@ export async function auditConversionSetup(
      FROM customer_conversion_goal`
   )
 
+  /**
+   * WHICH ACTION A CALL FROM AN AD REPORTS TO.
+   *
+   * Goals → Conversions → Settings → "Call conversion action", and it is
+   * account-level: every call asset that has not been given its own action
+   * reports to whatever is named here. Nothing in the conversion list shows
+   * it — an account can have all four actions, perfectly configured, and be
+   * sending every call from every ad to a different action entirely, or to
+   * Google's own default one, and the Conversions summary looks fine.
+   *
+   * Found because an operator went looking through the Ads UI and came across
+   * a settings page nobody had opened.
+   */
+  const callSetting = await adsSearch(
+    customerId,
+    `SELECT customer.call_reporting_setting.call_reporting_enabled,
+            customer.call_reporting_setting.call_conversion_reporting_enabled,
+            customer.call_reporting_setting.call_conversion_action
+     FROM customer`
+  )
+
   return {
     ok: true,
-    audit: compareToStandard(customerId, listed.rows, goals.ok ? goals.rows : null, options),
+    audit: compareToStandard(customerId, listed.rows, goals.ok ? goals.rows : null, {
+      ...options,
+      callSettingRows: callSetting.ok ? callSetting.rows : null,
+    }),
   }
 }
 
@@ -309,7 +351,11 @@ export function compareToStandard(
   customerId: string,
   actionRows: Record<string, unknown>[],
   goalRows: Record<string, unknown>[] | null,
-  options: { offlineConversionActionId?: string | null } = {}
+  options: {
+    offlineConversionActionId?: string | null
+    /** The `customer` row carrying call_reporting_setting, when it was read. */
+    callSettingRows?: Record<string, unknown>[] | null
+  } = {}
 ): ConversionAudit {
   const all = readActions(actionRows)
   // Matching only ever considers ENABLED actions: telling someone to rename a
@@ -541,12 +587,59 @@ export function compareToStandard(
     )
   }
 
+  /**
+   * WHERE A CALL FROM AN AD ACTUALLY LANDS.
+   *
+   * Goals → Conversions → Settings → "Call conversion action" names the
+   * action every call asset reports to unless it has been given its own. It
+   * is account-level and invisible from the conversion list, so an account
+   * can hold all four actions, correctly configured, and still be sending
+   * every call from every ad somewhere else — or to Google's own default
+   * action, which no report of ours knows about.
+   *
+   * The check is quiet in two cases on purpose. When the account has no
+   * call-from-ads action at all, the finding above already says "missing" and
+   * repeating it here is a second line about one absence. And when the
+   * setting points at the RIGHT action under the wrong name, the rename
+   * finding covers it — the setting itself is correct, and it follows the
+   * action through a rename.
+   */
+  const accountSettings: string[] = []
+  const callSpec = CONVERSION_STANDARD.find((s) => s.key === 'call-from-ads')
+  const callFinding = findings.find((f) => f.key === 'call-from-ads')
+  const callRow = options.callSettingRows?.[0]
+  if (callRow && callSpec && callFinding?.actionId) {
+    const setting =
+      ((callRow as { customer?: Record<string, unknown> }).customer as
+        | Record<string, unknown>
+        | undefined)?.callReportingSetting as Record<string, unknown> | undefined
+    // Both flags are omitted when false — the same protobuf rule as `biddable`.
+    const reporting = setting?.callConversionReportingEnabled === true
+    const chosen = str(setting?.callConversionAction).split('/').pop() || ''
+
+    if (!reporting) {
+      accountSettings.push(
+        `Call conversion reporting is OFF for this account, so nothing a call asset produces reaches ${callSpec.name}. Turn it on at Goals → Conversions → Settings.`
+      )
+    } else if (!chosen) {
+      accountSettings.push(
+        `No call conversion action is set for the account, so calls from ads report to Google's default action instead of ${callSpec.name} — and nothing in this app or your reports counts them. Set it at Goals → Conversions → Settings → Call conversion action.`
+      )
+    } else if (chosen !== callFinding.actionId) {
+      const other = all.find((a) => a.id === chosen)
+      accountSettings.push(
+        `Calls from ads are reporting to ${other ? `"${other.name}"` : `action ${chosen}`}, not ${callSpec.name} (${callFinding.actionId}). Change it at Goals → Conversions → Settings → Call conversion action.`
+      )
+    }
+  }
+
   const clean =
     findings.every((f) => f.state === 'ok') &&
     goalIssues.length === 0 &&
+    accountSettings.length === 0 &&
     // A dormant GA4 import is a note, not a fault. Anything live in a goal we
     // already own is.
     !doubleCounting.some((d) => d.includes('ENABLED') || d.includes('is enabled in'))
 
-  return { customerId, findings, goalIssues, extras, doubleCounting, clean }
+  return { customerId, findings, goalIssues, accountSettings, extras, doubleCounting, clean }
 }

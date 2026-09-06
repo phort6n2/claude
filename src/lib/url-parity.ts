@@ -1,5 +1,5 @@
 import { validatePublicUrl } from '@/lib/site-import'
-import { servicePath, locationPath } from '@/lib/site-paths'
+import { servicePath, locationPath, readPathOverrides } from '@/lib/site-paths'
 import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
 import { locationPages, mergeServiceAreas } from '@/lib/site-locations'
 
@@ -231,15 +231,21 @@ export interface ParityClient {
   serviceAreas: string[]
   shopCities: string[]
   flags: Record<ServiceFlag, boolean>
+  /** Pages already moved onto one of the old site's addresses. */
+  pathOverrides?: unknown
 }
 
 /** Every path the hosted site actually serves for this shop. */
 export function hostedPathsFor(client: ParityClient): string[] {
   const areas = mergeServiceAreas(client.serviceAreas || [], client.shopCities || [])
+  // The addresses the site ACTUALLY serves, overrides included — otherwise a
+  // page already moved onto an old address is reported as having nowhere to
+  // go, which is the one row an operator must not have to second-guess.
+  const overrides = readPathOverrides(client.pathOverrides)
   return [
     '/',
-    ...servicesForClient(client.flags).map((s) => servicePath(s.slug)),
-    ...locationPages(areas).map((l) => locationPath(l.slug)),
+    ...servicesForClient(client.flags).map((s) => servicePath(s.slug, overrides)),
+    ...locationPages(areas).map((l) => locationPath(l.slug, overrides)),
     '/privacy',
     '/terms',
   ]

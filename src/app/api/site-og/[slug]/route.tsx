@@ -1,6 +1,8 @@
 import { ImageResponse } from 'next/og'
 import { prisma } from '@/lib/db'
+import { siteClientWhere } from '@/lib/site-client'
 import { sitePaletteVars } from '@/lib/site-theme'
+import { areaWithState } from '@/lib/site-area'
 
 export const runtime = 'nodejs'
 export const revalidate = 3600
@@ -14,11 +16,14 @@ export const revalidate = 3600
 export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const client = await prisma.client.findFirst({
-    where: { OR: [{ slug }, { siteSubdomain: slug }] },
+    where: siteClientWhere(slug),
     select: {
       businessName: true,
       city: true,
       state: true,
+      // The share card is an ad, so it names the area the site sells to —
+      // the same words as the H1 somebody is about to land on.
+      marketArea: true,
       phone: true,
       primaryColor: true,
       accentColor: true,
@@ -32,7 +37,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   }
 
   const reviews = await prisma.clientGbpReviews
-    .findFirst({ where: { client: { OR: [{ slug }, { siteSubdomain: slug }] } } })
+    .findFirst({ where: { client: siteClientWhere(slug) } })
     .catch(() => null)
 
   const palette = sitePaletteVars(client.primaryColor, client.accentColor)
@@ -65,7 +70,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
               fontWeight: 700,
             }}
           >
-            {client.city}, {client.state} auto glass
+            {areaWithState(client)} auto glass
           </div>
           <div
             style={{

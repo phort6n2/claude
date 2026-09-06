@@ -2,8 +2,8 @@ import { formatPhoneDisplay } from '@/lib/lead-display'
 import { canViewSite, isPreview, siteIsLive } from '@/lib/site-preview'
 import PreviewBanner from '@/components/sites/PreviewBanner'
 import { headers } from 'next/headers'
-import { servicePath, locationPath } from '@/lib/site-paths'
-import { notFound } from 'next/navigation'
+import { servicePath, locationPath, readPathOverrides } from '@/lib/site-paths'
+import { notFound, permanentRedirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
 import { SiteAnalytics } from '@/components/sites/analytics'
@@ -60,6 +60,8 @@ export const revalidate = 300
 
 interface PageProps {
   params: Promise<{ slug: string; city: string }>
+  /** See the note on ServicePage: stops the override redirect looping. */
+  atOverride?: boolean
 }
 
 async function getClient(slug: string) {
@@ -105,6 +107,10 @@ async function getClient(slug: string) {
       filesInsuranceClaims: true,
       smsCapable: true,
       serviceAreas: true,
+      // Headlines only — see lib/site-area.ts. Required by AreaNaming, so a
+      // page that forgets it cannot compile.
+      marketArea: true,
+      pathOverrides: true,
       googleMapsUrl: true,
       clarityProjectId: true,
     },
@@ -165,12 +171,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     twitter: { card: 'summary_large_image', title, description, images: [`${siteRoot}/api/site-og/${client.slug}`] },
     ...(robots ? { robots } : {}),
     alternates: {
-      canonical: `${stance.canonicalOrigin}${locationPath(location.slug)}`,
+      canonical: `${stance.canonicalOrigin}${locationPath(location.slug, readPathOverrides(client.pathOverrides))}`,
     },
   }
 }
 
-export default async function LocationPage({ params }: PageProps) {
+export default async function LocationPage({ params, atOverride }: PageProps) {
   const { slug, city } = await params
   const client = await getClient(slug)
   if (!client) notFound()
@@ -195,6 +201,14 @@ export default async function LocationPage({ params }: PageProps) {
   const location = findLocation(areas, city)
   if (!location) notFound()
 
+  // Moved onto one of the old site's addresses — see ServicePage. One address
+  // per page: the template one sends its traffic there and stops answering.
+  const overrides = readPathOverrides(client.pathOverrides)
+  const moved = overrides[locationPath(location.slug)]
+  if (moved && !atOverride) {
+    permanentRedirect(`${sitePathPrefixFor(client, (await headers()).get('host'))}${moved}`)
+  }
+
   const services = servicesForClient(client as Record<ServiceFlag, boolean>)
   const basePath = sitePathPrefixFor(client, (await headers()).get('host'))
   const palette = sitePaletteVars(client.primaryColor, client.accentColor)
@@ -205,7 +219,7 @@ export default async function LocationPage({ params }: PageProps) {
     smsCapable: client.smsCapable,
   }
   const nav = prioritizeServices(services).slice(0, 4).map((s) => ({
-    href: `${basePath}${servicePath(s.slug)}`,
+    href: `${basePath}${servicePath(s.slug, overrides)}`,
     label: s.name,
   }))
 
@@ -248,8 +262,10 @@ export default async function LocationPage({ params }: PageProps) {
   // different set of reasons. When it did not, both are derived from the same
   // flags and say the same four things twice — so the strip stands down.
   const wroteOwnBullets = extras.heroBullets.length > 0
-  const trustItems = wroteOwnBullets ? buildTrustItems(client, flags, extras) : []
   const heroBullets = wroteOwnBullets ? extras.heroBullets : defaultHeroBullets(flags)
+  // The strip is told what the bullets above it already say, so the two
+  // cannot repeat each other — see TRUST_TOPICS.
+  const trustItems = wroteOwnBullets ? buildTrustItems(client, flags, extras, heroBullets) : []
 
   // The client's own words about this city lead the page when they exist, and
   // are what makes it an indexable page rather than the template renamed.
@@ -341,12 +357,6 @@ export default async function LocationPage({ params }: PageProps) {
               {`Windshield repair and replacement in ${location.area}`}
             </h1>
             <p className="mt-4 text-[17px] leading-[1.55] text-[var(--tx2)] max-w-[48ch]">{heroSub}</p>
-            <p className="mt-3 text-[15px] leading-[1.5] text-[var(--tx2)] max-w-[46ch] border-l-2 border-[var(--cta)] pl-3">
-              {heroCostLineFor(client.state)}
-            </p>
-            <div className="mt-5 mb-[18px]">
-              <RatingChip reviews={reviews} client={client} />
-            </div>
           </div>
 
           <div id="quote" className="w-full scroll-mt-24 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:justify-self-end">
@@ -354,6 +364,19 @@ export default async function LocationPage({ params }: PageProps) {
           </div>
 
           <div className="lg:col-start-1 lg:row-start-2">
+            {/* MOVED BELOW THE FORM ON A PHONE, by sitting in the hero's second
+                row: on mobile the grid is one column, so this lands after the
+                form instead of pushing it off the screen. Measured at 390px,
+                505px of headline, lead, cost line and rating sat above the
+                form and the first input was below the fold. Desktop is
+                unchanged — both rows are the same column, so the order a
+                visitor reads is identical. */}
+            <p className="mt-3 text-[15px] leading-[1.5] text-[var(--tx2)] max-w-[46ch] border-l-2 border-[var(--cta)] pl-3">
+              {heroCostLineFor(client.state)}
+            </p>
+            <div className="mt-5 mb-[18px]">
+              <RatingChip reviews={reviews} client={client} />
+            </div>
             <ul className="space-y-2.5 list-none p-0 m-0 max-w-xl">
               {heroBullets.map((b) => (
                 <li key={b.lead} className="flex items-start gap-2.5 text-[var(--tx2)]">
@@ -366,7 +389,14 @@ export default async function LocationPage({ params }: PageProps) {
               ))}
             </ul>
             <div className="mt-6 max-[719px]:flex max-[719px]:flex-col max-[719px]:[&>a]:w-full flex flex-wrap gap-3">
-              <CtaButton href="#quote">Get my free quote</CtaButton>
+              {/* Desktop only. On a phone the form is ABOVE this, so tapping
+                  "Get my free quote" scrolled the visitor back up to a form
+                  they had already scrolled past — and its label repeated the
+                  submit button they passed on the way. The call button stays:
+                  it is the one action the form does not already offer. */}
+              <span className="hidden lg:contents">
+                <CtaButton href="#quote">Get my free quote</CtaButton>
+              </span>
               <CallButton client={client} withLabel />
             </div>
           </div>

@@ -1,8 +1,9 @@
 import { Phone, MapPin, ShieldCheck, Check, MessageSquare } from 'lucide-react'
-import { servicePath, locationPath } from '@/lib/site-paths'
+import { servicePath, locationPath, readPathOverrides } from '@/lib/site-paths'
 import { ReviewsGrid } from '@/components/sites/reviews-grid'
 import { wordmarkParts } from '@/lib/wordmark'
 import { smsHref } from '@/lib/contact-links'
+import { headlineArea, servingShort } from '@/lib/site-area'
 import { mostMentionedName } from '@/lib/review-names'
 import type { SiteExtras, FaqItem } from '@/lib/site-content'
 import { locationPages } from '@/lib/site-locations'
@@ -33,6 +34,8 @@ export interface SiteClient {
   city: string
   state: string
   postalCode: string
+  /** What the headlines call the area. Empty = the city. See lib/site-area. */
+  marketArea: string | null
   logoUrl: string | null
   /** Only for the dark footer band; falls back to logoUrl. */
   footerLogoUrl: string | null
@@ -40,6 +43,14 @@ export interface SiteClient {
   accentColor: string | null
   hasShopLocation: boolean
   googleMapsUrl: string | null
+  /**
+   * Pages moved onto an address the shop's old site used. Carried on the
+   * client so every link built anywhere in the template points at the address
+   * the page is actually served at — a link to the template path would 308,
+   * and a site whose own nav bounces through redirects is a site that lost
+   * the reason for the rename.
+   */
+  pathOverrides?: unknown
 }
 
 export interface ReviewQuote {
@@ -76,7 +87,7 @@ const SITE_BASE_CSS = `
 .gl-site a{text-decoration-thickness:1.5px;text-underline-offset:3px}
 .gl-site h1,.gl-site h2,.gl-site h3{text-wrap:balance}
 /* Skip link: visually hidden until keyboard focus. */
-.gl-skip{position:absolute;left:-9999px;top:0;z-index:100;background:var(--cta);color:#fff;font-weight:700;padding:12px 18px;border-radius:0 0 10px 0;text-decoration:none}
+.gl-skip{position:absolute;left:-9999px;top:0;z-index:100;background:var(--cta);color:var(--on-cta);font-weight:700;padding:12px 18px;border-radius:0 0 10px 0;text-decoration:none}
 .gl-skip:focus{left:0}
 /* Header scroll shadow paints on a compositable ::after opacity layer, and
    all scroll-driven motion respects prefers-reduced-motion. */
@@ -235,7 +246,7 @@ export function CtaButton({
     <a
       href={href}
       className={`inline-flex items-center justify-center gap-2.5 min-h-[52px] px-6 rounded-[14px] font-bold text-[17px] no-underline hover:-translate-y-px transition-transform ${
-        onDark ? 'text-[var(--dark-2,#111)] bg-white' : 'text-white'
+        onDark ? 'text-[var(--dark-2,#111)] bg-white' : 'text-[var(--on-cta)]'
       } ${block ? 'flex w-full' : ''}`}
       style={
         onDark
@@ -277,7 +288,7 @@ export function CallButton({
       className={`inline-flex items-center justify-center gap-2.5 min-h-[52px] px-6 rounded-[14px] font-bold text-[17px] no-underline shadow-[0_1px_2px_rgba(11,27,43,.16)] transition-colors ${
         onDark
           ? 'bg-transparent text-white border-[1.5px] border-white/70 hover:bg-white/10'
-          : 'text-white bg-[var(--cta)] border-[1.5px] border-[var(--cta)] hover:bg-[var(--cta-b)] hover:border-[var(--cta-b)]'
+          : 'text-[var(--on-cta)] bg-[var(--cta)] border-[1.5px] border-[var(--cta)] hover:bg-[var(--cta-b)] hover:border-[var(--cta-b)]'
       } ${block ? 'flex w-full' : ''}`}
     >
       <Phone className="h-[18px] w-[18px]" />
@@ -357,7 +368,7 @@ export function Wordmark({
   return (
     <span className="flex items-center gap-2.5 min-w-0">
       <span
-        className={`${badge} rounded-full shrink-0 grid place-items-center font-extrabold text-white tracking-tight`}
+        className={`${badge} rounded-full shrink-0 grid place-items-center font-extrabold text-[var(--on-cta)] tracking-tight`}
         style={{
           background: 'linear-gradient(180deg, var(--cta), var(--cta-b))',
           boxShadow: 'var(--sh-cta), inset 0 1px 0 rgba(255,255,255,.25)',
@@ -466,14 +477,14 @@ export function SiteHeader({
             sticky mobile bar covers phones. */}
         <a
           href="#quote"
-          className={`${nav && nav.length > 0 ? 'lg:ml-2 ' : ''}${reviews ? '' : 'lg:ml-auto '}hidden lg:inline-flex items-center min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] text-white shrink-0 no-underline`}
+          className={`${nav && nav.length > 0 ? 'lg:ml-2 ' : ''}${reviews ? '' : 'lg:ml-auto '}hidden lg:inline-flex items-center min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] text-[var(--on-cta)] shrink-0 no-underline`}
           style={{ background: 'linear-gradient(180deg, var(--cta), var(--cta-b))', boxShadow: 'var(--sh-cta), inset 0 1px 0 rgba(255,255,255,.2)' }}
         >
           Get my free quote
         </a>
         <a
           href={telHrefFor(client.phone)}
-          className={`${reviews ? '' : 'ml-auto lg:ml-0 '}inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] shrink-0 no-underline bg-white text-[var(--cta)] border-[1.5px] border-[var(--cta)] shadow-[0_1px_2px_rgba(11,27,43,.16)] hover:bg-[var(--s1)] transition-colors max-lg:bg-[var(--cta)] max-lg:text-white`}
+          className={`${reviews ? '' : 'ml-auto lg:ml-0 '}inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] shrink-0 no-underline bg-white text-[var(--cta-on-light)] border-[1.5px] border-[var(--cta)] shadow-[0_1px_2px_rgba(11,27,43,.16)] hover:bg-[var(--s1)] transition-colors max-lg:bg-[var(--cta)] max-lg:text-[var(--on-cta)]`}
         >
           <Phone className="h-4 w-4" />
           {/* "Call", not a bare glyph. The number itself only fits from sm
@@ -692,8 +703,10 @@ export function ProcessSection({
               className="gl-step grid grid-cols-[48px_minmax(0,1fr)] gap-4 items-start md:block"
             >
               <div
-                className={`gl-step-n h-12 w-12 rounded-full flex items-center justify-center text-white text-lg font-extrabold tabular-nums ${
-                  i === steps.length - 1 ? 'bg-[var(--cta)]' : 'bg-[var(--dark)]'
+                className={`gl-step-n h-12 w-12 rounded-full flex items-center justify-center text-lg font-extrabold tabular-nums ${
+                  i === steps.length - 1
+                    ? 'bg-[var(--cta)] text-[var(--on-cta)]'
+                    : 'bg-[var(--dark)] text-white'
                 }`}
               >
                 {i + 1}
@@ -849,16 +862,20 @@ function WarrantyBadge({ title }: { title: string }) {
         d="M120 16 L204 41 V117 C204 162 168 195 120 211 C72 195 36 162 36 117 V41 Z"
         fill="#f3cd6b"
       />
-      {/* Dark face */}
+      {/* Dark face, brand-tinted. Fixed navy on a page with no navy in it was
+          the most off-brand object on the site; --dark is the same near-black
+          the page's own dark bands use. The RIM stays metal: rim, face and
+          ribbon are three different roles, and painting two of them the brand
+          colour collapses the seal into a monochrome sticker. */}
       <path
         d="M120 24 L196 47 V116 C196 157 163 187 120 202 C77 187 44 157 44 116 V47 Z"
-        fill="#1c2431"
+        fill="var(--dark, #1c2431)"
       />
       {/* Check mark where the reference put stars — a mark of assurance,
           not a rating */}
       <path
         d="M104 62 l10 10 l22 -22"
-        stroke="#f3cd6b"
+        stroke="var(--brand-light, #f3cd6b)"
         strokeWidth="7"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -886,11 +903,13 @@ function WarrantyBadge({ title }: { title: string }) {
       <path d="M14 158 L54 150 V186 L14 194 L28 176 Z" fill="var(--cta-b, #991b1b)" />
       <path d="M226 158 L186 150 V186 L226 194 L212 176 Z" fill="var(--cta-b, #991b1b)" />
       <rect x="40" y="148" width="160" height="40" rx="4" fill="var(--cta, #b91c1c)" />
+      {/* The ribbon is painted --cta, so this is the one text on the badge
+          that has to follow it: white on a yellow ribbon measured 1.17:1. */}
       <text
         x="120"
         y="175"
         textAnchor="middle"
-        fill="#ffffff"
+        fill="var(--on-cta, #ffffff)"
         fontFamily="inherit"
         fontWeight="800"
         fontSize="24"
@@ -1389,8 +1408,8 @@ export function AreasBand({
             Areas we serve
           </h2>
           <p className="mt-3 mb-0 text-[17px] leading-[1.55] text-[var(--on-dark-2)]">
-            {client.city} and the surrounding communities — if you’re close but don’t see your
-            city, call and ask.
+            {headlineArea(client)} and the surrounding communities — if you’re close but don’t see
+            your city, call and ask.
           </p>
         </div>
         <ul
@@ -1410,7 +1429,7 @@ export function AreasBand({
               <li key={area}>
                 {slug && basePath !== undefined ? (
                   <a
-                    href={`${basePath}${locationPath(slug)}`}
+                    href={`${basePath}${locationPath(slug, readPathOverrides(client.pathOverrides))}`}
                     className="underline decoration-[var(--line-on-dark)] underline-offset-[3px] hover:decoration-white"
                   >
                     {inner}
@@ -1494,6 +1513,12 @@ export function FinalCta({ client }: { client: SiteClient; quoteHref?: string })
       style={{ background: 'radial-gradient(120% 90% at 50% 0%, var(--dark-3), var(--dark-2))' }}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 text-center">
+        {/* NO LOGO HERE, and it was tried. This is the placement a UI review
+            picked as the one that earns it — a full-bleed dark band, centred,
+            at the final ask. In place it reads as the same mark twice: the
+            footer's brand row sits about 370px below this, on the same screen,
+            with only the two buttons between them. The mark on this page is
+            the header and the footer; the closing band's job is the ask. */}
         <Eyebrow center onDark>
           Ready when you are
         </Eyebrow>
@@ -1595,17 +1620,71 @@ export function SiteFooter({
   // empty beside a single tall list of services, which is what most shops
   // look like — "More" only appears once a client has kept pages.
   const hasMoreColumn = pages.length > 0
-  const linkColumns = hasMoreColumn
-    ? 'lg:grid-cols-[1.7fr_1.15fr_0.85fr]'
-    : 'lg:grid-cols-[1.6fr_1fr]'
-  // Two columns of services — only from lg, only with enough of them to fill
-  // both (five splits 3/2; three would split 2/1 and read as a mistake), and
-  // only when "More" is not also taking a column. Measured: with all three
-  // columns present each half is ~145px and "Windshield Replacement" wraps
-  // onto two lines, which looks worse than the tall single column it
-  // replaced. Without "More" the same list has ~200px a side and sits flat.
-  const serviceColumns =
-    services && services.length >= 5 && !hasMoreColumn ? 'lg:columns-2 lg:gap-x-8' : ''
+  /**
+   * Five or more services get a band of their own, full width, three across.
+   *
+   * They cannot be three columns inside the link row, and the arithmetic is
+   * why: the row is 1030px at its widest, shared with the brand blurb and
+   * "More", which leaves the services column about 320px — 145px a column at
+   * two, under 100px at three, and "Windshield Replacement" needs 155px to
+   * stay on one line. On its own row the same list has 1030px, so three
+   * columns are ~330px each and nothing wraps.
+   */
+  const servicesBand = !!services && services.length >= 5
+  // With the services in a band, the brand block gets a row to ITSELF and the
+  // two link lists share the band below it. Brand-beside-"More" was the first
+  // shape and it left a hole you could park a car in: eight kept pages made
+  // that column tall, the brand block is four short lines, and a grid row is
+  // as tall as its tallest cell — so the bottom two-thirds of the left column
+  // was empty dark space above the services.
+  const linkColumns =
+    servicesBand || !hasMoreColumn
+      ? 'lg:grid-cols-1'
+      : 'lg:grid-cols-[1.7fr_1.15fr_0.85fr]'
+
+  const servicesBlock = services && services.length > 0 && (
+    <div>
+      <h2 className="text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5">
+        Services
+      </h2>
+      <ul
+        className={`list-none m-0 p-0 text-sm ${
+          servicesBand ? 'grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3' : ''
+        }`}
+      >
+        {services.map((s) => (
+          <li key={s.slug} className="mb-0.5">
+            <a
+              href={`${basePath || ''}${servicePath(s.slug, readPathOverrides(client.pathOverrides))}`}
+              className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-[5px]"
+            >
+              {s.name}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+
+  const moreBlock = pages.length > 0 && (
+    <div>
+      <h2 className="text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5">
+        More
+      </h2>
+      <ul className="list-none m-0 p-0 text-sm">
+        {pages.map((p) => (
+          <li key={p.path} className="mb-0.5">
+            <a
+              href={`${basePath || ''}${p.path}`}
+              className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-[5px]"
+            >
+              {p.title}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
 
   return (
     <footer className="bg-[var(--dark-2)] text-[var(--on-dark-2)] on-dark pt-11 pb-6 text-[15px]">
@@ -1632,7 +1711,10 @@ export function SiteFooter({
               </div>
             )}
             {extras?.footerBlurb && (
-              <p className="text-sm leading-[1.6] m-0 mb-3">{extras.footerBlurb}</p>
+              // Capped: the brand block spans the footer when the services sit
+              // in their own band, and an uncapped line of body text across
+              // 1100px is unreadable however short the sentence is.
+              <p className="text-sm leading-[1.6] m-0 mb-3 max-w-[62ch]">{extras.footerBlurb}</p>
             )}
             <p className="m-0 text-sm leading-[1.6]">
               <a
@@ -1654,49 +1736,27 @@ export function SiteFooter({
               )}
             </p>
           </div>
-          {services && services.length > 0 && (
-            <div>
-              <h2 className="text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5">
-                Services
-              </h2>
-              <ul className={`list-none m-0 p-0 text-sm ${serviceColumns}`}>
-                {services.map((s) => (
-                  <li key={s.slug} className="mb-0.5 break-inside-avoid">
-                    <a
-                      href={`${basePath || ''}${servicePath(s.slug)}`}
-                      className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-[5px]"
-                    >
-                      {s.name}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {/* Kept pages take a column of their own now that the service areas
-              have left the grid. Stacked under the services they made one very
-              tall column beside empty space — and the towns they mostly name
-              are in the identity card below anyway. */}
-          {pages.length > 0 && (
-            <div>
-              <h2 className="text-white font-bold text-[13px] uppercase tracking-[.09em] m-0 mb-3.5">
-                More
-              </h2>
-              <ul className="list-none m-0 p-0 text-sm">
-                {pages.map((p) => (
-                  <li key={p.path} className="mb-0.5">
-                    <a
-                      href={`${basePath || ''}${p.path}`}
-                      className="no-underline text-[var(--on-dark-2)] hover:text-white hover:underline inline-block py-[5px]"
-                    >
-                      {p.title}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {/* Both lists move to the band below once the services need it —
+              see linkColumns. Kept pages have a column of their own either
+              way: stacked under the services they made one very tall column
+              beside empty space. */}
+          {!servicesBand && servicesBlock}
+          {!servicesBand && moreBlock}
         </div>
+        {/* The links, when the services need the width: three columns of
+            services and the kept pages beside them, under a brand block that
+            now has the row to itself. Three columns need the full container —
+            inside the brand row they would be under 100px each. */}
+        {servicesBand && (
+          <div
+            className={`mt-8 grid gap-8 lg:gap-9 ${
+              hasMoreColumn ? 'lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]' : ''
+            }`}
+          >
+            {servicesBlock}
+            {moreBlock}
+          </div>
+        )}
         {/* Identity bar — who the business is and how to reach it, with a
             data-backed trust grid beside it. The phone here is a plain,
             un-swapped instance so call-asset verification can always read
@@ -1719,7 +1779,7 @@ export function SiteFooter({
           <div>
             <b className="text-white">{client.businessName}</b>
             <br />
-            Serving {client.city}, {client.state} and nearby:{' '}
+            Serving {servingShort(client)}:{' '}
             <a
               href={telHrefFor(client.phone)}
               className="inline-flex items-center min-h-[44px] -my-2 font-bold no-underline text-[var(--gold-on-dark)]"
@@ -1837,7 +1897,7 @@ export function SiteFooter({
                     )}
                     {slug ? (
                       <a
-                        href={`${basePath || ''}${locationPath(slug)}`}
+                        href={`${basePath || ''}${locationPath(slug, readPathOverrides(client.pathOverrides))}`}
                         // Vertical padding so a run of inline links is still
                         // hittable with a thumb. The list used to put its
                         // padding on the <li>, leaving 20px targets, and that
@@ -1857,11 +1917,20 @@ export function SiteFooter({
           )}
         </div>
 
-        <div className="mt-8 pt-5 border-t border-[var(--line-on-dark)] text-[12.5px] leading-[1.6] grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        {/* CENTRED ON A PHONE, and left/right on a wide screen. Stacked at
+            390px this was two ragged left-aligned blocks under a full-width
+            rule, with the legal links hanging off the left edge — the last
+            thing on the page, and the part that looks unfinished if it is not
+            deliberate. Nothing centres above lg, where the two halves go back
+            to being opposite ends of one line. */}
+        <div className="mt-8 pt-5 border-t border-[var(--line-on-dark)] text-[12.5px] leading-[1.6] grid gap-3 text-center lg:text-left lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div>
             © {year} {client.businessName}. All rights reserved.{' '}
-            <span className="whitespace-nowrap">
-              ·{' '}
+            {/* Its own line on a phone, where the two do not fit side by side.
+                The separator comes with it and is dropped there — a line that
+                begins with a stray "·" reads as a bullet that lost its list. */}
+            <span className="block whitespace-nowrap lg:inline">
+              <span className="hidden lg:inline">·</span>{' '}
               {/* Deliberately a followed link: every client site vouching for
                   the platform is the point of the attribution. */}
               <a
@@ -1874,7 +1943,7 @@ export function SiteFooter({
               </a>
             </span>
           </div>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap justify-center gap-4 lg:justify-start">
             <a
               href={`${basePath || ''}/privacy`}
               className="underline text-[var(--on-dark-2)] hover:text-white"
@@ -1924,7 +1993,7 @@ export function MobileCallBar({
     >
       <a
         href={telHrefFor(client.phone)}
-        className="min-h-[50px] rounded-[14px] font-bold text-base text-white text-center flex items-center justify-center gap-2 no-underline bg-[var(--cta)] hover:bg-[var(--cta-b)]"
+        className="min-h-[50px] rounded-[14px] font-bold text-base text-[var(--on-cta)] text-center flex items-center justify-center gap-2 no-underline bg-[var(--cta)] hover:bg-[var(--cta-b)]"
       >
         <Phone className="h-4 w-4" /> Call Now
       </a>
@@ -1962,12 +2031,31 @@ export interface TrustItem {
  * short, factual claims. Items come from the client's flags — never claims
  * the data can't back.
  */
+/**
+ * The row is as wide as it has cards, and no wider.
+ *
+ * Fixed at lg:grid-cols-4 it rendered a four-cell frame however many items
+ * survived the dedupe, and the empty cells showed the container's line colour
+ * through the gap-px trick — half a row of grey slab on the live site, which
+ * reads as two cards that failed to load. Tailwind needs the class names
+ * whole, so they are a lookup rather than a template string.
+ */
+const TRUST_COLS: Record<number, string> = {
+  1: '',
+  2: 'sm:grid-cols-2',
+  3: 'sm:grid-cols-2 lg:grid-cols-3',
+  4: 'sm:grid-cols-2 lg:grid-cols-4',
+}
+
 export function TrustRow({ items }: { items: TrustItem[] }) {
-  if (items.length === 0) return null
+  const shown = items.slice(0, 4)
+  if (shown.length === 0) return null
   return (
     <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 mt-[26px]">
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-[var(--line-card)] border border-[var(--line-card)] rounded-[14px] overflow-hidden">
-        {items.slice(0, 4).map((item) => (
+      <div
+        className={`grid ${TRUST_COLS[shown.length] || TRUST_COLS[4]} gap-px bg-[var(--line-card)] border border-[var(--line-card)] rounded-[14px] overflow-hidden`}
+      >
+        {shown.map((item) => (
           <div key={item.title} className="bg-white px-4 py-3.5 flex items-start gap-2.5 min-w-0">
             <span className="shrink-0 mt-0.5 text-[var(--brand)]">{item.icon}</span>
             <span className="min-w-0">

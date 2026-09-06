@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db'
-import { servicePath, locationPath } from '@/lib/site-paths'
+import { servicePath, locationPath, readPathOverrides, keptPathProblem } from '@/lib/site-paths'
 import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
 import { locationPages, mergeServiceAreas } from '@/lib/site-locations'
 import { canonicalHostFor } from '@/lib/site-origin'
@@ -83,6 +83,7 @@ export async function siteSitemap(
         siteSubdomain: true,
         updatedAt: true,
         serviceAreas: true,
+      pathOverrides: true,
         domains: {
           where: { isPrimary: true },
           select: { domain: true, verified: true, misconfigured: true },
@@ -147,6 +148,7 @@ export async function siteSitemap(
     modified = lastmod
   ): SitemapEntry => ({ path, loc: `${origin}${path}`, group, priority, changefreq, lastmod: modified })
 
+  const overrides = readPathOverrides(client.pathOverrides)
   const allCities = locationPages(areas)
   const indexable = allCities.filter((l) => cityIsIndexable(l.area, cityContent, cities))
   const thin = allCities.filter((l) => !indexable.includes(l))
@@ -154,11 +156,11 @@ export async function siteSitemap(
   const entries: SitemapEntry[] = [
     at('/', 'home', '1.0', 'weekly'),
     ...servicesForClient(client as unknown as Record<ServiceFlag, boolean>).map((s) =>
-      at(servicePath(s.slug), 'service', '0.8', 'monthly')
+      at(servicePath(s.slug, overrides), 'service', '0.8', 'monthly')
     ),
-    ...indexable.map((l) => at(locationPath(l.slug), 'city', '0.7', 'monthly')),
+    ...indexable.map((l) => at(locationPath(l.slug, overrides), 'city', '0.7', 'monthly')),
     ...keptPages
-      .filter((p) => p.publishedAt)
+      .filter((p) => p.publishedAt && !keptPathProblem(p.path))
       .map((p) => at(p.path, 'kept', '0.6', 'monthly', p.updatedAt.toISOString())),
     at('/privacy', 'legal', '0.1', 'yearly'),
     at('/terms', 'legal', '0.1', 'yearly'),
@@ -166,7 +168,7 @@ export async function siteSitemap(
 
   const excluded: ExcludedPage[] = [
     ...thin.map((l) => ({
-      path: locationPath(l.slug),
+      path: locationPath(l.slug, overrides),
       group: 'city' as const,
       reason:
         'Served, but carries noindex and is left out: no shop in that city and under 60 words written about it. Write city copy to have it listed.',
@@ -177,6 +179,16 @@ export async function siteSitemap(
         path: p.path,
         group: 'kept' as const,
         reason: 'Held, not published — the address 404s until you publish it.',
+      })),
+    // Listing one of these would tell a crawler an address is this page while
+    // the address actually serves a service page. It is also the only place
+    // an operator can find out the page exists and cannot be reached.
+    ...keptPages
+      .filter((p) => p.publishedAt && keptPathProblem(p.path))
+      .map((p) => ({
+        path: p.path,
+        group: 'kept' as const,
+        reason: `${keptPathProblem(p.path)} Redirect the address instead, or move the service page onto it from Check the old site's addresses.`,
       })),
   ]
 

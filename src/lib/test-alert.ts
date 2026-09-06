@@ -81,6 +81,12 @@ export async function sendTestAlert(
     insurance: 'Filing through insurance',
     carrier: 'State Farm',
     landingPage: 'https://glassleads.app (test)',
+    // The Google Ads badge is part of a real alert, so it is part of the test
+    // one — the faithful-replica rule at the top of this file. The message
+    // body says plainly that this is a test, so nobody reads the badge as a
+    // claim about a lead that does not exist; leaving it out would mean the
+    // first time anybody saw it was on a live lead.
+    attribution: { gclid: 'TEST-CLICK-ID', utmCampaign: 'Windshield — Search' },
     outcomeUrl,
   })
 

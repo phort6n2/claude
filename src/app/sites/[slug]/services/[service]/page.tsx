@@ -1,14 +1,20 @@
 import { formatPhoneDisplay } from '@/lib/lead-display'
+import { headlineArea, areaWithState, servingLine } from '@/lib/site-area'
 import { canViewSite, isPreview, siteIsLive } from '@/lib/site-preview'
 import PreviewBanner from '@/components/sites/PreviewBanner'
 import { headers } from 'next/headers'
-import { servicePath } from '@/lib/site-paths'
-import { notFound } from 'next/navigation'
+import { servicePath, readPathOverrides } from '@/lib/site-paths'
+import { notFound, permanentRedirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
 import { SiteAnalytics } from '@/components/sites/analytics'
 import { withSitePhone } from '@/lib/site-phone'
-import { getServicePage, servicesForClient, type ServiceFlag } from '@/lib/site-services'
+import {
+  getServicePage,
+  servicesForClient,
+  serviceHeading,
+  type ServiceFlag,
+} from '@/lib/site-services'
 import {
   UtilBar,
   SiteHeader,
@@ -57,6 +63,12 @@ export const revalidate = 300
 
 interface PageProps {
   params: Promise<{ slug: string; service: string }>
+  /**
+   * True when the catch-all is rendering this page at the shop's own address
+   * for it (see Client.pathOverrides). Without it the redirect below would
+   * fire on the very address it redirects TO, which is a loop.
+   */
+  atOverride?: boolean
 }
 
 async function getClient(slug: string) {
@@ -103,6 +115,10 @@ async function getClient(slug: string) {
       filesInsuranceClaims: true,
       smsCapable: true,
       serviceAreas: true,
+      // Headlines only — see lib/site-area.ts. Required by AreaNaming, so a
+      // page that forgets it cannot compile.
+      marketArea: true,
+      pathOverrides: true,
       googleMapsUrl: true,
       clarityProjectId: true,
     },
@@ -138,8 +154,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const stance = hostStanceFor(client, (await headers()).get('host'))
   const siteRoot = stance.canonicalOrigin
   const robots = stance.isCanonicalHost ? undefined : { index: false, follow: true }
-  const title = `${page.name} in ${client.city}, ${client.state} | ${client.businessName}`
-  const description = `${page.short} Free quotes from ${client.businessName} in ${client.city}. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
+  // The words of THIS address, which is what an ad promised and what the
+  // visitor searched — see SERVICE_ALIASES.
+  const heading = serviceHeading(service)
+  const title = `${heading} in ${areaWithState(client)} | ${client.businessName}`
+  const description = `${page.short} Free quotes from ${client.businessName} in ${headlineArea(client)}. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
   return {
     title,
     description,
@@ -152,17 +171,29 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     },
     twitter: { card: 'summary_large_image', title, description, images: [`${siteRoot}/api/site-og/${client.slug}`] },
     ...(robots ? { robots } : {}),
-    alternates: { canonical: `${stance.canonicalOrigin}${servicePath(page.slug)}` },
+    alternates: {
+      canonical: `${stance.canonicalOrigin}${servicePath(page.slug, readPathOverrides(client.pathOverrides))}`,
+    },
   }
 }
 
-export default async function ServicePage({ params }: PageProps) {
+export default async function ServicePage({ params, atOverride }: PageProps) {
   const { slug, service } = await params
   const page = getServicePage(service)
   if (!page) notFound()
 
   const client = await getClient(slug)
   if (!client) notFound()
+
+  // This page has been moved onto an address the shop's old site used, so the
+  // template address is no longer where it lives. ONE address per page: two
+  // that both answer 200 split the ranking between them, which is the whole
+  // thing an override exists to avoid.
+  const overrides = readPathOverrides(client.pathOverrides)
+  const moved = overrides[`/${page.slug}`]
+  if (moved && !atOverride) {
+    permanentRedirect(`${sitePathPrefixFor(client, (await headers()).get('host'))}${moved}`)
+  }
   const preview = await isPreview(client.status)
   if (!siteIsLive(client.status) && !preview) return <SiteUnavailable />
   // Visitors see the tracking number when one is set; see lib/site-phone.ts.
@@ -189,10 +220,15 @@ export default async function ServicePage({ params }: PageProps) {
     filesInsuranceClaims: client.filesInsuranceClaims,
     smsCapable: client.smsCapable,
   }
+  // What this page calls itself at the address it was asked for. The JSON-LD
+  // and the widget below keep the service's canonical name: one is a machine
+  // record cross-checked against the canonical URL, and the other is the
+  // value written onto the lead, which has to read the same for every shop.
+  const heading = serviceHeading(service)
   const nav = prioritizeServices(services)
     .filter((s) => s.slug !== page.slug)
     .slice(0, 4)
-    .map((s) => ({ href: `${basePath}${servicePath(s.slug)}`, label: s.name }))
+    .map((s) => ({ href: `${basePath}${servicePath(s.slug, overrides)}`, label: s.name }))
 
   const siteOrigin = siteOriginFor(client)
   const jsonLd = serviceJsonLd({
@@ -213,8 +249,10 @@ export default async function ServicePage({ params }: PageProps) {
   // different set of reasons. When it did not, both are derived from the same
   // flags and say the same four things twice — so the strip stands down.
   const wroteOwnBullets = extras.heroBullets.length > 0
-  const trustItems = wroteOwnBullets ? buildTrustItems(client, flags, extras) : []
   const heroBullets = wroteOwnBullets ? extras.heroBullets : defaultHeroBullets(flags)
+  // The strip is told what the bullets above it already say, so the two
+  // cannot repeat each other — see TRUST_TOPICS.
+  const trustItems = wroteOwnBullets ? buildTrustItems(client, flags, extras, heroBullets) : []
 
   // The service's own copy leads the page, chapter-style, with body photos.
   // The service's own copy leads, then the client's real story follows: the
@@ -251,11 +289,7 @@ export default async function ServicePage({ params }: PageProps) {
       <SkipLink />
       <UtilBar
         client={client}
-        note={
-          client.offersMobileService
-            ? `Mobile service across ${client.city} & nearby — we come to your home or workplace`
-            : `Serving ${client.city}, ${client.state} and nearby`
-        }
+        note={servingLine(client, client.offersMobileService)}
       />
       <SiteHeader client={client} basePath={basePath} reviews={reviews} nav={nav} />
 
@@ -290,12 +324,28 @@ export default async function ServicePage({ params }: PageProps) {
             <Eyebrow>
               {client.city}, {client.state}
             </Eyebrow>
+            {/* The area, not the address — same reason as the homepage H1.
+                The eyebrow directly above still names the city. */}
             <h1 className="text-[clamp(1.875rem,1.35rem+2.6vw,3.4rem)] font-extrabold leading-[1.08] tracking-[-.02em] text-[var(--tx)]">
-              {page.name} in {client.city}
+              {heading} in {headlineArea(client)}
             </h1>
             <p className="mt-4 text-[17px] leading-[1.55] text-[var(--tx2)] max-w-[48ch]">
               {page.heroLine}
             </p>
+          </div>
+
+          <div id="quote" className="w-full scroll-mt-24 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:justify-self-end">
+            <WidgetMount client={client} service={page.name} />
+          </div>
+
+          <div className="lg:col-start-1 lg:row-start-2">
+            {/* MOVED BELOW THE FORM ON A PHONE, by sitting in the hero's second
+                row: on mobile the grid is one column, so this lands after the
+                form instead of pushing it off the screen. Measured at 390px,
+                505px of headline, lead, cost line and rating sat above the
+                form and the first input was below the fold. Desktop is
+                unchanged — both rows are the same column, so the order a
+                visitor reads is identical. */}
             {/* The cost line and the rating were on the home page only — and
                 these are the pages the ads actually land on. Both are
                 already-reviewed, data-driven and self-stripping: the cost line
@@ -307,13 +357,6 @@ export default async function ServicePage({ params }: PageProps) {
             <div className="mt-5 mb-[18px]">
               <RatingChip reviews={reviews} client={client} />
             </div>
-          </div>
-
-          <div id="quote" className="w-full scroll-mt-24 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:justify-self-end">
-            <WidgetMount client={client} service={page.name} />
-          </div>
-
-          <div className="lg:col-start-1 lg:row-start-2">
             <ul className="space-y-2.5 list-none p-0 m-0 max-w-xl">
               {heroBullets.map((b) => (
                 <li key={b.lead} className="flex items-start gap-2.5 text-[var(--tx2)]">
@@ -326,7 +369,14 @@ export default async function ServicePage({ params }: PageProps) {
               ))}
             </ul>
             <div className="mt-6 max-[719px]:flex max-[719px]:flex-col max-[719px]:[&>a]:w-full flex flex-wrap gap-3">
-              <CtaButton href="#quote">Get my free quote</CtaButton>
+              {/* Desktop only. On a phone the form is ABOVE this, so tapping
+                  "Get my free quote" scrolled the visitor back up to a form
+                  they had already scrolled past — and its label repeated the
+                  submit button they passed on the way. The call button stays:
+                  it is the one action the form does not already offer. */}
+              <span className="hidden lg:contents">
+                <CtaButton href="#quote">Get my free quote</CtaButton>
+              </span>
               <CallButton client={client} withLabel />
             </div>
           </div>

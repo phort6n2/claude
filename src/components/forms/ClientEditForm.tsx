@@ -906,6 +906,13 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
   const [reviewsMessage, setReviewsMessage] = useState<string | null>(null)
   const [reviewsRateLimited, setReviewsRateLimited] = useState(false)
 
+  /* Raw text for the allowed-origins box, kept separately from the parsed
+     list. Rendering `origins.join('\n')` back into the textarea swallowed the
+     Enter key: the parse drops empty lines, so the newline was removed as
+     fast as it was typed and a second origin could not be added at all — on a
+     field that exists because a shop's own site is usually apex AND www. */
+  const [originsText, setOriginsText] = useState((client?.allowedOrigins || []).join('\n'))
+
   // Subdomain provisioning state
   const [subdomainInput, setSubdomainInput] = useState(client?.siteSubdomain || '')
   const [provisioning, setProvisioning] = useState(false)
@@ -1823,13 +1830,14 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
                 client&apos;s account. Saved with the Save button.
               </p>
               <textarea
-                value={(formData.allowedOrigins || []).join('\n')}
-                onChange={(e) =>
+                value={originsText}
+                onChange={(e) => {
+                  setOriginsText(e.target.value)
                   updateField(
                     'allowedOrigins',
                     e.target.value.split('\n').map((s) => s.trim()).filter(Boolean)
                   )
-                }
+                }}
                 rows={4}
                 className="w-full px-3 py-2 border rounded-md font-mono text-sm focus:ring-2 focus:ring-blue-500"
                 placeholder={'https://example.com\nhttps://www.example.com'}

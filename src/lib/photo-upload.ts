@@ -60,10 +60,92 @@ export function blobConfigured(): boolean {
  * format sharp can't read. A missing watermark is a cosmetic loss; a failed
  * upload is a broken feature, so this never throws.
  */
+/**
+ * Is the corner this mark will sit in dark or light?
+ *
+ * A white mark on a white bonnet and a black mark on a night shot are the
+ * same bug, and both were shipping: the generated wordmark was always drawn
+ * white, and a shop's own logo went down in whatever colours it has. Photos
+ * of glass work are mostly pale — sky, white cars, a lit workshop — so the
+ * white one lost more often.
+ *
+ * Measured on the actual pixels rather than guessed from the average of the
+ * whole photo: a dark photo can have a bright corner and the corner is the
+ * only part that matters.
+ */
+async function cornerIsDark(
+  jpeg: Buffer,
+  width: number,
+  height: number,
+  markWidth: number,
+  pad: number
+): Promise<boolean> {
+  try {
+    // A generous box around where the mark lands. The mark's own height is
+    // not known yet — it depends on the logo's aspect — so this takes half
+    // its width, which covers a wordmark and most badges.
+    const boxW = Math.min(width, Math.round(markWidth + pad * 2))
+    const boxH = Math.min(height, Math.round(markWidth * 0.5 + pad * 2))
+    // The crop is MATERIALISED first. sharp's stats() reads the image as
+    // loaded and ignores the pipeline, so measuring straight off .extract()
+    // silently returns the stats of the whole photo — which is how a light
+    // corner on a dark photo came back "dark" and took a white mark.
+    const crop = await sharp(jpeg)
+      .extract({
+        left: Math.max(0, width - boxW),
+        top: Math.max(0, height - boxH),
+        width: boxW,
+        height: boxH,
+      })
+      .toBuffer()
+    const region = await sharp(crop).stats()
+    const [r, g, b] = region.channels
+    if (!r || !g || !b) return false
+    // Rec. 709 luma on the region means. 0.55 rather than 0.5 because a mark
+    // is thin strokes over the background: it needs the background to be
+    // clearly light before a dark mark is the better bet.
+    const luma = (0.2126 * r.mean + 0.7152 * g.mean + 0.0722 * b.mean) / 255
+    return luma < 0.55
+  } catch {
+    // Unreadable region: keep the historical behaviour rather than guessing.
+    return true
+  }
+}
+
+/**
+ * Repaint a mark in one flat colour, keeping its shape.
+ *
+ * Only for a mark with real transparency — a logo whose alpha actually varies
+ * is a shape we can recolour, and an opaque rectangle is not: filling that
+ * would produce a solid block. Returns null when it cannot be done, and the
+ * caller then uses the mark as it came.
+ */
+async function repaintMark(mark: Buffer, colour: { r: number; g: number; b: number }) {
+  try {
+    const image = sharp(mark)
+    const meta = await image.metadata()
+    if (!meta.width || !meta.height || !meta.hasAlpha) return null
+    const stats = await image.stats()
+    const alpha = stats.channels[stats.channels.length - 1]
+    if (!alpha || alpha.min >= 250) return null
+    const shape = await sharp(mark).ensureAlpha().extractChannel(3).toBuffer()
+    return await sharp({
+      create: { width: meta.width, height: meta.height, channels: 3, background: colour },
+    })
+      .joinChannel(shape)
+      .png()
+      .toBuffer()
+  } catch {
+    return null
+  }
+}
+
 async function buildWatermark(
   logoUrl: string | null,
   photoWidth: number,
-  wordmark?: WordmarkSource
+  wordmark?: WordmarkSource,
+  /** What the corner needs: a light mark on a dark photo, or the reverse. */
+  wantLight = true
 ): Promise<Buffer | null> {
   // No logo is not the same as nothing to mark with. A shop without a logo
   // still has a name, and an unmarked photo is one anybody can lift for their
@@ -75,13 +157,21 @@ async function buildWatermark(
       if (!res.ok) return null
       raw = Buffer.from(await res.arrayBuffer())
     } else if (wordmark?.businessName) {
-      raw = await wordmarkPng({ ...wordmark, variant: 'mono' })
+      // The generated wordmark can simply be DRAWN in the right colour — no
+      // recolouring needed. 'mono' is white, 'light' is dark ink.
+      raw = await wordmarkPng({ ...wordmark, variant: wantLight ? 'mono' : 'light' })
     } else {
       return null
     }
 
     const target = Math.max(64, Math.round(photoWidth * WATERMARK_SCALE))
-    const resized = await sharp(raw)
+    // A shop's own logo is whatever colours they use, so it is repainted to
+    // suit the corner when its shape allows. An opaque logo keeps its own
+    // colours — it carries its own background and reads on anything.
+    const toned = logoUrl
+      ? await repaintMark(raw, wantLight ? { r: 255, g: 255, b: 255 } : { r: 17, g: 17, b: 17 })
+      : null
+    const resized = await sharp(toned || raw)
       .resize({ width: target, withoutEnlargement: false, fit: 'inside' })
       .ensureAlpha()
       // sharp has no opacity option; multiplying the alpha channel through a
@@ -99,6 +189,56 @@ async function buildWatermark(
     return resized
   } catch {
     return null
+  }
+}
+
+/**
+ * Put the shop's mark in the corner of a JPEG that is already the right size.
+ *
+ * Shared with the importer's mirror, which had no watermark at all — so an
+ * uploaded photo carried the shop's logo and an IMPORTED one did not, on the
+ * same gallery, and the difference was invisible until somebody looked at two
+ * photos side by side. Same mark, same corner, whichever door the photo came
+ * in through.
+ *
+ * Returns the original buffer when there is nothing to stamp with or the
+ * stamp fails: an unmarked photo is a cosmetic loss, a lost photo is not.
+ */
+export async function stampWatermark(
+  jpeg: Buffer,
+  width: number,
+  height: number,
+  logoUrl: string | null,
+  wordmark?: WordmarkSource
+): Promise<Buffer> {
+  try {
+    const pad = Math.round(width * WATERMARK_PAD)
+    // The corner decides the mark's colour, not the other way round.
+    const wantLight = await cornerIsDark(
+      jpeg,
+      width,
+      height,
+      Math.max(64, Math.round(width * WATERMARK_SCALE)),
+      pad
+    )
+    const watermark = await buildWatermark(logoUrl, width, wordmark, wantLight)
+    if (!watermark) return jpeg
+    const mark = await sharp(watermark).metadata()
+    if (!mark.width || !mark.height) return jpeg
+    // Positioned by offset rather than gravity so it sits inside a margin
+    // instead of flush against the corner.
+    return await sharp(jpeg)
+      .composite([
+        {
+          input: watermark,
+          top: Math.max(0, height - mark.height - pad),
+          left: Math.max(0, width - mark.width - pad),
+        },
+      ])
+      .jpeg({ quality: 82, mozjpeg: true })
+      .toBuffer()
+  } catch {
+    return jpeg
   }
 }
 
@@ -157,26 +297,10 @@ export async function processAndStorePhoto({
   const width = resizedMeta.width || MAX_DIMENSION
   const height = resizedMeta.height || MAX_DIMENSION
 
-  const watermark = await buildWatermark(logoUrl, width, wordmark)
-  let finalBuffer = resizedBuffer
-  if (watermark) {
-    const mark = await sharp(watermark).metadata()
-    if (mark.width && mark.height) {
-      // Positioned by offset rather than gravity so it sits inside a margin
-      // instead of flush against the corner.
-      const pad = Math.round(width * WATERMARK_PAD)
-      finalBuffer = await sharp(resizedBuffer)
-        .composite([
-          {
-            input: watermark,
-            top: Math.max(0, height - mark.height - pad),
-            left: Math.max(0, width - mark.width - pad),
-          },
-        ])
-        .jpeg({ quality: 82, mozjpeg: true })
-        .toBuffer()
-    }
-  }
+  const finalBuffer = await stampWatermark(resizedBuffer, width, height, logoUrl, wordmark)
+  // The stamp returns the original buffer when it could not mark the photo,
+  // so identity is the honest test of whether one was applied.
+  const watermarked = finalBuffer !== resizedBuffer
 
   try {
     // A random suffix keeps two uploads of "photo.jpg" from colliding, and
@@ -195,7 +319,7 @@ export async function processAndStorePhoto({
         width,
         height,
         bytes: finalBuffer.byteLength,
-        watermarked: !!watermark,
+        watermarked,
       },
     }
   } catch (error) {

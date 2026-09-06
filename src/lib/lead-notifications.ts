@@ -17,7 +17,135 @@ import { countSegments, fitSegments } from '@/lib/sms-segments'
  * and fall back to environment variables, the same pattern as the Places key.
  */
 
-import { formatPhoneDisplay } from '@/lib/lead-display'
+import { formatPhoneDisplay, properCase } from '@/lib/lead-display'
+import { paidAdSource } from '@/lib/lead-channel'
+
+export interface LeadAttribution {
+  gclid?: string | null
+  gbraid?: string | null
+  wbraid?: string | null
+  /* Microsoft's and TikTok's click ids. They have no Lead column of their own
+   * — they ride in formData — and the alert had no idea they existed, which
+   * is how a Bing Ads lead read "Microsoft Ads" in the admin list and carried
+   * no badge at all on the email the shop actually opens. */
+  msclkid?: string | null
+  ttclid?: string | null
+  utmSource?: string | null
+  utmMedium?: string | null
+  utmCampaign?: string | null
+  utmContent?: string | null
+  /* `utm_term` on the link. Named for the column it lands in — the intake
+   * accepts utm_term, utm_keyword and HighLevel's own field and writes all
+   * three here. */
+  utmKeyword?: string | null
+}
+
+/**
+ * Did this lead arrive on an ad click, and whose ad?
+ *
+ * WHY IT IS ON THE ALERT AT ALL. A shop paying for Google Ads sees a phone
+ * ringing and a form arriving and has no way to tell which of them the ads
+ * bought. The click id is captured, travels with the lead and is uploaded
+ * back to Google when the job books — the whole attribution loop runs on it —
+ * and the one person who never saw any of it was the shop owner reading the
+ * alert. "Are these leads coming from the ads?" is the question behind most
+ * of the calls this platform gets, and the answer was already in the record.
+ *
+ * A CLICK ID IS PROOF. Google mints gclid/gbraid/wbraid on an ad click and
+ * nowhere else, and the same is true of Microsoft's msclkid and TikTok's
+ * ttclid, so their presence is not an inference. UTM tagging is second: it is
+ * the shop's own word rather than the network's, good enough for a label.
+ * fbclid is deliberately NOT proof — Facebook stamps it on organic post links
+ * too. All of that lives in lead-channel.ts, which this defers to.
+ *
+ * Anything else returns null and the alert says nothing, rather than guessing.
+ * Telling a shop a lead came from their ads when it came from their Business
+ * Profile is worse than staying quiet: they judge the spend on this.
+ */
+export function adSourceOf(
+  attribution?: LeadAttribution | null
+): { network: string; campaign: string | null } | null {
+  if (!attribution) return null
+  /* ONE RULE, SHARED WITH THE LEAD LIST. This used to be its own smaller copy
+     that knew only Google's three click ids, and the two answers disagreed in
+     the worst possible direction: the admin badge said "Microsoft Ads" and the
+     email the shop actually reads said nothing at all, on a lead their Bing
+     spend had paid for. Both sides now ask paidAdSource. */
+  const paid = paidAdSource(attribution)
+  /* Paid, but nothing names the network — utm_medium=cpc with no source. The
+     green badge is a claim about a specific ad account, so it stays quiet;
+     taggedSourceOf below still reports whatever the link was tagged with. */
+  if (!paid || !paid.network) return null
+  /* The click-id labels already read "Google Ads" / "Microsoft Ads"; a network
+     derived from a utm_source is a bare name, and "From your Facebook" is not
+     a sentence. */
+  const network = /ads$/i.test(paid.network) ? paid.network : `${paid.network} Ads`
+  return { network, campaign: paid.campaign }
+}
+
+/** One tag value, made safe to drop into an email or a text message. */
+function tagValue(raw?: string | null): string | null {
+  if (!raw) return null
+  // Anything a link's query string can carry ends up here, and a lead can be
+  // posted by anyone who can reach the intake. Collapse whitespace (newlines
+  // included, which would otherwise break the plain-text part into a fake
+  // field) and cap the length so one long value cannot take over the alert.
+  const value = raw.replace(/\s+/g, ' ').trim()
+  if (!value) return null
+  return value.length > 48 ? value.slice(0, 47) + '…' : value
+}
+
+/**
+ * Where an UNPAID lead came from, according to the shop's own link tagging.
+ *
+ * WHY THIS IS SEPARATE FROM adSourceOf. That one answers "did the ads buy
+ * this", and it is deliberately strict because the shop judges their spend on
+ * it. This one answers a different question — "which of my links did they
+ * come through" — for a shop that tags everything: their Business Profile
+ * per city, Yelp, Facebook, Instagram, TikTok, a directory listing. All of it
+ * was already captured on the lead and none of it reached the person reading
+ * the alert, who is the only one who knows what `gbp_aliso_viejo` means.
+ *
+ * SHOWN VERBATIM, NOT PRETTIFIED. The value is a string the shop typed into
+ * their own link; title-casing `gbp_aliso_viejo` into "Gbp Aliso Viejo" makes
+ * it something they have to translate back before they can match it against
+ * the list of links they built. Exactly what they wrote is the whole point.
+ *
+ * Returns null when adSourceOf already has an answer — a paid click carries
+ * UTMs too, and two origin badges on one alert is worse than either alone.
+ */
+export function taggedSourceOf(
+  attribution?: LeadAttribution | null
+): { label: string; detail: string | null } | null {
+  if (!attribution) return null
+  if (adSourceOf(attribution)) return null
+  // Priority order is how specific the field usually is, not how it is named:
+  // whichever the shop actually filled in becomes the headline, and the rest
+  // follow it. A link tagged only `utm_campaign=spring` still says something.
+  const named = [
+    tagValue(attribution.utmSource),
+    tagValue(attribution.utmCampaign),
+    tagValue(attribution.utmKeyword),
+    tagValue(attribution.utmContent),
+  ].filter(Boolean) as string[]
+  // utm_medium is a BUCKET, not a place — organic, social, referral — so it
+  // never joins the line as detail: "gbp_aliso_viejo · organic" is the useful
+  // half followed by a word that adds nothing. It stands alone only when the
+  // link carried nothing else, where a bucket beats silence.
+  const medium = tagValue(attribution.utmMedium)
+  const parts = named.length ? named : medium ? [medium] : []
+  // Case-insensitively de-duplicated: utm_source=yelp with utm_campaign=Yelp
+  // is one fact, and printing it twice reads as a bug.
+  const seen = new Set<string>()
+  const unique = parts.filter((p) => {
+    const key = p.toLowerCase()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+  if (!unique.length) return null
+  return { label: unique[0], detail: unique.slice(1).join(' · ') || null }
+}
 
 export interface LeadSummary {
   name: string
@@ -41,6 +169,10 @@ export interface LeadSummary {
   insurance?: string
   carrier?: string
   landingPage?: string
+  /* What brought them, as captured on the lead. Passed raw rather than as a
+   * finished label so the rule for "this was an ad click" lives in one place
+   * — see adSourceOf below. */
+  attribution?: LeadAttribution
   /* The customer's own photo of the damage. Rendered in the email rather than
    * linked, because the entire value of it is being able to look without
    * opening anything. */
@@ -101,6 +233,19 @@ function plainLines(lead: LeadSummary): string[] {
     lead.email && `Email: ${lead.email}`,
     lead.message && `Notes: ${lead.message}`,
     lead.source && `Source: ${lead.source}`,
+    // The HTML alert renders this as a badge instead — see emailHtml — so it
+    // is filtered out of the table there. It stays here for the plain-text
+    // part, which has no badges and is what a forwarded copy carries.
+    (() => {
+      const ad = adSourceOf(lead.attribution)
+      return ad && `Ad click: ${ad.network}${ad.campaign ? ` — ${ad.campaign}` : ''}`
+    })(),
+    // The unpaid twin of the line above, and a badge in the HTML for the same
+    // reason. Only one of the two can ever be present.
+    (() => {
+      const tag = taggedSourceOf(lead.attribution)
+      return tag && `Came from: ${tag.label}${tag.detail ? ` · ${tag.detail}` : ''}`
+    })(),
     lead.landingPage && `Page: ${lead.landingPage}`,
     lead.damagePhotoUrl && `Photo: ${lead.damagePhotoUrl}`,
   ].filter(Boolean) as string[]
@@ -128,7 +273,14 @@ function plainLines(lead: LeadSummary): string[] {
 function smsBody(businessName: string, lead: LeadSummary): string {
   return fitSegments(
     [
-      `${lead.name || 'New lead'} ${lead.phone || ''}`.trim(),
+      // FORMATTED, not E.164. The number arrives as +15037416823 and that is
+      // what the alert used to read — a wall of digits somebody has to parse
+      // before they can dial it, on the one line the whole message exists
+      // for. The two extra characters are free in every sense that matters
+      // here: parentheses, the hyphen and the space are all GSM-7 basic, so
+      // the encoding does not change, and fitSegments still guarantees the
+      // one segment.
+      `${lead.name || 'New lead'} ${formatPhoneDisplay(lead.phone) || lead.phone || ''}`.trim(),
       [lead.service, lead.vehicle].filter(Boolean).join(', '),
       lead.postalCode ? `ZIP ${lead.postalCode}` : '',
       businessName,
@@ -137,18 +289,79 @@ function smsBody(businessName: string, lead: LeadSummary): string {
   )
 }
 
-function emailHtml(businessName: string, lead: LeadSummary): string {
+/**
+ * The landing page as a person reads it: host and path, no query string.
+ *
+ * WHY THIS EXISTS. The full URL carries the ad click — gclid, gbraid,
+ * campaignid, gad_source — which makes it a couple of hundred characters with
+ * nowhere to break. A table cell holding a string that cannot wrap is a table
+ * as wide as that string, and iOS Mail renders the table at its natural width
+ * and then scales it down to fit the screen. So one invisible value decided
+ * the type size of every field in the alert: the job, the vehicle, the ZIP
+ * and the phone number all rendered at about half size while the name and the
+ * buttons around them were fine.
+ *
+ * Nobody reading a lead alert needs the click id. It is stored on the lead and
+ * uploaded to Google from there, and the plain-text part of this same email
+ * still carries the URL in full for anyone debugging attribution.
+ */
+function readablePage(url: string): string {
+  try {
+    const parsed = new URL(url)
+    const path = parsed.pathname === '/' ? '' : parsed.pathname
+    return `${parsed.host}${path}`
+  } catch {
+    // Not a URL we can parse — drop the query string by hand rather than
+    // handing the table the whole thing back.
+    return url.split('?')[0]
+  }
+}
+
+/**
+ * Exported ONLY so it can be looked at without sending one.
+ *
+ * scripts/preview-lead-email.ts renders it at phone width. There was no way
+ * to see this email except by mailing a real alert to a real inbox, which is
+ * how it went a year with a details table rendering at half size on the
+ * device every one of them is read on.
+ */
+
+/**
+ * Who the Text button says it is texting.
+ *
+ * It takes the first word of the lead's name, which is right for a form —
+ * "Text William" — and absurd for a call, where the name is a label this
+ * platform wrote: "Text Answered", "Text Missed". A call has no name until
+ * somebody rings back and asks for one.
+ */
+function textButtonName(lead: LeadSummary): string {
+  if (lead.isCall) return 'the caller'
+  return lead.name?.trim().split(/\s+/)[0] || 'them'
+}
+
+export function emailHtml(businessName: string, lead: LeadSummary): string {
   const esc = (v: string) =>
     v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
   const rows = plainLines(lead)
     // The photo is rendered as an image below, so a row repeating its URL
     // would just be a long unreadable string in the middle of the details.
-    .filter((line) => !line.startsWith('Photo: '))
+    .filter(
+      (line) =>
+        !line.startsWith('Photo: ') &&
+        !line.startsWith('Ad click: ') &&
+        !line.startsWith('Came from: ')
+    )
     .map((line) => {
       const [label, ...rest] = line.split(': ')
-      return `<tr><td style="padding:6px 16px 6px 0;color:#6b7280;white-space:nowrap">${esc(label)}</td><td style="padding:6px 0;color:#111827">${esc(rest.join(': '))}</td></tr>`
+      const raw = rest.join(': ')
+      const value = label === 'Page' ? readablePage(raw) : raw
+      // break-word on the value, and a fixed layout on the table below: one
+      // long value must never be allowed to set the width of the alert again.
+      return `<tr><td class="gl-label" style="padding:7px 14px 7px 0;color:#6b7280;width:92px;vertical-align:top">${esc(label)}</td><td style="padding:7px 0;color:#111827;word-break:break-word;overflow-wrap:anywhere">${esc(value)}</td></tr>`
     })
     .join('')
+  const ad = adSourceOf(lead.attribution)
+  const tag = taggedSourceOf(lead.attribution)
   const tel = telHref(lead.phone)
   // The alert is read on a phone within a minute or two of the enquiry, which
   // makes it the best place the platform has to put a reply one tap away. The
@@ -168,14 +381,54 @@ function emailHtml(businessName: string, lead: LeadSummary): string {
       vehicle: lead.vehicle,
     })
   )
-  return `<!doctype html><html><body style="margin:0;background:#f6f7f9;font-family:-apple-system,Segoe UI,Roboto,sans-serif">
-<div style="max-width:520px;margin:0 auto;padding:24px">
-  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:24px">
+  return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+/* THE PHONE GETS ITS WIDTH BACK.
+   The inline padding below is the desktop shape and the fallback for any
+   client that strips this block; on a 390px screen it spent 96px — a quarter
+   of the screen — on two nested margins, and the details were reading in a
+   column barely wide enough for "Not sure yet about insurance". The card is
+   centred at 520px on a desktop either way, so the margin only ever mattered
+   here. !important because the inline styles it overrides cannot be removed:
+   a client that ignores this block has to keep working. */
+@media only screen and (max-width:480px) {
+  .gl-wrap { padding: 8px !important; }
+  .gl-card { padding: 16px !important; }
+  .gl-label { width: 84px !important; padding-right: 10px !important; }
+}
+</style></head><body style="margin:0;background:#f6f7f9;font-family:-apple-system,Segoe UI,Roboto,sans-serif">
+<div class="gl-wrap" style="max-width:520px;margin:0 auto;padding:20px">
+  <div class="gl-card" style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:22px">
     <p style="margin:0 0 4px;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6b7280">${lead.isCall ? 'Incoming phone call' : 'New lead'}</p>
     <h1 style="margin:0 0 4px;font-size:22px;color:#111827">${esc(lead.name || (lead.isCall ? 'Incoming phone call' : 'New inquiry'))}</h1>
-    <p style="margin:0 0 18px;color:#6b7280;font-size:14px">${esc(businessName)}${lead.isCall && lead.calledAtLabel ? ` &middot; called ${esc(lead.calledAtLabel)}` : ''}</p>
+    <p style="margin:0 0 ${ad || tag ? '12' : '18'}px;color:#6b7280;font-size:14px">${esc(businessName)}${lead.isCall && lead.calledAtLabel ? ` &middot; called ${esc(lead.calledAtLabel)}` : ''}</p>
+    ${
+      /* THE ANSWER TO "ARE THE ADS WORKING", ON THE ALERT ITSELF. High enough
+         to be read before the buttons, because it changes how the call is
+         handled: this one was paid for. The campaign is named when the ad
+         tagged itself; the badge stands alone when only the click id came
+         through, which is the common case. */
+      ad
+        ? `<p style="margin:0 0 18px"><span style="display:inline-block;background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700">&#9679; From your ${esc(ad.network)}${ad.campaign ? ` &middot; ${esc(ad.campaign)}` : ''}</span></p>`
+        : ''
+    }
+    ${
+      /* THE SAME QUESTION FOR EVERY OTHER LINK THE SHOP TAGS. One shop runs
+         a separate tagged link for each Business Profile, Yelp, Facebook,
+         Instagram, TikTok and a couple of directories, and until now the
+         alert could tell them about a Google Ads click and nothing else —
+         so a lead worth knowing the origin of arrived looking anonymous.
+
+         DELIBERATELY NOT GREEN. The paid badge above is a claim about money
+         spent and has to stay visually its own thing; this one is the shop's
+         own bookkeeping, so it is neutral and reads as a label rather than a
+         verdict. Only one of the two ever renders — see taggedSourceOf. */
+      tag
+        ? `<p style="margin:0 0 18px"><span style="display:inline-block;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700;word-break:break-word">Came from ${esc(tag.label)}${tag.detail ? ` &middot; ${esc(tag.detail)}` : ''}</span></p>`
+        : ''
+    }
     ${tel ? `<a href="${esc(tel)}" style="display:block;text-align:center;background:#1d4ed8;color:#fff;text-decoration:none;font-weight:700;padding:14px;border-radius:10px;font-size:16px">Call ${esc(formatPhoneDisplay(lead.phone) || lead.phone)}</a>` : ''}
-    ${sms ? `<a href="${esc(sms)}" style="display:block;text-align:center;background:#fff;color:#1d4ed8;border:1.5px solid #1d4ed8;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;font-size:16px;margin-top:8px">Text ${esc(lead.name?.trim().split(/\s+/)[0] || 'them')}</a>` : ''}
+    ${sms ? `<a href="${esc(sms)}" style="display:block;text-align:center;background:#fff;color:#1d4ed8;border:1.5px solid #1d4ed8;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;font-size:16px;margin-top:8px">Text ${esc(textButtonName(lead))}</a>` : ''}
     ${
       lead.damagePhotoUrl
         ? `<a href="${esc(lead.damagePhotoUrl)}" style="display:block;margin-top:18px;text-decoration:none"><img src="${esc(lead.damagePhotoUrl)}" alt="Photo of the damage" width="472" style="width:100%;max-width:472px;border-radius:10px;border:1px solid #e5e7eb;display:block"><span style="display:block;margin-top:6px;font-size:12px;color:#6b7280">Photo sent by the customer — tap to open full size</span></a>`
@@ -186,7 +439,10 @@ function emailHtml(businessName: string, lead: LeadSummary): string {
         ? `<p style="margin:18px 0 0;padding:11px 13px;background:#FEF3C7;border:1px solid #FCD34D;border-radius:10px;font-size:14px;color:#78350F"><strong>${esc(lead.calibration)}</strong> &mdash; quote the calibration, not just the glass.</p>`
         : ''
     }
-    <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:18px">${rows}</table>
+    <!-- table-layout:fixed so the column widths come from this row and not
+         from the longest value in the table; 15px because this is read on a
+         phone, at arm's length, in a hurry. -->
+    <table style="width:100%;table-layout:fixed;border-collapse:collapse;font-size:15px;line-height:1.45;margin-top:18px">${rows}</table>
     ${
       lead.outcomeUrl
         ? `<div style="margin:20px 0 0;padding:16px 0 0;border-top:1px solid #e5e7eb">
@@ -201,7 +457,7 @@ function emailHtml(businessName: string, lead: LeadSummary): string {
     }
     ${lead.leadUrl ? `<p style="margin:18px 0 0"><a href="${esc(lead.leadUrl)}" style="color:#1d4ed8;font-size:14px">Open this lead</a></p>` : ''}
   </div>
-  <p style="text-align:center;color:#9ca3af;font-size:12px;margin:16px 0 0">Sent by glassleads.app the moment the form was submitted.</p>
+  <p style="text-align:center;color:#9ca3af;font-size:12px;margin:16px 0 0">Sent by glassleads.app the moment the ${lead.isCall ? 'call ended' : 'form was submitted'}.</p>
 </div></body></html>`
 }
 
@@ -219,8 +475,31 @@ export interface NotifyResult {
 export async function notifyNewLead(
   clientId: string,
   businessName: string,
-  lead: LeadSummary
+  raw: LeadSummary,
+  /**
+   * What KIND of alert this is, which is one decision with two consequences.
+   *
+   * 'urgent' is the default and everything a lead has always been: somebody
+   * needs to act, so it goes out by email AND text and the subject says so.
+   *
+   * 'record' is an alert nobody has to act on — today, a call the shop
+   * answered. The email still goes, because the shop wants the number and the
+   * time; the SMS does not, because that channel buzzes a pocket and is
+   * billed per segment. Passing it as one word rather than two flags keeps
+   * the two consequences from drifting apart.
+   */
+  options: { kind?: 'urgent' | 'record' } = {}
 ): Promise<NotifyResult> {
+  // Tidied ONCE, here, so the email, the SMS and the pre-written text to the
+  // customer all read the same. These two fields are the only free text a
+  // customer types that this platform then puts in front of somebody — the
+  // service, the insurance and the carrier all come from our own lists and
+  // are already cased. The stored lead keeps what they actually typed.
+  const lead: LeadSummary = {
+    ...raw,
+    name: properCase(raw.name),
+    vehicle: properCase(raw.vehicle),
+  }
   const result: NotifyResult = { emailSent: 0, smsSent: 0, errors: [] }
 
   const config = await prisma.clientNotification.findUnique({ where: { clientId } }).catch(() => null)
@@ -239,7 +518,8 @@ export async function notifyNewLead(
   // this — a text about a call is what surfaces the one nobody picked up.
   const emailThisOne = config.emailEnabled && !(lead.isCall && !config.emailCallLeads)
   const emails = emailThisOne ? config.emailTo.filter(Boolean) : []
-  const numbers = config.smsEnabled ? config.smsTo.filter(Boolean) : []
+  const isRecord = options.kind === 'record'
+  const numbers = config.smsEnabled && !isRecord ? config.smsTo.filter(Boolean) : []
   if (emails.length === 0 && numbers.length === 0) return result
 
   if (emails.length > 0) {
@@ -259,7 +539,13 @@ export async function notifyNewLead(
         const sent = await resend.emails.send({
           from,
           to: emails,
-          subject: `[NEW LEAD - ${businessName}] - Call Immediately`,
+          // "Call Immediately" on a call the shop just answered is the kind
+          // of subject line that teaches people to stop reading subject
+          // lines. A record says it is a record, in the inbox list, before
+          // anything is opened.
+          subject: isRecord
+            ? `[CALL ANSWERED - ${businessName}] - For your records`
+            : `[NEW LEAD - ${businessName}] - Call Immediately`,
           html: emailHtml(businessName, lead),
           text: [`New lead — ${businessName}`, lead.name, ...plainLines(lead)]
             .filter(Boolean)

@@ -52,4 +52,14 @@ next-env.d.ts
 # driving the app during a review. Agents write these here because that is
 # where `require('playwright')` resolves, and a `git add -A` swept five of
 # them into main once. They are never part of the app.
+#
+# .mjs as well as .js: the rule was written for one naming habit and every
+# script since has been an ES module, so the pattern quietly stopped matching
+# the thing it exists to catch.
 /_*.js
+/_*.mjs
+/agent-*.mjs
+/*-shot.mjs
+/*-shots.mjs
+/*-check.mjs
+/*-test.mjs

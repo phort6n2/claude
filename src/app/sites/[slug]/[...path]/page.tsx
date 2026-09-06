@@ -1,4 +1,5 @@
 import { formatPhoneDisplay } from '@/lib/lead-display'
+import { areaWithState, servingLine } from '@/lib/site-area'
 import { isPreview, siteIsLive } from '@/lib/site-preview'
 import PreviewBanner from '@/components/sites/PreviewBanner'
 import { headers } from 'next/headers'
@@ -53,7 +54,7 @@ import { normalisePath } from '@/lib/url-parity'
 import LocationPage, { generateMetadata as locationMetadata } from '@/app/sites/[slug]/locations/[city]/page'
 import ServicePage, { generateMetadata as serviceMetadata } from '@/app/sites/[slug]/services/[service]/page'
 import { getServicePage } from '@/lib/site-services'
-import { cityFromPath } from '@/lib/site-paths'
+import { cityFromPath, canonicalForCustom, readPathOverrides } from '@/lib/site-paths'
 
 
 export const dynamic = 'force-dynamic'
@@ -135,6 +136,10 @@ async function getClient(slug: string) {
       filesInsuranceClaims: true,
       smsCapable: true,
       serviceAreas: true,
+      // Headlines only — see lib/site-area.ts. Required by AreaNaming, so a
+      // page that forgets it cannot compile.
+      marketArea: true,
+      pathOverrides: true,
       googleMapsUrl: true,
       clarityProjectId: true,
     },
@@ -190,7 +195,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // and service metadata, including the canonical-host stance, and a second
   // copy here is what drifts.
   if (!page) {
-    const flat = normalisePath(`/${(path || []).join('/')}`).slice(1)
+    const flatPath = normalisePath(`/${(path || []).join('/')}`)
+    // A template page MOVED to one of the old site's addresses. Resolved
+    // ahead of the built-in shapes because it is the more specific rule, and
+    // its metadata has to come from the page it actually is.
+    const moved = canonicalForCustom(flatPath, readPathOverrides(client.pathOverrides))
+    const flat = (moved || flatPath).slice(1)
     const city = cityFromPath(flat)
     if (city) return locationMetadata({ params: Promise.resolve({ slug, city }) })
     if (getServicePage(flat)) {
@@ -210,7 +220,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const title = `${heading} | ${client.businessName}`
   const description =
     page.metaDescription ||
-    `${heading} from ${client.businessName} in ${client.city}, ${client.state}. Free quotes. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
+    `${heading} from ${client.businessName} in ${areaWithState(client)}. Free quotes. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
   return {
     title,
     description,
@@ -245,15 +255,21 @@ export default async function CatchAllPage({ params }: PageProps) {
     // A flat city URL the shop's ads point at. RENDERED, not redirected: a
     // redirect is a changed destination in Google's eyes, and the whole point
     // is that moving the domain costs no edits in the Ads account.
-    const flat = normalisePath(`/${(path || []).join('/')}`).slice(1)
+    const flatPath = normalisePath(`/${(path || []).join('/')}`)
+    // A template page moved onto one of the old site's addresses. Same
+    // reasoning as the flat city URL above, taken one step further: the page
+    // IS this address now, so it renders here and the template address 308s
+    // the other way.
+    const moved = canonicalForCustom(flatPath, readPathOverrides(client.pathOverrides))
+    const flat = (moved || flatPath).slice(1)
     const city = cityFromPath(flat)
-    if (city) return <LocationPage params={Promise.resolve({ slug, city })} />
+    if (city) return <LocationPage params={Promise.resolve({ slug, city })} atOverride={!!moved} />
     // Services resolve here as well as in middleware. Middleware only runs on
     // a client host, so without this the flat links would 404 on the
     // /sites/{slug} preview — the one place an operator checks the site
     // before pointing a domain at it.
     if (getServicePage(flat)) {
-      return <ServicePage params={Promise.resolve({ slug, service: flat })} />
+      return <ServicePage params={Promise.resolve({ slug, service: flat })} atOverride={!!moved} />
     }
 
     notFound()
@@ -286,7 +302,7 @@ export default async function CatchAllPage({ params }: PageProps) {
     smsCapable: client.smsCapable,
   }
   const nav = prioritizeServices(services).slice(0, 4).map((s) => ({
-    href: `${basePath}${servicePath(s.slug)}`,
+    href: `${basePath}${servicePath(s.slug, readPathOverrides(client.pathOverrides))}`,
     label: s.name,
   }))
   const linkableCities = new Set(
@@ -299,8 +315,10 @@ export default async function CatchAllPage({ params }: PageProps) {
   // different set of reasons. When it did not, both come from the same flags
   // and say the same four things twice — so the strip stands down.
   const wroteOwnBullets = extras.heroBullets.length > 0
-  const trustItems = wroteOwnBullets ? buildTrustItems(client, flags, extras) : []
   const heroBullets = wroteOwnBullets ? extras.heroBullets : defaultHeroBullets(flags)
+  // The strip is told what the bullets above it already say, so the two
+  // cannot repeat each other — see TRUST_TOPICS.
+  const trustItems = wroteOwnBullets ? buildTrustItems(client, flags, extras, heroBullets) : []
 
   const heading = stripSeoTail(page.title, client.businessName)
   // Sanitised at render, never trusted as stored: this HTML came off somebody
@@ -351,11 +369,7 @@ export default async function CatchAllPage({ params }: PageProps) {
       <SkipLink />
       <UtilBar
         client={client}
-        note={
-          client.offersMobileService
-            ? `Mobile service across ${client.city} & nearby — we come to your home or workplace`
-            : `Serving ${client.city}, ${client.state} and nearby`
-        }
+        note={servingLine(client, client.offersMobileService)}
       />
       <SiteHeader client={client} basePath={basePath} reviews={reviews} nav={nav} />
 
@@ -390,12 +404,6 @@ export default async function CatchAllPage({ params }: PageProps) {
               <h1 className="text-[clamp(1.875rem,1.35rem+2.6vw,3.4rem)] font-extrabold leading-[1.08] tracking-[-.02em] text-[var(--tx)]">
                 {heading}
               </h1>
-              <p className="mt-3 text-[15px] leading-[1.5] text-[var(--tx2)] max-w-[46ch] border-l-2 border-[var(--cta)] pl-3">
-                {heroCostLineFor(client.state)}
-              </p>
-              <div className="mt-5 mb-[18px]">
-                <RatingChip reviews={reviews} client={client} />
-              </div>
             </div>
 
             <div
@@ -406,6 +414,19 @@ export default async function CatchAllPage({ params }: PageProps) {
             </div>
 
             <div className="lg:col-start-1 lg:row-start-2">
+            {/* MOVED BELOW THE FORM ON A PHONE, by sitting in the hero's second
+                row: on mobile the grid is one column, so this lands after the
+                form instead of pushing it off the screen. Measured at 390px,
+                505px of headline, lead, cost line and rating sat above the
+                form and the first input was below the fold. Desktop is
+                unchanged — both rows are the same column, so the order a
+                visitor reads is identical. */}
+              <p className="mt-3 text-[15px] leading-[1.5] text-[var(--tx2)] max-w-[46ch] border-l-2 border-[var(--cta)] pl-3">
+                {heroCostLineFor(client.state)}
+              </p>
+              <div className="mt-5 mb-[18px]">
+                <RatingChip reviews={reviews} client={client} />
+              </div>
               <ul className="space-y-2.5 list-none p-0 m-0 max-w-xl">
                 {heroBullets.map((b) => (
                   <li key={b.lead} className="flex items-start gap-2.5 text-[var(--tx2)]">
@@ -418,7 +439,14 @@ export default async function CatchAllPage({ params }: PageProps) {
                 ))}
               </ul>
               <div className="mt-6 max-[719px]:flex max-[719px]:flex-col max-[719px]:[&>a]:w-full flex flex-wrap gap-3">
+                {/* Desktop only. On a phone the form is ABOVE this, so tapping
+                  "Get my free quote" scrolled the visitor back up to a form
+                  they had already scrolled past — and its label repeated the
+                  submit button they passed on the way. The call button stays:
+                  it is the one action the form does not already offer. */}
+              <span className="hidden lg:contents">
                 <CtaButton href="#quote">Get my free quote</CtaButton>
+              </span>
                 <CallButton client={client} withLabel />
               </div>
             </div>

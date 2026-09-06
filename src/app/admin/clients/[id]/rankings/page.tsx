@@ -29,7 +29,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const { id } = await params
   const client = await prisma.client.findUnique({
     where: { id },
-    select: { id: true, rankTrackingId: true, rankMapUrl: true },
+    select: { id: true, rankTrackingId: true, rankMapUrl: true, rankKeywords: true },
   })
   if (!client) notFound()
 
@@ -50,6 +50,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         scans={await rankScansFor(id)}
         mapUrl={client.rankMapUrl}
         campaignId={client.rankTrackingId}
+        trackedTerms={client.rankKeywords || []}
         showProviderLink
       />
     </div>

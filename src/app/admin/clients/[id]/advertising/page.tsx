@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import AdsTrackingCard from '@/components/admin/AdsTrackingCard'
 import ConversionStandardCard from '@/components/admin/ConversionStandardCard'
+import { ConversionAuditProvider } from '@/components/admin/ConversionAudit'
 import LandingPagesCard from '@/components/admin/LandingPagesCard'
 import AnalyticsCard from '@/components/admin/AnalyticsCard'
 import { decrypt } from '@/lib/encryption'
@@ -55,6 +56,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     : null
 
   return (
+    // Both the setup instructions and the audit card ask Google the same
+    // question — "what conversion actions does this account have?" — so the
+    // provider asks it once. The instructions use it to hide themselves for a
+    // step the account proves is already done.
+    <ConversionAuditProvider clientId={client.id}>
     <div className="space-y-4">
       {/* Wrapped like its neighbour below. The tab used to open on an
           untitled, unbounded block of network tabs while the card under it got
@@ -97,7 +103,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             checked against the live account
           </p>
         </div>
-        <ConversionStandardCard clientId={client.id} />
+        <ConversionStandardCard />
       </section>
 
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
@@ -112,5 +118,6 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         <LandingPagesCard clientId={client.id} />
       </section>
     </div>
+    </ConversionAuditProvider>
   )
 }

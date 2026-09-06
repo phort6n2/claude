@@ -87,6 +87,14 @@ const WRITES: Tool[] = [
     cost: 'Writes footerLogoUrl and uploads one PNG per derived logo to blob storage. Never overwrites a footer logo that already exists. Safe to run twice.',
   },
   {
+    key: 'restamp-photos',
+    name: "Watermark gallery photos imported before the mark existed",
+    path: '/api/admin/restamp-photos',
+    method: 'POST',
+    what: "Puts the shop's logo in the corner of every gallery photo that came from their old site and was stored before the importer stamped them. Uses the generated wordmark for a shop with no logo yet.",
+    cost: 'Reads and re-uploads one file per unmarked photo. Cannot double-stamp: uploaded photos and already-marked imports are skipped by their storage path, so it is safe to run twice. The previous files stay in storage — Storage → orphans lists them.',
+  },
+  {
     key: 'rewebhook',
     name: 'Re-register the rank webhook on every campaign',
     path: '/api/admin/rank-campaigns/rewebhook',

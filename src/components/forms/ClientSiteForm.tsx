@@ -9,6 +9,7 @@ import CityContentEditor from '@/components/admin/CityContentEditor'
 import PhotoManager from '@/components/admin/PhotoManager'
 import LogoCard from '@/components/admin/LogoCard'
 import ServiceAreaPlanner from '@/components/admin/ServiceAreaPlanner'
+import MarketAreaCard from '@/components/admin/MarketAreaCard'
 import SiteScriptsCard from '@/components/admin/SiteScriptsCard'
 
 /**
@@ -33,6 +34,10 @@ export default function ClientSiteForm({
     serviceAreas: string[]
     headScripts: string | null
     bodyEndScripts: string | null
+    city: string
+    state: string
+    marketArea: string | null
+    offersMobileService: boolean
   }
 }) {
   const [subdomainInput, setSubdomainInput] = useState(client.siteSubdomain || '')
@@ -241,6 +246,24 @@ export default function ClientSiteForm({
           clientId={client.id}
           headScripts={client.headScripts}
           bodyEndScripts={client.bodyEndScripts}
+        />
+      </section>
+
+      {/* Above Location pages on purpose: this is the answer to "what area is
+          this site for", and the city pages below are the detail under it. */}
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+        <div className="px-6 pt-5 pb-1">
+          <h2 className="font-semibold text-gray-900">What the headlines call this area</h2>
+          <p className="text-sm text-gray-500">
+            The shop is in one city and sells to a region — this is the one the big words name
+          </p>
+        </div>
+        <MarketAreaCard
+          clientId={client.id}
+          city={client.city}
+          state={client.state}
+          marketArea={client.marketArea}
+          offersMobileService={client.offersMobileService}
         />
       </section>
 

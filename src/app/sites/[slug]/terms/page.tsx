@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { prisma } from '@/lib/db'
+import { siteClientWhere } from '@/lib/site-client'
 import { sitePathPrefixFor } from '@/lib/site-origin'
 import { withSitePhone } from '@/lib/site-phone'
 import { SiteUnavailable } from '@/components/sites/shared'
@@ -18,11 +19,13 @@ interface PageProps {
 
 async function getClient(slug: string) {
   return prisma.client.findFirst({
-    where: { OR: [{ slug }, { siteSubdomain: slug }] },
+    where: siteClientWhere(slug),
     select: {
       id: true,
       slug: true,
       siteSubdomain: true,
+      // So the policy names the address the reader is on.
+      domains: { where: { isPrimary: true }, select: { domain: true, verified: true, misconfigured: true }, take: 1 },
       status: true,
       businessName: true,
       phone: true,
@@ -32,6 +35,7 @@ async function getClient(slug: string) {
       city: true,
       state: true,
       postalCode: true,
+      marketArea: true,
       logoUrl: true,
       footerLogoUrl: true,
       primaryColor: true,

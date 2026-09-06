@@ -1,6 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
+import {
+  useConversionAudit,
+  type ConversionFinding as Finding,
+} from '@/components/admin/ConversionAudit'
 import {
   AlertCircle,
   CheckCircle2,
@@ -24,41 +28,9 @@ import {
  * "missing".
  */
 
-interface Spec {
-  key: string
-  name: string
-  category: string
-  type: string
-  origin: string
-  fires: string
-  countingType: string
-  clickLookbackDays: number
-  callSeconds?: number
-  biddable: boolean
-  setup: string[]
-}
-
-interface Finding {
-  key: string
-  name: string
-  state: 'ok' | 'settings' | 'rename' | 'missing' | 'duplicate'
-  actionId?: string
-  actionName?: string
-  fix?: string
-  differences: string[]
-  setup: string[]
-  fires: string
-}
-
-interface Audit {
-  customerId: string
-  findings: Finding[]
-  doubleCounting: string[]
-  goalIssues: string[]
-  extras: Array<{ id: string; name: string; note: string }>
-  clean: boolean
-}
-
+// The shapes live with the provider that fetches them — the instructions card
+// above reads the same findings, and two copies of these types is how the two
+// cards come to disagree about what a state means.
 const STATE_STYLE: Record<Finding['state'], { label: string; cls: string }> = {
   ok: { label: 'Set up', cls: 'text-green-700 bg-green-50 border-green-200' },
   settings: { label: 'Wrong settings', cls: 'text-amber-700 bg-amber-50 border-amber-200' },
@@ -67,30 +39,17 @@ const STATE_STYLE: Record<Finding['state'], { label: string; cls: string }> = {
   missing: { label: 'Missing', cls: 'text-red-700 bg-red-50 border-red-200' },
 }
 
-export default function ConversionStandardCard({ clientId }: { clientId: string }) {
-  const [standard, setStandard] = useState<Spec[] | null>(null)
-  const [audit, setAudit] = useState<Audit | null>(null)
-  const [reason, setReason] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+export default function ConversionStandardCard() {
+  const shared = useConversionAudit()
   const [open, setOpen] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const data = await (await fetch(`/api/clients/${clientId}/ads-conversions`)).json()
-      setStandard(data.standard || [])
-      setAudit(data.audit || null)
-      setReason(data.reason || null)
-    } catch {
-      setReason('Could not reach Google Ads.')
-    } finally {
-      setLoading(false)
-    }
-  }, [clientId])
-
-  useEffect(() => {
-    load()
-  }, [load])
+  const standard = shared?.standard ?? null
+  const audit = shared?.audit ?? null
+  const campaignGoals = shared?.campaignGoals ?? null
+  const campaignGoalsError = shared?.campaignGoalsError ?? null
+  const reason = shared?.reason ?? null
+  const loading = shared?.loading ?? false
+  const load = shared?.refresh ?? (async () => {})
 
   if (loading && !standard) {
     return (
@@ -248,6 +207,23 @@ export default function ConversionStandardCard({ clientId }: { clientId: string 
         </div>
       )}
 
+      {/* Account-level, and invisible from the conversion list: an account can
+          hold all four actions, perfectly configured, and still send every
+          call from every ad somewhere else. Its own block because it is fixed
+          on a different screen from everything above. */}
+      {!!audit?.accountSettings?.length && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-1">
+          <p className="text-sm font-semibold text-amber-900">
+            Account settings (Goals → Conversions → Settings)
+          </p>
+          <ul className="list-disc ml-4 text-sm text-amber-900 space-y-1">
+            {audit.accountSettings.map((issue) => (
+              <li key={issue}>{issue}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {!!audit?.goalIssues.length && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-1">
           <p className="text-sm font-semibold text-amber-900">Bidding and upload target</p>
@@ -256,6 +232,65 @@ export default function ConversionStandardCard({ clientId }: { clientId: string 
               <li key={issue}>{issue}</li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* HAVING the actions is not the same as BIDDING to them. A campaign
+          can carry its own conversion goals that override the account's, and
+          then the quote form is measured and ignored on every campaign that
+          spends money — invisible in the Ads UI unless you open each campaign
+          and read its goals against a list. */}
+      {(campaignGoals || campaignGoalsError) && (
+        <div className="rounded-xl border border-gray-200 p-4 space-y-2">
+          <p className="text-sm font-semibold text-gray-900">
+            Campaigns bidding to these
+            {campaignGoals && !campaignGoals.ok && (
+              <span className="ml-2 text-[11px] font-bold uppercase tracking-wide rounded px-1.5 py-0.5 border text-amber-700 bg-amber-50 border-amber-200">
+                {campaignGoals.problems.length} to fix
+              </span>
+            )}
+          </p>
+          <p className="text-xs text-gray-500">
+            An action can exist, be named right and count correctly, and still be Secondary on the
+            campaign that spends the money — biddability is set per goal, and a campaign may carry
+            its own set that overrides the account default.
+          </p>
+
+          {campaignGoalsError && (
+            <p className="text-sm text-amber-900 rounded border border-amber-200 bg-amber-50 p-2">
+              {campaignGoalsError} Nothing about the campaigns could be read, so this is not an
+              all-clear.
+            </p>
+          )}
+          {campaignGoals?.note && <p className="text-sm text-gray-600">{campaignGoals.note}</p>}
+
+          {campaignGoals?.campaigns.map((c) => (
+            <div key={c.campaignId} className="rounded-lg border border-gray-200 p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                {c.problem ? (
+                  <AlertCircle size={15} className="shrink-0 text-amber-600" />
+                ) : (
+                  <CheckCircle2 size={15} className="shrink-0 text-green-600" />
+                )}
+                <span className="text-sm font-medium text-gray-900">{c.name}</span>
+                <span className="text-xs text-gray-500">
+                  {c.channel.replace(/_/g, ' ').toLowerCase()} ·{' '}
+                  {c.level === 'CAMPAIGN'
+                    ? 'own conversion goals'
+                    : c.level === 'CUSTOMER'
+                      ? 'account-default goals'
+                      : 'goal source unknown'}
+                  {c.customGoalName ? ` · custom goal “${c.customGoalName}”` : ''}
+                </span>
+              </div>
+              {c.bidding.length > 0 && (
+                <p className="mt-1 text-xs text-gray-600">
+                  Bidding to: <span className="font-mono">{c.bidding.join(', ')}</span>
+                </p>
+              )}
+              {c.problem && <p className="mt-1 text-sm text-amber-900">{c.problem}</p>}
+            </div>
+          ))}
         </div>
       )}
 

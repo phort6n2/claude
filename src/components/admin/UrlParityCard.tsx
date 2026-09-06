@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { pathOverrideProblem, keptPathProblem } from '@/lib/site-paths'
 import { Button } from '@/components/ui/Button'
 import { Loader2, TriangleAlert, CircleCheck } from 'lucide-react'
 
@@ -79,6 +80,8 @@ export default function UrlParityCard({
 
   const [redirects, setRedirects] = useState<Redirect[]>([])
   const [pages, setPages] = useState<KeptPage[]>([])
+  /** Old address → the template page now living there. */
+  const [moved, setMoved] = useState<Record<string, string>>({})
   /** Per-row destination overrides, keyed by old path. */
   const [dest, setDest] = useState<Record<string, string>>({})
   /** Which row is mid-request. */
@@ -94,6 +97,7 @@ export default function UrlParityCard({
       const data = await res.json().catch(() => ({}))
       setRedirects(Array.isArray(data.redirects) ? data.redirects : [])
       setPages(Array.isArray(data.pages) ? data.pages : [])
+      setMoved(data.moved && typeof data.moved === 'object' ? data.moved : {})
     } catch {
       // A card that cannot read its own state is not worth an error banner —
       // the buttons still work and the next action reloads it.
@@ -185,10 +189,33 @@ export default function UrlParityCard({
     const page = pageFor(from)
     const working = rowBusy === from
     const value = dest[from] ?? redirect?.toPath ?? suggested ?? '/'
+    const movedHere = moved[from]
+    // Offered only where it can actually work. The same rule the server
+    // enforces, run here so the button is not present on a row it would
+    // refuse — a city address, or one of the template's own service
+    // addresses, both of which resolve before an override could apply.
+    const moveProblem = pathOverrideProblem(from, value || '', [])
 
     return (
       <div className="space-y-1.5">
-        {page ? (
+        {movedHere ? (
+          // The page LIVES here now — there is nothing left to decide on this
+          // row, so the only offer is to undo it.
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">
+              Page moved here
+            </span>
+            <span className="font-mono text-xs text-gray-600">was {movedHere}</span>
+            <button
+              type="button"
+              disabled={working}
+              onClick={() => act(from, 'unrename')}
+              className="text-xs font-semibold text-red-700 hover:underline disabled:opacity-50"
+            >
+              Move back
+            </button>
+          </div>
+        ) : page ? (
           <div className="flex flex-wrap items-center gap-1.5">
             <span
               className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${
@@ -263,6 +290,23 @@ export default function UrlParityCard({
             >
               Build page
             </button>
+            {/* The third answer, and the best one when the site already has
+                the same page under a different name: move that page onto this
+                address instead of redirecting to it. No hop on a paid click,
+                and the ranking stays on the URL that earned it. Offered only
+                when there is a page to move — the server checks that too and
+                refuses anything that is not one of the template's own. */}
+            {value && value !== '/' && !moveProblem && (
+              <button
+                type="button"
+                disabled={working}
+                onClick={() => act(from, 'rename', { to: value })}
+                className="text-xs font-semibold text-blue-700 hover:underline disabled:opacity-50"
+                title={`Serve ${value} at ${from} instead`}
+              >
+                Move {value} here
+              </button>
+            )}
             {redirect && (
               <button
                 type="button"
@@ -556,6 +600,17 @@ export default function UrlParityCard({
             {decidedOutsideReport.map((path) => (
               <div key={path} className="flex flex-col gap-1">
                 <span className="font-mono text-xs text-gray-900 break-all">{path}</span>
+                {/* A page that can never be reached, said where the operator
+                    is looking at it. Two of these were live on a real site,
+                    published and linked in the footer, serving the windshield
+                    page to everyone who clicked them — with nothing anywhere
+                    that would have told anybody. */}
+                {pageFor(path) && keptPathProblem(path) && (
+                  <p className="text-xs text-amber-800 flex items-start gap-1.5">
+                    <TriangleAlert className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>{keptPathProblem(path)} Redirect it, or move the service page onto it.</span>
+                  </p>
+                )}
                 <Controls from={path} suggested={redirectFor(path)?.toPath ?? null} />
               </div>
             ))}

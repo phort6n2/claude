@@ -2,6 +2,7 @@ import { getPortalSession } from '@/lib/portal-auth'
 import { prisma } from '@/lib/db'
 import ImpersonationBanner from '@/components/portal/ImpersonationBanner'
 import PortalNav, { PortalTabBar } from '@/components/portal/PortalNav'
+import { siteLinkFor, PRIMARY_DOMAIN_SELECT } from '@/lib/site-origin'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,10 +26,31 @@ export default async function PortalLayout({ children }: { children: React.React
   // Only offer this tab once there is something behind it. A tab that leads
   // to a permanent empty state reads as something broken rather than
   // something not bought.
-  const rankScans = await prisma.localRankScan
-    .count({ where: { clientId: session.clientId } })
-    .catch(() => 0)
-  const hasRankings = rankScans > 0
+  const [rankScans, client] = await Promise.all([
+    prisma.localRankScan.count({ where: { clientId: session.clientId } }).catch(() => 0),
+    prisma.client
+      .findUnique({
+        where: { id: session.clientId },
+        select: {
+          slug: true,
+          siteSubdomain: true,
+          rankTrackingId: true,
+          domains: PRIMARY_DOMAIN_SELECT,
+        },
+      })
+      .catch(() => null),
+  ])
+  // ONCE MEASURING IS SET UP, not once it has reported. The rule this bends
+  // — no tab for a permanent empty state — is about a client who never bought
+  // the thing. A campaign that exists and has not run yet is a WAIT, and
+  // hiding the page during it means a shop is told nothing at all in the days
+  // between signing up and the first Tuesday scan. The page says which
+  // keywords are being measured and when the scans run.
+  const hasRankings = rankScans > 0 || !!client?.rankTrackingId
+  // Their own address once a custom domain is live, ours until then. Only a
+  // real, reachable address gets a tab — the preview path is an operator's
+  // tool, not something to hand a shop.
+  const siteUrl = client && (client.siteSubdomain || client.domains.length) ? siteLinkFor(client) : null
 
   return (
     <div
@@ -68,7 +90,7 @@ export default async function PortalLayout({ children }: { children: React.React
           )}
           <span className="font-bold text-gray-900 truncate">{session.businessName}</span>
           <div className="ml-auto">
-            <PortalNav showRankings={hasRankings} />
+            <PortalNav showRankings={hasRankings} siteUrl={siteUrl} />
           </div>
         </div>
       </header>
@@ -78,7 +100,7 @@ export default async function PortalLayout({ children }: { children: React.React
       {/* Outside the header on purpose: the header's backdrop-blur makes it a
           containing block for fixed children, which pinned this bar to the
           top of the screen instead of the bottom. */}
-      <PortalTabBar showRankings={hasRankings} />
+      <PortalTabBar showRankings={hasRankings} siteUrl={siteUrl} />
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { SiteBaseStyles, telHrefFor, type SiteClient } from '@/components/sites/shared'
 import { SiteAnalytics } from '@/components/sites/analytics'
 import { sitePaletteVars } from '@/lib/site-theme'
+import { canonicalHostFor } from '@/lib/site-origin'
 
 /**
  * Legal pages (privacy / terms) for hosted client sites, ported from the
@@ -14,10 +15,13 @@ export interface LegalClient extends SiteClient {
   email?: string | null
   siteSubdomain?: string | null
   clarityProjectId?: string | null
+  /** Pre-filtered to the primary domain, so this policy names the address the
+   *  reader is actually on rather than the platform subdomain behind it. */
+  domains?: Array<{ domain: string; verified: boolean; misconfigured: boolean }>
 }
 
 function domainFor(client: LegalClient) {
-  return `${client.siteSubdomain || client.slug}.glassleads.app`
+  return canonicalHostFor(client)
 }
 
 export function LegalShell({

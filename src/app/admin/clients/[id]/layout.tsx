@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ArrowLeft, ExternalLink } from 'lucide-react'
 import { prisma } from '@/lib/db'
 import { getClientReadiness } from '@/lib/client-readiness'
+import { siteLinkFor, PRIMARY_DOMAIN_SELECT } from '@/lib/site-origin'
 import ClientTabs from '@/components/admin/ClientTabs'
 import { UnsavedWorkProvider } from '@/components/admin/UnsavedWorkGuard'
 import ClientReadinessBadge from '@/components/admin/ClientReadinessBadge'
@@ -34,6 +35,9 @@ export default async function ClientLayout({
       status: true,
       slug: true,
       siteSubdomain: true,
+      // Without this the header's "View site" link cannot see a custom
+      // domain, and goes on pointing at the subdomain after a cutover.
+      domains: PRIMARY_DOMAIN_SELECT,
       logoUrl: true,
     },
   })
@@ -43,9 +47,7 @@ export default async function ClientLayout({
   // are, and so a tab you never open can still tell you something is missing.
   const readiness = await getClientReadiness(client.id)
 
-  const siteUrl = client.siteSubdomain
-    ? `https://${client.siteSubdomain}.glassleads.app`
-    : `/sites/${client.slug}`
+  const siteUrl = siteLinkFor(client)
 
   const statusStyles: Record<string, string> = {
     ACTIVE: 'bg-green-100 text-green-700',

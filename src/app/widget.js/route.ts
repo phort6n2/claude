@@ -9,6 +9,22 @@ export const dynamic = 'force-static'
  *   <script src="https://glassleads.app/widget.js" data-client="SLUG" async></script>
  *   <div data-glassleads-widget></div>   <!-- optional; omit for floating button -->
  *
+ * PUT THE SCRIPT ON EVERY PAGE, THE CONTAINER ONLY WHERE THE FORM GOES.
+ * Attribution is captured by the script, on whatever page it runs — so a
+ * script that only loads on /quote/ can only ever see a UTM link that pointed
+ * AT /quote/. A shop tagging links to their homepage, their Business Profile
+ * landing on the homepage, an ad landing on a service page: every one of
+ * those arrives at the form with nothing, because nothing was watching where
+ * they came in. Site-wide install is what makes goal 1 below true off our own
+ * sites, and `data-floating="off"` is how to do it without a quote bubble
+ * appearing on every page of somebody's WordPress site:
+ *
+ *   <!-- site-wide, in the theme header -->
+ *   <script src="https://glassleads.app/widget.js" data-client="SLUG"
+ *           data-floating="off" async></script>
+ *   <!-- and, on the page that has the form -->
+ *   <div data-glassleads-widget></div>
+ *
  * Design goals, in order:
  *  1. Perfect attribution: click IDs and UTMs are captured on ANY page the
  *     visitor lands on and persisted for 90 days, so a lead submitted three
@@ -40,6 +56,9 @@ const WIDGET_SOURCE = String.raw`(function () {
   var CLIENT = script.getAttribute('data-client');
   if (!CLIENT) { console.warn('[glassleads] missing data-client attribute'); return; }
   var BASE = new URL(script.src).origin;
+  /* Default ON, so every embed that predates this attribute behaves exactly
+     as it did. Only an explicit "off" turns the bubble off. */
+  var FLOATING = (script.getAttribute('data-floating') || '').toLowerCase() !== 'off';
   var ATTR_KEY = 'glassleads_attr';
   var ATTR_TTL_MS = 90 * 24 * 60 * 60 * 1000;
   var CLICK_IDS = ['gclid', 'gbraid', 'wbraid', 'msclkid', 'fbclid', 'ttclid', 'li_fat_id'];
@@ -194,14 +213,25 @@ const WIDGET_SOURCE = String.raw`(function () {
   }
 
   function buildStyles(cfg) {
+    // The button colour the SITE decided, sent with the config. A widget that
+    // derived it from primaryColor gave a black-and-yellow shop a black submit
+    // under a yellow page — same input, two answers. Falls back to the old
+    // derivation for an embed served a config from before this existed.
+    var btnBg = cfg.ctaColor || ensureDark(cfg.primaryColor);
+    var btnText = cfg.ctaTextColor || '#fff';
+    // The required-field asterisk is small text on white, so it takes the
+    // brand only when the brand can be read there. The focus ring below keeps
+    // primaryColor deliberately: a pale accent is a weak focus indicator, and
+    // that one is an accessibility control rather than a brand surface.
+    var reqMark = ensureDark(cfg.primaryColor);
     return '' +
       ':host{all:initial}' +
       '*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}' +
       // Card mirrors the landing-template quote card (.qc): white, brand top
       // border, no dark header band.
-      '.card{background:#fff;border:1px solid #e2d8d8;border-top:4px solid ' + cfg.primaryColor + ';border-radius:20px;box-shadow:0 2px 4px rgba(20,20,20,.04),0 10px 20px -6px rgba(20,20,20,.08),0 28px 56px -18px rgba(20,20,20,.15);overflow:hidden;max-width:430px;width:100%}' +
+      '.card{background:#fff;border:1px solid #e2d8d8;border-top:4px solid ' + btnBg + ';border-radius:20px;box-shadow:0 2px 4px rgba(20,20,20,.04),0 10px 20px -6px rgba(20,20,20,.08),0 28px 56px -18px rgba(20,20,20,.15);overflow:hidden;max-width:430px;width:100%}' +
       '.head{padding:20px 22px 0;color:#1a1a1a}' +
-      '.head h3{margin:0;font-size:20px;font-weight:800;letter-spacing:-.02em}' +
+      '.head h2{margin:0;font-size:20px;font-weight:800;letter-spacing:-.02em}' +
       '.head p{margin:4px 0 0;font-size:14px;color:#5c5c5c;line-height:1.5}' +
       '.body{padding:14px 22px 22px}' +
       // Rows stack on narrow embeds and go two-up when the card is wide
@@ -210,13 +240,17 @@ const WIDGET_SOURCE = String.raw`(function () {
       '.row+.row,.row+div,div+.row{margin-top:14px}' +
       '.field{min-width:0}' +
       'label{display:block;font-size:14px;font-weight:600;color:#1a1a1a;margin:0 0 6px}' +
-      '.req{color:' + cfg.primaryColor + ';margin-left:2px}' +
+      '.req{color:' + reqMark + ';margin-left:2px}' +
       '.opt{color:#6e6e6e;font-weight:400}' +
       'input,select,textarea{width:100%;min-height:50px;padding:13px 14px;border:1.5px solid #7C8FA3;border-radius:14px;font-size:16.5px;line-height:1.3;background:#fff;color:#1a1a1a;appearance:none;-webkit-appearance:none;transition:border-color .12s ease,box-shadow .12s ease}' +
       'input::placeholder,textarea::placeholder{color:#5E6D7C;opacity:1}' +
       'input:hover,select:hover,textarea:hover{border-color:#66788B}' +
       'textarea{min-height:96px;resize:vertical;line-height:1.5;padding-top:11px}' +
-      'select{padding-right:42px;background-repeat:no-repeat;background-position:right 14px center;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%234C5C6B\' stroke-width=\'2.2\' stroke-linecap=\'round\'%3E%3Cpath d=\'M6 9l6 6 6-6\'/%3E%3C/svg%3E")}' +
+      // text-overflow is the safety net, not the fix — the fix is the
+      // full-width row this select now sits on. A shop can configure any
+      // service name it likes, so the failure has to degrade to an ellipsis
+      // rather than a hard clip that looks like a rendering bug.
+      'select{text-overflow:ellipsis;padding-right:38px;background-repeat:no-repeat;background-position:right 13px center;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%234C5C6B\' stroke-width=\'2.2\' stroke-linecap=\'round\'%3E%3Cpath d=\'M6 9l6 6 6-6\'/%3E%3C/svg%3E")}' +
       'input:focus,select:focus,textarea:focus{outline:none;border-color:' + cfg.primaryColor + ';box-shadow:0 0 0 3px ' + rgba(cfg.primaryColor, 0.4) + '}' +
       'input[aria-invalid="true"],select[aria-invalid="true"]{border-color:#B3261E;background:#FEF2F2;box-shadow:0 0 0 3px rgba(179,38,30,.14)}' +
       '.ferr{display:none;margin:6px 0 0;font-size:13.5px;font-weight:600;color:#B3261E}' +
@@ -254,13 +288,13 @@ const WIDGET_SOURCE = String.raw`(function () {
       '.radio{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;background:#fff;border:1.5px solid #7C8FA3;border-radius:14px;cursor:pointer;font-size:15px;color:#1a1a1a}' +
       '.radio input{width:18px;height:18px;min-height:0;accent-color:' + cfg.primaryColor + ';margin:0;appearance:auto;-webkit-appearance:auto}' +
       '.radio:has(input:checked){border-color:' + cfg.primaryColor + ';background:' + rgba(cfg.primaryColor, 0.08) + ';font-weight:600}' +
-      '.btn{width:100%;min-height:56px;margin-top:18px;padding:14px;border:0;border-radius:14px;font-size:17.5px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(180deg,' + cfg.primaryColor + ',' + darken(cfg.primaryColor, 0.17) + ');box-shadow:0 6px 14px -4px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.2)}' +
+      '.btn{width:100%;min-height:56px;margin-top:18px;padding:14px;border:0;border-radius:14px;font-size:17.5px;font-weight:700;color:' + btnText + ';cursor:pointer;background:linear-gradient(180deg,' + btnBg + ',' + darken(btnBg, 0.17) + ');box-shadow:0 6px 14px -4px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.2)}' +
       '.btn:disabled{opacity:.6;cursor:default}' +
       '.micro{font-size:13px;color:#5c5c5c;text-align:center;margin-top:12px;line-height:1.5}' +
       '.consent{font-size:12px;color:#6e6e6e;margin-top:12px;line-height:1.5}' +
       '.ok{padding:28px 22px;text-align:center}' +
       '.ok .big{width:56px;height:56px;margin:0 auto;border-radius:999px;display:flex;align-items:center;justify-content:center;color:' + cfg.primaryColor + ';background:' + rgba(cfg.primaryColor, 0.1) + '}' +
-      '.ok h4{margin:14px 0 8px;font-size:18px;color:#1a1a1a}' +
+      '.ok h3{margin:14px 0 8px;font-size:18px;color:#1a1a1a}' +
       '.ok p{margin:0;font-size:16px;color:#5c5c5c}' +
       '.ok a{display:block;margin-top:16px;padding:14px;min-height:52px;border-radius:14px;font-weight:700;font-size:16px;color:#fff;text-decoration:none;background:linear-gradient(180deg,' + cfg.primaryColor + ',' + darken(cfg.primaryColor, 0.17) + ');box-shadow:0 6px 14px -4px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.2)}' +
       '.err{display:none;margin-top:12px;padding:12px 14px;border-radius:10px;background:#FEF2F2;border:1px solid #E3A9A5;color:#B3261E;font-size:14px}' +
@@ -516,8 +550,23 @@ const WIDGET_SOURCE = String.raw`(function () {
     // someone standing next to a damaged car on their phone. It moves into
     // the optional drawer rather than disappearing.
     var row1 = el('div', { class: 'row' }, [field('Full name' + REQ, name, 'name'), field('Mobile phone' + REQ, phone, 'phone')]);
-    var row2 = el('div', { class: 'row' }, [field('Service ZIP' + REQ, zip, 'zip'), field('What do you need?' + REQ, service)]);
-    var row3 = el('div', { class: 'row' }, [field('Vehicle' + REQ, vehicle, 'vehicle')]);
+    // THE SERVICE SELECT GETS THE FULL WIDTH, AND THAT IS THE WHOLE REASON
+    // FOR THIS PAIRING. It used to sit beside the ZIP, which on the card's
+    // 430px maximum leaves each column about 186px — 130px of text once the
+    // padding and the chevron are taken out. "Windshield Replacement" is
+    // 183px and "Not sure — help me work it out" is 227px, so the field the
+    // form exists to ask read "Windshield Repla" on a client's own site.
+    //
+    // A <select> is the one control that cannot be talked out of this: it
+    // will not wrap, will not shrink its text, and the value it clips is the
+    // one the visitor just chose. And cfg.services is per-client, so no
+    // width chosen here can be proven to fit every shop's list — the answer
+    // has to be the widest box the card can give it, not a tighter label.
+    //
+    // Same number of rows as before: the ZIP (5 digits) and the vehicle
+    // (a placeholder about 130px wide) both survive a half column easily.
+    var row2 = el('div', { class: 'row' }, [field('Service ZIP' + REQ, zip, 'zip'), field('Vehicle' + REQ, vehicle, 'vehicle')]);
+    var row3 = el('div', { class: 'row' }, [field('What do you need?' + REQ, service)]);
     form.appendChild(row1);
     form.appendChild(row2);
     form.appendChild(row3);
@@ -528,6 +577,21 @@ const WIDGET_SOURCE = String.raw`(function () {
     // told people to skip the best feature on the form.
     var photoField = field('Photo of the damage <span class="opt">— usually saves a callback</span>', photoWrap);
     photoField.className = 'photo-field';
+    /* THE LABEL HAS TO POINT AT THE INPUT, NOT THE WRAPPER.
+       Every other field hands the field() helper its own control, so label[for]
+       lands on something labelable. This one hands it a div holding the hidden
+       file input and the button that proxies it — so the label pointed at a div,
+       and the real <input type="file"> had no accessible name at all. Found
+       by PageSpeed's agent-accessibility audit ("Form elements must have
+       labels"), which is a fair complaint from anything reading the page
+       through the accessibility tree rather than looking at it: the visible
+       button says what it does, and the control it drives said nothing.
+       Re-pointing it also makes tapping the label open the picker. */
+    var photoLabel = photoField.querySelector('label');
+    if (photoLabel) {
+      photoInput.id = photoWrap.id ? photoWrap.id + '-input' : 'gl-photo-input';
+      photoLabel.setAttribute('for', photoInput.id);
+    }
     form.appendChild(photoField);
 
     var vinField = field('VIN <span class="opt">— optional, gets us the exact glass</span>', vin);
@@ -634,7 +698,11 @@ const WIDGET_SOURCE = String.raw`(function () {
     var card = el('div'); card.className = 'card';
     var headwrap = el('div'); headwrap.className = 'headwrap';
     var head = el('div'); head.className = 'head';
-    head.appendChild(el('h3', { text: 'Get your free quote' }));
+    // h2, not h3: the page's H1 is the hero headline directly above, and
+    // a jump straight to h3 is a level skipped — flagged by PageSpeed's
+    // heading-order audit, and the thing a screen-reader user navigating by
+    // heading actually trips over.
+    head.appendChild(el('h2', { text: 'Get your free quote' }));
     head.appendChild(el('p', { text: "Four quick questions. We'll confirm what your insurance covers before anything is booked — no obligation." }));
     headwrap.appendChild(head);
     card.appendChild(headwrap);
@@ -744,14 +812,14 @@ const WIDGET_SOURCE = String.raw`(function () {
            directly above the tick, that they had not. That reads as a failed
            submission and produces a duplicate lead or a needless call. */
         head.innerHTML = '';
-        head.appendChild(el('h3', { text: 'Request sent' }));
+        head.appendChild(el('h2', { text: 'Request sent' }));
         var first = (data.full_name || '').split(' ')[0] || 'there';
         var ok = el('div', { role: 'status', 'aria-live': 'polite' }); ok.className = 'ok';
         ok.appendChild(el('div', {
           class: 'big',
           html: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
         }));
-        var okHead = el('h4', { text: "You're all set, " + first + '.', tabindex: '-1' });
+        var okHead = el('h3', { text: "You're all set, " + first + '.', tabindex: '-1' });
         ok.appendChild(okHead);
         ok.appendChild(el('p', {
           text: 'Your request is with ' + cfg.businessName + '.' + (cfg.phone
@@ -899,9 +967,14 @@ const WIDGET_SOURCE = String.raw`(function () {
     var containers = document.querySelectorAll('[data-glassleads-widget]');
     if (containers.length > 0) {
       for (var i = 0; i < containers.length; i++) mountInline(containers[i], cfg);
-    } else {
+    } else if (FLOATING) {
       mountFloating(cfg);
     }
+    /* No container and data-floating="off": the script's job on this page was
+       attribution, which already happened above, before any of this ran.
+       That is the whole point of the flag — it lets the tag go site-wide so a
+       UTM link to ANY page is remembered, without putting a quote bubble on
+       every page of a site we do not own. */
   }
 
   // If the widget can't build (blocked fetch, flaky network), the quote
@@ -912,20 +985,34 @@ const WIDGET_SOURCE = String.raw`(function () {
     var containers = document.querySelectorAll('[data-glassleads-widget]');
     for (var i = 0; i < containers.length; i++) {
       var c = containers[i];
-      c.textContent = '';
+      /* NEVER OVERWRITE SOMETHING THAT ALREADY WORKS. On our own hosted sites
+         this container holds a real server-rendered <form method="post"> that
+         posts to the same intake — it does not need us. Clearing it to print a
+         call card would take a working form away on exactly the visit where
+         the script already failed once. */
+      if (c.firstElementChild || (c.textContent || '').trim()) continue;
+      /* AND NEVER REPLACE IT WITH A DEAD END. Without data-phone this card is
+         the sentence "Call for your free quote" and no number to call, which
+         is worse than nothing — and it went up at the top of a client's
+         homepage when their embed carried a client slug that did not resolve.
+         An empty container is invisible; a phone-less instruction is not. */
+      if (!phone) continue;
       var card = el('div');
       card.style.cssText = 'background:#fff;border:1px solid #e2d8d8;border-radius:20px;padding:24px;text-align:center;font-family:sans-serif;box-shadow:0 10px 20px -6px rgba(20,20,20,.08)';
       card.appendChild(el('p', { text: 'Call for your free quote — it takes about a minute.' }));
-      if (phone) {
-        var a = el('a', { href: 'tel:' + phone.replace(/[^+\d]/g, ''), text: 'Call ' + phone });
-        a.style.cssText = 'display:block;margin-top:10px;padding:14px;border-radius:12px;background:#1a1a1a;color:#fff;font-weight:700;text-decoration:none';
-        card.appendChild(a);
-      }
+      var a = el('a', { href: 'tel:' + phone.replace(/[^+\d]/g, ''), text: 'Call ' + phone });
+      a.style.cssText = 'display:block;margin-top:10px;padding:14px;border-radius:12px;background:#1a1a1a;color:#fff;font-weight:700;text-decoration:none';
+      card.appendChild(a);
       c.appendChild(card);
     }
   }
 
   function init() {
+    /* Nothing to draw on this page, and no bubble wanted: stop before the
+       config fetch. On a site-wide install that is most pages, and a request
+       per pageview to build a form nobody asked for is a cost the host site
+       pays for our convenience. Attribution is already stored by here. */
+    if (!FLOATING && !document.querySelector('[data-glassleads-widget]')) return;
     // The host site inlines the config so the form renders without a round
     // trip; third-party embeds fall back to fetching it.
     var inline = script.getAttribute('data-config');
@@ -939,7 +1026,11 @@ const WIDGET_SOURCE = String.raw`(function () {
       .then(function (res) { if (!res.ok) throw new Error('config ' + res.status); return res.json(); })
       .then(mountAll)
       .catch(function (err) {
-        console.warn('[glassleads] widget failed to load:', err);
+        /* Name the slug. Every install failure this has actually produced was
+           a data-client that did not resolve — a typo, or the placeholder from
+           the instructions pasted verbatim — and "widget failed to load" sent
+           whoever installed it looking at the wrong thing. */
+        console.warn('[glassleads] no config for data-client="' + CLIENT + '":', err);
         mountFallback();
       });
   }

@@ -5,6 +5,7 @@ import { getPortalSession } from '@/lib/portal-auth'
 import { prisma } from '@/lib/db'
 import { deliverabilityGuide } from '@/lib/alert-deliverability'
 import GettingStartedCard from '@/components/portal/GettingStartedCard'
+import { siteLinkFor, PRIMARY_DOMAIN_SELECT } from '@/lib/site-origin'
 
 export const dynamic = 'force-dynamic'
 
@@ -61,7 +62,9 @@ export default async function PortalHomePage() {
       .catch(() => ({ _sum: { saleValue: null }, _count: 0 })),
     prisma.client.findUnique({
       where: { id: session.clientId },
-      select: { slug: true, siteSubdomain: true, status: true },
+      // domains, or the client opens their own portal after a cutover and
+      // sees the platform's subdomain where their domain should be.
+      select: { slug: true, siteSubdomain: true, status: true, domains: PRIMARY_DOMAIN_SELECT },
     }),
     prisma.clientGbpReviews.findUnique({ where: { clientId: session.clientId } }).catch(() => null),
   ])
@@ -95,11 +98,7 @@ export default async function PortalHomePage() {
   const showWalkthrough = !onboarding?.dismissedAt && !walkthroughDone
 
   const delta = thisWeek - lastWeek
-  const siteUrl = client?.siteSubdomain
-    ? `https://${client.siteSubdomain}.glassleads.app`
-    : client
-      ? `/sites/${client.slug}`
-      : null
+  const siteUrl = client ? siteLinkFor(client) : null
 
   return (
     <div className="space-y-5">
@@ -213,14 +212,21 @@ export default async function PortalHomePage() {
         ) : (
           <p className="text-gray-500">Your site is being set up.</p>
         )}
-        <Link
-          href="/portal/website"
-          className="mt-3 inline-flex items-center gap-1 text-sm font-semibold"
-          style={{ color: 'var(--brand-ink)' }}
-        >
-          Update my website
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
+        {/* LOOK, not edit. The site is ours to run — a change to it is a
+            conversation, not a form — so this opens the live page rather than
+            an editor. Anything that needs changing, they tell us. */}
+        {siteUrl && (
+          <a
+            href={siteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex items-center gap-1 text-sm font-semibold"
+            style={{ color: 'var(--brand-ink)' }}
+          >
+            Open my site
+            <ArrowRight className="h-3.5 w-3.5" />
+          </a>
+        )}
       </section>
     </div>
   )

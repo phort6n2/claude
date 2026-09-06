@@ -39,6 +39,31 @@ export function formatPhoneDisplay(phone: string | null | undefined): string {
   return phone
 }
 
+/**
+ * Capitalise what somebody typed in a hurry on a phone, without mangling it.
+ *
+ * People fill these forms one-handed with autocapitalise off, so a lead
+ * arrives as "kristin duffy" wanting "2024 jeep grand cherokee" and the alert
+ * reads like a text message from a friend rather than a job.
+ *
+ * A WORD THAT ALREADY HAS A CAPITAL IN IT IS LEFT ALONE, and that rule is
+ * doing all the work here. Ordinary title-casing lowercases the rest of each
+ * word, which turns RDX into Rdx, BMW into Bmw, McCarthy into Mccarthy and
+ * E 350 into E 350 only by luck. Touching nothing that shows any sign of
+ * having been typed deliberately means the only strings this changes are the
+ * ones nobody capitalised at all.
+ *
+ * It is a DISPLAY helper. The lead record keeps what the customer actually
+ * typed — that is the evidence of what they said, and correcting it in the
+ * database would quietly rewrite their words.
+ */
+export function properCase(value: string | null | undefined): string {
+  if (!value) return ''
+  return value.replace(/\S+/g, (word) =>
+    /[A-Z]/.test(word) ? word : word.replace(/^([^a-z]*)([a-z])/, (_, lead, ch) => lead + ch.toUpperCase())
+  )
+}
+
 export function isPhoneLead(source: string | null | undefined): boolean {
   return typeof source === 'string' && source.toUpperCase() === 'PHONE'
 }

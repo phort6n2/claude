@@ -21,8 +21,8 @@ there, not here, and this file follows.
 | Name | Fires when | Goal | Count | Click window | Call length | Bidding |
 |---|---|---|---|---|---|---|
 | `AGMP Lead Form` | The quote form on the hosted site is submitted | Submit lead form | One | 90 days | — | **Primary** |
-| `AGMP Call From Ads` | Someone taps the call asset in the ad itself | Phone call lead | One | 30 days | 15s | **Primary** |
-| `AGMP Website Call` | Someone calls the number shown on the site | Phone call lead | One | 30 days | 15s | **Primary** |
+| `AGMP Call From Ads` | Someone taps the call asset in the ad itself | Phone call lead | One | 30 days | 10s | **Primary** |
+| `AGMP Website Call` | Someone calls the number shown on the site | Phone call lead | One | 30 days | 10s | **Primary** |
 | `AGMP Sale` | This app uploads a lead marked SOLD with a value | Purchase | One | 90 days | — | Secondary |
 
 Attribution on all four: **data-driven**.
@@ -39,6 +39,30 @@ better. Promoting it is a decision someone makes, not a box that got missed.
 They deliberately sit in four different **categories**. Primary and secondary
 are set per `CATEGORY~ORIGIN` goal, not per action, so two lead actions sharing
 a category could not be told apart by bidding even if you wanted them to be.
+
+### Having them is not the same as bidding to them
+
+Biddability is a property of the goal, and **a campaign may carry its own set
+of conversion goals that overrides the account's** — `conversion_goal_campaign_
+config.goal_config_level` is `CAMPAIGN` rather than `CUSTOMER`. So an account
+can pass the audit with all four actions correct while every campaign that
+spends money optimises to something else, and nothing about the campaign looks
+wrong: the conversions arrive, the column fills in, the bidding steers by a
+different signal.
+
+That is not hypothetical. Read live on 2026-09-04, all four enabled campaigns
+in Auto Glass Kings sat at `CAMPAIGN` level and bid on
+`PHONE_CALL_LEAD~CALL_FROM_ADS`, `CONTACT~CALL_FROM_ADS` and
+`CONVERTED_LEAD~WEBSITE` — so `AGMP Lead Form`, firing on every quote form on
+the hosted site, was measured and ignored on all four.
+
+**Campaigns bidding to these**, on the Advertising tab, checks this per
+campaign, and the weekly sweep files it as `campaign-goal-ignored` so it
+surfaces on *Needs action* without anybody opening the tab. Where the fix
+belongs depends on the level: a `CAMPAIGN`-level campaign is fixed in
+**Campaign → Settings → Conversion goals**, a `CUSTOMER`-level one in **Goals →
+Conversions → Settings** — and that second one moves every campaign that
+inherits.
 
 ---
 
@@ -68,9 +92,27 @@ a category could not be told apart by bidding even if you wanted them to be.
 1. Goals → Conversions → **New conversion action → Phone calls → Calls from
    ads using call assets**.
 2. Name: `AGMP Call From Ads`.
-3. Count a call after **15 seconds**. Count: **One**. Click window: **30 days**.
+3. Count a call after **10 seconds**. Count: **One**. Click window: **30 days**.
 4. The campaign needs a **call asset** or this never fires. An account with
    this action and no call asset looks configured and reports nothing.
+5. **Then point the account at it.** Goals → Conversions → **Settings** →
+   *Additional settings* → **Call conversion action** → `AGMP Call From Ads`.
+
+   This one is easy to miss — it is a settings page rather than part of
+   creating the action, and nothing in the conversion list shows it. It is
+   ACCOUNT-LEVEL: every call asset that has not been given its own action
+   reports to whatever is named here, so an account can hold all four actions,
+   perfectly configured, and send every call from every ad to a different
+   action or to Google's own default. Found on a live account by opening the
+   page and reading it.
+
+   Also on that page: **call conversion reporting** has to be on, or nothing a
+   call asset produces reaches the action at all.
+
+   The audit checks both, under "Account settings" on the Advertising tab, and
+   the weekly sweep files it as `call-conversion-action`. It stays quiet when
+   the setting points at the right action under an old name — the rename
+   finding covers that, and the setting follows the action through a rename.
 
 ### 4. AGMP Website Call
 
@@ -81,7 +123,7 @@ a category could not be told apart by bidding even if you wanted them to be.
    is set in this app, the site shows *that* number — the conversion action has
    to name it, or Google swaps a number the page never displays and the action
    never fires. Check the Advertising tab for which number is live.
-4. Count a call after **15 seconds**. Count: **One**. Click window: **30 days**.
+4. Count a call after **10 seconds**. Count: **One**. Click window: **30 days**.
 5. Copy the snippet's `send_to` into the app.
 
 ### 5. AGMP Sale
@@ -122,7 +164,12 @@ Typical corrections, all seen in live accounts:
 - `Submit lead form - New landing page` → rename to `AGMP Lead Form`.
 - `Call (503) 832-4376` → rename to `AGMP Website Call`, and check the number
   it names is the one the site shows today.
-- A call action counting after 10s or looking back 7 days → correct in place.
+- A call action counting after 15s (Google's default) or looking back 7 days →
+  correct in place. The standard is **10s**, chosen deliberately: at these
+  volumes bidding is starved of conversions long before it is fooled by a bad
+  one, and plenty of real enquiries in this trade are over inside fifteen
+  seconds. Both call actions must carry the same number, or one inbound call
+  counts differently depending on which way it arrived.
 
 If two enabled actions have the same shape, keep the one carrying the history,
 rename it, and **pause** the other. Pausing keeps its past conversions in the

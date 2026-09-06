@@ -133,32 +133,76 @@ export function getLeadChannel(lead: LeadAttribution): LeadChannelResult {
   return result
 }
 
-function classify(lead: LeadAttribution): LeadChannelResult {
-  const medium = clean(lead.utmMedium)?.toLowerCase() ?? null
-  const utmSource = clean(lead.utmSource)
+/**
+ * Was this lead bought, and whose ad bought it?
+ *
+ * THE ONE PLACE THAT DECIDES. `classify` below uses it, and so does the lead
+ * ALERT (`adSourceOf` in lead-notifications.ts). Those two had drifted into
+ * separate rules and the drift was invisible from either side: the alert knew
+ * only Google's click ids, so a Bing Ads lead showed "Microsoft Ads" in the
+ * admin list and nothing at all on the email the shop actually reads. The
+ * alert also never looked in `formData`, which is where every click id
+ * without a Lead column of its own lives — msclkid included.
+ *
+ * Deliberately WITHOUT the phone-call assumption in getLeadChannel: that rule
+ * is about how the numbers are wired, not about this lead, and an alert must
+ * not print "from your ads" on the strength of it.
+ *
+ * Returns null when nothing says paid. A named network is not guaranteed —
+ * `utm_medium=cpc` with no source is paid traffic nobody can name.
+ */
+export function paidAdSource(
+  lead: LeadAttribution
+): { network: string | null; campaign: string | null; reason: string } | null {
   const campaign = clean(lead.utmCampaign)
+  const medium = clean(lead.utmMedium)?.toLowerCase() ?? null
 
-  // 1. A paid click id is the strongest signal there is.
+  // 1. A paid click id is the strongest signal there is. Checked as a column
+  //    first, then in formData — gclid/gbraid/wbraid have columns, the rest
+  //    ride along in the form payload.
   for (const { key, label } of PAID_CLICK_IDS) {
     const value =
       clean((lead as Record<string, unknown>)[key]) ?? fromFormData(lead.formData, key)
     if (value) {
-      return {
-        channel: 'paid',
-        source: label,
-        reason: `${key} present${campaign ? ` · ${campaign}` : ''}`,
-      }
+      return { network: label, campaign, reason: `${key} present${campaign ? ` · ${campaign}` : ''}` }
     }
   }
 
   // 2. UTM tagging that explicitly says paid.
   if (medium && PAID_MEDIUMS.has(medium)) {
+    const source = clean(lead.utmSource)
     return {
-      channel: 'paid',
-      source: utmSource ? titleCase(utmSource) : null,
+      network: source ? adNetworkName(source) : null,
+      campaign,
       reason: `utm_medium=${medium}${campaign ? ` · ${campaign}` : ''}`,
     }
   }
+
+  return null
+}
+
+/**
+ * A utm_source as the network it names.
+ *
+ * Only the aliases for the two networks this platform actually buys on, where
+ * the tag and the product have different names — `utm_source=adwords` is
+ * Google Ads, and Microsoft's is tagged half a dozen ways. Everything else is
+ * passed through title-cased: a source we do not recognise is reported as the
+ * shop wrote it rather than guessed at.
+ */
+function adNetworkName(source: string): string {
+  const key = source.toLowerCase()
+  if (/^(google|adwords|google_ads|googleads|google-ads)$/.test(key)) return 'Google Ads'
+  if (/^(bing|microsoft|msn|microsoft_ads|msads|bing_ads|bingads)$/.test(key)) return 'Microsoft Ads'
+  return titleCase(source)
+}
+
+function classify(lead: LeadAttribution): LeadChannelResult {
+  const medium = clean(lead.utmMedium)?.toLowerCase() ?? null
+  const utmSource = clean(lead.utmSource)
+
+  const paid = paidAdSource(lead)
+  if (paid) return { channel: 'paid', source: paid.network, reason: paid.reason }
 
   if (medium && ORGANIC_MEDIUMS.has(medium)) {
     return { channel: 'organic', source: utmSource ? titleCase(utmSource) : null, reason: `utm_medium=${medium}` }
