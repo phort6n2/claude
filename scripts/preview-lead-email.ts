@@ -18,7 +18,12 @@ import { emailHtml } from '@/lib/lead-notifications'
 
 const out = process.argv[2] || '/tmp/lead-email.html'
 
-const html = emailHtml('Auto Glass Kings', {
+/* The same lead twice, because the alert has TWO origin badges and only one
+   of them can ever render. The paid one is a claim about ad spend; the other
+   reports the shop's own link tagging — a Business Profile, Yelp, a social
+   post. Rendering only the paid case is how the second one would have gone
+   unlooked-at until it appeared on a live lead. */
+const base = {
   name: 'William Alvarez',
   phone: '+17143102784',
   email: 'william.alvarez@example.com',
@@ -38,6 +43,10 @@ const html = emailHtml('Auto Glass Kings', {
     'https://autoglassking.com/auto-glass-repair?gc_id=23874534588&g_special_campaign=true&gad_source=1&gad_campaignid=23355809702&gbraid=0AAAAA0tjR5mGv57JFPnlO3hacvvrfUvoTq&gclid=EAIaIQobChMIwZvomJLWlgMVLChECB21qzATEAAYBCAAEgIb-_D_BwE',
   damagePhotoUrl: '',
   isCall: false,
+}
+
+const paid = emailHtml('Auto Glass Kings', {
+  ...base,
   attribution: {
     gclid: 'EAIaIQobChMIwZvomJLWlgMVLChECB21qzATEAAYBCAAEgIb-_D_BwE',
     utmSource: 'google',
@@ -46,7 +55,17 @@ const html = emailHtml('Auto Glass Kings', {
   },
 })
 
-writeFileSync(out, html)
-console.log(`Wrote ${out} (${html.length} bytes).`)
-console.log('Screenshot it at phone width to check the type size:')
+// A real tagged link off the same client's list: one per Business Profile.
+const tagged = emailHtml('Auto Glass Kings', {
+  ...base,
+  landingPage: 'https://autoglasskings.com/quote/?utm_source=gbp_aliso_viejo',
+  attribution: { utmSource: 'gbp_aliso_viejo', utmMedium: 'organic' },
+})
+
+const taggedOut = out.replace(/(\.html)?$/, '-tagged.html')
+writeFileSync(out, paid)
+writeFileSync(taggedOut, tagged)
+console.log(`Wrote ${out} (${paid.length} bytes) — Google Ads badge.`)
+console.log(`Wrote ${taggedOut} (${tagged.length} bytes) — tagged-link badge.`)
+console.log('Screenshot them at phone width to check the type size:')
 console.log(`  node scripts/shot-lead-email.mjs ${out}`)

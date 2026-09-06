@@ -26,6 +26,11 @@ export interface LeadAttribution {
   utmSource?: string | null
   utmMedium?: string | null
   utmCampaign?: string | null
+  utmContent?: string | null
+  /* `utm_term` on the link. Named for the column it lands in — the intake
+   * accepts utm_term, utm_keyword and HighLevel's own field and writes all
+   * three here. */
+  utmKeyword?: string | null
 }
 
 /**
@@ -63,6 +68,70 @@ export function adSourceOf(
   if (/google|adwords/.test(source)) return { network: 'Google Ads', campaign }
   if (/bing|microsoft|msn/.test(source)) return { network: 'Microsoft Ads', campaign }
   return null
+}
+
+/** One tag value, made safe to drop into an email or a text message. */
+function tagValue(raw?: string | null): string | null {
+  if (!raw) return null
+  // Anything a link's query string can carry ends up here, and a lead can be
+  // posted by anyone who can reach the intake. Collapse whitespace (newlines
+  // included, which would otherwise break the plain-text part into a fake
+  // field) and cap the length so one long value cannot take over the alert.
+  const value = raw.replace(/\s+/g, ' ').trim()
+  if (!value) return null
+  return value.length > 48 ? value.slice(0, 47) + '…' : value
+}
+
+/**
+ * Where an UNPAID lead came from, according to the shop's own link tagging.
+ *
+ * WHY THIS IS SEPARATE FROM adSourceOf. That one answers "did the ads buy
+ * this", and it is deliberately strict because the shop judges their spend on
+ * it. This one answers a different question — "which of my links did they
+ * come through" — for a shop that tags everything: their Business Profile
+ * per city, Yelp, Facebook, Instagram, TikTok, a directory listing. All of it
+ * was already captured on the lead and none of it reached the person reading
+ * the alert, who is the only one who knows what `gbp_aliso_viejo` means.
+ *
+ * SHOWN VERBATIM, NOT PRETTIFIED. The value is a string the shop typed into
+ * their own link; title-casing `gbp_aliso_viejo` into "Gbp Aliso Viejo" makes
+ * it something they have to translate back before they can match it against
+ * the list of links they built. Exactly what they wrote is the whole point.
+ *
+ * Returns null when adSourceOf already has an answer — a paid click carries
+ * UTMs too, and two origin badges on one alert is worse than either alone.
+ */
+export function taggedSourceOf(
+  attribution?: LeadAttribution | null
+): { label: string; detail: string | null } | null {
+  if (!attribution) return null
+  if (adSourceOf(attribution)) return null
+  // Priority order is how specific the field usually is, not how it is named:
+  // whichever the shop actually filled in becomes the headline, and the rest
+  // follow it. A link tagged only `utm_campaign=spring` still says something.
+  const named = [
+    tagValue(attribution.utmSource),
+    tagValue(attribution.utmCampaign),
+    tagValue(attribution.utmKeyword),
+    tagValue(attribution.utmContent),
+  ].filter(Boolean) as string[]
+  // utm_medium is a BUCKET, not a place — organic, social, referral — so it
+  // never joins the line as detail: "gbp_aliso_viejo · organic" is the useful
+  // half followed by a word that adds nothing. It stands alone only when the
+  // link carried nothing else, where a bucket beats silence.
+  const medium = tagValue(attribution.utmMedium)
+  const parts = named.length ? named : medium ? [medium] : []
+  // Case-insensitively de-duplicated: utm_source=yelp with utm_campaign=Yelp
+  // is one fact, and printing it twice reads as a bug.
+  const seen = new Set<string>()
+  const unique = parts.filter((p) => {
+    const key = p.toLowerCase()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+  if (!unique.length) return null
+  return { label: unique[0], detail: unique.slice(1).join(' · ') || null }
 }
 
 export interface LeadSummary {
@@ -157,6 +226,12 @@ function plainLines(lead: LeadSummary): string[] {
     (() => {
       const ad = adSourceOf(lead.attribution)
       return ad && `Ad click: ${ad.network}${ad.campaign ? ` — ${ad.campaign}` : ''}`
+    })(),
+    // The unpaid twin of the line above, and a badge in the HTML for the same
+    // reason. Only one of the two can ever be present.
+    (() => {
+      const tag = taggedSourceOf(lead.attribution)
+      return tag && `Came from: ${tag.label}${tag.detail ? ` · ${tag.detail}` : ''}`
     })(),
     lead.landingPage && `Page: ${lead.landingPage}`,
     lead.damagePhotoUrl && `Photo: ${lead.damagePhotoUrl}`,
@@ -257,7 +332,12 @@ export function emailHtml(businessName: string, lead: LeadSummary): string {
   const rows = plainLines(lead)
     // The photo is rendered as an image below, so a row repeating its URL
     // would just be a long unreadable string in the middle of the details.
-    .filter((line) => !line.startsWith('Photo: ') && !line.startsWith('Ad click: '))
+    .filter(
+      (line) =>
+        !line.startsWith('Photo: ') &&
+        !line.startsWith('Ad click: ') &&
+        !line.startsWith('Came from: ')
+    )
     .map((line) => {
       const [label, ...rest] = line.split(': ')
       const raw = rest.join(': ')
@@ -268,6 +348,7 @@ export function emailHtml(businessName: string, lead: LeadSummary): string {
     })
     .join('')
   const ad = adSourceOf(lead.attribution)
+  const tag = taggedSourceOf(lead.attribution)
   const tel = telHref(lead.phone)
   // The alert is read on a phone within a minute or two of the enquiry, which
   // makes it the best place the platform has to put a reply one tap away. The
@@ -307,7 +388,7 @@ export function emailHtml(businessName: string, lead: LeadSummary): string {
   <div class="gl-card" style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:22px">
     <p style="margin:0 0 4px;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6b7280">${lead.isCall ? 'Incoming phone call' : 'New lead'}</p>
     <h1 style="margin:0 0 4px;font-size:22px;color:#111827">${esc(lead.name || (lead.isCall ? 'Incoming phone call' : 'New inquiry'))}</h1>
-    <p style="margin:0 0 ${ad ? '12' : '18'}px;color:#6b7280;font-size:14px">${esc(businessName)}${lead.isCall && lead.calledAtLabel ? ` &middot; called ${esc(lead.calledAtLabel)}` : ''}</p>
+    <p style="margin:0 0 ${ad || tag ? '12' : '18'}px;color:#6b7280;font-size:14px">${esc(businessName)}${lead.isCall && lead.calledAtLabel ? ` &middot; called ${esc(lead.calledAtLabel)}` : ''}</p>
     ${
       /* THE ANSWER TO "ARE THE ADS WORKING", ON THE ALERT ITSELF. High enough
          to be read before the buttons, because it changes how the call is
@@ -316,6 +397,21 @@ export function emailHtml(businessName: string, lead: LeadSummary): string {
          through, which is the common case. */
       ad
         ? `<p style="margin:0 0 18px"><span style="display:inline-block;background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700">&#9679; From your ${esc(ad.network)}${ad.campaign ? ` &middot; ${esc(ad.campaign)}` : ''}</span></p>`
+        : ''
+    }
+    ${
+      /* THE SAME QUESTION FOR EVERY OTHER LINK THE SHOP TAGS. One shop runs
+         a separate tagged link for each Business Profile, Yelp, Facebook,
+         Instagram, TikTok and a couple of directories, and until now the
+         alert could tell them about a Google Ads click and nothing else —
+         so a lead worth knowing the origin of arrived looking anonymous.
+
+         DELIBERATELY NOT GREEN. The paid badge above is a claim about money
+         spent and has to stay visually its own thing; this one is the shop's
+         own bookkeeping, so it is neutral and reads as a label rather than a
+         verdict. Only one of the two ever renders — see taggedSourceOf. */
+      tag
+        ? `<p style="margin:0 0 18px"><span style="display:inline-block;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700;word-break:break-word">Came from ${esc(tag.label)}${tag.detail ? ` &middot; ${esc(tag.detail)}` : ''}</span></p>`
         : ''
     }
     ${tel ? `<a href="${esc(tel)}" style="display:block;text-align:center;background:#1d4ed8;color:#fff;text-decoration:none;font-weight:700;padding:14px;border-radius:10px;font-size:16px">Call ${esc(formatPhoneDisplay(lead.phone) || lead.phone)}</a>` : ''}

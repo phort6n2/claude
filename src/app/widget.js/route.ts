@@ -9,6 +9,22 @@ export const dynamic = 'force-static'
  *   <script src="https://glassleads.app/widget.js" data-client="SLUG" async></script>
  *   <div data-glassleads-widget></div>   <!-- optional; omit for floating button -->
  *
+ * PUT THE SCRIPT ON EVERY PAGE, THE CONTAINER ONLY WHERE THE FORM GOES.
+ * Attribution is captured by the script, on whatever page it runs — so a
+ * script that only loads on /quote/ can only ever see a UTM link that pointed
+ * AT /quote/. A shop tagging links to their homepage, their Business Profile
+ * landing on the homepage, an ad landing on a service page: every one of
+ * those arrives at the form with nothing, because nothing was watching where
+ * they came in. Site-wide install is what makes goal 1 below true off our own
+ * sites, and `data-floating="off"` is how to do it without a quote bubble
+ * appearing on every page of somebody's WordPress site:
+ *
+ *   <!-- site-wide, in the theme header -->
+ *   <script src="https://glassleads.app/widget.js" data-client="SLUG"
+ *           data-floating="off" async></script>
+ *   <!-- and, on the page that has the form -->
+ *   <div data-glassleads-widget></div>
+ *
  * Design goals, in order:
  *  1. Perfect attribution: click IDs and UTMs are captured on ANY page the
  *     visitor lands on and persisted for 90 days, so a lead submitted three
@@ -40,6 +56,9 @@ const WIDGET_SOURCE = String.raw`(function () {
   var CLIENT = script.getAttribute('data-client');
   if (!CLIENT) { console.warn('[glassleads] missing data-client attribute'); return; }
   var BASE = new URL(script.src).origin;
+  /* Default ON, so every embed that predates this attribute behaves exactly
+     as it did. Only an explicit "off" turns the bubble off. */
+  var FLOATING = (script.getAttribute('data-floating') || '').toLowerCase() !== 'off';
   var ATTR_KEY = 'glassleads_attr';
   var ATTR_TTL_MS = 90 * 24 * 60 * 60 * 1000;
   var CLICK_IDS = ['gclid', 'gbraid', 'wbraid', 'msclkid', 'fbclid', 'ttclid', 'li_fat_id'];
@@ -948,9 +967,14 @@ const WIDGET_SOURCE = String.raw`(function () {
     var containers = document.querySelectorAll('[data-glassleads-widget]');
     if (containers.length > 0) {
       for (var i = 0; i < containers.length; i++) mountInline(containers[i], cfg);
-    } else {
+    } else if (FLOATING) {
       mountFloating(cfg);
     }
+    /* No container and data-floating="off": the script's job on this page was
+       attribution, which already happened above, before any of this ran.
+       That is the whole point of the flag — it lets the tag go site-wide so a
+       UTM link to ANY page is remembered, without putting a quote bubble on
+       every page of a site we do not own. */
   }
 
   // If the widget can't build (blocked fetch, flaky network), the quote
@@ -975,6 +999,11 @@ const WIDGET_SOURCE = String.raw`(function () {
   }
 
   function init() {
+    /* Nothing to draw on this page, and no bubble wanted: stop before the
+       config fetch. On a site-wide install that is most pages, and a request
+       per pageview to build a form nobody asked for is a cost the host site
+       pays for our convenience. Attribution is already stored by here. */
+    if (!FLOATING && !document.querySelector('[data-glassleads-widget]')) return;
     // The host site inlines the config so the form renders without a round
     // trip; third-party embeds fall back to fetching it.
     var inline = script.getAttribute('data-config');
