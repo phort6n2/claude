@@ -837,10 +837,25 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
           carrier: text(payload.carrier) || text(payload.insurance_carrier),
           landingPage: text(payload.landing_page) || text(payload.page),
           // The alert says "from your Google Ads" when a click id came with
-          // the lead. Raw values, not a finished label: the rule for what
+          // the lead, and "Came from {tag}" for everything else the shop
+          // tagged. Raw values, not a finished label: the rule for what
           // counts as an ad click lives in adSourceOf, next to the alert that
           // makes the claim.
-          attribution: { gclid, gbraid, wbraid, utmSource, utmMedium, utmCampaign },
+          //
+          // utmContent and utmKeyword travel too. They were captured, stored
+          // and shown in the admin from the start and simply never handed to
+          // the alert — which for a shop tagging its links by keyword meant
+          // the one field carrying the answer stopped at the database.
+          attribution: {
+            gclid,
+            gbraid,
+            wbraid,
+            utmSource,
+            utmMedium,
+            utmCampaign,
+            utmContent,
+            utmKeyword,
+          },
           // Only ever our own storage. The alert renders this as an <img>, so
           // an arbitrary URL in the payload would let anyone who can post a
           // lead put an image of their choosing into a shop's inbox.
