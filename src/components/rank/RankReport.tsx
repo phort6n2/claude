@@ -45,6 +45,7 @@ export default async function RankReport({
   mapUrl = null,
   campaignId = null,
   showProviderLink = false,
+  trackedTerms = [],
 }: {
   /** Chronological, oldest first, across every keyword. */
   scans: RankScanRow[]
@@ -58,6 +59,8 @@ export default async function RankReport({
   campaignId?: string | null
   /** Admin only: shows why theirs is not framed, when it is not. */
   showProviderLink?: boolean
+  /** The terms this campaign measures, for the before-the-first-scan state. */
+  trackedTerms?: string[]
 }) {
   const byTerm = new Map<string, RankScanRow[]>()
   for (const scan of scans) {
@@ -67,13 +70,55 @@ export default async function RankReport({
   }
 
   if (byTerm.size === 0) {
+    /**
+     * TWO DIFFERENT NOTHINGS.
+     *
+     * With a campaign, measuring is set up and the first result is simply not
+     * back yet — so the page says what is being measured and when it runs,
+     * which is the difference between "we are working on it" and "this is
+     * broken". Scans run on a TUESDAY, in business hours, because a geogrid
+     * measures the pack as it stands at that moment and the weekend pack is
+     * not the one that sells jobs.
+     *
+     * Without one, there is nothing coming, and saying so is better than an
+     * encouraging sentence about a scan nobody has scheduled.
+     */
     return (
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-        <h2 className="font-semibold text-gray-900">No scans yet</h2>
+        <h2 className="font-semibold text-gray-900">
+          {campaignId ? 'Gathering your rankings' : 'Ranking tracking is not set up yet'}
+        </h2>
         <p className="mt-1 text-sm text-gray-600 max-w-prose">
-          The first ranking scan hasn&apos;t run yet. Once it does, this shows a map of where the
-          business appears across the area, and how that changes over time.
+          {campaignId ? (
+            <>
+              Measuring is set up and the first scan has not reported back yet. They run on
+              Tuesdays: a 10&times;10 grid across the service area, so the answer is where the
+              business ranks in each part of town rather than one average. Once the first one
+              lands, this page shows the map and how it moves week to week.
+            </>
+          ) : (
+            <>
+              Nothing is being measured for this business yet, so there is nothing to show here.
+            </>
+          )}
         </p>
+        {campaignId && trackedTerms.length > 0 && (
+          <>
+            <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-gray-400">
+              What is being measured
+            </p>
+            <ul className="mt-1 flex flex-wrap gap-1.5">
+              {trackedTerms.map((term) => (
+                <li
+                  key={term}
+                  className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-sm text-gray-700"
+                >
+                  {term}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </div>
     )
   }
