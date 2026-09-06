@@ -985,15 +985,24 @@ const WIDGET_SOURCE = String.raw`(function () {
     var containers = document.querySelectorAll('[data-glassleads-widget]');
     for (var i = 0; i < containers.length; i++) {
       var c = containers[i];
-      c.textContent = '';
+      /* NEVER OVERWRITE SOMETHING THAT ALREADY WORKS. On our own hosted sites
+         this container holds a real server-rendered <form method="post"> that
+         posts to the same intake — it does not need us. Clearing it to print a
+         call card would take a working form away on exactly the visit where
+         the script already failed once. */
+      if (c.firstElementChild || (c.textContent || '').trim()) continue;
+      /* AND NEVER REPLACE IT WITH A DEAD END. Without data-phone this card is
+         the sentence "Call for your free quote" and no number to call, which
+         is worse than nothing — and it went up at the top of a client's
+         homepage when their embed carried a client slug that did not resolve.
+         An empty container is invisible; a phone-less instruction is not. */
+      if (!phone) continue;
       var card = el('div');
       card.style.cssText = 'background:#fff;border:1px solid #e2d8d8;border-radius:20px;padding:24px;text-align:center;font-family:sans-serif;box-shadow:0 10px 20px -6px rgba(20,20,20,.08)';
       card.appendChild(el('p', { text: 'Call for your free quote — it takes about a minute.' }));
-      if (phone) {
-        var a = el('a', { href: 'tel:' + phone.replace(/[^+\d]/g, ''), text: 'Call ' + phone });
-        a.style.cssText = 'display:block;margin-top:10px;padding:14px;border-radius:12px;background:#1a1a1a;color:#fff;font-weight:700;text-decoration:none';
-        card.appendChild(a);
-      }
+      var a = el('a', { href: 'tel:' + phone.replace(/[^+\d]/g, ''), text: 'Call ' + phone });
+      a.style.cssText = 'display:block;margin-top:10px;padding:14px;border-radius:12px;background:#1a1a1a;color:#fff;font-weight:700;text-decoration:none';
+      card.appendChild(a);
       c.appendChild(card);
     }
   }
@@ -1017,7 +1026,11 @@ const WIDGET_SOURCE = String.raw`(function () {
       .then(function (res) { if (!res.ok) throw new Error('config ' + res.status); return res.json(); })
       .then(mountAll)
       .catch(function (err) {
-        console.warn('[glassleads] widget failed to load:', err);
+        /* Name the slug. Every install failure this has actually produced was
+           a data-client that did not resolve — a typo, or the placeholder from
+           the instructions pasted verbatim — and "widget failed to load" sent
+           whoever installed it looking at the wrong thing. */
+        console.warn('[glassleads] no config for data-client="' + CLIENT + '":', err);
         mountFallback();
       });
   }
