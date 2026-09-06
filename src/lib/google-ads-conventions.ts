@@ -221,6 +221,12 @@ export interface ConversionAudit {
   doubleCounting: string[]
   /** Goal keys whose biddability disagrees with the standard. */
   goalIssues: string[]
+  /**
+   * Account-level plumbing that decides whether an action ever fires, as
+   * opposed to whether it is set up right. Kept apart from goalIssues because
+   * it is fixed on a different screen — Goals → Conversions → Settings.
+   */
+  accountSettings: string[]
   /** AGMP-prefixed actions that are not part of the standard. */
   extras: Array<{ id: string; name: string; note: string }>
   /** True when nothing needs doing. */
@@ -302,9 +308,33 @@ export async function auditConversionSetup(
      FROM customer_conversion_goal`
   )
 
+  /**
+   * WHICH ACTION A CALL FROM AN AD REPORTS TO.
+   *
+   * Goals → Conversions → Settings → "Call conversion action", and it is
+   * account-level: every call asset that has not been given its own action
+   * reports to whatever is named here. Nothing in the conversion list shows
+   * it — an account can have all four actions, perfectly configured, and be
+   * sending every call from every ad to a different action entirely, or to
+   * Google's own default one, and the Conversions summary looks fine.
+   *
+   * Found because an operator went looking through the Ads UI and came across
+   * a settings page nobody had opened.
+   */
+  const callSetting = await adsSearch(
+    customerId,
+    `SELECT customer.call_reporting_setting.call_reporting_enabled,
+            customer.call_reporting_setting.call_conversion_reporting_enabled,
+            customer.call_reporting_setting.call_conversion_action
+     FROM customer`
+  )
+
   return {
     ok: true,
-    audit: compareToStandard(customerId, listed.rows, goals.ok ? goals.rows : null, options),
+    audit: compareToStandard(customerId, listed.rows, goals.ok ? goals.rows : null, {
+      ...options,
+      callSettingRows: callSetting.ok ? callSetting.rows : null,
+    }),
   }
 }
 
@@ -321,7 +351,11 @@ export function compareToStandard(
   customerId: string,
   actionRows: Record<string, unknown>[],
   goalRows: Record<string, unknown>[] | null,
-  options: { offlineConversionActionId?: string | null } = {}
+  options: {
+    offlineConversionActionId?: string | null
+    /** The `customer` row carrying call_reporting_setting, when it was read. */
+    callSettingRows?: Record<string, unknown>[] | null
+  } = {}
 ): ConversionAudit {
   const all = readActions(actionRows)
   // Matching only ever considers ENABLED actions: telling someone to rename a
@@ -553,12 +587,59 @@ export function compareToStandard(
     )
   }
 
+  /**
+   * WHERE A CALL FROM AN AD ACTUALLY LANDS.
+   *
+   * Goals → Conversions → Settings → "Call conversion action" names the
+   * action every call asset reports to unless it has been given its own. It
+   * is account-level and invisible from the conversion list, so an account
+   * can hold all four actions, correctly configured, and still be sending
+   * every call from every ad somewhere else — or to Google's own default
+   * action, which no report of ours knows about.
+   *
+   * The check is quiet in two cases on purpose. When the account has no
+   * call-from-ads action at all, the finding above already says "missing" and
+   * repeating it here is a second line about one absence. And when the
+   * setting points at the RIGHT action under the wrong name, the rename
+   * finding covers it — the setting itself is correct, and it follows the
+   * action through a rename.
+   */
+  const accountSettings: string[] = []
+  const callSpec = CONVERSION_STANDARD.find((s) => s.key === 'call-from-ads')
+  const callFinding = findings.find((f) => f.key === 'call-from-ads')
+  const callRow = options.callSettingRows?.[0]
+  if (callRow && callSpec && callFinding?.actionId) {
+    const setting =
+      ((callRow as { customer?: Record<string, unknown> }).customer as
+        | Record<string, unknown>
+        | undefined)?.callReportingSetting as Record<string, unknown> | undefined
+    // Both flags are omitted when false — the same protobuf rule as `biddable`.
+    const reporting = setting?.callConversionReportingEnabled === true
+    const chosen = str(setting?.callConversionAction).split('/').pop() || ''
+
+    if (!reporting) {
+      accountSettings.push(
+        `Call conversion reporting is OFF for this account, so nothing a call asset produces reaches ${callSpec.name}. Turn it on at Goals → Conversions → Settings.`
+      )
+    } else if (!chosen) {
+      accountSettings.push(
+        `No call conversion action is set for the account, so calls from ads report to Google's default action instead of ${callSpec.name} — and nothing in this app or your reports counts them. Set it at Goals → Conversions → Settings → Call conversion action.`
+      )
+    } else if (chosen !== callFinding.actionId) {
+      const other = all.find((a) => a.id === chosen)
+      accountSettings.push(
+        `Calls from ads are reporting to ${other ? `"${other.name}"` : `action ${chosen}`}, not ${callSpec.name} (${callFinding.actionId}). Change it at Goals → Conversions → Settings → Call conversion action.`
+      )
+    }
+  }
+
   const clean =
     findings.every((f) => f.state === 'ok') &&
     goalIssues.length === 0 &&
+    accountSettings.length === 0 &&
     // A dormant GA4 import is a note, not a fault. Anything live in a goal we
     // already own is.
     !doubleCounting.some((d) => d.includes('ENABLED') || d.includes('is enabled in'))
 
-  return { customerId, findings, goalIssues, extras, doubleCounting, clean }
+  return { customerId, findings, goalIssues, accountSettings, extras, doubleCounting, clean }
 }

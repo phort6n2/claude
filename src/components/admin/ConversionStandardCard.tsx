@@ -207,6 +207,23 @@ export default function ConversionStandardCard() {
         </div>
       )}
 
+      {/* Account-level, and invisible from the conversion list: an account can
+          hold all four actions, perfectly configured, and still send every
+          call from every ad somewhere else. Its own block because it is fixed
+          on a different screen from everything above. */}
+      {!!audit?.accountSettings?.length && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-1">
+          <p className="text-sm font-semibold text-amber-900">
+            Account settings (Goals → Conversions → Settings)
+          </p>
+          <ul className="list-disc ml-4 text-sm text-amber-900 space-y-1">
+            {audit.accountSettings.map((issue) => (
+              <li key={issue}>{issue}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {!!audit?.goalIssues.length && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-1">
           <p className="text-sm font-semibold text-amber-900">Bidding and upload target</p>
