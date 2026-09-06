@@ -2,28 +2,43 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Inbox, Globe, Image as ImageIcon, MapPin, Sparkles } from 'lucide-react'
+import { Home, Inbox, Globe, MapPin, Sparkles } from 'lucide-react'
 
 /**
  * Portal navigation, named the way a shop owner talks. Bottom tab bar on a
  * phone (thumb-reachable, safe-area padded), inline row on desktop.
+ *
+ * THE SITE IS OURS TO RUN. This is a done-for-you service, so the portal
+ * shows the shop what is happening — their leads, their rankings, what has
+ * been done — and gives them no way to change the site itself. "My site" is
+ * an outward link to the live page, so they can look at what they are paying
+ * for; the Photos and My Website editors are gone, along with the endpoints
+ * behind them. A read-only portal whose write endpoints still answer is not
+ * a read-only portal.
  */
-const TABS = [
+interface Tab {
+  href: string
+  label: string
+  icon: typeof Home
+  exact?: boolean
+  /** Opens the live site in a new tab rather than navigating the portal. */
+  external?: boolean
+}
+
+const TABS: Tab[] = [
   { href: '/portal', label: 'Home', icon: Home, exact: true },
   { href: '/portal/leads', label: 'Leads', icon: Inbox },
-  { href: '/portal/photos', label: 'Photos', icon: ImageIcon },
-  { href: '/portal/website', label: 'My Website', icon: Globe },
 ]
 
-const RANKINGS_TAB = { href: '/portal/rankings', label: 'Rankings', icon: MapPin }
-const ACTIVITY_TAB = { href: '/portal/activity', label: 'Activity', icon: Sparkles }
+const RANKINGS_TAB: Tab = { href: '/portal/rankings', label: 'Rankings', icon: MapPin }
+const ACTIVITY_TAB: Tab = { href: '/portal/activity', label: 'Activity', icon: Sparkles }
 
 /**
  * The flag is false until there is something behind the tab. A tab that
  * leads to a permanent empty state is worse than no tab — it reads as
  * something broken rather than something not bought.
  */
-function useTabs(showRankings: boolean) {
+function useTabs(showRankings: boolean, siteUrl?: string | null) {
   const pathname = usePathname()
   // Activity is always offered: it has a floor (the day the site went live),
   // so unlike Rankings it can never lead to an empty page.
@@ -32,30 +47,54 @@ function useTabs(showRankings: boolean) {
   // grid-column comment below records. It is reached from the Booked tile on
   // the home screen, which is where someone asking "what have I made" already
   // is.
-  const tabs = [...TABS, ACTIVITY_TAB, ...(showRankings ? [RANKINGS_TAB] : [])]
-  const isActive = (tab: (typeof TABS)[number]) =>
-    tab.exact ? pathname === tab.href : pathname.startsWith(tab.href)
+  const tabs: Tab[] = [
+    ...TABS,
+    // Only once there is an address to open. A tab that goes nowhere is worse
+    // than no tab — the same rule as Rankings.
+    ...(siteUrl ? [{ href: siteUrl, label: 'My site', icon: Globe, external: true }] : []),
+    ACTIVITY_TAB,
+    ...(showRankings ? [RANKINGS_TAB] : []),
+  ]
+  const isActive = (tab: Tab) =>
+    tab.external ? false : tab.exact ? pathname === tab.href : pathname.startsWith(tab.href)
   return { tabs, isActive }
 }
 
-export default function PortalNav({ showRankings = false }: { showRankings?: boolean }) {
-  const { tabs, isActive } = useTabs(showRankings)
+export default function PortalNav({
+  showRankings = false,
+  siteUrl = null,
+}: {
+  showRankings?: boolean
+  siteUrl?: string | null
+}) {
+  const { tabs, isActive } = useTabs(showRankings, siteUrl)
 
   return (
     <nav className="hidden sm:flex gap-1" aria-label="Portal">
         {tabs.map((tab) => {
           const Icon = tab.icon
           const active = isActive(tab)
+          const className = `inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            active
+              ? 'bg-[var(--brand-soft)] text-[var(--brand-ink)]'
+              : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+          }`
+          // Their own site opens in its own tab: it is not part of the portal,
+          // and a shop that clicks it should not have to find its way back.
+          if (tab.external) {
+            return (
+              <a key={tab.href} href={tab.href} target="_blank" rel="noopener noreferrer" className={className}>
+                <Icon className="h-4 w-4" />
+                {tab.label}
+              </a>
+            )
+          }
           return (
             <Link
               key={tab.href}
               href={tab.href}
               aria-current={active ? 'page' : undefined}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                active
-                  ? 'bg-[var(--brand-soft)] text-[var(--brand-ink)]'
-                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-              }`}
+              className={className}
             >
               <Icon className="h-4 w-4" />
               {tab.label}
@@ -75,8 +114,14 @@ export default function PortalNav({ showRankings = false }: { showRankings?: boo
  * `fixed bottom-0` pinned it to the bottom of the HEADER, i.e. the top of
  * the screen, on every phone.
  */
-export function PortalTabBar({ showRankings = false }: { showRankings?: boolean }) {
-  const { tabs, isActive } = useTabs(showRankings)
+export function PortalTabBar({
+  showRankings = false,
+  siteUrl = null,
+}: {
+  showRankings?: boolean
+  siteUrl?: string | null
+}) {
+  const { tabs, isActive } = useTabs(showRankings, siteUrl)
 
   return (
     <nav
@@ -91,14 +136,23 @@ export function PortalTabBar({ showRankings = false }: { showRankings?: boolean 
       {tabs.map((tab) => {
         const Icon = tab.icon
         const active = isActive(tab)
+        const className = `flex flex-col items-center justify-center gap-0.5 min-h-[56px] text-[11px] font-semibold ${
+          active ? 'text-[var(--brand-ink)]' : 'text-gray-500'
+        }`
+        if (tab.external) {
+          return (
+            <a key={tab.href} href={tab.href} target="_blank" rel="noopener noreferrer" className={className}>
+              <Icon className="h-5 w-5" />
+              {tab.label}
+            </a>
+          )
+        }
         return (
           <Link
             key={tab.href}
             href={tab.href}
             aria-current={active ? 'page' : undefined}
-            className={`flex flex-col items-center justify-center gap-0.5 min-h-[56px] text-[11px] font-semibold ${
-              active ? 'text-[var(--brand-ink)]' : 'text-gray-500'
-            }`}
+            className={className}
           >
             <Icon className="h-5 w-5" />
             {tab.label}

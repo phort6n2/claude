@@ -212,14 +212,21 @@ export default async function PortalHomePage() {
         ) : (
           <p className="text-gray-500">Your site is being set up.</p>
         )}
-        <Link
-          href="/portal/website"
-          className="mt-3 inline-flex items-center gap-1 text-sm font-semibold"
-          style={{ color: 'var(--brand-ink)' }}
-        >
-          Update my website
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
+        {/* LOOK, not edit. The site is ours to run — a change to it is a
+            conversation, not a form — so this opens the live page rather than
+            an editor. Anything that needs changing, they tell us. */}
+        {siteUrl && (
+          <a
+            href={siteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex items-center gap-1 text-sm font-semibold"
+            style={{ color: 'var(--brand-ink)' }}
+          >
+            Open my site
+            <ArrowRight className="h-3.5 w-3.5" />
+          </a>
+        )}
       </section>
     </div>
   )
