@@ -227,7 +227,11 @@ const WIDGET_SOURCE = String.raw`(function () {
       'input::placeholder,textarea::placeholder{color:#5E6D7C;opacity:1}' +
       'input:hover,select:hover,textarea:hover{border-color:#66788B}' +
       'textarea{min-height:96px;resize:vertical;line-height:1.5;padding-top:11px}' +
-      'select{padding-right:42px;background-repeat:no-repeat;background-position:right 14px center;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%234C5C6B\' stroke-width=\'2.2\' stroke-linecap=\'round\'%3E%3Cpath d=\'M6 9l6 6 6-6\'/%3E%3C/svg%3E")}' +
+      // text-overflow is the safety net, not the fix — the fix is the
+      // full-width row this select now sits on. A shop can configure any
+      // service name it likes, so the failure has to degrade to an ellipsis
+      // rather than a hard clip that looks like a rendering bug.
+      'select{text-overflow:ellipsis;padding-right:38px;background-repeat:no-repeat;background-position:right 13px center;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%234C5C6B\' stroke-width=\'2.2\' stroke-linecap=\'round\'%3E%3Cpath d=\'M6 9l6 6 6-6\'/%3E%3C/svg%3E")}' +
       'input:focus,select:focus,textarea:focus{outline:none;border-color:' + cfg.primaryColor + ';box-shadow:0 0 0 3px ' + rgba(cfg.primaryColor, 0.4) + '}' +
       'input[aria-invalid="true"],select[aria-invalid="true"]{border-color:#B3261E;background:#FEF2F2;box-shadow:0 0 0 3px rgba(179,38,30,.14)}' +
       '.ferr{display:none;margin:6px 0 0;font-size:13.5px;font-weight:600;color:#B3261E}' +
@@ -527,8 +531,23 @@ const WIDGET_SOURCE = String.raw`(function () {
     // someone standing next to a damaged car on their phone. It moves into
     // the optional drawer rather than disappearing.
     var row1 = el('div', { class: 'row' }, [field('Full name' + REQ, name, 'name'), field('Mobile phone' + REQ, phone, 'phone')]);
-    var row2 = el('div', { class: 'row' }, [field('Service ZIP' + REQ, zip, 'zip'), field('What do you need?' + REQ, service)]);
-    var row3 = el('div', { class: 'row' }, [field('Vehicle' + REQ, vehicle, 'vehicle')]);
+    // THE SERVICE SELECT GETS THE FULL WIDTH, AND THAT IS THE WHOLE REASON
+    // FOR THIS PAIRING. It used to sit beside the ZIP, which on the card's
+    // 430px maximum leaves each column about 186px — 130px of text once the
+    // padding and the chevron are taken out. "Windshield Replacement" is
+    // 183px and "Not sure — help me work it out" is 227px, so the field the
+    // form exists to ask read "Windshield Repla" on a client's own site.
+    //
+    // A <select> is the one control that cannot be talked out of this: it
+    // will not wrap, will not shrink its text, and the value it clips is the
+    // one the visitor just chose. And cfg.services is per-client, so no
+    // width chosen here can be proven to fit every shop's list — the answer
+    // has to be the widest box the card can give it, not a tighter label.
+    //
+    // Same number of rows as before: the ZIP (5 digits) and the vehicle
+    // (a placeholder about 130px wide) both survive a half column easily.
+    var row2 = el('div', { class: 'row' }, [field('Service ZIP' + REQ, zip, 'zip'), field('Vehicle' + REQ, vehicle, 'vehicle')]);
+    var row3 = el('div', { class: 'row' }, [field('What do you need?' + REQ, service)]);
     form.appendChild(row1);
     form.appendChild(row2);
     form.appendChild(row3);
