@@ -45,6 +45,16 @@ export default function ClientLeadsForm({
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
 
+  /* THE TEXTAREA HOLDS TEXT, NOT THE PARSED LIST.
+     It used to render `origins.join('\n')` and parse on every keystroke, and
+     the parse drops empty lines — so pressing Enter produced a trailing empty
+     line, the filter removed it, and the newline was erased as fast as it was
+     typed. The field accepted exactly one origin and looked broken for the
+     second, which is the whole reason it exists: a shop's own WordPress site
+     is usually apex AND www. Keep the raw text while editing; the list is
+     derived from it. */
+  const [originsText, setOriginsText] = useState((client.allowedOrigins || []).join('\n'))
+
   const updateField = <K extends keyof LeadsFields>(field: K, value: LeadsFields[K]) => {
     setField(field, value)
     setMessage(null)
@@ -131,13 +141,14 @@ export default function ClientLeadsForm({
               Anything listed here can post leads into this client&apos;s account.
             </p>
             <textarea
-              value={(formData.allowedOrigins || []).join('\n')}
-              onChange={(e) =>
+              value={originsText}
+              onChange={(e) => {
+                setOriginsText(e.target.value)
                 updateField(
                   'allowedOrigins',
                   e.target.value.split('\n').map((s) => s.trim()).filter(Boolean)
                 )
-              }
+              }}
               rows={4}
               className="w-full px-3 py-2 border rounded-md font-mono text-sm focus:ring-2 focus:ring-blue-500"
               placeholder={'https://example.com\nhttps://www.example.com'}
@@ -164,7 +175,14 @@ export default function ClientLeadsForm({
         saving={saving}
         message={message}
         onSave={handleSave}
-        onDiscard={() => { if (confirmDiscard(isDirty)) discard() }}
+        onDiscard={() => {
+          if (!confirmDiscard(isDirty)) return
+          discard()
+          // The textarea keeps its own copy of the text, so discarding the
+          // staged values has to put it back too — otherwise the field goes on
+          // showing what was just thrown away.
+          setOriginsText((client.allowedOrigins || []).join('\n'))
+        }}
       />
     </div>
   )
