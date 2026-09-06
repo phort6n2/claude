@@ -31,11 +31,22 @@ export default async function PortalLayout({ children }: { children: React.React
     prisma.client
       .findUnique({
         where: { id: session.clientId },
-        select: { slug: true, siteSubdomain: true, domains: PRIMARY_DOMAIN_SELECT },
+        select: {
+          slug: true,
+          siteSubdomain: true,
+          rankTrackingId: true,
+          domains: PRIMARY_DOMAIN_SELECT,
+        },
       })
       .catch(() => null),
   ])
-  const hasRankings = rankScans > 0
+  // ONCE MEASURING IS SET UP, not once it has reported. The rule this bends
+  // — no tab for a permanent empty state — is about a client who never bought
+  // the thing. A campaign that exists and has not run yet is a WAIT, and
+  // hiding the page during it means a shop is told nothing at all in the days
+  // between signing up and the first Tuesday scan. The page says which
+  // keywords are being measured and when the scans run.
+  const hasRankings = rankScans > 0 || !!client?.rankTrackingId
   // Their own address once a custom domain is live, ours until then. Only a
   // real, reachable address gets a tab — the preview path is an operator's
   // tool, not something to hand a shop.
