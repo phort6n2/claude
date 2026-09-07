@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { isMissedCall } from '@/lib/call-display'
 import { earliestSameDayContact } from '@/lib/lead-dedup'
 import { notifyNewLead as notifyLeadRecipients } from '@/lib/lead-notifications'
 import { notifyNewLead as notifyAdminPush } from '@/lib/push-notifications'
@@ -27,18 +28,15 @@ export interface CallFacts {
   recordingUrl?: string | null
 }
 
-/**
- * A call the shop did not pick up needs somebody to act NOW. One they
- * answered is a record: they already had the conversation, and the alert
- * exists so the number is in their inbox when they want to ring back.
- *
- * Both are worth an email; only the missed one is worth an interruption. See
- * the alert block below for how that difference is expressed.
- */
-export function isMissedCall(status: string | null | undefined): boolean {
-  if (!status) return false
-  return ['no-answer', 'busy', 'failed', 'canceled'].includes(status)
-}
+/* The rule lives in call-display.ts, which has no imports — the portal needs
+   it in a client component, and reaching it through this file dragged
+   web-push (and with it `net` and `tls`) into the browser bundle. Re-exported
+   so existing callers are unchanged, and so there is still exactly one
+   definition of what "missed" means.
+
+   Both a missed and an answered call are worth an email; only the missed one
+   is worth an interruption. See the alert block below. */
+export { isMissedCall }
 
 function sourceLabel(number: TrackingNumber, missed: boolean): string {
   const line = number.label ? `${number.label} line` : 'tracking number'
