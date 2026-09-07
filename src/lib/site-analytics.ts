@@ -416,12 +416,88 @@ export async function listSearchConsoleSites(): Promise<SearchConsoleSiteOption[
 
 // ------------------------------------------------------------------ reports
 
-/** How far back every report looks. One number, so the two agree. */
-export const REPORT_DAYS = 90
+/**
+ * The windows the report can be asked for.
+ *
+ * ONE LIST, used by the picker, the fetchers and the cache key, so a range
+ * offered in the UI cannot be one the fetcher does not understand.
+ *
+ * "All time" is bounded by what each API will actually answer for, which is
+ * not the same on both: Search Console keeps 16 months and refuses older
+ * dates outright. So it is a LONG range, not an unlimited one, and the page
+ * says so rather than presenting a 16-month figure as a lifetime total.
+ */
+export const RANGES = [
+  { key: '1d', label: 'Last 1 day', days: 1 },
+  { key: '7d', label: 'Last 7 days', days: 7 },
+  { key: '30d', label: 'Last 30 days', days: 30 },
+  { key: '90d', label: 'Last 90 days', days: 90 },
+  { key: '12m', label: 'Last 12 months', days: 365 },
+  { key: 'all', label: 'All time', days: 1825 },
+] as const
+
+export type RangeKey = (typeof RANGES)[number]['key']
+export const DEFAULT_RANGE: RangeKey = '90d'
+
+/** A range key from anything — a query string included. Never throws. */
+export function rangeFrom(value: unknown): RangeKey {
+  const key = typeof value === 'string' ? value : ''
+  return (RANGES.find((r) => r.key === key)?.key ?? DEFAULT_RANGE) as RangeKey
+}
+
+export function rangeDays(key: RangeKey): number {
+  return RANGES.find((r) => r.key === key)?.days ?? 90
+}
+
+/**
+ * The shop's own site as an address a person recognises.
+ *
+ * Search Console stores "sc-domain:example.com" for a domain property and a
+ * full URL with a trailing slash for a prefix one; neither is what anybody
+ * calls their website.
+ */
+export function siteLabelFrom(searchConsoleSiteUrl: string | null | undefined): string | null {
+  if (!searchConsoleSiteUrl) return null
+  const raw = searchConsoleSiteUrl.trim()
+  if (!raw) return null
+  if (raw.startsWith('sc-domain:')) return raw.slice('sc-domain:'.length)
+  try {
+    const url = new URL(raw)
+    return `${url.host}${url.pathname === '/' ? '' : url.pathname}`
+  } catch {
+    return raw
+  }
+}
+
+export function rangeLabel(key: RangeKey): string {
+  return RANGES.find((r) => r.key === key)?.label ?? 'Last 90 days'
+}
+
+/**
+ * Search Console will not answer past 16 months and errors rather than
+ * clamping, so the long ranges are clamped here instead.
+ */
+const GSC_MAX_DAYS = 480
 
 export interface DayPoint {
   date: string
   value: number
+}
+
+/**
+ * The chart's data: one row per bucket, one value per series.
+ *
+ * BUCKETED WHEN THE RANGE IS LONG. 365 daily points in an 800px chart is
+ * three days to a pixel — a shape nobody can read and a tooltip nobody can
+ * aim at. Past a threshold the points are summed into weeks, and `bucket`
+ * says which it is so the tooltip can name the week rather than implying a
+ * day.
+ */
+export interface TrafficSeries {
+  bucket: 'day' | 'week'
+  /** Series names, in the order every point's `values` array follows. */
+  names: string[]
+  points: Array<{ date: string; endDate?: string; values: number[] }>
 }
 
 export interface NamedCount {
@@ -433,10 +509,18 @@ export interface NamedCount {
 export interface TrafficReport {
   activeUsers: number
   sessions: number
+  /** Total per bucket, for anything that wants one line. */
   daily: DayPoint[]
+  /** Per channel per bucket, for the chart and its tooltip. */
+  series: TrafficSeries
   channels: NamedCount[]
   aiSources: NamedCount[]
   aiUsers: number
+  aiSessions: number
+  /** Per AI assistant per bucket — the AI tab's own chart. */
+  aiSeries: TrafficSeries
+  /** Which pages the assistants land people on, and which one sends most. */
+  aiTopPages: Array<{ page: string; users: number; share: number; topModel: string }>
   topPages: Array<{ page: string; users: number; share: number; topSource: string }>
 }
 
@@ -511,27 +595,104 @@ async function runReport(propertyId: string, body: unknown): Promise<Ga4Response
  * every total is wrong in a way that looks plausible. So: one report per
  * question, and the totals come from the one that has no breakdown at all.
  */
-export async function fetchTraffic(propertyId: string, days = REPORT_DAYS): Promise<TrafficReport> {
-  const dateRanges = [{ startDate: `${days}daysAgo`, endDate: 'today' }]
+/** Every host in AI_SOURCES, for GA4's exact-match inList filter. */
+const AI_HOSTS = AI_SOURCES.map((s) => s.match)
 
-  const [byDate, bySource, byPage] = await Promise.all([
+/**
+ * Sum daily rows into weeks once there are too many to draw.
+ *
+ * The threshold is about readability, not data volume: past roughly a
+ * hundred points an 800px chart gives each one under eight pixels, which is
+ * narrower than a fingertip and finer than anyone can read a trend from.
+ */
+function bucketPoints(
+  points: Array<{ date: string; values: number[] }>,
+  names: string[]
+): TrafficSeries {
+  if (points.length <= 100) return { bucket: 'day', names, points }
+  const weeks: Array<{ date: string; endDate?: string; values: number[] }> = []
+  for (let i = 0; i < points.length; i += 7) {
+    const chunk = points.slice(i, i + 7)
+    const values = names.map((_, n) => chunk.reduce((sum, p) => sum + (p.values[n] || 0), 0))
+    weeks.push({ date: chunk[0].date, endDate: chunk[chunk.length - 1].date, values })
+  }
+  return { bucket: 'week', names, points: weeks }
+}
+
+export async function fetchTraffic(
+  propertyId: string,
+  range: RangeKey = DEFAULT_RANGE
+): Promise<TrafficReport> {
+  const days = rangeDays(range)
+  // `1daysAgo` to today is two days of data, which is not what "Last 1 day"
+  // offers. The window is exclusive of today's partial day for the short
+  // ranges and inclusive after that, matching how the label reads.
+  const dateRanges = [{ startDate: `${Math.max(days - 1, 0)}daysAgo`, endDate: 'today' }]
+
+  const [byDate, byDateChannel, byAiDate, bySource, byAiSourceDate, byPage, byAiPage] =
+    await Promise.all([
     runReport(propertyId, {
       dateRanges,
       dimensions: [{ name: 'date' }],
       metrics: [{ name: 'activeUsers' }, { name: 'sessions' }],
       orderBys: [{ dimension: { dimensionName: 'date' } }],
-      limit: 400,
+      limit: 2000,
+    }),
+    // The chart. One row per day per channel, which is what a tooltip listing
+    // every channel for one day needs and what a single total cannot give.
+    runReport(propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'date' }, { name: 'sessionDefaultChannelGroup' }],
+      metrics: [{ name: 'activeUsers' }],
+      limit: 20000,
+    }),
+    // The same again, restricted to AI referrers — so "AI Search" can be its
+    // own line AND be subtracted from the channel GA4 filed it under, per
+    // day, instead of being double counted or guessed at.
+    runReport(propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'date' }, { name: 'sessionDefaultChannelGroup' }],
+      metrics: [{ name: 'activeUsers' }],
+      dimensionFilter: {
+        filter: { fieldName: 'sessionSource', inListFilter: { values: AI_HOSTS } },
+      },
+      limit: 20000,
     }),
     runReport(propertyId, {
       dateRanges,
       dimensions: [{ name: 'sessionDefaultChannelGroup' }, { name: 'sessionSource' }],
+      metrics: [{ name: 'activeUsers' }, { name: 'sessions' }],
+      limit: 5000,
+    }),
+    // Which assistant, day by day. The totals alone answer "is anyone coming
+    // from AI"; a shop watching that number grow wants to know when it
+    // started and which one moved.
+    runReport(propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'date' }, { name: 'sessionSource' }],
       metrics: [{ name: 'activeUsers' }],
-      limit: 500,
+      dimensionFilter: {
+        filter: { fieldName: 'sessionSource', inListFilter: { values: AI_HOSTS } },
+      },
+      limit: 20000,
     }),
     runReport(propertyId, {
       dateRanges,
       dimensions: [{ name: 'pagePath' }, { name: 'sessionDefaultChannelGroup' }],
       metrics: [{ name: 'activeUsers' }],
+      orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
+      limit: 300,
+    }),
+    // The same question for AI only. It cannot be sliced out of the table
+    // above — that one has no source dimension, so an AI visit is
+    // indistinguishable from any other Referral in it.
+    runReport(propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'pagePath' }, { name: 'sessionSource' }],
+      metrics: [{ name: 'activeUsers' }],
+      dimensionFilter: {
+        filter: { fieldName: 'sessionSource', inListFilter: { values: AI_HOSTS } },
+      },
       orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
       limit: 300,
     }),
@@ -547,8 +708,10 @@ export async function fetchTraffic(propertyId: string, days = REPORT_DAYS): Prom
     0
   )
 
+  // --- totals, and the AI split -------------------------------------------
   const channels = new Map<string, number>()
   const ai = new Map<string, number>()
+  let aiSessions = 0
   for (const row of bySource.rows || []) {
     const channel = row.dimensionValues?.[0]?.value || 'Unassigned'
     const source = row.dimensionValues?.[1]?.value || ''
@@ -560,6 +723,7 @@ export async function fetchTraffic(propertyId: string, days = REPORT_DAYS): Prom
     if (aiLabel) {
       ai.set(aiLabel, (ai.get(aiLabel) || 0) + users)
       channels.set('AI Search', (channels.get('AI Search') || 0) + users)
+      aiSessions += Number(row.metricValues?.[1]?.value || 0)
     } else {
       channels.set(channel, (channels.get(channel) || 0) + users)
     }
@@ -567,6 +731,68 @@ export async function fetchTraffic(propertyId: string, days = REPORT_DAYS): Prom
   const channelTotal = [...channels.values()].reduce((a, b) => a + b, 0)
   const aiUsers = [...ai.values()].reduce((a, b) => a + b, 0)
 
+  // --- the chart's grid ----------------------------------------------------
+  const AI_NAME = 'AI Search'
+  const perDate = new Map<string, Map<string, number>>()
+  const cell = (date: string) => {
+    let row = perDate.get(date)
+    if (!row) perDate.set(date, (row = new Map()))
+    return row
+  }
+  for (const row of byDateChannel.rows || []) {
+    const date = isoDate(row.dimensionValues?.[0]?.value || '')
+    const channel = row.dimensionValues?.[1]?.value || 'Unassigned'
+    const users = Number(row.metricValues?.[0]?.value || 0)
+    cell(date).set(channel, (cell(date).get(channel) || 0) + users)
+  }
+  for (const row of byAiDate.rows || []) {
+    const date = isoDate(row.dimensionValues?.[0]?.value || '')
+    const channel = row.dimensionValues?.[1]?.value || 'Unassigned'
+    const users = Number(row.metricValues?.[0]?.value || 0)
+    const day = cell(date)
+    // Moved, not added: out of whatever GA4 filed it under, into AI Search.
+    day.set(channel, Math.max(0, (day.get(channel) || 0) - users))
+    day.set(AI_NAME, (day.get(AI_NAME) || 0) + users)
+  }
+
+  // Series order follows the range's own totals, so the biggest channel is
+  // first in the legend and in every tooltip.
+  const names = [...channels.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([name]) => name)
+    .slice(0, 6)
+  const dates = [...perDate.keys()].sort()
+  const points = dates.map((date) => ({
+    date,
+    values: names.map((name) => perDate.get(date)?.get(name) || 0),
+  }))
+
+  // --- the AI tab's grid ---------------------------------------------------
+  // Keyed by LABEL, not by host: openai.com and chatgpt.com are one assistant
+  // to the person reading it, and two lines with the same name is a bug.
+  const aiPerDate = new Map<string, Map<string, number>>()
+  for (const row of byAiSourceDate.rows || []) {
+    const date = isoDate(row.dimensionValues?.[0]?.value || '')
+    const model = aiLabelFor(row.dimensionValues?.[1]?.value || '')
+    if (!model) continue
+    const users = Number(row.metricValues?.[0]?.value || 0)
+    let day = aiPerDate.get(date)
+    if (!day) aiPerDate.set(date, (day = new Map()))
+    day.set(model, (day.get(model) || 0) + users)
+  }
+  const aiNames = [...ai.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([name]) => name)
+    .slice(0, 6)
+  // The SAME date axis as the channel chart, not just the days AI appeared —
+  // a series drawn only on its non-zero days is a chart with no gaps in it,
+  // which reads as constant traffic.
+  const aiPoints = dates.map((date) => ({
+    date,
+    values: aiNames.map((name) => aiPerDate.get(date)?.get(name) || 0),
+  }))
+
+  // --- pages ---------------------------------------------------------------
   const pageUsers = new Map<string, number>()
   const pageTopSource = new Map<string, { name: string; users: number }>()
   for (const row of byPage.rows || []) {
@@ -588,23 +814,55 @@ export async function fetchTraffic(propertyId: string, days = REPORT_DAYS): Prom
       topSource: pageTopSource.get(page)?.name || '—',
     }))
 
+  const aiPageUsers = new Map<string, number>()
+  const aiPageTop = new Map<string, { name: string; users: number }>()
+  for (const row of byAiPage.rows || []) {
+    const page = row.dimensionValues?.[0]?.value || '/'
+    const model = aiLabelFor(row.dimensionValues?.[1]?.value || '')
+    if (!model) continue
+    const users = Number(row.metricValues?.[0]?.value || 0)
+    aiPageUsers.set(page, (aiPageUsers.get(page) || 0) + users)
+    const best = aiPageTop.get(page)
+    if (!best || users > best.users) aiPageTop.set(page, { name: model, users })
+  }
+  const aiPageTotal = [...aiPageUsers.values()].reduce((a, b) => a + b, 0)
+  const aiTopPages = [...aiPageUsers.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 20)
+    .map(([page, users]) => ({
+      page,
+      users,
+      share: shareOf(users, aiPageTotal),
+      topModel: aiPageTop.get(page)?.name || '—',
+    }))
+
   return {
     activeUsers,
     sessions,
     daily,
+    series: bucketPoints(points, names),
     channels: rank(channels, channelTotal, 8),
     aiSources: rank(ai, aiUsers, 8),
     aiUsers,
+    aiSessions,
+    aiSeries: bucketPoints(aiPoints, aiNames),
+    aiTopPages,
     topPages,
   }
 }
 
 export interface SearchReport {
+  /** Days actually queried — below the range asked for when Search Console's
+   *  16-month limit clamped it. */
+  days?: number
+  clamped?: boolean
   clicks: number
   impressions: number
   /** Weighted by impressions, which is how Search Console itself computes it. */
   averagePosition: number
   daily: Array<{ date: string; clicks: number; impressions: number; position: number }>
+  /** Clicks and impressions per bucket, for the Google tab's chart. */
+  series: TrafficSeries
   countries: NamedCount[]
   topPages: Array<{
     page: string
@@ -645,20 +903,25 @@ async function searchQuery(
 
 export async function fetchSearchPerformance(
   siteUrl: string,
-  days = REPORT_DAYS
+  range: RangeKey = DEFAULT_RANGE
 ): Promise<SearchReport> {
+  /* CLAMPED, NOT PASSED THROUGH. Search Console keeps 16 months and answers a
+     longer window with an error rather than with what it has, so "All time"
+     asked of it verbatim returns nothing at all — an empty half of the page
+     with no explanation. The report says which window it actually got. */
+  const days = Math.min(rangeDays(range), GSC_MAX_DAYS)
   const end = new Date()
-  const start = new Date(end.getTime() - days * 86400000)
+  const start = new Date(end.getTime() - Math.max(days - 1, 0) * 86400000)
   // Search Console runs two to three days behind. The range still ends today
   // — asking for less would just hide the lag — but the page says so, because
   // "the last two days look dead" is otherwise a support call every week.
-  const range = { startDate: ymd(start), endDate: ymd(end) }
+  const window = { startDate: ymd(start), endDate: ymd(end) }
 
   const [byDate, byCountry, byPage, byQuery] = await Promise.all([
-    searchQuery(siteUrl, { ...range, dimensions: ['date'], rowLimit: 500 }),
-    searchQuery(siteUrl, { ...range, dimensions: ['country'], rowLimit: 25 }),
-    searchQuery(siteUrl, { ...range, dimensions: ['page'], rowLimit: 25 }),
-    searchQuery(siteUrl, { ...range, dimensions: ['query'], rowLimit: 25 }),
+    searchQuery(siteUrl, { ...window, dimensions: ['date'], rowLimit: 1000 }),
+    searchQuery(siteUrl, { ...window, dimensions: ['country'], rowLimit: 25 }),
+    searchQuery(siteUrl, { ...window, dimensions: ['page'], rowLimit: 25 }),
+    searchQuery(siteUrl, { ...window, dimensions: ['query'], rowLimit: 25 }),
   ])
 
   const daily = (byDate.rows || []).map((row) => ({
@@ -681,11 +944,23 @@ export async function fetchSearchPerformance(
     countryClicks.set((row.keys?.[0] || '').toUpperCase(), row.clicks || 0)
   }
 
+  /* Impressions dwarf clicks — a 90-day window here is 1,667 against
+     246,713 — so on one axis the clicks line is flat along the bottom. Both
+     are in the series because the tooltip should read out both; the tab hides
+     impressions by default so the line that matters is the one drawn. */
+  const searchSeries = bucketPoints(
+    daily.map((d) => ({ date: d.date, values: [d.clicks, d.impressions] })),
+    ['Clicks', 'Impressions']
+  )
+
   return {
+    days,
+    clamped: days < rangeDays(range),
     clicks,
     impressions,
     averagePosition,
     daily,
+    series: searchSeries,
     countries: rank(countryClicks, clicks, 8),
     topPages: (byPage.rows || []).map((row) => ({
       page: row.keys?.[0] || '',
@@ -724,7 +999,10 @@ export interface SiteAnalytics {
  * and it is the only way an operator finds out that a property was
  * un-shared with us.
  */
-export async function refreshSiteAnalytics(clientId: string): Promise<SiteAnalytics> {
+export async function refreshSiteAnalytics(
+  clientId: string,
+  range: RangeKey = DEFAULT_RANGE
+): Promise<SiteAnalytics> {
   const client = await prisma.client
     .findUnique({
       where: { id: clientId },
@@ -742,14 +1020,14 @@ export async function refreshSiteAnalytics(clientId: string): Promise<SiteAnalyt
 
   if (client.ga4PropertyId) {
     try {
-      traffic = await fetchTraffic(client.ga4PropertyId)
+      traffic = await fetchTraffic(client.ga4PropertyId, range)
     } catch (err) {
       errors.push(`Analytics: ${err instanceof Error ? err.message : 'failed'}`)
     }
   }
   if (client.searchConsoleSiteUrl) {
     try {
-      search = await fetchSearchPerformance(client.searchConsoleSiteUrl)
+      search = await fetchSearchPerformance(client.searchConsoleSiteUrl, range)
     } catch (err) {
       errors.push(`Search Console: ${err instanceof Error ? err.message : 'failed'}`)
     }
@@ -760,7 +1038,13 @@ export async function refreshSiteAnalytics(clientId: string): Promise<SiteAnalyt
   try {
     // Only overwrite the half that actually came back — a Search Console
     // outage must not blank out working Analytics numbers.
-    const existing = await prisma.siteTrafficSnapshot.findUnique({ where: { clientId } })
+    /* ONE ROW PER CLIENT PER RANGE. The alternative — refetching all six on
+       every refresh — spends six times the quota to warm windows nobody
+       opened, and a single row keyed by client alone would serve last week's
+       question to whoever asked this week's. */
+    const existing = await prisma.siteTrafficSnapshot.findUnique({
+      where: { clientId_range: { clientId, range } },
+    })
     const data = {
       fetchedAt,
       traffic: (traffic ?? existing?.traffic ?? null) as object | null,
@@ -768,8 +1052,8 @@ export async function refreshSiteAnalytics(clientId: string): Promise<SiteAnalyt
       error,
     }
     await prisma.siteTrafficSnapshot.upsert({
-      where: { clientId },
-      create: { clientId, ...data } as never,
+      where: { clientId_range: { clientId, range } },
+      create: { clientId, range, ...data } as never,
       update: data as never,
     })
   } catch (err) {
@@ -791,9 +1075,12 @@ export async function refreshSiteAnalytics(clientId: string): Promise<SiteAnalyt
  * token, a property removed from the account — all of them degrade to
  * whatever was last stored plus an error line.
  */
-export async function getSiteAnalytics(clientId: string): Promise<SiteAnalytics> {
+export async function getSiteAnalytics(
+  clientId: string,
+  range: RangeKey = DEFAULT_RANGE
+): Promise<SiteAnalytics> {
   const snapshot = await prisma.siteTrafficSnapshot
-    .findUnique({ where: { clientId } })
+    .findUnique({ where: { clientId_range: { clientId, range } } })
     .catch(() => null)
 
   const fresh =
@@ -807,7 +1094,7 @@ export async function getSiteAnalytics(clientId: string): Promise<SiteAnalytics>
     }
   }
 
-  const refreshed = await refreshSiteAnalytics(clientId).catch((err) => ({
+  const refreshed = await refreshSiteAnalytics(clientId, range).catch((err) => ({
     traffic: null,
     search: null,
     fetchedAt: null,

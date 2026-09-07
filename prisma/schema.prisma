@@ -137,7 +137,7 @@ model Client {
   /// only: no credential lives here, the operator's does.
   ga4PropertyId        String? // numeric GA4 property id — NOT the G- tag
   searchConsoleSiteUrl String? // exactly as Search Console lists it
-  trafficSnapshot      SiteTrafficSnapshot?
+  trafficSnapshots     SiteTrafficSnapshot[]
 
   /// Addresses carried over from a site this one replaced.
   redirects   ClientRedirect[]
@@ -1348,8 +1348,13 @@ model SiteFeedItem {
 model SiteTrafficSnapshot {
   id String @id @default(cuid())
 
-  clientId String @unique
+  clientId String
   client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  /// Which window this row answers — a RangeKey from site-analytics.ts. One
+  /// row per client per range: refetching all six on every refresh would
+  /// spend six times the quota warming windows nobody opened.
+  range String @default("90d")
 
   fetchedAt DateTime @default(now())
 
@@ -1364,6 +1369,8 @@ model SiteTrafficSnapshot {
   /// rather than replacing it: last week's numbers plus "this stopped
   /// updating on Tuesday" is more use than an empty page.
   error String?
+
+  @@unique([clientId, range])
 }
 
 model ClarityDay {

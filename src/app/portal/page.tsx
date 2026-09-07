@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db'
 import { deliverabilityGuide } from '@/lib/alert-deliverability'
 import GettingStartedCard from '@/components/portal/GettingStartedCard'
 import { siteLinkFor, PRIMARY_DOMAIN_SELECT } from '@/lib/site-origin'
+import { DEFAULT_RANGE } from '@/lib/site-analytics'
 
 export const dynamic = 'force-dynamic'
 
@@ -78,7 +79,12 @@ export default async function PortalHomePage() {
     }),
     prisma.clientGbpReviews.findUnique({ where: { clientId: session.clientId } }).catch(() => null),
     prisma.siteTrafficSnapshot
-      .findUnique({ where: { clientId: session.clientId }, select: { traffic: true } })
+      // The default window, which is what the tile's number claims to be. Any
+      // other range the shop happens to have opened is a different question.
+      .findUnique({
+        where: { clientId_range: { clientId: session.clientId, range: DEFAULT_RANGE } },
+        select: { traffic: true },
+      })
       .catch(() => null),
   ])
 
