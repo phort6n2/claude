@@ -127,6 +127,13 @@ export async function POST(request: Request) {
   // Google Ads is the odd one out: five credentials that only mean anything
   // together, so there is no single "apiKey" to hand to a tester. It tests the
   // saved set rather than an unsaved box — save first, then test.
+  // Named before the GOOGLE_ADS_ prefix test below so the two cannot be
+  // confused: this one borrows the Ads OAuth client but is its own credential.
+  if (key === 'GOOGLE_ANALYTICS_REFRESH_TOKEN') {
+    const { testAnalyticsConnection } = await import('@/lib/site-analytics')
+    return NextResponse.json(await testAnalyticsConnection())
+  }
+
   if (key.startsWith('GOOGLE_ADS_')) {
     const { testAdsConnection } = await import('@/lib/google-ads')
     return NextResponse.json(await testAdsConnection())

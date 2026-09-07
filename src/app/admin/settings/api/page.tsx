@@ -226,26 +226,51 @@ const API_KEYS: ApiKeyConfig[] = [
     key: 'GOOGLE_ANALYTICS_REFRESH_TOKEN',
     label: 'Google Analytics + Search Console refresh token',
     description:
-      'For the Traffic page in a client portal. Uses the SAME OAuth client as Google Ads above, but needs its own token: the scopes are different, and an Ads token cannot read Analytics.',
+      'For the Traffic page in a client portal. Same OAuth client as Google Ads above, its own token \u2014 the scopes differ, and an Ads token cannot read Analytics. Save it, then press Test: it names which step is missing rather than leaving an empty picklist to interpret.',
+    testable: true,
+    testLabel: 'Test Analytics + Search Console',
     steps: [
       {
-        text: 'Open the OAuth Playground and tick "Use your own OAuth credentials" with the same client ID and secret as above.',
+        text: 'Enable THREE APIs in the same Cloud project as the Ads credentials: Google Analytics Admin API, Google Analytics Data API, and Google Search Console API. A token works perfectly without them and every call comes back 403.',
+        href: 'https://console.cloud.google.com/apis/library',
+        linkLabel: 'API Library',
+      },
+      {
+        text: 'Put the playground redirect back. Open your Web application client and add https://developers.google.com/oauthplayground under Authorised redirect URIs \u2014 the Google Ads walkthrough above ends by telling you to remove it, so it will not be there, and the playground fails with redirect_uri_mismatch.',
+        href: 'https://console.cloud.google.com/auth/clients',
+        linkLabel: 'Clients',
+      },
+      {
+        text: 'Data access \u2192 Add or remove scopes. Add both: .../auth/analytics.readonly and .../auth/webmasters.readonly. Save.',
+        href: 'https://console.cloud.google.com/auth/scopes',
+        linkLabel: 'Data access',
+      },
+      {
+        text: 'Open the OAuth Playground. Gear icon \u2192 tick "Use your own OAuth credentials" \u2192 paste the same client ID and secret as the Ads token.',
         href: 'https://developers.google.com/oauthplayground',
         linkLabel: 'OAuth Playground',
       },
       {
-        text: 'In Step 1, paste BOTH scopes, separated by a space: https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/webmasters.readonly',
+        text: 'In Step 1, paste BOTH scopes into the box at once, separated by a space: https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/webmasters.readonly',
       },
       {
-        text: 'Sign in as the Google account that the clients\u2019 Analytics properties and Search Console sites are shared with — the one whose property list should appear in the picklists.',
+        text: 'Authorise APIs, and sign in as the Google account the clients\u2019 Analytics properties and Search Console sites are shared with \u2014 whatever that account can see is what the picklists will offer.',
       },
-      { text: 'Step 2 → Exchange authorization code for tokens → copy the refresh token.' },
       {
-        text: 'Then, per client: SEO tab → Their website\u2019s traffic → pick the property and the Search Console site.',
+        text: '"Google hasn\u2019t verified this app" is expected. Advanced \u2192 "Go to (unsafe)". You are the only user; verification only removes the warning.',
+      },
+      { text: 'Step 2 \u2192 Exchange authorization code for tokens \u2192 copy the refresh token and paste it here.' },
+      {
+        text: 'Then, per client: SEO tab \u2192 Their website\u2019s traffic \u2192 pick the property and the Search Console site.',
+      },
+      {
+        text: 'Optional, once it tests green: remove the playground redirect URI from the OAuth client again.',
+        href: 'https://console.cloud.google.com/auth/clients',
+        linkLabel: 'Clients',
       },
     ],
     warning:
-      'Both scopes are read-only, by design — nothing in the app writes to Analytics or Search Console. Whatever this account can see is what the picklists offer, so grant it Viewer on each client property rather than giving it more than it needs. The same Publish-before-playground rule as the Ads token applies: a client left in "Testing" issues a token that expires in seven days.',
+      'Both scopes are read-only by design \u2014 nothing in the app writes to Analytics or Search Console, so grant the account Viewer on each property rather than more. The Publish-before-playground rule from the Ads token applies here too: a client left in "Testing" issues a refresh token that authenticates today and expires in seven days.',
   },
   {
     key: 'GOOGLE_ADS_LOGIN_CUSTOMER_ID',
