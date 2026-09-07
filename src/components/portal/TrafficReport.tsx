@@ -3,7 +3,13 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowRight, Globe, Search, Sparkles, TrendingUp, Users, LineChart } from 'lucide-react'
-import type { RangeKey, SearchReport, TrafficReport as Traffic } from '@/lib/site-analytics'
+import {
+  channelLabel,
+  rangeLabel,
+  type RangeKey,
+  type SearchReport,
+  type TrafficReport as Traffic,
+} from '@/lib/site-analytics'
 import TrafficChart from '@/components/portal/TrafficChart'
 import RangePicker from '@/components/portal/RangePicker'
 
@@ -27,16 +33,56 @@ import RangePicker from '@/components/portal/RangePicker'
  * it rather than presenting a floor as a count.
  */
 
+/**
+ * Change against the previous equal-length window.
+ *
+ * THE ONLY HONEST WAY TO MAKE GOOD WORK LOOK GOOD. A bare total answers
+ * nothing — an owner cannot tell a strong quarter from a collapse, and the
+ * work behind it has nothing to point at. This is Google's own number for a
+ * period the shop already lived through, so it is a comparison rather than a
+ * claim: it says what changed, never that we caused it.
+ *
+ * `lowerIsBetter` exists for average position, where a fall is a win and an
+ * unthinking "−0.9" would read as a loss.
+ */
+function Delta({
+  now,
+  before,
+  lowerIsBetter = false,
+  windowLabel,
+}: {
+  now: number
+  before: number
+  lowerIsBetter?: boolean
+  windowLabel: string
+}) {
+  const change = now - before
+  if (!before || Math.abs(change) < 0.05) {
+    return <p className="text-sm text-gray-500 mt-1">Level with the {windowLabel}</p>
+  }
+  const better = lowerIsBetter ? change < 0 : change > 0
+  const pct = Math.round((Math.abs(change) / before) * 100)
+  const size = lowerIsBetter ? `${Math.abs(change).toFixed(1)}` : `${pct}%`
+  return (
+    <p className={`text-sm mt-1 font-semibold ${better ? 'text-emerald-700' : 'text-gray-500'}`}>
+      {better ? '▲' : '▼'} {size} {better ? 'better' : 'lower'}{' '}
+      <span className="font-normal text-gray-500">than the {windowLabel}</span>
+    </p>
+  )
+}
+
 function Tile({
   label,
   value,
   sub,
   icon: Icon,
+  children,
 }: {
   label: string
   value: string
   sub?: string
   icon: React.ElementType
+  children?: React.ReactNode
 }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
@@ -46,6 +92,7 @@ function Tile({
       </div>
       <p className="mt-2 text-3xl font-extrabold text-gray-900 tabular-nums break-words">{value}</p>
       {sub && <p className="text-sm text-gray-500 mt-0.5">{sub}</p>}
+      {children}
     </div>
   )
 }
@@ -58,7 +105,7 @@ function Bars({ rows }: { rows: Array<{ name: string; value: number; share: numb
       {rows.map((row) => (
         <li key={row.name}>
           <div className="flex items-baseline justify-between text-sm">
-            <span className="text-gray-700">{row.name}</span>
+            <span className="text-gray-700">{channelLabel(row.name)}</span>
             <span className="text-gray-500 tabular-nums">
               {row.value.toLocaleString()} <span className="text-gray-400">· {row.share}%</span>
             </span>
@@ -114,24 +161,39 @@ function PageTable({
   lastLabel: string
 }) {
   if (!rows.length) return <p className="text-sm text-gray-500">Nothing recorded yet.</p>
+  /* NO min-w ON A PHONE. Forcing 520px inside a ~312px card pushed the last
+     two columns off-screen behind a scroll with no scrollbar and no hint, so
+     a shop owner read the table as everything there was. Below `sm` the extra
+     columns move under the page name; the full table returns above it. */
   return (
     <Scroller>
-      <table className="w-full text-sm min-w-[520px]">
+      <table className="w-full text-sm sm:min-w-[520px]">
         <thead>
           <tr className="text-left text-gray-500 border-b border-gray-200">
             <th className="py-2 font-medium">Page</th>
-            <th className="py-2 font-medium text-right">People</th>
-            <th className="py-2 font-medium text-right">Share</th>
-            <th className="py-2 font-medium text-right">{lastLabel}</th>
+            <th className="py-2 font-medium text-right">Visits</th>
+            <th className="py-2 font-medium text-right hidden sm:table-cell">Share</th>
+            <th className="py-2 font-medium text-right hidden sm:table-cell">{lastLabel}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
             <tr key={row.page} className="border-b border-gray-100 last:border-0">
-              <td className="py-2 pr-3 text-gray-900 break-all">{pageLabel(row.page)}</td>
-              <td className="py-2 text-right tabular-nums">{row.users.toLocaleString()}</td>
-              <td className="py-2 text-right tabular-nums text-gray-500">{row.share}%</td>
-              <td className="py-2 text-right text-gray-500">{row.last}</td>
+              <td className="py-2 pr-3 text-gray-900 break-all align-top">
+                {pageLabel(row.page)}
+                <span className="block sm:hidden text-xs text-gray-500">
+                  {row.share}% · {channelLabel(row.last)}
+                </span>
+              </td>
+              <td className="py-2 text-right tabular-nums align-top">
+                {row.users.toLocaleString()}
+              </td>
+              <td className="py-2 text-right tabular-nums text-gray-500 hidden sm:table-cell">
+                {row.share}%
+              </td>
+              <td className="py-2 text-right text-gray-500 hidden sm:table-cell">
+                {channelLabel(row.last)}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -163,6 +225,70 @@ function SiteLine({ siteUrl }: { siteUrl: string | null }) {
   )
 }
 
+/**
+ * On the plan, not yet connected.
+ *
+ * THE STATE THAT WAS MISSING. Associating the property is a manual admin step
+ * AFTER the sale, so there is always a gap — and during it a shop paying for
+ * SEO opened this page and was sold SEO, with an "Ask about SEO" button. The
+ * same distinction RankReport already draws between "being set up" and "not
+ * bought".
+ */
+export function TrafficConnecting({ businessName }: { businessName: string }) {
+  return (
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-2xl font-extrabold text-gray-900">How people find you</h1>
+        <p className="text-gray-500">
+          {businessName}&apos;s own website — who reaches it, what they searched for, and which
+          pages do the work.
+        </p>
+      </div>
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+        <h2 className="font-semibold text-gray-900">Connecting your website&apos;s analytics</h2>
+        <p className="mt-2 text-gray-600">
+          We are linking your Google Analytics and Search Console so this page can report on your
+          site. It fills in as soon as that is done — nothing is needed from you.
+        </p>
+      </section>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {WHAT_IT_SHOWS.map((card) => (
+          <div key={card.title} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+            <div className="flex items-center gap-2 text-gray-500 text-sm font-medium">
+              <card.icon className="h-4 w-4" />
+              {card.title}
+            </div>
+            <p className="mt-2 text-sm text-gray-600">{card.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const WHAT_IT_SHOWS = [
+  {
+    icon: Users,
+    title: 'Who arrives, and from where',
+    body: 'Visitors to your site each day, split by how they got there — Google, a map listing, a link someone shared, or straight to your address.',
+  },
+  {
+    icon: Search,
+    title: 'What they searched for',
+    body: 'The actual Google searches your site appeared for, how often it was shown, how often it was clicked, and where it sat on the page.',
+  },
+  {
+    icon: TrendingUp,
+    title: 'Which pages do the work',
+    body: 'Your best pages ranked by the people they bring in — so effort goes where it already pays.',
+  },
+  {
+    icon: Sparkles,
+    title: 'Whether AI is sending anyone',
+    body: 'Visits that arrive from ChatGPT, Gemini, Copilot and the rest. A growing share of "who fixes windshields near me" is answered there now.',
+  },
+]
+
 export function TrafficUpsell({ businessName }: { businessName: string }) {
   return (
     <div className="space-y-5">
@@ -184,9 +310,9 @@ export function TrafficUpsell({ businessName }: { businessName: string }) {
             It describes what the REPORTING shows, which is a fact about this
             page, not a claim about an outcome we cannot guarantee. */}
         <p className="mt-2 text-white/90">
-          Your ads buy clicks for as long as you pay for them. Search results keep sending people
-          after the spend stops. We measure that side the same way we measure the ads — from
-          Google&apos;s own numbers, with nothing estimated.
+          You already pay to be found through ads. This is the other half — what your own
+          website brings in from search, reported from Google&apos;s own numbers, with nothing
+          estimated.
         </p>
         <a
           href="mailto:hello@glassleads.app?subject=SEO%20for%20my%20shop"
@@ -199,28 +325,7 @@ export function TrafficUpsell({ businessName }: { businessName: string }) {
       </section>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {[
-          {
-            icon: Users,
-            title: 'Who arrives, and from where',
-            body: 'Visitors to your site each day, split by how they got there — Google, a map listing, a link someone shared, or straight to your address.',
-          },
-          {
-            icon: Search,
-            title: 'What they searched for',
-            body: 'The actual Google searches your site appeared for, how often it was shown, how often it was clicked, and where it sat on the page.',
-          },
-          {
-            icon: TrendingUp,
-            title: 'Which pages do the work',
-            body: 'Your best pages ranked by the people they bring in — so effort goes where it already pays.',
-          },
-          {
-            icon: Sparkles,
-            title: 'Whether AI is sending anyone',
-            body: 'Visits that arrive from ChatGPT, Gemini, Copilot and the rest. A growing share of "who fixes windshields near me" is answered there now.',
-          },
-        ].map((card) => (
+        {WHAT_IT_SHOWS.map((card) => (
           <div
             key={card.title}
             className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
@@ -262,11 +367,16 @@ export default function TrafficReport({
 }) {
   const [tab, setTab] = useState<TabKey>('all')
   const nothing = !traffic && !search
+  // "the previous 90 days", said the way the range picker says it.
+  const previousWindow = rangeLabel(range).replace(/^Last /, 'previous ').toLowerCase()
 
   const TABS: Array<{ key: TabKey; label: string; icon: React.ElementType; enabled: boolean }> = [
     { key: 'all', label: 'All traffic', icon: LineChart, enabled: !!traffic },
-    { key: 'ai', label: 'AI search', icon: Sparkles, enabled: !!traffic },
+    /* Google search before AI search. AI is a floor-not-a-count novelty that
+       reads zero for most auto glass shops; Google search is the whole
+       subject of the retainer, and it was second. */
     { key: 'google', label: 'Google search', icon: Search, enabled: !!search },
+    { key: 'ai', label: 'AI search', icon: Sparkles, enabled: !!traffic },
   ]
   // A tab whose half of the setup is missing is not offered, rather than
   // offered and empty — Search Console can be connected without Analytics and
@@ -283,6 +393,14 @@ export default function TrafficReport({
           <div className="mt-2">
             <SiteLine siteUrl={siteUrl} />
           </div>
+          {/* fetchedAt used to appear ONLY in the error branch, so a healthy
+              page was undated — and snapshots can be six hours old. */}
+          {!nothing && (
+            <p className="mt-2 text-sm text-gray-400">
+              {rangeLabel(range)}
+              {fetchedAt && ` · read from Google ${new Date(fetchedAt).toLocaleString()}`}
+            </p>
+          )}
         </div>
         <RangePicker value={range} />
       </div>
@@ -334,18 +452,59 @@ export default function TrafficReport({
             <Tile
               label="People on your site"
               value={(traffic.activeUsers ?? 0).toLocaleString()}
-              sub="in this period"
+              sub={`${previousWindow} before: ${(traffic.previous?.activeUsers ?? 0).toLocaleString()}`}
               icon={Users}
-            />
+            >
+              {traffic.previous && (
+                <Delta
+                  now={traffic.activeUsers ?? 0}
+                  before={traffic.previous.activeUsers}
+                  windowLabel={previousWindow}
+                />
+              )}
+            </Tile>
+            {/* THE NUMBER THE RETAINER EXISTS TO MOVE, given a hero slot. It
+                was not a tile at all, while "Sent by AI" — usually zero — had
+                one, and "Top channel" showed a NAME rather than a number. */}
+            <Tile
+              label="From Google search"
+              value={(traffic.organicUsers ?? 0).toLocaleString()}
+              sub={`${
+                traffic.activeUsers
+                  ? Math.round(((traffic.organicUsers ?? 0) / traffic.activeUsers) * 100)
+                  : 0
+              }% of everyone who found you`}
+              icon={Search}
+            >
+              {traffic.previous && (
+                <Delta
+                  now={traffic.organicUsers ?? 0}
+                  before={traffic.previous.organicUsers}
+                  windowLabel={previousWindow}
+                />
+              )}
+            </Tile>
             <Tile
               label="Visits"
               value={(traffic.sessions ?? 0).toLocaleString()}
               sub="one person can visit more than once"
               icon={Globe}
-            />
+            >
+              {traffic.previous && (
+                <Delta
+                  now={traffic.sessions ?? 0}
+                  before={traffic.previous.sessions}
+                  windowLabel={previousWindow}
+                />
+              )}
+            </Tile>
             <Tile
-              label="Top channel"
-              value={traffic.channels?.[0]?.name ?? '—'}
+              label="Biggest source"
+              value={
+                traffic.channels?.[0]
+                  ? `${channelLabel(traffic.channels[0].name)}`
+                  : '—'
+              }
               sub={
                 traffic.channels?.[0]
                   ? `${traffic.channels[0].value.toLocaleString()} people · ${traffic.channels[0].share}%`
@@ -353,23 +512,27 @@ export default function TrafficReport({
               }
               icon={TrendingUp}
             />
-            <Tile
-              label="Sent by AI"
-              value={(traffic.aiUsers ?? 0).toLocaleString()}
-              sub="at least — most arrive unlabelled"
-              icon={Sparkles}
-            />
           </div>
 
           <Panel
             title="Where your visitors come from"
-            sub="Every visitor by day and by channel. Hover the chart for one day; tap a colour to hide it."
+            sub="Visits by day and by channel. Drag across the chart to read one day, or use the arrow keys. Tap a colour to hide that line."
           >
-            <TrafficChart series={traffic.series} />
+            <TrafficChart series={traffic.series} label="Visits by channel over time" />
           </Panel>
 
-          <Panel title="Channel breakdown">
+          <Panel
+            title="How they got here"
+            sub="Someone who found you two different ways counts in both, so these can add up to more than the total above."
+          >
             <Bars rows={traffic.channels ?? []} />
+          </Panel>
+
+          <Panel
+            title="Who sent them"
+            sub="The actual sites and searches people arrived from, biggest first."
+          >
+            <Bars rows={traffic.topSources ?? []} />
           </Panel>
 
           <Panel title="Top pages" sub="Which pages bring the most people in.">
@@ -423,9 +586,9 @@ export default function TrafficReport({
 
           <Panel
             title="Which assistants send people"
-            sub="By day, per assistant. Hover for one day; tap a colour to hide it."
+            sub="By day, per assistant. Drag across the chart to read one day, or use the arrow keys."
           >
-            <TrafficChart series={traffic.aiSeries} />
+            <TrafficChart series={traffic.aiSeries} label="Visitors from AI assistants over time" />
           </Panel>
 
           <Panel title="Assistant breakdown">
@@ -447,15 +610,35 @@ export default function TrafficReport({
             <Tile
               label="Clicks from Google"
               value={(search.clicks ?? 0).toLocaleString()}
-              sub="people who chose your result"
+              sub={
+                search.coveredDays
+                  ? `over ${search.coveredDays} days Google has reported`
+                  : 'people who chose your result'
+              }
               icon={Search}
-            />
+            >
+              {search.previous && (
+                <Delta
+                  now={search.clicks ?? 0}
+                  before={search.previous.clicks}
+                  windowLabel={previousWindow}
+                />
+              )}
+            </Tile>
             <Tile
               label="Times you were shown"
               value={(search.impressions ?? 0).toLocaleString()}
               sub="appearances in search results"
               icon={Globe}
-            />
+            >
+              {search.previous && (
+                <Delta
+                  now={search.impressions ?? 0}
+                  before={search.previous.impressions}
+                  windowLabel={previousWindow}
+                />
+              )}
+            </Tile>
             <Tile
               label="Click rate"
               value={
@@ -466,13 +649,33 @@ export default function TrafficReport({
               sub="of the times you were shown"
               icon={TrendingUp}
             />
+            {/* RELABELLED, because "Average position · 1 is the top result"
+                reads as "I am 8th on Google". It is the average spot across
+                every search the site ever surfaced for, so it gets WORSE as
+                the site starts ranking for more terms — the service working
+                can move this tile the wrong way. */}
             <Tile
-              label="Average position"
+              label="Average spot when you showed up"
               value={search.averagePosition ? search.averagePosition.toFixed(1) : '—'}
-              sub="1 is the top result"
+              sub="across every search you appeared for"
               icon={Users}
-            />
+            >
+              {search.previous?.averagePosition ? (
+                <Delta
+                  now={search.averagePosition}
+                  before={search.previous.averagePosition}
+                  lowerIsBetter
+                  windowLabel={previousWindow}
+                />
+              ) : null}
+            </Tile>
           </div>
+
+          <p className="rounded-xl bg-gray-50 border border-gray-200 p-3 text-sm text-gray-600">
+            A new search you now rank 40th for pulls the average spot down, so this number can
+            get worse while things improve. It is also different from the map ranking on your
+            Rankings page, which measures a few chosen searches near your shop.
+          </p>
 
           <Panel
             title="Google search, over time"
@@ -483,19 +686,23 @@ export default function TrafficReport({
               search.clamped ? ' Search Console keeps 16 months, so this window stops there.' : ''
             }`}
           >
-            <TrafficChart series={search.series} initiallyHidden={['Impressions']} />
+            <TrafficChart
+              series={search.series}
+              label="Google search clicks and impressions over time"
+              initiallyHidden={['Impressions']}
+            />
           </Panel>
 
           {(search.topQueries?.length ?? 0) > 0 && (
             <Panel title="What people searched for">
               <Scroller>
-                <table className="w-full text-sm min-w-[520px]">
+                <table className="w-full text-sm sm:min-w-[520px]">
                   <thead>
                     <tr className="text-left text-gray-500 border-b border-gray-200">
-                      <th className="py-2 font-medium">Search</th>
-                      <th className="py-2 font-medium text-right">Clicks</th>
-                      <th className="py-2 font-medium text-right">Shown</th>
-                      <th className="py-2 font-medium text-right">Position</th>
+                      <th className="py-2 font-medium">What they typed</th>
+                      <th className="py-2 font-medium text-right">Visits</th>
+                      <th className="py-2 font-medium text-right hidden sm:table-cell">Times shown</th>
+                      <th className="py-2 font-medium text-right hidden sm:table-cell">Average spot</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -505,10 +712,10 @@ export default function TrafficReport({
                         <td className="py-2 text-right tabular-nums">
                           {row.clicks.toLocaleString()}
                         </td>
-                        <td className="py-2 text-right tabular-nums text-gray-500">
+                        <td className="py-2 text-right tabular-nums text-gray-500 hidden sm:table-cell">
                           {row.impressions.toLocaleString()}
                         </td>
-                        <td className="py-2 text-right tabular-nums text-gray-500">
+                        <td className="py-2 text-right tabular-nums text-gray-500 hidden sm:table-cell">
                           {row.position.toFixed(1)}
                         </td>
                       </tr>
@@ -522,28 +729,46 @@ export default function TrafficReport({
           <Panel title="Top pages" sub="Which pages Google sends people to.">
             {search.topPages?.length ? (
               <Scroller>
-                <table className="w-full text-sm min-w-[560px]">
+                <table className="w-full text-sm sm:min-w-[560px]">
                   <thead>
                     <tr className="text-left text-gray-500 border-b border-gray-200">
                       <th className="py-2 font-medium">Page</th>
-                      <th className="py-2 font-medium text-right">Clicks</th>
-                      <th className="py-2 font-medium text-right">Shown</th>
-                      <th className="py-2 font-medium text-right">Clicked</th>
-                      <th className="py-2 font-medium text-right">Position</th>
+                      <th className="py-2 font-medium text-right">Visits from Google</th>
+                      <th className="py-2 font-medium text-right hidden sm:table-cell">Times shown</th>
+                      <th className="py-2 font-medium text-right hidden sm:table-cell">% who clicked</th>
+                      <th className="py-2 font-medium text-right hidden sm:table-cell">Average spot</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(search.topPages ?? []).map((row) => (
                       <tr key={row.page} className="border-b border-gray-100 last:border-0">
-                        <td className="py-2 pr-3 text-gray-900 break-all">{row.page}</td>
-                        <td className="py-2 text-right tabular-nums">
+                        <td className="py-2 pr-3 text-gray-900 break-all align-top">
+                          {/* The GA4 table two tabs over renders "/" as
+                              "Homepage"; this one printed a full absolute URL
+                              wrapping mid-word. Same page, one convention. */}
+                          <a
+                            href={row.page}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-gray-900 no-underline hover:underline"
+                          >
+                            {pageLabel(row.page.replace(/^https?:\/\/[^/]+/, ''))}
+                          </a>
+                          <span className="block sm:hidden text-xs text-gray-500">
+                            {row.impressions.toLocaleString()} shown · {row.ctr}% · spot{' '}
+                            {row.position.toFixed(1)}
+                          </span>
+                        </td>
+                        <td className="py-2 text-right tabular-nums align-top">
                           {row.clicks.toLocaleString()}
                         </td>
-                        <td className="py-2 text-right tabular-nums text-gray-500">
+                        <td className="py-2 text-right tabular-nums text-gray-500 hidden sm:table-cell">
                           {row.impressions.toLocaleString()}
                         </td>
-                        <td className="py-2 text-right tabular-nums text-gray-500">{row.ctr}%</td>
-                        <td className="py-2 text-right tabular-nums text-gray-500">
+                        <td className="py-2 text-right tabular-nums text-gray-500 hidden sm:table-cell">
+                          {row.ctr}%
+                        </td>
+                        <td className="py-2 text-right tabular-nums text-gray-500 hidden sm:table-cell">
                           {row.position.toFixed(1)}
                         </td>
                       </tr>

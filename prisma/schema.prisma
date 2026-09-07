@@ -1364,6 +1364,12 @@ model SiteTrafficSnapshot {
 
   fetchedAt DateTime @default(now())
 
+  /// One timestamp per half. A single fetchedAt was rewritten on every run
+  /// even when only one side succeeded, so the staleness banner reported the
+  /// age of the half that still worked.
+  trafficFetchedAt DateTime?
+  searchFetchedAt  DateTime?
+
   /// GA4 runReport output, extracted: totals, the daily series, channels,
   /// AI-referral split and top pages.
   traffic Json?

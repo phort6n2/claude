@@ -29,6 +29,9 @@ const COLORS = [
   '#9333EA', // purple
   '#65A30D', // olive
   '#DB2777', // pink
+  // "Everything else" lands here, and grey is right for it: it is the
+  // leftovers, and it must not compete with a named channel for attention.
+  '#94A3B8', // slate
 ]
 
 function label(point: { date: string; endDate?: string }, bucket: 'day' | 'week') {
@@ -44,12 +47,17 @@ function label(point: { date: string; endDate?: string }, bucket: 'day' | 'week'
 
 export default function TrafficChart({
   series,
+  /* What this chart is OF. It was a hardcoded "Visitors by channel over
+     time" on all three, so a screen reader user was told the wrong subject on
+     two of them and then given no numbers at all. */
+  label: chartLabel,
   /* Series present in the tooltip but not drawn until asked for. Google
      impressions outnumber clicks by a hundred to one, so on a shared axis the
      line anyone came to see is flat along the bottom. */
   initiallyHidden = [],
 }: {
   series: TrafficSeries
+  label: string
   initiallyHidden?: string[]
 }) {
   const [hover, setHover] = useState<number | null>(null)
@@ -100,6 +108,31 @@ export default function TrafficChart({
     setHover(Math.round(ratio * (points.length - 1)))
   }
 
+  /* A VERTICAL SWIPE IS A SCROLL, NOT A READ.
+     onTouchMove used to locate on any movement, so scrolling the page past
+     the chart dragged the crosshair sideways under the thumb. The gesture has
+     to prove it is horizontal first. */
+  const touchStart = useRef<{ x: number; y: number; reading: boolean } | null>(null)
+
+  function step(delta: number) {
+    setHover((h) => {
+      const next = h === null ? points.length - 1 : h + delta
+      return Math.min(Math.max(next, 0), points.length - 1)
+    })
+  }
+
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'ArrowRight') step(1)
+    else if (e.key === 'ArrowLeft') step(-1)
+    else if (e.key === 'Home') setHover(0)
+    else if (e.key === 'End') setHover(points.length - 1)
+    else if (e.key === 'Escape') setHover(null)
+    else return
+    // Only once a key is one of ours: otherwise Tab and the browser's own
+    // shortcuts stop working inside the chart.
+    e.preventDefault()
+  }
+
   const active = hover !== null ? points[hover] : null
   const activeTotal = active
     ? names.reduce((sum, n, i) => (hidden.has(n) ? sum : sum + (active.values[i] || 0)), 0)
@@ -148,15 +181,43 @@ export default function TrafficChart({
         className="relative select-none"
         onMouseMove={(e) => locate(e.clientX)}
         onMouseLeave={() => setHover(null)}
-        onTouchStart={(e) => locate(e.touches[0].clientX)}
-        onTouchMove={(e) => locate(e.touches[0].clientX)}
+        onTouchStart={(e) => {
+          touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, reading: false }
+        }}
+        onTouchMove={(e) => {
+          const from = touchStart.current
+          if (!from) return
+          const dx = Math.abs(e.touches[0].clientX - from.x)
+          const dy = Math.abs(e.touches[0].clientY - from.y)
+          if (!from.reading && dy > dx) return
+          if (dx > 6 || from.reading) {
+            from.reading = true
+            locate(e.touches[0].clientX)
+          }
+        }}
+        // Nothing cleared `hover` on touch, so the readout panel parked itself
+        // over the chart until the page was left.
+        onTouchEnd={() => {
+          touchStart.current = null
+          setHover(null)
+        }}
+        onTouchCancel={() => {
+          touchStart.current = null
+          setHover(null)
+        }}
+        onKeyDown={onKeyDown}
+        onFocus={() => setHover((h) => h ?? points.length - 1)}
+        onBlur={() => setHover(null)}
+        tabIndex={0}
+        role="application"
+        aria-label={`${chartLabel}. Use the left and right arrow keys to read each ${bucket}.`}
       >
         <svg
           viewBox={`0 0 ${W} ${H}`}
           preserveAspectRatio="none"
           className="w-full h-56"
           role="img"
-          aria-label="Visitors by channel over time"
+          aria-label={chartLabel}
         >
           {[0, 0.5, 1].map((f) => (
             <line
@@ -197,31 +258,58 @@ export default function TrafficChart({
                 strokeDasharray="3 3"
                 vectorEffect="non-scaling-stroke"
               />
-              {names.map((name, n) =>
-                hidden.has(name) ? null : (
-                  <circle
-                    key={name}
-                    cx={x(hover)}
-                    cy={y(points[hover].values[n] || 0)}
-                    r="3.5"
-                    fill={COLORS[n % COLORS.length]}
-                    // The chart is stretched by preserveAspectRatio, so an
-                    // untransformed circle renders as an ellipse.
-                    vectorEffect="non-scaling-size"
-                  />
-                )
-              )}
+              {/* The dots live in HTML below, not here. `preserveAspectRatio
+                  ="none"` squashes the 800-unit viewBox to ~312px on a phone,
+                  so an SVG circle draws as a flat ellipse — and
+                  `vector-effect: non-scaling-size`, which would have fixed it,
+                  is in the SVG 2 spec and implemented by no shipping browser. */}
             </>
           )}
         </svg>
 
+        {/* Positioned in HTML over the plot so the aspect-ratio stretch cannot
+            deform them. */}
+        {hover !== null &&
+          names.map((name, n) =>
+            hidden.has(name) ? null : (
+              <span
+                key={name}
+                aria-hidden="true"
+                className="pointer-events-none absolute block h-[7px] w-[7px] rounded-full"
+                style={{
+                  backgroundColor: COLORS[n % COLORS.length],
+                  left: `calc(${(hover / (points.length - 1)) * 100}% - 3.5px)`,
+                  top: `calc(${(y(points[hover].values[n] || 0) / H) * 100}% - 3.5px)`,
+                }}
+              />
+            )
+          )}
+
+        {/* The magnitudes. Three gridlines with no numbers on them made the
+            shape legible and every value a guess — a line at two-thirds height
+            could be 40 or 4,000, and the only readout was mouse-driven. */}
+        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+          {[1, 0.5].map((f) => (
+            <span
+              key={f}
+              className="absolute right-1 text-[10px] text-gray-400 bg-white/80 px-1 rounded"
+              style={{ top: `calc(${(y(max * f) / H) * 100}% - 7px)` }}
+            >
+              {Math.round(max * f).toLocaleString()}
+            </span>
+          ))}
+        </div>
+
         <div className="flex justify-between text-[11px] text-gray-400 -mt-4 px-0.5">
           <span>{label(points[0], bucket).replace(/^\w+, /, '')}</span>
+          <span>{label(points[Math.floor(points.length / 2)], bucket).replace(/^\w+, /, '')}</span>
           <span>{label(points[points.length - 1], bucket).replace(/^\w+, /, '')}</span>
         </div>
 
         {active && (
           <div
+            role="status"
+            aria-live="polite"
             className={`pointer-events-none absolute top-0 z-10 w-56 rounded-xl border border-gray-200 bg-white p-3 shadow-lg ${
               flip ? 'left-0' : 'right-0'
             }`}
@@ -243,8 +331,17 @@ export default function TrafficChart({
                 )
               )}
             </ul>
+            {active.partial && (
+              <p className="mt-1 text-xs text-gray-400">
+                Part week — fewer days than the rest of the chart.
+              </p>
+            )}
             <div className="mt-2 flex items-center justify-between border-t border-gray-100 pt-2 text-sm">
-              <span className="text-gray-500">{bucket === 'week' ? 'Week' : 'Day'} total</span>
+              {/* "Day total" was the total of the DRAWN series only, so hiding
+                  a line changed a number labelled as the day's. */}
+              <span className="text-gray-500">
+                {hidden.size ? 'Total of shown' : bucket === 'week' ? 'Week total' : 'Day total'}
+              </span>
               <span className="font-semibold tabular-nums text-gray-900">{activeTotal}</span>
             </div>
           </div>

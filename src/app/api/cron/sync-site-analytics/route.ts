@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { analyticsConnected, refreshSiteAnalytics } from '@/lib/site-analytics'
+import {
+  analyticsConnected,
+  refreshSiteAnalytics,
+  rangeFrom,
+  DEFAULT_RANGE,
+  type RangeKey,
+} from '@/lib/site-analytics'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -53,14 +59,26 @@ async function handle(request: NextRequest) {
   let refreshed = 0
   const failures: string[] = []
   for (const client of clients) {
-    const result = await refreshSiteAnalytics(client.id).catch((err) => ({
+    /* WARM WHAT THIS SHOP ACTUALLY OPENS, not only the default.
+       The job existed so the first person in each morning gets a page rather
+       than a spinner, and then refreshed the 90-day window alone — so anyone
+       who had picked "Last 12 months" still paid a cold eleven-call fetch
+       inside their page render. Existing rows name the ranges someone chose;
+       a range nobody has opened is still not fetched. */
+    const ranges = await prisma.siteTrafficSnapshot
+      .findMany({ where: { clientId: client.id }, select: { range: true } })
+      .catch(() => [])
+    const wanted = new Set<RangeKey>([DEFAULT_RANGE, ...ranges.map((r) => rangeFrom(r.range))])
+    for (const range of wanted) {
+    const result = await refreshSiteAnalytics(client.id, range).catch((err) => ({
       traffic: null,
       search: null,
       fetchedAt: null,
       error: err instanceof Error ? err.message : 'failed',
     }))
-    if (result.error) failures.push(`${client.businessName}: ${result.error}`)
+    if (result.error) failures.push(`${client.businessName} (${range}): ${result.error}`)
     if (result.traffic || result.search) refreshed += 1
+    }
   }
 
   console.log(
