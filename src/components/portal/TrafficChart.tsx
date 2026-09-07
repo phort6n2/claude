@@ -56,7 +56,16 @@ export default function TrafficChart({
   const [hidden, setHidden] = useState<Set<string>>(new Set(initiallyHidden))
   const boxRef = useRef<HTMLDivElement>(null)
 
-  const { points, names, bucket } = series
+  /* A STORED SNAPSHOT CAN PREDATE THIS COMPONENT.
+     The report is cached as JSON for six hours, so a deploy that adds a field
+     is followed by six hours of rows that do not have it. Destructuring one
+     of those threw and took the whole admin page to a blank
+     "client-side exception" — a rendering bug promoted to an outage by an
+     unguarded read. Anything shaped wrong now degrades to a line of text and
+     refetches on the next pass. */
+  const points = series?.points ?? []
+  const names = series?.names ?? []
+  const bucket = series?.bucket ?? 'day'
   const shown = names.filter((n) => !hidden.has(n))
 
   const max = useMemo(() => {
@@ -71,7 +80,7 @@ export default function TrafficChart({
     return m || 1
   }, [points, names, hidden])
 
-  if (points.length < 2) {
+  if (points.length < 2 || !names.length) {
     return <p className="text-sm text-gray-500">Not enough days yet to draw a trend.</p>
   }
 

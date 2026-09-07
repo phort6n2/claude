@@ -380,6 +380,9 @@ export const SITE_ANALYTICS_SQL: string[] = [
      CONSTRAINT "SiteTrafficSnapshot_pkey" PRIMARY KEY ("id")
    )`,
   `ALTER TABLE "SiteTrafficSnapshot" ADD COLUMN IF NOT EXISTS "range" TEXT NOT NULL DEFAULT '90d'`,
+  // Defaults to 1 — the shape before versioning existed — so every row already
+  // stored is correctly read as out of date rather than trusted.
+  `ALTER TABLE "SiteTrafficSnapshot" ADD COLUMN IF NOT EXISTS "version" INTEGER NOT NULL DEFAULT 1`,
   // The unique key WIDENED from (clientId) to (clientId, range) when the
   // report learned about time windows. Dropping the old one first is the
   // whole migration: leave it and every range after the first is refused by

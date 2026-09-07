@@ -333,21 +333,21 @@ export default function TrafficReport({
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Tile
               label="People on your site"
-              value={traffic.activeUsers.toLocaleString()}
+              value={(traffic.activeUsers ?? 0).toLocaleString()}
               sub="in this period"
               icon={Users}
             />
             <Tile
               label="Visits"
-              value={traffic.sessions.toLocaleString()}
+              value={(traffic.sessions ?? 0).toLocaleString()}
               sub="one person can visit more than once"
               icon={Globe}
             />
             <Tile
               label="Top channel"
-              value={traffic.channels[0]?.name ?? '—'}
+              value={traffic.channels?.[0]?.name ?? '—'}
               sub={
-                traffic.channels[0]
+                traffic.channels?.[0]
                   ? `${traffic.channels[0].value.toLocaleString()} people · ${traffic.channels[0].share}%`
                   : 'nothing recorded yet'
               }
@@ -355,7 +355,7 @@ export default function TrafficReport({
             />
             <Tile
               label="Sent by AI"
-              value={traffic.aiUsers.toLocaleString()}
+              value={(traffic.aiUsers ?? 0).toLocaleString()}
               sub="at least — most arrive unlabelled"
               icon={Sparkles}
             />
@@ -369,12 +369,12 @@ export default function TrafficReport({
           </Panel>
 
           <Panel title="Channel breakdown">
-            <Bars rows={traffic.channels} />
+            <Bars rows={traffic.channels ?? []} />
           </Panel>
 
           <Panel title="Top pages" sub="Which pages bring the most people in.">
             <PageTable
-              rows={traffic.topPages.map((p) => ({ ...p, last: p.topSource }))}
+              rows={(traffic.topPages ?? []).map((p) => ({ ...p, last: p.topSource }))}
               lastLabel="Mostly from"
             />
           </Panel>
@@ -386,21 +386,21 @@ export default function TrafficReport({
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Tile
               label="People from AI"
-              value={traffic.aiUsers.toLocaleString()}
+              value={(traffic.aiUsers ?? 0).toLocaleString()}
               sub="in this period"
               icon={Sparkles}
             />
             <Tile
               label="Visits from AI"
-              value={traffic.aiSessions.toLocaleString()}
+              value={(traffic.aiSessions ?? 0).toLocaleString()}
               sub="sessions that started at an assistant"
               icon={Globe}
             />
             <Tile
               label="Top assistant"
-              value={traffic.aiSources[0]?.name ?? '—'}
+              value={traffic.aiSources?.[0]?.name ?? '—'}
               sub={
-                traffic.aiSources[0]
+                traffic.aiSources?.[0]
                   ? `${traffic.aiSources[0].value.toLocaleString()} people · ${traffic.aiSources[0].share}%`
                   : 'none seen yet'
               }
@@ -408,7 +408,7 @@ export default function TrafficReport({
             />
             <Tile
               label="Assistants seen"
-              value={String(traffic.aiSources.length)}
+              value={String(traffic.aiSources?.length ?? 0)}
               sub="sending at least one visit"
               icon={Users}
             />
@@ -429,12 +429,12 @@ export default function TrafficReport({
           </Panel>
 
           <Panel title="Assistant breakdown">
-            <Bars rows={traffic.aiSources} />
+            <Bars rows={traffic.aiSources ?? []} />
           </Panel>
 
           <Panel title="Top pages" sub="Which pages AI assistants send people to.">
             <PageTable
-              rows={traffic.aiTopPages.map((p) => ({ ...p, last: p.topModel }))}
+              rows={(traffic.aiTopPages ?? []).map((p) => ({ ...p, last: p.topModel }))}
               lastLabel="Mostly from"
             />
           </Panel>
@@ -446,13 +446,13 @@ export default function TrafficReport({
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Tile
               label="Clicks from Google"
-              value={search.clicks.toLocaleString()}
+              value={(search.clicks ?? 0).toLocaleString()}
               sub="people who chose your result"
               icon={Search}
             />
             <Tile
               label="Times you were shown"
-              value={search.impressions.toLocaleString()}
+              value={(search.impressions ?? 0).toLocaleString()}
               sub="appearances in search results"
               icon={Globe}
             />
@@ -486,7 +486,7 @@ export default function TrafficReport({
             <TrafficChart series={search.series} initiallyHidden={['Impressions']} />
           </Panel>
 
-          {search.topQueries.length > 0 && (
+          {(search.topQueries?.length ?? 0) > 0 && (
             <Panel title="What people searched for">
               <Scroller>
                 <table className="w-full text-sm min-w-[520px]">
@@ -499,7 +499,7 @@ export default function TrafficReport({
                     </tr>
                   </thead>
                   <tbody>
-                    {search.topQueries.map((row) => (
+                    {(search.topQueries ?? []).map((row) => (
                       <tr key={row.query} className="border-b border-gray-100 last:border-0">
                         <td className="py-2 pr-3 text-gray-900">{row.query}</td>
                         <td className="py-2 text-right tabular-nums">
@@ -520,7 +520,7 @@ export default function TrafficReport({
           )}
 
           <Panel title="Top pages" sub="Which pages Google sends people to.">
-            {search.topPages.length ? (
+            {search.topPages?.length ? (
               <Scroller>
                 <table className="w-full text-sm min-w-[560px]">
                   <thead>
@@ -533,7 +533,7 @@ export default function TrafficReport({
                     </tr>
                   </thead>
                   <tbody>
-                    {search.topPages.map((row) => (
+                    {(search.topPages ?? []).map((row) => (
                       <tr key={row.page} className="border-b border-gray-100 last:border-0">
                         <td className="py-2 pr-3 text-gray-900 break-all">{row.page}</td>
                         <td className="py-2 text-right tabular-nums">
