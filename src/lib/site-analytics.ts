@@ -1061,10 +1061,152 @@ export async function fetchTraffic(
   }
 }
 
+// ------------------------------------------------- searching for them BY NAME
+
+/**
+ * Words that belong to the TRADE, not to a business.
+ *
+ * The branded/non-branded split lives or dies on this list. Almost every
+ * client is "<something> Auto Glass", so treating each word of the name as a
+ * brand term would file "auto glass near me" as a branded search and report
+ * that nobody new ever finds them — the exact opposite of the truth, in the
+ * one figure the whole panel exists to produce.
+ *
+ * Generic business suffixes are here for the same reason: "Auto Glass Now"
+ * would otherwise make "windshield repair now" a branded search.
+ */
+const TRADE_WORDS = new Set([
+  'a', 'an', 'the', 'and', 'of', 'for', 'to', 'my', 'your',
+  'auto', 'autos', 'automotive', 'car', 'cars', 'truck', 'trucks', 'vehicle',
+  'glass', 'windshield', 'windshields', 'windscreen', 'window', 'windows',
+  'repair', 'repairs', 'replacement', 'replace', 'calibration', 'tint', 'tinting',
+  'mobile', 'shop', 'shops', 'store', 'center', 'centre', 'centers', 'garage',
+  'service', 'services', 'company', 'co', 'inc', 'llc', 'ltd', 'corp', 'group',
+  'solutions', 'specialist', 'specialists', 'expert', 'experts', 'pro', 'pros',
+  'plus', 'now', 'one', 'best', 'top', 'quality', 'affordable', 'cheap',
+  'discount', 'local', 'fast', 'quick', 'same', 'day', 'usa', 'us', 'inc',
+])
+
+/**
+ * A term or a query, reduced to the letters and digits in it.
+ *
+ * MATCHED ON THE FOLDED FORM, deliberately. A shop called "A-1 Auto Glass" is
+ * typed "a1 auto glass", "a 1 autoglass" and "a-1 autoglass" by real people,
+ * and "Bob's" loses its apostrophe about half the time. Comparing the raw
+ * strings misses all of those, and a MISSED brand term is the dangerous
+ * direction: it files a search for the shop's own name as a stranger finding
+ * them, which flatters the service. Folding can over-match instead (a term
+ * "kings" inside "parkings"), and that understates the win, which is the error
+ * worth making.
+ */
+export function foldTerm(value: string): string {
+  return (value || '').toLowerCase().replace(/[^a-z0-9]+/g, '')
+}
+
+/**
+ * What "they searched for this shop by name" means when nobody has said.
+ *
+ * The whole business name, plus each of its DISTINCTIVE words — the ones that
+ * are not trade vocabulary — plus the domain label, because people search a
+ * business by its web address. An operator can replace the lot; this is only
+ * the starting point, and it is shown to them rather than applied invisibly.
+ */
+export function defaultBrandTerms(
+  businessName: string | null | undefined,
+  siteLabel?: string | null
+): string[] {
+  const terms = new Set<string>()
+  const name = (businessName || '').trim()
+  if (name) terms.add(name.toLowerCase())
+  /* SPLIT ON SPACES, THEN FOLD — not the other way round. Splitting on every
+     non-letter makes "Bob's" into "bob" and "s", and a three-letter fragment
+     is dropped by the length floor below, so the only term left was the whole
+     phrase and a search for "bob's windshield" read as a stranger. An
+     apostrophe is punctuation inside a word, not a word boundary. */
+  for (const word of name.toLowerCase().split(/\s+/)) {
+    const token = foldTerm(word)
+    // Four characters, so an initial or a house number cannot become the rule
+    // that decides half the panel.
+    if (token.length >= 4 && !TRADE_WORDS.has(token)) terms.add(token)
+  }
+  const host = (siteLabel || '').replace(/^www\./, '').split('.')[0]
+  if (host && host.length >= 4 && !TRADE_WORDS.has(host)) terms.add(host)
+  return [...terms]
+}
+
+/** The stored value, or the derived default when it is empty. Never empty. */
+export function brandTermsFor(
+  stored: string | null | undefined,
+  businessName: string | null | undefined,
+  siteLabel?: string | null
+): string[] {
+  const typed = (stored || '')
+    .split(/[\n,]+/)
+    .map((t) => t.trim())
+    .filter(Boolean)
+  return typed.length ? typed : defaultBrandTerms(businessName, siteLabel)
+}
+
+/** Does this search contain the shop's name? */
+export function isBrandedQuery(query: string, terms: string[]): boolean {
+  const folded = foldTerm(query)
+  if (!folded) return false
+  return terms.some((term) => {
+    const t = foldTerm(term)
+    return !!t && folded.includes(t)
+  })
+}
+
 export interface SearchPrevious {
   clicks: number
   impressions: number
   averagePosition: number
+}
+
+export interface BrandSplit {
+  /** The terms that decided it, so the reader can check the rule. */
+  terms: string[]
+  brandedClicks: number
+  brandedImpressions: number
+  nonBrandedClicks: number
+  nonBrandedImpressions: number
+  /** The same window, one period earlier. Null when there is nothing before. */
+  previousNonBrandedClicks: number | null
+  /** How many distinct searches were on each side. */
+  brandedQueries: number
+  nonBrandedQueries: number
+}
+
+/**
+ * How many searches the site sits in each band of the results page.
+ *
+ * A BETTER HEADLINE THAN AVERAGE POSITION, which gets WORSE as a site starts
+ * ranking for more things — a winning month reads as a losing one. A count of
+ * page-one terms only moves one way.
+ */
+export interface PositionBand {
+  label: string
+  /** Plain words for what the band is, since "1–3" is jargon on its own. */
+  hint: string
+  count: number
+  previousCount: number | null
+}
+
+export interface QueryMove {
+  query: string
+  clicks: number
+  before: number
+  impressions: number
+  position: number
+}
+
+export interface QueryMovers {
+  gained: QueryMove[]
+  lost: QueryMove[]
+  /** Searches with no impressions at all in the previous window. */
+  fresh: Array<{ query: string; clicks: number; impressions: number; position: number }>
+  /** True when a previous window was actually fetched and had rows. */
+  comparable: boolean
 }
 
 export interface SearchReport {
@@ -1092,6 +1234,17 @@ export interface SearchReport {
     position: number
   }>
   topQueries: Array<{ query: string; clicks: number; impressions: number; position: number }>
+  /** Strangers vs people who already knew the name. */
+  brand?: BrandSplit | null
+  /** Page-one counts, which move the way the work does. */
+  bands?: PositionBand[]
+  /** What changed against the previous window, search by search. */
+  movers?: QueryMovers | null
+  /** Distinct searches Google named, and their share of all clicks. The three
+   *  sections above are computed over these rows, not over the site total —
+   *  Google withholds rare queries, so they do not add up to it. */
+  namedQueries?: number
+  namedClicks?: number
 }
 
 interface GscResponse {
@@ -1121,9 +1274,37 @@ async function searchQuery(
   )
 }
 
+/**
+ * How many query rows to ask for.
+ *
+ * The panels underneath — branded vs not, the position bands, what moved —
+ * are all arithmetic over the SAME rows, so one big fetch answers three
+ * questions that would otherwise be six filtered calls. An auto glass shop
+ * ranks for a few hundred terms; 5000 is headroom, not an expectation.
+ */
+const QUERY_ROWS = 5000
+
+/**
+ * Where on the results page a search sits, in bands somebody can act on.
+ *
+ * The boundaries are the ones people already think in — the top three
+ * results, the rest of page one, page two, and past that.
+ */
+const BANDS: Array<{ label: string; hint: string; max: number }> = [
+  { label: 'Top 3', hint: 'the first three results', max: 3.5 },
+  { label: 'Rest of page one', hint: 'still on the first page', max: 10.5 },
+  { label: 'Page two', hint: 'one scroll further', max: 20.5 },
+  { label: 'Page three or worse', hint: 'almost nobody looks here', max: Infinity },
+]
+
+function bandIndex(position: number): number {
+  return BANDS.findIndex((b) => position <= b.max)
+}
+
 export async function fetchSearchPerformance(
   siteUrl: string,
-  range: RangeKey = DEFAULT_RANGE
+  range: RangeKey = DEFAULT_RANGE,
+  brandTerms: string[] = []
 ): Promise<SearchReport> {
   /* CLAMPED, NOT PASSED THROUGH. Search Console keeps 16 months and answers a
      longer window with an error rather than with what it has, so "All time"
@@ -1138,7 +1319,7 @@ export async function fetchSearchPerformance(
   const prevStart = new Date(prevEnd.getTime() - Math.max(days - 1, 0) * 86400000)
   const prevWindow = { startDate: ymd(prevStart), endDate: ymd(prevEnd) }
 
-  const [summary, prevSummary, byDate, byCountry, byPage, byQuery] = await Promise.all([
+  const [summary, prevSummary, byDate, byCountry, byPage, byQuery, prevByQuery] = await Promise.all([
     /* THE TOTALS AS SEARCH CONSOLE ITSELF COMPUTES THEM. Deriving the average
        position from the daily rows meant weighting values that had already
        been rounded to one decimal for display, so the tile could disagree
@@ -1149,7 +1330,13 @@ export async function fetchSearchPerformance(
     searchQuery(siteUrl, { ...window, dimensions: ['date'], rowLimit: 1000 }),
     searchQuery(siteUrl, { ...window, dimensions: ['country'], rowLimit: 25 }),
     searchQuery(siteUrl, { ...window, dimensions: ['page'], rowLimit: 25 }),
-    searchQuery(siteUrl, { ...window, dimensions: ['query'], rowLimit: 25 }),
+    /* EVERY QUERY, not the top 25. Four panels read these rows and none of
+       them can be answered from a leaderboard: the branded split needs the
+       long tail (that IS the non-branded half), the position bands are a
+       census, and "what moved" needs the searches that are not yet big enough
+       to chart. One call, four answers. */
+    searchQuery(siteUrl, { ...window, dimensions: ['query'], rowLimit: QUERY_ROWS }),
+    searchQuery(siteUrl, { ...prevWindow, dimensions: ['query'], rowLimit: QUERY_ROWS }),
   ])
 
   const total = summary.rows?.[0]
@@ -1183,6 +1370,126 @@ export async function fetchSearchPerformance(
      246,713 — so on one axis the clicks line is flat along the bottom. Both
      are in the series because the tooltip should read out both; the tab hides
      impressions by default so the line that matters is the one drawn. */
+  // --- everything that reads the query census ------------------------------
+  interface Q {
+    query: string
+    clicks: number
+    impressions: number
+    position: number
+  }
+  const asQueries = (res: GscResponse): Q[] =>
+    (res.rows || [])
+      .map((row) => ({
+        query: row.keys?.[0] || '',
+        clicks: row.clicks || 0,
+        impressions: row.impressions || 0,
+        position: row.position || 0,
+      }))
+      .filter((q) => !!q.query)
+
+  const queries = asQueries(byQuery)
+  const prevQueries = asQueries(prevByQuery)
+  const namedClicks = queries.reduce((sum, q) => sum + q.clicks, 0)
+
+  const terms = brandTerms.filter(Boolean)
+  let brand: BrandSplit | null = null
+  if (terms.length && queries.length) {
+    const split = { b: [0, 0, 0], n: [0, 0, 0] }
+    for (const q of queries) {
+      const side = isBrandedQuery(q.query, terms) ? split.b : split.n
+      side[0] += q.clicks
+      side[1] += q.impressions
+      side[2] += 1
+    }
+    const prevNonBranded = prevQueries.length
+      ? prevQueries.reduce(
+          (sum, q) => (isBrandedQuery(q.query, terms) ? sum : sum + q.clicks),
+          0
+        )
+      : null
+    brand = {
+      terms,
+      brandedClicks: split.b[0],
+      brandedImpressions: split.b[1],
+      brandedQueries: split.b[2],
+      nonBrandedClicks: split.n[0],
+      nonBrandedImpressions: split.n[1],
+      nonBrandedQueries: split.n[2],
+      previousNonBrandedClicks: prevNonBranded,
+    }
+  }
+
+  const countBands = (rows: Q[]): number[] => {
+    const counts = new Array(BANDS.length).fill(0)
+    for (const q of rows) {
+      const i = bandIndex(q.position)
+      if (i >= 0) counts[i] += 1
+    }
+    return counts
+  }
+  const nowBands = countBands(queries)
+  const beforeBands = prevQueries.length ? countBands(prevQueries) : null
+  const bands: PositionBand[] = BANDS.map((b, i) => ({
+    label: b.label,
+    hint: b.hint,
+    count: nowBands[i],
+    previousCount: beforeBands ? beforeBands[i] : null,
+  }))
+
+  /* WHAT MOVED, which is the closest thing to proof of work on this page.
+     Matched on the query string itself — the only key Search Console gives —
+     so a search that changed wording is a new one and an old one at once.
+     That is a property of the data, not a bug to paper over. */
+  const before = new Map(prevQueries.map((q) => [q.query, q]))
+  const changes = queries
+    .map((q) => ({ ...q, before: before.get(q.query)?.clicks ?? 0 }))
+    .filter((q) => q.clicks !== q.before)
+  const movers: QueryMovers | null = prevQueries.length
+    ? {
+        gained: changes
+          .filter((q) => q.clicks > q.before)
+          .sort((a, b) => b.clicks - b.before - (a.clicks - a.before))
+          .slice(0, 10)
+          .map((q) => ({
+            query: q.query,
+            clicks: q.clicks,
+            before: q.before,
+            impressions: q.impressions,
+            position: Math.round(q.position * 10) / 10,
+          })),
+        /* THE LOSSES TOO. A panel that only ever shows gains is one a shop
+           stops believing the first time they notice it never shows anything
+           else — the same reason the monthly report prints an empty month
+           rather than skipping it. Drawn from the same rows, so it costs
+           nothing but the nerve. */
+        lost: changes
+          .filter((q) => q.clicks < q.before)
+          .sort((a, b) => a.clicks - a.before - (b.clicks - b.before))
+          .slice(0, 5)
+          .map((q) => ({
+            query: q.query,
+            clicks: q.clicks,
+            before: q.before,
+            impressions: q.impressions,
+            position: Math.round(q.position * 10) / 10,
+          })),
+        /* NEW SEARCHES NEED A FLOOR. A single impression is as likely to be
+           one person's typo as a term the site has started ranking for, and a
+           list of those reads as noise beside the ones that matter. */
+        fresh: queries
+          .filter((q) => !before.has(q.query) && (q.clicks > 0 || q.impressions >= 5))
+          .sort((a, b) => b.clicks - a.clicks || b.impressions - a.impressions)
+          .slice(0, 10)
+          .map((q) => ({
+            query: q.query,
+            clicks: q.clicks,
+            impressions: q.impressions,
+            position: Math.round(q.position * 10) / 10,
+          })),
+        comparable: true,
+      }
+    : null
+
   const dense = daily.length
     ? densify(
         new Map(daily.map((d) => [d.date, [d.clicks, d.impressions]])),
@@ -1210,12 +1517,23 @@ export async function fetchSearchPerformance(
       ctr: Math.round((row.ctr || 0) * 1000) / 10,
       position: Math.round((row.position || 0) * 10) / 10,
     })),
-    topQueries: (byQuery.rows || []).map((row) => ({
-      query: row.keys?.[0] || '',
-      clicks: row.clicks || 0,
-      impressions: row.impressions || 0,
-      position: Math.round((row.position || 0) * 10) / 10,
-    })),
+    // Sliced from the census rather than fetched again — the API orders by
+    // clicks already, but slicing here keeps the leaderboard and the panels
+    // underneath it reading the same rows.
+    topQueries: [...queries]
+      .sort((a, b) => b.clicks - a.clicks || b.impressions - a.impressions)
+      .slice(0, 25)
+      .map((q) => ({
+        query: q.query,
+        clicks: q.clicks,
+        impressions: q.impressions,
+        position: Math.round(q.position * 10) / 10,
+      })),
+    brand,
+    bands,
+    movers,
+    namedQueries: queries.length,
+    namedClicks,
   }
 }
 
@@ -1239,7 +1557,64 @@ const STALE_AFTER_MS = 6 * 60 * 60 * 1000
  * Old rows are treated as stale rather than deleted, so a Google outage on
  * the day of a deploy still leaves something to show.
  */
-const SNAPSHOT_VERSION = 2
+const SNAPSHOT_VERSION = 3
+
+/**
+ * The fields the current renderer actually reads.
+ *
+ * BELT AND BRACES BESIDE THE VERSION NUMBER, because the version number is
+ * hand-maintained and was forgotten within the hour of being introduced.
+ * `organicUsers` and `previous` shipped under version 2, so every stored row
+ * kept passing as current and the page printed a confident "0" under "From
+ * Google search" for a figure nobody had measured — on a page whose subtitle
+ * promises nothing is estimated. A missing number reading as zero is worse
+ * than a missing number reading as missing.
+ *
+ * A shape check cannot be forgotten: add a field, and any row without it is
+ * refetched on the next read. Presence, not truthiness — `brand: null` is a
+ * measured answer.
+ */
+const REQUIRED_TRAFFIC_KEYS = [
+  'activeUsers',
+  'sessions',
+  'organicUsers',
+  'previous',
+  'series',
+  'channels',
+  'topSources',
+  'topPages',
+  'aiSeries',
+  'aiTopPages',
+] as const
+
+const REQUIRED_SEARCH_KEYS = [
+  'clicks',
+  'impressions',
+  'series',
+  'topQueries',
+  'topPages',
+  'brand',
+  'bands',
+  'movers',
+] as const
+
+function hasShape(value: unknown, keys: readonly string[]): boolean {
+  if (!value || typeof value !== 'object') return false
+  return keys.every((key) => key in (value as Record<string, unknown>))
+}
+
+/** Is this stored row the shape the code reading it expects? */
+function snapshotIsCurrent(snapshot: {
+  version?: number | null
+  traffic?: unknown
+  search?: unknown
+}): boolean {
+  if ((snapshot.version ?? 1) !== SNAPSHOT_VERSION) return false
+  // A null half is "we have nothing", not "we have an old shape".
+  if (snapshot.traffic && !hasShape(snapshot.traffic, REQUIRED_TRAFFIC_KEYS)) return false
+  if (snapshot.search && !hasShape(snapshot.search, REQUIRED_SEARCH_KEYS)) return false
+  return true
+}
 
 export interface SiteAnalytics {
   /** The older of the two halves — what the staleness banner should report. */
@@ -1266,7 +1641,12 @@ export async function refreshSiteAnalytics(
   const client = await prisma.client
     .findUnique({
       where: { id: clientId },
-      select: { ga4PropertyId: true, searchConsoleSiteUrl: true },
+      select: {
+        ga4PropertyId: true,
+        searchConsoleSiteUrl: true,
+        brandTerms: true,
+        businessName: true,
+      },
     })
     .catch(() => null)
   if (!client) return { traffic: null, search: null, fetchedAt: null, error: 'Client not found' }
@@ -1287,7 +1667,15 @@ export async function refreshSiteAnalytics(
   }
   if (client.searchConsoleSiteUrl) {
     try {
-      search = await fetchSearchPerformance(client.searchConsoleSiteUrl, range)
+      search = await fetchSearchPerformance(
+        client.searchConsoleSiteUrl,
+        range,
+        brandTermsFor(
+          client.brandTerms,
+          client.businessName,
+          siteLabelFrom(client.searchConsoleSiteUrl)
+        )
+      )
     } catch (err) {
       errors.push(`Search Console: ${err instanceof Error ? err.message : 'failed'}`)
     }
@@ -1309,7 +1697,7 @@ export async function refreshSiteAnalytics(
     // current shape; otherwise it is dropped, because carrying an old-shaped
     // half forward under a current-shape stamp is the original bug wearing a
     // version number.
-    const keep = (existing?.version ?? 1) === SNAPSHOT_VERSION
+    const keep = !!existing && snapshotIsCurrent(existing)
     /* A HALF WITH NO PROPERTY BEHIND IT IS DROPPED, not carried.
        When ga4PropertyId is cleared, fetchTraffic is never called, `traffic`
        stays null, and the old merge kept the previous JSON forever — a
@@ -1376,7 +1764,7 @@ export async function getSiteAnalytics(
     .findUnique({ where: { clientId_range: { clientId, range } } })
     .catch(() => null)
 
-  const currentShape = (snapshot?.version ?? 1) === SNAPSHOT_VERSION
+  const currentShape = !!snapshot && snapshotIsCurrent(snapshot)
   const fresh =
     snapshot &&
     currentShape &&

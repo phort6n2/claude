@@ -363,6 +363,10 @@ export const SITE_ANALYTICS_SQL: string[] = [
   // landing page's numbers back to them would answer a question nobody asked.
   `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "ga4PropertyId" TEXT`,
   `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "searchConsoleSiteUrl" TEXT`,
+  // The terms that mean "they searched for this shop by name". Nullable: an
+  // empty value is derived from the business name rather than meaning "no
+  // brand", so a shop nobody has edited still gets the split.
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "brandTerms" TEXT`,
   // The last good answer from each API, stored whole.
   //
   // Unlike Clarity, neither of these has a window that closes — both let you

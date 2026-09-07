@@ -32,6 +32,9 @@ export default function SeoTab({
     siteUrl: string | null
     fetchedAt: string | null
     error: string | null
+    brandTerms: string | null
+    /** What the split falls back to when the field is left empty. */
+    defaultBrandTerms: string[]
   }
 }) {
   const [seoClient, setSeoClient] = useState(initialSeoClient)
@@ -70,6 +73,8 @@ export default function SeoTab({
           initialSiteUrl={analytics.siteUrl}
           lastFetchedAt={analytics.fetchedAt}
           lastError={analytics.error}
+          initialBrandTerms={analytics.brandTerms}
+          defaultBrandTerms={analytics.defaultBrandTerms}
         />
       )}
     </div>

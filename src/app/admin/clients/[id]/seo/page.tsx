@@ -5,7 +5,12 @@ import { prisma } from '@/lib/db'
 import { requireAdminPage } from '@/lib/admin-guard'
 import SeoTab from '@/components/admin/SeoTab'
 import TrafficReport from '@/components/portal/TrafficReport'
-import { getSiteAnalytics, rangeFrom, siteLabelFrom } from '@/lib/site-analytics'
+import {
+  defaultBrandTerms,
+  getSiteAnalytics,
+  rangeFrom,
+  siteLabelFrom,
+} from '@/lib/site-analytics'
 
 /**
  * "SEO" tab: what this shop is paying for, and what that changes.
@@ -36,6 +41,7 @@ export default async function Page({
       contentFeedError: true,
       ga4PropertyId: true,
       searchConsoleSiteUrl: true,
+      brandTerms: true,
       // Newest of any range: the card is reporting "when did we last hear
       // from Google", not the state of one particular window.
       trafficSnapshots: {
@@ -83,6 +89,11 @@ export default async function Page({
         siteUrl: client.searchConsoleSiteUrl,
         fetchedAt: client.trafficSnapshots[0]?.fetchedAt?.toISOString() || null,
         error: client.trafficSnapshots[0]?.error || null,
+        brandTerms: client.brandTerms,
+        defaultBrandTerms: defaultBrandTerms(
+          client.businessName,
+          siteLabelFrom(client.searchConsoleSiteUrl)
+        ),
       }}
     />
 

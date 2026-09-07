@@ -30,7 +30,11 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null
   if (!body) return NextResponse.json({ error: 'Nothing to change' }, { status: 400 })
 
-  const patch: { ga4PropertyId?: string | null; searchConsoleSiteUrl?: string | null } = {}
+  const patch: {
+    ga4PropertyId?: string | null
+    searchConsoleSiteUrl?: string | null
+    brandTerms?: string | null
+  } = {}
   if ('ga4PropertyId' in body) {
     const raw = typeof body.ga4PropertyId === 'string' ? body.ga4PropertyId.trim() : ''
     // A GA4 property id is digits. The picklist only ever sends one, so this
@@ -50,6 +54,23 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'That is not a Search Console property' }, { status: 400 })
     }
     patch.searchConsoleSiteUrl = raw || null
+  }
+  if ('brandTerms' in body) {
+    /* STORED AS TYPED TEXT, MATCHED AS PLAIN SUBSTRINGS. The obvious shape
+       here is a regular expression, and it is the wrong one: an operator
+       typing `(` gets a report that silently stops splitting, and a typed
+       pattern is a lot of rope for a field whose whole job is "these words
+       mean the shop's own name". Terms are folded to letters and digits and
+       compared as substrings — see `isBrandedQuery`. */
+    const raw = typeof body.brandTerms === 'string' ? body.brandTerms : ''
+    const terms = raw
+      .split(/[\n,]+/)
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .slice(0, 50)
+    // Empty is meaningful: it hands the split back to the derived default
+    // rather than turning it off.
+    patch.brandTerms = terms.length ? terms.join('\n') : null
   }
   if (!Object.keys(patch).length) {
     return NextResponse.json({ error: 'Nothing to change' }, { status: 400 })
