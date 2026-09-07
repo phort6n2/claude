@@ -1,19 +1,30 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Globe, Search, Sparkles, TrendingUp, Users } from 'lucide-react'
-import type { SearchReport, TrafficReport as Traffic } from '@/lib/site-analytics'
+import { ArrowRight, Globe, Search, Sparkles, TrendingUp, Users, LineChart } from 'lucide-react'
+import type { RangeKey, SearchReport, TrafficReport as Traffic } from '@/lib/site-analytics'
+import TrafficChart from '@/components/portal/TrafficChart'
+import RangePicker from '@/components/portal/RangePicker'
 
 /**
  * "How people find you" — the shop's own website, measured.
  *
- * TWO STATES, ONE PAGE. For an SEO client it is the report. For everyone else
- * it is the argument for buying the service, and it is deliberately the same
- * page: a shop that has never seen what the reporting looks like has no idea
- * what they are being offered.
+ * TWO STATES. For a shop with a property connected it is the report; for
+ * everyone else it is the argument for buying the service, deliberately on
+ * the same page, because a shop that has never seen what the reporting looks
+ * like has no idea what they are being offered.
  *
- * EVERY NUMBER HERE IS GOOGLE'S, NOT OURS. Nothing is estimated, grossed up
- * or modelled — the same rule the monthly report runs on. Where a figure
- * understates (AI referrals, and Search Console's two-day lag) the page says
- * so beside it rather than quietly presenting a floor as a count.
+ * THREE TABS, ONE FETCH. All traffic, AI search and Google search are three
+ * questions about the same window and the answers all arrive in one payload,
+ * so switching tabs is instant and costs nothing. Only the RANGE goes back to
+ * Google, because a 7-day channel breakdown genuinely is a different query
+ * rather than the 90-day one sliced.
+ *
+ * EVERY NUMBER IS GOOGLE'S, NOT OURS. Nothing is estimated, grossed up or
+ * modelled — the same rule the monthly report runs on. Where a figure
+ * understates (AI referrals, and Search Console's lag) the page says so beside
+ * it rather than presenting a floor as a count.
  */
 
 function Tile({
@@ -33,41 +44,9 @@ function Tile({
         <Icon className="h-4 w-4" />
         {label}
       </div>
-      <p className="mt-2 text-3xl font-extrabold text-gray-900 tabular-nums">{value}</p>
+      <p className="mt-2 text-3xl font-extrabold text-gray-900 tabular-nums break-words">{value}</p>
       {sub && <p className="text-sm text-gray-500 mt-0.5">{sub}</p>}
     </div>
-  )
-}
-
-/**
- * A plain area sparkline. Hand-drawn SVG for the same reason RankTrend is:
- * one chart does not justify a charting library on a page a shop opens on a
- * phone.
- */
-function Spark({ points, color }: { points: number[]; color: string }) {
-  if (points.length < 2) return null
-  const W = 640
-  const H = 90
-  const max = Math.max(...points, 1)
-  const x = (i: number) => (i / (points.length - 1)) * W
-  const y = (v: number) => H - (v / max) * (H - 4) - 2
-  const line = points.map((v, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`)
-  return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      preserveAspectRatio="none"
-      className="w-full h-24"
-      role="img"
-      aria-label="Daily trend"
-    >
-      <path
-        d={`${line.join(' ')} L ${W} ${H} L 0 ${H} Z`}
-        fill={color}
-        fillOpacity="0.12"
-        stroke="none"
-      />
-      <path d={line.join(' ')} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" />
-    </svg>
   )
 }
 
@@ -87,7 +66,10 @@ function Bars({ rows }: { rows: Array<{ name: string; value: number; share: numb
           <div className="mt-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
             <div
               className="h-full rounded-full"
-              style={{ width: `${(row.value / max) * 100}%`, backgroundColor: 'var(--brand, #1d4ed8)' }}
+              style={{
+                width: `${(row.value / max) * 100}%`,
+                backgroundColor: 'var(--brand, #1d4ed8)',
+              }}
             />
           </div>
         </li>
@@ -117,6 +99,68 @@ function Panel({
 /** Wide tables scroll inside their own box; the page never scrolls sideways. */
 function Scroller({ children }: { children: React.ReactNode }) {
   return <div className="overflow-x-auto -mx-5 px-5">{children}</div>
+}
+
+/** A page path as a shop reads it. "/" is the homepage, not an empty cell. */
+function pageLabel(path: string): string {
+  return path === '/' || path === '' ? 'Homepage' : path
+}
+
+function PageTable({
+  rows,
+  lastLabel,
+}: {
+  rows: Array<{ page: string; users: number; share: number; last: string }>
+  lastLabel: string
+}) {
+  if (!rows.length) return <p className="text-sm text-gray-500">Nothing recorded yet.</p>
+  return (
+    <Scroller>
+      <table className="w-full text-sm min-w-[520px]">
+        <thead>
+          <tr className="text-left text-gray-500 border-b border-gray-200">
+            <th className="py-2 font-medium">Page</th>
+            <th className="py-2 font-medium text-right">People</th>
+            <th className="py-2 font-medium text-right">Share</th>
+            <th className="py-2 font-medium text-right">{lastLabel}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.page} className="border-b border-gray-100 last:border-0">
+              <td className="py-2 pr-3 text-gray-900 break-all">{pageLabel(row.page)}</td>
+              <td className="py-2 text-right tabular-nums">{row.users.toLocaleString()}</td>
+              <td className="py-2 text-right tabular-nums text-gray-500">{row.share}%</td>
+              <td className="py-2 text-right text-gray-500">{row.last}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Scroller>
+  )
+}
+
+/**
+ * The site these numbers are about, said plainly and linked.
+ *
+ * A shop has two sites — the one they already had and the landing page this
+ * platform hosts — and a page of numbers with no address on it invites them
+ * to assume the wrong one.
+ */
+function SiteLine({ siteUrl }: { siteUrl: string | null }) {
+  if (!siteUrl) return null
+  const href = siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}`
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1 text-sm font-medium text-gray-700 no-underline hover:bg-gray-50"
+    >
+      <Globe className="h-3.5 w-3.5 text-gray-400" />
+      {siteUrl}
+    </a>
+  )
 }
 
 export function TrafficUpsell({ businessName }: { businessName: string }) {
@@ -177,7 +221,10 @@ export function TrafficUpsell({ businessName }: { businessName: string }) {
             body: 'Visits that arrive from ChatGPT, Gemini, Copilot and the rest. A growing share of "who fixes windshields near me" is answered there now.',
           },
         ].map((card) => (
-          <div key={card.title} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+          <div
+            key={card.title}
+            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+          >
             <div className="flex items-center gap-2 text-gray-500 text-sm font-medium">
               <card.icon className="h-4 w-4" />
               {card.title}
@@ -190,33 +237,54 @@ export function TrafficUpsell({ businessName }: { businessName: string }) {
   )
 }
 
+type TabKey = 'all' | 'ai' | 'google'
+
 export default function TrafficReport({
-  businessName,
+  siteUrl,
+  range,
   traffic,
   search,
   fetchedAt,
   error,
-  /* The admin renders this same component on the SEO tab to check what a shop
-     was sent. The footer link back to the portal dashboard is meaningless
-     there — and would drop an operator into a client's portal. */
   showPortalLink = true,
 }: {
-  businessName: string
+  /** The shop's OWN site, so nobody has to wonder which one this counts. */
+  siteUrl: string | null
+  range: RangeKey
   traffic: Traffic | null
   search: SearchReport | null
   fetchedAt: string | null
   error: string | null
+  /* The admin renders this same component on the SEO tab to check what a shop
+     was sent. The footer link back to the portal dashboard is meaningless
+     there — and would drop an operator into a client's portal. */
   showPortalLink?: boolean
 }) {
+  const [tab, setTab] = useState<TabKey>('all')
   const nothing = !traffic && !search
+
+  const TABS: Array<{ key: TabKey; label: string; icon: React.ElementType; enabled: boolean }> = [
+    { key: 'all', label: 'All traffic', icon: LineChart, enabled: !!traffic },
+    { key: 'ai', label: 'AI search', icon: Sparkles, enabled: !!traffic },
+    { key: 'google', label: 'Google search', icon: Search, enabled: !!search },
+  ]
+  // A tab whose half of the setup is missing is not offered, rather than
+  // offered and empty — Search Console can be connected without Analytics and
+  // the other way round.
+  const shown = TABS.filter((t) => t.enabled)
+  const active = shown.some((t) => t.key === tab) ? tab : (shown[0]?.key ?? 'all')
+
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-extrabold text-gray-900">How people find you</h1>
-        <p className="text-gray-500">
-          {businessName}&apos;s own website over the last 90 days. Every figure comes straight from
-          Google — nothing here is estimated.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-extrabold text-gray-900">How people find you</h1>
+          <p className="text-gray-500">Straight from Google — nothing here is estimated.</p>
+          <div className="mt-2">
+            <SiteLine siteUrl={siteUrl} />
+          </div>
+        </div>
+        <RangePicker value={range} />
       </div>
 
       {/* Stale data plus a reason beats an empty page: an operator finds out
@@ -235,13 +303,38 @@ export default function TrafficReport({
         </p>
       )}
 
-      {traffic && (
+      {shown.length > 1 && (
+        <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
+          {shown.map((t) => {
+            const on = t.key === active
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setTab(t.key)}
+                aria-current={on ? 'page' : undefined}
+                className={`inline-flex items-center gap-2 whitespace-nowrap px-3 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+                  on
+                    ? 'text-gray-900'
+                    : 'border-transparent text-gray-500 hover:text-gray-800'
+                }`}
+                style={on ? { borderColor: 'var(--brand, #1d4ed8)' } : undefined}
+              >
+                <t.icon className="h-4 w-4" />
+                {t.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {active === 'all' && traffic && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Tile
               label="People on your site"
               value={traffic.activeUsers.toLocaleString()}
-              sub="last 90 days"
+              sub="in this period"
               icon={Users}
             />
             <Tile
@@ -251,62 +344,106 @@ export default function TrafficReport({
               icon={Globe}
             />
             <Tile
-              label="Sent by AI assistants"
+              label="Top channel"
+              value={traffic.channels[0]?.name ?? '—'}
+              sub={
+                traffic.channels[0]
+                  ? `${traffic.channels[0].value.toLocaleString()} people · ${traffic.channels[0].share}%`
+                  : 'nothing recorded yet'
+              }
+              icon={TrendingUp}
+            />
+            <Tile
+              label="Sent by AI"
               value={traffic.aiUsers.toLocaleString()}
               sub="at least — most arrive unlabelled"
               icon={Sparkles}
             />
           </div>
 
-          <Panel title="Visitors, day by day">
-            <Spark points={traffic.daily.map((d) => d.value)} color="var(--brand, #1d4ed8)" />
+          <Panel
+            title="Where your visitors come from"
+            sub="Every visitor by day and by channel. Hover the chart for one day; tap a colour to hide it."
+          >
+            <TrafficChart series={traffic.series} />
           </Panel>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Panel title="How they got here" sub="Every visitor, grouped by what brought them.">
-              <Bars rows={traffic.channels} />
-            </Panel>
-            <Panel
-              title="AI assistants"
-              // The honest caveat, next to the number rather than in a footer.
-              sub="A floor, not a count — most AI referrals arrive with nothing to identify them and land in Direct."
-            >
-              <Bars rows={traffic.aiSources} />
-            </Panel>
-          </div>
+          <Panel title="Channel breakdown">
+            <Bars rows={traffic.channels} />
+          </Panel>
 
-          {traffic.topPages.length > 0 && (
-            <Panel title="Your busiest pages">
-              <Scroller>
-                <table className="w-full text-sm min-w-[520px]">
-                  <thead>
-                    <tr className="text-left text-gray-500 border-b border-gray-200">
-                      <th className="py-2 font-medium">Page</th>
-                      <th className="py-2 font-medium text-right">People</th>
-                      <th className="py-2 font-medium text-right">Share</th>
-                      <th className="py-2 font-medium text-right">Mostly from</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {traffic.topPages.map((row) => (
-                      <tr key={row.page} className="border-b border-gray-100 last:border-0">
-                        <td className="py-2 pr-3 text-gray-900 break-all">{row.page}</td>
-                        <td className="py-2 text-right tabular-nums">{row.users.toLocaleString()}</td>
-                        <td className="py-2 text-right tabular-nums text-gray-500">{row.share}%</td>
-                        <td className="py-2 text-right text-gray-500">{row.topSource}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </Scroller>
-            </Panel>
-          )}
+          <Panel title="Top pages" sub="Which pages bring the most people in.">
+            <PageTable
+              rows={traffic.topPages.map((p) => ({ ...p, last: p.topSource }))}
+              lastLabel="Mostly from"
+            />
+          </Panel>
         </>
       )}
 
-      {search && (
+      {active === 'ai' && traffic && (
         <>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Tile
+              label="People from AI"
+              value={traffic.aiUsers.toLocaleString()}
+              sub="in this period"
+              icon={Sparkles}
+            />
+            <Tile
+              label="Visits from AI"
+              value={traffic.aiSessions.toLocaleString()}
+              sub="sessions that started at an assistant"
+              icon={Globe}
+            />
+            <Tile
+              label="Top assistant"
+              value={traffic.aiSources[0]?.name ?? '—'}
+              sub={
+                traffic.aiSources[0]
+                  ? `${traffic.aiSources[0].value.toLocaleString()} people · ${traffic.aiSources[0].share}%`
+                  : 'none seen yet'
+              }
+              icon={TrendingUp}
+            />
+            <Tile
+              label="Assistants seen"
+              value={String(traffic.aiSources.length)}
+              sub="sending at least one visit"
+              icon={Users}
+            />
+          </div>
+
+          {/* The caveat sits on the tab it applies to, not in a footnote. */}
+          <p className="rounded-xl bg-gray-50 border border-gray-200 p-3 text-sm text-gray-600">
+            Read these as a floor, not a count. Most AI referrals arrive with nothing to identify
+            them and land in Direct, so the real number is higher. What is worth watching is
+            whether it grows.
+          </p>
+
+          <Panel
+            title="Which assistants send people"
+            sub="By day, per assistant. Hover for one day; tap a colour to hide it."
+          >
+            <TrafficChart series={traffic.aiSeries} />
+          </Panel>
+
+          <Panel title="Assistant breakdown">
+            <Bars rows={traffic.aiSources} />
+          </Panel>
+
+          <Panel title="Top pages" sub="Which pages AI assistants send people to.">
+            <PageTable
+              rows={traffic.aiTopPages.map((p) => ({ ...p, last: p.topModel }))}
+              lastLabel="Mostly from"
+            />
+          </Panel>
+        </>
+      )}
+
+      {active === 'google' && search && (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Tile
               label="Clicks from Google"
               value={search.clicks.toLocaleString()}
@@ -320,20 +457,33 @@ export default function TrafficReport({
               icon={Globe}
             />
             <Tile
+              label="Click rate"
+              value={
+                search.impressions
+                  ? `${Math.round((search.clicks / search.impressions) * 1000) / 10}%`
+                  : '—'
+              }
+              sub="of the times you were shown"
+              icon={TrendingUp}
+            />
+            <Tile
               label="Average position"
               value={search.averagePosition ? search.averagePosition.toFixed(1) : '—'}
               sub="1 is the top result"
-              icon={TrendingUp}
+              icon={Users}
             />
           </div>
 
           <Panel
-            title="Google search, day by day"
-            // The lag is stated, because "the last two days look dead" is
-            // otherwise a support call every single week.
-            sub="Google reports search data two to three days behind, so the last couple of days always look light."
+            title="Google search, over time"
+            /* Both limits stated where they bite: the reporting lag, and the
+               clamp that stops "All time" quietly meaning something shorter
+               without saying so. */
+            sub={`Google reports search data two to three days behind, so the last couple of days always look light.${
+              search.clamped ? ' Search Console keeps 16 months, so this window stops there.' : ''
+            }`}
           >
-            <Spark points={search.daily.map((d) => d.clicks)} color="var(--brand, #1d4ed8)" />
+            <TrafficChart series={search.series} initiallyHidden={['Impressions']} />
           </Panel>
 
           {search.topQueries.length > 0 && (
@@ -352,7 +502,9 @@ export default function TrafficReport({
                     {search.topQueries.map((row) => (
                       <tr key={row.query} className="border-b border-gray-100 last:border-0">
                         <td className="py-2 pr-3 text-gray-900">{row.query}</td>
-                        <td className="py-2 text-right tabular-nums">{row.clicks.toLocaleString()}</td>
+                        <td className="py-2 text-right tabular-nums">
+                          {row.clicks.toLocaleString()}
+                        </td>
                         <td className="py-2 text-right tabular-nums text-gray-500">
                           {row.impressions.toLocaleString()}
                         </td>
@@ -367,8 +519,8 @@ export default function TrafficReport({
             </Panel>
           )}
 
-          {search.topPages.length > 0 && (
-            <Panel title="Pages Google sends people to">
+          <Panel title="Top pages" sub="Which pages Google sends people to.">
+            {search.topPages.length ? (
               <Scroller>
                 <table className="w-full text-sm min-w-[560px]">
                   <thead>
@@ -384,7 +536,9 @@ export default function TrafficReport({
                     {search.topPages.map((row) => (
                       <tr key={row.page} className="border-b border-gray-100 last:border-0">
                         <td className="py-2 pr-3 text-gray-900 break-all">{row.page}</td>
-                        <td className="py-2 text-right tabular-nums">{row.clicks.toLocaleString()}</td>
+                        <td className="py-2 text-right tabular-nums">
+                          {row.clicks.toLocaleString()}
+                        </td>
                         <td className="py-2 text-right tabular-nums text-gray-500">
                           {row.impressions.toLocaleString()}
                         </td>
@@ -397,8 +551,10 @@ export default function TrafficReport({
                   </tbody>
                 </table>
               </Scroller>
-            </Panel>
-          )}
+            ) : (
+              <p className="text-sm text-gray-500">Nothing recorded yet.</p>
+            )}
+          </Panel>
         </>
       )}
 

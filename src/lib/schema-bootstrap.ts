@@ -379,7 +379,13 @@ export const SITE_ANALYTICS_SQL: string[] = [
      "error"      TEXT,
      CONSTRAINT "SiteTrafficSnapshot_pkey" PRIMARY KEY ("id")
    )`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "SiteTrafficSnapshot_clientId_key" ON "SiteTrafficSnapshot"("clientId")`,
+  `ALTER TABLE "SiteTrafficSnapshot" ADD COLUMN IF NOT EXISTS "range" TEXT NOT NULL DEFAULT '90d'`,
+  // The unique key WIDENED from (clientId) to (clientId, range) when the
+  // report learned about time windows. Dropping the old one first is the
+  // whole migration: leave it and every range after the first is refused by
+  // a constraint nobody would think to look for.
+  `DROP INDEX IF EXISTS "SiteTrafficSnapshot_clientId_key"`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "SiteTrafficSnapshot_clientId_range_key" ON "SiteTrafficSnapshot"("clientId", "range")`,
   `DO $$ BEGIN
     ALTER TABLE "SiteTrafficSnapshot" ADD CONSTRAINT "SiteTrafficSnapshot_clientId_fkey"
       FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE ON UPDATE CASCADE;

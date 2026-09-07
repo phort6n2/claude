@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db'
 import { requireAdminPage } from '@/lib/admin-guard'
 import SeoTab from '@/components/admin/SeoTab'
 import TrafficReport from '@/components/portal/TrafficReport'
-import { getSiteAnalytics } from '@/lib/site-analytics'
+import { getSiteAnalytics, rangeFrom, siteLabelFrom } from '@/lib/site-analytics'
 
 /**
  * "SEO" tab: what this shop is paying for, and what that changes.
@@ -14,10 +14,17 @@ import { getSiteAnalytics } from '@/lib/site-analytics'
  * the moment their content feed is wanted, so that card appears underneath it
  * rather than on every client.
  */
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+export default async function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ range?: string }>
+}) {
   await requireAdminPage()
 
   const { id } = await params
+  const range = rangeFrom((await searchParams).range)
   const client = await prisma.client.findUnique({
     where: { id },
     select: {
@@ -29,7 +36,13 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       contentFeedError: true,
       ga4PropertyId: true,
       searchConsoleSiteUrl: true,
-      trafficSnapshot: { select: { fetchedAt: true, error: true } },
+      // Newest of any range: the card is reporting "when did we last hear
+      // from Google", not the state of one particular window.
+      trafficSnapshots: {
+        select: { fetchedAt: true, error: true },
+        orderBy: { fetchedAt: 'desc' },
+        take: 1,
+      },
     },
   })
   if (!client) notFound()
@@ -45,7 +58,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
      already work. */
   const connected = !!(client.ga4PropertyId || client.searchConsoleSiteUrl)
   const analytics = connected
-    ? await getSiteAnalytics(id).catch(() => ({
+    ? await getSiteAnalytics(id, range).catch(() => ({
         traffic: null,
         search: null,
         fetchedAt: null,
@@ -67,8 +80,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       analytics={{
         propertyId: client.ga4PropertyId,
         siteUrl: client.searchConsoleSiteUrl,
-        fetchedAt: client.trafficSnapshot?.fetchedAt?.toISOString() || null,
-        error: client.trafficSnapshot?.error || null,
+        fetchedAt: client.trafficSnapshots[0]?.fetchedAt?.toISOString() || null,
+        error: client.trafficSnapshots[0]?.error || null,
       }}
     />
 
@@ -78,7 +91,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             Exactly what this shop sees on their own Traffic page.
           </p>
           <TrafficReport
-            businessName={client.businessName}
+            siteUrl={siteLabelFrom(client.searchConsoleSiteUrl)}
+            range={range}
             traffic={analytics.traffic}
             search={analytics.search}
             fetchedAt={analytics.fetchedAt}
