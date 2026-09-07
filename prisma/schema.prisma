@@ -1356,6 +1356,12 @@ model SiteTrafficSnapshot {
   /// spend six times the quota warming windows nobody opened.
   range String @default("90d")
 
+  /// The shape of the stored JSON — see SNAPSHOT_VERSION in site-analytics.ts.
+  /// A row written by an older shape is treated as stale and refetched, so a
+  /// deploy that adds a field cannot be followed by six hours of pages
+  /// rendering from rows that lack it.
+  version Int @default(1)
+
   fetchedAt DateTime @default(now())
 
   /// GA4 runReport output, extracted: totals, the daily series, channels,

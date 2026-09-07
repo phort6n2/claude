@@ -983,6 +983,23 @@ export async function fetchSearchPerformance(
 /** How stale a snapshot may be before a page view refreshes it. */
 const STALE_AFTER_MS = 6 * 60 * 60 * 1000
 
+/**
+ * The SHAPE of what gets stored. Bump it whenever a field is added, removed
+ * or given a different meaning.
+ *
+ * WHY THIS EXISTS. The report is cached as JSON for six hours, so a deploy
+ * that adds a field is followed by six hours of stored rows that do not have
+ * it — and the page renders from the row, not from the code that wrote it.
+ * Adding the per-channel series did exactly that: every cached row still held
+ * the old shape, the chart destructured a field that was not there, and the
+ * admin page went blank with a client-side exception. A stale row is a
+ * refetch; an out-of-date row was an outage.
+ *
+ * Old rows are treated as stale rather than deleted, so a Google outage on
+ * the day of a deploy still leaves something to show.
+ */
+const SNAPSHOT_VERSION = 2
+
 export interface SiteAnalytics {
   traffic: TrafficReport | null
   search: SearchReport | null
@@ -1045,10 +1062,16 @@ export async function refreshSiteAnalytics(
     const existing = await prisma.siteTrafficSnapshot.findUnique({
       where: { clientId_range: { clientId, range } },
     })
+    // The half that failed keeps its previous value ONLY if that value is the
+    // current shape; otherwise it is dropped, because carrying an old-shaped
+    // half forward under a current-shape stamp is the original bug wearing a
+    // version number.
+    const keep = (existing?.version ?? 1) === SNAPSHOT_VERSION
     const data = {
       fetchedAt,
-      traffic: (traffic ?? existing?.traffic ?? null) as object | null,
-      search: (search ?? existing?.search ?? null) as object | null,
+      version: SNAPSHOT_VERSION,
+      traffic: (traffic ?? (keep ? existing?.traffic : null) ?? null) as object | null,
+      search: (search ?? (keep ? existing?.search : null) ?? null) as object | null,
       error,
     }
     await prisma.siteTrafficSnapshot.upsert({
@@ -1083,8 +1106,11 @@ export async function getSiteAnalytics(
     .findUnique({ where: { clientId_range: { clientId, range } } })
     .catch(() => null)
 
+  const currentShape = (snapshot?.version ?? 1) === SNAPSHOT_VERSION
   const fresh =
-    snapshot && Date.now() - new Date(snapshot.fetchedAt).getTime() < STALE_AFTER_MS
+    snapshot &&
+    currentShape &&
+    Date.now() - new Date(snapshot.fetchedAt).getTime() < STALE_AFTER_MS
   if (fresh) {
     return {
       traffic: (snapshot.traffic as unknown as TrafficReport) ?? null,
@@ -1102,7 +1128,7 @@ export async function getSiteAnalytics(
   }))
   // A refresh that produced nothing falls back to whatever was stored, so a
   // transient failure does not empty a page that worked an hour ago.
-  if (!refreshed.traffic && !refreshed.search && snapshot) {
+  if (!refreshed.traffic && !refreshed.search && snapshot && currentShape) {
     return {
       traffic: (snapshot.traffic as unknown as TrafficReport) ?? null,
       search: (snapshot.search as unknown as SearchReport) ?? null,
