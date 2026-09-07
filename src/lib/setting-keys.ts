@@ -19,8 +19,14 @@ export const SENSITIVE_KEYS = [
   'GOOGLE_ADS_CLIENT_SECRET',
   'GOOGLE_ADS_REFRESH_TOKEN',
   // Analytics + Search Console, for the portal's Traffic page. Its own token
-  // because the scopes differ from the Ads one; it reuses the same OAuth
-  // client id and secret, so those are not duplicated here.
+  // because the scopes differ from the Ads one. The client id and secret are
+  // OPTIONAL: left blank, the Ads OAuth client is borrowed. They exist because
+  // an operator who does not know what the Ads client was — a perfectly normal
+  // state for a credential entered once, months ago — could otherwise not use
+  // a fresh client of their own, and the playground demands the exact pair the
+  // token was minted for.
+  'GOOGLE_ANALYTICS_CLIENT_ID',
+  'GOOGLE_ANALYTICS_CLIENT_SECRET',
   'GOOGLE_ANALYTICS_REFRESH_TOKEN',
   'LOCALDOMINATOR_API_KEY',
 ] as const
@@ -50,9 +56,10 @@ export const ALL_KEYS: string[] = [
   'GOOGLE_ADS_CLIENT_ID',
   'GOOGLE_ADS_CLIENT_SECRET',
   'GOOGLE_ADS_REFRESH_TOKEN',
-  // Analytics + Search Console, for the portal's Traffic page. Its own token
-  // because the scopes differ from the Ads one; it reuses the same OAuth
-  // client id and secret, so those are not duplicated here.
+  // Analytics + Search Console. The client id and secret are optional —
+  // blank means "reuse the Google Ads OAuth client".
+  'GOOGLE_ANALYTICS_CLIENT_ID',
+  'GOOGLE_ANALYTICS_CLIENT_SECRET',
   'GOOGLE_ANALYTICS_REFRESH_TOKEN',
   'GOOGLE_ADS_LOGIN_CUSTOMER_ID',
   'LOCALDOMINATOR_API_KEY',

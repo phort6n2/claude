@@ -58,6 +58,8 @@ export interface AnalyticsCredentials {
   clientId: string
   clientSecret: string
   refreshToken: string
+  /** True when a dedicated Analytics client is configured rather than borrowed. */
+  ownClient: boolean
 }
 
 /**
@@ -76,14 +78,53 @@ export async function analyticsCredentials(): Promise<AnalyticsCredentials | nul
     secret('GOOGLE_ANALYTICS_REFRESH_TOKEN'),
   ])
   if (!refreshToken) return null
+
+  /* BOTH HALVES FROM THE SAME CLIENT, OR NEITHER.
+     Falling back per field — own id, Ads secret — assembles a pair that
+     belongs to no client at all, and Google answers that with the same
+     "invalid_client: Unauthorized" as every other mismatch. So one of the two
+     filled in is treated as an incomplete dedicated client rather than as a
+     licence to mix. */
+  if (ownId || ownSecret) {
+    if (!ownId || !ownSecret) return null
+    return { clientId: ownId, clientSecret: ownSecret, refreshToken, ownClient: true }
+  }
+
   const [adsId, adsSecret] = await Promise.all([
     secret('GOOGLE_ADS_CLIENT_ID'),
     secret('GOOGLE_ADS_CLIENT_SECRET'),
   ])
-  const clientId = ownId || adsId
-  const clientSecret = ownSecret || adsSecret
-  if (!clientId || !clientSecret) return null
-  return { clientId, clientSecret, refreshToken }
+  if (!adsId || !adsSecret) return null
+  return { clientId: adsId, clientSecret: adsSecret, refreshToken, ownClient: false }
+}
+
+/**
+ * Why credentials came back null, in words. The three causes are different
+ * jobs and "not connected" covers all of them equally badly.
+ */
+export async function analyticsCredentialProblem(): Promise<string | null> {
+  const [ownId, ownSecret, refreshToken] = await Promise.all([
+    secret('GOOGLE_ANALYTICS_CLIENT_ID'),
+    secret('GOOGLE_ANALYTICS_CLIENT_SECRET'),
+    secret('GOOGLE_ANALYTICS_REFRESH_TOKEN'),
+  ])
+  if (!refreshToken) return 'No Analytics refresh token has been saved yet.'
+  if (ownId && !ownSecret) {
+    return 'An Analytics OAuth client ID is saved with no secret. Fill both, or clear both to reuse the Google Ads client.'
+  }
+  if (ownSecret && !ownId) {
+    return 'An Analytics OAuth client secret is saved with no ID. Fill both, or clear both to reuse the Google Ads client.'
+  }
+  if (!ownId && !ownSecret) {
+    const [adsId, adsSecret] = await Promise.all([
+      secret('GOOGLE_ADS_CLIENT_ID'),
+      secret('GOOGLE_ADS_CLIENT_SECRET'),
+    ])
+    if (!adsId || !adsSecret) {
+      return 'No OAuth client to use: the Google Ads client id/secret are not saved, and no Analytics-specific pair was entered.'
+    }
+  }
+  return null
 }
 
 /** Whether the operator has connected the account at all. */
@@ -109,8 +150,7 @@ export async function testAnalyticsConnection(): Promise<{
   if (!creds) {
     return {
       success: false,
-      message:
-        'No refresh token saved yet — or no Google Ads OAuth client to borrow the id and secret from.',
+      message: (await analyticsCredentialProblem()) || 'Not configured.',
     }
   }
 
@@ -139,7 +179,7 @@ export async function testAnalyticsConnection(): Promise<{
          the console without putting the secret on screen. */
       return {
         success: false,
-        message: `Google rejected the OAuth client (${detail}). The refresh token must be generated with the SAME client id and secret this app has saved — the one whose id starts "${creds.clientId.split('-')[0]}". In the OAuth Playground, use the gear icon → "Use your own OAuth credentials" and paste THAT client\u2019s id and secret before authorising.`,
+        message: `Google rejected the OAuth client (${detail}). The refresh token must be generated with the SAME client id and secret this app has saved — the ${creds.ownClient ? 'one saved in the two Analytics fields above' : 'GOOGLE ADS pair, which this is borrowing'} \u2014 id starting "${creds.clientId.split('-')[0]}". In the OAuth Playground, use the gear icon → "Use your own OAuth credentials" and paste THAT client\u2019s id and secret before authorising.`,
       }
     }
     return { success: false, message: detail }
