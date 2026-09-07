@@ -1,12 +1,13 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Inbox, Phone, Globe, TrendingUp, ArrowRight, Star, Search } from 'lucide-react'
+import { Inbox, Phone, Globe, TrendingUp, ArrowRight, Star, Search, PhoneMissed } from 'lucide-react'
 import { getPortalSession } from '@/lib/portal-auth'
 import { prisma } from '@/lib/db'
 import { deliverabilityGuide } from '@/lib/alert-deliverability'
 import GettingStartedCard from '@/components/portal/GettingStartedCard'
 import { siteLinkFor, PRIMARY_DOMAIN_SELECT } from '@/lib/site-origin'
 import { DEFAULT_RANGE } from '@/lib/site-analytics'
+import { countRecentMissed } from '@/lib/call-patterns'
 
 export const dynamic = 'force-dynamic'
 
@@ -91,7 +92,8 @@ export default async function PortalHomePage() {
   // The walkthrough's state. Two of its steps are derived — a lead exists,
   // and a lead has been acted on — so the card can tick itself the moment the
   // product does its job.
-  const [onboarding, notification, totalLeads, actionedLeads, guide] = await Promise.all([
+  const [onboarding, notification, totalLeads, actionedLeads, guide, missedCalls] =
+    await Promise.all([
     prisma.clientOnboarding.findUnique({ where: { clientId: session.clientId } }).catch(() => null),
     prisma.clientNotification
       .findUnique({
@@ -109,6 +111,7 @@ export default async function PortalHomePage() {
       })
       .catch(() => 0),
     deliverabilityGuide().catch(() => null),
+    countRecentMissed(session.clientId),
   ])
 
   const alertsConfirmed = !!onboarding?.alertsConfirmedAt
@@ -148,6 +151,23 @@ export default async function PortalHomePage() {
           <span className="flex items-center gap-3 font-semibold">
             <Phone className="h-5 w-5" />
             Call the {newCount} waiting {newCount === 1 ? 'lead' : 'leads'}
+          </span>
+          <ArrowRight className="h-5 w-5" />
+        </Link>
+      )}
+
+      {/* MISSED CALLS SIT WITH THE WAITING LEADS, because they are the same
+          thing: somebody tried to reach this shop and nobody has got back to
+          them. It was recorded from the day call tracking shipped and shown
+          to nobody. */}
+      {missedCalls > 0 && (
+        <Link
+          href="/portal/calls"
+          className="flex items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-900 no-underline"
+        >
+          <span className="flex items-center gap-3 font-semibold">
+            <PhoneMissed className="h-5 w-5" />
+            {missedCalls} missed {missedCalls === 1 ? 'call' : 'calls'} in the last 7 days
           </span>
           <ArrowRight className="h-5 w-5" />
         </Link>
@@ -197,6 +217,18 @@ export default async function PortalHomePage() {
             value={`$${(monthSales._sum.saleValue || 0).toLocaleString()}`}
             sub={`${monthSales._count} job${monthSales._count === 1 ? '' : 's'} marked sold · see every month`}
             icon={TrendingUp}
+          />
+        </Link>
+        <Link href="/portal/calls" className="block no-underline">
+          <Tile
+            label="Your phone"
+            value={missedCalls > 0 ? String(missedCalls) : '—'}
+            sub={
+              missedCalls > 0
+                ? 'missed calls to ring back'
+                : 'missed calls, and when people ring'
+            }
+            icon={Phone}
           />
         </Link>
         <Link href="/portal/traffic" className="block no-underline">
