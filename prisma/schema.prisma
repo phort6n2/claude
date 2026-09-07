@@ -137,6 +137,12 @@ model Client {
   /// only: no credential lives here, the operator's does.
   ga4PropertyId        String? // numeric GA4 property id — NOT the G- tag
   searchConsoleSiteUrl String? // exactly as Search Console lists it
+  /// What counts as "somebody searching for this shop BY NAME", one term per
+  /// line. Empty means derived from the business name — see
+  /// `defaultBrandTerms`. It is the dividing line for the branded vs
+  /// non-branded split, which is the answer to "those people would have found
+  /// me anyway", so it is an operator's judgement rather than a guess.
+  brandTerms           String?
   trafficSnapshots     SiteTrafficSnapshot[]
 
   /// Addresses carried over from a site this one replaced.

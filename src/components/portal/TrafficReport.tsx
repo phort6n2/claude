@@ -2,10 +2,23 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Globe, Search, Sparkles, TrendingUp, Users, LineChart } from 'lucide-react'
+import {
+  ArrowRight,
+  Globe,
+  Search,
+  Sparkles,
+  TrendingUp,
+  Users,
+  LineChart,
+  UserPlus,
+  ArrowUpRight,
+} from 'lucide-react'
 import {
   channelLabel,
   rangeLabel,
+  type BrandSplit,
+  type PositionBand,
+  type QueryMovers,
   type RangeKey,
   type SearchReport,
   type TrafficReport as Traffic,
@@ -225,6 +238,193 @@ function PageTable({
         </tbody>
       </table>
     </Scroller>
+  )
+}
+
+/**
+ * "Would those people have found me anyway?"
+ *
+ * THE STANDING OBJECTION TO EVERY SEO INVOICE, and the only figure on this
+ * page that answers it. A search containing the shop's own name is somebody
+ * who already knew them; everything else is a stranger with a broken
+ * windscreen. The second number is the one the retainer is for, and until now
+ * the page could not tell them apart.
+ *
+ * The rule is shown, not hidden. A split whose basis is invisible is one an
+ * owner has to take on trust, and the terms are exactly the sort of thing they
+ * will spot a gap in ("nobody spells it that way") — which is a correction we
+ * want, not an embarrassment.
+ */
+function BrandPanel({
+  brand,
+  namedClicks,
+  totalClicks,
+  windowLabel,
+}: {
+  brand: BrandSplit
+  namedClicks: number
+  totalClicks: number
+  windowLabel: string
+}) {
+  const total = brand.brandedClicks + brand.nonBrandedClicks
+  if (!total) {
+    return (
+      <p className="text-sm text-gray-500">
+        Not enough clicks from search yet to split these.
+      </p>
+    )
+  }
+  const strangerShare = Math.round((brand.nonBrandedClicks / total) * 100)
+  /* Google withholds rare searches, so the two sides sum to less than the
+     headline click count. Said out loud rather than quietly rebased — a share
+     whose denominator is not the number above it needs explaining. */
+  const withheld = Math.max(0, totalClicks - namedClicks)
+
+  return (
+    <div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div
+          className="rounded-xl p-4"
+          style={{ backgroundColor: 'var(--brand-wash, #f1f5f9)' }}
+        >
+          <div className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--brand-ink, #1e40af)' }}>
+            <UserPlus className="h-4 w-4" />
+            People who did not know your name
+          </div>
+          <p className="mt-1 text-3xl font-extrabold text-gray-900 tabular-nums">
+            {brand.nonBrandedClicks.toLocaleString()}
+          </p>
+          <p className="text-sm text-gray-600">
+            {strangerShare}% of your clicks from search · {brand.nonBrandedQueries.toLocaleString()}{' '}
+            different searches
+          </p>
+          {brand.previousNonBrandedClicks !== null && (
+            <Delta
+              now={brand.nonBrandedClicks}
+              before={brand.previousNonBrandedClicks}
+              windowLabel={windowLabel}
+            />
+          )}
+        </div>
+        <div className="rounded-xl bg-gray-50 border border-gray-200 p-4">
+          <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
+            <Users className="h-4 w-4" />
+            People searching for you by name
+          </div>
+          <p className="mt-1 text-3xl font-extrabold text-gray-900 tabular-nums">
+            {brand.brandedClicks.toLocaleString()}
+          </p>
+          <p className="text-sm text-gray-600">
+            {100 - strangerShare}% · {brand.brandedQueries.toLocaleString()} different searches
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex h-2.5 overflow-hidden rounded-full bg-gray-100">
+        <div
+          style={{
+            width: `${strangerShare}%`,
+            backgroundColor: 'var(--brand, #1d4ed8)',
+          }}
+        />
+        <div style={{ width: `${100 - strangerShare}%`, backgroundColor: '#cbd5e1' }} />
+      </div>
+
+      <p className="mt-3 text-sm text-gray-500">
+        A search counts as your name if it contains{' '}
+        <span className="text-gray-700">{brand.terms.join(', ')}</span>.
+        {withheld > 0 && (
+          <>
+            {' '}
+            Google does not name every search, so {withheld.toLocaleString()} clicks could not be
+            put on either side.
+          </>
+        )}
+      </p>
+    </div>
+  )
+}
+
+/**
+ * How many searches sit on page one, rather than what the average spot is.
+ *
+ * AVERAGE POSITION GOES THE WRONG WAY WHEN THE WORK GOES RIGHT: start ranking
+ * 40th for thirty new terms and the average falls, on a page whose whole job
+ * is to show what changed. A count of terms in the top three only moves one
+ * way, and it is what somebody actually pictures when they ask "where am I on
+ * Google".
+ */
+function BandsPanel({ bands }: { bands: PositionBand[] }) {
+  const max = Math.max(...bands.map((b) => b.count), 1)
+  return (
+    <ul className="space-y-3">
+      {bands.map((band, i) => {
+        const change = band.previousCount === null ? null : band.count - band.previousCount
+        // The last band is "page three or worse" — fewer is better there.
+        const better = change === null ? null : i === bands.length - 1 ? change < 0 : change > 0
+        return (
+          <li key={band.label}>
+            <div className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="text-gray-700">
+                {band.label} <span className="text-gray-400">· {band.hint}</span>
+              </span>
+              <span className="shrink-0 tabular-nums text-gray-900 font-semibold">
+                {band.count.toLocaleString()}
+                {change !== null && change !== 0 && (
+                  <span
+                    className={`ml-2 text-xs font-semibold ${
+                      better ? 'text-emerald-700' : 'text-gray-400'
+                    }`}
+                  >
+                    {change > 0 ? '+' : ''}
+                    {change}
+                  </span>
+                )}
+              </span>
+            </div>
+            <div className="mt-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${(band.count / max) * 100}%`,
+                  // The two page-one bands in the brand colour, the rest grey:
+                  // the bar chart should read at a glance as "this much of me
+                  // is on page one".
+                  backgroundColor: i < 2 ? 'var(--brand, #1d4ed8)' : '#cbd5e1',
+                }}
+              />
+            </div>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+/** Searches ranked by what they gained or lost, with the before beside it. */
+function MoveTable({
+  rows,
+  heading,
+}: {
+  rows: QueryMovers['gained']
+  heading: string
+}) {
+  if (!rows.length) return null
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-gray-700">{heading}</h3>
+      <ul className="mt-2 divide-y divide-gray-100">
+        {rows.map((row) => (
+          <li key={row.query} className="flex items-baseline justify-between gap-3 py-2">
+            <span className="min-w-0 break-words text-gray-900">{row.query}</span>
+            <span className="shrink-0 text-sm tabular-nums text-gray-500">
+              {row.before} <span className="text-gray-300">→</span>{' '}
+              <span className="font-semibold text-gray-900">{row.clicks}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 
@@ -721,6 +921,81 @@ export default function TrafficReport({
               initiallyHidden={['Impressions']}
             />
           </Panel>
+
+          {search.brand && (
+            <Panel
+              title="Strangers, or people who already knew you"
+              sub="Every click from Google, split by whether the search contained your name."
+            >
+              <BrandPanel
+                brand={search.brand}
+                namedClicks={search.namedClicks ?? 0}
+                totalClicks={search.clicks ?? 0}
+                windowLabel={previousWindow}
+              />
+            </Panel>
+          )}
+
+          {(search.bands?.length ?? 0) > 0 && (
+            <Panel
+              title="Where you sit on the page"
+              /* The one place on this page where "more is better" is
+                 unambiguous, so it says so — the tile above deliberately does
+                 not, because average position cannot promise that. */
+              sub={`How many different searches you appear in at each spot, and the change against the ${previousWindow}.`}
+            >
+              <BandsPanel bands={search.bands ?? []} />
+            </Panel>
+          )}
+
+          {search.movers && (search.movers.gained.length > 0 || search.movers.lost.length > 0) && (
+            <Panel
+              title="What moved"
+              sub={`Searches that brought you more, or fewer, visits than the ${previousWindow}.`}
+            >
+              <div className="grid gap-6 sm:grid-cols-2">
+                <MoveTable rows={search.movers.gained} heading="Gained the most" />
+                {/* SHOWN, not hidden. A panel that only ever reports wins is
+                    one a shop stops believing the first time they notice. */}
+                <MoveTable rows={search.movers.lost} heading="Slipped back" />
+              </div>
+            </Panel>
+          )}
+
+          {(search.movers?.fresh.length ?? 0) > 0 && (
+            <Panel
+              title="Searches you now show up for"
+              sub={`Google showed your site for these and did not in the ${previousWindow}.`}
+            >
+              <ul className="divide-y divide-gray-100">
+                {(search.movers?.fresh ?? []).map((row) => (
+                  <li
+                    key={row.query}
+                    className="flex items-baseline justify-between gap-3 py-2"
+                  >
+                    <span className="min-w-0 break-words text-gray-900 flex items-baseline gap-2">
+                      <ArrowUpRight
+                        className="h-4 w-4 shrink-0 self-center"
+                        style={{ color: 'var(--brand-ink, #1e40af)' }}
+                      />
+                      {row.query}
+                    </span>
+                    <span className="shrink-0 text-sm tabular-nums text-gray-500">
+                      {row.clicks ? `${row.clicks} visit${row.clicks === 1 ? '' : 's'} · ` : ''}
+                      {row.impressions.toLocaleString()} shown
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {/* A search can appear here because it genuinely started
+                  ranking, or because it finally cleared the threshold Google
+                  reports at. Both are real; only one is new. */}
+              <p className="mt-3 text-sm text-gray-500">
+                Google hides searches too rare to report, so a few of these may have been trickling
+                in below its threshold before.
+              </p>
+            </Panel>
+          )}
 
           {(search.topQueries?.length ?? 0) > 0 && (
             <Panel title="What people searched for">

@@ -34,12 +34,16 @@ export default function SiteAnalyticsCard({
   initialSiteUrl,
   lastFetchedAt,
   lastError,
+  initialBrandTerms,
+  defaultBrandTerms,
 }: {
   clientId: string
   initialPropertyId: string | null
   initialSiteUrl: string | null
   lastFetchedAt: string | null
   lastError: string | null
+  initialBrandTerms: string | null
+  defaultBrandTerms: string[]
 }) {
   const [properties, setProperties] = useState<Ga4Property[]>([])
   const [sites, setSites] = useState<SearchSite[]>([])
@@ -52,6 +56,7 @@ export default function SiteAnalyticsCard({
   )
   const [busy, setBusy] = useState(false)
   const [fetchedAt, setFetchedAt] = useState(lastFetchedAt)
+  const [brandTerms, setBrandTerms] = useState(initialBrandTerms || '')
 
   useEffect(() => {
     let cancelled = false
@@ -215,6 +220,46 @@ export default function SiteAnalyticsCard({
           <p className="text-xs text-gray-400 mt-1">
             A domain property (<code>sc-domain:</code>) covers every subdomain and both schemes; a
             URL-prefix property covers only exactly what it says.
+          </p>
+        </div>
+
+        {/* THE DIVIDING LINE FOR "would they have found me anyway?" — the
+            standing objection to every SEO invoice, and the one number on the
+            client's page that answers it. It is a judgement about this
+            business, so it is typed by an operator and never inferred.
+
+            A MISSED TERM IS THE DANGEROUS ONE: it files a search for the
+            shop's own name as a stranger finding them, which flatters us. An
+            extra term only understates the win. So err long. */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Searches that mean their own name
+          </label>
+          <textarea
+            value={brandTerms}
+            disabled={busy}
+            rows={3}
+            placeholder={defaultBrandTerms.join('\n')}
+            onChange={(e) => setBrandTerms(e.target.value)}
+            /* On blur, not on change. Saving here clears every cached window
+               and re-reads Search Console, which is not something to do once
+               per keystroke. */
+            onBlur={() => {
+              if (brandTerms.trim() === (initialBrandTerms || '').trim()) return
+              save({ brandTerms })
+            }}
+            className="w-full px-3 py-2 border rounded-md text-sm font-mono focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+          />
+          <p className="text-xs text-gray-400 mt-1">
+            One per line, or comma separated. Punctuation and spacing are ignored, so{' '}
+            <code>a-1 auto glass</code> also matches &ldquo;a1 autoglass&rdquo;. Add misspellings
+            and how people actually type it. Leave empty to use{' '}
+            {defaultBrandTerms.length ? (
+              <span className="text-gray-500">{defaultBrandTerms.join(', ')}</span>
+            ) : (
+              'the business name'
+            )}
+            .
           </p>
         </div>
 
