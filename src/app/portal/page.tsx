@@ -1,13 +1,23 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Inbox, Phone, Globe, TrendingUp, ArrowRight, Star, Search, PhoneMissed } from 'lucide-react'
+import {
+  Inbox,
+  Phone,
+  TrendingUp,
+  ArrowRight,
+  Star,
+  Search,
+  PhoneMissed,
+  CircleDollarSign,
+} from 'lucide-react'
 import { getPortalSession } from '@/lib/portal-auth'
 import { prisma } from '@/lib/db'
 import { deliverabilityGuide } from '@/lib/alert-deliverability'
 import GettingStartedCard from '@/components/portal/GettingStartedCard'
-import { siteLinkFor, PRIMARY_DOMAIN_SELECT } from '@/lib/site-origin'
+import { PRIMARY_DOMAIN_SELECT } from '@/lib/site-origin'
 import { DEFAULT_RANGE } from '@/lib/site-analytics'
-import { countRecentMissed } from '@/lib/call-patterns'
+import { countRecentMissed, countAnsweredCalls } from '@/lib/call-patterns'
+import { formatMoney } from '@/lib/monthly-report'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,28 +27,120 @@ export const dynamic = 'force-dynamic'
  * site live. Everything here is scoped to the session's own client.
  */
 
+/**
+ * Is this value a FIGURE or a PHRASE? Same rule as the traffic and calls
+ * tiles, so all three screens size a value identically.
+ */
+const NUMERIC = /^(—|\$?[\d,.]+%?)$/
+
+type Tone = 'plain' | 'feature' | 'warn'
+
+/**
+ * A dashboard tile.
+ *
+ * THREE LEVELS, AND AT MOST TWO COLOURED AT ONCE. If every tile is emphasised
+ * none of them is. Urgency is already carried by the full-width banners above
+ * the grid, so the grid's job is the quieter question — "is this working" —
+ * and exactly one tile earns the accent for answering it.
+ *
+ * NO TILE IS EVER FILLED WITH THE BRAND COLOUR. The accent is a 6% wash with
+ * brand-INK text on it, so an arbitrary hue can never put light text on a
+ * light fill. That is what makes this safe for a yellow shop.
+ *
+ * `muted` outranks `tone`: a celebratory card reading "$0" is worse than a
+ * plain one, so a placeholder value forces the tile quiet.
+ */
 function Tile({
   label,
   value,
   sub,
   icon: Icon,
+  tone = 'plain',
+  muted = false,
 }: {
   label: string
   value: string
   sub?: string
   icon: React.ElementType
+  tone?: Tone
+  muted?: boolean
 }) {
+  const t: Tone = muted ? 'plain' : tone
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-      <div className="flex items-center gap-2 text-gray-500 text-sm font-medium">
-        <Icon className="h-4 w-4" />
+    <div
+      className={[
+        'rounded-2xl border p-5 h-full transition-all duration-150 group-hover:-translate-y-px',
+        t === 'warn' ? 'bg-amber-50 border-amber-200' : '',
+        t === 'feature' ? 'border-transparent' : '',
+        t === 'plain'
+          ? 'bg-white border-gray-200 shadow-[0_1px_2px_rgba(16,24,40,0.05)] group-hover:shadow-[0_4px_16px_-6px_rgba(16,24,40,0.18)] group-hover:border-gray-300'
+          : '',
+      ].join(' ')}
+      style={
+        t === 'feature'
+          ? {
+              backgroundColor: 'var(--brand-wash)',
+              borderColor: 'var(--brand-edge)',
+              boxShadow: '0 1px 2px rgba(16,24,40,0.05), 0 10px 28px -14px var(--brand-glow)',
+            }
+          : undefined
+      }
+    >
+      <div
+        className={`flex items-center gap-2.5 text-sm font-semibold ${
+          t === 'warn'
+            ? 'text-amber-800'
+            : t === 'feature'
+              ? 'text-[var(--brand-ink)]'
+              : 'text-gray-500'
+        }`}
+      >
+        <span
+          className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg ${
+            t === 'warn' ? 'bg-amber-100' : ''
+          }`}
+          style={t === 'warn' ? undefined : { backgroundColor: 'var(--brand-chip)' }}
+        >
+          <Icon
+            className={`h-4 w-4 ${t === 'warn' ? 'text-amber-700' : 'text-[var(--brand-ink)]'}`}
+          />
+        </span>
         {label}
       </div>
-      <p className="mt-2 text-3xl font-extrabold text-gray-900 tabular-nums">{value}</p>
-      {sub && <p className="text-sm text-gray-500 mt-0.5">{sub}</p>}
+      <p
+        className={[
+          'mt-3 break-words',
+          /* Smaller on a phone, where the grid is two columns: "$10,920" at
+             32px broke across two lines inside a half-width card, which is
+             worse than the same figure one size down. */
+          NUMERIC.test(value)
+            ? 'text-2xl sm:text-[2rem] leading-none font-extrabold tabular-nums'
+            : 'text-lg sm:text-xl font-bold leading-snug',
+          muted
+            ? 'text-gray-300'
+            : t === 'warn'
+              ? 'text-amber-900'
+              : t === 'feature'
+                ? 'text-[var(--brand-ink)]'
+                : 'text-gray-900',
+        ].join(' ')}
+      >
+        {value}
+      </p>
+      {/* gray-600, not gray-500: on a phone in a workshop the sub-line is the
+          one that gets lost. */}
+      {sub && (
+        <p className={`text-sm mt-1.5 ${t === 'warn' ? 'text-amber-800' : 'text-gray-600'}`}>
+          {sub}
+        </p>
+      )}
     </div>
   )
 }
+
+/** The wrapper a linked tile needs: it owns the hover group and the focus ring. */
+const TILE_LINK =
+  'group block no-underline rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-ink)]'
 
 export default async function PortalHomePage() {
   const session = await getPortalSession()
@@ -58,7 +160,17 @@ export default async function PortalHomePage() {
     prisma.lead.count({ where: { clientId: session.clientId, status: 'NEW' } }).catch(() => 0),
     prisma.lead
       .aggregate({
-        where: { clientId: session.clientId, status: 'SOLD', updatedAt: { gte: monthStart } },
+        /* SAME SHAPE AS THE RESULTS PAGE, which this tile links to. It used
+           to include duplicates and bucket by updatedAt, so a lead created in
+           August and marked sold in September appeared in September here and
+           in August there — two pages disagreeing about the same month, one
+           of them a tap from the other. */
+        where: {
+          clientId: session.clientId,
+          duplicateOfLeadId: null,
+          status: 'SOLD',
+          createdAt: { gte: monthStart },
+        },
         _sum: { saleValue: true },
         _count: true,
       })
@@ -72,6 +184,7 @@ export default async function PortalHomePage() {
         siteSubdomain: true,
         status: true,
         domains: PRIMARY_DOMAIN_SELECT,
+        createdAt: true,
         // Decides whether the traffic tile reads as a report or as an offer.
         // Not a tab: the phone tab bar is full at five — see PortalNav.
         ga4PropertyId: true,
@@ -92,8 +205,17 @@ export default async function PortalHomePage() {
   // The walkthrough's state. Two of its steps are derived — a lead exists,
   // and a lead has been acted on — so the card can tick itself the moment the
   // product does its job.
-  const [onboarding, notification, totalLeads, actionedLeads, guide, missedCalls] =
-    await Promise.all([
+  const [
+    onboarding,
+    notification,
+    totalLeads,
+    actionedLeads,
+    guide,
+    missedCalls,
+    answeredCalls,
+    bookedEver,
+    leadsEver,
+  ] = await Promise.all([
     prisma.clientOnboarding.findUnique({ where: { clientId: session.clientId } }).catch(() => null),
     prisma.clientNotification
       .findUnique({
@@ -112,6 +234,20 @@ export default async function PortalHomePage() {
       .catch(() => 0),
     deliverabilityGuide().catch(() => null),
     countRecentMissed(session.clientId),
+    countAnsweredCalls(session.clientId),
+    /* LIFETIME BOOKED — the number that answers "is this worth the monthly
+       fee". Duplicates excluded to match the Results page exactly: a second
+       submission from the same person on the same day is not a second job. */
+    prisma.lead
+      .aggregate({
+        where: { clientId: session.clientId, duplicateOfLeadId: null, status: 'SOLD' },
+        _sum: { saleValue: true },
+        _count: true,
+      })
+      .catch(() => ({ _sum: { saleValue: null }, _count: 0 })),
+    prisma.lead
+      .count({ where: { clientId: session.clientId, duplicateOfLeadId: null } })
+      .catch(() => 0),
   ])
 
   const alertsConfirmed = !!onboarding?.alertsConfirmedAt
@@ -120,8 +256,14 @@ export default async function PortalHomePage() {
   const showWalkthrough = !onboarding?.dismissedAt && !walkthroughDone
 
   const delta = thisWeek - lastWeek
-  const siteUrl = client ? siteLinkFor(client) : null
   const trafficConnected = !!(client?.ga4PropertyId || client?.searchConsoleSiteUrl)
+  const bookedRevenue = bookedEver._sum.saleValue || 0
+  const bookedJobs = bookedEver._count
+  const joinedLabel = client?.createdAt
+    ? client.createdAt.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+    : null
+  /* Their actual first week, not "we happened to see nothing last week". */
+  const isFirstWeek = !!client?.createdAt && Date.now() - client.createdAt.getTime() < 14 * 86400000
   // The stored snapshot only — never a live Google call. This is the home
   // screen; it must not wait on two external APIs to draw a tile.
   const visitors =
@@ -200,43 +342,100 @@ export default async function PortalHomePage() {
         />
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* PAUSED IS A STATUS, and an urgent one — it belonged with the other
+          banners rather than below six tiles at the bottom of the page. */}
+      {client?.status === 'PAUSED' && (
+        <p className="rounded-2xl border border-amber-300 bg-amber-50 p-5 font-semibold text-amber-900">
+          Your site is paused. Get in touch and we&apos;ll switch it back on.
+        </p>
+      )}
+
+      {/* Two columns on a phone, three on a desktop: six tiles fill both
+          exactly, and halving the scroll matters more than a wider card.
+          ONE column below 360px, though — on the narrowest phones still in use
+          a half-width card is ~140px and "$10,920" breaks across two lines,
+          which is worse than any amount of scrolling. */}
+      <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+        {/* THE ONE ACCENTED TILE, and only when there is a figure in it. It
+            answers the question the grid exists for — is this worth what I
+            pay — and it only ever grows. Urgency is handled by the banners
+            above; a second shouting card in the grid would flatten both. */}
+        <Link
+          href="/portal/results"
+          className={`${TILE_LINK} min-[360px]:col-span-2 sm:col-span-1`}
+        >
+          <Tile
+            label="Booked since you joined"
+            value={
+              bookedRevenue > 0
+                ? formatMoney(bookedRevenue)
+                : bookedJobs > 0
+                  ? `${bookedJobs} ${bookedJobs === 1 ? 'job' : 'jobs'}`
+                  : '—'
+            }
+            sub={
+              bookedRevenue > 0
+                ? `${bookedJobs} ${bookedJobs === 1 ? 'job' : 'jobs'} from ${leadsEver.toLocaleString()} ${leadsEver === 1 ? 'enquiry' : 'enquiries'}${joinedLabel ? ` · since ${joinedLabel}` : ''}`
+                : bookedJobs > 0
+                  ? `from ${leadsEver.toLocaleString()} enquiries · add what each was worth and this shows the money`
+                  : leadsEver > 0
+                    ? 'Mark a lead booked and this fills in'
+                    : 'Fills in as your first jobs come in'
+            }
+            icon={CircleDollarSign}
+            tone="feature"
+            /* Never "$0" — a shop that knows it booked work and sees zero
+               learns the portal is wrong. */
+            muted={bookedRevenue === 0 && bookedJobs === 0}
+          />
+        </Link>
+
         <Tile
           label="Leads this week"
           value={String(thisWeek)}
           sub={
-            lastWeek === 0
+            /* "first week of data" is a CLAIM, and it was made whenever last
+               week happened to be empty — telling a shop in its second year
+               that this is their first week. */
+            isFirstWeek
               ? 'first week of data'
-              : `${delta >= 0 ? '+' : ''}${delta} vs last week`
+              : lastWeek === 0
+                ? 'none last week'
+                : `${delta >= 0 ? '+' : ''}${delta} vs last week`
           }
           icon={Inbox}
         />
-        <Link href="/portal/results" className="block no-underline">
+
+        <Link href="/portal/results" className={TILE_LINK}>
           <Tile
             label="Booked this month"
-            value={`$${(monthSales._sum.saleValue || 0).toLocaleString()}`}
+            value={formatMoney(monthSales._sum.saleValue || 0)}
             sub={`${monthSales._count} job${monthSales._count === 1 ? '' : 's'} marked sold · see every month`}
             icon={TrendingUp}
+            muted={!monthSales._count}
           />
         </Link>
-        <Link href="/portal/calls" className="block no-underline">
+
+        <Link href="/portal/calls" className={TILE_LINK}>
+          {/* LEADS WITH ANSWERED, not missed. The missed count is already in
+              the amber banner 250px above; repeating it made the tile a
+              duplicate when there were any and a dash when there were none. */}
           <Tile
-            label="Your phone"
-            value={missedCalls > 0 ? String(missedCalls) : '—'}
+            label="Calls answered"
+            value={answeredCalls.toLocaleString()}
             sub={
-              missedCalls > 0
-                ? 'missed calls to ring back'
-                : 'missed calls, and when people ring'
+              answeredCalls || missedCalls
+                ? 'through your tracked line · see when people ring'
+                : 'once calls come through your tracked line'
             }
             icon={Phone}
+            muted={!answeredCalls && !missedCalls}
           />
         </Link>
-        <Link href="/portal/traffic" className="block no-underline">
+
+        <Link href="/portal/traffic" className={TILE_LINK}>
           <Tile
             label="How people find you"
-            // A number when there is one, and the same "—" the rating tile
-            // uses when there is not. "SEO" set in 30px bold read as a
-            // heading rather than a value.
             value={visitors !== null ? visitors.toLocaleString() : '—'}
             sub={
               visitors !== null
@@ -246,8 +445,10 @@ export default async function PortalHomePage() {
                   : 'see what search could bring you'
             }
             icon={Search}
+            muted={visitors === null}
           />
         </Link>
+
         {reviews ? (
           <Tile
             label="Your Google rating"
@@ -256,53 +457,10 @@ export default async function PortalHomePage() {
             icon={Star}
           />
         ) : (
-          <Tile label="Your Google rating" value="—" sub="not connected yet" icon={Star} />
+          <Tile label="Your Google rating" value="—" sub="not connected yet" icon={Star} muted />
         )}
       </div>
 
-      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <div className="flex items-center gap-2 text-gray-500 text-sm font-medium mb-2">
-          <Globe className="h-4 w-4" />
-          Your website
-        </div>
-        {client?.status === 'PAUSED' ? (
-          <p className="text-amber-700">
-            Your site is paused. Get in touch and we&apos;ll switch it back on.
-          </p>
-        ) : siteUrl ? (
-          <>
-            <a
-              href={siteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-semibold break-all"
-              style={{ color: 'var(--brand-ink)' }}
-            >
-              {siteUrl.replace('https://', '')}
-            </a>
-            <p className="text-sm text-gray-500 mt-1">
-              Live and taking quote requests around the clock.
-            </p>
-          </>
-        ) : (
-          <p className="text-gray-500">Your site is being set up.</p>
-        )}
-        {/* LOOK, not edit. The site is ours to run — a change to it is a
-            conversation, not a form — so this opens the live page rather than
-            an editor. Anything that needs changing, they tell us. */}
-        {siteUrl && (
-          <a
-            href={siteUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 inline-flex items-center gap-1 text-sm font-semibold"
-            style={{ color: 'var(--brand-ink)' }}
-          >
-            Open my site
-            <ArrowRight className="h-3.5 w-3.5" />
-          </a>
-        )}
-      </section>
     </div>
   )
 }

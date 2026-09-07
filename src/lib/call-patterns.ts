@@ -182,6 +182,28 @@ export async function getCallInsight(clientId: string): Promise<CallInsight | nu
   }
 }
 
+/**
+ * Answered calls, for the home tile.
+ *
+ * A COUNT, not getCallInsight — that one loads 180 days of rows to build the
+ * charts, which is far too much work for one number on a screen that already
+ * runs a dozen queries.
+ */
+export async function countAnsweredCalls(clientId: string, days = 90): Promise<number> {
+  return prisma.lead
+    .count({
+      where: {
+        clientId,
+        source: 'PHONE',
+        // Not "not missed": a call still ringing has no status yet and is not
+        // an answered one.
+        callStatus: { notIn: [...MISSED_CALL_STATUSES], not: null },
+        createdAt: { gte: new Date(Date.now() - days * 86400000) },
+      },
+    })
+    .catch(() => 0)
+}
+
 /** Just the count, for the home screen. Cheap enough to run on every load. */
 export async function countRecentMissed(clientId: string, days = 7): Promise<number> {
   return prisma.lead

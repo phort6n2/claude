@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import ImpersonationBanner from '@/components/portal/ImpersonationBanner'
 import PortalNav, { PortalTabBar } from '@/components/portal/PortalNav'
 import { siteLinkFor, PRIMARY_DOMAIN_SELECT } from '@/lib/site-origin'
+import { brandVariables } from '@/lib/brand-color'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,11 +57,13 @@ export default async function PortalLayout({ children }: { children: React.React
     <div
       className="min-h-screen bg-gray-50"
       style={
-        {
-          '--brand': brand,
-          '--brand-ink': brand,
-          '--brand-soft': `${brand}14`,
-        } as React.CSSProperties
+        /* --brand-ink USED TO BE --brand. The same hex was handed to three
+           incompatible jobs: the fill behind white text, the colour OF text on
+           white, and a pale wash. A navy shop looked perfect, so nothing ever
+           surfaced it — a yellow one had unreadable links and an invisible
+           wash. brandVariables derives each from the contrast it has to meet;
+           scripts/check-brand-color.ts holds the hues that broke it. */
+        brandVariables(brand) as React.CSSProperties
       }
     >
       {session.isImpersonating && (
