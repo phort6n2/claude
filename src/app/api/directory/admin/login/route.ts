@@ -10,7 +10,25 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: Request) {
   if (!adminConfigured()) {
     return NextResponse.json(
-      { error: 'Admin login isn’t set up yet — set DIRECTORY_ADMIN_PASSWORD.' },
+      {
+        error: 'Admin login isn’t set up yet — set DIRECTORY_ADMIN_PASSWORD.',
+        // Which deployment is answering, and which names it looked for.
+        //
+        // "The password IS set" and "this function sees no password" are both
+        // true more often than they sound: this site is the `wrhq` Vercel
+        // project, while the same repo also deploys as `agmp-paa-pro` for
+        // glassleads.app. A variable set on the wrong project, or scoped to
+        // Preview instead of Production, or added after the last build, all
+        // look identical from the login screen. None of this is secret — the
+        // commit and environment are already public in the deployment.
+        checked: ['DIRECTORY_ADMIN_PASSWORD', 'DIRECTORY_UPLOAD_SECRET'],
+        deployment: {
+          environment: process.env.VERCEL_ENV ?? 'unknown',
+          host: process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL ?? 'local',
+          commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? 'unknown',
+          builtFrom: process.env.VERCEL_GIT_REPO_SLUG ?? 'unknown',
+        },
+      },
       { status: 400 }
     )
   }
