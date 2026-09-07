@@ -24,6 +24,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       contentFeedUrl: true,
       contentFeedCheckedAt: true,
       contentFeedError: true,
+      ga4PropertyId: true,
+      searchConsoleSiteUrl: true,
+      trafficSnapshot: { select: { fetchedAt: true, error: true } },
     },
   })
   if (!client) notFound()
@@ -39,6 +42,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         checkedAt: client.contentFeedCheckedAt?.toISOString() || null,
         error: client.contentFeedError,
         itemCount: feedItemCount,
+      }}
+      analytics={{
+        propertyId: client.ga4PropertyId,
+        siteUrl: client.searchConsoleSiteUrl,
+        fetchedAt: client.trafficSnapshot?.fetchedAt?.toISOString() || null,
+        error: client.trafficSnapshot?.error || null,
       }}
     />
   )

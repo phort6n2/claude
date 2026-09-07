@@ -56,12 +56,12 @@ model Client {
   /// hosted pages becomes. `phone` stays the real line — it is what the
   /// LocalBusiness schema and call-asset verification read.
   siteDisplayPhone String?
-  email         String
-  streetAddress String
-  city          String
-  state         String
-  postalCode    String
-  country       String  @default("US")
+  email            String
+  streetAddress    String
+  city             String
+  state            String
+  postalCode       String
+  country          String  @default("US")
 
   // Service Details
   hasShopLocation        Boolean  @default(true)
@@ -112,7 +112,7 @@ model Client {
   /// The RSS/Atom feed of wherever this shop's articles actually get
   /// published. Watched rather than integrated with: whatever tool writes
   /// them, a new post shows up here, and nothing has to know the tool's name.
-  contentFeedUrl String?
+  contentFeedUrl       String?
   /// Null until a fetch succeeds. Shown in the admin so a feed that quietly
   /// stopped answering is visible rather than merely silent.
   contentFeedCheckedAt DateTime?
@@ -127,12 +127,24 @@ model Client {
   clarityApiToken  String? // Encrypted
   clarityDays      ClarityDay[]
 
+  /// The shop's OWN website in Google Analytics and Search Console — their
+  /// main site, NOT the landing page this platform hosts. An SEO client is
+  /// paying for that site to rank, so reporting anything else back to them
+  /// answers a question nobody asked.
+  ///
+  /// Both are chosen from a picklist of what the platform's own Google
+  /// account can see, so neither is typed and neither can be a guess. Read
+  /// only: no credential lives here, the operator's does.
+  ga4PropertyId        String? // numeric GA4 property id — NOT the G- tag
+  searchConsoleSiteUrl String? // exactly as Search Console lists it
+  trafficSnapshot      SiteTrafficSnapshot?
+
   /// Addresses carried over from a site this one replaced.
   redirects   ClientRedirect[]
   customPages ClientPage[]
 
   // Brand Settings
-  logoUrl String?
+  logoUrl        String?
   /// The logo the FOOTER draws, when the header's own logo cannot be used
   /// there. The footer band is dark; a logo drawn in black on transparency
   /// disappears into it, which is most of the logo files a shop actually
@@ -688,14 +700,14 @@ model ClientOnboarding {
   client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   /// When the portal last fired the test alert, for rate limiting.
-  testAlertSentAt DateTime?
+  testAlertSentAt   DateTime?
   /// They pressed "it arrived" — proof the whitelist worked end to end.
   alertsConfirmedAt DateTime?
   /// They put the portal on their phone's home screen. Self-reported; there
   /// is no honest way to detect it.
-  appInstalledAt DateTime?
+  appInstalledAt    DateTime?
   /// They closed the walkthrough. Dismissed is a decision, not a completion.
-  dismissedAt DateTime?
+  dismissedAt       DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -721,16 +733,16 @@ model AdsFinding {
 
   customerId String
   /// DAILY / WEEKLY / MONTHLY — which sweep files it.
-  cadence String
+  cadence    String
   /// Machine key of the check ("spend-cliff", "disapproved-ads", …).
-  check String
+  check      String
   /// clientId + check + entity, so a persisting condition updates in place.
-  dedupeKey String @unique
+  dedupeKey  String @unique
   /// ALERT (money is burning now) or REVIEW (look when you're at the desk).
-  severity String
+  severity   String
 
-  title  String
-  detail String
+  title    String
+  detail   String
   /// Window, sample sizes, the numbers the claim rests on. Raw, recomputable.
   evidence Json?
 
@@ -769,7 +781,6 @@ model ClientNotification {
   /**
    * Whether an INBOUND CALL sends an email alert. On by default, because
    * that is what every existing client already gets.
-   *
    * Off is a real preference, not a bug: a shop whose phone is answered by a
    * person gets nothing from an email saying the phone rang — they were on
    * it. The same shop still wants the form alerts, which nobody is watching
@@ -1284,7 +1295,6 @@ model LocalRankScan {
   @@index([clientId, searchTerm, scannedAt])
 }
 
-
 /// One entry from a shop's published content feed.
 ///
 /// Stored so the Activity feed has a stable date and does not depend on the
@@ -1327,6 +1337,35 @@ model SiteFeedItem {
 /// The raw payload is kept alongside the extracted numbers, on the same
 /// reasoning as LocalRankScan: a reader bug should cost a recompute, not a
 /// window of data that cannot be fetched again at any price.
+/// The last good answer from Google Analytics and Search Console for one
+/// client, stored whole.
+///
+/// A CACHE, NOT AN ARCHIVE — and the difference matters. ClarityDay exists
+/// because Clarity's window closes after three days and a day not copied is
+/// gone at any price. These two APIs will answer for history whenever asked,
+/// so a reader bug here costs a refresh. What this buys is a portal page that
+/// does not call two Google APIs on every load.
+model SiteTrafficSnapshot {
+  id String @id @default(cuid())
+
+  clientId String @unique
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  fetchedAt DateTime @default(now())
+
+  /// GA4 runReport output, extracted: totals, the daily series, channels,
+  /// AI-referral split and top pages.
+  traffic Json?
+  /// Search Console searchanalytics output: totals, daily series, countries
+  /// and top pages.
+  search  Json?
+
+  /// Why the last refresh failed, if it did. Kept beside the stale data
+  /// rather than replacing it: last week's numbers plus "this stopped
+  /// updating on Tuesday" is more use than an empty page.
+  error String?
+}
+
 model ClarityDay {
   id String @id @default(cuid())
 
@@ -1337,13 +1376,13 @@ model ClarityDay {
   day DateTime
 
   /// Sessions in the window — the denominator for everything else.
-  sessions Int?
+  sessions    Int?
   /// A click on something that looks tappable and is not.
-  deadClicks Int?
+  deadClicks  Int?
   /// The same click, repeated, after the visitor lost patience.
-  rageClicks Int?
+  rageClicks  Int?
   /// Clicked through and came straight back: the page answered the wrong question.
-  quickbacks Int?
+  quickbacks  Int?
   /// Average scroll depth, as a percentage.
   scrollDepth Float?
 

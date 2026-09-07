@@ -41,6 +41,10 @@
     {
       "path": "/api/cron/ads-weekly",
       "schedule": "45 13 * * 1"
+    },
+    {
+      "path": "/api/cron/sync-site-analytics",
+      "schedule": "20 7 * * *"
     }
   ]
 }
