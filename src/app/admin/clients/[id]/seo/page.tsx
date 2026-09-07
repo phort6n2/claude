@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { requireAdminPage } from '@/lib/admin-guard'
 import SeoTab from '@/components/admin/SeoTab'
+import TrafficReport from '@/components/portal/TrafficReport'
+import { getSiteAnalytics } from '@/lib/site-analytics'
 
 /**
  * "SEO" tab: what this shop is paying for, and what that changes.
@@ -20,6 +22,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     where: { id },
     select: {
       id: true,
+      businessName: true,
       seoClient: true,
       contentFeedUrl: true,
       contentFeedCheckedAt: true,
@@ -33,7 +36,25 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
   const feedItemCount = await prisma.siteFeedItem.count({ where: { clientId: id } }).catch(() => 0)
 
+  /* THE REPORT ITSELF, HERE, not only in the client's portal.
+     It was portal-only, so the only way for an operator to see what a shop had
+     been sent was to impersonate them — which is a read-only look around,
+     several clicks away, and an absurd amount of ceremony for "did the numbers
+     arrive". The same component renders in both places, so what is checked
+     here is exactly what the shop sees, the way the Rankings and Results tabs
+     already work. */
+  const connected = !!(client.ga4PropertyId || client.searchConsoleSiteUrl)
+  const analytics = connected
+    ? await getSiteAnalytics(id).catch(() => ({
+        traffic: null,
+        search: null,
+        fetchedAt: null,
+        error: 'Could not read the numbers',
+      }))
+    : null
+
   return (
+    <div className="space-y-4">
     <SeoTab
       clientId={client.id}
       initialSeoClient={client.seoClient}
@@ -50,5 +71,22 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         error: client.trafficSnapshot?.error || null,
       }}
     />
+
+      {analytics && (
+        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+          <p className="text-sm text-gray-500 mb-4">
+            Exactly what this shop sees on their own Traffic page.
+          </p>
+          <TrafficReport
+            businessName={client.businessName}
+            traffic={analytics.traffic}
+            search={analytics.search}
+            fetchedAt={analytics.fetchedAt}
+            error={analytics.error}
+            showPortalLink={false}
+          />
+        </section>
+      )}
+    </div>
   )
 }
