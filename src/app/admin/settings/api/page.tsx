@@ -518,6 +518,13 @@ export default function ApiSettingsPage() {
             newValue: '',
           },
         }))
+      } else if (response.status === 401) {
+        // Same trap as the test button: an expired admin session must not read
+        // as a rejected credential.
+        setMessage({
+          type: 'error',
+          text: 'Your admin sign-in has expired — reload this page and sign in again.',
+        })
       } else {
         setMessage({ type: 'error', text: 'Failed to save setting' })
       }
@@ -614,9 +621,23 @@ export default function ApiSettingsPage() {
       })
 
       const result = await response.json()
+      /* A 401 answers { error: 'Unauthorized' } — no `success`, no `message` —
+         so the card rendered a bare "Unauthorized" beside a credential the
+         test had not even looked at yet. It reads as Google rejecting the
+         key, and sends you back through the whole OAuth walkthrough for an
+         expired ADMIN session. Say which one it is. */
+      const translated =
+        response.status === 401
+          ? {
+              success: false,
+              message: 'Your admin sign-in has expired — reload this page, sign in, and test again.',
+            }
+          : 'success' in result
+            ? result
+            : { success: false, message: result.error || `Test failed (${response.status})` }
       setSettings(prev => ({
         ...prev,
-        [key]: { ...prev[key], testing: false, testResult: result },
+        [key]: { ...prev[key], testing: false, testResult: translated },
       }))
     } catch (error) {
       setSettings(prev => ({
