@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Inbox, Phone, Globe, TrendingUp, ArrowRight, Star } from 'lucide-react'
+import { Inbox, Phone, Globe, TrendingUp, ArrowRight, Star, Search } from 'lucide-react'
 import { getPortalSession } from '@/lib/portal-auth'
 import { prisma } from '@/lib/db'
 import { deliverabilityGuide } from '@/lib/alert-deliverability'
@@ -47,7 +47,8 @@ export default async function PortalHomePage() {
   const prevWeek = new Date(now.getTime() - 14 * 86400000)
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
-  const [thisWeek, lastWeek, newCount, monthSales, client, reviews] = await Promise.all([
+  const [thisWeek, lastWeek, newCount, monthSales, client, reviews, trafficSnapshot] =
+    await Promise.all([
     prisma.lead.count({ where: { clientId: session.clientId, createdAt: { gte: weekAgo } } }),
     prisma.lead.count({
       where: { clientId: session.clientId, createdAt: { gte: prevWeek, lt: weekAgo } },
@@ -64,9 +65,21 @@ export default async function PortalHomePage() {
       where: { id: session.clientId },
       // domains, or the client opens their own portal after a cutover and
       // sees the platform's subdomain where their domain should be.
-      select: { slug: true, siteSubdomain: true, status: true, domains: PRIMARY_DOMAIN_SELECT },
+      select: {
+        slug: true,
+        siteSubdomain: true,
+        status: true,
+        domains: PRIMARY_DOMAIN_SELECT,
+        // Decides whether the traffic tile reads as a report or as an offer.
+        // Not a tab: the phone tab bar is full at five — see PortalNav.
+        ga4PropertyId: true,
+        searchConsoleSiteUrl: true,
+      },
     }),
     prisma.clientGbpReviews.findUnique({ where: { clientId: session.clientId } }).catch(() => null),
+    prisma.siteTrafficSnapshot
+      .findUnique({ where: { clientId: session.clientId }, select: { traffic: true } })
+      .catch(() => null),
   ])
 
   // The walkthrough's state. Two of its steps are derived — a lead exists,
@@ -99,6 +112,13 @@ export default async function PortalHomePage() {
 
   const delta = thisWeek - lastWeek
   const siteUrl = client ? siteLinkFor(client) : null
+  const trafficConnected = !!(client?.ga4PropertyId || client?.searchConsoleSiteUrl)
+  // The stored snapshot only — never a live Google call. This is the home
+  // screen; it must not wait on two external APIs to draw a tile.
+  const visitors =
+    trafficConnected && trafficSnapshot?.traffic
+      ? ((trafficSnapshot.traffic as { activeUsers?: number }).activeUsers ?? null)
+      : null
 
   return (
     <div className="space-y-5">
@@ -171,6 +191,23 @@ export default async function PortalHomePage() {
             value={`$${(monthSales._sum.saleValue || 0).toLocaleString()}`}
             sub={`${monthSales._count} job${monthSales._count === 1 ? '' : 's'} marked sold · see every month`}
             icon={TrendingUp}
+          />
+        </Link>
+        <Link href="/portal/traffic" className="block no-underline">
+          <Tile
+            label="How people find you"
+            // A number when there is one, and the same "—" the rating tile
+            // uses when there is not. "SEO" set in 30px bold read as a
+            // heading rather than a value.
+            value={visitors !== null ? visitors.toLocaleString() : '—'}
+            sub={
+              visitors !== null
+                ? 'found your website in 90 days'
+                : trafficConnected
+                  ? 'visitors, searches and your best pages'
+                  : 'see what search could bring you'
+            }
+            icon={Search}
           />
         </Link>
         {reviews ? (

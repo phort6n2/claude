@@ -356,6 +356,36 @@ export const MARKET_AREA_SQL: string[] = [
 ]
 
 /** Everything the running code assumes exists. */
+export const SITE_ANALYTICS_SQL: string[] = [
+  // Which GA4 property and which Search Console site belong to this shop.
+  // Both name the shop's OWN website, not the site this platform hosts —
+  // an SEO client is paying for the main site to rank, and reporting the
+  // landing page's numbers back to them would answer a question nobody asked.
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "ga4PropertyId" TEXT`,
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "searchConsoleSiteUrl" TEXT`,
+  // The last good answer from each API, stored whole.
+  //
+  // Unlike Clarity, neither of these has a window that closes — both let you
+  // ask for history at any time — so this is a CACHE, not an archive, and a
+  // reader bug costs a refresh rather than a lost day. It exists because a
+  // portal page that calls two Google APIs on every load is slow and burns
+  // quota fifteen shops at a time.
+  `CREATE TABLE IF NOT EXISTS "SiteTrafficSnapshot" (
+     "id"         TEXT NOT NULL,
+     "clientId"   TEXT NOT NULL,
+     "fetchedAt"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     "traffic"    JSONB,
+     "search"     JSONB,
+     "error"      TEXT,
+     CONSTRAINT "SiteTrafficSnapshot_pkey" PRIMARY KEY ("id")
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "SiteTrafficSnapshot_clientId_key" ON "SiteTrafficSnapshot"("clientId")`,
+  `DO $$ BEGIN
+    ALTER TABLE "SiteTrafficSnapshot" ADD CONSTRAINT "SiteTrafficSnapshot_clientId_fkey"
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+]
+
 export const BOOTSTRAP_SQL: string[] = [
   ...PATH_OVERRIDE_SQL,
   ...MARKET_AREA_SQL,
@@ -376,6 +406,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...RANK_WEBHOOK_LOG_SQL,
   ...CLIENT_ONBOARDING_SQL,
   ...ADS_FINDING_SQL,
+  ...SITE_ANALYTICS_SQL,
 ]
 
 /**

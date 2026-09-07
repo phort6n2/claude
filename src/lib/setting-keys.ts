@@ -18,6 +18,10 @@ export const SENSITIVE_KEYS = [
   'GOOGLE_ADS_CLIENT_ID',
   'GOOGLE_ADS_CLIENT_SECRET',
   'GOOGLE_ADS_REFRESH_TOKEN',
+  // Analytics + Search Console, for the portal's Traffic page. Its own token
+  // because the scopes differ from the Ads one; it reuses the same OAuth
+  // client id and secret, so those are not duplicated here.
+  'GOOGLE_ANALYTICS_REFRESH_TOKEN',
   'LOCALDOMINATOR_API_KEY',
 ] as const
 
@@ -46,6 +50,10 @@ export const ALL_KEYS: string[] = [
   'GOOGLE_ADS_CLIENT_ID',
   'GOOGLE_ADS_CLIENT_SECRET',
   'GOOGLE_ADS_REFRESH_TOKEN',
+  // Analytics + Search Console, for the portal's Traffic page. Its own token
+  // because the scopes differ from the Ads one; it reuses the same OAuth
+  // client id and secret, so those are not duplicated here.
+  'GOOGLE_ANALYTICS_REFRESH_TOKEN',
   'GOOGLE_ADS_LOGIN_CUSTOMER_ID',
   'LOCALDOMINATOR_API_KEY',
   'LOCALDOMINATOR_SHARE_HOST',

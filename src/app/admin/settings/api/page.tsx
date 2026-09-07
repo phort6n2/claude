@@ -223,6 +223,31 @@ const API_KEYS: ApiKeyConfig[] = [
       'Do not skip the Publish step. While the app sits in "Testing", Google issues a refresh token that EXPIRES IN 7 DAYS for this scope — it authenticates perfectly today and the conversion checks start failing a week later. Adding yourself as a Test user clears the 403 but keeps the 7-day clock. Also sign in as the manager-account owner: a personal account that merely has access produces a token that breaks when that access changes.',
   },
   {
+    key: 'GOOGLE_ANALYTICS_REFRESH_TOKEN',
+    label: 'Google Analytics + Search Console refresh token',
+    description:
+      'For the Traffic page in a client portal. Uses the SAME OAuth client as Google Ads above, but needs its own token: the scopes are different, and an Ads token cannot read Analytics.',
+    steps: [
+      {
+        text: 'Open the OAuth Playground and tick "Use your own OAuth credentials" with the same client ID and secret as above.',
+        href: 'https://developers.google.com/oauthplayground',
+        linkLabel: 'OAuth Playground',
+      },
+      {
+        text: 'In Step 1, paste BOTH scopes, separated by a space: https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/webmasters.readonly',
+      },
+      {
+        text: 'Sign in as the Google account that the clients\u2019 Analytics properties and Search Console sites are shared with — the one whose property list should appear in the picklists.',
+      },
+      { text: 'Step 2 → Exchange authorization code for tokens → copy the refresh token.' },
+      {
+        text: 'Then, per client: SEO tab → Their website\u2019s traffic → pick the property and the Search Console site.',
+      },
+    ],
+    warning:
+      'Both scopes are read-only, by design — nothing in the app writes to Analytics or Search Console. Whatever this account can see is what the picklists offer, so grant it Viewer on each client property rather than giving it more than it needs. The same Publish-before-playground rule as the Ads token applies: a client left in "Testing" issues a token that expires in seven days.',
+  },
+  {
     key: 'GOOGLE_ADS_LOGIN_CUSTOMER_ID',
     label: 'Manager (MCC) customer ID',
     description:
