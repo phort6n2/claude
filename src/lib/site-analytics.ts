@@ -91,6 +91,110 @@ export async function analyticsConnected(): Promise<boolean> {
   return (await analyticsCredentials()) !== null
 }
 
+/**
+ * Press-a-button diagnosis for the setup, because there are four ways to get
+ * this wrong and Google reports three of them as the same shrug.
+ *
+ * Setting it up means: a refresh token with the right scopes, three APIs
+ * enabled in the Cloud project, and the account actually granted on some
+ * properties. A failure in any one produces an empty picklist, and an empty
+ * picklist looks exactly like "there are no properties". So this names which
+ * of them it is, in the words of the step that fixes it.
+ */
+export async function testAnalyticsConnection(): Promise<{
+  success: boolean
+  message: string
+}> {
+  const creds = await analyticsCredentials()
+  if (!creds) {
+    return {
+      success: false,
+      message:
+        'No refresh token saved yet — or no Google Ads OAuth client to borrow the id and secret from.',
+    }
+  }
+
+  // 1. Does the token still exchange?
+  let token: string
+  try {
+    cachedToken = null
+    token = await accessToken()
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : 'failed'
+    if (/invalid_grant|expired|revoked/i.test(detail)) {
+      return {
+        success: false,
+        message: `Google rejected the refresh token (${detail}). The usual cause is a token minted while the OAuth app was still in "Testing" — those expire after 7 days. Publish the app, then generate a new one.`,
+      }
+    }
+    if (/invalid_client|unauthorized_client/i.test(detail)) {
+      return {
+        success: false,
+        message: `Google rejected the OAuth client (${detail}). The token has to be generated with the SAME client id and secret this app has saved.`,
+      }
+    }
+    return { success: false, message: detail }
+  }
+
+  // 2. Are the APIs enabled, and does the token carry the scopes? Both halves
+  //    are checked because the two are enabled separately and a working
+  //    Analytics half tells you nothing about Search Console.
+  const problems: string[] = []
+  let propertyCount = 0
+  let siteCount = 0
+
+  try {
+    const data = await google<{ accountSummaries?: unknown[] }>(
+      'https://analyticsadmin.googleapis.com/v1beta/accountSummaries?pageSize=1'
+    )
+    propertyCount = (data.accountSummaries || []).length
+  } catch (err) {
+    problems.push(`Analytics — ${explain(err, 'Google Analytics Admin API')}`)
+  }
+
+  try {
+    const data = await google<{ siteEntry?: unknown[] }>(
+      'https://www.googleapis.com/webmasters/v3/sites'
+    )
+    siteCount = (data.siteEntry || []).length
+  } catch (err) {
+    problems.push(`Search Console — ${explain(err, 'Google Search Console API')}`)
+  }
+
+  if (problems.length) return { success: false, message: problems.join(' · ') }
+
+  // 3. Connected, but granted nothing. Worth saying out loud: the picklists
+  //    will be empty and that is a sharing problem, not a setup one.
+  if (!propertyCount && !siteCount) {
+    return {
+      success: false,
+      message:
+        'Connected, but this Google account can see no Analytics properties and no Search Console sites. Share the clients’ properties with it (Viewer is enough).',
+    }
+  }
+
+  void token
+  return {
+    success: true,
+    message: `Connected. ${propertyCount ? 'Analytics is readable' : 'No Analytics properties shared'}; ${siteCount ? `${siteCount} Search Console ${siteCount === 1 ? 'site' : 'sites'}` : 'no Search Console sites shared'}.`,
+  }
+}
+
+/** Turn a Google error into the step that fixes it. */
+function explain(err: unknown, apiName: string): string {
+  const detail = err instanceof Error ? err.message : 'failed'
+  if (/has not been used in project|is disabled|SERVICE_DISABLED|not enabled/i.test(detail)) {
+    return `the ${apiName} is not enabled in the Cloud project. Enable it, then wait a minute and test again.`
+  }
+  if (/insufficient|scope|ACCESS_TOKEN_SCOPE/i.test(detail)) {
+    return `the token was granted without this scope. Generate it again with BOTH scopes pasted into the playground at once.`
+  }
+  if (/permission|forbidden|403/i.test(detail)) {
+    return `this Google account has no access. Share the property with it, or sign in as the account that owns it. (${detail})`
+  }
+  return detail
+}
+
 export class AnalyticsError extends Error {
   constructor(
     message: string,
