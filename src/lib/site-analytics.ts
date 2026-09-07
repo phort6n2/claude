@@ -127,10 +127,19 @@ export async function testAnalyticsConnection(): Promise<{
         message: `Google rejected the refresh token (${detail}). The usual cause is a token minted while the OAuth app was still in "Testing" — those expire after 7 days. Publish the app, then generate a new one.`,
       }
     }
-    if (/invalid_client|unauthorized_client/i.test(detail)) {
+    if (/invalid_client|unauthorized_client|^Unauthorized/i.test(detail)) {
+      /* The commonest failure, and the one that reads as something else.
+         "invalid_client: Unauthorized" means the client id and secret sent
+         with the refresh token are not the pair the token was minted for —
+         usually because "Use your own OAuth credentials" was left unticked in
+         the OAuth Playground, or a new client secret was added in Google and
+         this app still holds the old one. Naming the id's leading
+         number — the part that distinguishes one client from another, and the
+         half Google itself calls not-a-secret — makes that checkable against
+         the console without putting the secret on screen. */
       return {
         success: false,
-        message: `Google rejected the OAuth client (${detail}). The token has to be generated with the SAME client id and secret this app has saved.`,
+        message: `Google rejected the OAuth client (${detail}). The refresh token must be generated with the SAME client id and secret this app has saved — the one whose id starts "${creds.clientId.split('-')[0]}". In the OAuth Playground, use the gear icon → "Use your own OAuth credentials" and paste THAT client\u2019s id and secret before authorising.`,
       }
     }
     return { success: false, message: detail }
@@ -230,8 +239,16 @@ async function accessToken(): Promise<string> {
     error?: string
   }
   if (!res.ok || !body.access_token) {
+    /* BOTH FIELDS, CODE FIRST. Google's token endpoint answers a mismatched
+       OAuth client with { error: "invalid_client", error_description:
+       "Unauthorized" } — and the description alone is the single least
+       helpful word it could have chosen. Rendered on its own beside a
+       credential it reads as "your admin session expired", which is a
+       different problem entirely and cost an afternoon. The machine-readable
+       code is what the caller matches on. */
     throw new AnalyticsError(
-      body.error_description || body.error || `Token refresh failed (${res.status})`,
+      [body.error, body.error_description].filter(Boolean).join(': ') ||
+        `Token refresh failed (${res.status})`,
       res.status
     )
   }
