@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { getPortalSession } from '@/lib/portal-auth'
 import { prisma } from '@/lib/db'
 import { getSiteAnalytics, rangeFrom, siteLabelFrom } from '@/lib/site-analytics'
-import TrafficReport, { TrafficUpsell } from '@/components/portal/TrafficReport'
+import TrafficReport, { TrafficUpsell, TrafficConnecting } from '@/components/portal/TrafficReport'
 
 /**
  * "How people find you" — the shop's own website in Google Analytics and
@@ -36,12 +36,22 @@ export default async function PortalTrafficPage({
   const client = await prisma.client
     .findUnique({
       where: { id: session.clientId },
-      select: { ga4PropertyId: true, searchConsoleSiteUrl: true },
+      select: { ga4PropertyId: true, searchConsoleSiteUrl: true, seoClient: true },
     })
     .catch(() => null)
 
   const connected = !!(client?.ga4PropertyId || client?.searchConsoleSiteUrl)
-  if (!connected) return <TrafficUpsell businessName={session.businessName} />
+  /* THREE STATES, NOT TWO. Associating the property is a manual admin step
+     after the sale, so there is always a window in which a shop that is PAYING
+     for SEO has no property yet — and it used to be shown an advert for the
+     service it had just bought, with an "Ask about SEO" button. */
+  if (!connected) {
+    return client?.seoClient ? (
+      <TrafficConnecting businessName={session.businessName} />
+    ) : (
+      <TrafficUpsell businessName={session.businessName} />
+    )
+  }
 
   // Never allowed to fail the page: a Google outage degrades to whatever was
   // last stored, with a line saying it stopped updating.
@@ -49,6 +59,7 @@ export default async function PortalTrafficPage({
     traffic: null,
     search: null,
     fetchedAt: null,
+    oldestFetchedAt: null,
     error: 'Could not read the numbers',
   }))
 
@@ -58,7 +69,7 @@ export default async function PortalTrafficPage({
       range={range}
       traffic={analytics.traffic}
       search={analytics.search}
-      fetchedAt={analytics.fetchedAt}
+      fetchedAt={analytics.oldestFetchedAt ?? analytics.fetchedAt}
       error={analytics.error}
     />
   )

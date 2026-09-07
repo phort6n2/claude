@@ -62,6 +62,7 @@ export default async function Page({
         traffic: null,
         search: null,
         fetchedAt: null,
+        oldestFetchedAt: null,
         error: 'Could not read the numbers',
       }))
     : null
@@ -95,7 +96,7 @@ export default async function Page({
             range={range}
             traffic={analytics.traffic}
             search={analytics.search}
-            fetchedAt={analytics.fetchedAt}
+            fetchedAt={analytics.oldestFetchedAt ?? analytics.fetchedAt}
             error={analytics.error}
             showPortalLink={false}
           />

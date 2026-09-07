@@ -497,7 +497,18 @@ export interface TrafficSeries {
   bucket: 'day' | 'week'
   /** Series names, in the order every point's `values` array follows. */
   names: string[]
-  points: Array<{ date: string; endDate?: string; values: number[] }>
+  /** `partial` marks a bucket covering fewer days than the rest. */
+  points: Array<{ date: string; endDate?: string; values: number[]; partial?: boolean }>
+}
+
+/** The same figures for the immediately preceding window of equal length. */
+export interface TrafficPrevious {
+  activeUsers: number
+  sessions: number
+  organicUsers: number
+  aiUsers: number
+  /** False when the property has less history than the comparison window. */
+  comparable: boolean
 }
 
 export interface NamedCount {
@@ -509,11 +520,19 @@ export interface NamedCount {
 export interface TrafficReport {
   activeUsers: number
   sessions: number
+  /** Users whose session Google filed as Organic Search — the SEO number. */
+  organicUsers: number
+  /** Same window, one period earlier. Null when there is nothing to compare. */
+  previous: TrafficPrevious | null
+  /** Days the window actually covered, for the "N days" line. */
+  windowDays: number
   /** Total per bucket, for anything that wants one line. */
   daily: DayPoint[]
   /** Per channel per bucket, for the chart and its tooltip. */
   series: TrafficSeries
   channels: NamedCount[]
+  /** Who actually sent them, by name — yelp.com, facebook.com, google. */
+  topSources: NamedCount[]
   aiSources: NamedCount[]
   aiUsers: number
   aiSessions: number
@@ -555,6 +574,51 @@ function aiLabelFor(source: string): string | null {
     if (host === match || host.endsWith(`.${match}`)) return label
   }
   return null
+}
+
+/**
+ * GA4's own words for "nobody told us".
+ *
+ * `(direct)` is what it stores when a visit carried no referrer at all, and
+ * `(not set)` when it could not work one out. Printed raw in a list headed
+ * "who sent people to your site" they read as faults in our product.
+ */
+function sourceLabel(source: string): string {
+  const raw = (source || '').trim().toLowerCase()
+  if (!raw || raw === '(direct)' || raw === '(none)') return 'Typed in, or a saved link'
+  if (raw === '(not set)') return "Couldn't be identified"
+  return raw
+}
+
+/**
+ * Google's channel vocabulary, in a shop owner's words.
+ *
+ * `sessionDefaultChannelGroup` is written for analysts: "Organic Search",
+ * "Cross-network", "Unassigned". An auto glass owner does not know what any
+ * of those mean, "Unassigned" reads as a fault in our product, and "Direct" —
+ * often the biggest bar — is the one that most needs explaining, because it
+ * is where the AI referrals the floor caveat mentions actually land.
+ *
+ * The LABEL only. Every number is untouched, and anything unmapped falls
+ * through as Google wrote it.
+ */
+const CHANNEL_LABELS: Record<string, string> = {
+  'Organic Search': 'Google & other search',
+  'Paid Search': 'Paid ads',
+  'Direct': 'Typed in, or a saved link',
+  'Referral': 'Links on other sites',
+  'Organic Social': 'Social posts',
+  'Paid Social': 'Paid social ads',
+  'Organic Video': 'Video',
+  'Email': 'Email',
+  'Display': 'Display ads',
+  'Cross-network': 'Google ads across sites',
+  'Unassigned': "Couldn't be identified",
+  'AI Search': 'AI assistants',
+}
+
+export function channelLabel(name: string): string {
+  return CHANNEL_LABELS[name] ?? name
 }
 
 function shareOf(value: number, total: number): number {
@@ -610,13 +674,85 @@ function bucketPoints(
   names: string[]
 ): TrafficSeries {
   if (points.length <= 100) return { bucket: 'day', names, points }
-  const weeks: Array<{ date: string; endDate?: string; values: number[] }> = []
-  for (let i = 0; i < points.length; i += 7) {
-    const chunk = points.slice(i, i + 7)
-    const values = names.map((_, n) => chunk.reduce((sum, p) => sum + (p.values[n] || 0), 0))
-    weeks.push({ date: chunk[0].date, endDate: chunk[chunk.length - 1].date, values })
+  /* BUCKETED FROM THE END, not the start.
+     Chunking forward leaves the remainder at the RIGHT-HAND EDGE, so a
+     365-day range ends in a bucket holding a single day drawn at full-week
+     scale — a near-vertical drop to nothing that reads as "our traffic just
+     collapsed". Nobody reads a date range off a cliff. Running backwards puts
+     the short bucket at the start, where it is the oldest data rather than
+     the newest, and it is flagged so the chart can mark it. */
+  const weeks: TrafficSeries['points'] = []
+  for (let end = points.length; end > 0; end -= 7) {
+    const chunk = points.slice(Math.max(0, end - 7), end)
+    weeks.unshift({
+      date: chunk[0].date,
+      endDate: chunk[chunk.length - 1].date,
+      values: names.map((_, n) => chunk.reduce((sum, p) => sum + (p.values[n] || 0), 0)),
+      ...(chunk.length < 7 ? { partial: true } : {}),
+    })
   }
   return { bucket: 'week', names, points: weeks }
+}
+
+/** Every ISO date from start to end inclusive. */
+function dateSpan(startISO: string, endISO: string): string[] {
+  const out: string[] = []
+  const cursor = new Date(`${startISO}T12:00:00Z`)
+  const last = new Date(`${endISO}T12:00:00Z`)
+  while (cursor <= last) {
+    out.push(cursor.toISOString().slice(0, 10))
+    cursor.setUTCDate(cursor.getUTCDate() + 1)
+  }
+  return out
+}
+
+/**
+ * Fill in the days the API did not return.
+ *
+ * NEITHER API SENDS A ROW FOR A DAY WITH NO TRAFFIC. Plotting only the rows
+ * that came back spaces them evenly, so a fortnight's silence renders the
+ * same width as a day's, and week buckets built by counting rows drift out of
+ * phase with the calendar — two adjacent "weeks" spanning nine days and
+ * twelve, drawn identically. A zero day is data.
+ */
+function densify(
+  rows: Map<string, number[]>,
+  dates: string[],
+  width: number
+): Array<{ date: string; values: number[] }> {
+  return dates.map((date) => ({ date, values: rows.get(date) ?? new Array(width).fill(0) }))
+}
+
+/**
+ * A GA4 dimension filter matching the same hosts `aiLabelFor` matches.
+ *
+ * BUILT FROM THE SAME RULE AS THE CLASSIFIER, deliberately. These were an
+ * exact-match `inListFilter` over ten apex hosts while the totals used a
+ * suffix match — so `chat.openai.com` and `www.perplexity.ai` counted in the
+ * tile and vanished from the chart and the table underneath it. "Sent by AI:
+ * 41" above a flat-zero chart reads as a broken page, and it was.
+ */
+const AI_SOURCE_FILTER = {
+  orGroup: {
+    expressions: AI_SOURCES.flatMap((s) => [
+      { filter: { fieldName: 'sessionSource', stringFilter: { matchType: 'EXACT', value: s.match } } },
+      {
+        filter: {
+          fieldName: 'sessionSource',
+          stringFilter: { matchType: 'ENDS_WITH', value: `.${s.match}` },
+        },
+      },
+    ]),
+  },
+}
+
+/** GA4 windows: N COMPLETE days, ending yesterday. */
+function ga4Window(days: number) {
+  // `endDate: 'today'` put a partial day on the end of every range — always
+  // low, always the last point on the chart, and on the All traffic tab with
+  // no lag disclosure to explain it. "Last 1 day" meant "however much of today
+  // has happened", served for up to six hours from the cache.
+  return { startDate: `${days}daysAgo`, endDate: 'yesterday' }
 }
 
 export async function fetchTraffic(
@@ -624,99 +760,133 @@ export async function fetchTraffic(
   range: RangeKey = DEFAULT_RANGE
 ): Promise<TrafficReport> {
   const days = rangeDays(range)
-  // `1daysAgo` to today is two days of data, which is not what "Last 1 day"
-  // offers. The window is exclusive of today's partial day for the short
-  // ranges and inclusive after that, matching how the label reads.
-  const dateRanges = [{ startDate: `${Math.max(days - 1, 0)}daysAgo`, endDate: 'today' }]
+  /* TWO WINDOWS IN ONE REQUEST. GA4 accepts up to four dateRanges and returns
+     a `dateRange` dimension naming which one each row belongs to, so the
+     comparison costs no extra call. The previous window is the equal-length
+     one immediately before, which is the only comparison a shop owner can
+     check against their own memory. */
+  const current = ga4Window(days)
+  const previous = { startDate: `${days * 2}daysAgo`, endDate: `${days + 1}daysAgo` }
+  const dateRanges = [
+    { ...current, name: 'current' },
+    { ...previous, name: 'previous' },
+  ]
+  const oneRange = [current]
 
-  const [byDate, byDateChannel, byAiDate, bySource, byAiSourceDate, byPage, byAiPage] =
+  const [totals, byDate, byDateChannel, byAiDate, bySource, byAiSourceDate, byPage, byAiPage] =
     await Promise.all([
-    runReport(propertyId, {
-      dateRanges,
-      dimensions: [{ name: 'date' }],
-      metrics: [{ name: 'activeUsers' }, { name: 'sessions' }],
-      orderBys: [{ dimension: { dimensionName: 'date' } }],
-      limit: 2000,
-    }),
-    // The chart. One row per day per channel, which is what a tooltip listing
-    // every channel for one day needs and what a single total cannot give.
-    runReport(propertyId, {
-      dateRanges,
-      dimensions: [{ name: 'date' }, { name: 'sessionDefaultChannelGroup' }],
-      metrics: [{ name: 'activeUsers' }],
-      limit: 20000,
-    }),
-    // The same again, restricted to AI referrers — so "AI Search" can be its
-    // own line AND be subtracted from the channel GA4 filed it under, per
-    // day, instead of being double counted or guessed at.
-    runReport(propertyId, {
-      dateRanges,
-      dimensions: [{ name: 'date' }, { name: 'sessionDefaultChannelGroup' }],
-      metrics: [{ name: 'activeUsers' }],
-      dimensionFilter: {
-        filter: { fieldName: 'sessionSource', inListFilter: { values: AI_HOSTS } },
-      },
-      limit: 20000,
-    }),
-    runReport(propertyId, {
-      dateRanges,
-      dimensions: [{ name: 'sessionDefaultChannelGroup' }, { name: 'sessionSource' }],
-      metrics: [{ name: 'activeUsers' }, { name: 'sessions' }],
-      limit: 5000,
-    }),
-    // Which assistant, day by day. The totals alone answer "is anyone coming
-    // from AI"; a shop watching that number grow wants to know when it
-    // started and which one moved.
-    runReport(propertyId, {
-      dateRanges,
-      dimensions: [{ name: 'date' }, { name: 'sessionSource' }],
-      metrics: [{ name: 'activeUsers' }],
-      dimensionFilter: {
-        filter: { fieldName: 'sessionSource', inListFilter: { values: AI_HOSTS } },
-      },
-      limit: 20000,
-    }),
-    runReport(propertyId, {
-      dateRanges,
-      dimensions: [{ name: 'pagePath' }, { name: 'sessionDefaultChannelGroup' }],
-      metrics: [{ name: 'activeUsers' }],
-      orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
-      limit: 300,
-    }),
-    // The same question for AI only. It cannot be sliced out of the table
-    // above — that one has no source dimension, so an AI visit is
-    // indistinguishable from any other Referral in it.
-    runReport(propertyId, {
-      dateRanges,
-      dimensions: [{ name: 'pagePath' }, { name: 'sessionSource' }],
-      metrics: [{ name: 'activeUsers' }],
-      dimensionFilter: {
-        filter: { fieldName: 'sessionSource', inListFilter: { values: AI_HOSTS } },
-      },
-      orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
-      limit: 300,
-    }),
-  ])
+      /* THE HEADLINE, FROM A REPORT WITH NO BREAKDOWN.
+         activeUsers is de-duplicated WITHIN each row, so summing 90 daily
+         rows counts a returning visitor once per day they came back — a shop
+         with 200 real people read as 500. It is person-days, and it was
+         printed under "People on your site" on a page whose subtitle promises
+         nothing is estimated. Only a report with no dimensions gives unique
+         users for the period; sessions are additive either way. */
+      runReport(propertyId, {
+        dateRanges,
+        metrics: [{ name: 'activeUsers' }, { name: 'sessions' }],
+      }),
+      runReport(propertyId, {
+        dateRanges: oneRange,
+        dimensions: [{ name: 'date' }],
+        metrics: [{ name: 'activeUsers' }, { name: 'sessions' }],
+        orderBys: [{ dimension: { dimensionName: 'date' } }],
+        limit: 2000,
+      }),
+      // The chart, on SESSIONS. activeUsers cannot be partitioned: subtracting
+      // a de-duplicated metric from another is not arithmetic, which is why
+      // the AI subtraction below needed a clamp at zero to stay positive.
+      // Sessions are session-scoped and split cleanly under a session filter.
+      runReport(propertyId, {
+        dateRanges: oneRange,
+        dimensions: [{ name: 'date' }, { name: 'sessionDefaultChannelGroup' }],
+        metrics: [{ name: 'sessions' }],
+        orderBys: [{ dimension: { dimensionName: 'date' } }],
+        limit: 50000,
+      }),
+      runReport(propertyId, {
+        dateRanges: oneRange,
+        dimensions: [{ name: 'date' }, { name: 'sessionDefaultChannelGroup' }],
+        metrics: [{ name: 'sessions' }],
+        dimensionFilter: AI_SOURCE_FILTER,
+        orderBys: [{ dimension: { dimensionName: 'date' } }],
+        limit: 50000,
+      }),
+      // Totals by channel and source, both windows, for the breakdown and the
+      // organic/AI comparison figures.
+      runReport(propertyId, {
+        dateRanges,
+        dimensions: [{ name: 'sessionDefaultChannelGroup' }, { name: 'sessionSource' }],
+        metrics: [{ name: 'activeUsers' }, { name: 'sessions' }],
+        limit: 20000,
+      }),
+      runReport(propertyId, {
+        dateRanges: oneRange,
+        dimensions: [{ name: 'date' }, { name: 'sessionSource' }],
+        metrics: [{ name: 'activeUsers' }],
+        dimensionFilter: AI_SOURCE_FILTER,
+        orderBys: [{ dimension: { dimensionName: 'date' } }],
+        limit: 50000,
+      }),
+      // Which page BROUGHT THEM IN, not every page anyone scrolled to. The
+      // panel has always been titled "which pages bring the most people in";
+      // pagePath answered a different question.
+      runReport(propertyId, {
+        dateRanges: oneRange,
+        dimensions: [{ name: 'landingPagePlusQueryString' }, { name: 'sessionDefaultChannelGroup' }],
+        metrics: [{ name: 'sessions' }],
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: 300,
+      }),
+      runReport(propertyId, {
+        dateRanges: oneRange,
+        dimensions: [{ name: 'landingPagePlusQueryString' }, { name: 'sessionSource' }],
+        metrics: [{ name: 'sessions' }],
+        dimensionFilter: AI_SOURCE_FILTER,
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: 300,
+      }),
+    ])
+
+  // --- headline totals, per window ----------------------------------------
+  // With two dateRanges GA4 appends a `dateRange` dimension value naming the
+  // window, so the rows have to be told apart rather than summed.
+  const totalFor = (name: string) => {
+    const row = (totals.rows || []).find(
+      (r) => (r.dimensionValues?.[0]?.value ?? 'date_range_0') === name
+    )
+    return {
+      activeUsers: Number(row?.metricValues?.[0]?.value || 0),
+      sessions: Number(row?.metricValues?.[1]?.value || 0),
+    }
+  }
+  const now = totalFor('current')
+  const before = totalFor('previous')
 
   const daily: DayPoint[] = (byDate.rows || []).map((row) => ({
     date: isoDate(row.dimensionValues?.[0]?.value || ''),
     value: Number(row.metricValues?.[0]?.value || 0),
   }))
-  const activeUsers = daily.reduce((sum, d) => sum + d.value, 0)
-  const sessions = (byDate.rows || []).reduce(
-    (sum, row) => sum + Number(row.metricValues?.[1]?.value || 0),
-    0
-  )
 
-  // --- totals, and the AI split -------------------------------------------
+  // --- breakdown, and the same figures one window earlier ------------------
   const channels = new Map<string, number>()
+  const sources = new Map<string, number>()
   const ai = new Map<string, number>()
   let aiSessions = 0
+  let organicUsers = 0
+  let prevOrganicUsers = 0
+  let prevAiUsers = 0
   for (const row of bySource.rows || []) {
+    const window = row.dimensionValues?.[2]?.value ?? 'current'
     const channel = row.dimensionValues?.[0]?.value || 'Unassigned'
     const source = row.dimensionValues?.[1]?.value || ''
     const users = Number(row.metricValues?.[0]?.value || 0)
     const aiLabel = aiLabelFor(source)
+    if (window === 'previous') {
+      if (aiLabel) prevAiUsers += users
+      else if (channel === 'Organic Search') prevOrganicUsers += users
+      continue
+    }
     // An AI referral is a channel of its own here, and it is REMOVED from the
     // channel it would otherwise sit in — GA4 files chatgpt.com under Referral,
     // so counting it in both makes the shares add up to more than everything.
@@ -726,13 +896,21 @@ export async function fetchTraffic(
       aiSessions += Number(row.metricValues?.[1]?.value || 0)
     } else {
       channels.set(channel, (channels.get(channel) || 0) + users)
+      if (channel === 'Organic Search') organicUsers += users
     }
+    /* WHO SENT THEM, BY NAME. "Referral: 415" is a bucket; "yelp.com 120,
+       facebook.com 88" is a list of places the shop can recognise and act on
+       — the same reason the lead alert prints the tagged link verbatim rather
+       than title-casing it. Free: this row was already fetched for the
+       channel breakdown. */
+    sources.set(sourceLabel(source), (sources.get(sourceLabel(source)) || 0) + users)
   }
   const channelTotal = [...channels.values()].reduce((a, b) => a + b, 0)
   const aiUsers = [...ai.values()].reduce((a, b) => a + b, 0)
 
   // --- the chart's grid ----------------------------------------------------
   const AI_NAME = 'AI Search'
+  const OTHER_NAME = 'Everything else'
   const perDate = new Map<string, Map<string, number>>()
   const cell = (date: string) => {
     let row = perDate.get(date)
@@ -742,30 +920,40 @@ export async function fetchTraffic(
   for (const row of byDateChannel.rows || []) {
     const date = isoDate(row.dimensionValues?.[0]?.value || '')
     const channel = row.dimensionValues?.[1]?.value || 'Unassigned'
-    const users = Number(row.metricValues?.[0]?.value || 0)
-    cell(date).set(channel, (cell(date).get(channel) || 0) + users)
+    cell(date).set(channel, (cell(date).get(channel) || 0) + Number(row.metricValues?.[0]?.value || 0))
   }
   for (const row of byAiDate.rows || []) {
     const date = isoDate(row.dimensionValues?.[0]?.value || '')
     const channel = row.dimensionValues?.[1]?.value || 'Unassigned'
-    const users = Number(row.metricValues?.[0]?.value || 0)
+    const visits = Number(row.metricValues?.[0]?.value || 0)
     const day = cell(date)
     // Moved, not added: out of whatever GA4 filed it under, into AI Search.
-    day.set(channel, Math.max(0, (day.get(channel) || 0) - users))
-    day.set(AI_NAME, (day.get(AI_NAME) || 0) + users)
+    day.set(channel, Math.max(0, (day.get(channel) || 0) - visits))
+    day.set(AI_NAME, (day.get(AI_NAME) || 0) + visits)
   }
 
-  // Series order follows the range's own totals, so the biggest channel is
-  // first in the legend and in every tooltip.
-  const names = [...channels.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([name]) => name)
-    .slice(0, 6)
-  const dates = [...perDate.keys()].sort()
-  const points = dates.map((date) => ({
-    date,
-    values: names.map((name) => perDate.get(date)?.get(name) || 0),
-  }))
+  // Six named series plus a real "Everything else", so the tooltip's total is
+  // the day's total rather than the total of whatever happens to be drawn.
+  const ranked = [...channels.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name)
+  const named = ranked.slice(0, 6)
+  const rest = new Set(ranked.slice(6))
+  const hasRest = rest.size > 0
+  const names = hasRest ? [...named, OTHER_NAME] : named
+
+  const span = dateSpan(
+    daily[0]?.date ?? [...perDate.keys()].sort()[0] ?? '',
+    daily[daily.length - 1]?.date ?? [...perDate.keys()].sort().pop() ?? ''
+  )
+  const grid = new Map<string, number[]>()
+  for (const [date, row] of perDate) {
+    const values = names.map((name) =>
+      name === OTHER_NAME
+        ? [...row.entries()].reduce((sum, [k, v]) => (rest.has(k) ? sum + v : sum), 0)
+        : row.get(name) || 0
+    )
+    grid.set(date, values)
+  }
+  const points = densify(grid, span.length ? span : [...perDate.keys()].sort(), names.length)
 
   // --- the AI tab's grid ---------------------------------------------------
   // Keyed by LABEL, not by host: openai.com and chatgpt.com are one assistant
@@ -784,13 +972,13 @@ export async function fetchTraffic(
     .sort((a, b) => b[1] - a[1])
     .map(([name]) => name)
     .slice(0, 6)
-  // The SAME date axis as the channel chart, not just the days AI appeared —
-  // a series drawn only on its non-zero days is a chart with no gaps in it,
-  // which reads as constant traffic.
-  const aiPoints = dates.map((date) => ({
-    date,
-    values: aiNames.map((name) => aiPerDate.get(date)?.get(name) || 0),
-  }))
+  const aiGrid = new Map<string, number[]>()
+  for (const [date, row] of aiPerDate) {
+    aiGrid.set(date, aiNames.map((name) => row.get(name) || 0))
+  }
+  // The SAME date axis as the channel chart — a series drawn only on the days
+  // it appeared has no gaps in it, which reads as constant traffic.
+  const aiPoints = densify(aiGrid, span.length ? span : [...perDate.keys()].sort(), aiNames.length)
 
   // --- pages ---------------------------------------------------------------
   const pageUsers = new Map<string, number>()
@@ -803,14 +991,18 @@ export async function fetchTraffic(
     const best = pageTopSource.get(page)
     if (!best || users > best.users) pageTopSource.set(page, { name: channel, users })
   }
-  const pageTotal = [...pageUsers.values()].reduce((a, b) => a + b, 0)
+  /* SHARE OF THE PERIOD'S VISITS, not of the listed rows. The denominator
+     used to be the sum of the top 300 page rows, so it was neither visitors
+     nor page views nor anything a reader could name, and the listed shares
+     could not add to 100 by construction. Landing-page sessions do sum to the
+     period's sessions, so this share means what the column header says. */
   const topPages = [...pageUsers.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 20)
     .map(([page, users]) => ({
       page,
       users,
-      share: shareOf(users, pageTotal),
+      share: shareOf(users, now.sessions),
       topSource: pageTopSource.get(page)?.name || '—',
     }))
 
@@ -836,12 +1028,30 @@ export async function fetchTraffic(
       topModel: aiPageTop.get(page)?.name || '—',
     }))
 
+  /* NO COMPARISON AGAINST A WINDOW THE SITE DID NOT EXIST FOR. A property
+     with three months of history compared against the three months before it
+     would report a triumphant increase over zero. Nothing at all in the
+     previous window is treated as "no comparison" rather than "up 100%". */
+  const comparable = before.activeUsers > 0 || before.sessions > 0
+
   return {
-    activeUsers,
-    sessions,
+    activeUsers: now.activeUsers,
+    sessions: now.sessions,
+    organicUsers,
+    windowDays: days,
+    previous: comparable
+      ? {
+          activeUsers: before.activeUsers,
+          sessions: before.sessions,
+          organicUsers: prevOrganicUsers,
+          aiUsers: prevAiUsers,
+          comparable: true,
+        }
+      : null,
     daily,
     series: bucketPoints(points, names),
     channels: rank(channels, channelTotal, 8),
+    topSources: rank(sources, [...sources.values()].reduce((a, b) => a + b, 0), 10),
     aiSources: rank(ai, aiUsers, 8),
     aiUsers,
     aiSessions,
@@ -851,11 +1061,21 @@ export async function fetchTraffic(
   }
 }
 
+export interface SearchPrevious {
+  clicks: number
+  impressions: number
+  averagePosition: number
+}
+
 export interface SearchReport {
   /** Days actually queried — below the range asked for when Search Console's
    *  16-month limit clamped it. */
   days?: number
   clamped?: boolean
+  /** Days that came back with data. Google runs 2-3 days behind, so a 7-day
+   *  window routinely covers 4 — and the tiles said "Last 7 days" anyway. */
+  coveredDays?: number
+  previous?: SearchPrevious | null
   clicks: number
   impressions: number
   /** Weighted by impressions, which is how Search Console itself computes it. */
@@ -912,17 +1132,40 @@ export async function fetchSearchPerformance(
   const days = Math.min(rangeDays(range), GSC_MAX_DAYS)
   const end = new Date()
   const start = new Date(end.getTime() - Math.max(days - 1, 0) * 86400000)
-  // Search Console runs two to three days behind. The range still ends today
-  // — asking for less would just hide the lag — but the page says so, because
-  // "the last two days look dead" is otherwise a support call every week.
   const window = { startDate: ymd(start), endDate: ymd(end) }
+  // The equal-length window immediately before this one.
+  const prevEnd = new Date(start.getTime() - 86400000)
+  const prevStart = new Date(prevEnd.getTime() - Math.max(days - 1, 0) * 86400000)
+  const prevWindow = { startDate: ymd(prevStart), endDate: ymd(prevEnd) }
 
-  const [byDate, byCountry, byPage, byQuery] = await Promise.all([
+  const [summary, prevSummary, byDate, byCountry, byPage, byQuery] = await Promise.all([
+    /* THE TOTALS AS SEARCH CONSOLE ITSELF COMPUTES THEM. Deriving the average
+       position from the daily rows meant weighting values that had already
+       been rounded to one decimal for display, so the tile could disagree
+       with Google's own by a tenth — on a page whose whole claim is that the
+       numbers are Google's. A dimensionless query answers it exactly. */
+    searchQuery(siteUrl, { ...window }),
+    searchQuery(siteUrl, { ...prevWindow }),
     searchQuery(siteUrl, { ...window, dimensions: ['date'], rowLimit: 1000 }),
     searchQuery(siteUrl, { ...window, dimensions: ['country'], rowLimit: 25 }),
     searchQuery(siteUrl, { ...window, dimensions: ['page'], rowLimit: 25 }),
     searchQuery(siteUrl, { ...window, dimensions: ['query'], rowLimit: 25 }),
   ])
+
+  const total = summary.rows?.[0]
+  const clicks = total?.clicks ?? 0
+  const impressions = total?.impressions ?? 0
+  const averagePosition = Math.round((total?.position ?? 0) * 10) / 10
+
+  const prevTotal = prevSummary.rows?.[0]
+  const previous =
+    prevTotal && (prevTotal.clicks || prevTotal.impressions)
+      ? {
+          clicks: prevTotal.clicks ?? 0,
+          impressions: prevTotal.impressions ?? 0,
+          averagePosition: Math.round((prevTotal.position ?? 0) * 10) / 10,
+        }
+      : null
 
   const daily = (byDate.rows || []).map((row) => ({
     date: row.keys?.[0] || '',
@@ -930,14 +1173,6 @@ export async function fetchSearchPerformance(
     impressions: row.impressions || 0,
     position: Math.round((row.position || 0) * 10) / 10,
   }))
-  const clicks = daily.reduce((sum, d) => sum + d.clicks, 0)
-  const impressions = daily.reduce((sum, d) => sum + d.impressions, 0)
-  // IMPRESSION-WEIGHTED, not the mean of the daily averages. A quiet Sunday
-  // where the site showed twice at position 2 would otherwise pull the
-  // quarter's average down as hard as a weekday with four thousand
-  // impressions.
-  const weighted = daily.reduce((sum, d) => sum + d.position * d.impressions, 0)
-  const averagePosition = impressions > 0 ? Math.round((weighted / impressions) * 10) / 10 : 0
 
   const countryClicks = new Map<string, number>()
   for (const row of byCountry.rows || []) {
@@ -948,14 +1183,20 @@ export async function fetchSearchPerformance(
      246,713 — so on one axis the clicks line is flat along the bottom. Both
      are in the series because the tooltip should read out both; the tab hides
      impressions by default so the line that matters is the one drawn. */
-  const searchSeries = bucketPoints(
-    daily.map((d) => ({ date: d.date, values: [d.clicks, d.impressions] })),
-    ['Clicks', 'Impressions']
-  )
+  const dense = daily.length
+    ? densify(
+        new Map(daily.map((d) => [d.date, [d.clicks, d.impressions]])),
+        dateSpan(daily[0].date, daily[daily.length - 1].date),
+        2
+      )
+    : []
+  const searchSeries = bucketPoints(dense, ['Clicks', 'Impressions'])
 
   return {
     days,
     clamped: days < rangeDays(range),
+    coveredDays: daily.length,
+    previous,
     clicks,
     impressions,
     averagePosition,
@@ -1001,6 +1242,8 @@ const STALE_AFTER_MS = 6 * 60 * 60 * 1000
 const SNAPSHOT_VERSION = 2
 
 export interface SiteAnalytics {
+  /** The older of the two halves — what the staleness banner should report. */
+  oldestFetchedAt?: string | null
   traffic: TrafficReport | null
   search: SearchReport | null
   fetchedAt: string | null
@@ -1067,11 +1310,24 @@ export async function refreshSiteAnalytics(
     // half forward under a current-shape stamp is the original bug wearing a
     // version number.
     const keep = (existing?.version ?? 1) === SNAPSHOT_VERSION
+    /* A HALF WITH NO PROPERTY BEHIND IT IS DROPPED, not carried.
+       When ga4PropertyId is cleared, fetchTraffic is never called, `traffic`
+       stays null, and the old merge kept the previous JSON forever — a
+       disconnected property reporting indefinitely. Carrying it forward is
+       only ever right while the association still exists. */
+    const carryTraffic = keep && !!client.ga4PropertyId
+    const carrySearch = keep && !!client.searchConsoleSiteUrl
     const data = {
       fetchedAt,
       version: SNAPSHOT_VERSION,
-      traffic: (traffic ?? (keep ? existing?.traffic : null) ?? null) as object | null,
-      search: (search ?? (keep ? existing?.search : null) ?? null) as object | null,
+      traffic: (traffic ?? (carryTraffic ? existing?.traffic : null) ?? null) as object | null,
+      search: (search ?? (carrySearch ? existing?.search : null) ?? null) as object | null,
+      /* ONE TIMESTAMP PER HALF. A single fetchedAt was rewritten on every run
+         even when only one side succeeded, so a banner reading "these numbers
+         stopped updating, last read today" sat above five-day-old traffic —
+         reporting the age of the half that still worked. */
+      trafficFetchedAt: traffic ? fetchedAt : carryTraffic ? (existing?.trafficFetchedAt ?? null) : null,
+      searchFetchedAt: search ? fetchedAt : carrySearch ? (existing?.searchFetchedAt ?? null) : null,
       error,
     }
     await prisma.siteTrafficSnapshot.upsert({
@@ -1087,6 +1343,7 @@ export async function refreshSiteAnalytics(
     traffic,
     search,
     fetchedAt: fetchedAt.toISOString(),
+    oldestFetchedAt: fetchedAt.toISOString(),
     error,
   }
 }
@@ -1098,6 +1355,19 @@ export async function refreshSiteAnalytics(
  * token, a property removed from the account — all of them degrade to
  * whatever was last stored plus an error line.
  */
+/** The age of the STALEST half, which is what a "stopped updating" line means. */
+function oldestOf(snapshot: {
+  fetchedAt: Date
+  trafficFetchedAt: Date | null
+  searchFetchedAt: Date | null
+}): string {
+  const stamps = [snapshot.trafficFetchedAt, snapshot.searchFetchedAt].filter(
+    (d): d is Date => !!d
+  )
+  if (!stamps.length) return new Date(snapshot.fetchedAt).toISOString()
+  return new Date(Math.min(...stamps.map((d) => d.getTime()))).toISOString()
+}
+
 export async function getSiteAnalytics(
   clientId: string,
   range: RangeKey = DEFAULT_RANGE
@@ -1116,6 +1386,7 @@ export async function getSiteAnalytics(
       traffic: (snapshot.traffic as unknown as TrafficReport) ?? null,
       search: (snapshot.search as unknown as SearchReport) ?? null,
       fetchedAt: new Date(snapshot.fetchedAt).toISOString(),
+      oldestFetchedAt: oldestOf(snapshot),
       error: snapshot.error,
     }
   }
@@ -1133,6 +1404,7 @@ export async function getSiteAnalytics(
       traffic: (snapshot.traffic as unknown as TrafficReport) ?? null,
       search: (snapshot.search as unknown as SearchReport) ?? null,
       fetchedAt: new Date(snapshot.fetchedAt).toISOString(),
+      oldestFetchedAt: oldestOf(snapshot),
       error: refreshed.error || snapshot.error,
     }
   }

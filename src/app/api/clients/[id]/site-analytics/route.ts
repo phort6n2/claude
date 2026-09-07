@@ -57,6 +57,14 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
   try {
     await prisma.client.update({ where: { id }, data: patch })
+    /* EVERY RANGE, not just the one about to be refreshed.
+       Snapshots are keyed per range and served for six hours without
+       re-checking whose property produced them — so correcting a wrongly
+       picked property left the other five windows serving ANOTHER
+       BUSINESS'S traffic to this client. That is exactly what choosing from
+       a picklist instead of typing an id was meant to make impossible,
+       arriving through the cache instead. */
+    await prisma.siteTrafficSnapshot.deleteMany({ where: { clientId: id } })
   } catch {
     return NextResponse.json({ error: 'Could not save' }, { status: 500 })
   }
