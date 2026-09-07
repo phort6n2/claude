@@ -87,7 +87,7 @@ function Bars({ rows }: { rows: Array<{ name: string; value: number; share: numb
           <div className="mt-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
             <div
               className="h-full rounded-full"
-              style={{ width: `${(row.value / max) * 100}%`, backgroundColor: 'var(--brand)' }}
+              style={{ width: `${(row.value / max) * 100}%`, backgroundColor: 'var(--brand, #1d4ed8)' }}
             />
           </div>
         </li>
@@ -132,7 +132,7 @@ export function TrafficUpsell({ businessName }: { businessName: string }) {
 
       <section
         className="rounded-2xl p-6 text-white shadow-sm"
-        style={{ backgroundColor: 'var(--brand)' }}
+        style={{ backgroundColor: 'var(--brand, #1d4ed8)' }}
       >
         <p className="text-sm font-semibold uppercase tracking-wide opacity-80">Not switched on</p>
         <h2 className="mt-1 text-xl font-extrabold">Add SEO and this page fills in</h2>
@@ -147,7 +147,7 @@ export function TrafficUpsell({ businessName }: { businessName: string }) {
         <a
           href="mailto:hello@glassleads.app?subject=SEO%20for%20my%20shop"
           className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 font-bold no-underline"
-          style={{ color: 'var(--brand-ink)' }}
+          style={{ color: 'var(--brand-ink, #1e40af)' }}
         >
           Ask about SEO
           <ArrowRight className="h-4 w-4" />
@@ -196,12 +196,17 @@ export default function TrafficReport({
   search,
   fetchedAt,
   error,
+  /* The admin renders this same component on the SEO tab to check what a shop
+     was sent. The footer link back to the portal dashboard is meaningless
+     there — and would drop an operator into a client's portal. */
+  showPortalLink = true,
 }: {
   businessName: string
   traffic: Traffic | null
   search: SearchReport | null
   fetchedAt: string | null
   error: string | null
+  showPortalLink?: boolean
 }) {
   const nothing = !traffic && !search
   return (
@@ -254,7 +259,7 @@ export default function TrafficReport({
           </div>
 
           <Panel title="Visitors, day by day">
-            <Spark points={traffic.daily.map((d) => d.value)} color="var(--brand)" />
+            <Spark points={traffic.daily.map((d) => d.value)} color="var(--brand, #1d4ed8)" />
           </Panel>
 
           <div className="grid gap-4 lg:grid-cols-2">
@@ -328,7 +333,7 @@ export default function TrafficReport({
             // otherwise a support call every single week.
             sub="Google reports search data two to three days behind, so the last couple of days always look light."
           >
-            <Spark points={search.daily.map((d) => d.clicks)} color="var(--brand)" />
+            <Spark points={search.daily.map((d) => d.clicks)} color="var(--brand, #1d4ed8)" />
           </Panel>
 
           {search.topQueries.length > 0 && (
@@ -397,11 +402,13 @@ export default function TrafficReport({
         </>
       )}
 
-      <p className="text-sm text-gray-400">
-        <Link href="/portal" className="underline">
-          Back to your dashboard
-        </Link>
-      </p>
+      {showPortalLink && (
+        <p className="text-sm text-gray-400">
+          <Link href="/portal" className="underline">
+            Back to your dashboard
+          </Link>
+        </p>
+      )}
     </div>
   )
 }

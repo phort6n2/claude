@@ -193,12 +193,24 @@ export async function testAnalyticsConnection(): Promise<{
   let siteCount = 0
 
   try {
-    const data = await google<{ accountSummaries?: unknown[] }>(
-      'https://analyticsadmin.googleapis.com/v1beta/accountSummaries?pageSize=1'
-    )
-    propertyCount = (data.accountSummaries || []).length
+    const properties = await listGa4Properties()
+    propertyCount = properties.length
+    /* THE DATA API IS A SEPARATE SWITCH, and this is the gap that let a setup
+       test green while every report came back empty. Listing properties uses
+       the ADMIN API; the numbers come from the DATA API, enabled separately in
+       the same console. With one on and the other off the picklist fills, the
+       association saves, and the client's page says "still connecting"
+       forever. So the test asks the Data API a real question. */
+    if (properties[0]) {
+      await runReport(properties[0].propertyId, {
+        dateRanges: [{ startDate: '7daysAgo', endDate: 'today' }],
+        metrics: [{ name: 'activeUsers' }],
+        limit: 1,
+      })
+    }
   } catch (err) {
-    problems.push(`Analytics — ${explain(err, 'Google Analytics Admin API')}`)
+    const which = /analyticsdata/.test(String(err)) ? 'Google Analytics Data API' : 'Google Analytics Admin API'
+    problems.push(`Analytics — ${explain(err, which)}`)
   }
 
   try {
