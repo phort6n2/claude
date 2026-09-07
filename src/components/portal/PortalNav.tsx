@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Inbox, Globe, MapPin, Sparkles } from 'lucide-react'
+import { Home, Inbox, Globe, MapPin, Sparkles, Search } from 'lucide-react'
 
 /**
  * Portal navigation, named the way a shop owner talks. Bottom tab bar on a
@@ -32,6 +32,11 @@ const TABS: Tab[] = [
 
 const RANKINGS_TAB: Tab = { href: '/portal/rankings', label: 'Rankings', icon: MapPin }
 const ACTIVITY_TAB: Tab = { href: '/portal/activity', label: 'Activity', icon: Sparkles }
+/* Always offered, like Activity, because the page can never be empty: with a
+   property connected it is the report, and without one it is the case for
+   buying the service. "Traffic" rather than the page's own "How people find
+   you" — a tab label has one line of an eighth of a phone screen. */
+const TRAFFIC_TAB: Tab = { href: '/portal/traffic', label: 'Traffic', icon: Search }
 
 /**
  * The flag is false until there is something behind the tab. A tab that
@@ -42,17 +47,23 @@ function useTabs(showRankings: boolean, siteUrl?: string | null) {
   const pathname = usePathname()
   // Activity is always offered: it has a floor (the day the site went live),
   // so unlike Rankings it can never lead to an empty page.
-  // Results is deliberately NOT a tab. Six would already be tight on a 360px
-  // phone and seven with Rankings would wrap, which is the exact failure the
-  // grid-column comment below records. It is reached from the Booked tile on
+  // Results is deliberately NOT a tab: it is reached from the Booked tile on
   // the home screen, which is where someone asking "what have I made" already
   // is.
+  //
+  // Traffic IS one. It was a tile for the same reason, on the assumption that
+  // a sixth tab wraps on a phone — an assumption nobody had measured. It does
+  // not: at 360px six columns are 60px each and the longest label, "Rankings",
+  // renders 48px. What the tile-only version actually cost was the shop never
+  // finding the page, which is the whole point of a report. Measured before
+  // this went in; re-measure before adding a seventh.
   const tabs: Tab[] = [
     ...TABS,
     // Only once there is an address to open. A tab that goes nowhere is worse
     // than no tab — the same rule as Rankings.
     ...(siteUrl ? [{ href: siteUrl, label: 'My site', icon: Globe, external: true }] : []),
     ACTIVITY_TAB,
+    TRAFFIC_TAB,
     ...(showRankings ? [RANKINGS_TAB] : []),
   ]
   const isActive = (tab: Tab) =>
