@@ -223,6 +223,36 @@ const API_KEYS: ApiKeyConfig[] = [
       'Do not skip the Publish step. While the app sits in "Testing", Google issues a refresh token that EXPIRES IN 7 DAYS for this scope — it authenticates perfectly today and the conversion checks start failing a week later. Adding yourself as a Test user clears the 403 but keeps the 7-day clock. Also sign in as the manager-account owner: a personal account that merely has access produces a token that breaks when that access changes.',
   },
   {
+    key: 'GOOGLE_ANALYTICS_CLIENT_ID',
+    label: 'Analytics OAuth client ID (optional)',
+    description:
+      'Leave BLANK to reuse the Google Ads OAuth client above \u2014 that is the simplest setup and nothing else is needed. Fill both this and the secret below only if you would rather use a separate OAuth client for Analytics, or if you no longer know what the Ads one was.',
+    steps: [
+      {
+        text: 'Create credentials \u2192 OAuth client ID \u2192 Application type: Web application. Under Authorised redirect URIs add https://developers.google.com/oauthplayground before saving.',
+        href: 'https://console.cloud.google.com/auth/clients',
+        linkLabel: 'Clients',
+      },
+      {
+        text: 'Copy the client ID it shows you. Whatever pair is saved here is the pair the refresh token below must be generated with \u2014 Google rejects any other with "invalid_client: Unauthorized".',
+      },
+    ],
+    warning:
+      'Fill BOTH or NEITHER. With only one of the two saved, the app falls back to the Google Ads client for the missing half and sends a mismatched pair, which fails in exactly the way this field exists to avoid.',
+  },
+  {
+    key: 'GOOGLE_ANALYTICS_CLIENT_SECRET',
+    label: 'Analytics OAuth client secret (optional)',
+    description: 'Paired with the client ID above. Blank means reuse the Google Ads client.',
+    steps: [
+      {
+        text: 'Shown once when the client is created; use "Add secret" on the client if it was never copied.',
+        href: 'https://console.cloud.google.com/auth/clients',
+        linkLabel: 'Clients',
+      },
+    ],
+  },
+  {
     key: 'GOOGLE_ANALYTICS_REFRESH_TOKEN',
     label: 'Google Analytics + Search Console refresh token',
     description:
@@ -246,7 +276,7 @@ const API_KEYS: ApiKeyConfig[] = [
         linkLabel: 'Data access',
       },
       {
-        text: 'Open the OAuth Playground. Gear icon \u2192 tick "Use your own OAuth credentials" \u2192 paste the same client ID and secret as the Ads token.',
+        text: 'Open the OAuth Playground. Gear icon \u2192 tick "Use your own OAuth credentials" \u2192 paste the client ID and secret for whichever client this app holds: the two fields above if you filled them, otherwise the Google Ads pair. The tick RESETS every time the playground is loaded, and leaving it off is what produces "invalid_client: Unauthorized".',
         href: 'https://developers.google.com/oauthplayground',
         linkLabel: 'OAuth Playground',
       },
