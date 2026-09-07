@@ -21,6 +21,18 @@ import { telHref } from '@/lib/contact-links'
  * than an invented dollar amount — and harder to argue with.
  */
 
+/**
+ * Is this value a FIGURE or a PHRASE?
+ *
+ * Anchored at both ends on purpose. Testing the first character alone called
+ * "8am to 11am" a number and set it in 30px extrabold, wrapping it over two
+ * lines — the same fault as "Typed in, or a saved link", caught one step
+ * later. A figure is digits, separators, a leading currency symbol, a
+ * trailing percent, and nothing else. An em dash counts, so an empty tile
+ * keeps the row's rhythm rather than shrinking out of line.
+ */
+const NUMERIC = /^(—|\$?[\d,.]+%?)$/
+
 function Tile({
   label,
   value,
@@ -48,7 +60,17 @@ function Tile({
         <Icon className="h-4 w-4" />
         {label}
       </div>
-      <p className="mt-2 text-3xl font-extrabold text-gray-900 tabular-nums">{value}</p>
+      {/* Same rule as the traffic tiles: 30px extrabold is for a number.
+          "8am to 11am" and "Friday" are words and get a size words read at. */}
+      <p
+        className={
+          NUMERIC.test(value)
+            ? 'mt-2 text-3xl font-extrabold text-gray-900 tabular-nums'
+            : 'mt-2 text-xl font-bold text-gray-900 leading-snug'
+        }
+      >
+        {value}
+      </p>
       {sub && (
         <p className={`text-sm mt-0.5 ${tone === 'warn' ? 'text-amber-800' : 'text-gray-500'}`}>
           {sub}

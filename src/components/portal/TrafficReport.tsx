@@ -45,6 +45,18 @@ import RangePicker from '@/components/portal/RangePicker'
  * `lowerIsBetter` exists for average position, where a fall is a win and an
  * unthinking "−0.9" would read as a loss.
  */
+/**
+ * Is this value a FIGURE or a PHRASE?
+ *
+ * Anchored at both ends on purpose. Testing the first character alone called
+ * "8am to 11am" a number and set it in 30px extrabold, wrapping it over two
+ * lines — the same fault as "Typed in, or a saved link", caught one step
+ * later. A figure is digits, separators, a leading currency symbol, a
+ * trailing percent, and nothing else. An em dash counts, so an empty tile
+ * keeps the row's rhythm rather than shrinking out of line.
+ */
+const NUMERIC = /^(—|\$?[\d,.]+%?)$/
+
 function Delta({
   now,
   before,
@@ -90,7 +102,21 @@ function Tile({
         <Icon className="h-4 w-4" />
         {label}
       </div>
-      <p className="mt-2 text-3xl font-extrabold text-gray-900 tabular-nums break-words">{value}</p>
+      {/* A TILE'S VALUE IS USUALLY A NUMBER, AND SOMETIMES A PHRASE.
+          30px extrabold is right for "1,445" and wrong for "Typed in, or a
+          saved link", which wrapped to two lines and shouted over the figures
+          either side of it. Words get a size words can be read at; the number
+          keeps the weight. Detected rather than passed, so no call site can
+          forget. */}
+      <p
+        className={
+          NUMERIC.test(value)
+            ? 'mt-2 text-3xl font-extrabold text-gray-900 tabular-nums break-words'
+            : 'mt-2 text-xl font-bold text-gray-900 leading-snug break-words'
+        }
+      >
+        {value}
+      </p>
       {sub && <p className="text-sm text-gray-500 mt-0.5">{sub}</p>}
       {children}
     </div>
@@ -498,16 +524,17 @@ export default function TrafficReport({
                 />
               )}
             </Tile>
+            {/* THE NUMBER IS THE FIGURE, the channel is the caption. The other
+                way round put a sentence where three digits sit in every other
+                tile, and broke the rhythm of the row. */}
             <Tile
               label="Biggest source"
               value={
-                traffic.channels?.[0]
-                  ? `${channelLabel(traffic.channels[0].name)}`
-                  : '—'
+                traffic.channels?.[0] ? traffic.channels[0].value.toLocaleString() : '—'
               }
               sub={
                 traffic.channels?.[0]
-                  ? `${traffic.channels[0].value.toLocaleString()} people · ${traffic.channels[0].share}%`
+                  ? `${channelLabel(traffic.channels[0].name)} · ${traffic.channels[0].share}%`
                   : 'nothing recorded yet'
               }
               icon={TrendingUp}
@@ -561,10 +588,12 @@ export default function TrafficReport({
             />
             <Tile
               label="Top assistant"
-              value={traffic.aiSources?.[0]?.name ?? '—'}
+              value={
+                traffic.aiSources?.[0] ? traffic.aiSources[0].value.toLocaleString() : '—'
+              }
               sub={
                 traffic.aiSources?.[0]
-                  ? `${traffic.aiSources[0].value.toLocaleString()} people · ${traffic.aiSources[0].share}%`
+                  ? `${traffic.aiSources[0].name} · ${traffic.aiSources[0].share}%`
                   : 'none seen yet'
               }
               icon={TrendingUp}
