@@ -26,6 +26,7 @@
 
 import { createHmac } from 'node:crypto'
 import { prisma } from '@/lib/db'
+import { siteIsLive } from '@/lib/site-preview'
 
 export interface WrhqSyncResult {
   ok: boolean
@@ -64,7 +65,12 @@ export interface WrhqClientPayload {
   zip?: string
   services?: string[]
   mobileService?: boolean
-  insurance?: string[]
+  /**
+   * Whether the shop bills the carrier themselves.
+   *
+   * NOT a list of insurers. See the note above payloadFor.
+   */
+  filesInsuranceClaims?: boolean
   description?: string
   googlePlaceId?: string
   slug?: string
@@ -93,7 +99,7 @@ export interface SyncableClient {
   offersRockChipRepair: boolean
   offersSunroofRepair: boolean
   offersAdasCalibration: boolean
-  insuranceRelationships: string[]
+  filesInsuranceClaims: boolean
   domains?: { domain: string; isPrimary: boolean }[]
 }
 
@@ -142,6 +148,23 @@ function servicesFor(c: SyncableClient): string[] {
   return s
 }
 
+/**
+ * WHY NO LIST OF INSURERS.
+ *
+ * This sent `insurance: Client.insuranceRelationships`, and that column is
+ * rendered by nothing, written by no form, defined by no comment, and empty on
+ * every client. Its only reader was this line — so the first time somebody
+ * filled it in, an unreviewed claim about which insurers a shop has a
+ * "relationship" with would have appeared on a public directory page, which is
+ * §2's "no approved by / preferred provider" rule broken by a field nobody
+ * knew was wired to anything.
+ *
+ * `filesInsuranceClaims` goes instead. It is the flag the admin Business tab
+ * actually sets, it already gates this claim across the hosted sites, and it
+ * is a fact about the SHOP'S PROCESS — they bill the carrier themselves —
+ * rather than a claim of endorsement BY an insurer. The directory can render
+ * it truthfully; the list could not be rendered truthfully at all.
+ */
 export function payloadFor(
   client: SyncableClient,
   opts?: { dryRun?: boolean }
@@ -156,9 +179,16 @@ export function payloadFor(
   return {
     agmpClientId: client.id,
     agmpSlug: client.slug,
-    // PAUSED and anything else drop the Partner tier. The directory keeps the
-    // listing and the binding, so a returning client gets their page back.
-    status: client.status === 'ACTIVE' ? 'active' : 'inactive',
+    /* THE SAME RULE THAT DECIDES WHETHER THEIR WEBSITE IS PUBLIC.
+       This read `=== 'ACTIVE'`, which quietly dropped the Partner tier for
+       every ONBOARDING client — and ONBOARDING sites are live to the public
+       on purpose (see LIVE_STATUSES). So a shop whose site was up, taking
+       leads and being paid for got a demoted directory listing, and the
+       intake-approval sync created every new client that way. PAUSED is the
+       kill switch and stays one; the directory keeps the listing and the
+       binding either way, so a returning client gets their page and its
+       earned ranking back. */
+    status: siteIsLive(client.status) ? 'active' : 'inactive',
     businessName: client.businessName,
     phone: client.phone || undefined,
     email: client.email || undefined,
@@ -169,9 +199,7 @@ export function payloadFor(
     zip: client.postalCode || undefined,
     services: servicesFor(client),
     mobileService: client.offersMobileService,
-    insurance: client.insuranceRelationships?.length
-      ? client.insuranceRelationships
-      : undefined,
+    filesInsuranceClaims: client.filesInsuranceClaims,
     googlePlaceId: client.googlePlaceId || undefined,
     ...(opts?.dryRun ? { dryRun: true } : {}),
   }
@@ -297,6 +325,6 @@ export const WRHQ_SYNC_SELECT = {
   offersRockChipRepair: true,
   offersSunroofRepair: true,
   offersAdasCalibration: true,
-  insuranceRelationships: true,
+  filesInsuranceClaims: true,
   domains: { select: { domain: true, isPrimary: true } },
 } as const

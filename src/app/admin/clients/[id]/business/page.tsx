@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import ClientBusinessForm from '@/components/forms/ClientBusinessForm'
 import { requireAdminPage } from '@/lib/admin-guard'
 import DeleteClientCard from '@/components/admin/DeleteClientCard'
+import ClientStatusCard from '@/components/admin/ClientStatusCard'
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   await requireAdminPage()
@@ -15,6 +16,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   return (
     <div className="space-y-6">
       <ClientBusinessForm client={client as never} />
+      {/* On the tab that owns the client's identity, because that is what it
+          is — not a setting. Above delete and below the details, so the two
+          irreversible-feeling controls sit together at the bottom. */}
+      <ClientStatusCard clientId={client.id} initialStatus={client.status} />
       {/* Last thing on the tab that owns the client's identity, and the only
           place it appears. A delete control on a screen you visit daily is one
           you eventually hit by accident. */}

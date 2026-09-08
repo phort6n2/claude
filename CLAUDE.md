@@ -603,9 +603,15 @@ practice nobody ever did.
   the slug — that would mean guessing its route shape, and a confident dead
   link on an admin card sends whoever clicks it hunting a listing that is
   fine. With no URL the card prints the slug as text.
-- **`status` drives the tier.** Anything but ACTIVE sends `inactive`, which
-  drops the Partner tier but KEEPS the listing and the binding, so a returning
-  client gets the same page and its earned ranking back.
+- **`status` drives the tier, by the SAME rule that decides whether the shop's
+  website is public** (`siteIsLive`). This was `=== 'ACTIVE'`, which demoted
+  every ONBOARDING client — and ONBOARDING sites are live on purpose, so a shop
+  whose site was up and taking leads got a demoted listing, and intake approval
+  created every new client that way. PAUSED is the kill switch and stays one;
+  the listing and the binding are KEPT either way, so a returning client gets
+  the same page and its earned ranking back. `ClientStatusCard` on the Business
+  tab is where status is set — it had no control at all before, so every one of
+  its consequences was reachable only by an API call.
 - Only edits that change what the directory shows trigger a sync
   (`WRHQ_SYNC_FIELDS`). A colour or a timezone must not pay a cross-app round
   trip.
@@ -614,10 +620,16 @@ practice nobody ever did.
   shop onboarded the normal way silently never got a listing while the feature
   read as automatic. Approval is also the moment the address and services are
   finally trustworthy, which is what the directory needs to place one.
-- **`insuranceRelationships` is sent as `insurance`.** §2 forbids "approved
-  by" and "preferred provider" claims about insurers, and whether that rule is
-  kept depends on how the DIRECTORY renders that field, not on anything here.
-  Check the far side before adding to what is sent.
+- **NO LIST OF INSURERS is sent.** It used to send
+  `Client.insuranceRelationships`, a column rendered by nothing, written by no
+  form, defined by no comment and empty on every client — its only reader was
+  that line. So the first time anyone filled it in, an unreviewed claim about
+  which insurers a shop has a "relationship" with would have appeared on a
+  public directory page: §2's "no approved by / preferred provider" rule broken
+  by a field nobody knew was wired to anything. `filesInsuranceClaims` goes
+  instead — the flag the Business tab actually sets, which already gates this
+  claim across the hosted sites, and which is a fact about the SHOP'S PROCESS
+  rather than a claim of endorsement BY an insurer.
 - **The service keys are the DIRECTORY's, not ours** — `chip-repair`,
   `side-window`, `rear-window`. Its endpoint silently drops keys it does not
   recognise, so a wrong name here is not an error anywhere, it just quietly
