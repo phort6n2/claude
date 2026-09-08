@@ -2,7 +2,34 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { normalizeAllowedOrigins } from '@/lib/webhook-forwarding'
 import { requireAdmin, scrubClient } from '@/lib/admin-guard'
+import { syncClientToWrhq, WRHQ_SYNC_SELECT } from '@/lib/wrhq-sync'
 export const dynamic = 'force-dynamic'
+
+/**
+ * Edits that change what the directory shows. Anything else — colours, scripts,
+ * a timezone — must NOT trigger a sync: the directory would do the work and
+ * write an identical record, and every save would pay a cross-app round trip.
+ */
+const WRHQ_SYNC_FIELDS = [
+  'status',
+  'businessName',
+  'phone',
+  'email',
+  'streetAddress',
+  'city',
+  'state',
+  'postalCode',
+  'googlePlaceId',
+  'offersMobileService',
+  'offersWindshieldRepair',
+  'offersWindshieldReplacement',
+  'offersSideWindowRepair',
+  'offersBackWindowRepair',
+  'offersSunroofRepair',
+  'offersRockChipRepair',
+  'offersAdasCalibration',
+  'insuranceRelationships',
+] as const
 
 /**
  * client-teardown is imported INSIDE the DELETE handler, not at the top.
@@ -233,7 +260,25 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       }
     }
 
-    return NextResponse.json({ ...client, campaignSync })
+    // Keep the directory listing in step. A rename, a move or a pause has to
+    // reach it, and status is the one that matters most: PAUSED drops the
+    // Partner tier, so a shop that stopped paying stops getting the top slot,
+    // the outbound link and the ad-free page. Reported, never fatal — same
+    // reasoning as the two blocks above.
+    let wrhqSync: string | null = null
+    if (WRHQ_SYNC_FIELDS.some((f) => has(f))) {
+      const full = await prisma.client.findUnique({
+        where: { id },
+        select: WRHQ_SYNC_SELECT,
+      })
+      const res = full ? await syncClientToWrhq(full) : { ok: false, error: 'Client vanished' }
+      if (!res.ok && !res.skipped) {
+        wrhqSync = `Saved, but the Windshield Repair HQ listing was not updated: ${res.error}`
+        console.error('[wrhq-sync] update failed:', res.error)
+      }
+    }
+
+    return NextResponse.json({ ...client, campaignSync, wrhqSync })
   } catch (error) {
     console.error('Failed to update client:', error)
     return NextResponse.json(

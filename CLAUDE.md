@@ -570,6 +570,70 @@ and posts each finished run back, so nothing is polled.
 - The raw payload is stored precisely so a reader bug costs a recompute
   rather than a re-scan: credits are billed per run.
 
+### Windshield Repair HQ listings
+
+`wrhq-sync.ts`, called from client create, intake approval and client
+update; `WrhqListingCard` on the client Overview and
+`/api/clients/[id]/wrhq-sync` for one; `/api/admin/wrhq-sync` (Maintenance,
+both halves) for the whole book at once.
+
+Every client here should also be a **Partner** listing on
+windshieldrepairhq.com — top of their city, Partner badge, no ads on their
+page, outbound link and quote form. That tier already existed there; what was
+missing was a way to set it without a redeploy of the other repo, so in
+practice nobody ever did.
+
+- **The directory matches before it creates**, and that logic lives on its
+  side on purpose — it is the side that knows its own ~3,000 listings. An
+  AGMP client is more likely than not ALREADY there as an unclaimed listing,
+  and creating blindly would give one business two competing pages.
+- **Bindings are keyed on `Client.id`, not a slug.** A shop that is renamed or
+  moves no longer matches itself; the id survives that where identity matching
+  would mint a second page.
+- **The directory's answer is stored back** — `Client.wrhqSlug/wrhqUrl/
+  wrhqSyncedAt/wrhqError` (bootstrap: `WRHQ_SQL`), written inside
+  `syncClientToWrhq` rather than at each call site, because four paths push a
+  client and a binding recorded by three of them is a card that lies on the
+  fourth. Without it nothing here could say whether a shop was listed, which
+  is why the feature originally had no UI at all. A dry run never writes.
+- **A failure KEEPS the binding.** A directory that is down has not un-listed
+  anybody, and clearing the slug would make the card read "not listed" about a
+  page that is sitting there working.
+- **`wrhqUrl` is only ever what the directory RETURNED**, never composed from
+  the slug — that would mean guessing its route shape, and a confident dead
+  link on an admin card sends whoever clicks it hunting a listing that is
+  fine. With no URL the card prints the slug as text.
+- **`status` drives the tier.** Anything but ACTIVE sends `inactive`, which
+  drops the Partner tier but KEEPS the listing and the binding, so a returning
+  client gets the same page and its earned ranking back.
+- Only edits that change what the directory shows trigger a sync
+  (`WRHQ_SYNC_FIELDS`). A colour or a timezone must not pay a cross-app round
+  trip.
+- **Intake approval syncs too, and that is the path that matters.** The sync
+  hangs off the clients API; approval writes with prisma directly, so every
+  shop onboarded the normal way silently never got a listing while the feature
+  read as automatic. Approval is also the moment the address and services are
+  finally trustworthy, which is what the directory needs to place one.
+- **`insuranceRelationships` is sent as `insurance`.** §2 forbids "approved
+  by" and "preferred provider" claims about insurers, and whether that rule is
+  kept depends on how the DIRECTORY renders that field, not on anything here.
+  Check the far side before adding to what is sent.
+- **The service keys are the DIRECTORY's, not ours** — `chip-repair`,
+  `side-window`, `rear-window`. Its endpoint silently drops keys it does not
+  recognise, so a wrong name here is not an error anywhere, it just quietly
+  loses the service.
+- Failure is reported, never fatal: the client row is already written, and a
+  directory that is down must not read to the operator as "the save failed".
+  `POST /api/admin/wrhq-sync` re-syncs everything; `{ dryRun: true }` — or
+  `?dryRun=1`, because the Maintenance runner sends no body — reports what
+  would happen and writes nothing. A dry run that wants to CREATE most clients
+  means the matching is not seeing what it should. The backfill stops on its
+  own time budget and names who it did not reach: sequential pushes with an
+  8-second timeout each can otherwise be KILLED mid-run, which leaves no
+  response and no way to tell how far it got.
+- Needs `WRHQ_SYNC_URL` and `WRHQ_SYNC_SECRET` (the latter shared with the
+  directory's `AGMP_SYNC_SECRET`). Absent, it is a silent no-op.
+
 ### The content feed
 
 `content-feed.ts` plus `/api/clients/[id]/content-feed` and the nightly cron

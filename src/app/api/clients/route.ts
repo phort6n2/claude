@@ -3,6 +3,7 @@ import { prisma, withRetry } from '@/lib/db'
 import { generateSlug } from '@/lib/utils'
 import { normalizeAllowedOrigins } from '@/lib/webhook-forwarding'
 import { requireAdmin, scrubClient } from '@/lib/admin-guard'
+import { syncClientToWrhq } from '@/lib/wrhq-sync'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
@@ -113,7 +114,22 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(client, { status: 201 })
+    // Give them their Windshield Repair HQ Partner listing.
+    //
+    // Awaited so the operator is told what happened, but syncClientToWrhq
+    // never throws: a directory that is down must not fail the creation in
+    // front of them, and the row is already written by this point. A miss is
+    // recoverable from /api/admin/wrhq-sync, which re-syncs every client.
+    //
+    // domains is empty because a client created a moment ago has none yet —
+    // the listing links to their hosted site until a custom domain is added,
+    // and the next sync moves it.
+    const wrhq = await syncClientToWrhq({ ...client, domains: [] })
+    if (!wrhq.ok && !wrhq.skipped) {
+      console.error('[clients] WRHQ listing not created:', wrhq.error)
+    }
+
+    return NextResponse.json({ ...client, wrhq }, { status: 201 })
   } catch (error) {
     console.error('Failed to create client:', error)
     return NextResponse.json(

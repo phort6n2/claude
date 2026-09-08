@@ -16,6 +16,8 @@ import { prisma } from '@/lib/db'
 import { getSiteExtras } from '@/lib/site-content'
 import CopyField from '@/components/admin/CopyField'
 import PortalInviteCard from '@/components/admin/PortalInviteCard'
+import WrhqListingCard from '@/components/admin/WrhqListingCard'
+import { wrhqSyncEnabled } from '@/lib/wrhq-sync'
 import { requireAdminPage } from '@/lib/admin-guard'
 import { formatMinutes, getResponseTime } from '@/lib/response-time'
 import { getClientReadiness } from '@/lib/client-readiness'
@@ -322,6 +324,19 @@ export default async function ClientOverviewPage({ params }: PageProps) {
           invitedEmail={portalUser?.email ?? null}
           lastLoginAt={portalUser?.lastLoginAt?.toISOString() ?? null}
           requiredOpen={readiness?.requiredOpen ?? 0}
+        />
+
+        <WrhqListingCard
+          clientId={id}
+          slug={client.wrhqSlug}
+          url={client.wrhqUrl}
+          syncedAt={client.wrhqSyncedAt?.toISOString() ?? null}
+          error={client.wrhqError}
+          configured={wrhqSyncEnabled()}
+          /* The same rule payloadFor applies, so the card can say WHY nothing
+             was listed instead of showing an empty state that looks like a
+             failure of ours. */
+          canBeListed={!!client.city?.trim() && (client.state || '').trim().length === 2}
         />
       </div>
 
