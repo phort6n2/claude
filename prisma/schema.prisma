@@ -454,6 +454,12 @@ model ClientUser {
 
   // Session
   lastLoginAt DateTime?
+  /// Last time this session was USED, not signed in. The idle half of a
+  /// rolling session, and it lives here rather than in the cookie so the
+  /// server decides — a claim inside the cookie would need re-signing on every
+  /// request, and a cookie the browser is merely trusted to drop is not a
+  /// timeout, it is a suggestion.
+  lastSeenAt  DateTime?
   isActive    Boolean   @default(true)
 
   createdAt DateTime @default(now())
