@@ -47,12 +47,30 @@ export default function Home() {
         <div className="text-lg font-bold tracking-tight text-white">
           Glass<span className="text-sky-400">Leads</span>
         </div>
-        <Link
-          href="/admin/dashboard"
-          className="text-sm font-medium text-slate-300 hover:text-white border border-slate-700 hover:border-slate-500 rounded-lg px-4 py-2 transition-colors"
-        >
-          Sign in
-        </Link>
+        {/* TWO DOORS, AND THE SHOP OWNER'S IS THE OBVIOUS ONE.
+            There was one "Sign in" here and it went to /admin/dashboard —
+            which bounces to the STAFF login, a NextAuth form that only ever
+            looks in the User table. This page is the one behind "Powered by
+            GlassLeads" in every client site's footer, so the person pressing
+            it is nearly always a shop owner: they landed on the staff form by
+            the only route offered, typed their portal password, and were told
+            it was wrong. Forever, because their account is a ClientUser and
+            that form cannot see it. Resetting the portal password does not
+            help and looks like the password is broken. */}
+        <div className="flex items-center gap-2">
+          <Link
+            href="/portal/login"
+            className="text-sm font-semibold text-slate-900 bg-white hover:bg-slate-100 rounded-lg px-4 py-2 transition-colors"
+          >
+            Client sign in
+          </Link>
+          <Link
+            href="/admin/dashboard"
+            className="text-sm font-medium text-slate-400 hover:text-white rounded-lg px-3 py-2 transition-colors"
+          >
+            Staff
+          </Link>
+        </div>
       </header>
 
       <main className="flex-1 flex items-center">
