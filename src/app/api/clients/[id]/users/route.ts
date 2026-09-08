@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { sendPortalInvite } from '@/lib/portal-invite'
 import { auth } from '@/lib/auth'
 import { hashPassword } from '@/lib/portal-auth'
 
@@ -127,7 +128,33 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       },
     })
 
-    return NextResponse.json({ ...user, hasPassword: true }, { status: 201 })
+    /* CREATING AN ACCOUNT NOW TELLS THE PERSON IT EXISTS.
+       This screen used to create a login and send nothing, which is a trap
+       rather than a feature: the operator has made a working account, has no
+       reason to think anyone still needs telling, and the shop hears nothing.
+       That is exactly how a client sat locked out for days while a password
+       was reset for them twice.
+
+       The same invite the Overview card sends — a magic link, never the
+       password. A password is optional here and is not something to put in an
+       email; the link is the front door either way. Opt out by passing
+       sendInvite: false, for pre-creating an account somebody is not ready to
+       be told about. */
+    let invited = false
+    let inviteError: string | null = null
+    if (data.sendInvite !== false) {
+      const result = await sendPortalInvite(id, user.email, user.name)
+      invited = result.emailed
+      // Never fatal: the account exists either way, and "created but not
+      // emailed, because X" is the useful thing to say. Silence is what this
+      // change exists to remove.
+      if (!result.emailed) inviteError = result.note || 'The invite email did not send.'
+    }
+
+    return NextResponse.json(
+      { ...user, hasPassword: !!passwordHash, invited, inviteError },
+      { status: 201 }
+    )
   } catch (error) {
     console.error('Failed to create client user:', error)
     return NextResponse.json(

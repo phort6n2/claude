@@ -47,8 +47,12 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
   const [newEmail, setNewEmail] = useState('')
   const [newName, setNewName] = useState('')
   const [newPassword, setNewPassword] = useState('')
+  // Default ON. Creating a login and telling nobody is the trap this screen
+  // used to be; opting out has to be a deliberate tick, not the default.
+  const [sendInvite, setSendInvite] = useState(true)
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
+  const [addNotice, setAddNotice] = useState<string | null>(null)
 
   // Password reset
   const [settingPasswordFor, setSettingPasswordFor] = useState<string | null>(null)
@@ -86,6 +90,7 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
     e.preventDefault()
     setAdding(true)
     setAddError(null)
+    setAddNotice(null)
 
     // Optional: blank means they sign in by emailed link, which is the normal
     // case. Only a password that was actually typed has to be long enough.
@@ -103,6 +108,7 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
           email: newEmail,
           name: newName || null,
           password: newPassword || undefined,
+          sendInvite,
         }),
       })
 
@@ -113,8 +119,24 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
       }
 
       setUsers((prev) => [data, ...prev])
+      /* SAY WHETHER THE EMAIL WENT. "Added" about an account nobody was told
+         about is the same silence in a friendlier font — and a Resend failure
+         here is invisible everywhere else. */
+      setAddError(
+        data.inviteError
+          ? `Added, but the sign-in link did not send: ${data.inviteError}`
+          : null
+      )
+      setAddNotice(
+        data.inviteError
+          ? null
+          : data.invited
+            ? `Added. Sign-in link emailed to ${data.email}.`
+            : 'Added. No email sent, as asked.'
+      )
       setNewEmail('')
       setNewName('')
+      setSendInvite(true)
       setNewPassword('')
       setShowAddForm(false)
     } catch (err) {
@@ -258,6 +280,20 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
           </p>
         </div>
 
+        {/* Outside the form, because a successful add CLOSES the form — and
+            whether the email went is the one thing worth reading afterwards. */}
+        {addNotice && (
+          <div className="mb-6 p-3 bg-green-50 border border-green-200 rounded-2xl text-green-800 text-sm flex items-start gap-2">
+            <CheckCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            {addNotice}
+          </div>
+        )}
+        {!showAddForm && addError && (
+          <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-2xl text-red-800 text-sm">
+            {addError}
+          </div>
+        )}
+
         {/* Add User Button/Form */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
           {showAddForm ? (
@@ -298,6 +334,23 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
                 </div>
               </div>
 
+              <label className="flex items-start gap-2 text-sm mb-4">
+                <input
+                  type="checkbox"
+                  checked={sendInvite}
+                  onChange={(e) => setSendInvite(e.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  Email them a sign-in link now
+                  <span className="block text-xs text-gray-500">
+                    The same invite the Overview card sends. Untick only to pre-create an account
+                    somebody is not ready to hear about — they will have no way of knowing it
+                    exists until you send one.
+                  </span>
+                </span>
+              </label>
+
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Password <span className="font-normal text-gray-400">(optional)</span>
@@ -316,9 +369,8 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
                     as "my password does not work" and cannot be fixed by
                     resetting it. */}
                 <p className="text-xs text-gray-500 mt-1">
-                  Leave it blank and they sign in with an emailed link — the normal way. To
-                  actually send that link, use <strong>Portal invite</strong> on the client&apos;s
-                  Overview instead of this form; it creates the account and emails them.
+                  Leave it blank and they sign in with the emailed link — the normal way. A
+                  password is never emailed, so if you set one you have to tell them yourself.
                 </p>
               </div>
 

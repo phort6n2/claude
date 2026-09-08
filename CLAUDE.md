@@ -316,6 +316,16 @@ walkthrough (`GettingStartedCard`, `/api/portal/onboarding`,
 - **Nothing is real until an admin approves.** Submit writes a draft; approve
   copies it onto a Client (NEW → created as ONBOARDING, EXISTING → diff
   applied), sets alert recipients, and puts hours on the primary location.
+- **Adding a user on the Users tab emails them too.** It used to create a
+  working login and send nothing, which is a trap rather than a feature: the
+  operator has made an account and has no reason to think anyone still needs
+  telling. A shop sat locked out for days that way while a password was reset
+  for them twice, and the only clue anywhere was the absence of a
+  `portal-invite` request in the logs. Same invite as the Overview card, a
+  magic link and never the password, on by default with an opt-out for
+  pre-creating an account nobody is ready to hear about. The result line says
+  whether the email actually went — "Added" about an account nobody was told
+  about is the same silence in a friendlier font.
 - **Approval emails the shop NOTHING.** The portal invite is a manual send —
   the Portal invite card on the client Overview (`portal-invite.ts`,
   `/api/clients/[id]/portal-invite`), pressed when the operator decides the
