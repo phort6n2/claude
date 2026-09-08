@@ -69,7 +69,29 @@ export default async function RankReport({
     byTerm.set(scan.searchTerm, list)
   }
 
-  if (byTerm.size === 0) {
+  const noScans = byTerm.size === 0
+  const shareHost = await localDominatorShareHost()
+
+  /* THE MAP IS THE REPORT, AND IT DOES NOT WAIT FOR A SCAN OF OURS.
+     This check sat BELOW the empty-state return, so a client with a working
+     all-keywords map pasted on their Rankings tab still saw "Gathering your
+     rankings — the first scan has not reported back yet" and never the map.
+     Two different things were being conflated: their live map, which is
+     current the moment it exists, and OUR stored scan history, which is what
+     the week-to-week trend is built from and genuinely does need a webhook to
+     land. Somebody who has just pasted a working URL is told nothing is there.
+
+     The live fetch is still skipped when there are no scans — a campaign whose
+     first run has not completed has no campaign_link to find, so it would be a
+     round trip per page load to learn nothing. */
+  const campaign = mapUrl || !campaignId || noScans ? null : await campaignShareLinks(campaignId)
+  // The campaign token, and nothing else. Their `dynamic_url` is ONE
+  // keyword's report; using it here showed a single keyword on every
+  // client's report and looked like the all-keywords map. When there is no
+  // campaign token yet, the per-keyword tabs below reach all of them.
+  const campaignEmbed = mapUrl || whiteLabelEmbedUrl(campaign?.campaignLink, shareHost)
+
+  if (noScans && !campaignEmbed) {
     /**
      * TWO DIFFERENT NOTHINGS.
      *
@@ -123,24 +145,13 @@ export default async function RankReport({
     )
   }
 
-  const shareHost = await localDominatorShareHost()
-
-  // The campaign's own share link is preferred over anything taken from a
-  // stored webhook payload. Their scheduler repoints it as each run
-  // completes, so one URL always shows the latest scan — and their docs say
-  // it is derived from the newest run that HAS a resolvable share URL, which
-  // is exactly the guarantee a per-run link cannot make. A run that came back
-  // empty is skipped rather than framed as an empty world map.
-  // Stored first: the daily sweep captures it, so the common path costs no
-  // request at all. The live fetch is only for a campaign whose first run has
-  // not completed since the sweep last ran.
-  const campaign = mapUrl || !campaignId ? null : await campaignShareLinks(campaignId)
-  // The campaign token, and nothing else. Their `dynamic_url` is ONE
-  // keyword's report; using it here showed a single keyword on every
-  // client's report and looked like the all-keywords map. When there is no
-  // campaign token yet, the per-keyword tabs below reach all of them.
-  const campaignEmbed = mapUrl || whiteLabelEmbedUrl(campaign?.campaignLink, shareHost)
-
+  /* The campaign's own share link is preferred over anything taken from a
+     stored webhook payload. Their scheduler repoints it as each run completes,
+     so one URL always shows the latest scan — and their docs say it is derived
+     from the newest run that HAS a resolvable share URL, which is exactly the
+     guarantee a per-run link cannot make. A run that came back empty is
+     skipped rather than framed as an empty world map. Resolved above, before
+     the empty state, because the map does not depend on our scans. */
   if (campaignEmbed) {
     return (
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
@@ -157,6 +168,16 @@ export default async function RankReport({
             >
               {mapUrl ? 'stored' : 'live'} all-keywords map ↗
             </a>
+          </p>
+        )}
+        {/* The map is live and current; the week-to-week trend is built from
+            scans posted to us, and before the first one lands there is no
+            trend to draw. Said here rather than withholding the map, which is
+            what the page used to do. */}
+        {noScans && (
+          <p className="px-4 sm:px-5 pt-4 text-sm text-gray-600">
+            This is your live map — where you rank in each part of town right now. The
+            week-to-week comparison starts once the first scheduled scan reports back.
           </p>
         )}
         <iframe
