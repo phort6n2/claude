@@ -212,6 +212,24 @@ webhook routes.
   VoiceUrl set in the purchase request.
 - TwiML uses `answerOnBridge` and dual-channel `record-from-answering-dual`.
 - Twilio signature validation rebuilds the public URL from forwarded headers.
+- **`(await import('twilio')).default`, never the namespace.** The package is
+  CommonJS, so `await import('twilio')` returns a namespace object whose
+  `validateRequest` is `undefined`. Reading it off the namespace threw on every
+  inbound call: the voice webhook answered 500 with no TwiML, Twilio played an
+  error message to a real customer, and the phone never rang. Seventeen calls
+  over two weeks, and nothing surfaced it — no lead was written, so there was
+  no wrong row to notice, only an absence that looks exactly like a quiet
+  fortnight. All four Twilio routes share `verifyTwilioSignature`, so voice,
+  whisper, recording and status were broken together while SMS kept working,
+  because `lead-notifications.ts` had the correct form all along.
+  `scripts/check-twilio-signature.ts` signs a request with Twilio's own
+  algorithm and asserts we accept it — because BOTH failure modes here are
+  invisible from outside: throwing drops every call, and always-returning-false
+  drops every call too while reading in the logs as an attack.
+- **`verifyTwilioSignature` reports, it does not throw.** The voice route's
+  contract is that whatever goes wrong the caller still reaches the shop, and
+  every path in it returns TwiML — which the signature check broke by throwing
+  above the comment that says so.
 - Recording URLs need Basic auth, so recordings are copied to Blob storage.
 - Webhook responses: `new Response(null, { status: 204 })`. A 204 **with** a
   body throws, which returns 500, which makes Twilio retry, which runs the
