@@ -504,6 +504,17 @@ and posts each finished run back, so nothing is polled.
   and it was the one form the original regex rejected — storing the pasted
   string verbatim, which would have put `app.localdominator.co` in a client's
   portal. `rankMapTokenFrom()` reduces all three server-side.
+- **The rule is "never THEIR host", not "only the configured host"** — reading
+  it as the second broke the first. `rankMapUrlFrom()` is the one place that
+  decides: a configured `LOCALDOMINATOR_SHARE_HOST` always wins, and with none
+  configured a paste already on a non-vendor host is kept as it stands. Only a
+  vendor host with nothing to replace it is refused. Before this, the route
+  read `token && host ? url : ''`, so a correct paste of our OWN white-label
+  address saved as **blank** whenever the setting was unset — and the card then
+  said "no map token in that" about a paste that had one. Re-pasting could
+  never fix it and nothing named the missing setting. A refusal is now a 400
+  with the reason; an empty string only ever means a deliberate clear.
+  `scripts/check-rank-map-url.ts` holds every form and both failure modes.
 - Do not spend another afternoon looking for an automatic route without new
   evidence.
 - The sweep only CREATES for clients with no `rankTrackingId`; it never

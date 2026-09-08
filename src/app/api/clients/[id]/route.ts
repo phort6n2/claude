@@ -121,14 +121,22 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     if (has('rankMapUrl')) {
       const raw = String(data.rankMapUrl || '').trim()
       if (raw) {
-        const { localDominatorShareHost, rankMapTokenFrom } = await import('@/lib/local-dominator')
-        const token = rankMapTokenFrom(raw)
-        const host = await localDominatorShareHost()
+        const { localDominatorShareHost, rankMapUrlFrom } = await import('@/lib/local-dominator')
         // A pasted address is reduced to its token and rebuilt on OUR host.
         // Storing what was pasted would put app.localdominator.co in a client's
         // portal the first time somebody copies the URL out of the map they
         // are looking at — which is exactly how it would happen.
-        data.rankMapUrl = token && host ? `https://${host}/${token}` : ''
+        const result = rankMapUrlFrom(raw, await localDominatorShareHost())
+        /* REFUSED OUT LOUD. This used to resolve to an empty string for every
+           kind of failure, so a good paste that merely lacked a configured
+           share host saved as blank and the card reported "no map token in
+           that" — about a paste that had one. Re-pasting the correct URL could
+           never fix it, and the client's Rankings page stayed empty with
+           nothing anywhere naming the real cause. */
+        if ('error' in result) {
+          return NextResponse.json({ error: result.error }, { status: 400 })
+        }
+        data.rankMapUrl = result.url
       }
     }
 

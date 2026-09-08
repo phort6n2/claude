@@ -54,14 +54,11 @@ export default function RankMapUrlCard({
       const stored = saved?.rankMapUrl ?? null
       setCurrent(stored)
       setValue('')
-      setMessage(
-        next && !stored
-          ? {
-              ok: false,
-              text: 'No map token in that. Paste the whole address from the map page, or just the long token out of it.',
-            }
-          : { ok: true, text: next ? 'Saved — the map is embedded from now on.' : 'Cleared.' }
-      )
+      // The route now REFUSES a paste it cannot use and says why, so the only
+      // reason to land here with nothing stored is a deliberate clear. The
+      // guess this made instead ("no map token in that") was wrong for the one
+      // failure that actually happens.
+      setMessage({ ok: true, text: next ? 'Saved — the map is embedded from now on.' : 'Cleared.' })
     } catch (err) {
       setMessage({ ok: false, text: err instanceof Error ? err.message : 'Failed to save' })
     } finally {
