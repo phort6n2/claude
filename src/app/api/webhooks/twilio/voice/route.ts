@@ -27,9 +27,19 @@ export async function POST(request: Request) {
   const url = publicUrl(request)
   const params = await twilioParams(request)
 
+  /* WHICH NUMBER, BEFORE ANYTHING CAN GO WRONG.
+     When the signature check threw, every call 500'd here and the log said
+     only that it threw — so there was no way to tell WHOSE calls were being
+     dropped, and "which clients lost calls" could not be answered at all.
+     The dialled number is ours, not the caller's, so it is safe to log; the
+     caller's number is deliberately not. Shape-checked because this is
+     unverified input at this point and a log line is not a place to paste
+     whatever somebody posted. */
+  const dialled = /^\+\d{8,20}$/.test(params.To || '') ? params.To : '(malformed To)'
+
   const check = await verifyTwilioSignature(request, url, params)
   if (!check.ok) {
-    console.error(`[Twilio Voice] Rejected unsigned request: ${check.reason}`)
+    console.error(`[Twilio Voice] Rejected request for ${dialled}: ${check.reason}`)
     // 403 with no TwiML. An unverified caller gets nothing to work with.
     return new Response('Forbidden', { status: 403 })
   }
@@ -70,6 +80,15 @@ export async function POST(request: Request) {
   // a usable caller ID. Fall back to the tracking number so the shop's phone
   // still rings rather than Twilio rejecting the dial.
   const callerId = /^\+\d{8,}$/.test(from) ? from : number.phoneNumber
+
+  /* WHAT THIS CALL IS ABOUT TO DO, in one line.
+     Every one of these is a per-number toggle in the admin, and when the
+     phone behaves differently from what the screen shows there is currently
+     no way to tell which of the two is wrong. Saying what the row actually
+     said settles that in one test call instead of an afternoon. */
+  console.log(
+    `[Twilio Voice] ${dialled} → ${number.client.businessName}: record=${number.recordCalls} announce=${number.announceRecording} whisper=${!!number.whisper?.trim()} forward=${number.forwardTo}`
+  )
 
   const parts: string[] = []
 
