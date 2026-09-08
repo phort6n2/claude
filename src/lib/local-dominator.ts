@@ -152,6 +152,69 @@ export function rankMapTokenFrom(raw: string): string | null {
   return null
 }
 
+/**
+ * Hosts belonging to Local Dominator themselves.
+ *
+ * The white-label rule is "never put THEIR host in a client's portal" — it was
+ * never "only ever use the configured host", and reading it as the second
+ * broke the first. See rankMapUrlFrom.
+ */
+export function isVendorHost(host: string): boolean {
+  const h = (host || '').toLowerCase()
+  return h === 'localdominator.co' || h.endsWith('.localdominator.co')
+}
+
+/**
+ * The address to store, out of what somebody pasted. One place, because the
+ * caller used to fold three different failures into an empty string.
+ *
+ * WHAT WENT WRONG. The route read `token && host ? url : ''`, so a perfectly
+ * good paste of our OWN white-label address was silently discarded whenever
+ * `LOCALDOMINATOR_SHARE_HOST` happened to be unset — and the card then said
+ * "No map token in that", blaming the paste. There was a token in it. The
+ * operator re-pasted the same correct URL, got the same message, and the
+ * client's Rankings page stayed empty, because nothing anywhere named the
+ * setting that was actually missing.
+ *
+ * So: the configured host still WINS, which is what rebuilds a paste of their
+ * dashboard URL onto ours. But with no host configured, a paste that is
+ * already on a non-vendor host is kept as it stands — it is the white-label
+ * address, and refusing it protected nothing. Only a vendor host with no
+ * configured replacement is an error, and it says which setting fixes it.
+ */
+export function rankMapUrlFrom(
+  raw: string,
+  configuredHost: string | null
+): { url: string } | { error: string } {
+  const value = (raw || '').trim()
+  if (!value) return { url: '' }
+
+  const token = rankMapTokenFrom(value)
+  if (!token) {
+    return {
+      error:
+        'No map token in that. Paste the whole address from the map page, or just the long token out of it.',
+    }
+  }
+
+  let pastedHost: string | null = null
+  try {
+    pastedHost = new URL(value).hostname.toLowerCase()
+  } catch {
+    // A bare token has no host, which is fine — the configured one is used.
+  }
+
+  const host = configuredHost || (pastedHost && !isVendorHost(pastedHost) ? pastedHost : null)
+  if (!host) {
+    return {
+      error: pastedHost
+        ? `That is Local Dominator's own address, which must never be embedded in a client's portal. Set LOCALDOMINATOR_SHARE_HOST in Settings → API keys to the white-label host, then paste again.`
+        : 'A bare token needs a white-label host to sit on. Set LOCALDOMINATOR_SHARE_HOST in Settings → API keys, or paste the whole map address instead.',
+    }
+  }
+  return { url: `https://${host}/${token}` }
+}
+
 async function ldFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const key = await localDominatorKey()
   if (!key) throw new Error('LOCALDOMINATOR_API_KEY is not configured')
