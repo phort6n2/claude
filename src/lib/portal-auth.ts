@@ -4,7 +4,32 @@ import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
 
 const PORTAL_SESSION_COOKIE = 'portal_session'
-const SESSION_DURATION_DAYS = 30
+
+/**
+ * A ROLLING session: 30 days of not using it, 90 days no matter what.
+ *
+ * It used to be a flat 30 days from sign-in, which expired on the same
+ * schedule whether the shop opened the portal daily or never — so the people
+ * who use it most were interrupted just as often as the people who do not,
+ * and every interruption is an email, a link, and a shop owner wondering why
+ * they have been logged out again. That friction is what pushes an operator
+ * towards inventing passwords and texting them over, which is how a client
+ * ends up locked out of a portal nobody can reset for them.
+ *
+ * The idle clock lives on `ClientUser.lastSeenAt`, NOT in the cookie. A claim
+ * inside the cookie would have to be re-signed on every request — and a cookie
+ * the browser is merely trusted to drop is not a timeout, it is a suggestion.
+ * The server decides.
+ *
+ * The absolute cap is the thing a rolling session gives up, so it is short
+ * enough to matter: a stolen cookie kept warm still dies inside three months.
+ */
+const SESSION_IDLE_DAYS = 30
+const SESSION_ABSOLUTE_DAYS = 90
+
+/** Don't write on every page view. An hour's resolution is plenty for a
+ *  30-day window, and the portal calls this on every request it serves. */
+const TOUCH_AFTER_MS = 60 * 60 * 1000
 
 /**
  * Portal session cookies are HMAC-signed.
@@ -145,7 +170,7 @@ export async function verifyPasswordLogin(email: string, password: string): Prom
   // Update last login
   await prisma.clientUser.update({
     where: { id: clientUser.id },
-    data: { lastLoginAt: new Date() },
+    data: { lastLoginAt: new Date(), lastSeenAt: new Date() },
   })
 
   return {
@@ -252,6 +277,7 @@ export async function verifyMagicLink(token: string): Promise<{
       magicLinkToken: null,
       magicLinkExpiry: null,
       lastLoginAt: new Date(),
+      lastSeenAt: new Date(),
     },
   })
 
@@ -296,7 +322,7 @@ export async function createPortalSession(
     sameSite: 'lax',
     maxAge: options?.impersonatedBy
       ? (options.ttlMinutes ?? 30) * 60
-      : SESSION_DURATION_DAYS * 24 * 60 * 60,
+      : SESSION_ABSOLUTE_DAYS * 24 * 60 * 60,
     path: '/',
   })
 
@@ -331,10 +357,9 @@ export async function getPortalSession(): Promise<{
     const sessionData = verifyCookie(sessionCookie.value)
     if (!sessionData) return null
 
-    // Check session age
+    // The absolute cap — how long a session may live at all, however busy.
     const sessionAge = Date.now() - sessionData.createdAt
-    const maxAge = SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000
-    if (sessionAge > maxAge) {
+    if (sessionAge > SESSION_ABSOLUTE_DAYS * 24 * 60 * 60 * 1000) {
       return null
     }
     // Impersonation sessions carry a short absolute expiry.
@@ -386,6 +411,26 @@ export async function getPortalSession(): Promise<{
 
     if (!clientUser || !clientUser.isActive) {
       return null
+    }
+
+    /* THE IDLE HALF, and it is only about real users.
+       An impersonating admin must not keep a shop's session alive by looking
+       around in it — that would silently extend a credential belonging to
+       somebody who has not touched the portal in months. Falls back to the
+       session's own createdAt so accounts that predate this column are not
+       all logged out by the deploy that added it. */
+    if (!sessionData.imp) {
+      const lastSeen = clientUser.lastSeenAt?.getTime() ?? sessionData.createdAt
+      if (Date.now() - lastSeen > SESSION_IDLE_DAYS * 24 * 60 * 60 * 1000) {
+        return null
+      }
+      if (Date.now() - lastSeen > TOUCH_AFTER_MS) {
+        // Never awaited into the failure path: a database having a bad minute
+        // must not log a shop out of a session that is perfectly valid.
+        prisma.clientUser
+          .update({ where: { id: clientUser.id }, data: { lastSeenAt: new Date() } })
+          .catch(() => {})
+      }
     }
 
     return {

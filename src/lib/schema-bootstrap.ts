@@ -401,6 +401,13 @@ export const SITE_ANALYTICS_SQL: string[] = [
   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
 ]
 
+export const PORTAL_SESSION_SQL: string[] = [
+  // The idle clock for a rolling portal session. Nullable: a row that predates
+  // this has never been "seen", and getPortalSession falls back to the
+  // session's own createdAt rather than logging everybody out on deploy.
+  `ALTER TABLE "ClientUser" ADD COLUMN IF NOT EXISTS "lastSeenAt" TIMESTAMP(3)`,
+]
+
 export const WRHQ_SQL: string[] = [
   // Which Windshield Repair HQ listing each client is bound to, plus the
   // outcome of the last push. The directory decides the slug — it matches
@@ -434,6 +441,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...ADS_FINDING_SQL,
   ...SITE_ANALYTICS_SQL,
   ...WRHQ_SQL,
+  ...PORTAL_SESSION_SQL,
 ]
 
 /**

@@ -335,6 +335,22 @@ walkthrough (`GettingStartedCard`, `/api/portal/onboarding`,
   `ClientUser`, and mails the "portal is ready" note with a magic link.
   Re-sending mints a fresh link for the same account. An email already
   attached to another client's login is reported, not reassigned.
+- **The portal session ROLLS: 30 days of not using it, 90 days no matter
+  what.** It was a flat 30 days from sign-in, which expired on the same
+  schedule whether a shop opened the portal daily or never — so the heaviest
+  users were interrupted just as often as the ones who never log in, and every
+  interruption is an email, a link and a confused shop owner. That friction is
+  what pushes an operator towards inventing passwords and texting them over.
+  The idle clock is `ClientUser.lastSeenAt` (bootstrap: `PORTAL_SESSION_SQL`),
+  NOT a claim in the cookie: a cookie claim would need re-signing on every
+  request, and a cookie the browser is merely trusted to drop is not a timeout,
+  it is a suggestion. Touched at most hourly, never awaited into the failure
+  path, and **not touched while impersonating** — an admin looking around must
+  not keep a shop's credential alive. The absolute cap is what a rolling
+  session gives up, so it is short enough to matter.
+  `scripts/check-portal-session.ts` asserts both clocks, including that the cap
+  exists at all: without one a rolling session never dies, which is the failure
+  mode of every "just make it remember me" change.
 - **The portal signs in by emailed link, and that is the front door.**
   Intake-created users have no password. `/portal/login` defaults to
   "email me a sign-in link" (password behind a toggle), `request-link`
