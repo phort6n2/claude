@@ -87,7 +87,9 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
     setAdding(true)
     setAddError(null)
 
-    if (!newPassword || newPassword.length < 6) {
+    // Optional: blank means they sign in by emailed link, which is the normal
+    // case. Only a password that was actually typed has to be long enough.
+    if (newPassword && newPassword.length < 6) {
       setAddError('Password must be at least 6 characters')
       setAdding(false)
       return
@@ -100,7 +102,7 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
         body: JSON.stringify({
           email: newEmail,
           name: newName || null,
-          password: newPassword,
+          password: newPassword || undefined,
         }),
       })
 
@@ -298,16 +300,26 @@ export default function ClientUsersPage({ params }: { params: Promise<{ id: stri
 
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password *
+                  Password <span className="font-normal text-gray-400">(optional)</span>
                 </label>
                 <input
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  placeholder="Min 6 characters"
+                  placeholder="Leave blank — most accounts have none"
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none md:max-w-xs"
                 />
+                {/* The field was REQUIRED, on a portal whose front door is an
+                    emailed link — so adding a user meant inventing a password
+                    and finding a way to tell the shop it. That password then
+                    gets typed into the staff login and rejected, which reads
+                    as "my password does not work" and cannot be fixed by
+                    resetting it. */}
+                <p className="text-xs text-gray-500 mt-1">
+                  Leave it blank and they sign in with an emailed link — the normal way. To
+                  actually send that link, use <strong>Portal invite</strong> on the client&apos;s
+                  Overview instead of this form; it creates the account and emails them.
+                </p>
               </div>
 
               <div className="flex gap-3">

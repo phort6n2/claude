@@ -72,7 +72,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ error: 'Email is required' }, { status: 400 })
   }
 
-  if (!data.password || data.password.length < 6) {
+  /* A PASSWORD IS OPTIONAL, because the portal's front door is an emailed
+     sign-in link and most accounts never have one. Requiring it here meant an
+     operator had to invent a password and find a way to tell the shop it —
+     and a password set this way is exactly what gets typed into the STAFF
+     login and rejected, which is the failure this whole path keeps producing.
+     Passing one is still allowed for a shop that asks for it. */
+  if (data.password && data.password.length < 6) {
     return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
   }
 
@@ -87,8 +93,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
 
     // Check if email already exists
+    /* Lowercased to match what CREATE writes. Checking the raw address let
+       "Owner@shop.com" past a row stored as "owner@shop.com", and the insert
+       then died on the unique index as a 500 "Failed to create user" — a
+       duplicate reported as a fault. */
     const existing = await prisma.clientUser.findUnique({
-      where: { email: data.email },
+      where: { email: String(data.email).toLowerCase().trim() },
     })
 
     if (existing) {
@@ -98,13 +108,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       )
     }
 
-    // Hash the password
-    const passwordHash = await hashPassword(data.password)
+    const passwordHash = data.password ? await hashPassword(data.password) : null
 
     const user = await prisma.clientUser.create({
       data: {
         clientId: id,
-        email: data.email.toLowerCase(),
+        email: String(data.email).toLowerCase().trim(),
         name: data.name || null,
         passwordHash,
         isActive: true,

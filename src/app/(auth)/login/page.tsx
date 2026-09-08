@@ -44,7 +44,7 @@ export default function LoginPage() {
             Auto Glass Platform
           </h1>
           <h2 className="mt-2 text-center text-gray-600">
-            Sign in to your account
+            Staff sign in
           </h2>
         </div>
 
@@ -97,6 +97,19 @@ export default function LoginPage() {
             {loading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
+
+        {/* THE WAY OUT. This form checks the User table; a shop owner's
+            account is a ClientUser, so it rejects them with "invalid
+            credentials" no matter what password is set for them — and the
+            only Sign in link on the marketing site used to lead here. Eight
+            consecutive failures from one shop, and a reset password that
+            could not possibly have helped. */}
+        <p className="text-center text-sm text-gray-500">
+          Shop owner?{' '}
+          <a href="/portal/login" className="font-semibold text-blue-600 hover:underline">
+            Sign in to your portal
+          </a>
+        </p>
       </div>
     </div>
   )

@@ -126,7 +126,15 @@ export async function verifyPasswordLogin(email: string, password: string): Prom
   }
 
   if (!clientUser.passwordHash) {
-    return { success: false, error: 'Password not set. Please contact support.' }
+    /* NOT "contact support" — the fix is a button on the screen they are
+       already looking at. Most portal accounts have no password at all
+       (invites create them without one), so this is the ordinary case, not an
+       error, and sending them to a human for it is how a shop waits a day to
+       read their own leads. */
+    return {
+      success: false,
+      error: 'This account signs in by email link — use “Email me a sign-in link” above.',
+    }
   }
 
   const isValid = await verifyPassword(password, clientUser.passwordHash)
