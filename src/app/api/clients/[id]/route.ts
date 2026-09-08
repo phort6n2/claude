@@ -28,7 +28,7 @@ const WRHQ_SYNC_FIELDS = [
   'offersSunroofRepair',
   'offersRockChipRepair',
   'offersAdasCalibration',
-  'insuranceRelationships',
+  'filesInsuranceClaims',
 ] as const
 
 /**
