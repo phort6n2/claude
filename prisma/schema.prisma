@@ -183,6 +183,24 @@ model Client {
   // webhook route so an empty database can never lock out a known site.
   allowedOrigins String[] @default([])
 
+  /// The Windshield Repair HQ listing this client is bound to.
+  ///
+  /// The directory matches an incoming client against the ~3,000 listings it
+  /// already holds and only creates when it genuinely has none, so the slug is
+  /// ITS answer and the only record of which page belongs to whom. Without it
+  /// stored, nothing on this side can say whether a shop is listed, or link to
+  /// the page — which is why the sync had no UI at all.
+  ///
+  /// `wrhqUrl` is only ever what the directory RETURNED. Composing one from
+  /// the slug means guessing its route shape, and a confident dead link on an
+  /// admin card is worse than a slug printed as text.
+  wrhqSlug     String?
+  wrhqUrl      String?
+  wrhqSyncedAt DateTime?
+  /// The last failure, kept until a sync succeeds. The message used to be
+  /// computed, returned in the PUT body and read by nobody.
+  wrhqError    String?
+
   // Google Places / Maps
   googlePlaceId String? // Google Places API place_id
   googleMapsUrl String? // Direct link to Google Maps

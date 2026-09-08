@@ -25,11 +25,21 @@
 // shop is an agency client beyond the tier flag itself.
 
 import { createHmac } from 'node:crypto'
+import { prisma } from '@/lib/db'
 
 export interface WrhqSyncResult {
   ok: boolean
   /** The directory slug the client is bound to, when the sync succeeded. */
   slug?: string
+  /**
+   * The listing's public address, ONLY when the directory returned one.
+   *
+   * Never composed from the slug. Doing that means guessing the directory's
+   * route shape, and a confident dead link on an admin card is worse than a
+   * slug printed as plain text — it sends whoever clicks it hunting a listing
+   * that is fine.
+   */
+  url?: string
   created?: boolean
   /** Dry runs only: whether a real run would create a listing rather than match one. */
   wouldCreate?: boolean
@@ -168,6 +178,42 @@ export function payloadFor(
 }
 
 /**
+ * Store what came back, so the admin can say more than "we sent something".
+ *
+ * WRITTEN HERE, not at each call site, for the same reason the sync itself is
+ * one function: there are four paths that push a client (create, edit, intake
+ * approval, backfill) and a binding recorded by three of them is a card that
+ * lies on the fourth. Never fatal — losing the note must not fail the push it
+ * describes.
+ *
+ * A DRY RUN NEVER REACHES HERE. It is the one thing that must leave no trace:
+ * the whole point is finding out what WOULD happen.
+ */
+async function recordSync(clientId: string, result: WrhqSyncResult): Promise<void> {
+  try {
+    await prisma.client.update({
+      where: { id: clientId },
+      data: result.ok
+        ? {
+            // Only overwrite identity on success, and only when the directory
+            // actually named it — a 200 with no slug must not blank a binding
+            // that is already correct.
+            ...(result.slug ? { wrhqSlug: result.slug } : {}),
+            ...(result.url ? { wrhqUrl: result.url } : {}),
+            wrhqSyncedAt: new Date(),
+            wrhqError: null,
+          }
+        : /* The binding is KEPT on failure. A directory that is down has not
+             un-listed anybody, and clearing the slug would make the card read
+             "not listed" for a page that is sitting there working. */
+          { wrhqError: result.error ?? 'Sync failed' },
+    })
+  } catch (e) {
+    console.error('[wrhq-sync] could not record result', e)
+  }
+}
+
+/**
  * Push a client to the directory. Always resolves — callers can await it
  * without risking the request they are serving.
  */
@@ -177,11 +223,18 @@ export async function syncClientToWrhq(
 ): Promise<WrhqSyncResult> {
   const url = process.env.WRHQ_SYNC_URL
   const secret = process.env.WRHQ_SYNC_SECRET
+  // Not configured is not a failure and must not be recorded as one: an
+  // environment with no directory would otherwise show every client as broken.
   if (!url || !secret) return { ok: false, skipped: true }
 
   const payload = payloadFor(client, opts)
   if (!payload) {
-    return { ok: false, error: 'Client has no city / 2-letter state, so it cannot be listed.' }
+    const result = {
+      ok: false,
+      error: 'This client has no city, or a state that is not two letters, so the directory cannot place a listing.',
+    }
+    if (!opts?.dryRun) await recordSync(client.id, result)
+    return result
   }
 
   const body = JSON.stringify(payload)
@@ -198,20 +251,27 @@ export async function syncClientToWrhq(
     if (!res.ok) {
       const error = String(json.error || `Directory returned ${res.status}`)
       console.error('[wrhq-sync] failed', res.status, error)
-      return { ok: false, error }
+      const result = { ok: false, error }
+      if (!opts?.dryRun) await recordSync(client.id, result)
+      return result
     }
-    return {
+    const result: WrhqSyncResult = {
       ok: true,
       slug: typeof json.slug === 'string' ? json.slug : undefined,
+      url: typeof json.url === 'string' && /^https?:\/\//.test(json.url) ? json.url : undefined,
       created: json.created === true,
       // Only a dry run returns this, and it is the whole point of one: whether
       // this client is already in the directory or would get a new page.
       ...(json.dryRun === true ? { wouldCreate: json.wouldCreate === true } : {}),
       matchedOn: typeof json.matchedOn === 'string' ? json.matchedOn : undefined,
     }
+    if (!opts?.dryRun) await recordSync(client.id, result)
+    return result
   } catch (e) {
     console.error('[wrhq-sync] send failed', e)
-    return { ok: false, error: e instanceof Error ? e.message : 'Request failed' }
+    const result = { ok: false, error: e instanceof Error ? e.message : 'Request failed' }
+    if (!opts?.dryRun) await recordSync(client.id, result)
+    return result
   }
 }
 

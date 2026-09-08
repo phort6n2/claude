@@ -10,6 +10,7 @@ import {
   siteContentFromAnswers,
   type IntakeAnswers,
 } from '@/lib/client-intake'
+import { syncClientToWrhq, WRHQ_SYNC_SELECT } from '@/lib/wrhq-sync'
 import { hoursAnswerText } from '@/lib/business-hours'
 
 export const dynamic = 'force-dynamic'
@@ -172,12 +173,31 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       data: { status: 'APPROVED', approvedAt: new Date(), clientId, answers: answers as never },
     })
 
+    /* THE DIRECTORY LISTING, from the path clients actually arrive by.
+       The sync hangs off client create and update in the clients API, and
+       approval uses neither — it writes with prisma directly. So every shop
+       onboarded the normal way, which is nearly all of them, silently never
+       got a Windshield Repair HQ listing while the feature read as automatic.
+       Approval is also the moment the address and services are finally
+       trustworthy, which is exactly what the directory needs to place one. */
+    const full = await prisma.client.findUnique({
+      where: { id: clientId },
+      select: WRHQ_SYNC_SELECT,
+    })
+    // Reported, never fatal: the approval is written by this point and a
+    // directory that is down must not read as "approval failed". The outcome
+    // is stored on the client, so the listing card shows it either way.
+    const wrhq = full ? await syncClientToWrhq(full) : { ok: false, error: 'Client vanished' }
+    if (!wrhq.ok && !wrhq.skipped) {
+      console.error('[intakes] WRHQ listing not synced:', wrhq.error)
+    }
+
     // DELIBERATELY NO EMAIL TO THE SHOP. Approval makes their answers the
     // record; it does not open the door. The portal invite is a manual send
     // from the client page, after the operator decides the setup is worth a
     // first look — an invite fired here would land while the site is still
     // half-built, and first impressions are the product.
-    return NextResponse.json({ ok: true, clientId })
+    return NextResponse.json({ ok: true, clientId, wrhq })
   } catch (error) {
     console.error('Failed to approve intake:', error)
     return NextResponse.json(

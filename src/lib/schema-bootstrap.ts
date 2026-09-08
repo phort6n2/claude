@@ -401,6 +401,17 @@ export const SITE_ANALYTICS_SQL: string[] = [
   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
 ]
 
+export const WRHQ_SQL: string[] = [
+  // Which Windshield Repair HQ listing each client is bound to, plus the
+  // outcome of the last push. The directory decides the slug — it matches
+  // before it creates — so this is its answer stored back, and it is what lets
+  // the admin say "listed" rather than "we sent something once".
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "wrhqSlug" TEXT`,
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "wrhqUrl" TEXT`,
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "wrhqSyncedAt" TIMESTAMP(3)`,
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "wrhqError" TEXT`,
+]
+
 export const BOOTSTRAP_SQL: string[] = [
   ...PATH_OVERRIDE_SQL,
   ...MARKET_AREA_SQL,
@@ -422,6 +433,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...CLIENT_ONBOARDING_SQL,
   ...ADS_FINDING_SQL,
   ...SITE_ANALYTICS_SQL,
+  ...WRHQ_SQL,
 ]
 
 /**

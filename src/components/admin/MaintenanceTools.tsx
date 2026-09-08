@@ -67,6 +67,13 @@ const READS: Tool[] = [
     method: 'POST',
     what: 'Probes every URL shape with the real tokens from a stored payload and reports which ones answer and which allow embedding. Reads only — it fetches their pages, changes nothing.',
   },
+  {
+    key: 'wrhq-dry',
+    name: 'Windshield Repair HQ: which clients are already listed?',
+    path: '/api/admin/wrhq-sync?dryRun=1',
+    method: 'POST',
+    what: 'Asks the directory what it WOULD do with every client — matched to a listing it already holds, or a new page. Writes nothing on either side. Most shops should MATCH: the directory carries ~3,000 listings and ours are usually already among them, so a run that wants to create most of them means the matching is not seeing what it should.',
+  },
 ]
 
 const WRITES: Tool[] = [
@@ -133,6 +140,14 @@ const WRITES: Tool[] = [
     method: 'POST',
     what: 'PATCHes the geometry of each campaign in place to match SCAN_PRESETS.',
     cost: 'Writes geometry on their side. Never deletes and recreates — that would orphan stored runs and burn credits.',
+  },
+  {
+    key: 'wrhq-sync',
+    name: 'Windshield Repair HQ: sync every client to the directory',
+    path: '/api/admin/wrhq-sync',
+    method: 'POST',
+    what: 'Pushes every client to the directory. This is the backfill for clients that predate the sync, the repair for one that failed while the directory was down, and the reconcile after somebody edited a listing on the far side. Run the dry run above first.',
+    cost: 'Writes to the directory: one listing created or updated per client, and the binding stored back here. It matches before it creates, so running it twice does not produce duplicate pages. Stops short of the function time limit and names the clients it did not reach — press it again.',
   },
   {
     key: 'setup-db',
