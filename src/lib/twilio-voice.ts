@@ -103,9 +103,32 @@ export async function verifyTwilioSignature(
   const creds = await twilioCreds()
   if (!creds) return { ok: false, reason: 'Twilio credentials are not configured' }
 
-  const twilio = await import('twilio')
-  const valid = twilio.validateRequest(creds.authToken, signature, url, params)
-  return valid ? { ok: true } : { ok: false, reason: 'Signature did not match' }
+  /* `.default`, and it is not optional.
+     The twilio package is CommonJS, so `await import('twilio')` hands back the
+     ESM namespace object — whose `validateRequest` is undefined. Every call to
+     a tracking number therefore threw "validateRequest is not a function", the
+     route answered 500 with no TwiML, and Twilio played an error message to a
+     real customer instead of ringing the shop. Seventeen calls over two weeks,
+     with nothing to see anywhere but a stack trace in the runtime log.
+     `lead-notifications.ts` had the correct form all along, which is why SMS
+     kept working while voice did not. */
+  const mod = await import('twilio')
+  const validateRequest = mod.default?.validateRequest
+  if (typeof validateRequest !== 'function') {
+    // Named rather than thrown, so the route can answer instead of crashing —
+    // and so this reads as OUR fault in the log, not as a rejected caller.
+    return { ok: false, reason: 'twilio.validateRequest is unavailable in this build' }
+  }
+
+  try {
+    const valid = validateRequest(creds.authToken, signature, url, params)
+    return valid ? { ok: true } : { ok: false, reason: 'Signature did not match' }
+  } catch (err) {
+    return {
+      ok: false,
+      reason: `Signature check failed: ${err instanceof Error ? err.message : 'unknown'}`,
+    }
+  }
 }
 
 /** Twilio posts application/x-www-form-urlencoded. */
