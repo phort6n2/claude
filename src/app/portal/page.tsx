@@ -18,6 +18,7 @@ import { PRIMARY_DOMAIN_SELECT } from '@/lib/site-origin'
 import { DEFAULT_RANGE } from '@/lib/site-analytics'
 import { countRecentMissed, countAnsweredCalls } from '@/lib/call-patterns'
 import { formatMoney } from '@/lib/monthly-report'
+import Stars from '@/components/ui/Stars'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,6 +58,7 @@ function Tile({
   icon: Icon,
   tone = 'plain',
   muted = false,
+  after,
 }: {
   label: string
   value: string
@@ -64,6 +66,8 @@ function Tile({
   icon: React.ElementType
   tone?: Tone
   muted?: boolean
+  /** Rendered under the sub-line. Only the rating tile uses it, for stars. */
+  after?: React.ReactNode
 }) {
   const t: Tone = muted ? 'plain' : tone
   return (
@@ -134,6 +138,7 @@ function Tile({
           {sub}
         </p>
       )}
+      {after}
     </div>
   )
 }
@@ -455,6 +460,9 @@ export default async function PortalHomePage() {
             value={reviews.rating.toFixed(1)}
             sub={`${reviews.reviewCount} reviews · shown on your site`}
             icon={Star}
+            /* The stars are the point on this one: it is a shop owner's own
+               score, and five stars reads before the digits do. */
+            after={<Stars rating={reviews.rating} size={16} className="mt-1" />}
           />
         ) : (
           <Tile label="Your Google rating" value="—" sub="not connected yet" icon={Star} muted />
