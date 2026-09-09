@@ -453,7 +453,17 @@ export function SiteHeader({
             with no volume — and volume is the half that makes 4.9 mean
             anything. Dropping the glyphs also gives the brand back ~60px,
             which is why the shop's own name rendered as "ABC Auto Gl…" at both
-            360 and 390. */}
+            360 and 390.
+
+            WHAT ACTUALLY DECIDES IT IS WHETHER THE BRAND CAN REFLOW, not the
+            viewport alone. A logo is `h-[52px] w-auto` and takes the width it
+            takes; a Wordmark is text that wraps under pressure. Measured at
+            390px: with a logo the header is 65px tall with the stars and 65px
+            without — they cost nothing — while the long-wordmark shop goes
+            65px to 70px, one extra wrapped line. So a logo shop gets them from
+            380px and a wordmark shop still waits for 430. 320 and 360 are
+            untouched either way, which are the widths the paragraph above was
+            measured at. */}
         {reviews && (
           <div className="ml-auto lg:hidden flex shrink-0 flex-col items-end leading-none gap-0.5">
             <span className="flex items-center gap-1.5">
@@ -461,7 +471,11 @@ export function SiteHeader({
               <span className="text-[15px] font-extrabold text-[var(--tx)] tabular-nums">
                 {reviews.rating.toFixed(1)}
               </span>
-              <span className="hidden min-[430px]:inline">
+              <span
+                className={
+                  client.logoUrl ? 'hidden min-[380px]:inline' : 'hidden min-[430px]:inline'
+                }
+              >
                 <StarRow rating={reviews.rating} size={11} />
               </span>
             </span>
