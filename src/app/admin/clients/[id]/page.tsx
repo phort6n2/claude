@@ -15,6 +15,7 @@ import {
 import { prisma } from '@/lib/db'
 import { getSiteExtras } from '@/lib/site-content'
 import CopyField from '@/components/admin/CopyField'
+import Stars from '@/components/ui/Stars'
 import PortalInviteCard from '@/components/admin/PortalInviteCard'
 import WrhqListingCard from '@/components/admin/WrhqListingCard'
 import { wrhqSyncEnabled } from '@/lib/wrhq-sync'
@@ -272,9 +273,12 @@ export default async function ClientOverviewPage({ params }: PageProps) {
         >
           {reviews ? (
             <>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-2xl font-bold text-gray-900 flex items-center gap-2 flex-wrap">
                 {reviews.rating.toFixed(1)}
-                <span className="text-sm font-normal text-gray-500"> · {reviews.reviewCount} reviews</span>
+                <Stars rating={reviews.rating} size={15} />
+                <span className="text-sm font-normal text-gray-500">
+                  {reviews.reviewCount} reviews
+                </span>
               </p>
               <p className="text-gray-400">Updated {timeAgo(reviews.fetchedAt)}</p>
               {reviews.lastError && <p className="text-red-600">{reviews.lastError}</p>}

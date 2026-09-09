@@ -876,6 +876,23 @@ client says the leads are bad.
 
 ## 6. Conventions
 
+- **Both apps work on a phone, and the admin only recently did.**
+  `AdminShell` holds the layout: the `w-64` sidebar is a fixed column at `lg`
+  and up, and a drawer below it. Before that the layout was `flex h-screen`
+  with no breakpoint anywhere, so on a 390px phone the sidebar took 256px and
+  left 134px of content — not a degraded layout, no layout. The nights this
+  platform needs attention are exactly the nights nobody is at a desk.
+  - **`min-w-0` on the content column is load-bearing.** A flex child defaults
+    to `min-width: auto`, so one wide table stretches the column past the
+    viewport and takes the whole page sideways.
+  - Wide content scrolls **inside its own `overflow-x-auto` box**; the page
+    body never scrolls horizontally. Verified by measuring
+    `scrollWidth - clientWidth` at 320/360/390/430, not by eye.
+  - The portal was built this way from the start: a bottom tab bar below `sm`
+    with `pb-[env(safe-area-inset-bottom)]`, grid columns computed from the
+    RENDERED tab count (hardcoding it wrapped the last tab onto a second row
+    twice), and `pb-24 sm:pb-10` so content clears the bar. Six tabs at 360px
+    is measured, not assumed — re-measure before adding a seventh.
 - **Autosaving admin UI.** Newer cards (tracking numbers, site content) save
   on change with a status line, no save button. Flip optimistic state first,
   then reconcile — a controlled checkbox that waits on a round trip feels
