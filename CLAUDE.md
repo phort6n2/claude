@@ -210,7 +210,22 @@ webhook routes.
 
 - Numbers are bought in-app (`/api/clients/[id]/tracking-numbers`) with the
   VoiceUrl set in the purchase request.
-- TwiML uses `answerOnBridge` and dual-channel `record-from-answering-dual`.
+- **TwiML is built by `dialTwiml()`, and `<Dial record>` must be one of FIVE
+  documented values** (`DIAL_RECORD_VALUES`). Twilio does not reject an
+  attribute value it cannot parse — it warns in the account debugger, drops
+  the attribute and connects the call. This app dialled with
+  `record-from-answering-dual`, one letter off `record-from-answer-dual`, and
+  therefore ran on the default `do-not-record` for months. Every other part of
+  the feature worked perfectly — the caller reached the shop, the status
+  callback fired, the lead was written, the alert email went out — there was
+  simply never a recording, so never a recording callback, so never an
+  analysis row. An absence of scored calls is indistinguishable from a client
+  nobody has got to yet. Found only when a shop had a ten-minute call and
+  somebody went looking for the recording of a call they knew had happened.
+  `scripts/check-twiml.ts` generates the real document and asserts on it,
+  because this is the one output of the feature that nothing here reads back.
+- TwiML uses `answerOnBridge`, and records dual-channel so the transcript can
+  tell the two speakers apart.
 - Twilio signature validation rebuilds the public URL from forwarded headers.
 - **`(await import('twilio')).default`, never the namespace.** The package is
   CommonJS, so `await import('twilio')` returns a namespace object whose
