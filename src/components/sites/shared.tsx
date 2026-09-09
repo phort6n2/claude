@@ -448,40 +448,30 @@ export function SiteHeader({
             ))}
           </nav>
         )}
-        {/* The stars are what get dropped on a narrow phone, not the count.
-            It was the other way round, so a 360px screen showed "4.9 ★★★★★"
-            with no volume — and volume is the half that makes 4.9 mean
-            anything. Dropping the glyphs also gives the brand back ~60px,
-            which is why the shop's own name rendered as "ABC Auto Gl…" at both
-            360 and 390.
+        {/* STACKED, so the three facts stop competing for one line.
+            The history worth keeping: this was a single row, and on a 360px
+            screen it read "4.9 ★★★★★" with no volume — and volume is the half
+            that makes 4.9 mean anything. So the stars were dropped first, then
+            gated on whether the brand could reflow, and the badge still
+            crowded a two-line logo at 390.
 
-            WHAT ACTUALLY DECIDES IT IS WHETHER THE BRAND CAN REFLOW, not the
-            viewport alone. A logo is `h-[52px] w-auto` and takes the width it
-            takes; a Wordmark is text that wraps under pressure. Measured at
-            390px: with a logo the header is 65px tall with the stars and 65px
-            without — they cost nothing — while the long-wordmark shop goes
-            65px to 70px, one extra wrapped line. So a logo shop gets them from
-            380px and a wordmark shop still waits for 430. 320 and 360 are
-            untouched either way, which are the widths the paragraph above was
-            measured at. */}
+            A column settles it rather than trading it off. The widest line is
+            now the review count instead of rating-plus-five-glyphs, which is
+            about 45px narrower than the row ever was — so the brand gets width
+            back at EVERY size and the stars no longer have to be rationed by
+            breakpoint. Measured below before this replaced the gates. */}
         {reviews && (
-          <div className="ml-auto lg:hidden flex shrink-0 flex-col items-end leading-none gap-0.5">
-            <span className="flex items-center gap-1.5">
-              <GoogleG size={14} />
+          <div className="ml-auto lg:hidden flex shrink-0 flex-col items-center leading-none gap-[3px]">
+            <span className="flex items-center gap-1">
+              <GoogleG size={13} />
               <span className="text-[15px] font-extrabold text-[var(--tx)] tabular-nums">
                 {reviews.rating.toFixed(1)}
               </span>
-              <span
-                className={
-                  client.logoUrl ? 'hidden min-[380px]:inline' : 'hidden min-[430px]:inline'
-                }
-              >
-                <StarRow rating={reviews.rating} size={11} />
-              </span>
             </span>
+            <StarRow rating={reviews.rating} size={11} />
             <span className="text-[11px] font-semibold text-[var(--tx-muted)] whitespace-nowrap">
-              {/* "Google" is redundant beside the G logo, and on a phone it is
-                  ~55px taken from the shop's own name. */}
+              {/* "Google" is redundant beside the G logo directly above it, and
+                  on a phone it is ~55px taken from the shop's own name. */}
               {reviews.reviewCount}
               <span className="hidden min-[430px]:inline"> Google</span> reviews
             </span>
