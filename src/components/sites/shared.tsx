@@ -527,13 +527,41 @@ export function RatingChip({ reviews, client }: { reviews: ReviewsData | null; c
     </>
   )
   const cls =
-    'inline-flex items-center gap-2.5 min-h-[52px] px-4 py-2 bg-white border border-[var(--line-card)] rounded-full shadow-sm no-underline'
-  return client.googleMapsUrl ? (
-    <a href={client.googleMapsUrl} target="_blank" rel="noopener noreferrer" className={cls}>
+    'items-center gap-2.5 min-h-[52px] px-4 py-2 bg-white border border-[var(--line-card)] rounded-full shadow-sm no-underline'
+
+  /* IT STRETCHES ONLY WHEN THERE IS SOMETHING TO PUT AT THE FAR END.
+     Hugging its content left a ragged gap to the pill's right in a column
+     where the bullets and the call button both run the full width — the one
+     element not on both edges. Stretching it alone does not fix that, it
+     moves the gap INSIDE the border, where it is more conspicuous rather
+     than less.
+
+     So the width is earned: when the shop has a Maps URL the far end carries
+     the affordance, and the pill spans the column like everything under it.
+     That also solves a second thing — this has always been a link and nothing
+     whatsoever said so, on the one element whose whole job is "go and check
+     that we did not make this up".
+
+     Phone only. On a desktop hero the column is ~600px and a stretched pill
+     would be a stripe. */
+  if (!client.googleMapsUrl) return <span className={`inline-flex ${cls}`}>{inner}</span>
+
+  return (
+    <a
+      href={client.googleMapsUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`flex w-full sm:inline-flex sm:w-auto ${cls}`}
+    >
       {inner}
+      {/* --cta-on-light, not --cta: the brand colour made legible on white.
+          A shop whose brand is pale would otherwise print this in a colour
+          nobody can read, on white, at 13px. */}
+      <span className="ml-auto hidden min-[380px]:flex sm:hidden items-center gap-1 text-[13px] font-semibold text-[var(--cta-on-light)] whitespace-nowrap">
+        Read them
+        <span aria-hidden>↗</span>
+      </span>
     </a>
-  ) : (
-    <span className={cls}>{inner}</span>
   )
 }
 
