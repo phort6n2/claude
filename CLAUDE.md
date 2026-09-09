@@ -448,6 +448,23 @@ in this app.
   strict — a bare run of ten digits is more often an order number — and
   `scripts/check-rogue-numbers.ts` holds the traps it must not fire on (year
   ranges, prices, ZIP+4, VINs, dates).
+- **The same sweep also asks whether tracked calls are being RECORDED**
+  (`call-recording-health.ts`, `runCallRecordingChecks`, check
+  `calls-not-recorded`). Answered calls through this app's own TwiML, at least
+  10 seconds, at least an hour old (a recording lands a minute or two after the
+  call), on a client with an active number set to record: if none of them has
+  a recording it is an ALERT, if most do not it is a REVIEW, and a stray one
+  is neither. ALERT despite no money burning tonight — everything else this
+  sweep files can be read tomorrow with the same result, and audio cannot: a
+  call that was not recorded is gone. This is the check for the NEXT cause of
+  what the `<Dial record>` typo did, because they all look identical from
+  inside the app — a rotated credential, a Blob write failing, a signature
+  rejection, a number reconfigured by hand in Twilio's console — and every one
+  of them produces missing rows rather than errors. `judged` is what keeps a
+  quiet week or recording deliberately switched off from auto-resolving a
+  finding that is still true; `scripts/check-call-recording.ts` holds both
+  directions, because being too eager here is what teaches people to scroll
+  past the one morning it is real.
 - **The digest emails ADMIN_EMAIL only when something NEW appeared**, so an
   empty morning sends nothing and the email means something.
 - **WEEKLY is the optimization playbook** (`google-ads-playbook.ts`): the

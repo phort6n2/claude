@@ -2,6 +2,13 @@ import { prisma } from '@/lib/db'
 import { adsSearch } from '@/lib/google-ads'
 import { secretSetting } from '@/lib/secret-settings'
 import { evaluateRogueNumbers, editorialFields } from '@/lib/rogue-numbers'
+import {
+  evaluateCallRecording,
+  RECORDING_CHECK,
+  WINDOW_DAYS,
+  SETTLE_MINUTES,
+  MIN_SECONDS,
+} from '@/lib/call-recording-health'
 
 /**
  * The Google Ads heartbeat: scheduled checks that file FINDINGS.
@@ -363,7 +370,90 @@ export async function runDailyAdsChecks(): Promise<DailyRunSummary> {
   }
 
   await runSiteContentChecks(summary)
+  await runCallRecordingChecks(summary)
   return summary
+}
+
+/**
+ * Are the calls this platform tracks actually being recorded?
+ *
+ * Separate from the site checks because it reads leads rather than copy, and
+ * separate from the ads loop because it applies to every client with a
+ * tracking number whether or not anyone manages their Google account.
+ *
+ * See call-recording-health.ts for why this is worth a check of its own: the
+ * failure it looks for produces no error anywhere in the app, only missing
+ * rows, and it went unnoticed for months.
+ */
+export async function runCallRecordingChecks(
+  summary: Pick<DailyRunSummary, 'newFindings' | 'resolved' | 'stillOpen'>
+): Promise<void> {
+  const clients = await prisma.client
+    .findMany({
+      where: { status: { in: ['ACTIVE', 'ONBOARDING'] } },
+      select: {
+        id: true,
+        businessName: true,
+        callCoachingEnabled: true,
+        adsTracking: { select: { googleAdsCustomerId: true } },
+        trackingNumbers: { where: { active: true }, select: { recordCalls: true } },
+      },
+      orderBy: { businessName: 'asc' },
+    })
+    .catch(() => [])
+
+  const windowStart = new Date(Date.now() - WINDOW_DAYS * 86_400_000)
+  const settledBefore = new Date(Date.now() - SETTLE_MINUTES * 60_000)
+
+  for (const client of clients) {
+    const recordingEnabled = client.trackingNumbers.some((n) => n.recordCalls)
+    // Nothing to judge, and no query worth running.
+    if (!recordingEnabled) continue
+
+    const calls = await prisma.lead
+      .findMany({
+        where: {
+          clientId: client.id,
+          // Only calls that came through OUR TwiML. A HighLevel call carries
+          // its own recording from their Twilio account and says nothing
+          // about whether this app's dial is working.
+          twilioCallSid: { not: null },
+          // Answered. A no-answer or busy call has no recording by nature,
+          // and counting one as missing would file a finding on every shop
+          // that ever misses a call.
+          callStatus: 'completed',
+          callDurationSecs: { gte: MIN_SECONDS },
+          createdAt: { gte: windowStart, lt: settledBefore },
+        },
+        select: { createdAt: true, callDurationSecs: true, callRecordingUrl: true },
+        orderBy: { createdAt: 'asc' },
+        take: 500,
+      })
+      .catch(() => null)
+
+    // A failed read is not an all-clear: skip the client entirely rather than
+    // filing "no calls" or resolving a finding that is still true.
+    if (!calls) continue
+
+    const { judged, drafts } = evaluateCallRecording({
+      recordingEnabled,
+      coachingEnabled: client.callCoachingEnabled,
+      calls: calls.map((c) => ({
+        at: c.createdAt.toISOString(),
+        seconds: c.callDurationSecs ?? 0,
+        recorded: !!c.callRecordingUrl,
+      })),
+    })
+
+    await fileFindings(
+      client,
+      client.adsTracking?.googleAdsCustomerId || '',
+      'DAILY',
+      drafts,
+      judged ? new Set([RECORDING_CHECK]) : new Set<string>(),
+      summary
+    )
+  }
 }
 
 /**
