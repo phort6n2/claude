@@ -1,4 +1,5 @@
 import { adsSearch } from '@/lib/google-ads'
+import { checkCampaignAssets } from '@/lib/google-ads-assets'
 import {
   fileFindings,
   listAdsClients,
@@ -410,6 +411,16 @@ export function evaluatePlaybook(
   return { drafts, heldByCooldown: held }
 }
 
+/**
+ * The checks the PLAYBOOK itself produces — the set it is allowed to
+ * auto-resolve when a run stops seeing them.
+ *
+ * Nothing that files its own findings belongs here. `campaign-assets`,
+ * `ad-group-ads` and the campaign-goal checks each call fileFindings with
+ * their own set, and listing them here as well would tell this run it had
+ * "run" them while `result.drafts` contains none — resolving every one of
+ * them seconds after they were filed.
+ */
 export const WEEKLY_CHECKS = [
   'tcpa-before-data',
   'budget-below-target',
@@ -506,6 +517,12 @@ export async function runWeeklyPlaybook(): Promise<WeeklyRunSummary> {
     // rules that gate the playbook's RECOMMENDATIONS have nothing to say about
     // a misconfiguration.
     await checkCampaignGoals(client, customerId, summary)
+
+    /* Also filed on its own, and for the same reason: whether a campaign
+       carries its sitelinks is true whether or not the change history could be
+       read, and the cooldowns that gate RECOMMENDATIONS have nothing to say
+       about an asset that was never added. */
+    await checkCampaignAssets(client, customerId, summary)
 
     const campaignRows = await adsSearch(
       customerId,

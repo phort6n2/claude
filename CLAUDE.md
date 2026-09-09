@@ -446,6 +446,28 @@ in this app.
   for that account. Thresholds are named constants;
   `docs/GOOGLE-ADS-PLAYBOOK.md` carries the expert sourcing, confidence
   labels and the disagreements.
+- **WEEKLY also audits ASSET COVERAGE** (`google-ads-assets.ts`): sitelinks,
+  callouts, structured snippets, the call asset and images per campaign, plus
+  ad groups with no live ad or a thin responsive one. Set once at launch and
+  never looked at again — nothing in Google's interface goes red for a campaign
+  with two sitelinks, it simply serves a smaller ad than the competitor beside
+  it. Targets are in `ASSET_STANDARD` (6 sitelinks, 4 callouts, 2 snippets),
+  with Google's SERVING minimums separate, so a finding can say "below what
+  Google needs to show them at all" rather than just "fewer than we like".
+- **THE LEVEL RULE IS THE WHOLE DIFFICULTY.** Assets attach at customer,
+  campaign and ad-group level and the MOST SPECIFIC one wins OUTRIGHT — levels
+  do not add. A campaign with two sitelinks of its own shows two even when the
+  account has six. Adding the levels passes exactly the campaign that is worst
+  off; counting only the campaign level files a finding against every account
+  that sensibly sets them once at the top. Both are silent.
+  `scripts/check-ads-assets.ts` holds that case first.
+- Performance Max is **excluded** — its assets live in asset groups and are
+  judged on a different standard, so "no sitelinks" against one would be a
+  confident finding about the wrong thing.
+- **Anything that files its own findings stays OUT of `WEEKLY_CHECKS`.** That
+  list is the set the playbook run is allowed to auto-resolve; a self-filing
+  check listed there is told it "ran" while `result.drafts` holds none of its
+  findings, which resolves every one of them seconds after they were filed.
 - Read-only so far. The planned approve→execute layer must carry the exact
   mutation payload on the finding and replay it — never re-derive at
   execution time — and prefer reversible actions (pause over remove).
