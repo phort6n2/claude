@@ -156,6 +156,100 @@ export function xmlEscape(value: string): string {
 }
 
 /**
+ * The values Twilio accepts for `<Dial record>`. Anything else is IGNORED.
+ *
+ * WHY THIS IS A LIST AND NOT A STRING LITERAL AT THE CALL SITE. For months
+ * this app dialled with `record="record-from-answering-dual"` — one letter
+ * off the real value, `record-from-answer-dual` — and every consequence of
+ * that was invisible. Twilio does not reject a TwiML attribute it cannot
+ * parse: it warns in the account's debugger, drops the attribute, and
+ * connects the call. So the caller reached the shop, the status callback
+ * fired, the lead was written and the alert email went out exactly as
+ * designed, while `do-not-record` quietly applied. No recording was made, so
+ * no recording callback was ever sent, so no analysis row was ever created,
+ * so there was nothing anywhere reading as an error — only an absence, which
+ * looks precisely like a shop whose calls nobody has scored yet.
+ *
+ * A ten-minute call to Auto Glass Kings is what surfaced it, and only because
+ * somebody went looking for the recording of a call they knew had happened.
+ */
+export const DIAL_RECORD_VALUES = [
+  'do-not-record',
+  'record-from-answer',
+  'record-from-ringing',
+  'record-from-answer-dual',
+  'record-from-ringing-dual',
+] as const
+export type DialRecordValue = (typeof DIAL_RECORD_VALUES)[number]
+
+/**
+ * Dual channel: the caller and the shop end up on separate tracks, which is
+ * what lets the coaching transcript tell who said what. From answer rather
+ * than from ringing, so the recording does not open with 20 seconds of
+ * ringtone that the transcriber then charges for and scores.
+ */
+export const DIAL_RECORD: DialRecordValue = 'record-from-answer-dual'
+
+/** What the voice webhook needs to know about the number that was dialled. */
+export type DialPlan = {
+  callerId: string
+  forwardTo: string
+  record: boolean
+  announce: boolean
+  whisper: boolean
+  statusUrl: string
+  recordingUrl: string
+  whisperUrl: string
+}
+
+/**
+ * The TwiML for an inbound call, as a string.
+ *
+ * Pure and separate from the route on purpose: this is the one output of the
+ * whole call-tracking feature that nothing in this codebase ever sees. Twilio
+ * reads it, acts on it, and answers nothing back — a wrong attribute here
+ * cannot fail a build, cannot throw, and cannot show up in a log. The only
+ * way to hold it to the documented shape is to generate it without a request
+ * and assert on it, which is what scripts/check-twiml.ts does.
+ */
+export function dialTwiml(plan: DialPlan): string {
+  const parts: string[] = []
+
+  if (plan.record && plan.announce) {
+    parts.push(
+      `<Say voice="alice">This call may be recorded for quality and training purposes.</Say>`
+    )
+  }
+
+  const dialAttrs = [
+    `callerId="${xmlEscape(plan.callerId)}"`,
+    `timeout="25"`,
+    // The caller hears the shop's phone actually ringing, and the call is not
+    // billed or marked answered until someone picks up. Without this Twilio
+    // answers immediately and the customer hears a beat of nothing, which on a
+    // mobile reads as a dropped call.
+    `answerOnBridge="true"`,
+    `action="${xmlEscape(plan.statusUrl)}"`,
+    `method="POST"`,
+  ]
+  if (plan.record) {
+    dialAttrs.push(`record="${DIAL_RECORD}"`)
+    dialAttrs.push(`recordingStatusCallback="${xmlEscape(plan.recordingUrl)}"`)
+    dialAttrs.push(`recordingStatusCallbackEvent="completed"`)
+    dialAttrs.push(`recordingStatusCallbackMethod="POST"`)
+  }
+
+  const numberAttrs = plan.whisper
+    ? ` url="${xmlEscape(plan.whisperUrl)}" method="POST"`
+    : ''
+
+  parts.push(
+    `<Dial ${dialAttrs.join(' ')}><Number${numberAttrs}>${xmlEscape(plan.forwardTo)}</Number></Dial>`
+  )
+  return parts.join('')
+}
+
+/**
  * Copy a Twilio recording into Blob storage and return the public URL.
  *
  * Fetched with Basic auth, stored with a random suffix so the URL cannot be

@@ -4,7 +4,7 @@ import {
   verifyTwilioSignature,
   publicUrl,
   twiml,
-  xmlEscape,
+  dialTwiml,
 } from '@/lib/twilio-voice'
 import { recordCall } from '@/lib/call-lead'
 
@@ -90,41 +90,20 @@ export async function POST(request: Request) {
     `[Twilio Voice] ${dialled} → ${number.client.businessName}: record=${number.recordCalls} announce=${number.announceRecording} whisper=${!!number.whisper?.trim()} forward=${number.forwardTo}`
   )
 
-  const parts: string[] = []
-
-  if (number.recordCalls && number.announceRecording) {
-    parts.push(
-      `<Say voice="alice">This call may be recorded for quality and training purposes.</Say>`
-    )
-  }
-
-  const dialAttrs = [
-    `callerId="${xmlEscape(callerId)}"`,
-    `timeout="25"`,
-    // The caller hears the shop's phone actually ringing, and the call is not
-    // billed or marked answered until someone picks up. Without this Twilio
-    // answers immediately and the customer hears a beat of nothing, which on a
-    // mobile reads as a dropped call.
-    `answerOnBridge="true"`,
-    `action="${xmlEscape(statusUrl)}"`,
-    `method="POST"`,
-  ]
-  if (number.recordCalls) {
-    // Dual-channel: the caller and the shop end up on separate channels, which
-    // is what makes the coaching transcript able to tell who said what.
-    dialAttrs.push(`record="record-from-answering-dual"`)
-    dialAttrs.push(`recordingStatusCallback="${xmlEscape(recordingUrl)}"`)
-    dialAttrs.push(`recordingStatusCallbackEvent="completed"`)
-    dialAttrs.push(`recordingStatusCallbackMethod="POST"`)
-  }
-
-  const numberAttrs = number.whisper?.trim()
-    ? ` url="${xmlEscape(whisperUrl)}" method="POST"`
-    : ''
-
-  parts.push(
-    `<Dial ${dialAttrs.join(' ')}><Number${numberAttrs}>${xmlEscape(number.forwardTo)}</Number></Dial>`
-  )
+  // Built by a pure function in twilio-voice.ts so it can be asserted on
+  // without a request — see the note on DIAL_RECORD_VALUES for why this
+  // particular string is the one thing here nobody would ever catch by using
+  // the app.
+  const body = dialTwiml({
+    callerId,
+    forwardTo: number.forwardTo,
+    record: number.recordCalls,
+    announce: number.announceRecording,
+    whisper: !!number.whisper?.trim(),
+    statusUrl,
+    recordingUrl,
+    whisperUrl,
+  })
 
   /**
    * WRITE THE LEAD NOW, not when the call ends.
@@ -151,5 +130,5 @@ export async function POST(request: Request) {
     `[Twilio Voice] ${from} → ${to} (${number.client.businessName}) forwarding to ${number.forwardTo}`
   )
 
-  return twiml(parts.join(''))
+  return twiml(body)
 }
