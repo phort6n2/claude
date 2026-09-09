@@ -1,6 +1,7 @@
 import { Phone, MapPin, ShieldCheck, Check, MessageSquare } from 'lucide-react'
 import { servicePath, locationPath, readPathOverrides } from '@/lib/site-paths'
 import { ReviewsGrid } from '@/components/sites/reviews-grid'
+import GalleryPhotos from '@/components/sites/gallery-lightbox'
 import { wordmarkParts } from '@/lib/wordmark'
 import { smsHref } from '@/lib/contact-links'
 import { headlineArea, servingShort } from '@/lib/site-area'
@@ -1030,33 +1031,10 @@ export function GalleryGrid({ extras }: { extras: SiteExtras | null }) {
     <section className="border-t border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
         <SectionHead eyebrow="Our work" title="The kind of work we do" />
-        {/* Even photo counts that don't fill three columns read better 2-up —
-            no orphan card on the last row. */}
-        <div
-          className={`grid grid-cols-2 gap-5 ${
-            photos.length % 3 === 1 ? 'md:grid-cols-2' : 'md:grid-cols-3'
-          }`}
-        >
-          {photos.map((photo) => (
-            <figure
-              key={photo.url}
-              className="m-0 rounded-[20px] border border-[var(--line-card)] bg-white shadow-sm overflow-hidden"
-            >
-              {/* The description belongs in alt, not under the photo. Printed
-                  as a caption it just narrates what the reader can already
-                  see, and reads like stock-photo metadata — which costs more
-                  credibility than the caption ever added. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={photo.url}
-                alt={photo.alt || 'Job photo'}
-                loading="lazy"
-                decoding="async"
-                className="w-full aspect-[4/3] object-cover"
-              />
-            </figure>
-          ))}
-        </div>
+        {/* The grid itself is a client component so a tap opens the photo full
+            size. It renders the same <img> tags on the server, so this section
+            is unchanged for a crawler or a visitor without JavaScript. */}
+        <GalleryPhotos photos={photos} />
       </div>
     </section>
   )

@@ -25,9 +25,10 @@ import { GoogleG, StarRow, type ReviewQuote } from '@/components/sites/shared'
  * to clip: the clip landed mid-sentence exactly where these reviews become
  * persuasive, and there was no way to get to the rest. Now there is.
  *
- * A client component, deliberately the only one on the page: the modal needs
- * state. It carries no data fetching and renders the same markup on the
- * server, so the cards are complete before hydration.
+ * A client component because the modal needs state. It carries no data
+ * fetching and renders the same markup on the server, so the cards are
+ * complete before hydration — the same bargain the gallery makes for its
+ * lightbox.
  */
 
 const AVATAR_COLORS = ['#0B57D0', '#B3261E', '#146C2E', '#7B4397', '#B26A00']
