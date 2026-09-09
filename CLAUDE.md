@@ -631,6 +631,15 @@ practice nobody ever did.
   own time budget and names who it did not reach: sequential pushes with an
   8-second timeout each can otherwise be KILLED mid-run, which leaves no
   response and no way to tell how far it got.
+- **The backfill runs its own dry pass first and REFUSES itself** with a 409
+  when more than half the clients would get a brand-new listing. That reading
+  means matching stopped working — a changed payload field, a directory
+  deploy, a bad state code — not that the shops are new, and going ahead would
+  give them a second page competing with their first, which is work to undo on
+  the far side and splits the ranking meanwhile. The check lives in the route
+  rather than in a screen so it covers the Maintenance runner, a curl and
+  anything added later. `force: true` (or `?force`) overrides it and is
+  deliberately in no UI.
 - Needs `WRHQ_SYNC_URL` and `WRHQ_SYNC_SECRET` (the latter shared with the
   directory's `AGMP_SYNC_SECRET`). Absent, it is a silent no-op.
 

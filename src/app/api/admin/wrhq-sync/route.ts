@@ -62,16 +62,57 @@ export async function POST(request: NextRequest) {
      only screen that offers it. */
   const body = await request.json().catch(() => ({}))
   const dryRun = body?.dryRun === true || request.nextUrl.searchParams.has('dryRun')
+  const force = body?.force === true || request.nextUrl.searchParams.has('force')
 
   const clients = await prisma.client.findMany({
     select: WRHQ_SYNC_SELECT,
     orderBy: { businessName: 'asc' },
   })
 
+  const startedAt = Date.now()
+
+  /* A real run asks the safe question first, and refuses its own answer.
+   *
+   * The failure this guards is not a crash — it is a quiet success that leaves
+   * fifteen shops with a SECOND directory page competing with the one they
+   * already had, which is work to undo on the far side and splits the ranking
+   * meanwhile. The directory holds ~3,000 listings and ours are usually
+   * already among them, so "most of these would be new" does not mean the
+   * clients are new, it means matching stopped working — a changed payload
+   * field, a directory deploy, a bad state code.
+   *
+   * The dry pass is read-only on both sides and costs one extra round trip per
+   * client, which at these numbers is seconds. `force` is the escape hatch for
+   * the day the answer really is that they are all new; it is deliberately not
+   * offered in any UI, so taking it is a decision somebody made on purpose.
+   */
+  if (!dryRun && !force) {
+    const preflight = await Promise.all(
+      clients.map(async (c) => ({
+        name: c.businessName,
+        result: await syncClientToWrhq(c, { dryRun: true }),
+      }))
+    )
+    const readable = preflight.filter((p) => p.result.ok)
+    const creates = readable.filter((p) => p.result.wouldCreate)
+    if (readable.length > 0 && creates.length > readable.length / 2) {
+      return NextResponse.json(
+        {
+          error:
+            `${creates.length} of ${readable.length} clients would get a BRAND-NEW listing rather than matching one the directory already has. ` +
+            'That usually means matching is broken, not that the shops are new — running it would give them a second page competing with their first. ' +
+            'Check the dry run, and only re-send with force if they really are all new.',
+          wouldCreate: creates.map((c) => c.name),
+          checked: readable.length,
+        },
+        { status: 409 }
+      )
+    }
+  }
+
   // Sequential on purpose. Fifteen clients is not worth the concurrency, and a
   // burst of parallel writes against the directory's Blob store is how you get
   // a partial run that is harder to reason about than a slow one.
-  const startedAt = Date.now()
   const rows: Row[] = []
   const notReached: string[] = []
   for (const client of clients) {
