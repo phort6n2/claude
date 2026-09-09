@@ -357,7 +357,13 @@ walkthrough (`GettingStartedCard`, `/api/portal/onboarding`,
   actually sends the email (it used to log it to the console and answer
   "sent"), and the response is identical for known and unknown addresses —
   the endpoint is public, and a distinguishable miss is a directory of who
-  uses the platform. The verify PAGE posts JSON to the verify API; that API
+  uses the platform. **The RESPONSE is neutral; the LOG is not** — an attacker
+  reads the response, never our logs, so saying nothing server-side bought no
+  security and cost the one fact that settles "they never got the email":
+  whether there was an account to send it to. A shop owner typing the address
+  THEY use rather than the one on the account gets a cheerful "check your
+  inbox" and nothing arrives, which is indistinguishable from a delivery
+  failure. It now logs sent / NO ACCOUNT / FAILED with the address. The verify PAGE posts JSON to the verify API; that API
   had only a GET, so every magic link died on a 405. Both handlers exist now;
   don't remove either.
 - **The walkthrough is four steps, two of which tick themselves.** Prove a
