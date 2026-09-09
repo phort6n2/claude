@@ -425,15 +425,27 @@ export function SiteBody({
                   <a
                     key={s.slug}
                     href={`${basePath}${servicePath(s.slug, readPathOverrides(client.pathOverrides))}`}
-                    className="group p-6 rounded-[20px] border border-[var(--line-card)] bg-white shadow-sm hover:shadow-md hover:border-[var(--line-strong)] hover:-translate-y-0.5 transition-all no-underline"
+                    className="group p-5 sm:p-6 rounded-[20px] border border-[var(--line-card)] bg-white shadow-sm hover:shadow-md hover:border-[var(--line-strong)] hover:-translate-y-0.5 transition-all no-underline"
                   >
-                    <div className="h-10 w-10 rounded-[14px] flex items-center justify-center mb-4 bg-[var(--tint-accent)]">
-                      <Icon className="h-5 w-5 text-[var(--brand)]" />
+                    {/* INLINE ON A PHONE, STACKED FROM sm UP.
+                        Stacked, the 40px tile takes a whole row with nothing
+                        beside it — on a ~350px card that is a band of empty
+                        white above every title, and only two cards reach the
+                        screen. Inline it costs nothing and the card is 21%
+                        shorter. It does NOT survive the desktop grid though:
+                        at three across "Windshield Replacement" wraps to two
+                        lines beside the icon and the tile strands itself
+                        against the middle of them, so above sm this reverts to
+                        exactly the stack it always was. */}
+                    <div className="flex items-center gap-3 sm:block">
+                      <div className="h-10 w-10 shrink-0 rounded-[14px] flex items-center justify-center sm:mb-4 bg-[var(--tint-accent)]">
+                        <Icon className="h-5 w-5 text-[var(--brand)]" />
+                      </div>
+                      <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold text-[var(--tx)] m-0">
+                        {s.name}
+                      </h3>
                     </div>
-                    <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold text-[var(--tx)] m-0">
-                      {s.name}
-                    </h3>
-                    <p className="text-[var(--tx-muted)] text-sm mt-1.5 mb-0">{s.short}</p>
+                    <p className="text-[var(--tx-muted)] text-sm mt-2.5 sm:mt-1.5 mb-0">{s.short}</p>
                     {/* Not the name again. On desktop the repeated label reads
                         as a link affordance; on a phone the whole card is the
                         tap target, so it was the title printed twice about
@@ -448,15 +460,18 @@ export function SiteBody({
               {flags.offersMobileService && (
                 <a
                   href="#quote"
-                  className="group p-6 rounded-[20px] border border-[var(--line-card)] bg-white shadow-sm hover:shadow-md hover:border-[var(--line-strong)] hover:-translate-y-0.5 transition-all no-underline"
+                  className="group p-5 sm:p-6 rounded-[20px] border border-[var(--line-card)] bg-white shadow-sm hover:shadow-md hover:border-[var(--line-strong)] hover:-translate-y-0.5 transition-all no-underline"
                 >
-                  <div className="h-10 w-10 rounded-[14px] flex items-center justify-center mb-4 bg-[var(--tint-accent)]">
-                    <Truck className="h-5 w-5 text-[var(--brand)]" />
+                  {/* Same treatment as the service cards it sits beside. */}
+                  <div className="flex items-center gap-3 sm:block">
+                    <div className="h-10 w-10 shrink-0 rounded-[14px] flex items-center justify-center sm:mb-4 bg-[var(--tint-accent)]">
+                      <Truck className="h-5 w-5 text-[var(--brand)]" />
+                    </div>
+                    <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold text-[var(--tx)] m-0">
+                      Mobile Service
+                    </h3>
                   </div>
-                  <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold text-[var(--tx)] m-0">
-                    Mobile Service
-                  </h3>
-                  <p className="text-[var(--tx-muted)] text-sm mt-1.5 mb-0">
+                  <p className="text-[var(--tx-muted)] text-sm mt-2.5 sm:mt-1.5 mb-0">
                     Home, office, or roadside — the shop comes to you.
                   </p>
                   <span className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-[var(--brand)]">
@@ -474,7 +489,7 @@ export function SiteBody({
               {gridServices.length + (flags.offersMobileService ? 1 : 0) < 3 && (
                 <a
                   href="#quote"
-                  className="group p-6 rounded-[20px] border border-[var(--line-card)] bg-white shadow-sm hover:shadow-md hover:border-[var(--line-strong)] hover:-translate-y-0.5 transition-all no-underline"
+                  className="group p-5 sm:p-6 rounded-[20px] border border-[var(--line-card)] bg-white shadow-sm hover:shadow-md hover:border-[var(--line-strong)] hover:-translate-y-0.5 transition-all no-underline"
                 >
                   <div className="h-10 w-10 rounded-[14px] flex items-center justify-center mb-4 bg-[var(--tint-accent)]">
                     <MapPin className="h-5 w-5 text-[var(--brand)]" />
