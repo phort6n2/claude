@@ -313,6 +313,33 @@ at another host is worse than one the operator is told to upload. A failure
 part-way does not abandon the rest of the list — a dead address among eight is
 ordinary — and the result line says what happened to all of them.
 
+**A content section's photo is a URL in a JSON column, NOT a row in the photo
+table** (`SiteChapter.photoUrl`, rendered by `ChapterSections`). Those are two
+different things that look like one thing to whoever is using the app: delete
+every photo in the manager and the sections keep rendering exactly as before,
+because nothing connected them. The importer fills that field with whatever it
+found on the shop's existing site, so on NorthStar four sections were still
+pulling images off the Wix site this platform replaced — and pulling
+THUMBNAILS, 82 to 187 pixels wide, because those were the crops on the page it
+read. They also vanish the day that site is switched off, which is the week
+the new one goes live.
+
+- The field is a PICKER over the client's uploaded photos
+  (`ChapterPhotoPicker`), not the bare text box it was, with "None" as a real
+  choice — that hands the section back to the gallery fallback, which is what
+  an empty `photoUrl` has always meant. It still takes a pasted address, and
+  warns on anything not hosted here.
+- It re-fetches the photo list **when opened**, not once on mount: the reason
+  somebody is in it is that they have just uploaded new photos, and a list
+  captured before that upload cannot offer them.
+- It READS photos and never writes them — the manager above owns that table
+  (see the comment in `SiteContentEditor` about the autosave that reverted it).
+- **Deleting a photo clears the section that used it.** Cleared, not
+  repointed. Without this, removing a photo left the section rendering a file
+  that no longer exists.
+- Chapter photos are saved only if they are `https://` — a check in the
+  site-content route, which is why a `data:` URI fixture silently becomes ''.
+
 **Two logo slots, set on the Website tab** (`LogoCard`, `/api/clients/[id]/logo`).
 `Client.logoUrl` is the header's, drawn on white and also used as the photo
 watermark and the JSON-LD `logo`. `Client.footerLogoUrl` is only for the dark
