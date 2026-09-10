@@ -420,7 +420,15 @@ export function SiteHeader({
   const navBreakpoint = (nav?.length ?? 0) >= 4 ? 'hidden xl:flex' : 'hidden lg:flex'
   return (
     <header className="site-hdr sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-[var(--line)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 min-h-[64px] lg:min-h-[72px] flex items-center gap-4">
+      {/* WIDER STAGE ONCE THE FOUR-LINK NAV APPEARS. Measured with four
+          service links: the row wants 1295px (brand 240 + nav 677 + two
+          buttons 332 + three 16px gaps) and max-w-7xl gives it 1232 — a 63px
+          shortfall that flex takes entirely out of the brand, because the
+          brand is the only item that can shrink. On a 1440 or 1512 laptop
+          that width is sitting unused in the margins; xl is where the fourth
+          link arrives, so it is where the row needs it. Below xl nothing
+          changes. */}
+      <div className="max-w-7xl xl:max-w-[1360px] mx-auto px-4 sm:px-6 min-h-[64px] lg:min-h-[72px] flex items-center gap-4">
         <a href={basePath || '/'} className="flex items-center gap-3 min-w-0 no-underline">
           {client.logoUrl ? (
             // Natural aspect, like the template's .brand img — wordmark logos
@@ -430,7 +438,17 @@ export function SiteHeader({
             <img
               src={client.logoUrl}
               alt={client.businessName}
-              className="h-[52px] w-auto max-w-[240px] object-contain"
+              /* max-w-FULL, not only the 240px cap.
+                 The brand is the one flex item allowed to shrink, and it does
+                 — but `w-auto` sizes this image from its own aspect ratio and
+                 `max-w-[240px]` caps it against nothing in particular, so the
+                 picture kept its full width while its BOX was squeezed to 175
+                 and simply painted over the menu. Measured on a 1440 screen
+                 with a four-link nav: the image ran 65px past its own box and
+                 sat 49px on top of the first link. With max-w-full it scales
+                 down inside the box instead — a smaller logo, which is a
+                 tradeoff, where an overlap is just broken. */
+              className="h-[52px] w-full max-w-[240px] object-contain object-left"
             />
           ) : (
             <Wordmark businessName={client.businessName} />
