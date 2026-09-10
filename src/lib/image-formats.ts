@@ -48,15 +48,28 @@ export const LOGO_FORMATS: UploadFormat[] = [
 ]
 
 /**
- * The `accept` attribute, MIME types AND extensions.
+ * The `accept` attribute: `image/*`, then the types, then the extensions.
  *
- * Both, because the two are not interchangeable in a file dialog: a system
- * that does not know a type maps nothing to it and quietly greys the file
- * out, which is the same dead end as not listing it. AVIF is new enough for
- * that to be a live concern, and the extension costs nothing where the MIME
- * type is already understood.
+ * ALL THREE, and the belt-and-braces is the point. A file dialog resolves
+ * these against the operating system's own idea of what a type is, and every
+ * form of that lookup fails somewhere:
+ *
+ * - `image/avif` is unknown to an older macOS or Windows, which maps it to
+ *   nothing and greys the file out — indistinguishable, to the person
+ *   standing there, from the app refusing AVIF.
+ * - `.avif` covers that, until a file arrives named something else.
+ * - `image/*` covers whatever the system DOES class as an image, which is the
+ *   only one of the three that keeps up on its own.
+ *
+ * Listing `image/*` also means the dialog offers formats the server will
+ * refuse — SVG, most obviously. That is deliberate and it is the better
+ * trade: a refusal names the problem and says what to do instead ("export an
+ * SVG to PNG first"), while a greyed-out file explains nothing and cannot be
+ * argued with. The decoder is the authority on what is accepted, not the
+ * dialog; this list only decides what a person is allowed to try.
  */
 export const LOGO_ACCEPT = [
+  'image/*',
   ...LOGO_FORMATS.map((f) => f.mime),
   ...LOGO_FORMATS.flatMap((f) => f.ext),
 ].join(',')

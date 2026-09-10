@@ -272,13 +272,19 @@ the proof it stood between a paid visitor and every section that answers
 edited on the Website tab; bootstrap: `MARKET_AREA_SQL`). A shop sits in one
 city and sells to a region — Auto Glass Kings are in Huntington Beach and work
 Orange County — and an H1 naming the city tells most of the people who land on
-it they are on the wrong site. Set the field and the H1s, page titles, meta
+it they are on the wrong site. Set the field and the H1s, **the eyebrow above them**, page titles, meta
 descriptions, the top bar and the OG card say the region; leave it empty and
 everything reads exactly as it did, from `Client.city`. It touches **only**
 what a headline says: the address, the LocalBusiness `addressLocality`, the
 contact and location cards, the legal pages and the city pages keep the real
-city, because those are NAP facts cross-checked against the Business Profile,
-and the eyebrow above each H1 keeps it too. `AreaNaming.marketArea` is
+city, because those are NAP facts cross-checked against the Business Profile.
+The eyebrow used to keep the city as a "local keyword anchor" and it was
+wrong: NorthStar read "· LITTLE ELM, TX" directly above "Cracked windshield in
+Dallas–Fort Worth?", two lines disagreeing about who the page is for, the
+smaller one naming a town most of its readers have never been to. **The rule
+is that the broader area is always what a headline says** — where the shop
+sits is carried by the serving line, the contact card, the map and the schema.
+A city page's own eyebrow still names its city; that is what the page is. `AreaNaming.marketArea` is
 deliberately REQUIRED rather than optional — every site page loads its client
 through an explicit Prisma `select`, and an optional field made a page that
 forgot it compile cleanly and render the city forever, which is exactly how
