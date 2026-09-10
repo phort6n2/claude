@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { deleteStoredPhoto, processAndStorePhoto } from '@/lib/photo-upload'
 import { mirrorRemoteImage } from '@/lib/photo-mirror'
 import { validatePublicUrl } from '@/lib/site-import'
+import { asChapters } from '@/lib/site-content'
 
 export const dynamic = 'force-dynamic'
 // Decoding and re-encoding a camera-sized JPEG is not instant.
@@ -158,6 +159,33 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
 
   await deleteStoredPhoto(photo.url)
   await prisma.clientSitePhoto.delete({ where: { id: photo.id } })
+
+  /* A CONTENT SECTION POINTING AT THIS PHOTO LOSES IT TOO.
+     A chapter's image is a URL inside a JSON column, not a row in this table,
+     so deleting the photo used to leave the section rendering a file that no
+     longer exists — and the operator, who has just removed every photo they
+     could see, has no reason to think those are two different things. Cleared
+     rather than repointed: the section falls back to the gallery, which is
+     what an empty photoUrl has always meant. */
+  await prisma.clientSiteContent
+    .findUnique({ where: { clientId: id }, select: { chapters: true } })
+    .then(async (row) => {
+      const chapters = asChapters(row?.chapters)
+      if (!chapters.some((c) => c.photoUrl === photo.url)) return
+      await prisma.clientSiteContent.update({
+        where: { clientId: id },
+        data: {
+          chapters: chapters.map((c) =>
+            c.photoUrl === photo.url ? { ...c, photoUrl: '' } : c
+          ) as never,
+        },
+      })
+    })
+    .catch((err) => {
+      // The photo is already gone; a section still showing a dead image is
+      // worth a log, not a failed delete the operator has to retry.
+      console.warn('[Photos] could not clear the section using that photo:', err)
+    })
 
   const client = await prisma.client.findUnique({ where: { id }, select: { slug: true } })
   if (client) revalidatePath(`/sites/${client.slug}`, 'layout')

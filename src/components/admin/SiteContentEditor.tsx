@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Trash2, Loader2, Globe, Check, AlertCircle, Sparkles } from 'lucide-react'
 import { errorFrom } from '@/lib/http-error'
+import ChapterPhotoPicker from '@/components/admin/ChapterPhotoPicker'
 
 /**
  * Editorial content for a client's hosted site. Owns its own load/save
@@ -567,12 +568,11 @@ export default function SiteContentEditor({
                 setChapters((prev) => prev.map((x, j) => (j === i ? { ...x, body: e.target.value } : x)))
               }
             />
-            <input
-              className={inputCls}
-              placeholder="Photo URL (optional, https)"
+            <ChapterPhotoPicker
+              clientId={clientId}
               value={ch.photoUrl}
-              onChange={(e) =>
-                setChapters((prev) => prev.map((x, j) => (j === i ? { ...x, photoUrl: e.target.value } : x)))
+              onChange={(url) =>
+                setChapters((prev) => prev.map((x, j) => (j === i ? { ...x, photoUrl: url } : x)))
               }
             />
           </div>
