@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ImagePlus, Loader2, Star, Trash2, TriangleAlert } from 'lucide-react'
+import { LOGO_ACCEPT } from '@/lib/image-formats'
 
 /**
  * Photo upload and management, shared by the admin and the client portal.
@@ -285,7 +286,11 @@ export default function PhotoManager({
           <input
             ref={input}
             type="file"
-            accept="image/*"
+            // image/* alone is not enough: a dialog resolves it against the
+            // system's own list of image types, and a machine that does not
+            // know AVIF greys those files out while looking exactly like the
+            // app refusing them. The extensions are the fallback.
+            accept={LOGO_ACCEPT}
             multiple
             className="sr-only"
             onChange={(e) => upload(e.target.files)}

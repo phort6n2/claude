@@ -117,9 +117,15 @@ async function main() {
     }
   }
   check(`the sentence reads properly: "${LOGO_FORMATS_SENTENCE}"`, / or /.test(LOGO_FORMATS_SENTENCE))
-  // SVG stays out: sharp reads it only with librsvg, which Vercel's build does
-  // not guarantee, and it would fail as a broken image in a live header.
-  check('SVG is not offered', !LOGO_ACCEPT.includes('svg'))
+  /* image/* is listed FIRST and on purpose. It is the only entry that keeps up
+     with what a given machine classes as an image on its own, and without it a
+     system that has never heard of AVIF greys those files out — which is what
+     an operator reported after AVIF was already accepted server-side. It also
+     means the dialog offers SVG, which the decoder refuses by name. That is
+     the better failure: a message that says "export an SVG to PNG first" beats
+     a greyed-out file that explains nothing. */
+  check('image/* is offered, so anything the system calls an image can be tried', LOGO_ACCEPT.includes('image/*'))
+  check('the explicit types survive beside it', LOGO_ACCEPT.includes('image/avif') && LOGO_ACCEPT.includes('.avif'))
 
   console.log('\n--- what must still be refused ---')
   {
