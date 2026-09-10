@@ -230,7 +230,7 @@ function findContentLinks(html: string, base: URL): URL[] {
     }
     if (link.origin !== base.origin) continue
     if (!/warrant|faq|about|guarantee|service|insurance|why/i.test(link.pathname)) continue
-    if (/\.(jpg|jpeg|png|gif|webp|svg|pdf|css|js)$/i.test(link.pathname)) continue
+    if (/\.(jpg|jpeg|png|gif|webp|avif|svg|pdf|css|js)$/i.test(link.pathname)) continue
     link.hash = ''
     link.search = ''
     if (link.pathname === base.pathname) continue

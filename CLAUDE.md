@@ -285,6 +285,34 @@ forgot it compile cleanly and render the city forever, which is exactly how
 this shipped wrong the first time. It is a claim about coverage, so it is
 typed by an operator and never inferred.
 
+**What an image upload ACCEPTS lives in `image-formats.ts`, once.** The file
+picker's `accept` list and what sharp can decode are two lists that have to
+agree, and drift is silent in the worse direction: a format the server handles
+is greyed out in the dialog, so the operator concludes the app cannot take it.
+AVIF sat in that gap for as long as it existed — sharp has decoded it all
+along (libheif + libaom ship inside `@img/sharp-libvips-*`), the picker simply
+never offered it. Both the MIME type AND every spelling of the extension are
+listed, because a system that does not know a type greys the file out exactly
+as if it were never named — `.jpeg` missing beside `.jpg` is the same bug one
+character wide. SVG stays OUT: sharp reads it only with librsvg, which
+Vercel's build does not guarantee, and it would fail as a broken image in a
+live header rather than as an error. `scripts/check-image-formats.ts` encodes
+a real file of every format on the list and runs it through the real decoder,
+which is also what pins AVIF support — that is a property of an installed
+package, and a sharp upgrade could take it away with no symptom but uploads of
+one format starting to fail.
+
+**Photos take a pasted address too** (`PhotoManager`,
+`POST /api/clients/[id]/photos` with JSON `{ url }`), several at once, split on
+newlines and commas — the reason to be pasting at all is that somebody is
+copying them off the site this one replaces. It COPIES, never references, and
+unlike the logo route it REFUSES when the copy fails rather than keeping the
+address: a logo is the one image whose absence breaks the page and it is never
+watermarked, while a gallery photo that silently arrives unmarked and pointed
+at another host is worse than one the operator is told to upload. A failure
+part-way does not abandon the rest of the list — a dead address among eight is
+ordinary — and the result line says what happened to all of them.
+
 **Two logo slots, set on the Website tab** (`LogoCard`, `/api/clients/[id]/logo`).
 `Client.logoUrl` is the header's, drawn on white and also used as the photo
 watermark and the JSON-LD `logo`. `Client.footerLogoUrl` is only for the dark

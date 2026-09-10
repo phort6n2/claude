@@ -216,7 +216,7 @@ async function collectOldUrls(
         continue
       }
       if (next.host !== host) continue
-      if (/\.(jpe?g|png|gif|webp|svg|pdf|zip|mp4|css|js)$/i.test(next.pathname)) continue
+      if (/\.(jpe?g|png|gif|webp|avif|svg|pdf|zip|mp4|css|js)$/i.test(next.pathname)) continue
       const p = normalisePath(next.pathname)
       if (seen.has(p)) continue
       seen.add(p)
