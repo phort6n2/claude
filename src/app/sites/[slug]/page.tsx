@@ -237,8 +237,9 @@ export default async function ClientSitePage({ params }: PageProps) {
   // work". ADAS earns its place further down, as an objection it removes.
   // The AREA, not the address. A shop in Huntington Beach working the whole
   // county tells three quarters of its visitors they are on the wrong site by
-  // putting its own city here. The eyebrow above keeps the city, so the page
-  // still says plainly where these people are.
+  // putting its own city here. The eyebrow above says the area too — where
+  // the shop actually sits is carried by the serving line, the contact card,
+  // the map and the schema, none of which move.
   const area = headlineArea(client)
   const heroTitle = client.offersMobileService
     ? `Cracked windshield in ${area}? We come to you.`
@@ -320,9 +321,10 @@ export default async function ClientSitePage({ params }: PageProps) {
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_452px] lg:grid-rows-[auto_1fr] lg:gap-x-[52px] lg:gap-y-[18px]">
           <div className="lg:col-start-1 lg:row-start-1">
             {/* "Experts" is unsupported puffery the reader discounts on
-                sight; the eyebrow's job is the keyword anchor. */}
+                sight; the eyebrow's job is the keyword anchor — and the
+                keyword is the AREA, the same one the H1 names. */}
             <Eyebrow>
-              Windshield repair &amp; replacement · {client.city}, {client.state}
+              Windshield repair &amp; replacement · {areaWithState(client)}
             </Eyebrow>
             <h1 className="text-[clamp(1.875rem,1.35rem+2.6vw,3.4rem)] font-extrabold leading-[1.08] tracking-[-.02em] text-[var(--tx)]">
               {heroTitle}

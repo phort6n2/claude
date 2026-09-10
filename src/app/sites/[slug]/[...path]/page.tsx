@@ -398,9 +398,9 @@ export default async function CatchAllPage({ params }: PageProps) {
           )}
           <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_452px] lg:grid-rows-[auto_1fr] lg:gap-x-[52px] lg:gap-y-[18px]">
             <div className="lg:col-start-1 lg:row-start-1">
-              <Eyebrow>
-                {client.city}, {client.state}
-              </Eyebrow>
+              {/* The area, not the shop's own city — the same name the H1
+                  uses. */}
+              <Eyebrow>{areaWithState(client)}</Eyebrow>
               <h1 className="text-[clamp(1.875rem,1.35rem+2.6vw,3.4rem)] font-extrabold leading-[1.08] tracking-[-.02em] text-[var(--tx)]">
                 {heading}
               </h1>

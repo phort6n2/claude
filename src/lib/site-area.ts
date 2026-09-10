@@ -15,11 +15,21 @@
  *   business IS, they are cross-checked against the Google Business Profile,
  *   and a region in place of a locality there is a broken NAP, not a wider
  *   catchment.
- * - The EYEBROW above the H1, which stays "· Huntington Beach, CA". It is the
- *   local keyword anchor, and it is also the honest answer to "where are
- *   these people, actually" for a reader who has just been told "Orange
- *   County".
- * - City pages, which are city pages.
+ * - City pages, which are city pages. Their eyebrow and H1 name THEIR city,
+ *   which is the entire reason each one exists.
+ *
+ * THE EYEBROW ABOVE THE H1 DOES FOLLOW THE AREA. It used to keep the city, on
+ * the reasoning that it was the local keyword anchor and the honest answer to
+ * "where are these people, actually". Both halves of that turned out to be
+ * wrong in practice. The keyword worth anchoring is the one the visitor
+ * searched, which is the area the H1 already names — and a shop covering
+ * Dallas–Fort Worth from Little Elm had a page reading "· LITTLE ELM, TX"
+ * directly above "Cracked windshield in Dallas–Fort Worth?", two lines
+ * disagreeing about who the page is for, with the smaller one naming a town
+ * most of its readers have never been to. Where the shop actually sits is
+ * still on the page in four places that are not headlines: the serving line
+ * ("Serving Dallas–Fort Worth from our Little Elm, TX shop"), the contact
+ * card, the map section and the LocalBusiness schema.
  *
  * IT IS A CLAIM ABOUT COVERAGE, so it is typed by an operator and never
  * inferred. Nothing here can know whether a shop really works the whole
