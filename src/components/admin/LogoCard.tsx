@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertCircle, Check, Loader2, Trash2, Upload } from 'lucide-react'
+import { LOGO_ACCEPT, LOGO_FORMATS_SENTENCE } from '@/lib/image-formats'
 
 /**
  * The two logos the site draws, set by hand when the importer's guess was
@@ -200,7 +201,9 @@ function LogoSlot({
         <input
           ref={fileInput}
           type="file"
-          accept="image/png,image/jpeg,image/webp"
+          // The single list the server decodes from, so the picker can never
+          // grey out a file the upload would have accepted.
+          accept={LOGO_ACCEPT}
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0]
@@ -231,6 +234,13 @@ function LogoSlot({
           </button>
         )}
       </div>
+
+      {/* Named on the card, not only in the failure message: a format that is
+          accepted but never mentioned gets converted to PNG by hand first, or
+          not tried at all. */}
+      <p className="text-xs text-gray-500">
+        {LOGO_FORMATS_SENTENCE}, stored as PNG so transparency survives.
+      </p>
 
       <div className="flex flex-wrap items-center gap-2">
         <input

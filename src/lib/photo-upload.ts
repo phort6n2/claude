@@ -1,6 +1,7 @@
 import { put, del, list } from '@vercel/blob'
 import sharp, { type Sharp, type Metadata } from 'sharp'
 import { wordmarkPng } from '@/lib/wordmark-image'
+import { LOGO_FORMATS_SENTENCE } from '@/lib/image-formats'
 import { toBlobBody } from '@/lib/blob-body'
 
 /** Enough of a client to draw their generated wordmark. */
@@ -382,6 +383,49 @@ export async function storeDamagePhoto({
 }
 
 /**
+ * Decode an uploaded logo and re-encode it as a PNG, or say why not.
+ *
+ * Separate from the upload so what the app can READ can be checked without a
+ * Blob store and without a client — see scripts/check-image-formats.ts, which
+ * runs a real file of every format the picker offers through this and asserts
+ * the two lists have not drifted apart.
+ *
+ * ALWAYS PNG OUT, whatever came in. The logo is drawn on the dark footer band
+ * and used as the photo watermark, so its transparency is the point; a JPEG
+ * would put a white box around it. The format is not trusted from the file
+ * name or the browser's Content-Type either — sharp decodes it or it is not
+ * an image.
+ */
+export async function logoPngFrom(
+  file: ArrayBuffer
+): Promise<{ ok: true; png: Buffer } | { ok: false; error: string }> {
+  try {
+    const image = sharp(Buffer.from(file), { failOn: 'none' })
+    const meta = await image.metadata()
+    if (!meta.width || !meta.height) throw new Error('no dimensions')
+    return {
+      ok: true,
+      png: await image
+        .resize({
+          width: Math.min(meta.width, LOGO_DIMENSION),
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .png({ compressionLevel: 9 })
+        .toBuffer(),
+    }
+  } catch {
+    // sharp reads SVG only when its build has librsvg, which Vercel's does not
+    // guarantee — and an SVG that fails here fails silently as a broken image
+    // in the header, so it is named rather than lumped in with "not an image".
+    return {
+      ok: false,
+      error: `That file couldn't be read as an image. ${LOGO_FORMATS_SENTENCE} all work; export an SVG to PNG first.`,
+    }
+  }
+}
+
+/**
  * Store a logo the admin uploaded by hand.
  *
  * Not a photo, and it must not go down the photo path: no watermark (it IS
@@ -411,24 +455,9 @@ export async function storeLogoUpload({
     return { ok: false, error: 'That file is larger than 15 MB.' }
   }
 
-  let output: Buffer
-  try {
-    const image = sharp(Buffer.from(file), { failOn: 'none' })
-    const meta = await image.metadata()
-    if (!meta.width || !meta.height) throw new Error('no dimensions')
-    output = await image
-      .resize({ width: Math.min(meta.width, LOGO_DIMENSION), fit: 'inside', withoutEnlargement: true })
-      .png({ compressionLevel: 9 })
-      .toBuffer()
-  } catch {
-    // sharp reads SVG only when its build has librsvg, which Vercel's does not
-    // guarantee — and an SVG that fails here fails silently as a broken image
-    // in the header, so it is named rather than lumped in with "not an image".
-    return {
-      ok: false,
-      error: "That file couldn't be read as an image. PNG or JPEG works; export an SVG to PNG first.",
-    }
-  }
+  const decoded = await logoPngFrom(file)
+  if (!decoded.ok) return decoded
+  const output = decoded.png
 
   try {
     const blob = await put(`sites/${clientSlug}/logo/${Date.now()}.png`, toBlobBody(output), {

@@ -51,6 +51,7 @@ export default function PhotoManager({
   const [photos, setPhotos] = useState<PhotoRow[] | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const [pasted, setPasted] = useState('')
   const input = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
@@ -92,6 +93,59 @@ export default function PhotoManager({
     }
     setBusy(null)
     if (input.current) input.current.value = ''
+    await load()
+  }
+
+  /**
+   * Add photos by address.
+   *
+   * Several at once, split on newlines and commas, because the reason to be
+   * pasting addresses at all is that somebody is copying them off a page —
+   * and they arrive in a list. Posted one at a time for the same reason the
+   * files are: each one is fetched, decoded, resized and stamped server-side.
+   *
+   * A failure does NOT stop the rest, unlike the file loop. A dead address in
+   * the middle of eight is ordinary — one image has moved — and abandoning
+   * the remaining seven would leave the operator to work out which went in.
+   */
+  async function addUrls(text: string) {
+    const urls = text
+      .split(/[\n,]+/)
+      .map((u) => u.trim())
+      .filter(Boolean)
+    if (urls.length === 0) return
+    setMessage(null)
+    let added = 0
+    const failed: string[] = []
+    for (const [index, url] of urls.entries()) {
+      setBusy(urls.length > 1 ? `Copying ${index + 1} of ${urls.length}…` : 'Copying…')
+      try {
+        const res = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Could not copy that address')
+        added++
+      } catch (err) {
+        failed.push(err instanceof Error ? err.message : url)
+      }
+    }
+    setBusy(null)
+    // Says what happened to ALL of them: "3 added" while two silently vanished
+    // is how a gallery ends up short and nobody knows which.
+    setMessage(
+      failed.length === 0
+        ? { ok: true, text: `Added ${added} photo${added === 1 ? '' : 's'}.` }
+        : {
+            ok: false,
+            text:
+              (added ? `Added ${added}, but ${failed.length} could not be copied. ` : '') +
+              failed[0],
+          }
+    )
+    if (added > 0) setPasted('')
     await load()
   }
 
@@ -243,10 +297,38 @@ export default function PhotoManager({
           </span>
         )}
         <span className="text-xs text-gray-500">
-          JPEG, PNG, WebP or HEIC, up to 15 MB. Photos are resized, stripped of location data, and
+          JPEG, PNG, WebP, AVIF or HEIC, up to 15 MB. Photos are resized, stripped of location data,
+          and
           {hasLogo ? ' watermarked with the logo.' : ' stored as-is.'}
         </span>
       </div>
+
+      {/* Addresses, for the common case: the photos are already on the site
+          this one is replacing, and downloading eight of them to upload eight
+          of them is work nobody should be doing by hand. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={pasted}
+          onChange={(e) => setPasted(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && pasted.trim() && !busy) addUrls(pasted)
+          }}
+          placeholder="or paste image addresses, one per line or comma separated"
+          className="flex-1 min-w-[16rem] px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+        />
+        <button
+          type="button"
+          onClick={() => addUrls(pasted)}
+          disabled={!!busy || !pasted.trim()}
+          className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+        >
+          Add
+        </button>
+      </div>
+      <p className="text-xs text-gray-500">
+        Pasted photos are copied onto this site&rsquo;s own storage, not linked — so they survive
+        the old site being switched off.
+      </p>
 
       {message && (
         <p className={`text-sm ${message.ok ? 'text-green-700' : 'text-red-600'}`}>{message.text}</p>
