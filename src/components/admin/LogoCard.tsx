@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertCircle, Check, Loader2, Trash2, Upload } from 'lucide-react'
-import { LOGO_ACCEPT, LOGO_FORMATS_SENTENCE } from '@/lib/image-formats'
+import { LOGO_FORMATS_SENTENCE } from '@/lib/image-formats'
 
 /**
  * The two logos the site draws, set by hand when the importer's guess was
@@ -201,9 +201,8 @@ function LogoSlot({
         <input
           ref={fileInput}
           type="file"
-          // The single list the server decodes from, so the picker can never
-          // grey out a file the upload would have accepted.
-          accept={LOGO_ACCEPT}
+          // NO accept filter — see image-formats.ts. This input is where the
+          // problem was first reported, twice.
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0]

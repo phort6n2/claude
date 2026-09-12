@@ -22,7 +22,7 @@
  * encodes a real file of each format and runs it through the real decoder.
  */
 import sharp from 'sharp'
-import { LOGO_FORMATS, LOGO_ACCEPT, LOGO_FORMATS_SENTENCE } from '@/lib/image-formats'
+import { LOGO_FORMATS, LOGO_FORMATS_SENTENCE } from '@/lib/image-formats'
 import { logoPngFrom } from '@/lib/photo-upload'
 
 let bad = 0
@@ -105,27 +105,31 @@ async function main() {
   check('libaom is present (AVIF is AV1 in a HEIF container)', !!sharp.versions.aom)
   check('sharp reports avif input support', sharp.format.heif.input.buffer === true)
 
-  console.log('\n--- the picker list ---')
+  console.log('\n--- the formats the app CLAIMS, which is now the only list ---')
+  /* There is no `accept` filter left to check against. Two rounds of widening
+     it — every MIME type, then every extension, then image/* as well — still
+     left an operator unable to see .webp files in a dialog whose input asked
+     for them by name, so the filtering moved to the decoder entirely (see
+     image-formats.ts). What is still worth asserting is that every format the
+     app NAMES on screen is one it can actually read, which the loop above
+     proves file by file, and that the sentence it names them in is coherent. */
+  check(`the sentence reads properly: "${LOGO_FORMATS_SENTENCE}"`, / or /.test(LOGO_FORMATS_SENTENCE))
   for (const format of LOGO_FORMATS) {
-    check(`accept offers ${format.mime}`, LOGO_ACCEPT.includes(format.mime))
-    // Both forms, because a system that does not know a MIME type greys the
-    // file out exactly as if it were never listed — and EVERY spelling of the
-    // extension, because ".jpeg" being absent greys out a .jpeg file just as
-    // completely as leaving JPEG off the list altogether.
-    for (const ext of format.ext) {
-      check(`accept also offers ${ext}`, LOGO_ACCEPT.includes(ext))
+    check(`${format.label} is named in the copy`, LOGO_FORMATS_SENTENCE.includes(format.label))
+  }
+  // The one thing the old list existed to prevent, asserted where it belongs:
+  // an input that filters cannot hide a format the decoder accepts.
+  {
+    const fs = await import('node:fs')
+    const sources = [
+      'src/components/admin/PhotoManager.tsx',
+      'src/components/admin/LogoCard.tsx',
+    ]
+    for (const file of sources) {
+      const src = fs.readFileSync(file, 'utf8')
+      check(`${file} has no accept filter`, !/\baccept=/.test(src), 'a filter is back — read the note in image-formats.ts first')
     }
   }
-  check(`the sentence reads properly: "${LOGO_FORMATS_SENTENCE}"`, / or /.test(LOGO_FORMATS_SENTENCE))
-  /* image/* is listed FIRST and on purpose. It is the only entry that keeps up
-     with what a given machine classes as an image on its own, and without it a
-     system that has never heard of AVIF greys those files out — which is what
-     an operator reported after AVIF was already accepted server-side. It also
-     means the dialog offers SVG, which the decoder refuses by name. That is
-     the better failure: a message that says "export an SVG to PNG first" beats
-     a greyed-out file that explains nothing. */
-  check('image/* is offered, so anything the system calls an image can be tried', LOGO_ACCEPT.includes('image/*'))
-  check('the explicit types survive beside it', LOGO_ACCEPT.includes('image/avif') && LOGO_ACCEPT.includes('.avif'))
 
   console.log('\n--- what must still be refused ---')
   {

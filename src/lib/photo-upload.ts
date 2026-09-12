@@ -281,7 +281,13 @@ export async function processAndStorePhoto({
     meta = await base.metadata()
     if (!meta.width || !meta.height) throw new Error('no dimensions')
   } catch {
-    return { ok: false, error: "That file isn't an image we can read. JPEG, PNG, WebP or HEIC." }
+    /* The refusal names the formats, because nothing else does any more —
+       the file dialog no longer filters, so this sentence is the whole of
+       what the app tells somebody who picked the wrong file. */
+    return {
+      ok: false,
+      error: "That file isn't an image we can read. JPEG, PNG, WebP, AVIF or HEIC.",
+    }
   }
 
   const resized = base.resize({
