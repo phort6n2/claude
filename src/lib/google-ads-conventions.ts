@@ -1,5 +1,8 @@
 import { adsSearch } from '@/lib/google-ads'
 import { CONVERSION_NAMES, CONVERSION_PREFIX } from '@/lib/google-ads-conversion-names'
+// The steps live in a leaf module so the Advertising tab can render them;
+// see the note there about the abbreviated copy the card used to write.
+import { CONVERSION_SETUP } from '@/lib/google-ads-conversion-setup'
 
 /**
  * ONE conversion setup, identical in every client's Google Ads account.
@@ -82,14 +85,7 @@ export const CONVERSION_STANDARD: ConversionSpec[] = [
     // because a windscreen is researched over days rather than minutes.
     clickLookbackDays: 90,
     biddable: true,
-    setup: [
-      'Goals → Conversions → New conversion action → Website.',
-      'Scan the shop\'s site URL, then "Add a conversion action manually".',
-      `Goal: Submit lead form. Name: ${CONVERSION_NAMES.leadForm}.`,
-      'Value: "Don\'t use a value" — the value comes from the booked job, not the form.',
-      'Count: One. Click-through window: 90 days. Attribution: data-driven.',
-      'Take the tag\'s send_to (AW-xxx/LABEL) and paste it into the app on the Advertising tab; the site fires it on submit.',
-    ],
+    setup: CONVERSION_SETUP.leadForm,
   },
   {
     key: 'call-from-ads',
@@ -109,12 +105,7 @@ export const CONVERSION_STANDARD: ConversionSpec[] = [
     // back to 15.
     callSeconds: 10,
     biddable: true,
-    setup: [
-      'Goals → Conversions → New conversion action → Phone calls → Calls from ads using call assets.',
-      `Name: ${CONVERSION_NAMES.callFromAds}.`,
-      'Count a call after 10 seconds. Count: One. Click-through window: 30 days.',
-      'Requires a call asset on the campaign — without one this action exists and never fires.',
-    ],
+    setup: CONVERSION_SETUP.callFromAds,
   },
   {
     key: 'website-call',
@@ -130,13 +121,7 @@ export const CONVERSION_STANDARD: ConversionSpec[] = [
     // depending on which way it arrived.
     callSeconds: 10,
     biddable: true,
-    setup: [
-      'Goals → Conversions → New conversion action → Phone calls → Calls to a phone number on your website.',
-      `Name: ${CONVERSION_NAMES.websiteCall}.`,
-      'THE NUMBER MUST BE THE ONE THE SITE ACTUALLY SHOWS. If a tracking number is set in this app, the site shows that number — the conversion action has to name it, or Google swaps a number the page never displays and the action never fires.',
-      'Count a call after 10 seconds. Count: One. Click-through window: 30 days.',
-      'Paste the snippet\'s send_to into the app on the Advertising tab.',
-    ],
+    setup: CONVERSION_SETUP.websiteCall,
   },
   {
     key: 'sale',
@@ -149,14 +134,7 @@ export const CONVERSION_STANDARD: ConversionSpec[] = [
     // The uploader works to an 85-day click window against Google's 90.
     clickLookbackDays: 90,
     biddable: false,
-    setup: [
-      'Goals → Conversions → New conversion action → Import → Manual import using API or uploads.',
-      `Goal: Purchase. Name: ${CONVERSION_NAMES.sale}.`,
-      'Value: use different values for each conversion — the app sends the real job value.',
-      'Count: One. Click-through window: 90 days.',
-      'Set it as the offline conversion action on this client\'s Advertising tab, or nothing uploads to it.',
-      'Leave the PURCHASE goal SECONDARY until this shop has the volume for value bidding.',
-    ],
+    setup: CONVERSION_SETUP.sale,
   },
 ]
 
