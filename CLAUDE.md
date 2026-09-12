@@ -633,6 +633,28 @@ action, so two lead actions in one category cannot be told apart by bidding.
   per-conversion or the real job value this app uploads is discarded. The card
   now renders `SALE_SETUP.steps`, and only for the missing-action case: over
   an API error the same steps would be advice about the wrong problem.
+- **ENHANCED CONVERSIONS has three parts and only two are readable**
+  (`ads-enhanced-conversions.ts`, checked by the "Check the live site" button
+  on the Advertising tab). Our per-client toggle (default ON) adds
+  `allow_enhanced_conversions` to the gtag config and makes the page call
+  `gtag('set', 'user_data', {email, phone_number})` before the conversion
+  event; the published page is fetched and both are looked for, because saved
+  is not deployed. **THE IN-PAGE HAND-OFF IS THE WHOLE MECHANISM HERE, not an
+  optimisation** — Google's dialog offers automatic detection, and on these
+  sites it finds nothing, because the quote form renders inside a shadow root
+  (`widget.js` calls `attachShadow`) and automatic detection reads the page
+  DOM. **Google's own per-action setting cannot be checked at all**: probed
+  against a live account, `conversion_action` has NO enhanced-conversions
+  field (`enhanced_conversions_enabled` and
+  `enhanced_conversions_for_leads_enabled` both answer UNRECOGNIZED_FIELD on
+  that resource), and nothing exposes whether the customer-data terms were
+  accepted. So the check says so in words and names the screen, rather than
+  going all-green over something unknown. The one readable flag is the
+  CUSTOMER-level `enhanced_conversions_for_leads_enabled`, which is the
+  separate uploads-with-identifiers feature — our uploads carry a click id, so
+  it is reported as a fact and never as a fault. `scripts/check-enhanced-
+  conversions.ts` asserts which checks carry `info`, because a red cross on a
+  deliberate setting is how operators learn to ignore red crosses.
 - **Landing pages are audited too** (`google-ads-landing.ts`, "Where the ads
   land" on the Advertising tab): every ENABLED ad (`final_urls` AND
   `final_mobile_urls`), PMax asset group, and sitelink at all three
@@ -656,6 +678,10 @@ action, so two lead actions in one category cannot be told apart by bidding.
   `phoneCallDurationSeconds`) come back as **strings**, and
   `customer_conversion_goal.biddable` is **omitted when false** — a missing key
   is Secondary, not unknown. Both were found against live accounts.
+  `customer.conversion_tracking_setting.enhanced_conversions_for_leads_enabled`
+  behaves the same way: one live account returned it `true`, another omitted
+  the key entirely while still returning `conversion_tracking_status`. Default
+  a missing key to false, never to unknown.
 - `compareToStandard()` is pure, separate from the fetch, so the rules can be
   re-checked against saved rows from a real account without credentials.
 
