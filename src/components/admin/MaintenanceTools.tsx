@@ -86,6 +86,22 @@ const WRITES: Tool[] = [
     cost: 'Reads every linked Ads account (four queries each) and writes finding rows. Sends the digest email when there is something new to say.',
   },
   {
+    key: 'retidy-logos-dry',
+    name: 'Which logos are carrying padding? (reads only)',
+    path: '/api/admin/retidy-logos?dryRun=1',
+    method: 'POST',
+    what: "Measures every stored logo against what the trim would produce and reports the difference, without writing anything. A logo exported with a wide margin of empty canvas gets sized as a whole by the header, so its ink lands at a fraction of the slot — MAG Mobile's was 35% ink.",
+    cost: 'Fetches and decodes each logo. Writes nothing at all.',
+  },
+  {
+    key: 'retidy-logos',
+    name: 'Trim the padding off every stored logo',
+    path: '/api/admin/retidy-logos',
+    method: 'POST',
+    what: 'Re-stores each header and footer logo with its baked-in margin removed, so the header sizes the ink rather than the canvas around it. Run the dry version first to see what would change.',
+    cost: 'Uploads one PNG per logo that actually shrinks. Safe to run twice — a trimmed logo has no margin left to find, so a second pass writes nothing. A failure leaves the existing logo in place and names the client.',
+  },
+  {
     key: 'derive-footer-logos',
     name: 'Generate white footer logos for every client',
     path: '/api/admin/derive-footer-logos',

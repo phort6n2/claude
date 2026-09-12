@@ -389,6 +389,57 @@ export async function storeDamagePhoto({
 }
 
 /**
+ * How little of a logo may survive a trim before we keep the original.
+ *
+ * A real logo file is ink surrounded by uniform background, and trimming that
+ * background is the whole point. But `trim()` walks in from the edges until
+ * the colour changes, so a file that is ALL one colour, or a photographic
+ * badge with a vignette, can come back as a sliver — and a sliver stretched
+ * into the header is far worse than the padding we were trying to remove.
+ * Below this share of the original area the trim is treated as a
+ * misunderstanding of the image rather than a tidy-up.
+ */
+const MIN_TRIM_AREA_SHARE = 0.05
+
+/**
+ * Remove the uniform border around a logo, so what gets sized is the INK.
+ *
+ * WHY THIS MATTERS MORE THAN IT SOUNDS. Shops send logos exported from
+ * whatever tool made them, and those files routinely carry a wide margin of
+ * transparent or flat-white canvas. Nothing downstream can tell that margin
+ * from the logo: the header fits the FILE into its box, so a file that is 35%
+ * ink renders its ink at 35% of the space available. MAG Mobile's logo is
+ * 480x320 with 155px of horizontal and 154px of vertical padding baked in —
+ * in a 72px header its visible mark came out about 53x27, which is what "the
+ * logo doesn't look great" turned out to mean. Trimmed, the same file fills
+ * 102x52.
+ *
+ * It also fixes the watermark and the footer copy, which are stamped from the
+ * same file and were shrinking the mark by the same proportion.
+ *
+ * Failure is never fatal: any problem returns the image untouched, because a
+ * logo that is merely padded is much better than no logo.
+ */
+async function trimToInk(image: Sharp, meta: Metadata): Promise<Sharp> {
+  if (!meta.width || !meta.height) return image
+  try {
+    const trimmed = await image
+      .clone()
+      // A threshold rather than exact-match: an anti-aliased edge against
+      // white is not pure white, and a JPEG logo's "flat" background is a
+      // few values off flat everywhere.
+      .trim({ threshold: 10 })
+      .toBuffer({ resolveWithObject: true })
+    const share =
+      (trimmed.info.width * trimmed.info.height) / (meta.width * meta.height)
+    if (share < MIN_TRIM_AREA_SHARE) return image
+    return sharp(trimmed.data, { failOn: 'none' })
+  } catch {
+    return image
+  }
+}
+
+/**
  * Decode an uploaded logo and re-encode it as a PNG, or say why not.
  *
  * Separate from the upload so what the app can READ can be checked without a
@@ -403,17 +454,24 @@ export async function storeDamagePhoto({
  * an image.
  */
 export async function logoPngFrom(
-  file: ArrayBuffer
+  /** Buffer accepted too, so the mirroring path can share this exact pipeline. */
+  file: ArrayBuffer | Buffer
 ): Promise<{ ok: true; png: Buffer } | { ok: false; error: string }> {
   try {
-    const image = sharp(Buffer.from(file), { failOn: 'none' })
+    // rotate() before anything measures it: a logo carrying EXIF orientation
+    // would otherwise be trimmed on its unrotated edges.
+    const image = sharp(Buffer.from(file as ArrayBuffer), { failOn: 'none' }).rotate()
     const meta = await image.metadata()
     if (!meta.width || !meta.height) throw new Error('no dimensions')
+    // Trim FIRST, then measure: the cap is on the ink's width, not on the
+    // width of a canvas somebody exported with a margin round it.
+    const inked = await trimToInk(image, meta)
+    const inkMeta = await inked.metadata()
     return {
       ok: true,
-      png: await image
+      png: await inked
         .resize({
-          width: Math.min(meta.width, LOGO_DIMENSION),
+          width: Math.min(inkMeta.width || meta.width, LOGO_DIMENSION),
           fit: 'inside',
           withoutEnlargement: true,
         })

@@ -1,7 +1,7 @@
 import { put } from '@vercel/blob'
 import sharp from 'sharp'
 import { validatePublicUrl } from '@/lib/site-import'
-import { stampWatermark, type WordmarkSource } from '@/lib/photo-upload'
+import { stampWatermark, logoPngFrom, type WordmarkSource } from '@/lib/photo-upload'
 import { toBlobBody } from '@/lib/blob-body'
 
 /**
@@ -94,14 +94,23 @@ export async function mirrorRemoteImage(
 
     // A logo keeps its transparency and its aspect; a photo becomes a JPEG.
     const isLogo = kind === 'logo'
-    const pipeline = image.rotate().resize({
-      width: Math.min(meta.width, isLogo ? 480 : MAX_DIMENSION),
-      fit: 'inside',
-      withoutEnlargement: true,
-    })
-    let output: Buffer = isLogo
-      ? await pipeline.png({ compressionLevel: 9 }).toBuffer()
-      : await pipeline.jpeg({ quality: 82, mozjpeg: true }).toBuffer()
+    let output: Buffer
+    if (isLogo) {
+      /* THE SAME PIPELINE AS AN UPLOADED LOGO, not a second copy of it.
+         This branch used to resize and encode here, which meant the trim that
+         removes a logo's baked-in margin would have had to be written twice —
+         and an imported logo is exactly the one most likely to arrive with a
+         margin, because it came off a web page that was spacing it. */
+      const made = await logoPngFrom(source)
+      if (!made.ok) return null
+      output = made.png
+    } else {
+      output = await image
+        .rotate()
+        .resize({ width: Math.min(meta.width, MAX_DIMENSION), fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 82, mozjpeg: true })
+        .toBuffer()
+    }
 
     let marked = false
     if (!isLogo && brand) {
