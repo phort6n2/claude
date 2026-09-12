@@ -48,31 +48,35 @@ export const LOGO_FORMATS: UploadFormat[] = [
 ]
 
 /**
- * The `accept` attribute: `image/*`, then the types, then the extensions.
+ * THERE IS NO `accept` FILTER ON THE UPLOAD INPUTS, AND THAT IS THE FIX.
  *
- * ALL THREE, and the belt-and-braces is the point. A file dialog resolves
- * these against the operating system's own idea of what a type is, and every
- * form of that lookup fails somewhere:
+ * This started as `image/png,image/jpeg,image/webp`, which hid AVIF the app
+ * could read. It was then widened to every MIME type, then to every spelling
+ * of every extension, then to `image/*` as well — belt, braces and a second
+ * belt. An operator on a MacBook Air still could not see `.webp` files in the
+ * dialog, on a page whose input demanded `image/webp` and `.webp` by name
+ * (verified in the rendered DOM, on the deployed commit).
  *
- * - `image/avif` is unknown to an older macOS or Windows, which maps it to
- *   nothing and greys the file out — indistinguishable, to the person
- *   standing there, from the app refusing AVIF.
- * - `.avif` covers that, until a file arrives named something else.
- * - `image/*` covers whatever the system DOES class as an image, which is the
- *   only one of the three that keeps up on its own.
+ * The lesson is about where the filtering happens. `accept` is not a rule the
+ * browser applies to the file name — it is a hint the OPERATING SYSTEM
+ * resolves against its own type registry, and when that registry has never
+ * heard of a format the file simply is not offered. We cannot see that
+ * registry, cannot test against every version of it, and cannot tell the
+ * difference from here between "the dialog hid it" and "the app refused it".
+ * Two rounds of adding tokens is the evidence: each one fixed the format that
+ * had been reported and left the next one to be reported later.
  *
- * Listing `image/*` also means the dialog offers formats the server will
- * refuse — SVG, most obviously. That is deliberate and it is the better
- * trade: a refusal names the problem and says what to do instead ("export an
- * SVG to PNG first"), while a greyed-out file explains nothing and cannot be
- * argued with. The decoder is the authority on what is accepted, not the
- * dialog; this list only decides what a person is allowed to try.
+ * So the dialog filters nothing and the DECODER decides, which is the only
+ * place that can actually answer the question — it either reads the bytes or
+ * it does not, on every machine, for every format, without consulting
+ * anything. A wrong file gets a sentence saying what went wrong and what
+ * works instead. A file that never appears in the list gets nothing.
+ *
+ * The formats are still named on screen and in every refusal, so the list
+ * below is what the app TELLS people; it is no longer what the dialog is
+ * trusted to enforce. Do not reintroduce `accept` here without a way to test
+ * it on the machines that actually failed.
  */
-export const LOGO_ACCEPT = [
-  'image/*',
-  ...LOGO_FORMATS.map((f) => f.mime),
-  ...LOGO_FORMATS.flatMap((f) => f.ext),
-].join(',')
 
 /** "PNG, JPEG, WebP or AVIF" — for error copy that has to name them. */
 export const LOGO_FORMATS_SENTENCE = (() => {
