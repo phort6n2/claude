@@ -3,7 +3,8 @@ import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
 import { getAdsTracking } from '@/lib/ads-tracking'
 import { canonicalHostFor } from '@/lib/site-origin'
-import { getAdsCredentials, listConversionActions } from '@/lib/google-ads'
+import { getAdsCredentials, listConversionActions, adsSearch } from '@/lib/google-ads'
+import { enhancedConversionChecks } from '@/lib/ads-enhanced-conversions'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -87,6 +88,8 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
   }
 
   let html = ''
+  /** Null until Google is asked; false when the key comes back absent. */
+  let leadsFlagInGoogle: boolean | null = null
   try {
     const res = await fetch(url, {
       headers: { 'User-Agent': 'glassleads-tag-check' },
@@ -252,8 +255,39 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
         if (tracking.leadSendTo) report('Form leads', tracking.leadSendTo)
         if (tracking.callSendTo) report('Calls', tracking.callSendTo)
       }
+
+      /* The one enhanced-conversions fact Google will actually tell us.
+         A MISSING KEY MEANS FALSE, not unknown — verified against two live
+         accounts, one returning it as true and one omitting it entirely while
+         still returning conversion_tracking_status. Same rule as
+         customer_conversion_goal.biddable. */
+      const setting = await adsSearch(
+        customerId,
+        `SELECT customer.conversion_tracking_setting.enhanced_conversions_for_leads_enabled
+         FROM customer`
+      )
+      if (setting.ok) {
+        const row = setting.rows[0] as
+          | { customer?: { conversionTrackingSetting?: { enhancedConversionsForLeadsEnabled?: boolean } } }
+          | undefined
+        leadsFlagInGoogle =
+          row?.customer?.conversionTrackingSetting?.enhancedConversionsForLeadsEnabled === true
+      }
     }
   }
+
+  /* Enhanced conversions last, because the most useful thing it has to say is
+     which half of it nobody here can verify — and that reads better after the
+     checks that did run than before them. */
+  checks.push(
+    ...enhancedConversionChecks({
+      conversionId: tracking.conversionId,
+      leadSendTo: tracking.leadSendTo,
+      enabledInApp: tracking.enhancedConversions,
+      html: html || null,
+      leadsFlagInGoogle,
+    })
+  )
 
   return NextResponse.json({ checks, host })
 }
