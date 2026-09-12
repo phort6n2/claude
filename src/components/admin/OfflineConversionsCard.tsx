@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Loader2, Upload, TriangleAlert, CircleCheck, FlaskConical } from 'lucide-react'
+import { SALE_SETUP } from '@/lib/google-ads-conversion-setup'
 
 /**
  * Sending booked job values back to Google Ads.
@@ -28,6 +29,8 @@ interface State {
   pendingValue: number
   examples: Array<{ name: string; value: number; soldAt: string }>
   blocked: string | null
+  /** Which problem, so the card only offers setup steps for the one they fix. */
+  blockedReason?: 'no-account' | 'no-upload-action' | 'error' | null
 }
 
 interface Outcome {
@@ -117,9 +120,31 @@ export default function OfflineConversionsCard({ clientId }: { clientId: string 
       </p>
 
       {state.blocked && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 flex items-start gap-2">
-          <TriangleAlert size={16} className="mt-0.5 shrink-0" />
-          <span>{state.blocked}</span>
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <div className="flex items-start gap-2">
+            <TriangleAlert size={16} className="mt-0.5 shrink-0" />
+            <span>{state.blocked}</span>
+          </div>
+          {/* THE WHOLE RECIPE, on the screen that is telling somebody to go
+              and do it. The banner used to end at "Create one in Google Ads
+              (Goals → Conversions → New → Import → Manual import)", which
+              omits the two things nobody can guess: what to NAME it — the
+              audit lower down this same page checks that name and reports
+              anything else as a stranger — and that the value setting has to
+              be per-conversion, without which the real job value this app
+              uploads is thrown away.
+
+              Rendered from the same constant the specs and the audit use, so
+              the instructions and the check can never quote different names.
+              Only for the missing-action case: over an API error these steps
+              would be advice about the wrong problem. */}
+          {state.blockedReason === 'no-upload-action' && (
+            <ol className="mt-2 ml-6 list-decimal space-y-1.5 text-[13px] leading-relaxed">
+              {SALE_SETUP.steps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+          )}
         </div>
       )}
 

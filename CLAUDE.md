@@ -623,6 +623,16 @@ action, so two lead actions in one category cannot be told apart by bidding.
 - The audit **reads only**, on the Advertising tab per client and at
   `/api/admin/google-ads/conversion-audit` for all of them. An audit that
   fixes things is one nobody can run to find out what is wrong.
+- **The setup STEPS are a leaf module** (`google-ads-conversion-setup.ts`,
+  importing only the names) because `google-ads-conventions.ts` reaches the
+  API and a client component cannot import it. That is why the "Booked jobs
+  back to Google" card wrote its own shorter version for a while — "Create one
+  in Google Ads (Goals → Conversions → New → Import → Manual import)" — which
+  dropped the two things nobody can guess: what to NAME the action, checked by
+  the audit lower down the same page, and that the value setting must be
+  per-conversion or the real job value this app uploads is discarded. The card
+  now renders `SALE_SETUP.steps`, and only for the missing-action case: over
+  an API error the same steps would be advice about the wrong problem.
 - **Landing pages are audited too** (`google-ads-landing.ts`, "Where the ads
   land" on the Advertising tab): every ENABLED ad (`final_urls` AND
   `final_mobile_urls`), PMax asset group, and sitelink at all three

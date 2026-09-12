@@ -6,6 +6,7 @@ import {
   findUploadCandidates,
   uploadBookedJobs,
 } from '@/lib/google-ads-offline'
+import { SALE_SETUP } from '@/lib/google-ads-conversion-setup'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -62,18 +63,27 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
       ...base,
       actions: [],
       blocked: 'No Google Ads account is linked to this client yet.',
+      blockedReason: 'no-account',
     })
   }
 
   const actions = await listUploadActions(customerId)
+  /* THE REASON, not just the sentence. The card renders the canonical setup
+     steps when the problem is specifically that the action does not exist —
+     and it must not render them over an API error, which looks the same to
+     anything reading `blocked` as prose. The steps themselves are not sent:
+     they live in a leaf module the card imports directly, so the page and
+     the audit below it can never quote different instructions. */
+  const missingAction = actions.ok && actions.actions.length === 0
   return NextResponse.json({
     ...base,
     actions: actions.ok ? actions.actions : [],
     blocked: actions.ok
-      ? actions.actions.length === 0
-        ? 'This account has no "import from clicks" conversion action. Create one in Google Ads (Goals → Conversions → New → Import → Manual import) and it will appear here.'
+      ? missingAction
+        ? `This account has no "import from clicks" conversion action yet, so there is nowhere to upload booked jobs. Create ${SALE_SETUP.name}:`
         : null
       : actions.error,
+    blockedReason: missingAction ? 'no-upload-action' : actions.ok ? null : 'error',
   })
 }
 

@@ -128,6 +128,11 @@ inherits.
 
 ### 5. AGMP Sale
 
+> The app shows these steps itself, on the Advertising tab, whenever an account
+> has no import action yet — rendered from `CONVERSION_SETUP` in
+> `src/lib/google-ads-conversion-setup.ts`. Change them there and the screen
+> changes with them; this section is the long-form companion.
+
 1. Goals → Conversions → **New conversion action → Import → Manual import
    using API or uploads**.
 2. Goal: **Purchase**. Name: `AGMP Sale`.
