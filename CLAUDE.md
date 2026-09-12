@@ -319,6 +319,61 @@ at another host is worse than one the operator is told to upload. A failure
 part-way does not abandon the rest of the list — a dead address among eight is
 ordinary — and the result line says what happened to all of them.
 
+**Story sections can be DRAFTED for a shop that had nothing to import**
+(`story-sections.ts`, `POST /api/clients/[id]/draft-story`, the card in
+`SiteContentEditor` above the sections). The importer was the only thing that
+had ever filled that field, so a shop with no previous website — or one whose
+site was a single page — got an empty box, a `+ Add section` button and, in
+practice, no story at all.
+
+It is the riskiest button in the admin, because "write the story of this auto
+glass shop" is a request a model answers fluently and wrongly: years in
+business, a family founding, certifications, same-day service, a
+preferred-provider relationship with an insurer. Every one of those reads
+perfectly and breaks §2. So it is built like `nearby-cities.ts` rather than
+like a generator — **the model is a source of prose, not of facts**:
+
+- The prompt carries only what this app holds (the service flags, the market
+  area, the shop city, `serviceAreas`, and the two claim flags) and says those
+  are the only facts that exist.
+- Every section that comes back is **SCREENED, and a section that trips it is
+  DROPPED** — not trimmed. A half-edited paragraph is a sentence nobody wrote
+  and nobody reviewed, and the operator can no longer tell which half came
+  from a model. The note names what went and the words that did it, because a
+  screen firing silently looks exactly like a model writing two sections
+  instead of three, and the operator's next move — press it again — is the one
+  that cannot help.
+- **The screen is gated on the SAME per-shop flags the template is.** "We come
+  to you" for a shop with no mobile unit, "text us a photo" to a landline,
+  "we handle the claim" where `filesInsuranceClaims` is off: those are the
+  claims §2 gates, arriving in a free-text field that nothing guards at render
+  time. A service that is OFF is screened by keyword too — the services grid
+  strips its own card, a paragraph mentioning sunroof glass strips nothing.
+- It will not write their **history** (nothing here knows it — the UI says so
+  rather than letting the button imply otherwise), the **warranty** (the
+  warranty band states the terms; "backed by our warranty" mid-story is the
+  §2 failure that band exists to prevent), or **insurance and cost** (the
+  insurance band is built from compliance-reviewed `insurance-rules.ts`, and a
+  story section covering it is a second unreviewed version of the same claim).
+- Chips are **two flags for one job**: rock chip repair and windshield repair
+  are the same resin injection, so the word is only forbidden when neither is
+  on. Screening on either alone threw away the most useful paragraph on the
+  page over a distinction the shop does not make itself.
+- The route WRITES NOTHING. The drafts land in the editor's state and its own
+  autosave commits them — a route that saved its own output would also race
+  that autosave, which PUTs the whole document.
+- The card shows while there is nothing REAL in the field, not merely while
+  the array is empty: one press of `+ Add section` leaves a blank row, and
+  hiding the button behind that means the first thing an operator does when
+  faced with an empty box is also the thing that takes the help away.
+- `scripts/check-story-sections.ts` holds both directions. Too lenient and a
+  fluent invention reaches a real shop's live site with nothing going red; too
+  eager and every draft is thrown away, so the button reads as broken and the
+  field stays empty, which is the state it was built to fix. Its trap list is
+  the second half: a bare "bonded" was reading as the tradesman's "licensed
+  and bonded" and killing *"the glass is bonded into the body"*, the single
+  most useful sentence the page can carry.
+
 **A content section's photo is a URL in a JSON column, NOT a row in the photo
 table** (`SiteChapter.photoUrl`, rendered by `ChapterSections`). Those are two
 different things that look like one thing to whoever is using the app: delete
