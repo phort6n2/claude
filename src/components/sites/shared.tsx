@@ -438,17 +438,27 @@ export function SiteHeader({
             <img
               src={client.logoUrl}
               alt={client.businessName}
-              /* max-w-FULL, not only the 240px cap.
-                 The brand is the one flex item allowed to shrink, and it does
-                 — but `w-auto` sizes this image from its own aspect ratio and
-                 `max-w-[240px]` caps it against nothing in particular, so the
-                 picture kept its full width while its BOX was squeezed to 175
-                 and simply painted over the menu. Measured on a 1440 screen
-                 with a four-link nav: the image ran 65px past its own box and
-                 sat 49px on top of the first link. With max-w-full it scales
-                 down inside the box instead — a smaller logo, which is a
-                 tradeoff, where an overlap is just broken. */
-              className="h-[52px] w-full max-w-[240px] object-contain object-left"
+              /* TWO CEILINGS AND NO FIXED SIZE, so any shape fits.
+                 Fifteen shops send fifteen shapes: wordmarks near 5:1,
+                 rectangles, square badges, circles. A fixed height with
+                 object-contain gave each of them a 240x52 BOX whatever they
+                 were — so a square logo rendered 52 wide inside 240, leaving
+                 188px of empty space that read as a gap in the header rather
+                 than as a logo. Capping both dimensions and letting the
+                 element size itself means the shape decides which ceiling
+                 binds: a wordmark runs out of width, a badge runs out of
+                 height, and the box is never bigger than the picture in it.
+
+                 max-h is 56 rather than 52 because the binding constraint for
+                 a tall or square mark is height, and that is where the ones
+                 that looked weakest were losing.
+
+                 min(240px,100%) keeps BOTH ceilings honest. The brand is the
+                 one flex item allowed to shrink, and with a bare max-w-[240px]
+                 the picture kept its full width while its box was squeezed to
+                 175 and painted over the menu — 49px on top of the first link
+                 at 1440. The 100% term is what stops that. */
+              className="h-auto w-auto max-h-[56px] max-w-[min(240px,100%)]"
             />
           ) : (
             <Wordmark businessName={client.businessName} />
@@ -1731,7 +1741,9 @@ export function SiteFooter({
               <img
                 src={footerLogo}
                 alt={client.businessName}
-                className="h-10 w-auto max-w-[220px] object-contain mb-3.5"
+                /* Two ceilings, same reasoning as the header: a square badge
+                   at a fixed h-10 is a 40px mark stranded in a 220px box. */
+                className="h-auto w-auto max-h-[44px] max-w-[min(220px,100%)] mb-3.5"
               />
             ) : (
               <div className="mb-3">

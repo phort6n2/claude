@@ -356,6 +356,40 @@ addresses are usually on the old site this platform is replacing, and the
 week it is switched off is the week the logo would vanish. When the copy
 cannot be made the original is kept and the card says so.
 
+**A logo has to look right at ANY shape, and two separate things decide that.**
+Fifteen shops send wordmarks near 5:1, plain rectangles, square badges and
+circles, into one header slot.
+
+- **The file is TRIMMED to its ink at upload** (`trimToInk` in
+  `photo-upload.ts`, shared by the upload and the mirroring path so an
+  imported logo gets it too). Logos arrive with a wide margin of transparent
+  or flat canvas baked in, and nothing downstream can tell that margin from
+  the logo — the header sizes the FILE, so a file that is 35% ink renders its
+  ink at 35% of the slot. MAG Mobile's was 480×320 with 155px of horizontal
+  and 154px of vertical padding: a visible mark of about 53×27 in a 72px
+  header, which is what "the logo doesn't look great" meant. It also shrank
+  the photo watermark and the footer copy by the same proportion, since both
+  are stamped from that file. Guarded by `MIN_TRIM_AREA_SHARE`: a flat or
+  photographic logo with no border to find keeps its original, because a
+  sliver stretched into the header is worse than the padding.
+- **The slot is TWO CEILINGS, not a fixed height** —
+  `max-h-[56px] max-w-[min(240px,100%)]` with auto sizing, so the shape picks
+  which one binds. `h-[52px]` plus `max-w-[240px]` plus `object-contain` gave
+  every logo a 240×52 box whatever it held, so a square badge drew 52px wide
+  inside 240 and left 188px of empty box reading as a gap in the header. The
+  `min(…,100%)` term is load-bearing: the brand is the one flex item that
+  shrinks, and a bare `max-w-[240px]` let the picture keep its width while its
+  box was squeezed, painting 49px over the first nav link at 1440.
+- Existing logos predate the trim, so **Maintenance → "Trim the padding off
+  every stored logo"** (`/api/admin/retidy-logos`, dry run first) re-stores
+  them. Idempotent by measurement — a trimmed logo has no margin left to
+  find — and a failure keeps the logo it has.
+- `scripts/check-logo-shapes.ts` runs all five shapes plus MAG's real file
+  through the real pipeline and asserts each ends up with a readable long edge
+  inside the box. None of this fails loudly: the file is valid, the markup is
+  valid, and the only symptom is one client in fifteen looking wrong months
+  later.
+
 **A cutover has THREE answers per old address, not two** (`UrlParityCard`,
 `/api/clients/[id]/cutover`). Redirect it, build a page at it, or — when the
 template already has that page under a different name — **move the page onto
