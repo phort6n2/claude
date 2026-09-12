@@ -103,6 +103,9 @@ export default function SiteContentEditor({
       setExpandingWarranty(false)
     }
   }
+  const [draftingStory, setDraftingStory] = useState(false)
+  const [storyNote, setStoryNote] = useState<{ ok: boolean; text: string } | null>(null)
+
   const [footerBlurb, setFooterBlurb] = useState('')
   const [registrationName, setRegistrationName] = useState('')
   const [registrationNumber, setRegistrationNumber] = useState('')
@@ -174,6 +177,39 @@ export default function SiteContentEditor({
   // component unmounts and the timer is cleared. That is the "it imported but
   // it did not save" report, and it left no trace anywhere to explain itself.
   const saveImmediatelyRef = useRef(false)
+
+  /**
+   * Drafts the story sections for a shop whose old site had none to import.
+   *
+   * The server writes nothing — it hands back sections it has already screened
+   * for claims this app cannot back — so they land in state here and the
+   * normal autosave commits them. Immediately rather than in 1.2 seconds, for
+   * the same reason the import does it: read saveImmediatelyRef above.
+   */
+  async function draftStory() {
+    setDraftingStory(true)
+    setStoryNote(null)
+    try {
+      const res = await fetch(`/api/clients/${clientId}/draft-story`, { method: 'POST' })
+      if (!res.ok) throw new Error(await errorFrom(res, 'Could not draft them'))
+      const data = await res.json()
+      const drafted = Array.isArray(data.chapters) ? (data.chapters as ChapterRow[]) : []
+      if (drafted.length) {
+        // Blank rows left behind by "+ Add section" are dropped rather than
+        // kept in front of the draft: asChapters strips them on the way to the
+        // site anyway, and keeping them would cost the draft a slot.
+        setChapters((prev) =>
+          [...prev.filter((c) => c.heading.trim() || c.body.trim()), ...drafted].slice(0, 5)
+        )
+        saveImmediatelyRef.current = true
+      }
+      setStoryNote({ ok: drafted.length > 0, text: data.note || 'Drafted.' })
+    } catch (err) {
+      setStoryNote({ ok: false, text: err instanceof Error ? err.message : 'Failed' })
+    } finally {
+      setDraftingStory(false)
+    }
+  }
 
   async function saveNow() {
     if (savingRef.current) {
@@ -540,6 +576,79 @@ export default function SiteContentEditor({
           different. In the client&apos;s own words and facts only; the importer drafts these from
           their existing site. Blank line = new paragraph. Optional photo shows beside the text.
         </p>
+
+        {/* Nothing but the importer has ever filled this in, so a shop with no
+            previous website — or one whose site was a single page — lands here
+            on an empty box and nothing gets written at all.
+
+            Shown while there is nothing REAL here, not only while the array is
+            empty: one press of "+ Add section" leaves a blank row, and hiding
+            the button behind that would mean the one thing an operator does
+            when faced with an empty box is also the thing that takes the help
+            away. */}
+        {!chapters.some((c) => c.heading.trim() || c.body.trim()) && (
+          <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={draftStory}
+                disabled={draftingStory}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+              >
+                {draftingStory ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                {draftingStory ? 'Drafting…' : 'Draft sections from what we know'}
+              </button>
+              <span className="text-xs text-gray-500">
+                Nothing was imported, so this writes from the shop&apos;s own record — the work
+                they do, the area they cover, how a job goes.
+              </span>
+            </div>
+            {/* Said plainly rather than left for the operator to discover: the
+                field asks for their history first, and that is the one thing
+                no draft can supply. A button that quietly skipped it would
+                read as a button that forgot. */}
+            <p className="mt-2 mb-0 text-xs text-gray-500">
+              It invents nothing — no years in business, no certifications, no timing, no
+              insurer, no prices — and any section that strays is thrown away with the reason
+              shown. Their history is not in here, so add that part yourself.
+            </p>
+            {storyNote && (
+              <p
+                className={`mt-2 mb-0 text-xs flex items-start gap-1.5 ${
+                  storyNote.ok ? 'text-green-700' : 'text-red-700'
+                }`}
+              >
+                {storyNote.ok ? (
+                  <Check className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                ) : (
+                  <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                )}
+                <span>{storyNote.text}</span>
+              </p>
+            )}
+          </div>
+        )}
+        {/* The outcome outlives the card above it: once sections land, the
+            card's condition is false and a note explaining what was thrown
+            away would vanish with it at the moment it is worth reading. */}
+        {storyNote && chapters.some((c) => c.heading.trim() || c.body.trim()) && (
+          <p
+            className={`mb-3 text-xs flex items-start gap-1.5 ${
+              storyNote.ok ? 'text-green-700' : 'text-red-700'
+            }`}
+          >
+            {storyNote.ok ? (
+              <Check className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            ) : (
+              <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            )}
+            <span>{storyNote.text}</span>
+          </p>
+        )}
         {chapters.map((ch, i) => (
           <div key={i} className="border border-gray-200 rounded-lg p-3 mb-2 space-y-2">
             <div className="flex gap-2">
