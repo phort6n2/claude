@@ -4,6 +4,9 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { requireAdminPage } from '@/lib/admin-guard'
 import SeoTab from '@/components/admin/SeoTab'
+import RankTrackingCard from '@/components/admin/RankTrackingCard'
+import { localDominatorKey } from '@/lib/local-dominator'
+import { rankSetupState } from '@/lib/rank-campaigns'
 import TrafficReport from '@/components/portal/TrafficReport'
 import {
   defaultBrandTerms,
@@ -36,6 +39,14 @@ export default async function Page({
       id: true,
       businessName: true,
       seoClient: true,
+      // Rank tracking has no enable step, so this tab has to say whether it
+      // is actually happening — and when it is not, why not.
+      status: true,
+      googlePlaceId: true,
+      latitude: true,
+      longitude: true,
+      rankTrackingId: true,
+      rankKeywords: true,
       contentFeedUrl: true,
       contentFeedCheckedAt: true,
       contentFeedError: true,
@@ -54,6 +65,14 @@ export default async function Page({
   if (!client) notFound()
 
   const feedItemCount = await prisma.siteFeedItem.count({ where: { clientId: id } }).catch(() => 0)
+
+  const [scanCount, keyConfigured] = await Promise.all([
+    prisma.localRankScan.count({ where: { clientId: id } }).catch(() => 0),
+    localDominatorKey()
+      .then((k) => !!k)
+      .catch(() => false),
+  ])
+  const rankState = rankSetupState({ ...client, keyConfigured })
 
   /* THE REPORT ITSELF, HERE, not only in the client's portal.
      It was portal-only, so the only way for an operator to see what a shop had
@@ -75,6 +94,17 @@ export default async function Page({
 
   return (
     <div className="space-y-4">
+    <RankTrackingCard
+      clientId={client.id}
+      hasCampaign={rankState.hasCampaign}
+      canCreate={rankState.canCreate}
+      problem={rankState.problem}
+      campaignId={client.rankTrackingId}
+      keywords={client.rankKeywords}
+      seoClient={client.seoClient}
+      scanCount={scanCount}
+    />
+
     <SeoTab
       clientId={client.id}
       initialSeoClient={client.seoClient}

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { campaignDetail, getScheduledScanSchedule, SCAN_PRESETS } from '@/lib/local-dominator'
 import { rankWebhookUrl } from '@/lib/local-rank-token'
 import { appOrigin, isProtectedHost } from '@/lib/app-origin'
+import { LIVE_STATUSES } from '@/lib/site-preview'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -34,7 +35,7 @@ export async function GET() {
 
   const clients = await prisma.client
     .findMany({
-      where: { status: 'ACTIVE', rankTrackingId: { not: null } },
+      where: { status: { in: [...LIVE_STATUSES] }, rankTrackingId: { not: null } },
       select: {
         id: true,
         businessName: true,

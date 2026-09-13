@@ -880,6 +880,39 @@ and posts each finished run back, so nothing is polled.
   touches an existing campaign. Changing an existing one goes through PATCH:
   `syncCampaignTier` on a tier flip, `/respace` for geometry, `/reschedule`
   for the cron.
+- **THE WHOLE MODULE READ `status: 'ACTIVE'`, and ONBOARDING IS LIVE.** Nine
+  queries — the creation sweep, the map capture, `rankSummaries()` behind the
+  admin Rankings page, and every maintenance route — so a shop onboarded the
+  normal way was never given a campaign, never listed on the Rankings page,
+  and had its portal Rankings tab hidden, permanently. Intake approval creates
+  every client as ONBOARDING, and those sites are live and taking leads on
+  purpose (`LIVE_STATUSES`). **This is the SAME mistake the WRHQ sync records
+  four sections up, in a second module** — when a rule says "live", use
+  `siteIsLive`/`LIVE_STATUSES`, never an equality check. PAUSED stays excluded;
+  that is the kill switch.
+- **A CLIENT WITH NO CAMPAIGN HAD NO SURFACE ANYWHERE.** Rank tracking has no
+  enable step, so "not set up" produces no error, no empty state and no row:
+  the sweep counted `skipped++` with no name, the Rankings page omitted the
+  client, the portal hid the tab, and the SEO switch said "no campaign yet"
+  without saying whether that meant *tonight* or *never*. Those two are the
+  entire difference to whoever is looking. So:
+  - `rankSetupState()` is pure and answers "is it measured, and if not what is
+    blocking it" — in words that name the screen to fix it. Blocker order is
+    fix order: status, then the missing key (one fix for all fifteen), then the
+    Business Profile. Coordinates are NOT a blocker (they backfill from the
+    Place ID) and it says so, because a press failing on them is otherwise
+    unexplainable.
+  - **The `Rank tracking` card on the SEO tab** states which it is, and
+    `createRankCampaignFor` / `POST /api/clients/[id]/rank-campaign` creates
+    one on the spot — the same code the sweep runs, so a press cannot produce
+    a differently-shaped campaign from tonight's run. Otherwise every fix to a
+    blocked client is a next-day question. It costs credits, so it is only
+    ever that press or the sweep, never a side effect of a save.
+  - The sweep's client query **no longer filters on `googlePlaceId`**: it did,
+    which meant the one client who could never be tracked was the one client
+    the sweep never mentioned. Skips are now named with reasons in
+    `skippedClients`.
+  - `scripts/check-rank-coverage.ts` pins the ONBOARDING case first.
 - Flipping `Client.seoClient` PATCHes the live campaign — four keywords and
   weekly, or two and monthly. A downgrade sets the extra terms `inactive`
   rather than removing them, because a removed term takes its history with
