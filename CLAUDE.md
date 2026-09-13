@@ -612,6 +612,35 @@ and anything shaped like a city page — **middleware rewrites both before any
 of this app's routing sees them, and middleware cannot read the database**,
 so such an override would be accepted and then silently ignored.
 
+**City copy can be written for EVERY empty page in one press**
+(`POST /api/clients/[id]/city-content/draft-all`, the button above the list in
+`CityContentEditor`). The per-city draft deliberately does NOT save — a human
+reads it first — and that is right for one city and does not survive twenty:
+the measured outcome of twenty presses, twenty reads and twenty saves is city
+pages left blank, carrying noindex, unlinked and out of the sitemap, which is
+the exact state `city-content.ts` exists to prevent.
+
+- **The bulk one SAVES, so the compliance screen stands in for the reader.**
+  Every draft goes through `claimProblem()` — the same `copy-claims.ts` the
+  story and FAQ drafters use — and one that trips it is NOT saved. This is the
+  only place in the app where model prose reaches a live page without somebody
+  reading it first, so the drop is the default and the response names every
+  city and what happened to it, keeping the dropped text so the good half can
+  be pasted by hand.
+- **Non-destructive: only cities with NO copy at all.** A city somebody has
+  written or corrected is skipped and counted. A bulk action that overwrites a
+  hand-edited paragraph is one nobody presses twice.
+- Sequential with a `TIME_BUDGET_MS`, because these are model calls and a
+  client can have up to `LOCATION_PAGE_LIMIT` cities; it names who it did not
+  reach and is safe to run again. `revalidatePath` once at the end.
+- **THE CITY PAGES NARROWED THE SPEED RULE in `copy-claims.ts`.** They are
+  written about a PLACE, and "fast-moving traffic on I-4" and "the surface
+  deteriorates quickly" are facts about a road, not promises about a shop — a
+  bare `/\bfast\b/` threw away the most specific sentence on the page. The
+  adjective now has to be attached to the service ("fast service") or to us
+  ("we … quickly") before it is a claim. The drafter checks hold both
+  directions.
+
 **Which cities get pages is edited here too** (`ServiceAreaPlanner`). The
 first `LOCATION_PAGE_LIMIT` of `Client.serviceAreas` (after shop cities merge
 in front) get a page; the rest are coverage-band text, and the card marks

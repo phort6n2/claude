@@ -46,6 +46,7 @@ export default function CityContentEditor({
   const [unavailable, setUnavailable] = useState(false)
   const [saving, setSaving] = useState<string | null>(null)
   const [drafting, setDrafting] = useState<string | null>(null)
+  const [draftingAll, setDraftingAll] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
 
   const load = useCallback(async () => {
@@ -68,6 +69,41 @@ export default function CityContentEditor({
       (prev || []).map((row) => (row.city === city ? { ...row, ...patch } : row))
     )
     setMessage(null)
+  }
+
+  /**
+   * Write and SAVE every empty city page, in one press.
+   *
+   * The single-city draft below deliberately does not save — a human reads it
+   * first, which is right when there is one city in front of you and does not
+   * survive twenty. The measured outcome of that friction is city pages left
+   * blank, carrying noindex, unlinked and out of the sitemap, which is the
+   * state this whole card exists to prevent.
+   *
+   * What replaces the reader is the compliance screen on the server: a draft
+   * that claims anything the app cannot back is thrown away rather than
+   * saved, and the result names every city and what happened to it. Cities
+   * that already have copy are never touched.
+   */
+  async function draftAll() {
+    setDraftingAll(true)
+    setMessage(null)
+    try {
+      const res = await fetch(`/api/clients/${clientId}/city-content/draft-all`, {
+        method: 'POST',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not write them')
+      setMessage({ ok: (data.wrote || 0) > 0, text: data.message || 'Done.' })
+      // Reload rather than patching state: the server decided what was
+      // written, what was skipped and what was dropped, and the word counts
+      // and the indexable flags all come back from it.
+      await load()
+    } catch (err) {
+      setMessage({ ok: false, text: err instanceof Error ? err.message : 'Failed' })
+    } finally {
+      setDraftingAll(false)
+    }
   }
 
   /**
@@ -185,6 +221,41 @@ export default function CityContentEditor({
               </span>
             </span>
           )}
+        </div>
+      )}
+
+      {/* THE BULK ACTION, above the list it applies to and only while there
+          is something for it to do. A button that says "write all of them"
+          when they are all written is a button somebody presses to find out
+          what it does. */}
+      {thin.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={draftAll}
+              disabled={draftingAll || !!drafting}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {draftingAll ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Sparkles size={14} />
+              )}
+              {draftingAll
+                ? 'Writing every empty page…'
+                : `Write and save all ${thin.length} empty page${thin.length === 1 ? '' : 's'}`}
+            </button>
+            <span className="text-xs text-gray-600">
+              One press instead of {thin.length}. Cities that already have copy are left alone.
+            </span>
+          </div>
+          <p className="mt-2 mb-0 text-xs text-gray-500">
+            This one SAVES, unlike the per-city draft — so a compliance screen stands in for the
+            read: anything claiming a timing, a price, an insurer, a warranty, a certification or a
+            service this shop does not offer is thrown away instead of published, and the result
+            says which city and why. Still worth reading what it wrote.
+          </p>
         </div>
       )}
 

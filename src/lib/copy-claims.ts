@@ -83,9 +83,17 @@ const RULES: Rule[] = [
       // drive immediately after a replacement, and here is what decides when
       // it is" — a refusal to promise, thrown away by a rule against
       // promising. Those two words appear in protective copy at least as
-      // often as in a claim, and the specific nets above catch the claim:
-      // nobody promises speed without naming a day, an hour or an adjective.
-      /\b(quickly|fast|prompt|promptly|speedy)\b/i,
+      // often as in a claim, and the specific nets above catch the claim.
+      //
+      // AND THE SPEED ADJECTIVES ARE NOT BARE EITHER, which the city pages
+      // exposed: they are written about a PLACE, and "fast-moving traffic on
+      // I-4" and "the surface deteriorates quickly" are facts about a road,
+      // not promises about a shop. A bare /\bfast\b/ threw away the most
+      // specific sentence on the page. So the word has to be attached to the
+      // service or to us before it is a claim.
+      /\b(quick|fast|speedy|prompt)(ly)?[- ]?(service|turnaround|repair|replacement|response|quote|appointment|fix|install(ation)?)\b/i,
+      /\b(we|our|us)\b[^.!?]{0,34}\b(quickly|fast|promptly|speedy)\b/i,
+      /\b(quickly|fast|promptly|speedy)\b[^.!?]{0,28}\b(back on the road|out the door|fitted|installed|replaced|repaired|booked|scheduled)\b/i,
       /\bwhile you wait\b/i,
     ],
   },
