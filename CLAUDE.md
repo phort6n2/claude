@@ -913,6 +913,33 @@ and posts each finished run back, so nothing is polled.
     the sweep never mentioned. Skips are now named with reasons in
     `skippedClients`.
   - `scripts/check-rank-coverage.ts` pins the ONBOARDING case first.
+- **A SERVICE-AREA BUSINESS HAS NO POINT ON THE MAP, and the grid centre was
+  only ever a lookup.** MAG Mobile has no storefront, so its Business Profile
+  carries no address, so there is nothing for Google to hand back — and the
+  centre of a mobile shop's grid is not a fact anyway: it is the middle of the
+  area they actually cover, which only an operator knows. Two separate faults
+  met here:
+  - **The lookup asked the wrong API and swallowed its refusal.**
+    `backfillCoordinates` was one line against the LEGACY
+    `maps.googleapis.com/…/details/json?fields=geometry` endpoint, returning a
+    bare `null` for everything. `gbp-reviews.ts` already records why that is
+    wrong — **newer API projects are not authorized for it (REQUEST_DENIED)**,
+    which is why reviews moved to the Places API (New) — and REQUEST_DENIED
+    arrives as an HTTP **200** with the status in the body, which is exactly
+    how it passed for an empty result. `place-location.ts` now asks the NEW
+    API first (field mask `location`), keeps the legacy one as a fallback for
+    an older project, and reports **Google's own words** with a `refused` flag.
+    A refusal and an absence are different facts and only one is about the shop
+    — the old message asserted the second whichever it was.
+  - **The centre can be PASTED**, on the rank card, and for this class of
+    client that is the right answer rather than a workaround. `coordsFromText`
+    takes what somebody actually has in their hand: a Maps URL, a `q=`/share
+    link, or a bare pair. **THE PIN BEATS THE CAMERA** — `!3d…!4d…` is where
+    the place is, `@lat,lng,zoom` is where the map happened to be sitting when
+    the URL was copied, and taking the second centres the grid on the wrong
+    side of town in a way nothing downstream could ever question. `0,0` is
+    refused outright: Null Island is what a missing value coerces to, and this
+    app has already drawn one map in the Atlantic.
 - Flipping `Client.seoClient` PATCHes the live campaign — four keywords and
   weekly, or two and monthly. A downgrade sets the extra terms `inactive`
   rather than removing them, because a removed term takes its history with

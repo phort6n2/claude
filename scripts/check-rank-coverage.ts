@@ -27,6 +27,7 @@
  * There is no test runner in this repo. This is a script on purpose.
  */
 import { rankSetupState, type RankSetupInput } from '@/lib/rank-campaigns'
+import { coordsFromText, plausibleLocation } from '@/lib/place-location'
 import { LIVE_STATUSES } from '@/lib/site-preview'
 
 let bad = 0
@@ -142,6 +143,69 @@ console.log('\n--- the order of the blockers is the order of the fixes ---')
     /API keys/.test(noKeyNoPlace.problem || ''),
     noKeyNoPlace.problem || ''
   )
+}
+
+console.log('\n--- the grid centre an operator pastes ---')
+{
+  // A SERVICE-AREA BUSINESS IS WHY THIS PATH EXISTS. MAG Mobile has no
+  // storefront, so its Business Profile has no address and Google has no point
+  // to give us — and the centre of a mobile shop's grid is the middle of the
+  // area they cover, which is a judgement rather than a lookup.
+  const near = (got: { latitude: number; longitude: number } | null, lat: number, lng: number) =>
+    !!got && Math.abs(got.latitude - lat) < 1e-6 && Math.abs(got.longitude - lng) < 1e-6
+
+  check(
+    'a bare pair',
+    near(coordsFromText('33.6595, -117.9988'), 33.6595, -117.9988)
+  )
+  check('a pair with no space', near(coordsFromText('33.6595,-117.9988'), 33.6595, -117.9988))
+  check('a pair separated by a space', near(coordsFromText('33.6595 -117.9988'), 33.6595, -117.9988))
+  check(
+    'a maps URL with a camera position',
+    near(coordsFromText('https://www.google.com/maps/@33.6595,-117.9988,15z'), 33.6595, -117.9988)
+  )
+  check(
+    'a q= link',
+    near(coordsFromText('https://maps.google.com/?q=33.6595,-117.9988'), 33.6595, -117.9988)
+  )
+  check(
+    'a share link',
+    near(
+      coordsFromText('https://www.google.com/maps/search/?api=1&query=33.6595,-117.9988'),
+      33.6595,
+      -117.9988
+    )
+  )
+
+  // THE PRECEDENCE THAT MATTERS. A place URL carries the camera (@...) AND the
+  // pin (!3d!4d), and they are not the same point — they differ by however far
+  // the map had been dragged before the URL was copied. Taking the camera
+  // centres the grid on the wrong side of town, and the result is plausible
+  // enough that nobody would ever question it.
+  const both =
+    'https://www.google.com/maps/place/MAG+Mobile+Auto+Glass/@33.7000,-118.0500,14z/data=!4m6!3m5!1s0x0:0x0!8m2!3d33.6595!4d-117.9988'
+  check(
+    'the PIN wins over the camera in a place URL',
+    near(coordsFromText(both), 33.6595, -117.9988),
+    JSON.stringify(coordsFromText(both))
+  )
+
+  console.log('\n--- what must not parse ---')
+  check('empty', coordsFromText('') === null)
+  check('prose', coordsFromText('somewhere near the freeway') === null)
+  check('a place URL with no coordinates in it', coordsFromText('https://maps.app.goo.gl/abc123') === null)
+  check('a lone number', coordsFromText('33.6595') === null)
+  // NULL ISLAND: 0,0 is the Atlantic, and it is what a missing value becomes
+  // when something coerces instead of checking. This app has drawn one map
+  // there already.
+  check('0,0 is refused', coordsFromText('0, 0') === null)
+  check('and so is it inside a URL', coordsFromText('https://www.google.com/maps/@0,0,3z') === null)
+  check('an out-of-range latitude', coordsFromText('91.0, -117.9') === null)
+  check('an out-of-range longitude', coordsFromText('33.6, -181') === null)
+  check('plausibleLocation agrees', !plausibleLocation(0, 0) && plausibleLocation(33.6, -117.9))
+  // A transposed pair is not detectable in general — -117 as a latitude is
+  // out of range and IS caught, which covers the US case.
+  check('a transposed US pair is caught by range', coordsFromText('-117.9988, 33.6595') === null)
 }
 
 console.log(bad === 0 ? '\nALL CASES PASS' : `\n${bad} CASE(S) FAILED`)
