@@ -18,14 +18,27 @@ export default async function Page() {
   await requireAdminPage()
 
   const monthAgo = new Date(Date.now() - 30 * 86_400_000)
-  const [signals, configured] = await Promise.all([
+  const [signals, lastTest, configured] = await Promise.all([
     prisma.directorySignal
       .findMany({
-        where: { OR: [{ status: 'NEW' }, { occurredAt: { gte: monthAgo } }] },
+        // isTest excluded, never merely styled differently. This is the list
+        // somebody rings, and "TEST — Windshield Repair HQ wiring check" in
+        // Testville with a phone number on it is exactly the row that gets
+        // dialled at the end of a long afternoon.
+        where: { isTest: false, OR: [{ status: 'NEW' }, { occurredAt: { gte: monthAgo } }] },
         orderBy: { occurredAt: 'desc' },
         take: 200,
       })
       .catch(() => []),
+    // Surfaced as one line instead, so pressing the directory's test button
+    // still has somewhere here that visibly answers.
+    prisma.directorySignal
+      .findFirst({
+        where: { isTest: true },
+        orderBy: { occurredAt: 'desc' },
+        select: { occurredAt: true },
+      })
+      .catch(() => null),
     signalsEnabled(),
   ])
 
@@ -69,6 +82,17 @@ export default async function Page() {
             refused — a missing secret must never read as &ldquo;authentic&rdquo;.
           </p>
         </div>
+      )}
+
+      {lastTest && (
+        <p className="mt-4 text-xs text-gray-500">
+          Wiring test last received{' '}
+          {new Date(lastTest.occurredAt).toLocaleString('en-US', {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+          })}
+          . Test events are kept out of the list below.
+        </p>
       )}
 
       <div className="mt-6">

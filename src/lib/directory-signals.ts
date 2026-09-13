@@ -79,7 +79,8 @@ const num = (v: unknown): number | null =>
  * reads as a second shop.
  */
 export async function recordSignal(
-  event: IncomingEvent
+  event: IncomingEvent,
+  opts?: { isTest?: boolean }
 ): Promise<{ stored: boolean; duplicate?: boolean; id?: string; error?: string }> {
   const type = str(event.type, 60)
   const name = str(event.name, 200)
@@ -115,6 +116,7 @@ export async function recordSignal(
         // the same reason the rank webhook payloads are kept.
         payload: event as object,
         occurredAt,
+        isTest: opts?.isTest === true,
       },
       select: { id: true },
     })
@@ -197,10 +199,18 @@ export async function emailNewSignals(ids: string[]): Promise<{ sent: boolean; e
       rows.length === 1
         ? `${signalLabel(rows[0].type)} — ${rows[0].name}`
         : `${rows.length} shops moved on the directory`
+    // A wiring test still sends, because half the thing being tested is
+    // whether the email arrives at all — but it says so in the subject, where
+    // it cannot be mistaken for a shop worth ringing.
+    const allTests = rows.every((r) => r.isTest)
     await resend.emails.send({
       from: `GlassLeads <${address}>`,
       to: [to],
-      subject: hot.length ? subject : `Directory: ${subject}`,
+      subject: allTests
+        ? `[TEST] Directory wiring check — nothing to action`
+        : hot.length
+          ? subject
+          : `Directory: ${subject}`,
       html: `<!doctype html><html><body style="margin:0;padding:24px;background:#f6f7f9;font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#111827">
   <div style="max-width:600px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:24px">
     <h1 style="margin:0 0 4px;font-size:18px">From Windshield Repair HQ</h1>
