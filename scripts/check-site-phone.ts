@@ -67,7 +67,7 @@ console.log('--- a shop with one of our tracking numbers ---')
   // THE WHOLE POINT: on the confirmation card these two are different, and
   // each has to be the right one for its direction.
   check('the two differ, which is the case that was broken', r.phone !== r.callbackPhone)
-  check('the call link rings the tracked number', telHref(r.phone) === 'tel:+16893666860', telHref(r.phone))
+  check('the call link rings the tracked number', telHref(r.phone) === 'tel:+16893666860', telHref(r.phone) || '')
   check(
     'the text link goes to the shop, not the tracking number',
     (smsHref(r.callbackPhone, 'hi') || '').startsWith('sms:+17145821740'),
@@ -97,7 +97,7 @@ console.log('\n--- a raw number, as the intake actually stores it ---')
 {
   const r = resolve({ phone: '3215995777', trackingNumber: TRACKING })
   check('the callback is formatted for reading', r.callbackPhone === '(321) 599-5777', r.callbackPhone)
-  check('and still dials correctly', telHref(r.callbackPhone) === 'tel:+13215995777', telHref(r.callbackPhone))
+  check('and still dials correctly', telHref(r.callbackPhone) === 'tel:+13215995777', telHref(r.callbackPhone) || '')
 }
 
 console.log('\n--- the tracking number is never a text destination ---')

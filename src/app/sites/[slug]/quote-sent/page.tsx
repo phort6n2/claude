@@ -70,6 +70,12 @@ export default async function QuoteSentPage({ params, searchParams }: PageProps)
   const swapped = await withSitePhone(client)
   Object.assign(client, swapped)
   const callbackPhone = swapped.callbackPhone
+  // Only worth two roles when they are actually two numbers. Twelve of the
+  // fifteen shops have no tracking number, and for them the split would be
+  // the same number twice with different labels.
+  const splitNumbers =
+    !!callbackPhone &&
+    callbackPhone.replace(/\D/g, '') !== (client.phone || '').replace(/\D/g, '')
   const basePath = sitePathPrefixFor(client, (await headers()).get('host'))
 
   return (
@@ -93,19 +99,32 @@ export default async function QuoteSentPage({ params, searchParams }: PageProps)
               back arrives from their handset, not from the tracking number.
               The call-now link below stays on the display number: inbound,
               and it wants recording. See lib/site-phone. */}
+          {/* TWO NUMBERS NEED TWO ROLES — see the same split in widget.js.
+              The sentence is the call WE make, from the shop's own handset;
+              the link is the call THEY make, on the recorded line. Labelled
+              by action rather than by naming a department, because this text
+              renders for fifteen shops and most are one or two people in a
+              van: "our dedicated quote team" would be §2's invented fact. */}
           <p>
             Your request is in.{' '}
             {callbackPhone ? (
-              <>
-                We will call from {callbackPhone} to confirm the glass, your coverage and a time —
-                save the number so you do not miss it.
-              </>
+              splitNumbers ? (
+                <>
+                  We will call you from {callbackPhone} to confirm the glass, your coverage and a
+                  time — save it so you know it is us.
+                </>
+              ) : (
+                <>
+                  We will call from {callbackPhone} to confirm the glass, your coverage and a time —
+                  save the number so you do not miss it.
+                </>
+              )
             ) : (
               <>We will call to confirm the glass, your coverage and a time that works.</>
             )}
           </p>
           <p>
-            If you would rather not wait, call us now on{' '}
+            {splitNumbers ? 'Rather not wait? Call us on ' : 'If you would rather not wait, call us now on '}
             <a href={telHrefFor(client.phone)}>{client.phone}</a>.
           </p>
         </>

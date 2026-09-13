@@ -279,6 +279,19 @@ webhook routes.
   "Your request is with X. They will call…", which is a lead broker handing
   the customer on — the one thing this platform is not, and the last thing a
   shop wants said on their own page.
+- **TWO NUMBERS ON ONE CARD NEED TWO ROLES**, or the pair reads as a mistake:
+  "we will call you from (714)" directly above a button saying "call (689)"
+  leaves the customer wondering which one is the shop and whether they
+  misread. So the sentence is the call WE make and the button is the call THEY
+  make — *"We will call you from {real} … save it so you know it is us"* over
+  *"Rather not wait? Call {tracked}"*. Labelled by **ACTION, never by naming a
+  department**: "our dedicated quote team" was the suggested framing and
+  cannot go in a template that renders for fifteen shops, most of them one or
+  two people in a van — it is §2's invented fact about a business, the same
+  staffing claim `copy-claims.ts` refuses for the drafters. When a shop has no
+  tracking number the two are the same number and the split would be nonsense,
+  so that case keeps the single sentence it always had — which is twelve of
+  the fifteen.
 
 ### Hosted sites
 
