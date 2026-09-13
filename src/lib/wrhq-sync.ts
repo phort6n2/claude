@@ -27,6 +27,7 @@
 import { createHmac } from 'node:crypto'
 import { prisma } from '@/lib/db'
 import { siteIsLive } from '@/lib/site-preview'
+import { countSocialLinks, readSocialLinks } from '@/lib/social-links'
 
 export interface WrhqSyncResult {
   ok: boolean
@@ -73,6 +74,19 @@ export interface WrhqClientPayload {
   filesInsuranceClaims?: boolean
   description?: string
   googlePlaceId?: string
+  /**
+   * The shop's social profiles, `{ facebook: "https://…", … }`, one per
+   * platform — facebook, instagram, x, youtube, tiktok, linkedin, pinterest.
+   *
+   * THE DIRECTORY HAS TO RECOGNISE THIS KEY OR NOTHING HAPPENS, AND NOTHING
+   * WILL SAY SO. Its endpoint silently drops keys it does not know — the same
+   * trap the service keys record two functions down, where a wrong name is not
+   * an error anywhere, it just quietly loses the data. So until
+   * windshieldrepairhq.com reads `social` (this exact spelling, this exact
+   * shape), these links are stored and reviewable here and invisible there.
+   * That is deliberate: having them on file is the half that is ours.
+   */
+  social?: Record<string, string>
   slug?: string
   dryRun?: boolean
 }
@@ -100,6 +114,8 @@ export interface SyncableClient {
   offersSunroofRepair: boolean
   offersAdasCalibration: boolean
   filesInsuranceClaims: boolean
+  /** JSON column; read through readSocialLinks, never trusted as-is. */
+  socialLinks?: unknown
   domains?: { domain: string; isPrimary: boolean }[]
 }
 
@@ -201,6 +217,17 @@ export function payloadFor(
     mobileService: client.offersMobileService,
     filesInsuranceClaims: client.filesInsuranceClaims,
     googlePlaceId: client.googlePlaceId || undefined,
+    /* RE-SCREENED ON THE WAY OUT, not merely read. A row written before a
+       rule existed — or pasted by hand into an earlier version of the card —
+       must not reach a public directory page because it is already in the
+       database. readSocialLinks drops anything that is not a profile URL
+       today, whatever was stored yesterday. Omitted entirely when empty,
+       because sending `{}` asks the directory to decide what an empty map
+       means. */
+    ...(() => {
+      const social = readSocialLinks(client.socialLinks)
+      return countSocialLinks(social) ? { social: social as Record<string, string> } : {}
+    })(),
     ...(opts?.dryRun ? { dryRun: true } : {}),
   }
 }
@@ -326,5 +353,6 @@ export const WRHQ_SYNC_SELECT = {
   offersSunroofRepair: true,
   offersAdasCalibration: true,
   filesInsuranceClaims: true,
+  socialLinks: true,
   domains: { select: { domain: true, isPrimary: true } },
 } as const

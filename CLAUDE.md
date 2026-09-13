@@ -1277,6 +1277,47 @@ practice nobody ever did.
   shop onboarded the normal way silently never got a listing while the feature
   read as automatic. Approval is also the moment the address and services are
   finally trustworthy, which is what the directory needs to place one.
+- **SOCIAL PROFILES TRAVEL TO THE LISTING, AND NOT FROM THE GBP**
+  (`social-links.ts`, `Client.socialLinks`, bootstrap: `SOCIAL_LINKS_SQL`, the
+  card on the client Business tab). A Business Profile can hold social links
+  and shops do fill them in, but **nothing this app can reach returns them**:
+  the Places API (New) — what `gbp-reviews.ts`, `place-location.ts` and the
+  Business tab's search call — has exactly three URL fields in its whole
+  response, `websiteUri`, `googleMapsUri` and `googleMapsLinks`. Checked
+  against Google's field reference, not remembered. The only API that could is
+  the Business Profile API, the OWNER's management API, which needs an OAuth
+  grant per location from each shop: a separate integration and fifteen
+  conversations. **The shop's own footer is the real source**, and the website
+  importer is already standing in it, so extraction is deterministic and costs
+  nothing on top of an import somebody is running anyway.
+  - **THE HARD PART IS THE SHARE BUTTON.** A footer's most common Facebook
+    link is not the shop's page, it is `facebook.com/sharer/sharer.php?u=…`,
+    which matches `href*="facebook.com"` perfectly — publish that and the
+    listing links to a share dialog for the shop's own home page. Same for
+    `twitter.com/intent/tweet`, `pinterest.com/pin/create`,
+    `linkedin.com/shareArticle` and Facebook's `/tr` tracking pixel. Screened
+    by shape, along with platform home pages and single pieces of content (one
+    post, one reel, one video — real, but not the account).
+  - **JSON-LD `sameAs` is read FIRST**, then footer hrefs — the same
+    precedence as the content feed's advertised `<link rel="alternate">` and
+    the logo scorer's JSON-LD logo. A declaration beats anything inferred.
+  - Re-screened on READ and again in the payload, not merely on write: a row
+    stored before a rule existed must not reach a public page because it is
+    already in the database. One bad entry never costs the good ones.
+  - The importer **fills a gap and never overwrites**. The Business tab card
+    is where a link that is real but somebody else's — the web designer's
+    Facebook — gets corrected, and a re-import that replaced stored values
+    would undo that correction silently, every time.
+  - **THE DIRECTORY HAS TO READ THE `social` KEY OR NOTHING HAPPENS, AND
+    NOTHING WILL SAY SO.** Its endpoint drops keys it does not recognise —
+    the same trap the service keys record below. So today these are stored,
+    screened and reviewable here, and invisible on windshieldrepairhq.com
+    until that side reads `social` as `{ platform: url }` over the seven
+    platforms a Business Profile itself supports.
+  - NOT rendered on the hosted site. `scripts/check-social-links.ts` holds
+    every share widget, every real profile shape (Facebook's `/pages/Name/123`
+    and `profile.php?id=`, YouTube's four channel spellings) and both
+    directions of the read.
 - **NO LIST OF INSURERS is sent.** It used to send
   `Client.insuranceRelationships`, a column rendered by nothing, written by no
   form, defined by no comment and empty on every client — its only reader was

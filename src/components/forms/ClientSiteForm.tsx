@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Loader2, Check, AlertCircle, Star } from 'lucide-react'
 import SiteContentEditor from '@/components/admin/SiteContentEditor'
 import { errorFrom } from '@/lib/http-error'
+import { readSocialLinks } from '@/lib/social-links'
 import CustomDomainsCard from '@/components/admin/CustomDomainsCard'
 import CityContentEditor from '@/components/admin/CityContentEditor'
 import PhotoManager from '@/components/admin/PhotoManager'
@@ -38,6 +39,8 @@ export default function ClientSiteForm({
     state: string
     marketArea: string | null
     offersMobileService: boolean
+    /** JSON column. Read through readSocialLinks — never trusted as-is. */
+    socialLinks?: unknown
   }
 }) {
   const [subdomainInput, setSubdomainInput] = useState(client.siteSubdomain || '')
@@ -50,15 +53,26 @@ export default function ClientSiteForm({
   // Staged client-record fields the importer may set; flushed by the content save.
   const [pendingLogo, setPendingLogo] = useState<string | null>(null)
   const [pendingAreas, setPendingAreas] = useState<string[] | null>(null)
+  const [pendingSocial, setPendingSocial] = useState<Record<string, string> | null>(null)
 
   async function persistClientFields() {
-    if (!pendingLogo && !pendingAreas) return
+    if (!pendingLogo && !pendingAreas && !pendingSocial) return
     const patch: Record<string, unknown> = {}
     if (pendingLogo) patch.logoUrl = pendingLogo
     if (pendingAreas) {
       const existing = client.serviceAreas || []
       const lower = new Set(existing.map((a) => a.toLowerCase()))
       patch.serviceAreas = [...existing, ...pendingAreas.filter((a) => !lower.has(a.toLowerCase()))]
+    }
+    /* FILL A GAP, NEVER OVERWRITE — the same rule as the service areas above,
+       and it matters more here. These go on a public directory page, so the
+       Business tab card is where a wrong one gets corrected; if a re-import
+       replaced what is stored, that correction would be undone every time
+       somebody re-ran the import, silently, and the second wrong link would
+       look exactly like the first. The route re-screens whatever this sends. */
+    if (pendingSocial) {
+      const existing = readSocialLinks(client.socialLinks)
+      patch.socialLinks = { ...pendingSocial, ...existing }
     }
     const res = await fetch(`/api/clients/${client.id}`, {
       method: 'PUT',
@@ -75,6 +89,7 @@ export default function ClientSiteForm({
     }
     setPendingLogo(null)
     setPendingAreas(null)
+    setPendingSocial(null)
   }
 
   async function connectSubdomain() {
@@ -284,6 +299,7 @@ export default function ClientSiteForm({
             clientId={client.id}
             onLogoFound={(url) => setPendingLogo(url)}
             onAreasFound={(areas) => setPendingAreas(areas)}
+            onSocialFound={(links) => setPendingSocial(links)}
             persistClientFields={persistClientFields}
           />
         </div>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { countSocialLinks, readSocialLinks } from '@/lib/social-links'
 import { prisma, withRetry } from '@/lib/db'
 import { generateSlug } from '@/lib/utils'
 import { normalizeAllowedOrigins } from '@/lib/webhook-forwarding'
@@ -104,6 +105,13 @@ export async function POST(request: NextRequest) {
         offersRockChipRepair: data.offersRockChipRepair ?? true,
         offersAdasCalibration: data.offersAdasCalibration ?? false,
         serviceAreas: data.serviceAreas || [],
+        // Screened here as well as on PUT: the new-client form's importer can
+        // stage these, and a create is the one write that never passes through
+        // the Business tab's card first.
+        ...(() => {
+          const cleaned = readSocialLinks(data.socialLinks)
+          return countSocialLinks(cleaned) ? { socialLinks: cleaned } : {}
+        })(),
         logoUrl: data.logoUrl || null,
         primaryColor: data.primaryColor || '#1e40af',
         secondaryColor: data.secondaryColor || '#3b82f6',
