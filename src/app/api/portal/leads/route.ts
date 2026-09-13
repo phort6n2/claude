@@ -100,6 +100,19 @@ export async function GET(request: NextRequest) {
               outcome: true,
             },
           },
+          // The texts on this lead, with the photos in them. The shop works
+          // the job from this screen, so a photo that only ever existed in an
+          // alert email is a photo nobody can find when they need it.
+          messages: {
+            orderBy: { createdAt: 'asc' },
+            select: {
+              id: true,
+              direction: true,
+              body: true,
+              mediaUrls: true,
+              createdAt: true,
+            },
+          },
           // Same-day duplicate contacts (form submits or extra calls from the
           // same person on the same day). Each row keeps its own recording,
           // formData, and createdAt so the timeline view shows every contact

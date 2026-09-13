@@ -29,7 +29,13 @@ import { PullToRefreshIndicator } from '@/components/ui/PullToRefresh'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
 import { LeadQuickActions } from '@/components/leads/LeadQuickActions'
-import { DamagePhoto, damagePhotoOf, VehicleDecode } from '@/components/leads/DamagePhoto'
+import {
+  DamagePhoto,
+  damagePhotoOf,
+  LeadTexts,
+  VehicleDecode,
+  type LeadTextMessage,
+} from '@/components/leads/DamagePhoto'
 import { getLeadDisplayName, displayNameIsPhone, formatPhoneDisplay, formatFieldValue } from '@/lib/lead-display'
 import { ChannelBadge } from '@/components/leads/ChannelBadge'
 import { LeadSourceDetails } from '@/components/leads/LeadSourceDetails'
@@ -83,6 +89,8 @@ interface Lead {
   createdAt: string
   formName: string | null
   formData: Record<string, unknown> | null
+  /** Texts to and from this lead, oldest first. */
+  messages?: LeadTextMessage[] | null
   callAnalysis: CallAnalysisSummary | null
   duplicates: LeadDuplicate[]
 }
@@ -975,6 +983,12 @@ function LeadRow({
             {damagePhotoOf(lead.formData) && (
               <DamagePhoto url={damagePhotoOf(lead.formData) as string} className="pt-2" />
             )}
+
+            {/* Texts, with their photos. The first texted photo is also
+                copied onto the lead's formData so the alert email and the
+                block above can render it, but the thread is where the rest
+                of the conversation is — and where a second photo shows up. */}
+            <LeadTexts messages={lead.messages} className="pt-2" />
 
             {/* Quick Actions */}
             <div className="flex gap-2 pt-2">

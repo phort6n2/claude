@@ -32,6 +32,11 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
             email: true,
           },
         },
+        // The texts on this lead, oldest first — a conversation read in the
+        // order it happened. The photos in them are the reason the SMS
+        // webhook exists; an alert from three days ago is not where somebody
+        // working the job will find one.
+        messages: { orderBy: { createdAt: 'asc' } },
       },
     })
 

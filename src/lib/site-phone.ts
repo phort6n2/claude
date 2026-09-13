@@ -39,11 +39,21 @@ export async function withSitePhone<
    * - INBOUND — every "call us" link, the header, the footer, the mobile bar —
    *   is the display number, so the call is recorded, coached and attributed.
    *   That is what the swap is for.
-   * - OUTBOUND, or anything the customer will see arrive: the real line. The
-   *   callback comes from it, and so does every `sms:` path — the tracking
-   *   numbers are bought with a VoiceUrl and nothing else, there is no SMS
-   *   webhook among the four Twilio routes, so a photo texted to one is
-   *   swallowed silently and the customer believes they sent it.
+   * - OUTBOUND — the callback the customer will see arrive: the real line.
+   *   The shop dials back from their own handset, so this is the number that
+   *   shows up on the customer's phone.
+   *
+   * TEXTS ARE NOW INBOUND, AND THAT IS A REVERSAL. They used to be grouped
+   * with the callback, because the tracking numbers were bought with a
+   * VoiceUrl and nothing else — no SMS webhook, so a photo texted to one was
+   * swallowed and the customer believed they sent it. There is a webhook now
+   * (`/api/webhooks/twilio/sms`): a text lands on the lead, the photo is
+   * copied to our own storage, the shop is alerted with the picture in it,
+   * and the message is attributed to the number that produced it exactly as
+   * a call is. So an `sms:` path points at the TRACKING number again — the
+   * whole reason for it — and `smsCapable` reverts to meaning what it says
+   * about the shop's own line, which is the fallback when no tracking number
+   * is set.
    *
    * Returned rather than left to each page to capture BEFORE the swap,
    * because that is the same order-dependence the JSON-LD note above already

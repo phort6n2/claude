@@ -2033,17 +2033,16 @@ export function MobileCallBar({
   // one artifact that settles the quote. The body is pre-filled because
   // "what do I even say" is the pause that loses the message.
   //
-  // POINTED AT THE SHOP'S OWN LINE, never the displayed one. `smsCapable` is
-  // a fact about that handset, and a tracking number is bought with a
-  // VoiceUrl and nothing else — there is no SMS webhook, so a photo texted to
-  // one is swallowed silently while the customer believes they sent it. With
-  // no callback line known the button is simply not offered, which is the
-  // safe direction. See lib/site-phone.
-  const textTo = client.callbackPhone || null
-  const textHref =
-    smsCapable && textTo
-      ? smsHref(textTo, 'Hi, I need a windshield quote. Here is a photo of the damage:')
-      : null
+  // POINTED AT THE DISPLAYED NUMBER, which is the tracking number when there
+  // is one. That was briefly the shop's own line, because a text to a
+  // tracking number used to be swallowed — no SmsUrl, no instruction, no
+  // message. There is an SMS webhook now, so a texted photo lands on the
+  // lead, reaches the shop as an alert with the picture in it, and carries
+  // the attribution of the number that produced it. Texting the tracked line
+  // is the point. See lib/site-phone.
+  const textHref = smsCapable
+    ? smsHref(client.phone, 'Hi, I need a windshield quote. Here is a photo of the damage:')
+    : null
   return (
     <div
       data-gl-mobilebar

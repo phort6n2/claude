@@ -857,14 +857,13 @@ const WIDGET_SOURCE = String.raw`(function () {
               : ' We will call from ' + callFrom + ' to confirm the glass, your coverage and a time — save the number so you do not miss it.')
             : ' We will call to confirm the glass, your coverage and a time that works.')
         }));
-        /* Only when the shop's line can actually receive a text — and pointed
-           at THAT line, never the displayed one. smsCapable is a fact about
-           the shop's own handset, and the tracking numbers are bought with a
-           VoiceUrl and nothing else: there is no SMS webhook among the four
-           Twilio routes, so a photo texted to one is swallowed silently and
-           the customer believes they sent it. */
-        if (callFrom && cfg.smsCapable && !data.damage_photo_url) {
-          ok.appendChild(el('p', { text: 'Didn\u2019t send a photo of the damage? Text one to ' + callFrom + ' — it is the fastest way to a firm price.' }));
+        /* The TRACKED number, not the callback line. A text to it lands on
+           this very lead now — the photo is copied to our own storage, the
+           shop is alerted with the picture in it, and it is attributed like a
+           call. That was not true until the SMS webhook existed, and while it
+           was not, this line pointed at the shop's own handset. */
+        if (callTo && cfg.smsCapable && !data.damage_photo_url) {
+          ok.appendChild(el('p', { text: 'Didn\u2019t send a photo of the damage? Text one to ' + callTo + ' — it lands straight on your quote.' }));
         }
         if (callTo) {
           /* The button is the INBOUND path and stays on the displayed number

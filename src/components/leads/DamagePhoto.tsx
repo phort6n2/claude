@@ -75,3 +75,89 @@ export function damagePhotoOf(formData: Record<string, unknown> | null | undefin
   const nested = raw?.damage_photo_url
   return typeof nested === 'string' && nested ? nested : null
 }
+
+export interface LeadTextMessage {
+  id: string
+  direction: string
+  body: string | null
+  mediaUrls: string[]
+  createdAt: string | Date
+}
+
+/**
+ * The texts on a lead, with the photos in them.
+ *
+ * WHY IT IS HERE AND NOT ONLY IN THE ALERT EMAIL. The alert is the thing that
+ * gets somebody to pick up the phone, and it already carries the picture. But
+ * the lead is where the job is worked afterwards — the quote typed, the
+ * booking marked, the value recorded — and a photo that existed only in an
+ * email from three days ago is a photo nobody can find when they need it. The
+ * same reason call recordings are copied and shown on the lead rather than
+ * left in Twilio.
+ *
+ * Photos are small and clickable, like DamagePhoto above and for the same
+ * reason: whoever is reading this is triaging, not admiring.
+ */
+export function LeadTexts({
+  messages,
+  className = '',
+}: {
+  messages: LeadTextMessage[] | null | undefined
+  className?: string
+}) {
+  if (!messages?.length) return null
+  const time = (at: string | Date) => {
+    const d = at instanceof Date ? at : new Date(at)
+    return Number.isNaN(d.getTime())
+      ? ''
+      : d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  }
+
+  return (
+    <div className={className}>
+      <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1.5">
+        {messages.length === 1 ? 'Text from the customer' : `${messages.length} texts`}
+      </p>
+      <div className="space-y-2">
+        {messages.map((m) => (
+          <div
+            key={m.id}
+            className={`rounded-lg border px-3 py-2 ${
+              m.direction === 'outbound'
+                ? 'border-blue-200 bg-blue-50'
+                : 'border-gray-200 bg-gray-50'
+            }`}
+          >
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-xs font-semibold text-gray-500">
+                {m.direction === 'outbound' ? 'Sent' : 'Received'}
+              </span>
+              <span className="text-xs text-gray-400">{time(m.createdAt)}</span>
+            </div>
+            {m.body ? <p className="mt-1 text-sm text-gray-800 whitespace-pre-wrap">{m.body}</p> : null}
+            {m.mediaUrls.length ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {m.mediaUrls.map((url) => (
+                  <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={url}
+                      alt="Sent by the customer"
+                      className="h-24 w-auto max-w-full rounded-md border border-gray-200 object-cover hover:opacity-90"
+                    />
+                  </a>
+                ))}
+              </div>
+            ) : null}
+            {/* A text with neither words nor a readable picture is still a
+                contact worth seeing — most often a video, which the browser
+                will not thumbnail but the shop can still open. */}
+            {!m.body && !m.mediaUrls.length ? (
+              <p className="mt-1 text-sm text-gray-400">(no text or photo came through)</p>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

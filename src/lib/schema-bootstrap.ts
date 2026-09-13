@@ -419,6 +419,47 @@ export const WRHQ_SQL: string[] = [
   `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "wrhqError" TEXT`,
 ]
 
+/**
+ * Inbound texts to a tracking number, and the photos that come with them.
+ *
+ * TWO PARTS, and the enum half is the one to be careful about. Prisma selects
+ * every scalar on a model, so `Lead.source` is read by every existing query
+ * against that table — and a row written with a value the database's enum
+ * does not have fails the INSERT, not the SELECT. So the ADD VALUE runs
+ * FIRST, and it runs with IF NOT EXISTS because ALTER TYPE is not idempotent
+ * on its own and this file is applied on every boot.
+ */
+export const SMS_INBOX_SQL: string[] = [
+  `ALTER TYPE "LeadSource" ADD VALUE IF NOT EXISTS 'SMS'`,
+  `CREATE TABLE IF NOT EXISTS "LeadMessage" (
+     "id"         TEXT NOT NULL,
+     "clientId"   TEXT NOT NULL,
+     "leadId"     TEXT NOT NULL,
+     "direction"  TEXT NOT NULL DEFAULT 'inbound',
+     "body"       TEXT,
+     "mediaUrls"  TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+     "twilioSid"  TEXT NOT NULL,
+     "fromNumber" TEXT NOT NULL,
+     "toNumber"   TEXT NOT NULL,
+     "raw"        JSONB,
+     "createdAt"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     CONSTRAINT "LeadMessage_pkey" PRIMARY KEY ("id")
+   )`,
+  // The retry guard. Twilio replays a webhook it thinks failed, and without
+  // this a slow response becomes a duplicate message and a duplicate alert.
+  `CREATE UNIQUE INDEX IF NOT EXISTS "LeadMessage_twilioSid_key" ON "LeadMessage"("twilioSid")`,
+  `CREATE INDEX IF NOT EXISTS "LeadMessage_leadId_createdAt_idx" ON "LeadMessage"("leadId", "createdAt")`,
+  `CREATE INDEX IF NOT EXISTS "LeadMessage_clientId_createdAt_idx" ON "LeadMessage"("clientId", "createdAt")`,
+  `DO $$ BEGIN
+    ALTER TABLE "LeadMessage" ADD CONSTRAINT "LeadMessage_clientId_fkey"
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+    ALTER TABLE "LeadMessage" ADD CONSTRAINT "LeadMessage_leadId_fkey"
+      FOREIGN KEY ("leadId") REFERENCES "Lead"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+]
+
 export const BOOTSTRAP_SQL: string[] = [
   ...PATH_OVERRIDE_SQL,
   ...MARKET_AREA_SQL,
@@ -442,6 +483,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...SITE_ANALYTICS_SQL,
   ...WRHQ_SQL,
   ...PORTAL_SESSION_SQL,
+  ...SMS_INBOX_SQL,
 ]
 
 /**

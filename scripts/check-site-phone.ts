@@ -16,10 +16,12 @@
  *   the shop dials back from their handset, so the call that arrives shows a
  *   different number from the one the customer was just told to save. That is
  *   the missed call the sentence exists to prevent.
- * - SMS is the same direction and worse: the tracking numbers are bought with
- *   a VoiceUrl and nothing else, and there is no SMS webhook among the four
- *   Twilio routes, so a photo texted to one is swallowed silently while the
- *   customer believes they sent it.
+ * - SMS WAS grouped with the callback and is now INBOUND, which is a
+ *   deliberate reversal. Texts used to be swallowed — the numbers carried a
+ *   VoiceUrl and nothing else, so Twilio had no instruction for a message. The
+ *   SMS webhook exists now (`/api/webhooks/twilio/sms`), so a texted photo
+ *   lands on the lead, is copied to our own storage and is attributed to the
+ *   number that produced it. Texting the tracked line is the point of it.
  *
  * `withSitePhone` reaches the database, so what is asserted here is the pure
  * half — that both numbers survive the swap in every configuration, and that
@@ -68,10 +70,13 @@ console.log('--- a shop with one of our tracking numbers ---')
   // each has to be the right one for its direction.
   check('the two differ, which is the case that was broken', r.phone !== r.callbackPhone)
   check('the call link rings the tracked number', telHref(r.phone) === 'tel:+16893666860', telHref(r.phone) || '')
+  // THE REVERSAL. A text to the tracked number now reaches the app, so that
+  // is where the site points one — the photo arrives on the lead with the
+  // attribution of the number that earned it.
   check(
-    'the text link goes to the shop, not the tracking number',
-    (smsHref(r.callbackPhone, 'hi') || '').startsWith('sms:+17145821740'),
-    smsHref(r.callbackPhone, 'hi') || 'null'
+    'the text link goes to the TRACKED number, because texts land in the app now',
+    (smsHref(r.phone, 'hi') || '').startsWith('sms:+16893666860'),
+    smsHref(r.phone, 'hi') || 'null'
   )
 }
 
@@ -100,12 +105,22 @@ console.log('\n--- a raw number, as the intake actually stores it ---')
   check('and still dials correctly', telHref(r.callbackPhone) === 'tel:+13215995777', telHref(r.callbackPhone) || '')
 }
 
-console.log('\n--- the tracking number is never a text destination ---')
+console.log('\n--- the text destination, after the reversal ---')
 {
   const r = resolve({ phone: REAL, trackingNumber: TRACKING })
-  const text = smsHref(r.callbackPhone, 'photo')
-  check('the sms: target is the shop’s line', !!text && text.includes('+17145821740'), text || 'null')
-  check('and never the tracking number', !text?.includes('6893666860'), text || '')
+  const text = smsHref(r.phone, 'photo')
+  check('the sms: target is the tracked number', !!text && text.includes('+16893666860'), text || 'null')
+  // The body still has to survive the separator rule — iOS reads the &,
+  // Android the ?, so contact-links.ts writes "?&".
+  check('and carries the pre-written body', !!text && text.includes('?&body='), text || '')
+
+  // With no tracking number there is nothing to reverse: the shop's own line
+  // is both the display number and the callback, and a text goes there.
+  const plain = resolve({ phone: REAL })
+  check(
+    'a shop with no tracking number is texted on its own line',
+    (smsHref(plain.phone, 'photo') || '').includes('+17145821740')
+  )
 }
 
 console.log(bad === 0 ? '\nALL CASES PASS' : `\n${bad} CASE(S) FAILED`)
