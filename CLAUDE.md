@@ -362,7 +362,8 @@ like a generator — **the model is a source of prose, not of facts**:
 - The route WRITES NOTHING. The drafts land in the editor's state and its own
   autosave commits them — a route that saved its own output would also race
   that autosave, which PUTs the whole document.
-- **READING THE RESPONSE IS ITS OWN FUNCTION** (`parseStoryResponse`), because
+- **READING THE RESPONSE IS ITS OWN MODULE** (`draft-json.ts`,
+  `parseDraftArray`, shared with the FAQ drafter), because
   `text.match(/\[[\s\S]*\]/)` was the whole parser and the FIRST real press in
   production answered "Could not read the draft that came back" — a sentence
   that names nothing, over a response nothing logged. Three different failures
@@ -393,6 +394,54 @@ like a generator — **the model is a source of prose, not of facts**:
   the second half: a bare "bonded" was reading as the tradesman's "licensed
   and bonded" and killing *"the glass is bonded into the body"*, the single
   most useful sentence the page can carry.
+
+**The FAQ drafts the same way, and the hard part is the opposite one**
+(`faq-draft.ts`, `POST /api/clients/[id]/draft-faq`, the card above the FAQ
+list). Unlike the story sections, **THE FAQ IS NOT EMPTY WHEN THE FIELD IS
+EMPTY**: `site-faq.ts` already answers up to four questions on every site —
+the rate-increase fear, cash versus claim, repair versus replace, and
+recalibration — from compliance-reviewed copy, the deductible one built per
+state from `insurance-rules.ts`. `withDefaultFaq` puts a shop's own questions
+first and fills in behind, dropping any default the shop has already asked.
+
+So a drafted question that lands on one of those four does real damage, two
+ways, both silent: **the same wording dedupes and throws away the REVIEWED
+answer**, leaving an unreviewed one about insurance on a live site; **a
+paraphrase** ("Will my insurance rates go up?") misses the dedupe, so the page
+asks one question twice and answers it twice, once reviewed and once not.
+`TAKEN_TOPICS` screens on the SUBJECT for that reason, judged on the question
+and never the answer — an answer mentioning a camera in passing is fine.
+The prompt reads the taken list out of `defaultFaq()` rather than restating
+it, so a fifth default cannot appear on the site and be invisible here.
+
+- **The claim screen is ONE module** (`copy-claims.ts`), read by both
+  drafters. Two copies of a compliance list is the shape this codebase keeps
+  refusing, and a rule added for one drafter has to protect the other.
+- **A PHONE NUMBER IS NEVER DRAFTABLE** — same `PHONE_RE` as
+  `rogue-numbers.ts`, deliberately, because a number this screen lets through
+  is one the daily sweep files a finding about tomorrow morning. A model
+  cannot know a shop's number, so one it writes is invented or somebody
+  else's. Links and email addresses go the same way.
+- **Nothing about the LAW.** "Is it illegal to drive with a crack?" is a
+  question every customer asks and the answer is state law — not this
+  platform's to state on fifteen shops' behalf in fifteen jurisdictions. The
+  only law copy on these sites is the reviewed per-state deductible rule.
+- **"immediately" and "right away" are NOT in the timing net**, and were. The
+  most useful answer the FAQ can carry is that a car is *not* safe to drive
+  immediately after a replacement and what decides when it is — a refusal to
+  promise, thrown away by the rule against promising. The specific nets
+  (a day, an hour, a count, an adjective) catch the real claim; those two
+  words appear in protective copy at least as often as in a boast. The prompt
+  says what to write instead of a cure time rather than only forbidding it.
+- The card **does not hide once there are questions**, unlike the story one:
+  eight drafted plus the template's four fills the field, and topping up a
+  short list is the normal case. A second press sends the questions ON SCREEN
+  (from a ref, not the database — one may be typed and unsaved) so it adds
+  instead of re-asking.
+- `scripts/check-faq-draft.ts` holds the four verbatim, nine paraphrases of
+  them, and the traps — the first version of the screen threw away "it is not
+  safe to drive immediately after a replacement", which is the best answer in
+  the set.
 
 **A content section's photo is a URL in a JSON column, NOT a row in the photo
 table** (`SiteChapter.photoUrl`, rendered by `ChapterSections`). Those are two

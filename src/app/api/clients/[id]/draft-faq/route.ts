@@ -4,12 +4,7 @@ import { prisma } from '@/lib/db'
 import { secretSetting } from '@/lib/secret-settings'
 import { asChapters } from '@/lib/site-content'
 import { parseDraftArray } from '@/lib/draft-json'
-import {
-  MAX_DRAFT_SECTIONS,
-  screenStory,
-  storyPrompt,
-  type StoryInput,
-} from '@/lib/story-sections'
+import { MAX_DRAFT_FAQS, faqPrompt, screenFaq, type FaqInput } from '@/lib/faq-draft'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -19,18 +14,17 @@ interface RouteContext {
 }
 
 /**
- * POST — draft the story sections for a shop that has none.
+ * POST — draft the FAQ for a shop that has not written one.
  *
- * WRITES NOTHING, on purpose, the same as "suggest nearby cities": the draft
- * goes back to the editor, which owns the autosave, so what reaches the
- * database is what the operator is looking at. A route that saved its own
- * output would also race that autosave — the editor PUTs the whole document,
- * so whichever landed second would win.
+ * WRITES NOTHING, same as the story drafter: the questions go back to the
+ * editor, which owns the autosave. Read the top of `faq-draft.ts` for the one
+ * thing that makes this different from the story sections — the FAQ is NOT
+ * empty when the field is empty, because the template already answers four
+ * questions from compliance-reviewed copy, and a draft that lands on one of
+ * those replaces or duplicates it silently.
  *
- * The fact-checking lives in `story-sections.ts` and runs over whatever comes
- * back. Read the comment at the top of that module before touching the prompt:
- * the rules are compliance rules, not style, and the screen is what keeps a
- * fluent invention out of a real business's website.
+ * Anything already typed in the field is sent along, so a second press adds to
+ * the FAQ rather than re-asking it.
  */
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const denied = await requireAdmin()
@@ -48,7 +42,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       offersMobileService: true,
       filesInsuranceClaims: true,
       smsCapable: true,
-      serviceAreas: true,
       offersWindshieldReplacement: true,
       offersWindshieldRepair: true,
       offersRockChipRepair: true,
@@ -56,13 +49,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       offersBackWindowRepair: true,
       offersSunroofRepair: true,
       offersAdasCalibration: true,
-      siteContent: { select: { footerBlurb: true, warrantyText: true, chapters: true } },
+      siteContent: { select: { footerBlurb: true, chapters: true } },
     },
   })
   if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
   if (!client.city || !client.state) {
     return NextResponse.json(
-      { error: 'Set the shop’s city and state on the Business tab first — the draft is built from them.' },
+      {
+        error:
+          'Set the shop’s city and state on the Business tab first — the state decides which insurance answers the site already gives.',
+      },
       { status: 400 }
     )
   }
@@ -75,14 +71,17 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     )
   }
 
-  // Their own voice, where the site already has some. Not the warranty terms:
-  // those are the one piece of copy the draft must not echo.
-  const existingVoice = [
-    client.siteContent?.footerBlurb || '',
-    ...asChapters(client.siteContent?.chapters).map((c) => `${c.heading}\n${c.body}`),
-  ].filter(Boolean)
+  // Questions the operator is looking at right now, not the ones in the
+  // database: they may have typed one and not waited for the autosave.
+  const body = await request.json().catch(() => ({}) as Record<string, unknown>)
+  const existingQuestions = Array.isArray(body.existingQuestions)
+    ? (body.existingQuestions as unknown[])
+        .filter((q): q is string => typeof q === 'string')
+        .map((q) => q.trim())
+        .filter(Boolean)
+    : []
 
-  const input: StoryInput = {
+  const input: FaqInput = {
     businessName: client.businessName,
     city: client.city,
     state: client.state,
@@ -91,7 +90,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     offersMobileService: client.offersMobileService,
     filesInsuranceClaims: client.filesInsuranceClaims,
     smsCapable: client.smsCapable,
-    serviceAreas: client.serviceAreas || [],
     services: {
       offersWindshieldReplacement: client.offersWindshieldReplacement,
       offersWindshieldRepair: client.offersWindshieldRepair,
@@ -101,66 +99,67 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       offersSunroofRepair: client.offersSunroofRepair,
       offersAdasCalibration: client.offersAdasCalibration,
     },
-    existingVoice,
+    existingVoice: [
+      client.siteContent?.footerBlurb || '',
+      ...asChapters(client.siteContent?.chapters).map((c) => c.body),
+    ].filter(Boolean),
+    existingQuestions,
   }
 
-  let sections: Array<Record<string, unknown>>
+  let items: Array<Record<string, unknown>>
   let cutOff = false
   try {
     const { default: Anthropic } = await import('@anthropic-ai/sdk')
     const anthropic = new Anthropic({ apiKey })
     const message = await anthropic.messages.create({
       model: 'claude-opus-5',
-      // Three sections of ~130 words need nowhere near this. The ceiling is
-      // high because the FIRST real press came back unreadable, and a budget
-      // that only just fits turns a slightly long draft into a total failure
-      // — the tokens are only spent if they are used.
-      max_tokens: 6000,
-      messages: [{ role: 'user', content: storyPrompt(input) }],
+      // Eight answers of ~90 words, with room to spare on purpose: a budget
+      // that only just fits turns a slightly long draft into a total failure,
+      // and the tokens are only spent if they are used.
+      max_tokens: 8000,
+      messages: [{ role: 'user', content: faqPrompt(input) }],
     })
     if (message.stop_reason === 'refusal') {
       return NextResponse.json({ error: 'The model declined to draft this.' }, { status: 502 })
     }
     const block = message.content.find((b) => b.type === 'text')
     if (!block || block.type !== 'text') {
-      console.error('[draft-story] no text block; stop_reason=%s', message.stop_reason)
+      console.error('[draft-faq] no text block; stop_reason=%s', message.stop_reason)
       return NextResponse.json({ error: 'No text in the response.' }, { status: 502 })
     }
 
     const parsed = parseDraftArray(block.text)
     if (!parsed.ok) {
-      // THE LOG IS THE POINT. The first version of this answered "Could not
-      // read the draft that came back" and logged nothing at all, so the one
-      // fact that settles it — what actually came back — was gone, and the
-      // only way to guess was to press the button again.
+      // Logged in full, for the reason the story route learned the hard way:
+      // a message that names nothing, over a response nothing recorded, left
+      // no way to tell the three causes apart.
       console.error(
-        '[draft-story] %s (stop_reason=%s, out=%d tokens): %s\n--- raw ---\n%s',
+        '[draft-faq] %s (stop_reason=%s, out=%d tokens): %s\n--- raw ---\n%s',
         parsed.kind,
         message.stop_reason,
         message.usage?.output_tokens ?? -1,
         parsed.detail,
         block.text.slice(0, 2000)
       )
-      // Each of these has a different fix, so each says something different.
       const said =
         parsed.kind === 'truncated'
-          ? 'The draft was cut off before any section finished. Press it again.'
+          ? 'The draft was cut off before any answer finished. Press it again.'
           : parsed.kind === 'unparseable'
             ? `The draft came back malformed (${parsed.detail}). Press it again.`
-            : `The model answered in prose rather than sections: ${parsed.detail}`
+            : `The model answered in prose rather than questions: ${parsed.detail}`
       return NextResponse.json({ error: said }, { status: 502 })
     }
-    sections = parsed.sections
+    items = parsed.sections
     cutOff = parsed.truncated
     if (cutOff) {
       console.warn(
-        '[draft-story] response truncated (stop_reason=%s); salvaged %d complete section(s)',
+        '[draft-faq] response truncated (stop_reason=%s); salvaged %d complete answer(s)',
         message.stop_reason,
-        sections.length
+        items.length
       )
     }
   } catch (error) {
-    console.error('Story section draft failed:', error)
+    console.error('FAQ draft failed:', error)
     return NextResponse.json(
       {
         error: `Could not draft them: ${error instanceof Error ? error.message : 'model call failed'}`,
@@ -169,31 +168,27 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     )
   }
 
-  const { kept, dropped } = screenStory(sections, input)
+  const { kept, dropped } = screenFaq(items, input)
 
-  // WHAT WAS THROWN AWAY IS PART OF THE ANSWER, not a log line. A screen that
-  // fires silently looks exactly like a model that wrote two sections instead
-  // of three, and the operator's next move — press it again — is the one that
-  // cannot help.
   const shortBecauseCutOff = cutOff
-    ? ' The draft was cut off part-way, so there may be fewer than usual — press it again for another.'
+    ? ' The draft was cut off part-way, so there may be fewer than usual — press it again for more.'
     : ''
 
   const note = kept.length
-    ? `Drafted ${kept.length} section${kept.length === 1 ? '' : 's'} from what this app already knows about the shop.${shortBecauseCutOff}${
+    ? `Drafted ${kept.length} question${kept.length === 1 ? '' : 's'}.${shortBecauseCutOff}${
         dropped.length
           ? ` ${dropped.length} more ${dropped.length === 1 ? 'was' : 'were'} thrown away: ${dropped
-              .map((d) => `“${d.heading}” ${d.reason}`)
+              .map((d) => `“${d.q}” ${d.reason}`)
               .join('; ')}.`
           : ''
-      } Read each one and fix anything that is not true — nothing here knows their history, so that part is still yours to add.`
+      } Read each answer before you move on — and remember the site answers the insurance, repair-versus-replace and recalibration questions on its own, which is why nothing here does.`
     : `Nothing usable came back. ${
         dropped.length
-          ? `Every section made a claim we cannot back: ${dropped
-              .map((d) => `“${d.heading}” ${d.reason}`)
+          ? `Every question was either already answered or made a claim we cannot back: ${dropped
+              .map((d) => `“${d.q}” ${d.reason}`)
               .join('; ')}.`
           : 'The draft was empty.'
       } Press it again — it is a fresh draft each time.`
 
-  return NextResponse.json({ chapters: kept, dropped, note, max: MAX_DRAFT_SECTIONS })
+  return NextResponse.json({ faq: kept, dropped, note, max: MAX_DRAFT_FAQS })
 }

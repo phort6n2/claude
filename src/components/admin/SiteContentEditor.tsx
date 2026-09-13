@@ -105,6 +105,8 @@ export default function SiteContentEditor({
   }
   const [draftingStory, setDraftingStory] = useState(false)
   const [storyNote, setStoryNote] = useState<{ ok: boolean; text: string } | null>(null)
+  const [draftingFaq, setDraftingFaq] = useState(false)
+  const [faqNote, setFaqNote] = useState<{ ok: boolean; text: string } | null>(null)
 
   const [footerBlurb, setFooterBlurb] = useState('')
   const [registrationName, setRegistrationName] = useState('')
@@ -155,6 +157,10 @@ export default function SiteContentEditor({
   }
   const payloadRef = useRef(payload)
   payloadRef.current = payload
+  // The FAQ as it is ON SCREEN, for the drafter to avoid re-asking. A ref
+  // rather than the closure, same reason as everything else in this file.
+  const faqRef = useRef(faq)
+  faqRef.current = faq
   const snapshot = JSON.stringify(payload)
   // null = still hydrating; the first post-load render records the baseline
   // instead of saving it back, so loading a client never counts as an edit.
@@ -208,6 +214,39 @@ export default function SiteContentEditor({
       setStoryNote({ ok: false, text: err instanceof Error ? err.message : 'Failed' })
     } finally {
       setDraftingStory(false)
+    }
+  }
+
+  /**
+   * Drafts the FAQ. Same shape as draftStory, with one difference that is the
+   * whole design of the FAQ drafter: the questions already on screen are sent
+   * up, so a second press ADDS instead of re-asking. They are read off the
+   * live state rather than the database — the operator may have typed one and
+   * not waited for the autosave.
+   */
+  async function draftFaq() {
+    setDraftingFaq(true)
+    setFaqNote(null)
+    try {
+      const res = await fetch(`/api/clients/${clientId}/draft-faq`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          existingQuestions: faqRef.current.map((f) => f.q).filter((q) => q.trim()),
+        }),
+      })
+      if (!res.ok) throw new Error(await errorFrom(res, 'Could not draft them'))
+      const data = await res.json()
+      const drafted = Array.isArray(data.faq) ? (data.faq as FaqRow[]) : []
+      if (drafted.length) {
+        setFaq((prev) => [...prev.filter((f) => f.q.trim() || f.a.trim()), ...drafted].slice(0, 12))
+        saveImmediatelyRef.current = true
+      }
+      setFaqNote({ ok: drafted.length > 0, text: data.note || 'Drafted.' })
+    } catch (err) {
+      setFaqNote({ ok: false, text: err instanceof Error ? err.message : 'Failed' })
+    } finally {
+      setDraftingFaq(false)
     }
   }
 
@@ -743,6 +782,82 @@ export default function SiteContentEditor({
       {/* FAQ */}
       <div>
         <label className="block text-xs font-semibold text-gray-600 mb-1">FAQ (max 12)</label>
+        {/* THE FAQ IS NOT EMPTY WHEN THIS FIELD IS EMPTY, which is what makes
+            it different from the story sections above. site-faq.ts already
+            answers four questions on every site — rates, insurance versus
+            cash, repair versus replace, recalibration — from copy that has
+            been compliance-reviewed, the insurance one per state. So the card
+            says that out loud, and the drafter is forbidden those topics: a
+            drafted answer on one of them either replaces the reviewed one
+            (same wording, deduped) or duplicates it (a paraphrase, not
+            deduped), and both happen silently.
+
+            Unlike the story card this one does NOT hide once there are
+            questions: eight drafted plus the template's four fills the field,
+            and topping up a short list is the normal case. */}
+        <p className="text-xs text-gray-400 mb-2">
+          Questions in the shop&apos;s own words. The site already answers four on its own —
+          whether a claim raises your rates, insurance versus paying directly, repair versus
+          replacement, and camera recalibration — so these are the other ones.
+        </p>
+        {faq.length < 12 && (
+          <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={draftFaq}
+                disabled={draftingFaq}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+              >
+                {draftingFaq ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                {draftingFaq ? 'Drafting…' : faq.length ? 'Draft more questions' : 'Draft questions'}
+              </button>
+              <span className="text-xs text-gray-500">
+                {faq.length
+                  ? 'Adds to what is here — it is told what you have already asked.'
+                  : 'Writes the questions customers actually ask, answered from the shop’s record.'}
+              </span>
+            </div>
+            <p className="mt-2 mb-0 text-xs text-gray-500">
+              It invents nothing — no timing, no prices, no insurer, no certifications, no phone
+              number — skips the four the site already answers, and anything that strays is
+              thrown away with the reason shown.
+            </p>
+            {faqNote && (
+              <p
+                className={`mt-2 mb-0 text-xs flex items-start gap-1.5 ${
+                  faqNote.ok ? 'text-green-700' : 'text-red-700'
+                }`}
+              >
+                {faqNote.ok ? (
+                  <Check className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                ) : (
+                  <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                )}
+                <span>{faqNote.text}</span>
+              </p>
+            )}
+          </div>
+        )}
+        {/* A full field hides the card, so its outcome needs somewhere to live. */}
+        {faqNote && faq.length >= 12 && (
+          <p
+            className={`mb-3 text-xs flex items-start gap-1.5 ${
+              faqNote.ok ? 'text-green-700' : 'text-red-700'
+            }`}
+          >
+            {faqNote.ok ? (
+              <Check className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            ) : (
+              <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            )}
+            <span>{faqNote.text}</span>
+          </p>
+        )}
         {faq.map((f, i) => (
           <div key={i} className="border border-gray-200 rounded-lg p-3 mb-2 space-y-2">
             <div className="flex gap-2">
