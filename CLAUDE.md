@@ -362,6 +362,26 @@ like a generator — **the model is a source of prose, not of facts**:
 - The route WRITES NOTHING. The drafts land in the editor's state and its own
   autosave commits them — a route that saved its own output would also race
   that autosave, which PUTs the whole document.
+- **READING THE RESPONSE IS ITS OWN FUNCTION** (`parseStoryResponse`), because
+  `text.match(/\[[\s\S]*\]/)` was the whole parser and the FIRST real press in
+  production answered "Could not read the draft that came back" — a sentence
+  that names nothing, over a response nothing logged. Three different failures
+  wore that one message: a **truncated** response has no closing bracket, so
+  two finished sections were thrown away with the third (they are salvaged
+  now); a **bracketed aside in the prose** — "the sections [built only from
+  the facts above]:" — made the greedy match start in the wrong place, so the
+  array is found by scanning for a `[` actually followed by an object,
+  honouring string literals and escapes; and an **object wrapper**
+  (`{"sections": […]}`) or a fenced block are ordinary returns, not faults.
+  What is left is told apart on purpose, because the fixes are opposite:
+  `truncated` means allow more, `no-json` means the model answered in prose (a
+  refusal or a question — its first 160 characters are the diagnosis and they
+  are in the message), `unparseable` means malformed JSON. **The route now
+  logs the stop reason, the output token count and the raw text**; saying
+  nothing server-side bought nothing and cost the one fact that settles it,
+  exactly as with the portal login. `max_tokens` is 6000 against a need of
+  well under a thousand — the tokens are only spent if they are used, and a
+  budget that only just fits turns a slightly long draft into a total failure.
 - The card shows while there is nothing REAL in the field, not merely while
   the array is empty: one press of `+ Add section` leaves a blank row, and
   hiding the button behind that means the first thing an operator does when
