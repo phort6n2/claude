@@ -67,7 +67,10 @@ export default async function TermsPage({ params }: PageProps) {
   const preview = await isPreview(client.status)
   if (!siteIsLive(client.status) && !preview) return <SiteUnavailable />
   // Visitors see the tracking number when one is set; see lib/site-phone.ts.
-  client.phone = (await withSitePhone(client)).phone
+  // Object.assign, not `client.phone = …`: the swap now also carries the
+  // shop's own line for the callback and SMS copy, and taking only `.phone`
+  // would drop it. See site-phone.ts.
+  Object.assign(client, await withSitePhone(client))
   const basePath = sitePathPrefixFor(client, (await headers()).get('host'))
   const [extras, keptPages] = await Promise.all([
     getSiteExtras(client.id),

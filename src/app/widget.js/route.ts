@@ -821,15 +821,32 @@ const WIDGET_SOURCE = String.raw`(function () {
         }));
         var okHead = el('h3', { text: "You're all set, " + first + '.', tabindex: '-1' });
         ok.appendChild(okHead);
+        /* WE, NOT THEY. This is the shop's own website and every other line on
+           it speaks as the shop — "your request is with X, they will call"
+           reads like a lead broker handing the customer on, which is the one
+           thing this platform is not and the last thing a shop wants said on
+           their own page.
+
+           And the number is the CALLBACK line, not the displayed one. The shop
+           dials back from their own handset, so naming the tracking number
+           told the customer to save a number the call would not come from —
+           the missed call this sentence exists to prevent. The call BUTTON
+           below stays on cfg.phone: that direction is inbound and wants
+           recording. See lib/site-phone. */
+        var callFrom = cfg.callbackPhone || '';
         ok.appendChild(el('p', {
-          text: 'Your request is with ' + cfg.businessName + '.' + (cfg.phone
-            ? ' They will call from ' + cfg.phone + ' to confirm the glass, your coverage and a time — save the number so you do not miss it.'
-            : ' They will call to confirm the glass, your coverage and a time that works.')
+          text: 'Your request is in.' + (callFrom
+            ? ' We will call from ' + callFrom + ' to confirm the glass, your coverage and a time — save the number so you do not miss it.'
+            : ' We will call to confirm the glass, your coverage and a time that works.')
         }));
-        // Only when the shop's line can actually receive a text; an sms:
-        // link to a landline is a dead end that costs the lead.
-        if (cfg.phone && cfg.smsCapable && !data.damage_photo_url) {
-          ok.appendChild(el('p', { text: 'Didn\u2019t send a photo of the damage? Text one to ' + cfg.phone + ' — it is the fastest way to a firm price.' }));
+        /* Only when the shop's line can actually receive a text — and pointed
+           at THAT line, never the displayed one. smsCapable is a fact about
+           the shop's own handset, and the tracking numbers are bought with a
+           VoiceUrl and nothing else: there is no SMS webhook among the four
+           Twilio routes, so a photo texted to one is swallowed silently and
+           the customer believes they sent it. */
+        if (callFrom && cfg.smsCapable && !data.damage_photo_url) {
+          ok.appendChild(el('p', { text: 'Didn\u2019t send a photo of the damage? Text one to ' + callFrom + ' — it is the fastest way to a firm price.' }));
         }
         if (cfg.phone) {
           ok.appendChild(el('a', { href: 'tel:' + cfg.phone.replace(/[^+\d]/g, ''), text: 'Call ' + cfg.businessName + ' — ' + cfg.phone }));

@@ -253,6 +253,32 @@ webhook routes.
   data layer. The LocalBusiness JSON-LD and the contact/locations cards keep
   the **real** number for NAP consistency — schema is built before the swap,
   and that order is load-bearing.
+- **ONE `phone` FIELD WAS DOING TWO OPPOSITE JOBS, and the rule is DIRECTION.**
+  `withSitePhone` now returns `callbackPhone` beside the swapped `phone`, and
+  every caller takes both (`Object.assign`, not `client.phone = …`).
+  - **Inbound** — every "call us" link, header, footer, mobile bar, the
+    widget's call button — is the DISPLAY number, so the call is recorded and
+    attributed. That is what the swap is for.
+  - **Outbound, and anything the customer will see ARRIVE** — the shop's own
+    line. The quote confirmation said *"They will call from (689) 366-6860 —
+    save the number so you do not miss it"* while naming the TRACKING number:
+    the shop dials back from their handset, so the call that arrives shows a
+    different number from the one the customer was just told to save. That is
+    the missed call the sentence exists to prevent.
+  - **Every `sms:` path is outbound too, and worse.** Tracking numbers are
+    bought with a VoiceUrl and nothing else — there is no SMS webhook among
+    the four Twilio routes — so a photo texted to one is **swallowed silently
+    while the customer believes they sent it**. `smsCapable` is a fact about
+    the shop's HANDSET and never protected this. If a text route is ever
+    added, this is the decision to revisit.
+  - Missing, the copy omits the number rather than naming the wrong one, and
+    with no tracking number at all the two are identical and everything reads
+    as it always did. `scripts/check-site-phone.ts` holds all three
+    configurations.
+- **The site speaks as the SHOP: "we", never "they".** The confirmation read
+  "Your request is with X. They will call…", which is a lead broker handing
+  the customer on — the one thing this platform is not, and the last thing a
+  shop wants said on their own page.
 
 ### Hosted sites
 

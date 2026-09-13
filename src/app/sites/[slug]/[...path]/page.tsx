@@ -279,7 +279,10 @@ export default async function CatchAllPage({ params }: PageProps) {
   // The real number is kept because whether the swap HAPPENED decides whether
   // this app may overwrite a phone number sitting in the captured copy.
   const realPhone = client.phone
-  client.phone = (await withSitePhone(client)).phone
+  // Object.assign, not `client.phone = …`: the swap now also carries the
+  // shop's own line for the callback and SMS copy, and taking only `.phone`
+  // would drop it. See site-phone.ts.
+  Object.assign(client, await withSitePhone(client))
   const siteOwnsTracking = client.phone !== realPhone
 
   const [reviews, extras, locations, adsTracking, cityContent, keptPages] = await Promise.all([

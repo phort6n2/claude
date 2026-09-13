@@ -29,7 +29,18 @@ import {
 export interface SiteClient {
   slug: string
   businessName: string
+  /**
+   * What every "call us" link SHOWS — the tracking number when there is one,
+   * so the call is recorded and attributed. See lib/site-phone.
+   */
   phone: string
+  /**
+   * The shop's OWN line. What the callback arrives from, and the only number
+   * an `sms:` path may point at, because a tracking number has no SMS webhook
+   * and swallows the text. Optional: absent, copy omits the number rather
+   * than naming the wrong one.
+   */
+  callbackPhone?: string | null
   email?: string | null
   streetAddress: string
   city: string
@@ -2021,9 +2032,18 @@ export function MobileCallBar({
   // quotable lead on a phone: no form, no typing, and it hands the shop the
   // one artifact that settles the quote. The body is pre-filled because
   // "what do I even say" is the pause that loses the message.
-  const textHref = smsCapable
-    ? smsHref(client.phone, 'Hi, I need a windshield quote. Here is a photo of the damage:')
-    : null
+  //
+  // POINTED AT THE SHOP'S OWN LINE, never the displayed one. `smsCapable` is
+  // a fact about that handset, and a tracking number is bought with a
+  // VoiceUrl and nothing else — there is no SMS webhook, so a photo texted to
+  // one is swallowed silently while the customer believes they sent it. With
+  // no callback line known the button is simply not offered, which is the
+  // safe direction. See lib/site-phone.
+  const textTo = client.callbackPhone || null
+  const textHref =
+    smsCapable && textTo
+      ? smsHref(textTo, 'Hi, I need a windshield quote. Here is a photo of the damage:')
+      : null
   return (
     <div
       data-gl-mobilebar

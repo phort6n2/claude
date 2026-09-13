@@ -226,7 +226,10 @@ export default async function ClientSitePage({ params }: PageProps) {
   // when one is set. The jsonLd above was built FIRST, from the real line —
   // search engines cross-check schema phone against the Business Profile, and
   // a tracking number there splits the local signal. Order is load-bearing.
-  client.phone = (await withSitePhone(client)).phone
+  // Object.assign, not `client.phone = …`: the swap now also carries the
+  // shop's own line for the callback and SMS copy, and taking only `.phone`
+  // would drop it. See site-phone.ts.
+  Object.assign(client, await withSitePhone(client))
 
   // Headline names the location and the highest-value service the client
   // actually offers, like the reference — never a generic slogan.
