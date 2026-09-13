@@ -9,6 +9,7 @@ import { mostMentionedName } from '@/lib/review-names'
 import type { SiteExtras, FaqItem } from '@/lib/site-content'
 import { locationPages } from '@/lib/site-locations'
 import { orderLocationsForCity, mapQuery, type SiteLocation } from '@/lib/client-locations'
+import { coverageSuffix, processStep, processTitle } from '@/lib/site-premises'
 import {
   CHIP_DEDUCTIBLE_NOTE,
   CHIP_REPAIRABLE_NOTE,
@@ -740,6 +741,13 @@ export function ProcessSection({
   offersAdasCalibration?: boolean
 }) {
   const fitLine = `We fit the glass${offersAdasCalibration ? ', recalibrate the camera if there is one,' : ''} and tell you when it's safe to drive.`
+  // Where the work happens is the one step that depends on premises, and for a
+  // service-area business the old fallback ("Bring the vehicle to the shop")
+  // was an instruction to drive to nothing. See lib/site-premises.
+  const premises = {
+    hasShopLocation: client.hasShopLocation,
+    offersMobileService,
+  }
   const steps = [
     {
       title: 'Tell us what broke',
@@ -749,23 +757,12 @@ export function ProcessSection({
       title: 'We check your coverage first',
       body: 'Before anything is scheduled we confirm what your policy covers — or give you a straight cash price — so the price you hear is the price you pay. No claim is filed until you say go.',
     },
-    offersMobileService
-      ? {
-          title: 'We come to you',
-          body: `Your driveway, your office lot, your job site — wherever the vehicle is. ${fitLine}`,
-        }
-      : {
-          title: 'Drop in and drive off',
-          body: `Bring the vehicle to the shop. ${fitLine}`,
-        },
+    processStep(premises, fitLine),
   ]
   return (
     <section className="bg-[var(--s2)] border-t border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
-        <SectionHead
-          eyebrow="How it works"
-          title={offersMobileService ? 'Three steps, no shop visit' : 'Three simple steps'}
-        />
+        <SectionHead eyebrow="How it works" title={processTitle(premises)} />
         <div className="grid md:grid-cols-3 gap-8 md:gap-x-12">
           {steps.map((step, i) => (
             // Mobile: disc beside the text so the vertical connector stays in
@@ -873,8 +870,8 @@ export function InsuranceBand({
         </div>
         <p className="mt-5 mb-0 text-xs text-[var(--tx-muted)]">
           General information only, not advice about your policy — coverage depends on the policy
-          you hold, so check with your carrier. We are an independent glass shop and are not
-          affiliated with or endorsed by any insurance company. Your choice of repair shop is
+          you hold, so check with your carrier. We are an independent auto glass company and are
+          not affiliated with or endorsed by any insurance company. Your choice of repair shop is
           yours to make.
         </p>
       </div>
@@ -1103,8 +1100,15 @@ export function MapSection({
   /** City this page is about, so the shop in it leads. */
   activeCity?: string | null
 }) {
-  // A stored shop is proof of a shop, whatever the legacy flag says.
-  if (!client.hasShopLocation && locations.length === 0) return null
+  /* THE FLAG WINS, AND THAT IS A REVERSAL. This read
+     `!client.hasShopLocation && locations.length === 0`, on the reasoning that
+     a stored ClientLocation row is proof of a shop whatever the flag says.
+     That was true while the flag was a default nobody could change; it is now
+     an operator ticking "service-area business — no address customers visit"
+     on the Business tab, and a tick that leaves a map and a street address on
+     the page does not mean anything. A row left behind by an importer is not
+     evidence against the person who just answered the question. */
+  if (!client.hasShopLocation) return null
   const ordered = orderLocationsForCity(locations, activeCity)
   // Multi-shop clients get their own composition; a client with one shop
   // keeps the reference layout exactly, which was tuned against it.
@@ -1221,7 +1225,10 @@ export function MapSection({
                 </div>
                 <div className="text-sm text-[var(--tx2)] leading-relaxed">
                   {areas.join(', ')}
-                  {offersMobileService ? ' — shop and mobile' : ''}
+                  {coverageSuffix({
+                    hasShopLocation: client.hasShopLocation,
+                    offersMobileService: !!offersMobileService,
+                  })}
                 </div>
               </div>
             )}

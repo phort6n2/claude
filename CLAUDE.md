@@ -375,6 +375,56 @@ forgot it compile cleanly and render the city forever, which is exactly how
 this shipped wrong the first time. It is a claim about coverage, so it is
 typed by an operator and never inferred.
 
+**A SERVICE-AREA BUSINESS HAS NO SHOP, AND THE SITE MAY NOT SAY IT HAS ONE**
+(`site-premises.ts`, the tick on the Business tab's "What we're allowed to
+say"). Stored inverted as `Client.hasShopLocation`, which has existed since the
+beginning, defaults true, is asked by the public intake ("Customers can come to
+a shop") and was read by the legal pages, the footer and the map all along —
+what it never had was a CONTROL, so after approval the only way to change the
+answer was an API call. The same trap `ClientStatusCard` records: a field whose
+consequences were reachable only through the API. MAG Mobile has no storefront
+and their pages said *"Serving Central Florida from our Orlando, FL shop"* and
+*"Bring the vehicle to the shop"* — §2's invented fact about a business, in its
+one actionable form, because somebody drives to an address to find nothing
+there.
+
+- **THE FLAG NOW WINS OVER STORED ROWS.** `MapSection` read
+  `!hasShopLocation && locations.length === 0`, on the reasoning that a
+  `ClientLocation` row is proof of a shop whatever a legacy default says. True
+  while nobody could change the default; now it is an operator answering the
+  question, and a tick that leaves a map and a street on the page does not mean
+  anything. A row left behind by the importer is not evidence against them.
+- **The ADDRESS is not the copy.** The address fields stay filled and stay
+  used — the rank grid centre, `insurance-rules.ts` by state, the Business
+  Profile, the legal pages' locality. What changes is only what a page SAYS.
+- **The city survives in the serving line.** `servingLine` drops the building
+  and keeps the place: "based in Orlando, FL", never nothing. The city is the
+  half that makes them findable and believable, which is why `site-area.ts`
+  names it at all. `hasShopLocation` is REQUIRED on that call for the same
+  reason `AreaNaming.marketArea` is — an option a page could forget is a page
+  that compiles and claims a shop forever.
+- **The JSON-LD drops `streetAddress`, and keeps the locality.** A SAB's own
+  Business Profile carries no street (Google's guidance is to hide it), so
+  markup that publishes one disagrees with the listing it exists to
+  corroborate. `hasMap` and branch entities go too; `areaServed` is what says
+  where they work.
+- **Mobile service and premises are INDEPENDENT, and the unhandled pair was
+  MAG's.** The "how it works" third step fell through to "Bring the vehicle to
+  the shop" whenever mobile was off — so no-shop-and-no-mobile, a half-filled
+  record, got the one sentence that cannot be true. It now names no place at
+  all, and the Business tab warns about the combination.
+- Several template lines said **"the shop"** in the third person — "Ask the
+  shop to check", "the shop comes to you", "talk to the shop doing the work" —
+  which broke the "site speaks as the SHOP: we, never they" rule for all
+  fifteen, not just the one with no shop. Fixed to "we" rather than gated.
+- The one "shop" left on a SAB's page is the reviewed statutory sentence *"Your
+  choice of repair shop is yours to make"*, which is the customer's legal right
+  and says nothing about our premises. `scripts/check-site-premises.ts` holds
+  both directions: a SAB's copy contains no premises word in any
+  configuration, and a shop's copy is byte-for-byte what it always was —
+  because being too eager here costs fourteen shops the line that makes them
+  findable, and being too lenient sends somebody to a car park.
+
 **What an image upload ACCEPTS lives in `image-formats.ts`, once.** The file
 picker's `accept` list and what sharp can decode are two lists that have to
 agree, and drift is silent in the worse direction: a format the server handles

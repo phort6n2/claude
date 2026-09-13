@@ -55,7 +55,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       },
       {
         heading: 'Insurance',
-        body: 'Windshield replacement is covered under the comprehensive portion of most auto policies. Depending on your deductible and your state, your out-of-pocket cost may be far less than you expect. Ask when you call — the shop can walk you through how your coverage applies before any work is done.',
+        body: 'Windshield replacement is covered under the comprehensive portion of most auto policies. Depending on your deductible and your state, your out-of-pocket cost may be far less than you expect. Ask when you call — we can walk you through how your coverage applies before any work is done.',
       },
     ],
   },
@@ -76,7 +76,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       },
       {
         heading: 'Insurance',
-        body: 'Many insurers cover chip repair at no cost to you — they would rather pay for a repair now than a replacement later. Ask the shop to check how your policy handles glass repair.',
+        body: 'Many insurers cover chip repair at no cost to you — they would rather pay for a repair now than a replacement later. Ask us to check how your policy handles glass repair.',
       },
     ],
   },
@@ -131,7 +131,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       },
       {
         heading: 'Insurance',
-        body: 'Like windshields, back glass falls under comprehensive coverage on most policies. The shop can help you understand what your policy covers before work begins.',
+        body: 'Like windshields, back glass falls under comprehensive coverage on most policies. We can help you understand what your policy covers before work begins.',
       },
     ],
   },
@@ -165,7 +165,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       },
       {
         heading: 'Static and dynamic calibration',
-        body: 'Depending on the vehicle, calibration is done with targets in a controlled space (static), by driving the vehicle under specific conditions (dynamic), or both. It’s precision work with manufacturer procedures — which is why not every glass shop offers it, and why it matters that yours does.',
+        body: 'Depending on the vehicle, calibration is done with targets in a controlled space (static), by driving the vehicle under specific conditions (dynamic), or both. It’s precision work with manufacturer procedures — which is why not every glass company offers it, and why it matters that yours does.',
       },
       {
         heading: 'One appointment, not two',

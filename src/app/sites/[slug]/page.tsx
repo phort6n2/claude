@@ -287,7 +287,10 @@ export default async function ClientSitePage({ params }: PageProps) {
       <SkipLink />
       <UtilBar
         client={client}
-        note={servingLine(client, client.offersMobileService)}
+        note={servingLine(client, {
+          mobile: client.offersMobileService,
+          hasShopLocation: client.hasShopLocation,
+        })}
       />
       <SiteHeader client={client} basePath={basePath} reviews={reviews} nav={nav} />
 

@@ -476,7 +476,11 @@ export function SiteBody({
                     </h3>
                   </div>
                   <p className="text-[var(--tx-muted)] text-sm mt-2.5 sm:mt-1.5 mb-0">
-                    Home, office, or roadside — the shop comes to you.
+                    {/* "We", not "the shop". The site speaks AS the business
+                        (see the confirmation-card note in widget.js), and on a
+                        service-area business "the shop comes to you" also
+                        names premises there are none of. */}
+                    Home, office, or roadside — we come to you.
                   </p>
                   <span className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-[var(--brand)]">
                     Get a quote
@@ -502,8 +506,8 @@ export function SiteBody({
                     Local Auto Glass Experts
                   </h3>
                   <p className="text-[var(--tx-muted)] text-sm mt-1.5 mb-0">
-                    Based in {client.city}, {client.state} — talk to the shop doing the work and get
-                    a straight answer on repair versus replacement.
+                    Based in {client.city}, {client.state} — talk to the people doing the work and
+                    get a straight answer on repair versus replacement.
                   </p>
                   <span className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-[var(--brand)]">
                     Get a quote

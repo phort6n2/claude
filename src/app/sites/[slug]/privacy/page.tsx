@@ -53,6 +53,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!client || !(await canViewSite(client.status))) return { title: 'Not Found' }
   return {
     title: `Privacy Policy | ${client.businessName}`,
+    // See the note on the terms page: without one, Next inherits the root
+    // layout's description, which is the platform's own.
+    description: `What ${client.businessName} collects through this website, why, and what you can ask us to do about it.`,
     robots: { index: false },
     alternates: {
       canonical: `https://${client.siteSubdomain || client.slug}.glassleads.app/privacy`,

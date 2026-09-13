@@ -401,8 +401,48 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
                 What we&apos;re allowed to say
               </label>
               <p className="text-xs text-gray-500 mb-2">
-                Only tick these if they are true for this shop — the site says them out loud.
+                Facts that decide what the site is allowed to say. Only tick what is true for
+                this shop — the site either says it out loud or stops saying it.
               </p>
+              {/* SERVICE-AREA BUSINESS. Stored inverted, as
+                  Client.hasShopLocation, because that field already exists and
+                  already means this — the public intake asks it ("Customers
+                  can come to a shop") and the site has read it since the
+                  beginning. What it never had was a control: after approval the
+                  only way to change the answer was an API call, so a shop that
+                  turned out to be mobile-only kept a site talking about
+                  premises it does not have. The tick is phrased as the
+                  exception because that is how an operator thinks about it. */}
+              <label className="flex items-start gap-2 mb-2">
+                <input
+                  type="checkbox"
+                  checked={formData.hasShopLocation === false}
+                  onChange={(e) => updateField('hasShopLocation', !e.target.checked)}
+                  className="rounded mt-0.5"
+                />
+                <span className="text-sm">
+                  Service-area business — no shop customers visit
+                  <span className="block text-xs text-gray-500">
+                    On: the site names no address and no shop anywhere — no map section, no
+                    street address in the footer or the legal pages, and the serving line reads
+                    &ldquo;based in {formData.city || 'the city'}&rdquo; instead of &ldquo;from our{' '}
+                    {formData.city || 'city'} shop&rdquo;. The address fields below stay filled in
+                    and stay private: they are still what the rank grid, the state law rules and
+                    the Business Profile are built on.
+                  </span>
+                </span>
+              </label>
+              {/* No premises AND no mobile leaves the site with no way to say
+                  how the work gets done — the "how it works" step then names
+                  no place at all, which is honest but is almost certainly a
+                  half-filled record rather than the business model. */}
+              {formData.hasShopLocation === false && !formData.offersMobileService && (
+                <p className="mb-2 -mt-1 ml-6 text-xs text-amber-800">
+                  Mobile Service is off above. With no shop and no mobile service the site can
+                  only say that the glass gets fitted — tick Mobile Service if they travel to the
+                  vehicle.
+                </p>
+              )}
               <label className="flex items-start gap-2 mb-2">
                 <input
                   type="checkbox"

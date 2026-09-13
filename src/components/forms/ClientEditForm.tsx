@@ -1455,6 +1455,25 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
                   <span className="text-sm">Mobile Service</span>
                 </label>
               </div>
+              {/* Stored inverted, as Client.hasShopLocation — see the longer
+                  note on the same control in ClientBusinessForm. Here so a
+                  mobile-only shop can be created as one, rather than created
+                  with a site that talks about premises and corrected later. */}
+              <label className="mt-3 flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={formData.hasShopLocation === false}
+                  onChange={(e) => updateField('hasShopLocation', !e.target.checked)}
+                  className="rounded mt-0.5"
+                />
+                <span className="text-sm">
+                  Service-area business — no shop customers visit
+                  <span className="block text-xs text-gray-500">
+                    The site then names no address and no shop anywhere. The address below is
+                    still stored and still used — it just never appears on the site.
+                  </span>
+                </span>
+              </label>
             </div>
           </div>
         )}
