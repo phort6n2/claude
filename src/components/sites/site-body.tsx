@@ -549,7 +549,8 @@ export function SiteBody({
         fallbackPhotos={storyFallbackPhotos}
       />
 
-      {/* Map + Google listing (shop locations only) */}
+      {/* Map + Google listing. A service-area business gets the same section
+          showing the AREA instead of an address — see lib/site-premises. */}
       <MapSection
         client={client}
         reviews={reviews}

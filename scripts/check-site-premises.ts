@@ -18,8 +18,10 @@
 
 import { servingLine } from '../src/lib/site-area'
 import {
+  areaMapQuery,
   coverageSuffix,
   hasPremises,
+  mapIntro,
   premisesClaim,
   processStep,
   processTitle,
@@ -166,6 +168,57 @@ console.log('\nCoverage suffix')
   expectNoPremises('service-area', sab)
   if (!sab.trim()) fail('a service-area business lost the suffix entirely — say how, not nothing')
   else pass(`service-area:${sab}`)
+}
+
+// --- The map: kept for a service-area business, showing the area -----------
+
+console.log('\nThe map section')
+{
+  const shop = { hasShopLocation: true, offersMobileService: true }
+  const sab = { hasShopLocation: false, offersMobileService: true }
+
+  const shopIntro = mapIntro(shop, { area: 'Orange County', city: 'Huntington Beach' })
+  expectEqual('a shop, eyebrow', shopIntro.eyebrow, 'Find us')
+  expectEqual('a shop, heading', shopIntro.heading, 'Visit the shop in Huntington Beach')
+
+  const sabIntro = mapIntro(sab, { area: 'Central Florida', city: 'Orlando' })
+  expectEqual('service-area, eyebrow', sabIntro.eyebrow, 'Where we work')
+  expectEqual('service-area, heading', sabIntro.heading, 'Serving Central Florida')
+  expectNoPremises('service-area map eyebrow', sabIntro.eyebrow)
+  expectNoPremises('service-area map heading', sabIntro.heading)
+
+  /* THE QUERY IS THE CITY, NEVER THE REGION. Handing "Central Florida" to the
+     embed asks Google to resolve something it may resolve oddly or not at
+     all, and a map that lands in the wrong place is worse than one merely
+     zoomed in. The zoom carries the difference instead. */
+  const orlando = { city: 'Orlando', state: 'FL', marketArea: 'Central Florida' }
+  const wide = areaMapQuery(sab, orlando)
+  expectEqual('service-area + market area, one step wider', wide, `${encodeURIComponent('Orlando, FL')}&z=9`)
+  if (wide.includes('Central')) fail('the region name was handed to the embed')
+  else pass('the region name is not in the query')
+  expectEqual(
+    'service-area, no market area: city zoom',
+    areaMapQuery(sab, { ...orlando, marketArea: null }),
+    `${encodeURIComponent('Orlando, FL')}&z=10`
+  )
+  // A market area equal to the city is not a wider area, so it must not widen.
+  expectEqual(
+    'market area same as the city',
+    areaMapQuery(sab, { ...orlando, marketArea: 'orlando' }),
+    `${encodeURIComponent('Orlando, FL')}&z=10`
+  )
+  /* A SHOP WITH NO VERIFIED PROFILE REACHES THE SAME FALLBACK, and there the
+     map sits beside its own street address — so it keeps the tighter frame it
+     has always rendered. Widening that too would be an unasked change to
+     fourteen sites, made invisibly, while fixing one. */
+  expectEqual(
+    'a shop, market area set: unchanged at the city zoom',
+    areaMapQuery(shop, { city: 'Huntington Beach', state: 'CA', marketArea: 'Orange County' }),
+    `${encodeURIComponent('Huntington Beach, CA')}&z=10`
+  )
+  // Never an address: the street is the thing a pin would point at.
+  if (/Newhope|\d{3,}\s/.test(wide)) fail('the area query carried a street')
+  else pass('the area query carries no street')
 }
 
 // --- hasPremises defaults ---------------------------------------------------
