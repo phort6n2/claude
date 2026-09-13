@@ -91,6 +91,10 @@ export function buildWidgetConfig(client: WidgetClient, privacyUrl?: string) {
   return {
     businessName: client.businessName,
     phone: client.phone,
+    // The number the callback comes from, and the only one a text may go to.
+    // Omitted when unknown so the copy drops the number instead of naming
+    // the tracking line, which is the failure this pair exists to fix.
+    ...(client.callbackPhone ? { callbackPhone: client.callbackPhone } : {}),
     primaryColor: client.primaryColor || '#1e40af',
     secondaryColor: client.secondaryColor || '#3b82f6',
     ...widgetCtaColors(client.primaryColor ?? null, client.accentColor ?? null),

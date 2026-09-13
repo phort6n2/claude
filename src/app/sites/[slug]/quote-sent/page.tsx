@@ -64,7 +64,12 @@ export default async function QuoteSentPage({ params, searchParams }: PageProps)
   const preview = await isPreview(client.status)
   if (!siteIsLive(client.status) && !preview) return <SiteUnavailable />
 
-  client.phone = (await withSitePhone(client)).phone
+  // Object.assign, not `client.phone = …`: the swap now also carries the
+  // shop's own line for the callback and SMS copy, and taking only `.phone`
+  // would drop it. See site-phone.ts.
+  const swapped = await withSitePhone(client)
+  Object.assign(client, swapped)
+  const callbackPhone = swapped.callbackPhone
   const basePath = sitePathPrefixFor(client, (await headers()).get('host'))
 
   return (
@@ -76,20 +81,31 @@ export default async function QuoteSentPage({ params, searchParams }: PageProps)
             assume it arrived. Nothing was saved.
           </p>
           <p>
-            Call {client.businessName} on{' '}
-            <a href={telHrefFor(client.phone)}>{client.phone}</a> and they will take the details
-            straight away — that is faster than trying the form again.
+            Call us on <a href={telHrefFor(client.phone)}>{client.phone}</a> and we will take the
+            details straight away — that is faster than trying the form again.
           </p>
         </>
       ) : (
         <>
+          {/* WE, not THEY, and the CALLBACK line rather than the displayed
+              one — the same two faults the widget's own confirmation had.
+              This page is the shop's site speaking as the shop, and the call
+              back arrives from their handset, not from the tracking number.
+              The call-now link below stays on the display number: inbound,
+              and it wants recording. See lib/site-phone. */}
           <p>
-            Your request is with {client.businessName}. They will call
-            {client.phone ? <> from {client.phone}</> : null} to confirm the glass, your coverage
-            and a time that works.
+            Your request is in.{' '}
+            {callbackPhone ? (
+              <>
+                We will call from {callbackPhone} to confirm the glass, your coverage and a time —
+                save the number so you do not miss it.
+              </>
+            ) : (
+              <>We will call to confirm the glass, your coverage and a time that works.</>
+            )}
           </p>
           <p>
-            If you would rather not wait, call them now on{' '}
+            If you would rather not wait, call us now on{' '}
             <a href={telHrefFor(client.phone)}>{client.phone}</a>.
           </p>
         </>
