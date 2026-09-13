@@ -21,7 +21,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           content — they never render on the hosted site. They are a fact about
           the business that travels to the directory listing, which is what the
           rest of this tab is. */}
-      <SocialLinksCard clientId={client.id} initial={client.socialLinks} />
+      <SocialLinksCard
+        clientId={client.id}
+        initial={client.socialLinks}
+        hasWebsite={!!client.websiteUrl}
+      />
       {/* On the tab that owns the client's identity, because that is what it
           is — not a setting. Above delete and below the details, so the two
           irreversible-feeling controls sit together at the bottom. */}

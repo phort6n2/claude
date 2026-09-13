@@ -1290,6 +1290,38 @@ practice nobody ever did.
   conversations. **The shop's own footer is the real source**, and the website
   importer is already standing in it, so extraction is deterministic and costs
   nothing on top of an import somebody is running anyway.
+  - **PULLING THEM IS ITS OWN ACTION, NOT A SIDE EFFECT OF THE IMPORT**
+    (`social-scan.ts`, `POST /api/clients/[id]/social-links` behind "Find them
+    on their website" on the card, and **Maintenance → "Store the social
+    profiles found on their websites"** for the whole book, dry run first).
+    Extraction started inside `importSiteContent`, which was the right place
+    to put it and the wrong place to leave it — the question "can an EXISTING
+    client have theirs pulled?" has two bad answers there. The full import
+    REWRITES site content (warranty, FAQ, hero bullets, story sections,
+    photos, then autosaves), so re-running it on a curated client to collect
+    two URLs trades the curation for the URLs — which is every client except a
+    brand new one. And it refuses to start without `ANTHROPIC_API_KEY`, so the
+    single most deterministic thing in the importer was the one thing that
+    could not run without the model. The scan is one fetch of one page, no
+    model, and it touches nothing: the route is READ-ONLY and the card writes
+    through `PUT /api/clients/[id]`, the one path that screens and syncs.
+  - The sweep **fills gaps only**, and that is its whole licence to save
+    unattended: a platform already on file is left alone, so a link corrected
+    on the Business tab survives every later run. Verified against the
+    database — a hand-corrected Facebook page survived a re-run that filled in
+    the missing Instagram. It pushes each changed client to the directory
+    itself, because it writes with prisma directly and the clients API is what
+    normally triggers that sync.
+  - **A 200 IS NOT ALWAYS A PAGE.** Found by running this against real shop
+    sites: one answered HTTP **202** with 169 bytes — `<meta
+    http-equiv="refresh" content="0;/.well-known/sgcaptcha/…">`. `fetchHtml`
+    accepts it correctly (2xx, `text/html`), so the scan found no links and
+    said "no social profiles on that page", which is an absence reported as a
+    fact about the shop — the same mistake `place-location.ts` records for
+    Google's REQUEST_DENIED arriving as a 200. `challengeReason()` tells the
+    two apart on a meta-refresh-to-a-challenge and on a body too small to be
+    anybody's home page, and it is deliberately NOT inside `fetchHtml`, which
+    the importer shares.
   - **THE HARD PART IS THE SHARE BUTTON.** A footer's most common Facebook
     link is not the shop's page, it is `facebook.com/sharer/sharer.php?u=…`,
     which matches `href*="facebook.com"` perfectly — publish that and the

@@ -37,9 +37,12 @@ import {
 export default function SocialLinksCard({
   clientId,
   initial,
+  /** Whether there is a website on file to read. Only changes the copy. */
+  hasWebsite,
 }: {
   clientId: string
   initial: unknown
+  hasWebsite?: boolean
 }) {
   const [links, setLinks] = useState<SocialLinks>(() => readSocialLinks(initial))
   // The text in the boxes, which is not the same thing as the stored links: a
@@ -52,6 +55,52 @@ export default function SocialLinksCard({
   const [problems, setProblems] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
+  // Reading their website: found-but-not-stored links, offered rather than
+  // written. See the note on review above — a share button can be proven
+  // wrong, somebody else's real account cannot.
+  const [scanning, setScanning] = useState(false)
+  const [offer, setOffer] = useState<SocialLinks>({})
+  const [scanNote, setScanNote] = useState<string | null>(null)
+
+  async function scan() {
+    setScanning(true)
+    setScanNote(null)
+    setOffer({})
+    try {
+      const res = await fetch(`/api/clients/${clientId}/social-links`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      if (!res.ok) throw new Error(await errorFrom(res))
+      const data = await res.json()
+      setOffer(data.fresh || {})
+      setScanNote(data.message || null)
+    } catch (err) {
+      setScanNote(err instanceof Error ? err.message : 'Could not read their website')
+    } finally {
+      setScanning(false)
+    }
+  }
+
+  function accept(platforms: SocialPlatform[]) {
+    const next = { ...links }
+    for (const platform of platforms) {
+      const found = offer[platform]
+      if (!found) continue
+      next[platform] = found
+      setDrafts((d) => ({ ...d, [platform]: found }))
+    }
+    setOffer((o) => {
+      const rest = { ...o }
+      for (const platform of platforms) delete rest[platform]
+      return rest
+    })
+    setLinks(next)
+    void persist(next)
+  }
+
+  const offered = SOCIAL_PLATFORMS.filter((p) => !!offer[p])
 
   async function persist(next: SocialLinks) {
     setSaving(true)
@@ -110,12 +159,74 @@ export default function SocialLinksCard({
           site this platform hosts.
         </p>
         <p className="text-xs text-gray-400 mt-1">
-          Filled in by &ldquo;Import from their website&rdquo; on the Website tab — a shop&rsquo;s
-          own footer is where these live. Google&rsquo;s API does not hand them over, so there is
-          nothing to pull from the Business Profile.
+          Read off the shop&rsquo;s own website, where these actually live — usually the footer.
+          Google&rsquo;s API does not hand them over, so there is nothing to pull from the Business
+          Profile.
         </p>
       </div>
       <div className="p-6 pt-4 space-y-3">
+        {/* Its own button rather than a side effect of the full website
+            import. That import rewrites the warranty, FAQ, story sections and
+            photos from whatever it finds, so running it on a curated client to
+            collect two URLs trades the curation for the URLs — and it refuses
+            to start without a model key, which reading an <a href> does not
+            need. */}
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={scan}
+              disabled={scanning || hasWebsite === false}
+              className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
+            >
+              {scanning && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {scanning ? 'Reading their website…' : 'Find them on their website'}
+            </button>
+            <span className="text-xs text-gray-500">
+              {hasWebsite === false
+                ? 'No website on file — add one on the Website tab first.'
+                : 'Reads one page. Changes nothing until you accept what it finds.'}
+            </span>
+          </div>
+          {scanNote && <p className="mt-2 text-xs text-gray-700">{scanNote}</p>}
+          {offered.length > 0 && (
+            <div className="mt-3 space-y-1.5 border-t border-gray-200 pt-3">
+              {offered.map((platform) => (
+                <div key={platform} className="flex items-center gap-2 text-xs">
+                  <span className="w-20 shrink-0 font-medium text-gray-700">
+                    {SOCIAL_LABELS[platform]}
+                  </span>
+                  {/* Opens it, because the one thing the screen cannot check is
+                      whether the account is theirs. */}
+                  <a
+                    href={offer[platform]}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="min-w-0 flex-1 truncate text-blue-700 underline"
+                  >
+                    {offer[platform]}
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => accept([platform])}
+                    className="shrink-0 rounded-md bg-blue-600 px-2 py-1 font-medium text-white hover:bg-blue-700"
+                  >
+                    Use this
+                  </button>
+                </div>
+              ))}
+              {offered.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => accept(offered)}
+                  className="mt-1 text-xs font-medium text-blue-700 hover:underline"
+                >
+                  Use all {offered.length}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
         {SOCIAL_PLATFORMS.map((platform) => (
           <div key={platform}>
             <label className="block text-sm font-medium text-gray-700 mb-1">

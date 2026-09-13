@@ -136,14 +136,14 @@ export function validatePublicUrl(raw: string): { ok: true; url: URL } | { ok: f
 const BROWSER_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 
-type FetchFailure =
+export type FetchFailure =
   | { kind: 'status'; status: number }
   | { kind: 'not-html'; contentType: string }
   | { kind: 'redirect-blocked'; to: string }
   | { kind: 'timeout' }
   | { kind: 'network'; message: string }
 
-type FetchResult = { ok: true; html: string } | { ok: false; failure: FetchFailure }
+export type FetchResult = { ok: true; html: string } | { ok: false; failure: FetchFailure }
 
 /** The failure, in the words of somebody who has to act on it. */
 export function describeFetchFailure(failure: FetchFailure, url: string): string {
@@ -170,7 +170,7 @@ export function describeFetchFailure(failure: FetchFailure, url: string): string
   }
 }
 
-async function fetchHtml(url: URL): Promise<FetchResult> {
+export async function fetchHtml(url: URL): Promise<FetchResult> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
   try {

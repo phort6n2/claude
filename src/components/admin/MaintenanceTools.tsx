@@ -75,6 +75,13 @@ const READS: Tool[] = [
     what: 'Reports what each tracking number\u2019s SmsUrl currently points at. A number bought before the SMS webhook existed has none — and with no SmsUrl Twilio has no instruction for a message, so it swallows it: the shop never sees the text and the customer believes they sent it. The hosted sites have been telling people to text a photo of the damage the whole time. Reads Twilio, writes nothing.',
   },
   {
+    key: 'social-links-dry',
+    name: 'Social profiles: what is on their websites? (reads only)',
+    path: '/api/admin/social-links?dryRun=1',
+    method: 'POST',
+    what: 'Reads one page of every live client\u2019s own website and reports the social profiles it finds that are not on file. Their footer is where these live; Google\u2019s API does not return them, so there is nothing to pull from the Business Profile. Writes nothing.',
+  },
+  {
     key: 'wrhq-dry',
     name: 'Windshield Repair HQ: which clients are already listed?',
     path: '/api/admin/wrhq-sync?dryRun=1',
@@ -99,6 +106,14 @@ const WRITES: Tool[] = [
     method: 'POST',
     what: 'Sets SmsUrl (and re-sets VoiceUrl, so a number cannot end up half-configured) on every active tracking number. After this, a texted photo lands on the lead, shows in the portal and reaches the shop as an alert with the picture in it. Run the dry version first — it reports the current values, and an unexpected VoiceUrl is the interesting finding.',
     cost: 'One Twilio lookup and one update per number. Safe to run twice: a number already pointing here is skipped. A number on file but missing from the Twilio account is named rather than skipped — that means it was released and calls to it are going nowhere.',
+  },
+  {
+    key: 'social-links',
+    name: 'Store the social profiles found on their websites',
+    path: '/api/admin/social-links',
+    method: 'POST',
+    what: 'Stores every profile a client does not already have one for, then pushes each changed client to their directory listing. Fills gaps only \u2014 a link already on file is left alone, because the Business tab is where a wrong one gets corrected and a sweep that overwrote corrections would undo them on every run. Run the dry version first and read what it found.',
+    cost: 'One page fetch per live client, and a directory push for each one that changed. Safe to run twice. Check the results on each Business tab: the screen can prove a share button is not an account, and it cannot prove a real account belongs to the shop rather than to whoever built their site.',
   },
   {
     key: 'retidy-logos-dry',

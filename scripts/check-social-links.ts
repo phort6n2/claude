@@ -29,6 +29,7 @@ import {
   socialLinkProblem,
   socialLinksFrom,
 } from '../src/lib/social-links'
+import { challengeReason } from '../src/lib/social-scan'
 
 let failures = 0
 const fail = (msg: string) => {
@@ -289,6 +290,40 @@ console.log('\nWhat comes back out of the database')
     fail(`readSocialLinks invented links from ${JSON.stringify(junk)}`)
   }
   pass('a null, a string, a number and an array all read as none')
+}
+
+// --- A 200 that is not a page ----------------------------------------------
+
+console.log('\nBot walls: a refusal must not read as "they have no socials"')
+{
+  /* VERBATIM from a real Orlando shop's site, which answered HTTP 202 with
+     exactly this. Kept as it arrived: the whole value of this case is that it
+     is a 2xx, it is text/html, and it contains no social links — so without
+     the check the scan reports an absence as a fact about the shop, which is
+     the mistake place-location.ts records for Google's REQUEST_DENIED. */
+  const stub =
+    '<html><head><link rel="icon" href="data:;"><meta http-equiv="refresh" content="0;/.well-known/sgcaptcha/?r=%2F&y=ipr:160.79.106.137:1789341162.210"></meta></head></html>'
+  const reason = challengeReason(stub)
+  if (reason) pass(`the captcha stub is caught: ${reason}`)
+  else fail('a real bot-wall stub read as a page with no social links')
+
+  if (challengeReason('<html>' + 'x'.repeat(200) + '</html>'))
+    pass('a 200-byte body is a holding page')
+  else fail('a 200-byte body read as a real page')
+
+  // And a real page must NOT be called a bot wall — a site that mentions
+  // "captcha" in its own contact form still has a footer worth reading.
+  const realPage =
+    '<html><head><title>Sunstate Auto Glass</title></head><body>' +
+    '<p>Our contact form uses a captcha to stop spam.</p>' +
+    'x'.repeat(60_000) +
+    '<footer><a href="https://www.facebook.com/sunstateautoglassinc">Facebook</a></footer></body></html>'
+  if (challengeReason(realPage)) fail('a real page was refused as a bot wall')
+  else pass('a real page that mentions a captcha is still read')
+  const stillFound = socialLinksFrom(realPage, new URL('https://sunstateautoglass.com/'))
+  if (stillFound.facebook === 'https://www.facebook.com/sunstateautoglassinc')
+    pass('and its footer link is still extracted')
+  else fail('lost the footer link on a page mentioning a captcha')
 }
 
 console.log(
