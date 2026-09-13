@@ -83,6 +83,8 @@ export interface WrhqClientPayload {
   reviewCount?: number
   /** Header logo. The directory references it; both Blobs are ours. */
   logoUrl?: string
+  /** Their gallery, best first. The directory's hero shows one. */
+  photos?: string[]
   lat?: number
   lng?: number
   slug?: string
@@ -116,9 +118,15 @@ export interface SyncableClient {
   longitude: number | null
   logoUrl: string | null
   domains?: { domain: string; isPrimary: boolean }[]
+  sitePhotos?: { url: string }[]
   gbpReviews?: { rating: number; reviewCount: number } | null
   siteContent?: { footerBlurb: string | null } | null
 }
+
+/* The directory shows one photo on the hero and a handful in its gallery, and
+   this list rides in every sync — a client with ninety photos would make each
+   push large for nothing. Matches the cap on the receiving schema. */
+const PHOTO_LIMIT = 12
 
 export function wrhqSyncEnabled(): boolean {
   return !!(process.env.WRHQ_SYNC_URL && process.env.WRHQ_SYNC_SECRET)
@@ -233,6 +241,16 @@ export function payloadFor(
     rating: client.gbpReviews?.rating ?? undefined,
     reviewCount: client.gbpReviews?.reviewCount ?? undefined,
     logoUrl: client.logoUrl || undefined,
+    /* Their own gallery. Until now a Partner's listing had no photograph at
+       all, so the directory fell back to reading og:image off their website —
+       which is the SHARE CARD this app generates for them, business name set
+       large across it, cropped by object-cover into a slab of unreadable
+       type. Real pictures are the fix; the directory has stopped using
+       og:image either way. GALLERY only: BODY shots are process details cut
+       to sit beside prose, and they read as fragments on their own. */
+    ...(client.sitePhotos?.length
+      ? { photos: client.sitePhotos.map((p) => p.url).slice(0, PHOTO_LIMIT) }
+      : {}),
     // Both or neither. Half a coordinate pair puts a pin in the ocean, and
     // this app has already drawn one map in the Atlantic.
     ...(client.latitude != null && client.longitude != null
@@ -367,6 +385,12 @@ export const WRHQ_SYNC_SELECT = {
   longitude: true,
   logoUrl: true,
   domains: { select: { domain: true, isPrimary: true } },
+  sitePhotos: {
+    where: { pool: 'GALLERY' },
+    select: { url: true },
+    orderBy: { sortOrder: 'asc' },
+    take: 12,
+  },
   gbpReviews: { select: { rating: true, reviewCount: true } },
   siteContent: { select: { footerBlurb: true } },
 } as const
