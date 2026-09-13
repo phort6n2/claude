@@ -50,6 +50,8 @@ interface ClientData {
   googleMapsUrl: string | null
   hasShopLocation: boolean
   offersMobileService: boolean
+  /** Social profiles the importer found; sent to the WRHQ listing only. */
+  socialLinks?: Record<string, string>
   // Services offered
   offersWindshieldRepair: boolean
   offersWindshieldReplacement: boolean
@@ -168,6 +170,7 @@ function SiteContentEditor({
   suggestedImportUrl,
   onLogoFound,
   onAreasFound,
+  onSocialFound,
 }: {
   clientId: string
   /* The website the Business Profile picker found, seeding the import field
@@ -175,6 +178,8 @@ function SiteContentEditor({
   suggestedImportUrl?: string | null
   onLogoFound?: (url: string) => void
   onAreasFound?: (areas: string[]) => void
+  /** Social profiles found in the footer — for the WRHQ listing only. */
+  onSocialFound?: (links: Record<string, string>) => void
 }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -276,6 +281,12 @@ function SiteContentEditor({
       if (d.logoUrl && onLogoFound) onLogoFound(d.logoUrl)
       if (Array.isArray(d.serviceAreas) && d.serviceAreas.length && onAreasFound) {
         onAreasFound(d.serviceAreas)
+      }
+      // Staged into the form and written by the main Save, like the logo and
+      // the areas. They are checked on the Business tab once the client
+      // exists — this form has no card for them.
+      if (d.socialLinks && typeof d.socialLinks === 'object' && onSocialFound) {
+        onSocialFound(d.socialLinks)
       }
       const found = [
         d.logoUrl ? 'logo (set in Branding above — hit the main Save)' : null,
@@ -1760,6 +1771,7 @@ export default function ClientEditForm({ client }: ClientEditFormProps) {
                   suggestedImportUrl={formData.websiteUrl}
                   clientId={client!.id}
                   onLogoFound={(url) => updateField('logoUrl', url)}
+                  onSocialFound={(links) => updateField('socialLinks', links)}
                   onAreasFound={(found) => {
                     // Union with what's already set — the import adds cities,
                     // never removes ones the admin entered.

@@ -76,6 +76,13 @@ model Client {
   /// Template pages moved to an address the shop's old site used, as
   /// { "/side-window-replacement": "/car-window-repair" }. See lib/site-paths.
   pathOverrides          Json?
+  /// The shop's social profiles, as { "facebook": "https://…" }, one per
+  /// platform. Found by the website importer, reviewed on the Business tab,
+  /// and sent to the Windshield Repair HQ listing. NOT rendered on the hosted
+  /// site — it is a directory field, not landing-page content. Never from the
+  /// Google Business Profile: no API this app can reach returns those. See
+  /// lib/social-links.ts.
+  socialLinks            Json?
   insuranceRelationships String[]
 
   // Services Offered

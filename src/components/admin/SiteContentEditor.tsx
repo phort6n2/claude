@@ -51,11 +51,14 @@ export default function SiteContentEditor({
   clientId,
   onLogoFound,
   onAreasFound,
+  onSocialFound,
   persistClientFields,
 }: {
   clientId: string
   onLogoFound?: (url: string) => void
   onAreasFound?: (areas: string[]) => void
+  /** Social profiles found in the shop's footer — for the WRHQ listing. */
+  onSocialFound?: (links: Record<string, string>) => void
   /**
    * Persists the fields the importer finds that live on the CLIENT record
    * (logo, service areas). Called as part of THIS editor's autosave so one
@@ -413,10 +416,19 @@ export default function SiteContentEditor({
       if (Array.isArray(d.serviceAreas) && d.serviceAreas.length && onAreasFound) {
         onAreasFound(d.serviceAreas)
       }
+      if (d.socialLinks && typeof d.socialLinks === 'object' && onSocialFound) {
+        onSocialFound(d.socialLinks)
+      }
       const found = [
         d.logoUrl ? 'logo' : null,
         d.serviceAreas?.length
           ? `${d.serviceAreas.length} service-area cities`
+          : null,
+        // Named in the result line because they go on a public directory page
+        // and the Business tab is where they are checked — "Imported" with no
+        // mention of them is how a web designer's Facebook gets published.
+        d.socialLinks && Object.keys(d.socialLinks).length
+          ? `${Object.keys(d.socialLinks).length} social profiles (check them on the Business tab)`
           : null,
         d.warrantyText ? 'warranty' : null,
         d.chapters?.length ? `${d.chapters.length} story sections` : null,

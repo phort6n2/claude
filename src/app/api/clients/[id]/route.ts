@@ -29,6 +29,8 @@ const WRHQ_SYNC_FIELDS = [
   'offersRockChipRepair',
   'offersAdasCalibration',
   'filesInsuranceClaims',
+  // The directory renders these on the listing; an edit here has to reach it.
+  'socialLinks',
 ] as const
 
 /**
@@ -214,6 +216,19 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     }
     if (has('country')) patch.country = data.country || 'US'
     if (has('serviceAreas')) patch.serviceAreas = Array.isArray(data.serviceAreas) ? data.serviceAreas : []
+    /* SCREENED AT THE BOUNDARY, not just in the card. These reach a public
+       directory page, and this route is written to by the importer's draft
+       save, the Business tab and anything else that PUTs a client — so the
+       one place all of them pass through is where a share-button URL has to be
+       refused. readSocialLinks drops whatever is not a profile link and keeps
+       the rest, so a single bad entry cannot cost the good ones. */
+    if (has('socialLinks')) {
+      const { readSocialLinks, countSocialLinks } = await import('@/lib/social-links')
+      const cleaned = readSocialLinks(data.socialLinks)
+      // Null rather than {} for "none", so an empty value reads the same as a
+      // client that never had any.
+      patch.socialLinks = countSocialLinks(cleaned) ? cleaned : null
+    }
     if (has('allowedOrigins')) patch.allowedOrigins = allowedOrigins
 
     const before = await prisma.client

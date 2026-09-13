@@ -12,6 +12,8 @@ import Anthropic from '@anthropic-ai/sdk'
  * the Site Content editor; nothing goes live until an admin reviews and saves.
  */
 
+import { mergeSocialLinks, socialLinksFrom, type SocialLinks } from '@/lib/social-links'
+
 export interface ImportedPhoto {
   url: string
   alt: string
@@ -28,6 +30,16 @@ export interface ImportedSiteContent {
   photos: ImportedPhoto[]
   logoUrl: string | null
   serviceAreas: string[]
+  /**
+   * The shop's social profiles, read from the pages we crawled.
+   *
+   * NOT landing-page content — it is passed to the Windshield Repair HQ
+   * listing. Deterministic, so unlike everything else in this draft it is not
+   * the model's answer: an `<a href>` is not a judgement call, and the one
+   * hard case (a "share this page" button dressed as the shop's Facebook) is
+   * screened by shape in lib/social-links.ts.
+   */
+  socialLinks: SocialLinks
   pagesCrawled: string[]
   warnings: string[]
 }
@@ -499,6 +511,9 @@ export async function importSiteContent(
   ]
   const photoMap = new Map<string, { url: string; alt: string }>()
   for (const p of findPhotoCandidates(mainHtml, check.url)) photoMap.set(p.url, p)
+  // The home page's footer is where these live, so its answer wins over any
+  // crawled page's.
+  const socialSets: SocialLinks[] = [socialLinksFrom(mainHtml, check.url)]
 
   // Nothing is crawled off a pasted page: if the site refused us once it
   // will refuse the warranty page too, and four guaranteed failures is just
@@ -517,6 +532,8 @@ export async function importSiteContent(
     for (const p of findPhotoCandidates(extra.html, extra.link)) {
       if (photoMap.size < MAX_PHOTO_CANDIDATES) photoMap.set(p.url, p)
     }
+    // A contact page often carries icons the home page's header does not.
+    socialSets.push(socialLinksFrom(extra.html, extra.link))
   }
 
   // Keep only URLs that actually serve an image. Dead links would 404 on the
@@ -706,6 +723,7 @@ ${pages.map((p) => `=== ${p.url} ===\n${p.text}`).join('\n\n')}`
         photos,
         logoUrl,
         serviceAreas,
+        socialLinks: mergeSocialLinks(...socialSets),
         pagesCrawled: pages.map((p) => p.url),
         warnings,
       },

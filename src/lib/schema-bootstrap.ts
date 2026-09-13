@@ -355,6 +355,14 @@ export const MARKET_AREA_SQL: string[] = [
   `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "marketArea" TEXT`,
 ]
 
+/**
+ * The shop's social profiles, for the directory listing — not the site.
+ * `{ "facebook": "https://…", … }`, one per platform. See lib/social-links.ts.
+ */
+export const SOCIAL_LINKS_SQL: string[] = [
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "socialLinks" JSONB`,
+]
+
 /** Everything the running code assumes exists. */
 export const SITE_ANALYTICS_SQL: string[] = [
   // Which GA4 property and which Search Console site belong to this shop.
@@ -463,6 +471,7 @@ export const SMS_INBOX_SQL: string[] = [
 export const BOOTSTRAP_SQL: string[] = [
   ...PATH_OVERRIDE_SQL,
   ...MARKET_AREA_SQL,
+  ...SOCIAL_LINKS_SQL,
   ...CALL_TRACKING_SQL,
   ...OFFLINE_CONVERSION_SQL,
   ...CLAIM_FLAGS_SQL,
