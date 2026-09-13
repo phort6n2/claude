@@ -89,6 +89,63 @@ export function coverageSuffix(p: Premises): string {
 }
 
 /**
+ * THE MAP STAYS FOR A SERVICE-AREA BUSINESS; WHAT IT SHOWS CHANGES.
+ *
+ * The first cut of this dropped the whole section, which threw away the one
+ * thing on the page that answers "do they come out this far" — and for a
+ * business whose entire identity is the area it covers, that is the section
+ * that matters most. What has to go is the PIN ON A DOOR and the street
+ * address beside it, not the map.
+ *
+ * THE QUERY IS THE CITY, NOT THE REGION, and the zoom carries the difference.
+ * "Central Florida" is what the headlines say, but handing a region name to
+ * the embed asks Google to resolve something it may resolve oddly or not at
+ * all — and a map that lands in the wrong place is worse than one that is
+ * merely zoomed in. A city always resolves. So when a market area IS named the
+ * map is the same city one step further out, because a named region is by
+ * definition broader than the city it is run from, and the towns themselves
+ * are listed beside the map in text, which is the precise answer anyway.
+ *
+ * This is the same shape as the existing no-profile fallback in `MapSection`,
+ * which already shows "their city, zoomed out — true, useful, nobody else's
+ * pin". A service-area business gets it always, profile or not, because the
+ * alternative for them is a pin on an address that does not take visitors.
+ */
+const CITY_ZOOM = 10
+const REGION_ZOOM = 9
+
+/**
+ * ONLY A SERVICE-AREA BUSINESS GETS THE WIDER FRAME. A shop with no verified
+ * profile reaches this same fallback, and there the map sits beside its own
+ * street address — so the tighter frame is the more useful one, and it is
+ * what that case has always rendered. Widening it too would have been an
+ * unasked change to fourteen sites, made invisibly, while fixing one.
+ */
+export function areaMapQuery(
+  p: Premises,
+  place: { city: string; state: string; marketArea?: string | null }
+): string {
+  const named = (place.marketArea || '').trim()
+  const widerArea = !!named && named.toLowerCase() !== (place.city || '').trim().toLowerCase()
+  const zoom = !hasPremises(p) && widerArea ? REGION_ZOOM : CITY_ZOOM
+  return `${encodeURIComponent(`${place.city}, ${place.state}`)}&z=${zoom}`
+}
+
+/**
+ * The map section's eyebrow and heading when there is no live review feed to
+ * lead with. With one, both shops and service-area businesses lead on the
+ * rating — that is the strongest line either can carry.
+ */
+export function mapIntro(
+  p: Premises,
+  place: { area: string; city: string }
+): { eyebrow: string; heading: string } {
+  return hasPremises(p)
+    ? { eyebrow: 'Find us', heading: `Visit the shop in ${place.city}` }
+    : { eyebrow: 'Where we work', heading: `Serving ${place.area}` }
+}
+
+/**
  * Words that assert premises. Used by the check script to assert that nothing
  * the site can say about a service-area business contains one of them.
  *

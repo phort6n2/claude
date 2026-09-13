@@ -403,6 +403,21 @@ there.
   names it at all. `hasShopLocation` is REQUIRED on that call for the same
   reason `AreaNaming.marketArea` is — an option a page could forget is a page
   that compiles and claims a shop forever.
+- **THE MAP STAYS; WHAT IT SHOWS CHANGES.** Dropping the section was the first
+  answer and it was wrong: for a business whose whole identity is the area it
+  covers, that is the section answering "do they come out this far", which is
+  the only question that visitor has. So the map is their city zoomed out
+  rather than a pin on a door, the head reads "Where we work · Serving
+  {area}", and the card says where they are BASED (city and state, no street,
+  no postcode) with the covered towns beside it. The query is the CITY, never
+  the region — handing "Central Florida" to the embed asks Google to resolve
+  something it may resolve oddly, and a map that lands in the wrong place is
+  worse than one merely zoomed in — so the ZOOM carries the difference
+  instead, and only for a SAB: a shop with no verified profile reaches the
+  same fallback beside its own street address, where the tighter frame is the
+  useful one and is what it has always rendered. A SAB gets the area map
+  whether or not it has a profile, because the name query is what puts the pin
+  on a door.
 - **The JSON-LD drops `streetAddress`, and keeps the locality.** A SAB's own
   Business Profile carries no street (Google's guidance is to hide it), so
   markup that publishes one disagrees with the listing it exists to

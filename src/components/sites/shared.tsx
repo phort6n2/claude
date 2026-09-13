@@ -9,7 +9,14 @@ import { mostMentionedName } from '@/lib/review-names'
 import type { SiteExtras, FaqItem } from '@/lib/site-content'
 import { locationPages } from '@/lib/site-locations'
 import { orderLocationsForCity, mapQuery, type SiteLocation } from '@/lib/client-locations'
-import { coverageSuffix, processStep, processTitle } from '@/lib/site-premises'
+import {
+  areaMapQuery,
+  coverageSuffix,
+  hasPremises,
+  mapIntro,
+  processStep,
+  processTitle,
+} from '@/lib/site-premises'
 import {
   CHIP_DEDUCTIBLE_NOTE,
   CHIP_REPAIRABLE_NOTE,
@@ -1080,8 +1087,13 @@ export function GalleryGrid({ extras }: { extras: SiteExtras | null }) {
  * Map + Google listing section, reference composition: a "Verified on
  * Google" head carrying the live review claim, the map beside a fully
  * furnished listing card (rating block, labeled shop address and service
- * area, listing button). Rendered only for clients with a real shop
- * location; every number comes from live cached review data or the DB.
+ * area, listing button). Every number comes from live cached review data or
+ * the DB.
+ *
+ * A SERVICE-AREA BUSINESS gets the same composition with the area in place of
+ * the address: the map is their city zoomed out rather than a pin on a door,
+ * and the card says where they are BASED and which towns they cover. See
+ * lib/site-premises for why the section stays rather than stripping.
  */
 export function MapSection({
   client,
@@ -1100,16 +1112,24 @@ export function MapSection({
   /** City this page is about, so the shop in it leads. */
   activeCity?: string | null
 }) {
-  /* THE FLAG WINS, AND THAT IS A REVERSAL. This read
+  /* A SERVICE-AREA BUSINESS KEEPS THIS SECTION AND LOSES THE ADDRESS.
+     Dropping it outright was the first answer and it was wrong: for a business
+     whose whole identity is the area it covers, this is the section that
+     answers "do they come out this far", which is the only question that
+     visitor has. So the map shows the area rather than a door, the card lists
+     the towns instead of a street, and every stored ClientLocation row is
+     ignored — THE FLAG WINS, and that is a reversal. This read
      `!client.hasShopLocation && locations.length === 0`, on the reasoning that
-     a stored ClientLocation row is proof of a shop whatever the flag says.
-     That was true while the flag was a default nobody could change; it is now
-     an operator ticking "service-area business — no address customers visit"
-     on the Business tab, and a tick that leaves a map and a street address on
-     the page does not mean anything. A row left behind by an importer is not
-     evidence against the person who just answered the question. */
-  if (!client.hasShopLocation) return null
-  const ordered = orderLocationsForCity(locations, activeCity)
+     a stored row is proof of a shop whatever the flag says. True while the
+     flag was a default nobody could change; it is now an operator ticking
+     "service-area business — no shop customers visit", and a row left behind
+     by an importer is not evidence against the person who just answered the
+     question. */
+  const premises = {
+    hasShopLocation: client.hasShopLocation,
+    offersMobileService: !!offersMobileService,
+  }
+  const ordered = hasPremises(premises) ? orderLocationsForCity(locations, activeCity) : []
   // Multi-shop clients get their own composition; a client with one shop
   // keeps the reference layout exactly, which was tuned against it.
   if (ordered.length > 1) {
@@ -1137,14 +1157,29 @@ export function MapSection({
   // competitor. Until the guard has proven the listing, the embed shows the
   // service area: their city, zoomed out — true, useful, nobody else's pin.
   const hasProfile = !!reviews
-  const areaQuery = `${encodeURIComponent(`${lead?.city || client.city}, ${lead?.state || client.state}`)}&z=10`
-  const query = hasProfile
-    ? lead
-      ? mapQuery(client.businessName, lead)
-      : encodeURIComponent(
-          `${client.businessName}, ${client.streetAddress}, ${client.city}, ${client.state} ${client.postalCode}`
-        )
-    : areaQuery
+  const areaQuery = areaMapQuery(premises, {
+    city: lead?.city || client.city,
+    state: lead?.state || client.state,
+    marketArea: client.marketArea,
+  })
+  /* A service-area business gets the area map ALWAYS, profile or not. The
+     name-based query is what puts a pin on a door, and for them there is no
+     door — a verified profile changes nothing about that, because Google's own
+     guidance for this kind of business is that the listing carries no address
+     either. */
+  const query = !hasPremises(premises)
+    ? areaQuery
+    : hasProfile
+      ? lead
+        ? mapQuery(client.businessName, lead)
+        : encodeURIComponent(
+            `${client.businessName}, ${client.streetAddress}, ${client.city}, ${client.state} ${client.postalCode}`
+          )
+      : areaQuery
+  const intro = mapIntro(premises, {
+    area: headlineArea(client),
+    city: lead?.city || client.city,
+  })
   return (
     <section className="border-t border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
@@ -1159,13 +1194,13 @@ export function MapSection({
                 Verified on Google
               </>
             ) : (
-              'Find us'
+              intro.eyebrow
             )}
           </p>
           <h2 className="text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight text-[var(--tx)]">
             {reviews
               ? `${reviews.rating.toFixed(1)} stars from ${reviews.reviewCount} Google reviews`
-              : `Visit the shop in ${lead?.city || client.city}`}
+              : intro.heading}
           </h2>
           {reviews && (
             <div className="mt-2.5 flex justify-center">
@@ -1175,7 +1210,11 @@ export function MapSection({
         </div>
         <div className="grid lg:grid-cols-[minmax(0,1fr)_380px] gap-6 items-stretch">
           <iframe
-            title={`Map to ${client.businessName}`}
+            title={
+              hasPremises(premises)
+                ? `Map to ${client.businessName}`
+                : `The area ${client.businessName} covers`
+            }
             src={`https://maps.google.com/maps?q=${query}&output=embed`}
             className="w-full min-h-[360px] h-full rounded-[20px] border border-[var(--line-card)]"
             loading="lazy"
@@ -1201,23 +1240,48 @@ export function MapSection({
                 </div>
               </>
             )}
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-[.09em] text-[var(--tx-muted)] mb-1">
-                {lead?.label || client.city} shop
+            {/* THE STREET IS THE ONE THING A SERVICE-AREA BUSINESS CANNOT
+                PRINT HERE. "Based in" names the city, which is true, is what
+                their own Business Profile carries, and is what makes them
+                believable locally — the postcode goes with the street, because
+                together they are an address somebody can set off towards. */}
+            {hasPremises(premises) ? (
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-[.09em] text-[var(--tx-muted)] mb-1">
+                  {lead?.label || client.city} shop
+                </div>
+                <div className="text-sm text-[var(--tx2)] leading-relaxed">
+                  {lead?.streetAddress || client.streetAddress}
+                  <br />
+                  {lead?.city || client.city}, {lead?.state || client.state}{' '}
+                  {lead?.postalCode || client.postalCode}
+                  {lead?.hours && (
+                    <>
+                      <br />
+                      <span className="text-[var(--tx-muted)]">{lead.hours}</span>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="text-sm text-[var(--tx2)] leading-relaxed">
-                {lead?.streetAddress || client.streetAddress}
-                <br />
-                {lead?.city || client.city}, {lead?.state || client.state}{' '}
-                {lead?.postalCode || client.postalCode}
-                {lead?.hours && (
-                  <>
-                    <br />
-                    <span className="text-[var(--tx-muted)]">{lead.hours}</span>
-                  </>
-                )}
+            ) : (
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-[.09em] text-[var(--tx-muted)] mb-1">
+                  Based in
+                </div>
+                <div className="text-sm text-[var(--tx2)] leading-relaxed">
+                  {client.city}, {client.state}
+                  <br />
+                  <span className="text-[var(--tx-muted)]">
+                    {/* Not "there is no shop to visit". A negation still puts
+                        the word on the page, and what the visitor needs is
+                        what DOES happen, not what does not. */}
+                    {offersMobileService
+                      ? 'We come to the vehicle, wherever it is.'
+                      : 'We work across the area below.'}
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
             {areas && areas.length > 0 && (
               <div>
                 <div className="text-[11px] font-bold uppercase tracking-[.09em] text-[var(--tx-muted)] mb-1">
