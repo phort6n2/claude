@@ -1306,6 +1306,39 @@ practice nobody ever did.
   shows. `logoUrl`/`latitude`/`longitude` are in `WRHQ_SYNC_FIELDS` because
   they are RENDERED there now — a logo swapped in one app and not the other is
   the drift nobody notices until a client points at their own listing.
+- **THE DIRECTORY TALKS BACK: shop signals** (`directory-signals.ts`,
+  `directory-signal-types.ts`, `POST /api/webhooks/wrhq/events`,
+  `DirectorySignal`, bootstrap: `DIRECTORY_SIGNAL_SQL`, **Shop signals** in the
+  sidebar). The listing sync runs one way; this is the other. WRHQ fires an
+  event the moment a shop claims a listing, submits one, publishes, buys
+  Featured, drops in city rank or clicks through for an audit, and it had been
+  firing them at nothing — the config existed on that side, the receiver never
+  existed on this one. Needs `WRHQ_EVENT_SECRET` here and the same value as
+  `AGMP_WEBHOOK_SECRET` there, with `AGMP_WEBHOOK_URL` pointed at the route.
+  - **A signal is NOT a Lead.** A Lead is a consumer with a cracked windscreen
+    and belongs to one client; this is a business that might become one, and
+    belongs to nobody — hence no `clientId` and no foreign key. The directory's
+    promise that a consumer quote goes to the one shop it was sent to and is
+    never resold holds on this side too: the payload carries business data
+    only.
+  - **HOT vs WARM decides whether the email means anything.** Hot is a human
+    spending something — money, or the effort of a claim form with their phone
+    number on it. A rank slipping one place at 3am is not a reason to look at
+    your phone.
+  - **The signature is checked over the RAW body**, and an unset secret
+    refuses rather than waving everything through. A missing secret answers
+    **503**, not 401: one says "wrong secret", the other says "no secret
+    here yet", and they are fixed in different places.
+  - **A REPLAY MUST ANSWER 200.** There is no event id and the directory
+    retries on a non-2xx, so `dedupeKey` is type + shop + `occurredAt`, and a
+    `P2002` is reported as a duplicate rather than an error. Answering non-2xx
+    to a duplicate is how a webhook retries for ever over something already
+    stored. The EMAIL failing is not the endpoint failing, for the same
+    reason — and `notifiedAt` is stamped so a retry cannot mail a row twice.
+  - The labels live in a LEAF module because the list is a client component
+    and the library reaches Prisma — the same split as
+    `google-ads-conversion-setup.ts`, and the alternative is two copies of the
+    labels that describe one event differently in the email and on the screen.
 - **The service keys are the DIRECTORY's, not ours** — `chip-repair`,
   `side-window`, `rear-window`. Its endpoint silently drops keys it does not
   recognise, so a wrong name here is not an error anywhere, it just quietly

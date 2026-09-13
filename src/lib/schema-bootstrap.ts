@@ -339,6 +339,41 @@ export const ADS_FINDING_SQL: string[] = [
 ]
 
 /**
+ * Shops on windshieldrepairhq.com that have shown they are in the market.
+ * No clientId and no foreign key on purpose: these are PROSPECTS, and a row
+ * here exists before any Client does. See models/DirectorySignal.
+ */
+export const DIRECTORY_SIGNAL_SQL: string[] = [
+  `CREATE TABLE IF NOT EXISTS "DirectorySignal" (
+     "id"                 TEXT NOT NULL,
+     "type"               TEXT NOT NULL,
+     "dedupeKey"          TEXT NOT NULL,
+     "slug"               TEXT,
+     "name"               TEXT NOT NULL,
+     "email"              TEXT,
+     "phone"              TEXT,
+     "city"               TEXT,
+     "state"              TEXT,
+     "website"            TEXT,
+     "rank"               INTEGER,
+     "totalInCity"        INTEGER,
+     "previousRank"       INTEGER,
+     "monthlyVolume"      TEXT,
+     "frustration"        TEXT,
+     "wantsMarketingHelp" BOOLEAN,
+     "payload"            JSONB,
+     "status"             TEXT NOT NULL DEFAULT 'NEW',
+     "occurredAt"         TIMESTAMP(3) NOT NULL,
+     "createdAt"          TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     "dismissedAt"        TIMESTAMP(3),
+     "notifiedAt"         TIMESTAMP(3),
+     CONSTRAINT "DirectorySignal_pkey" PRIMARY KEY ("id")
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "DirectorySignal_dedupeKey_key" ON "DirectorySignal"("dedupeKey")`,
+  `CREATE INDEX IF NOT EXISTS "DirectorySignal_status_occurredAt_idx" ON "DirectorySignal"("status", "occurredAt")`,
+]
+
+/**
  * A template page served at an address the shop's old site used, so the URL
  * their ads and their rankings already point at keeps working as the page
  * itself rather than as a redirect to it. See lib/site-paths.
@@ -484,6 +519,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...WRHQ_SQL,
   ...PORTAL_SESSION_SQL,
   ...SMS_INBOX_SQL,
+  ...DIRECTORY_SIGNAL_SQL,
 ]
 
 /**

@@ -836,6 +836,63 @@ model AdsFinding {
   @@index([clientId, status])
 }
 
+/// A shop on windshieldrepairhq.com did something that says they are in the
+/// market: claimed their listing, submitted one, bought Featured, lost ground
+/// in their city. The directory fires these the moment they happen; this is
+/// where they land.
+///
+/// NOT a Lead. A Lead is a CONSUMER with a cracked windscreen and belongs to
+/// one client. This is a BUSINESS that might become a client, and it belongs
+/// to nobody — which is why it has no clientId and why the directory's own
+/// rule holds on this side too: consumer quote requests are never forwarded
+/// to the agency as a prospect list, and nothing here carries one.
+model DirectorySignal {
+  id String @id @default(cuid())
+
+  /// shop.claimed / shop.listing_submitted / shop.published / shop.featured /
+  /// shop.rank_dropped / shop.audit_click — the directory's own event names.
+  type String
+  /// type + slug/name + occurredAt. The directory sends no event id, and it
+  /// retries: without this, one claim arriving twice is two rows in the inbox
+  /// and the second one reads as a second shop.
+  dedupeKey String @unique
+
+  /// Directory slug, when the shop already has a listing.
+  slug String?
+  name String
+  email   String?
+  phone   String?
+  city    String?
+  state   String?
+  website String?
+
+  /// City position at the time, for a rank event.
+  rank         Int?
+  totalInCity  Int?
+  previousRank Int?
+
+  /// What the claim form captured. The reason to ring them, in their words.
+  monthlyVolume     String?
+  frustration       String?
+  wantsMarketingHelp Boolean?
+
+  /// The event exactly as it arrived, so a reader bug costs a re-read rather
+  /// than a signal — the same reason the rank payloads are stored raw.
+  payload Json?
+
+  /// NEW → DISMISSED (dealt with, or not worth ringing). Never deleted: the
+  /// history is who has been circling.
+  status      String    @default("NEW")
+  occurredAt  DateTime
+  createdAt   DateTime  @default(now())
+  dismissedAt DateTime?
+  /// Set when the "something new arrived" email went, so a resend or a second
+  /// event in the same minute cannot mail the same signal twice.
+  notifiedAt  DateTime?
+
+  @@index([status, occurredAt])
+}
+
 // ============================================
 // LEAD NOTIFICATIONS (email + SMS)
 //
