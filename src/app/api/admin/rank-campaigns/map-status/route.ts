@@ -8,6 +8,7 @@ import {
   shareTokenResolves,
 } from '@/lib/local-dominator'
 import { whiteLabelEmbedUrl } from '@/lib/rank-embed'
+import { LIVE_STATUSES } from '@/lib/site-preview'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -28,7 +29,7 @@ export async function POST() {
   const shareHost = await localDominatorShareHost()
   const clients = await prisma.client
     .findMany({
-      where: { status: 'ACTIVE', rankTrackingId: { not: null } },
+      where: { status: { in: [...LIVE_STATUSES] }, rankTrackingId: { not: null } },
       select: { id: true, businessName: true, rankTrackingId: true, rankMapUrl: true },
       orderBy: { businessName: 'asc' },
     })

@@ -26,6 +26,7 @@ function looksLikeFirstTuesday(iso: string | null | undefined): boolean {
   return at.getUTCDay() === 2 && at.getTime() - Date.now() < 35 * 24 * 3_600_000
 }
 import { rankWebhookUrl } from '@/lib/local-rank-token'
+import { LIVE_STATUSES, siteIsLive } from '@/lib/site-preview'
 
 /**
  * Every client gets rank tracking, without anyone switching it on.
@@ -50,7 +51,88 @@ export interface EnsureResult {
   mapped: number
   skipped: number
   backfilled: number
+  /** WHO was skipped and why. A count alone is why this went unnoticed. */
+  skippedClients: Array<{ client: string; reason: string }>
   errors: Array<{ client: string; error: string }>
+}
+
+/**
+ * Why this client has no rank campaign — or null when nothing is stopping one.
+ *
+ * THE REASON THIS EXISTS. Rank tracking has no enable step: every client is
+ * supposed to get it, and the daily sweep converges on that. So when a client
+ * does NOT have it, there is nothing anywhere that says so — the sweep counted
+ * a skip and moved on, the admin Rankings page simply did not list the client,
+ * the portal hid its Rankings tab, and the SEO switch said "no campaign yet"
+ * without saying whether that meant "wait until tomorrow" or "never".
+ *
+ * Those two are the whole difference and the operator could not tell them
+ * apart. MAG Mobile is the case that surfaced it.
+ *
+ * Pure: a row in, a verdict out, so `scripts/check-rank-coverage.ts` can hold
+ * every case without a database or a key.
+ */
+export interface RankSetupInput {
+  status: string
+  googlePlaceId: string | null
+  latitude: number | null
+  longitude: number | null
+  rankTrackingId: string | null
+  /** Whether LOCALDOMINATOR_API_KEY is configured at all. */
+  keyConfigured: boolean
+}
+
+export interface RankSetupState {
+  hasCampaign: boolean
+  /** True when a press could create one right now. */
+  canCreate: boolean
+  /** Null when there is nothing to say; otherwise what to do, in words. */
+  problem: string | null
+}
+
+export function rankSetupState(input: RankSetupInput): RankSetupState {
+  if (input.rankTrackingId) {
+    return { hasCampaign: true, canCreate: false, problem: null }
+  }
+
+  // PAUSED is the kill switch, the same as it is for the site and the
+  // directory listing. ONBOARDING is NOT: those sites are live and taking
+  // leads, so they are tracked — see LIVE_STATUSES.
+  if (!siteIsLive(input.status)) {
+    return {
+      hasCampaign: false,
+      canCreate: false,
+      problem: `This client is ${input.status}, so nothing is scanned. Set the status on the Business tab.`,
+    }
+  }
+  if (!input.keyConfigured) {
+    return {
+      hasCampaign: false,
+      canCreate: false,
+      problem:
+        'No Local Dominator API key is configured, so rank tracking is off for every client (Settings → API keys).',
+    }
+  }
+  if (!input.googlePlaceId) {
+    return {
+      hasCampaign: false,
+      canCreate: false,
+      problem:
+        'No Google Business Profile is linked, and the grid is centred on it. Search for the business on the Business tab.',
+    }
+  }
+  // Coordinates are NOT a blocker: the sweep backfills them from the Place ID.
+  // Said out loud anyway, because it is the one case where a press can fail
+  // for a reason nobody could have predicted from this screen.
+  if (input.latitude === null || input.longitude === null) {
+    return {
+      hasCampaign: false,
+      canCreate: true,
+      problem:
+        'No coordinates stored yet — they will be read from the linked Business Profile when the campaign is created.',
+    }
+  }
+  return { hasCampaign: false, canCreate: true, problem: null }
 }
 
 /** Coordinates from the stored Place ID, for clients captured before we kept them. */
@@ -160,8 +242,109 @@ export async function syncCampaignTier(
   return { ok: true, message: parts.join(' · ') }
 }
 
+/**
+ * Create the campaign for ONE named client, now.
+ *
+ * The sweep is the only thing that has ever created a campaign, and it runs at
+ * 04:00 UTC. So an operator who fixes whatever was blocking a client — links
+ * the Business Profile, takes the client off PAUSED, flips the SEO plan — has
+ * no way to see the result today, and no way to tell a fixed client from one
+ * that is still blocked. This is the same code the sweep runs per client, so
+ * there is one creation path and a press cannot behave differently from
+ * tonight's run.
+ *
+ * Costs credits, so it is only ever a deliberate press or the sweep.
+ */
+export async function createRankCampaignFor(
+  clientId: string,
+  origin: string
+): Promise<{ ok: boolean; message: string }> {
+  const keyConfigured = !!(await localDominatorKey())
+  const client = await prisma.client
+    .findUnique({
+      where: { id: clientId },
+      select: {
+        businessName: true,
+        status: true,
+        googlePlaceId: true,
+        latitude: true,
+        longitude: true,
+        rankTrackingId: true,
+        seoClient: true,
+        rankKeywords: true,
+        offersMobileService: true,
+        offersSideWindowRepair: true,
+      },
+    })
+    .catch(() => null)
+  if (!client) return { ok: false, message: 'Client not found.' }
+
+  const state = rankSetupState({ ...client, keyConfigured })
+  if (state.hasCampaign) {
+    return { ok: true, message: 'This client already has a campaign — nothing to create.' }
+  }
+  if (!state.canCreate) {
+    return { ok: false, message: state.problem || 'Cannot create a campaign for this client.' }
+  }
+
+  let lat = client.latitude
+  let lng = client.longitude
+  if ((lat === null || lng === null) && client.googlePlaceId) {
+    const coords = await backfillCoordinates(clientId, client.googlePlaceId)
+    if (coords) {
+      lat = coords.latitude
+      lng = coords.longitude
+    }
+  }
+  if (lat === null || lng === null) {
+    return {
+      ok: false,
+      message:
+        'Google returned no coordinates for the linked Business Profile, so there is no grid centre. Re-pick the business on the Business tab.',
+    }
+  }
+
+  const tier = client.seoClient ? 'seo' : 'standard'
+  const keywords =
+    client.rankKeywords.length > 0
+      ? client.rankKeywords
+      : suggestedKeywords(tier, {
+          offersMobileService: client.offersMobileService,
+          offersSideWindowRepair: client.offersSideWindowRepair,
+        })
+
+  const created = await createScheduledScan({
+    googlePlaceId: client.googlePlaceId as string,
+    latitude: lat,
+    longitude: lng,
+    searchTerms: keywords,
+    tier,
+    webhookUrl: rankWebhookUrl(origin, clientId),
+    alias: client.businessName,
+  })
+  if (!created.ok) return { ok: false, message: created.error }
+
+  await prisma.client.update({
+    where: { id: clientId },
+    data: { rankTrackingId: created.id, rankKeywords: keywords },
+  })
+  console.log(`[RankCampaigns] ${client.businessName}: ${tier} campaign ${created.id} (on demand)`)
+
+  return {
+    ok: true,
+    message: `Created — ${tier === 'seo' ? 'weekly' : 'monthly'} on ${keywords.join(', ')}. The first scan runs on its schedule; the map appears once a run completes.`,
+  }
+}
+
 export async function ensureRankCampaigns(origin: string): Promise<EnsureResult> {
-  const result: EnsureResult = { created: 0, mapped: 0, skipped: 0, backfilled: 0, errors: [] }
+  const result: EnsureResult = {
+    created: 0,
+    mapped: 0,
+    skipped: 0,
+    backfilled: 0,
+    skippedClients: [],
+    errors: [],
+  }
 
   if (!(await localDominatorKey())) {
     // Not configured is not an error: the whole feature is simply off until
@@ -169,9 +352,14 @@ export async function ensureRankCampaigns(origin: string): Promise<EnsureResult>
     return result
   }
 
+  // NOT filtered on googlePlaceId. It used to be, which meant a client with
+  // no linked Business Profile never appeared in this loop at all — not even
+  // as a skip — so the one client who could never be tracked was the one
+  // client this sweep never mentioned.
   const clients = await prisma.client.findMany({
-    where: { status: 'ACTIVE', googlePlaceId: { not: null }, rankTrackingId: null },
+    where: { status: { in: [...LIVE_STATUSES] }, rankTrackingId: null },
     select: {
+      status: true,
       id: true,
       businessName: true,
       googlePlaceId: true,
@@ -193,6 +381,16 @@ export async function ensureRankCampaigns(origin: string): Promise<EnsureResult>
   let monthlyCron: string | null = null
 
   for (const client of clients) {
+    const state = rankSetupState({ ...client, rankTrackingId: null, keyConfigured: true })
+    if (!state.canCreate) {
+      result.skipped++
+      result.skippedClients.push({
+        client: client.businessName,
+        reason: state.problem || 'not eligible',
+      })
+      continue
+    }
+
     let lat = client.latitude
     let lng = client.longitude
 
@@ -206,9 +404,14 @@ export async function ensureRankCampaigns(origin: string): Promise<EnsureResult>
     }
 
     if (lat === null || lng === null) {
-      // No grid centre, no scan. Nothing is broken; the client simply has no
-      // usable Place ID yet.
+      // A linked Business Profile that Google will not give coordinates for.
+      // Named, not just counted: this is indistinguishable from "tracked" on
+      // every screen in the admin, and it never resolves itself.
       result.skipped++
+      result.skippedClients.push({
+        client: client.businessName,
+        reason: 'Google returned no coordinates for the linked Business Profile.',
+      })
       continue
     }
 
@@ -270,7 +473,7 @@ export async function ensureRankCampaigns(origin: string): Promise<EnsureResult>
   // as runs complete, and a stored URL that is never re-read goes stale.
   const withCampaigns = await prisma.client
     .findMany({
-      where: { status: 'ACTIVE', rankTrackingId: { not: null } },
+      where: { status: { in: [...LIVE_STATUSES] }, rankTrackingId: { not: null } },
       select: { id: true, businessName: true, rankTrackingId: true, rankMapUrl: true },
     })
     .catch(() => [])

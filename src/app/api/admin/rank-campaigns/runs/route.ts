@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
 import { campaignRuns } from '@/lib/local-dominator'
+import { LIVE_STATUSES } from '@/lib/site-preview'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
         select: { id: true, businessName: true, rankTrackingId: true },
       })
     : await prisma.client.findFirst({
-        where: { status: 'ACTIVE', rankTrackingId: { not: null }, seoClient: true },
+        where: { status: { in: [...LIVE_STATUSES] }, rankTrackingId: { not: null }, seoClient: true },
         select: { id: true, businessName: true, rankTrackingId: true },
         orderBy: { businessName: 'asc' },
       })

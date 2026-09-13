@@ -55,11 +55,17 @@ export default function SeoTierCard({
           // The campaign's own words when there was one to change; otherwise
           // say plainly that nothing was scanned yet, rather than implying a
           // change that did not happen.
+          //
+          // AND POINT AT THE CARD ABOVE. "No campaign yet" was true and
+          // useless: it does not say whether one is coming tonight or whether
+          // something is blocking it forever, and the operator reads the tick
+          // as having set rankings up. That is the report this came from —
+          // SEO switched on, no rankings, no tab, nothing saying why.
           message:
             data.campaignSync ||
-            (next
-              ? 'Saved. No campaign yet — the next one created will be weekly on four keywords.'
-              : 'Saved. No campaign yet — the next one created will be monthly on two keywords.'),
+            `Saved — the plan, not the scan. There is no campaign for this client yet: see “Rank tracking” above, which says what is missing and can create one ${
+              next ? '(weekly on four keywords)' : '(monthly on two keywords)'
+            }.`,
         })
       }
     } catch {
