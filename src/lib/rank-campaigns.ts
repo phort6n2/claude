@@ -27,6 +27,7 @@ function looksLikeFirstTuesday(iso: string | null | undefined): boolean {
 }
 import { rankWebhookUrl } from '@/lib/local-rank-token'
 import { LIVE_STATUSES, siteIsLive } from '@/lib/site-preview'
+import { placeLocation } from '@/lib/place-location'
 
 /**
  * Every client gets rank tracking, without anyone switching it on.
@@ -135,35 +136,40 @@ export function rankSetupState(input: RankSetupInput): RankSetupState {
   return { hasCampaign: false, canCreate: true, problem: null }
 }
 
-/** Coordinates from the stored Place ID, for clients captured before we kept them. */
+/**
+ * Coordinates from the stored Place ID, for clients captured before we kept
+ * them — and now for the ones Google will not place at all.
+ *
+ * Returns the REASON on failure rather than a bare null. The one-line version
+ * of this swallowed a REQUEST_DENIED and returned null, so "your key is not
+ * authorized for that endpoint" and "this place has no coordinates" arrived at
+ * the operator as the same sentence, and the sentence blamed the business.
+ * See `place-location.ts`.
+ */
 async function backfillCoordinates(
   clientId: string,
   placeId: string
-): Promise<{ latitude: number; longitude: number } | null> {
+): Promise<{ ok: true; latitude: number; longitude: number } | { ok: false; error: string }> {
   const setting = await prisma.setting
     .findUnique({ where: { key: 'GOOGLE_PLACES_API_KEY' } })
     .catch(() => null)
   const apiKey = setting?.encrypted
     ? decrypt(setting.value)
     : setting?.value || process.env.GOOGLE_PLACES_API_KEY
-  if (!apiKey) return null
-
-  try {
-    const res = await fetch(
-      `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=geometry&key=${apiKey}`,
-      { signal: AbortSignal.timeout(8_000) }
-    )
-    if (!res.ok) return null
-    const data = await res.json()
-    const loc = data?.result?.geometry?.location
-    if (typeof loc?.lat !== 'number' || typeof loc?.lng !== 'number') return null
-    await prisma.client
-      .update({ where: { id: clientId }, data: { latitude: loc.lat, longitude: loc.lng } })
-      .catch(() => {})
-    return { latitude: loc.lat, longitude: loc.lng }
-  } catch {
-    return null
+  if (!apiKey) {
+    return { ok: false, error: 'No Google Places API key is configured (Settings → API keys).' }
   }
+
+  const found = await placeLocation(placeId, apiKey)
+  if (!found.ok) return { ok: false, error: found.error }
+
+  await prisma.client
+    .update({
+      where: { id: clientId },
+      data: { latitude: found.location.latitude, longitude: found.location.longitude },
+    })
+    .catch(() => {})
+  return { ok: true, ...found.location }
 }
 
 /**
@@ -257,7 +263,15 @@ export async function syncCampaignTier(
  */
 export async function createRankCampaignFor(
   clientId: string,
-  origin: string
+  origin: string,
+  /**
+   * A grid centre the operator supplied, which OVERRIDES the lookup.
+   *
+   * For a service-area business this is the right answer rather than a
+   * fallback: there is no storefront, so the centre of the grid is the middle
+   * of the area they actually serve — a judgement only the operator can make.
+   */
+  centre?: { latitude: number; longitude: number }
 ): Promise<{ ok: boolean; message: string }> {
   const keyConfigured = !!(await localDominatorKey())
   const client = await prisma.client
@@ -289,18 +303,36 @@ export async function createRankCampaignFor(
 
   let lat = client.latitude
   let lng = client.longitude
-  if ((lat === null || lng === null) && client.googlePlaceId) {
+  let lookupError = ''
+
+  if (centre) {
+    // Typed by an operator, so it is stored: the next press, the nightly
+    // sweep and every later respace all need the same centre, and a value
+    // that lived only for this request would have to be typed again.
+    lat = centre.latitude
+    lng = centre.longitude
+    await prisma.client
+      .update({ where: { id: clientId }, data: { latitude: lat, longitude: lng } })
+      .catch(() => {})
+  } else if ((lat === null || lng === null) && client.googlePlaceId) {
     const coords = await backfillCoordinates(clientId, client.googlePlaceId)
-    if (coords) {
+    if (coords.ok) {
       lat = coords.latitude
       lng = coords.longitude
+    } else {
+      lookupError = coords.error
     }
   }
+
   if (lat === null || lng === null) {
+    // GOOGLE'S OWN WORDS, not a claim about the business. This message used to
+    // read "Google returned no coordinates for the linked Business Profile",
+    // which is a statement about the shop, and for a service-area business it
+    // was the wrong one — there is no storefront to have coordinates, and the
+    // centre of the grid was never Google's to decide.
     return {
       ok: false,
-      message:
-        'Google returned no coordinates for the linked Business Profile, so there is no grid centre. Re-pick the business on the Business tab.',
+      message: `No grid centre for this client. ${lookupError || 'No coordinates are stored and no Business Profile is linked.'} A shop with no storefront often has none — paste the grid centre below instead, which for a mobile business is the middle of the area they actually cover.`,
     }
   }
 
@@ -393,24 +425,28 @@ export async function ensureRankCampaigns(origin: string): Promise<EnsureResult>
 
     let lat = client.latitude
     let lng = client.longitude
+    let lookupError = ''
 
     if ((lat === null || lng === null) && client.googlePlaceId) {
       const coords = await backfillCoordinates(client.id, client.googlePlaceId)
-      if (coords) {
+      if (coords.ok) {
         lat = coords.latitude
         lng = coords.longitude
         result.backfilled++
+      } else {
+        lookupError = coords.error
       }
     }
 
     if (lat === null || lng === null) {
-      // A linked Business Profile that Google will not give coordinates for.
-      // Named, not just counted: this is indistinguishable from "tracked" on
-      // every screen in the admin, and it never resolves itself.
+      // A linked Business Profile that Google will not place. Named WITH
+      // GOOGLE'S REASON, not just counted: a refused key and a shop with no
+      // storefront are different problems with different fixes, and the old
+      // message asserted the second whichever it was.
       result.skipped++
       result.skippedClients.push({
         client: client.businessName,
-        reason: 'Google returned no coordinates for the linked Business Profile.',
+        reason: lookupError || 'No coordinates, and no grid centre stored.',
       })
       continue
     }

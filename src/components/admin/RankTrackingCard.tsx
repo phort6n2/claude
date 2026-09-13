@@ -43,12 +43,17 @@ export default function RankTrackingCard({
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null)
   const [created, setCreated] = useState(false)
+  const [centre, setCentre] = useState('')
 
   async function createNow() {
     setBusy(true)
     setResult(null)
     try {
-      const res = await fetch(`/api/clients/${clientId}/rank-campaign`, { method: 'POST' })
+      const res = await fetch(`/api/clients/${clientId}/rank-campaign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(centre.trim() ? { centre } : {}),
+      })
       if (!res.ok) throw new Error(await errorFrom(res, 'Could not create it'))
       const data = await res.json()
       setResult({ ok: true, message: data.message || 'Created.' })
@@ -121,6 +126,33 @@ export default function RankTrackingCard({
               Fix the above and press again — or leave it, and the nightly sweep picks it up on its
               own once it can.
             </p>
+          )}
+
+          {/* THE GRID CENTRE, BY HAND — and for a service-area business this
+              is the right answer rather than a workaround. A shop with no
+              storefront has no address on its Business Profile, so Google has
+              no point to give us, and the centre of a mobile shop's grid is
+              the middle of the area they actually cover: a judgement nobody
+              but the operator can make. Shown whenever a press is possible,
+              because the lookup failing is only discoverable by pressing. */}
+          {canCreate && (
+            <div className="pt-1">
+              <label className="block text-xs font-semibold text-gray-600 mb-1">
+                Grid centre (optional — required for a shop with no storefront)
+              </label>
+              <input
+                className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                placeholder="Paste the Google Maps URL, or 33.6595, -117.9988"
+                value={centre}
+                onChange={(e) => setCentre(e.target.value)}
+                disabled={busy}
+              />
+              <p className="mt-1 mb-0 text-xs text-gray-500">
+                Leave empty to use the linked Business Profile. Mobile-only shops usually have no
+                point on the map, so centre it on the middle of their service area — open Google
+                Maps there and copy the address bar.
+              </p>
+            </div>
           )}
         </div>
       )}
