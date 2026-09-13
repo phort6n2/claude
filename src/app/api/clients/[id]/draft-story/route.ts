@@ -5,6 +5,7 @@ import { secretSetting } from '@/lib/secret-settings'
 import { asChapters } from '@/lib/site-content'
 import {
   MAX_DRAFT_SECTIONS,
+  parseStoryResponse,
   screenStory,
   storyPrompt,
   type StoryInput,
@@ -104,12 +105,17 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   }
 
   let sections: Array<Record<string, unknown>>
+  let cutOff = false
   try {
     const { default: Anthropic } = await import('@anthropic-ai/sdk')
     const anthropic = new Anthropic({ apiKey })
     const message = await anthropic.messages.create({
       model: 'claude-opus-5',
-      max_tokens: 2000,
+      // Three sections of ~130 words need nowhere near this. The ceiling is
+      // high because the FIRST real press came back unreadable, and a budget
+      // that only just fits turns a slightly long draft into a total failure
+      // — the tokens are only spent if they are used.
+      max_tokens: 6000,
       messages: [{ role: 'user', content: storyPrompt(input) }],
     })
     if (message.stop_reason === 'refusal') {
@@ -117,17 +123,42 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
     const block = message.content.find((b) => b.type === 'text')
     if (!block || block.type !== 'text') {
+      console.error('[draft-story] no text block; stop_reason=%s', message.stop_reason)
       return NextResponse.json({ error: 'No text in the response.' }, { status: 502 })
     }
-    const match = block.text.match(/\[[\s\S]*\]/)
-    if (!match) {
-      return NextResponse.json({ error: 'Could not read the draft that came back.' }, { status: 502 })
+
+    const parsed = parseStoryResponse(block.text)
+    if (!parsed.ok) {
+      // THE LOG IS THE POINT. The first version of this answered "Could not
+      // read the draft that came back" and logged nothing at all, so the one
+      // fact that settles it — what actually came back — was gone, and the
+      // only way to guess was to press the button again.
+      console.error(
+        '[draft-story] %s (stop_reason=%s, out=%d tokens): %s\n--- raw ---\n%s',
+        parsed.kind,
+        message.stop_reason,
+        message.usage?.output_tokens ?? -1,
+        parsed.detail,
+        block.text.slice(0, 2000)
+      )
+      // Each of these has a different fix, so each says something different.
+      const said =
+        parsed.kind === 'truncated'
+          ? 'The draft was cut off before any section finished. Press it again.'
+          : parsed.kind === 'unparseable'
+            ? `The draft came back malformed (${parsed.detail}). Press it again.`
+            : `The model answered in prose rather than sections: ${parsed.detail}`
+      return NextResponse.json({ error: said }, { status: 502 })
     }
-    const parsed = JSON.parse(match[0]) as unknown
-    if (!Array.isArray(parsed)) {
-      return NextResponse.json({ error: 'The draft was not a list of sections.' }, { status: 502 })
+    sections = parsed.sections
+    cutOff = parsed.truncated
+    if (cutOff) {
+      console.warn(
+        '[draft-story] response truncated (stop_reason=%s); salvaged %d complete section(s)',
+        message.stop_reason,
+        sections.length
+      )
     }
-    sections = parsed as Array<Record<string, unknown>>
   } catch (error) {
     console.error('Story section draft failed:', error)
     return NextResponse.json(
@@ -144,8 +175,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   // fires silently looks exactly like a model that wrote two sections instead
   // of three, and the operator's next move — press it again — is the one that
   // cannot help.
+  const shortBecauseCutOff = cutOff
+    ? ' The draft was cut off part-way, so there may be fewer than usual — press it again for another.'
+    : ''
+
   const note = kept.length
-    ? `Drafted ${kept.length} section${kept.length === 1 ? '' : 's'} from what this app already knows about the shop.${
+    ? `Drafted ${kept.length} section${kept.length === 1 ? '' : 's'} from what this app already knows about the shop.${shortBecauseCutOff}${
         dropped.length
           ? ` ${dropped.length} more ${dropped.length === 1 ? 'was' : 'were'} thrown away: ${dropped
               .map((d) => `“${d.heading}” ${d.reason}`)
