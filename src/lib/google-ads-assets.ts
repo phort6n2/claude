@@ -1,5 +1,14 @@
 import { adsSearch } from '@/lib/google-ads'
+import { prisma } from '@/lib/db'
+import { getResponseTime } from '@/lib/response-time'
 import { fileFindings, type FindingDraft, type DailyRunSummary } from '@/lib/google-ads-checks'
+import {
+  ASSET_CLAIM_CHECK,
+  assetClaimProblems,
+  evaluateAssetClaims,
+  type AdCopyLine,
+  type ClaimFacts,
+} from '@/lib/google-ads-asset-claims'
 
 /**
  * Does every campaign carry the assets it should?
@@ -37,10 +46,29 @@ import { fileFindings, type FindingDraft, type DailyRunSummary } from '@/lib/goo
 export const ASSET_STANDARD = {
   /** Below this the extension cannot serve at all. */
   minimums: { sitelink: 2, callout: 2, structuredSnippet: 1 },
-  targets: { sitelink: 6, callout: 4, structuredSnippet: 2, call: 1, image: 4 },
+  targets: {
+    sitelink: 6,
+    callout: 4,
+    structuredSnippet: 2,
+    call: 1,
+    image: 4,
+  },
+  /**
+   * COUNTED BUT NOT REQUIRED. A business name and logo are part of what a
+   * search ad can show now and the audit could not see them at all, so they
+   * are counted and reported — but they are deliberately NOT targets, because
+   * the field_type enum spellings here have not been verified against a live
+   * account. A target built on a guessed enum counts zero forever and files a
+   * finding nobody can ever clear, which is precisely how a check teaches
+   * people to scroll past it. Promote them once a real account confirms the
+   * names.
+   */
+  reported: { businessName: 1, businessLogo: 1 },
 } as const
 
-export type AssetKind = keyof typeof ASSET_STANDARD.targets
+export type AssetKind =
+  | keyof typeof ASSET_STANDARD.targets
+  | keyof typeof ASSET_STANDARD.reported
 
 /** What each one is called on screen, so a finding reads like the interface. */
 const LABELS: Record<AssetKind, string> = {
@@ -49,15 +77,29 @@ const LABELS: Record<AssetKind, string> = {
   structuredSnippet: 'structured snippets',
   call: 'call asset',
   image: 'images',
+  businessName: 'business name',
+  businessLogo: 'business logo',
 }
 
-/** Google's field_type enum → our key. Anything else is ignored. */
+/**
+ * Google's field_type enum → our key. Anything else is ignored.
+ *
+ * BUSINESS_NAME and BUSINESS_LOGO are here because they are part of what a
+ * search ad can show now, and they were invisible to this audit — an account
+ * with neither passed the coverage check with nothing to say about it. They
+ * count as one each and never gate serving, so a client missing them gets a
+ * line in an existing finding rather than a new alarm.
+ */
 const FIELD_TYPES: Record<string, AssetKind> = {
   SITELINK: 'sitelink',
   CALLOUT: 'callout',
   STRUCTURED_SNIPPET: 'structuredSnippet',
   CALL: 'call',
   IMAGE: 'image',
+  BUSINESS_NAME: 'businessName',
+  BUSINESS_LOGO: 'businessLogo',
+  LOGO: 'businessLogo',
+  LANDSCAPE_LOGO: 'businessLogo',
 }
 
 export type AssetCounts = Record<AssetKind, number>
@@ -68,6 +110,8 @@ export const emptyCounts = (): AssetCounts => ({
   structuredSnippet: 0,
   call: 0,
   image: 0,
+  businessName: 0,
+  businessLogo: 0,
 })
 
 export interface CampaignAssets {
@@ -130,9 +174,10 @@ export interface AssetShortfall {
 /** Every asset a campaign is short of, in the order they matter. */
 export function shortfalls(campaign: CampaignAssets, account: AssetCounts): AssetShortfall[] {
   const out: AssetShortfall[] = []
-  for (const kind of Object.keys(ASSET_STANDARD.targets) as AssetKind[]) {
+  const targets = ASSET_STANDARD.targets as Record<string, number>
+  for (const kind of Object.keys(targets) as AssetKind[]) {
     const { count, level } = effective(campaign.own, account, kind)
-    const target = ASSET_STANDARD.targets[kind]
+    const target = targets[kind]
     if (count >= target) continue
     const min = (ASSET_STANDARD.minimums as Partial<Record<AssetKind, number>>)[kind]
     out.push({
@@ -179,7 +224,10 @@ export function evaluateAssets(
       title: `${campaign.name}: ${summary}`,
       detail: cannotServe.length
         ? `Below what Google needs to show them at all: ${cannotServe
-            .map((m) => `${m.label} (${m.have}, needs ${ASSET_STANDARD.minimums[m.kind as keyof typeof ASSET_STANDARD.minimums]})`)
+            .map(
+              (m) =>
+                `${m.label} (${m.have}, needs ${(ASSET_STANDARD.minimums as Record<string, number>)[m.kind]})`
+            )
             .join(', ')}. The rest of the ad is being served without them.`
         : 'These serve, but below the count Google recommends — the ad takes less space than a competitor with a full set.',
       evidence: {
@@ -197,6 +245,11 @@ export function evaluateAssets(
           belowServingMinimum: m.belowServingMinimum,
         })),
         standard: ASSET_STANDARD,
+        // Counted, not required — see ASSET_STANDARD.reported.
+        alsoPresent: {
+          businessName: effective(campaign.own, account, 'businessName').count,
+          businessLogo: effective(campaign.own, account, 'businessLogo').count,
+        },
       },
     })
   }
@@ -268,6 +321,154 @@ export function countAssets(rows: Row[], campaignPath?: string): Map<string, Ass
     out.set(key, counts)
   }
   return out
+}
+
+/**
+ * Asset rows → lines of copy with a place to edit them.
+ *
+ * Each kind carries its text in a different field, and a sitelink carries
+ * THREE — the link text and two descriptions — which is where most of the
+ * claims actually live: "Windshield Replacement" is harmless, and the
+ * "$0 with most FL insurance" underneath it is the whole point of checking.
+ * A structured snippet's values are a list, and each value is a claim on its
+ * own, so they are flattened rather than joined.
+ */
+export function parseAssetCopy(rows: Row[], level: 'campaign' | 'account'): AdCopyLine[] {
+  const lines: AdCopyLine[] = []
+  for (const row of rows) {
+    const campaign = level === 'campaign' ? str(get(row, 'campaign.name')) : undefined
+    const kind = str(get(row, `${level === 'campaign' ? 'campaignAsset' : 'customerAsset'}.fieldType`))
+    const push = (where: string, text: unknown) => {
+      const value = str(text)
+      if (value) lines.push({ where, text: value, ...(campaign ? { campaign } : {}) })
+    }
+
+    const linkText = str(get(row, 'asset.sitelinkAsset.linkText'))
+    if (linkText) {
+      const label = `Sitelink “${linkText}”`
+      push(label, linkText)
+      push(`${label} line 1`, get(row, 'asset.sitelinkAsset.description1'))
+      push(`${label} line 2`, get(row, 'asset.sitelinkAsset.description2'))
+      continue
+    }
+
+    const callout = get(row, 'asset.calloutAsset.calloutText')
+    if (str(callout)) {
+      push('Callout', callout)
+      continue
+    }
+
+    const header = str(get(row, 'asset.structuredSnippetAsset.header'))
+    const values = get(row, 'asset.structuredSnippetAsset.values')
+    if (Array.isArray(values)) {
+      for (const value of values) {
+        push(`Structured snippet (${header || 'values'})`, value)
+      }
+      continue
+    }
+
+    const phone = get(row, 'asset.callAsset.phoneNumber')
+    if (str(phone)) {
+      push('Call asset', phone)
+      continue
+    }
+
+    // A kind with no text of its own (an image, a logo). Nothing to read.
+    if (!kind) continue
+  }
+  return lines
+}
+
+/** RSA headlines and descriptions as lines of copy, for the same screen. */
+export function rsaCopy(rows: Row[]): AdCopyLine[] {
+  const lines: AdCopyLine[] = []
+  const seen = new Set<string>()
+  for (const row of rows) {
+    const campaign = str(get(row, 'campaign.name'))
+    for (const [field, label] of [
+      ['ad_group_ad.ad.responsive_search_ad.headlines', 'RSA headline'],
+      ['ad_group_ad.ad.responsive_search_ad.descriptions', 'RSA description'],
+    ] as const) {
+      const parts = get(row, field)
+      if (!Array.isArray(parts)) continue
+      for (const part of parts) {
+        const text = str((part as { text?: unknown })?.text)
+        // The same headline is on every ad in every ad group; one line each.
+        const key = `${label}|${text}`
+        if (!text || seen.has(key)) continue
+        seen.add(key)
+        lines.push({ where: label, text, ...(campaign ? { campaign } : {}) })
+      }
+    }
+  }
+  return lines
+}
+
+/**
+ * The facts the copy is checked against, read once per client.
+ *
+ * Every one of these is either operator-entered or measured. `knownPhones` is
+ * the list a call asset is allowed to name: the real line, whatever the site
+ * displays, and every tracking number this app has bought for them.
+ */
+async function claimFacts(clientId: string): Promise<ClaimFacts | null> {
+  const client = await prisma.client
+    .findUnique({
+      where: { id: clientId },
+      select: {
+        state: true,
+        phone: true,
+        siteDisplayPhone: true,
+        serviceAreas: true,
+        offersMobileService: true,
+        filesInsuranceClaims: true,
+        smsCapable: true,
+        offersWindshieldReplacement: true,
+        offersWindshieldRepair: true,
+        offersRockChipRepair: true,
+        offersSideWindowRepair: true,
+        offersBackWindowRepair: true,
+        offersSunroofRepair: true,
+        offersAdasCalibration: true,
+        locations: { select: { city: true, phone: true } },
+        trackingNumbers: { select: { phoneNumber: true } },
+        siteContent: { select: { warrantyText: true } },
+      },
+    })
+    .catch(() => null)
+  if (!client) return null
+
+  /* MEASURED, and only when there is enough of it to mean anything. A median
+     from three leads is not evidence that a shop is slow, and a finding built
+     on it would be argued with correctly. */
+  const stats = await getResponseTime(clientId).catch(() => null)
+  const response = stats && stats.measured >= 8 ? stats.medianMinutes : null
+
+  return {
+    state: client.state,
+    serviceAreas: client.serviceAreas || [],
+    shopCities: client.locations.map((l) => l.city).filter(Boolean),
+    offersMobileService: client.offersMobileService,
+    filesInsuranceClaims: client.filesInsuranceClaims,
+    smsCapable: client.smsCapable,
+    hasWarrantyTerms: !!client.siteContent?.warrantyText?.trim(),
+    services: {
+      offersWindshieldReplacement: client.offersWindshieldReplacement,
+      offersWindshieldRepair: client.offersWindshieldRepair,
+      offersRockChipRepair: client.offersRockChipRepair,
+      offersSideWindowRepair: client.offersSideWindowRepair,
+      offersBackWindowRepair: client.offersBackWindowRepair,
+      offersSunroofRepair: client.offersSunroofRepair,
+      offersAdasCalibration: client.offersAdasCalibration,
+    },
+    knownPhones: [
+      client.phone,
+      client.siteDisplayPhone,
+      ...client.locations.map((l) => l.phone),
+      ...client.trackingNumbers.map((t) => t.phoneNumber),
+    ].filter((p): p is string => !!p),
+    medianResponseMinutes: response,
+  }
 }
 
 export function parseAdGroupAds(rows: Row[]): AdGroupAds[] {
@@ -363,6 +564,31 @@ export async function checkCampaignAssets(
     return
   }
 
+  /* THE ASSET TEXT, which this audit never read. Counting them proved an
+     account had a full set and said nothing about a full set advertising work
+     the shop does not do. Its own query and its own failure path: the copy
+     check is worth having, and it is not worth losing the COUNT check when
+     Google will not return the text — so a failure here is reported and the
+     coverage findings above still file. */
+  const copyFields =
+    `asset.sitelink_asset.link_text, asset.sitelink_asset.description1,
+     asset.sitelink_asset.description2, asset.callout_asset.callout_text,
+     asset.structured_snippet_asset.header, asset.structured_snippet_asset.values,
+     asset.call_asset.phone_number`
+  const [campaignCopy, accountCopy] = await Promise.all([
+    adsSearch(
+      customerId,
+      `SELECT campaign.name, campaign_asset.field_type, ${copyFields}
+       FROM campaign_asset
+       WHERE campaign_asset.status = 'ENABLED' AND campaign.status = 'ENABLED'`
+    ),
+    adsSearch(
+      customerId,
+      `SELECT customer_asset.field_type, ${copyFields}
+       FROM customer_asset WHERE customer_asset.status = 'ENABLED'`
+    ),
+  ])
+
   const account = countAssets(accountRows.rows).get('') ?? emptyCounts()
   const perCampaign = countAssets(campaignAssetRows.rows, 'campaign.id')
   const campaigns: CampaignAssets[] = campaignRows.rows.map((row) => {
@@ -375,12 +601,42 @@ export async function checkCampaignAssets(
     }
   })
 
+  const drafts = evaluateAssets(campaigns, account, parseAdGroupAds(adRows.rows))
+  const judged = new Set([CAMPAIGN_ASSET_CHECK, AD_GROUP_ADS_CHECK])
+
+  /* WHAT THE ASSETS SAY. Only when the text actually came back: a check that
+     is told it "ran" while its fetch failed auto-resolves every finding it
+     filed last week, which is the rule the whole sweep is built on. So
+     ASSET_CLAIM_CHECK joins `judged` here and nowhere else. */
+  if (campaignCopy.ok && accountCopy.ok) {
+    const facts = await claimFacts(client.id)
+    if (facts) {
+      const lines: AdCopyLine[] = [
+        ...parseAssetCopy(campaignCopy.rows, 'campaign'),
+        ...parseAssetCopy(accountCopy.rows, 'account'),
+        // THE RSA TEXT IS ALREADY IN HAND, and a headline makes exactly the
+        // same claims a callout does — "Same-Day Service" is no more true in
+        // one than the other. Free coverage of the copy that gets read most.
+        ...rsaCopy(adRows.rows),
+      ]
+      drafts.push(...evaluateAssetClaims(assetClaimProblems(lines, facts), client))
+      judged.add(ASSET_CLAIM_CHECK)
+    }
+  } else {
+    summary.errors.push({
+      client: client.businessName,
+      error: `asset text unreadable, copy not checked: ${
+        !campaignCopy.ok ? campaignCopy.error : (accountCopy as { error: string }).error
+      }`,
+    })
+  }
+
   await fileFindings(
     client,
     customerId,
     'WEEKLY',
-    evaluateAssets(campaigns, account, parseAdGroupAds(adRows.rows)),
-    new Set([CAMPAIGN_ASSET_CHECK, AD_GROUP_ADS_CHECK]),
+    drafts,
+    judged,
     summary as Pick<DailyRunSummary, 'newFindings' | 'resolved' | 'stillOpen'>
   )
 }
