@@ -227,6 +227,7 @@ model Client {
   // Leads & Client Portal
   trackingNumbers TrackingNumber[]
   leads           Lead[]
+  leadMessages    LeadMessage[]
   clientUsers     ClientUser[]
   callAnalyses    CallAnalysis[]
 
@@ -333,6 +334,10 @@ model Lead {
   callRecordingUrl String? // Playable recording URL (Blob copy for Twilio calls)
   callAnalyses     CallAnalysis[]
 
+  /// Texts to and from this lead. A conversation is many messages, so it is
+  /// a table rather than a column — and the photos are the point of it.
+  messages LeadMessage[]
+
   /**
    * Twilio call tracking. The CallSid is how the several webhooks for one
    * call — the dial finishing, then the recording being ready minutes later —
@@ -417,11 +422,55 @@ model Lead {
   @@index([clientId, phone, createdAt])
 }
 
+/// One SMS/MMS on a tracking number.
+///
+/// WHY A TABLE. A text conversation is many messages and any of them can
+/// carry the photo that settles the quote, so there is nothing to flatten
+/// into a column on the lead. The raw payload is kept beside the extracted
+/// fields for the same reason the rank runs are: a reader bug then costs a
+/// recompute rather than a message nobody can get back.
+model LeadMessage {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  leadId   String
+  lead     Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  /// inbound | outbound. Only inbound exists today; the column is here so an
+  /// outbound reply does not need a migration to be recorded truthfully.
+  direction String @default("inbound")
+  body      String?
+  /// Our OWN copies, in Blob storage. Twilio's media URLs need Basic auth and
+  /// do not outlive the message, so a stored Twilio URL is a photo that works
+  /// until it does not — the same reason call recordings are copied.
+  mediaUrls String[]
+
+  /// Twilio's MessageSid. UNIQUE, because Twilio retries a webhook that
+  /// answered slowly and a replay must not become a second message — the same
+  /// guard twilioCallSid gives the call webhooks.
+  twilioSid String @unique
+  /// The customer, E.164.
+  fromNumber String
+  /// The tracking number they texted, E.164.
+  toNumber   String
+  raw        Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([leadId, createdAt])
+  @@index([clientId, createdAt])
+}
+
 enum LeadSource {
   FORM // Quote form submission
   PHONE // Phone call (from HighLevel call tracking)
   CHAT // Live chat
   MANUAL // Manually entered
+  /// A text to a tracking number. Its own source rather than folded into
+  /// PHONE: there is no recording, no duration and no missed/answered, and a
+  /// texted photo is the artifact that settles a quote — worth counting on
+  /// its own in any report that asks what the channel produced.
+  SMS
 }
 
 enum LeadStatus {

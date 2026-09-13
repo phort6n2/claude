@@ -27,6 +27,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { STATUS_CONFIG, STATUS_OPTIONS, relativeAge, statusStyle } from '@/lib/lead-display'
+import { LeadTexts, type LeadTextMessage } from '@/components/leads/DamagePhoto'
 import { Button } from '@/components/ui/Button'
 
 interface Lead {
@@ -52,6 +53,8 @@ interface Lead {
   landingPageUrl: string | null
   formName: string | null
   formData: Record<string, unknown> | null
+  /** Texts to and from this lead, with the photos in them. */
+  messages?: LeadTextMessage[] | null
   highlevelContactId: string | null
   qualified: boolean | null
   qualificationNotes: string | null
@@ -712,6 +715,20 @@ export default function LeadDetailPage() {
                 )}
               </div>
             </div>
+
+            {/* THE TEXTS, above the raw payload and outside it. A photo the
+                customer texted is the artifact that settles the quote, so it
+                belongs where somebody working the job will see it rather than
+                folded into a collapsed debug panel. */}
+            {lead.messages?.length ? (
+              <div className="bg-white rounded-2xl p-4">
+                <h4 className="font-medium text-gray-900 flex items-center gap-2 mb-3">
+                  <MessageSquare className="h-4 w-4 text-green-600" />
+                  Texts
+                </h4>
+                <LeadTexts messages={lead.messages} />
+              </div>
+            ) : null}
 
             {/* Raw Webhook Data (Expandable) */}
             <div className="bg-white rounded-2xl overflow-hidden">

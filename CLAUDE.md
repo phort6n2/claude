@@ -249,6 +249,52 @@ webhook routes.
 - Webhook responses: `new Response(null, { status: 204 })`. A 204 **with** a
   body throws, which returns 500, which makes Twilio retry, which runs the
   analysis twice.
+- **TEXTS TO A TRACKING NUMBER LAND IN THE APP** —
+  `/api/webhooks/twilio/sms`, `twilio-sms.ts`, `sms-lead.ts`,
+  `LeadMessage` (bootstrap: `SMS_INBOX_SQL`). The hosted sites have always
+  said "text a photo of the damage, it is the fastest way to a firm price",
+  and every one of those texts used to be swallowed: numbers were bought with
+  a VoiceUrl and nothing else, so Twilio had no instruction for a message. No
+  error, no missing row anybody expected, and the customer believed they had
+  sent it — the same invisible absence as the `<Dial record>` typo.
+  - **THE ATTACHMENT IS THE POINT, and it is what differs from
+    `call-lead.ts`.** The common case is not a stranger: it is somebody who
+    submitted the quote form thirty seconds ago — carrying a gclid, a vehicle,
+    a postcode — then sent the photo the confirmation asked for. So an inbound
+    text finds the same-day canonical lead for that number
+    (`findSameDayDuplicateCanonical`, the rule the form and the calls already
+    use) and joins it. A new row would split one enquiry in two and leave the
+    photo on the row with no attribution while the click sat on the row with
+    no photo.
+  - **The MessageSid is the retry guard AND the unique index is the real
+    guarantee.** Twilio retries by firing a second request, and two identical
+    webhooks arriving together both pass a `findUnique` before either writes —
+    so a `P2002` on insert is not an error, it is the other copy winning, and
+    it reports itself as a retry. Found by reading the log of a real retry
+    that raced its original.
+  - **Photos are COPIED to Blob storage**, exactly as recordings are: Twilio's
+    media URLs need Basic auth, so nothing in a browser or an email can render
+    one, and they do not outlive the message. A copy that fails costs the
+    photo, never the message or the alert.
+  - The first image is also written to `formData.damage_photo_url`, **fill-in
+    only**, because that is where all three existing readers already look — the
+    alert email renders it inline, and the admin and portal lead views read it.
+    A photo the customer attached to the form is the one they chose first.
+  - **NO AUTO-REPLY.** An automated answer from the shop's number is this
+    platform speaking as the shop to their customer, and the only useful thing
+    it could say is a timing promise §2 forbids. The shop gets an urgent alert
+    with the picture in it and answers as themselves. A decision, not an
+    omission: changing it needs a per-shop flag and copy that promises nothing.
+  - STOP/CANCEL/QUIT and the rest are matched on the WHOLE message, because
+    *"stop by tomorrow and I will show you the crack"* is an enquiry and the
+    best kind. `scripts/check-sms-inbox.ts` holds those traps and the media
+    reader (`NumMedia` is a **string**; ten is Twilio's cap).
+  - Numbers bought from now on carry `SmsUrl` in the purchase request, for the
+    same reason `VoiceUrl` does — no window where the number exists and a text
+    to it goes nowhere. Everything bought earlier needs
+    **Maintenance → "Point every tracking number's texts at the app"**
+    (`/api/admin/twilio/resms`, dry run first; it re-sets `VoiceUrl` too so a
+    number cannot end up half-configured).
 - `site-phone.ts` swaps the displayed number to the tracking number at the
   data layer. The LocalBusiness JSON-LD and the contact/locations cards keep
   the **real** number for NAP consistency — schema is built before the swap,
@@ -265,12 +311,11 @@ webhook routes.
     the shop dials back from their handset, so the call that arrives shows a
     different number from the one the customer was just told to save. That is
     the missed call the sentence exists to prevent.
-  - **Every `sms:` path is outbound too, and worse.** Tracking numbers are
-    bought with a VoiceUrl and nothing else — there is no SMS webhook among
-    the four Twilio routes — so a photo texted to one is **swallowed silently
-    while the customer believes they sent it**. `smsCapable` is a fact about
-    the shop's HANDSET and never protected this. If a text route is ever
-    added, this is the decision to revisit.
+  - **`sms:` paths were outbound and are now INBOUND** — the one reversal
+    here. They pointed at the shop's handset because a text to a tracking
+    number was swallowed: bought with a VoiceUrl and nothing else, Twilio had
+    no instruction for a message. There is a webhook now (see below), so the
+    site texts the TRACKED number again, which is the point of it.
   - Missing, the copy omits the number rather than naming the wrong one, and
     with no tracking number at all the two are identical and everything reads
     as it always did. `scripts/check-site-phone.ts` holds all three

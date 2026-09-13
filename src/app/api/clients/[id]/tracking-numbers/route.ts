@@ -67,10 +67,19 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
   }
 }
 
-/** Point a number's voice webhook at this app. */
+/**
+ * Point a number's voice AND message webhooks at this app.
+ *
+ * SmsUrl is not optional garnish. The hosted sites tell customers to text a
+ * photo of the damage, and a number with no SmsUrl has no instruction for a
+ * message: Twilio swallows it, the shop never sees it, and the customer
+ * believes they sent it. Both webhooks are set in the same request so a
+ * number can never be half-configured.
+ */
 async function repointInTwilio(
   phoneNumber: string,
-  voiceUrl: string
+  voiceUrl: string,
+  smsUrl: string
 ): Promise<{ ok: boolean; sid?: string; error?: string }> {
   const creds = await twilioCreds()
   if (!creds) return { ok: false, error: 'No Twilio credentials saved.' }
@@ -101,7 +110,12 @@ async function repointInTwilio(
       {
         method: 'POST',
         headers,
-        body: new URLSearchParams({ VoiceUrl: voiceUrl, VoiceMethod: 'POST' }),
+        body: new URLSearchParams({
+          VoiceUrl: voiceUrl,
+          VoiceMethod: 'POST',
+          SmsUrl: smsUrl,
+          SmsMethod: 'POST',
+        }),
         signal: AbortSignal.timeout(15_000),
       }
     )
@@ -127,7 +141,8 @@ async function repointInTwilio(
  */
 async function purchaseInTwilio(
   phoneNumber: string,
-  voiceUrl: string
+  voiceUrl: string,
+  smsUrl: string
 ): Promise<{ ok: boolean; sid?: string; error?: string }> {
   const creds = await twilioCreds()
   if (!creds) return { ok: false, error: 'No Twilio credentials saved.' }
@@ -146,6 +161,11 @@ async function purchaseInTwilio(
           PhoneNumber: phoneNumber,
           VoiceUrl: voiceUrl,
           VoiceMethod: 'POST',
+          // In the purchase request itself, for the same reason VoiceUrl is:
+          // there is then no window where the number exists and a text to it
+          // goes nowhere.
+          SmsUrl: smsUrl,
+          SmsMethod: 'POST',
           FriendlyName: 'glassleads tracking',
         }),
         signal: AbortSignal.timeout(20_000),
@@ -205,13 +225,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
   const base = process.env.APP_URL || 'https://glassleads.app'
   const voiceUrl = `${base}/api/webhooks/twilio/voice`
+  const smsUrl = `${base}/api/webhooks/twilio/sms`
   // Two ways in: point a number the account already owns, or buy a fresh one.
   // Buying is the explicit path — it costs money, so it never happens because
   // a flag defaulted wrong.
   const repoint =
     body.purchase === true
-      ? await purchaseInTwilio(phoneNumber, voiceUrl)
-      : await repointInTwilio(phoneNumber, voiceUrl)
+      ? await purchaseInTwilio(phoneNumber, voiceUrl, smsUrl)
+      : await repointInTwilio(phoneNumber, voiceUrl, smsUrl)
   if (!repoint.ok) {
     return NextResponse.json({ error: repoint.error }, { status: 400 })
   }

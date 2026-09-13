@@ -68,6 +68,13 @@ const READS: Tool[] = [
     what: 'Probes every URL shape with the real tokens from a stored payload and reports which ones answer and which allow embedding. Reads only — it fetches their pages, changes nothing.',
   },
   {
+    key: 'resms-dry',
+    name: 'Texts: which tracking numbers can receive one? (reads only)',
+    path: '/api/admin/twilio/resms?dryRun=1',
+    method: 'POST',
+    what: 'Reports what each tracking number\u2019s SmsUrl currently points at. A number bought before the SMS webhook existed has none — and with no SmsUrl Twilio has no instruction for a message, so it swallows it: the shop never sees the text and the customer believes they sent it. The hosted sites have been telling people to text a photo of the damage the whole time. Reads Twilio, writes nothing.',
+  },
+  {
     key: 'wrhq-dry',
     name: 'Windshield Repair HQ: which clients are already listed?',
     path: '/api/admin/wrhq-sync?dryRun=1',
@@ -84,6 +91,14 @@ const WRITES: Tool[] = [
     method: 'POST',
     what: 'The same sweep the morning cron runs: spend cliffs and spikes, disapproved ads, budget-capped campaigns, conversions gone quiet, and edits by other people. Files findings and sends the digest email if anything new appeared.',
     cost: 'Reads every linked Ads account (four queries each) and writes finding rows. Sends the digest email when there is something new to say.',
+  },
+  {
+    key: 'resms',
+    name: 'Point every tracking number\u2019s texts at the app',
+    path: '/api/admin/twilio/resms',
+    method: 'POST',
+    what: 'Sets SmsUrl (and re-sets VoiceUrl, so a number cannot end up half-configured) on every active tracking number. After this, a texted photo lands on the lead, shows in the portal and reaches the shop as an alert with the picture in it. Run the dry version first — it reports the current values, and an unexpected VoiceUrl is the interesting finding.',
+    cost: 'One Twilio lookup and one update per number. Safe to run twice: a number already pointing here is skipped. A number on file but missing from the Twilio account is named rather than skipped — that means it was released and calls to it are going nowhere.',
   },
   {
     key: 'retidy-logos-dry',
