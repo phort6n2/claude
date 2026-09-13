@@ -26,7 +26,7 @@ import { formatPhoneDisplay } from '@/lib/lead-display'
  * phone number, and a false positive on a compliance line is worse than a
  * miss. 1-800 style prefixes are covered by the optional leading 1.
  */
-const PHONE_RE = /(?:\+?1[\s.-]?)?(?:\(\d{3}\)\s?|\d{3}[\s.-])\d{3}[\s.-]\d{4}(?!\d)/g
+export const PHONE_RE = /(?:\+?1[\s.-]?)?(?:\(\d{3}\)\s?|\d{3}[\s.-])\d{3}[\s.-]\d{4}(?!\d)/g
 
 /** Last ten digits — the only comparison that survives formatting. */
 export function last10(value: string | null | undefined): string {

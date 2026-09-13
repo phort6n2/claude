@@ -26,9 +26,9 @@
  *
  * There is no test runner in this repo. This is a script on purpose.
  */
+import { parseDraftArray } from '@/lib/draft-json'
 import {
   MAX_DRAFT_SECTIONS,
-  parseStoryResponse,
   screenStory,
   storyFacts,
   storyPrompt,
@@ -149,6 +149,9 @@ console.log('\n--- the traps: words that look like a claim and are not ---')
     ['the trade word repair', 'Some damage can be repaired and some cannot.'],
     ['weather and roads', 'Cold mornings and hot afternoons flex glass that already has a break in it.'],
     ['the word best outside a ranking', 'The best time to deal with a chip is the week you notice it.'],
+    // A REFUSAL TO PROMISE, thrown away by the rule against promising. This
+    // is why "immediately" and "right away" are not in the timing net.
+    ['not-immediately', 'The car is not safe to drive immediately after a replacement.'],
   ]
   for (const [label, body] of traps) {
     check(`not a claim: ${label}`, kept('Heading', body), reasonFor('Heading', body))
@@ -282,45 +285,45 @@ console.log('\n--- reading what the model actually sends back ---')
   // returns as a matter of course, and only the last two are failures.
   const two = '[{"heading":"A","body":"aa"},{"heading":"B","body":"bb"}]'
 
-  const plain = parseStoryResponse(two)
+  const plain = parseDraftArray(two)
   check('a bare array', plain.ok && plain.sections.length === 2)
 
-  const fenced = parseStoryResponse('```json\n' + two + '\n```')
+  const fenced = parseDraftArray('```json\n' + two + '\n```')
   check('a fenced block', fenced.ok && fenced.sections.length === 2)
 
-  const chatty = parseStoryResponse(`Here are the sections.\n\n${two}\n\nLet me know.`)
+  const chatty = parseDraftArray(`Here are the sections.\n\n${two}\n\nLet me know.`)
   check('an array with prose around it', chatty.ok && chatty.sections.length === 2)
 
   // The greedy regex started at the FIRST bracket in the document and dragged
   // the aside into the JSON.
-  const aside = parseStoryResponse(
+  const aside = parseDraftArray(
     `Here are the sections [built only from the facts above]:\n\n${two}`
   )
   check('a bracketed aside before the array', aside.ok && aside.sections.length === 2, JSON.stringify(aside))
 
-  const wrapped = parseStoryResponse(`{"sections": ${two}}`)
+  const wrapped = parseDraftArray(`{"sections": ${two}}`)
   check('an object wrapping the array', wrapped.ok && wrapped.sections.length === 2, JSON.stringify(wrapped))
 
-  const single = parseStoryResponse('{"heading":"Only one","body":"bb"}')
+  const single = parseDraftArray('{"heading":"Only one","body":"bb"}')
   check('a single section as a bare object', single.ok && single.sections.length === 1)
 
   // A body that contains a bracket must not end the array early.
-  const brackets = parseStoryResponse(
+  const brackets = parseDraftArray(
     '[{"heading":"A","body":"the frame [the pinch weld] is cleaned"},{"heading":"B","body":"bb"}]'
   )
   check('brackets inside a body', brackets.ok && brackets.sections.length === 2, JSON.stringify(brackets))
-  const quoted = parseStoryResponse('[{"heading":"A","body":"a \\"safe drive-away\\" time"}]')
+  const quoted = parseDraftArray('[{"heading":"A","body":"a \\"safe drive-away\\" time"}]')
   check('escaped quotes inside a body', quoted.ok && quoted.sections.length === 1, JSON.stringify(quoted))
 
   // TRUNCATION, which is what an unreadable draft most often is. Two finished
   // sections should not be thrown away with the third.
-  const cut = parseStoryResponse(
+  const cut = parseDraftArray(
     '[{"heading":"A","body":"aa"},{"heading":"B","body":"bb"},{"heading":"C","body":"cc'
   )
   check('a cut-off response keeps what finished', cut.ok && cut.sections.length === 2, JSON.stringify(cut))
   check('and says it was cut off', cut.ok && cut.truncated === true)
   check('while a complete one does not', plain.ok && plain.truncated === false)
-  const cutEarly = parseStoryResponse('[{"heading":"A","body":"aa')
+  const cutEarly = parseDraftArray('[{"heading":"A","body":"aa')
   check(
     'cut off before anything finished is a truncated failure',
     !cutEarly.ok && cutEarly.kind === 'truncated',
@@ -328,7 +331,7 @@ console.log('\n--- reading what the model actually sends back ---')
   )
 
   // The two real failures, told apart because the fixes are opposite.
-  const prose = parseStoryResponse(
+  const prose = parseDraftArray(
     'I can draft these, but first — does this shop do mobile work? I would rather ask than guess.'
   )
   check('prose with no JSON is reported as prose', !prose.ok && prose.kind === 'no-json')
@@ -337,9 +340,9 @@ console.log('\n--- reading what the model actually sends back ---')
     !prose.ok && /does this shop do mobile work/.test(prose.detail),
     !prose.ok ? prose.detail : ''
   )
-  const malformed = parseStoryResponse('[{"heading":"A", "body":}]')
+  const malformed = parseDraftArray('[{"heading":"A", "body":}]')
   check('malformed JSON is reported as malformed', !malformed.ok && malformed.kind === 'unparseable')
-  check('an empty response is reported', !parseStoryResponse('   ').ok)
+  check('an empty response is reported', !parseDraftArray('   ').ok)
 }
 
 console.log('\n--- the prompt carries the facts and not the absences ---')

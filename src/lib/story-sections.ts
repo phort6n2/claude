@@ -1,4 +1,5 @@
 import { SERVICE_PAGES, type ServiceFlag } from '@/lib/site-services'
+import { claimProblem, type ClaimContext } from '@/lib/copy-claims'
 
 /**
  * Drafts the story sections for a shop whose old site had none to import.
@@ -61,18 +62,12 @@ import { SERVICE_PAGES, type ServiceFlag } from '@/lib/site-services'
  */
 export const MAX_DRAFT_SECTIONS = 3
 
-export interface StoryInput {
+export interface StoryInput extends ClaimContext {
   businessName: string
   city: string
   state: string
   /** What the headlines call the area. Empty means the city — see site-area.ts. */
   marketArea: string | null
-  hasShopLocation: boolean
-  offersMobileService: boolean
-  filesInsuranceClaims: boolean
-  smsCapable: boolean
-  /** Every service flag, so the screen can police the ones that are OFF. */
-  services: Record<ServiceFlag, boolean>
   serviceAreas: string[]
   /** Their own words already on the site, to match voice and avoid repeating. */
   existingVoice: string[]
@@ -170,336 +165,6 @@ Return ONLY a JSON array, no other text:
 [{"heading": "...", "body": "..."}]`
 }
 
-export type StoryParse =
-  | { ok: true; sections: Array<Record<string, unknown>>; truncated: boolean }
-  | { ok: false; kind: 'truncated' | 'no-json' | 'unparseable'; detail: string }
-
-/**
- * Read the sections out of whatever the model actually sent back.
- *
- * `text.match(/\[[\s\S]*\]/)` was the whole parser, and it failed in
- * production on the first real press with "Could not read the draft that came
- * back" — a sentence that names nothing, over a response nothing logged. Three
- * separate things are wrong with that one line, and each is a different
- * failure the operator cannot tell apart:
- *
- * - A TRUNCATED RESPONSE has no closing bracket, so the match fails and two
- *   perfectly good finished sections are thrown away with the third. Salvage
- *   the objects that closed; a short draft beats no draft, and the operator
- *   can press again for more.
- * - A LEADING BRACKET IN PROSE — "Here are the sections [built only from the
- *   facts above]:" — makes the greedy match start in the wrong place and drag
- *   the prose into the JSON. So the array is found by SCANNING for a `[` that
- *   is actually followed by an object, honouring string literals and escapes,
- *   rather than by the first and last bracket in the document.
- * - AN OBJECT WRAPPER (`{"sections": [...]}`) and a fenced block are both
- *   ordinary things for a model to return, and neither is a failure.
- *
- * What survives as a failure is worth distinguishing, because the fixes are
- * opposite: `truncated` means ask for less or allow more, `no-json` means the
- * model answered in prose (a refusal or a question), `unparseable` means it
- * tried and the JSON is malformed. The route says which and logs the text.
- */
-export function parseStoryResponse(text: string): StoryParse {
-  // Fences are not JSON but they are not a problem either.
-  const body = text.replace(/```(?:json)?/gi, '').trim()
-  if (!body) return { ok: false, kind: 'no-json', detail: 'the response was empty' }
-
-  /**
-   * Walk from `start` to the bracket that closes it, ignoring anything inside
-   * a string. Returns the index of the closer, or -1 if the text runs out —
-   * which is exactly what a truncated response looks like.
-   */
-  function closerFor(s: string, start: number): number {
-    const open = s[start]
-    const close = open === '[' ? ']' : '}'
-    let depth = 0
-    let inString = false
-    for (let i = start; i < s.length; i++) {
-      const ch = s[i]
-      if (inString) {
-        if (ch === '\\') i++
-        else if (ch === '"') inString = false
-        continue
-      }
-      if (ch === '"') inString = true
-      else if (ch === open) depth++
-      else if (ch === close) {
-        depth--
-        if (depth === 0) return i
-      }
-    }
-    return -1
-  }
-
-  /** The first `[` whose contents are objects, not a bracketed aside in prose. */
-  let arrayStart = -1
-  for (let i = 0; i < body.length; i++) {
-    if (body[i] !== '[') continue
-    const next = body.slice(i + 1).match(/^\s*(.)/)
-    if (next && next[1] === '{') {
-      arrayStart = i
-      break
-    }
-  }
-
-  if (arrayStart >= 0) {
-    const end = closerFor(body, arrayStart)
-    if (end > arrayStart) {
-      try {
-        const parsed = JSON.parse(body.slice(arrayStart, end + 1)) as unknown
-        if (Array.isArray(parsed)) {
-          return { ok: true, sections: parsed as Array<Record<string, unknown>>, truncated: false }
-        }
-      } catch (error) {
-        return {
-          ok: false,
-          kind: 'unparseable',
-          detail: error instanceof Error ? error.message : 'JSON.parse failed',
-        }
-      }
-    }
-    // No closer: the response stopped mid-array. Keep the objects that finished.
-    const salvaged: Array<Record<string, unknown>> = []
-    for (let i = arrayStart + 1; i < body.length; i++) {
-      if (body[i] !== '{') continue
-      const end2 = closerFor(body, i)
-      if (end2 < 0) break
-      try {
-        salvaged.push(JSON.parse(body.slice(i, end2 + 1)) as Record<string, unknown>)
-      } catch {
-        // One malformed object does not cost the ones before it.
-      }
-      i = end2
-    }
-    if (salvaged.length) return { ok: true, sections: salvaged, truncated: true }
-    return { ok: false, kind: 'truncated', detail: 'the draft was cut off before the first section' }
-  }
-
-  // An object: either one section, or a wrapper around the array.
-  const objectStart = body.indexOf('{')
-  if (objectStart >= 0) {
-    const end = closerFor(body, objectStart)
-    if (end > objectStart) {
-      try {
-        const parsed = JSON.parse(body.slice(objectStart, end + 1)) as Record<string, unknown>
-        const wrapped = Object.values(parsed).find((v) => Array.isArray(v))
-        if (Array.isArray(wrapped)) {
-          return { ok: true, sections: wrapped as Array<Record<string, unknown>>, truncated: false }
-        }
-        if (typeof parsed.heading === 'string' || typeof parsed.body === 'string') {
-          return { ok: true, sections: [parsed], truncated: false }
-        }
-      } catch (error) {
-        return {
-          ok: false,
-          kind: 'unparseable',
-          detail: error instanceof Error ? error.message : 'JSON.parse failed',
-        }
-      }
-    }
-  }
-
-  return {
-    ok: false,
-    kind: 'no-json',
-    // The first words are the useful part: a refusal and a question both start
-    // by saying so, and that is what the operator needs to read.
-    detail: `no JSON in the response, which began: ${body.slice(0, 160)}`,
-  }
-}
-
-/** A claim nothing in this app can back, and the words that give it away. */
-interface Rule {
-  /** Said back to the operator, so a drop explains itself. */
-  reason: string
-  patterns: RegExp[]
-}
-
-const INSURERS =
-  /\b(state farm|geico|progressive|allstate|usaa|farmers|liberty mutual|nationwide|travelers|american family|safeco|esurance|mercury insurance)\b/i
-
-/**
- * The universal screen. Every one of these is a claim that reads perfectly and
- * is nobody's to make here — which is exactly why a human skimming a fluent
- * draft waves them through.
- */
-const RULES: Rule[] = [
-  {
-    reason: 'claims how long they have been in business',
-    patterns: [
-      /\b(since|established|est\.)\s*(19|20)\d{2}\b/i,
-      /\b\d+\+?\s*(years|decades)\b/i,
-      /\b(decades|generations)\b/i,
-      /\byears of (experience|service)\b/i,
-      /\b(family|veteran|women|woman|locally)[- ]owned\b/i,
-      /\b(second|third|fourth)[- ]generation\b/i,
-    ],
-  },
-  {
-    reason: 'promises a timeframe',
-    patterns: [
-      /\bsame[- ]day\b/i,
-      /\bnext[- ]day\b/i,
-      /\b24[/\- ]?7\b/i,
-      /\baround the clock\b/i,
-      /\bwithin (an?|\d+)\s*(hour|minute|day)/i,
-      /\b\d+\s*(minutes|hours)\b/i,
-      /\bin (minutes|under an hour)\b/i,
-      /\b(quickly|fast|prompt|promptly|speedy|right away|immediately)\b/i,
-      /\bwhile you wait\b/i,
-    ],
-  },
-  {
-    reason: 'talks about price or cost',
-    patterns: [
-      /\$\s?\d/,
-      /\bdeductible\b/i,
-      /\bfree\b/i,
-      /\b(no|zero) (charge|cost|out[- ]of[- ]pocket)\b/i,
-      /\b(affordable|cheap|lowest price|best price|beat any|discount)/i,
-      /\bwaiv(e|ed|ing)\b/i,
-    ],
-  },
-  {
-    reason: 'names an insurer or claims a relationship with one',
-    patterns: [
-      INSURERS,
-      /\bpreferred (provider|shop|partner|installer)\b/i,
-      /\bapproved by\b/i,
-      /\bin[- ]network\b/i,
-      /\bdirect bill/i,
-    ],
-  },
-  {
-    reason: 'says they handle the insurance claim',
-    // Unconditional: the shop that DOES deal with the carrier has that
-    // sentence already, in the compliance-reviewed insurance band.
-    patterns: [/\b(handle|file|submit|take care of|manage)\b[^.]{0,20}\bclaim/i],
-  },
-  {
-    reason: 'claims a certification or training',
-    patterns: [
-      /\bcertif(ied|ication)\b/i,
-      /\bAGSC\b/,
-      /\bAGRSS\b/,
-      /\bI-?CAR\b/i,
-      /\b(licensed|accredited)\b/i,
-      // NOT a bare "bonded": that is what a windshield IS — bonded into the
-      // body — and it is the single most useful sentence the page can carry.
-      // The claim is the tradesman's boilerplate pairing, so match the pair.
-      /\b(licensed and bonded|bonded and insured)\b/i,
-      /\b(factory|manufacturer|master)[- ]trained\b/i,
-    ],
-  },
-  {
-    reason: 'mentions a warranty, which belongs in the warranty band with its terms',
-    patterns: [/\bwarrant(y|ies|ied)\b/i, /\bguarantee/i, /\blifetime\b/i],
-  },
-  {
-    reason: 'makes a claim about ratings, reviews or being the best',
-    patterns: [
-      /\b(five|5)[- ]star\b/i,
-      /\b(top|highest|best)[- ]rated\b/i,
-      /\b#\s?1\b/,
-      /\bnumber one\b/i,
-      /\bbest in\b/i,
-      /\b(hundreds|thousands) of\b/i,
-      /\b\d+\s*(reviews|customers|vehicles|jobs|windshields)\b/i,
-    ],
-  },
-  {
-    reason: 'reads as a customer quote',
-    // A fabricated testimonial is the §2 example that needs no argument. Long
-    // enough to be a sentence; a quoted term of art is not caught.
-    patterns: [/["“][^"”]{25,}["”]/],
-  },
-  {
-    reason: 'claims staff, vehicles or premises nobody stated',
-    patterns: [
-      /\bour team of\b/i,
-      /\b\d+\s*(technicians|installers|techs|trucks|vans|bays|locations)\b/i,
-    ],
-  },
-  {
-    reason: 'claims what glass they use or stock',
-    patterns: [
-      /\bOEM\b/,
-      /\boriginal equipment\b/i,
-      /\b(in stock|we stock|fully stocked)\b/i,
-      /\ball makes and models\b/i,
-      /\bany (make|model)\b/i,
-    ],
-  },
-]
-
-/**
- * The gated screen: claims that are true for SOME shops on this platform, and
- * are a lie for the rest. These are the per-shop flags from §2, enforced here
- * because the story field is free text that no flag guards at render time.
- */
-function gatedRules(input: StoryInput): Rule[] {
-  const rules: Rule[] = []
-  if (!input.offersMobileService) {
-    rules.push({
-      reason: 'says they come to the customer, and mobile service is off for this shop',
-      patterns: [
-        /\bmobile\b/i,
-        /\bwe (come|travel|drive) to (you|your)\b/i,
-        /\b(at your|to your) (home|office|driveway|workplace)\b/i,
-        /\bon[- ]site\b/i,
-      ],
-    })
-  }
-  if (!input.hasShopLocation) {
-    rules.push({
-      reason: 'points the customer at premises this shop does not have',
-      patterns: [/\b(our|the) (shop|garage|facility|workshop|premises)\b/i, /\bcome (in|by|down)\b/i, /\bwaiting (room|area)\b/i, /\bdrop (it|the car|your car) off\b/i],
-    })
-  }
-  if (!input.smsCapable) {
-    rules.push({
-      reason: 'invites a text message to a number that cannot receive one',
-      patterns: [/\btext (us|me|a photo|the)\b/i, /\bsend (us )?a (text|photo)\b/i, /\bby text\b/i],
-    })
-  }
-
-  // A service that is off strips its own card out of the services grid. A
-  // paragraph mentioning it does not strip anything — it simply advertises
-  // work the shop does not do, and the first call about it is somebody's
-  // wasted afternoon.
-  const byFlag: Array<[ServiceFlag, RegExp[]]> = [
-    ['offersWindshieldReplacement', [/\bwindshield replacement\b/i, /\breplac\w* (the |your |a )?windshield\b/i]],
-    ['offersWindshieldRepair', [/\bwindshield repair\b/i, /\brepair\w* (the |your |a )?windshield\b/i]],
-    ['offersSideWindowRepair', [/\b(side|door|quarter|vent) (window|glass)\b/i]],
-    ['offersBackWindowRepair', [/\b(back|rear) (glass|window|windshield)\b/i]],
-    ['offersSunroofRepair', [/\b(sunroof|moonroof)\b/i]],
-    // No leading \b on calibrat: "recalibration" is the word that actually
-    // turns up, and an anchored pattern misses it entirely.
-    ['offersAdasCalibration', [/calibrat/i, /\bADAS\b/i, /\bdriver[- ]assist/i, /\blane[- ]keep/i]],
-  ]
-  for (const [flag, patterns] of byFlag) {
-    if (input.services[flag]) continue
-    const name = SERVICE_PAGES.find((s) => s.flag === flag)?.name.toLowerCase() || flag
-    rules.push({ reason: `mentions ${name}, which this shop does not offer`, patterns })
-  }
-
-  // CHIPS ARE TWO FLAGS FOR ONE JOB. "Rock chip repair" and "windshield
-  // repair" are the same resin injection under two names, and most shops have
-  // both on. Screening the word on either flag alone would throw away the
-  // best paragraph in the draft — what a chip does if it is left is the most
-  // useful thing the page can tell somebody — over a distinction the shop
-  // does not make itself. So it is only a forbidden word when neither is on.
-  if (!input.services.offersRockChipRepair && !input.services.offersWindshieldRepair) {
-    rules.push({
-      reason: 'mentions chip repair, which this shop does not offer',
-      patterns: [/\b(rock )?chips?\b/i],
-    })
-  }
-
-  return rules
-}
-
 /**
  * Keep only the sections that claim nothing this app cannot back.
  *
@@ -512,7 +177,6 @@ export function screenStory(
   sections: Array<{ heading?: unknown; body?: unknown; photoUrl?: unknown }>,
   input: StoryInput
 ): StoryScreenResult {
-  const rules = [...RULES, ...gatedRules(input)]
   const kept: StoryDraft[] = []
   const dropped: Array<{ heading: string; reason: string }> = []
   const seen = new Set<string>()
@@ -526,18 +190,7 @@ export function screenStory(
       continue
     }
 
-    const text = `${heading}\n${body}`
-    let tripped: { reason: string; match: string } | null = null
-    for (const rule of rules) {
-      for (const pattern of rule.patterns) {
-        const hit = text.match(pattern)
-        if (hit) {
-          tripped = { reason: rule.reason, match: hit[0] }
-          break
-        }
-      }
-      if (tripped) break
-    }
+    const tripped = claimProblem(`${heading}\n${body}`, input)
     if (tripped) {
       dropped.push({ heading, reason: `${tripped.reason} (“${tripped.match.trim()}”)` })
       continue
