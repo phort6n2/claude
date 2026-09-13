@@ -73,6 +73,18 @@ export interface WrhqClientPayload {
   filesInsuranceClaims?: boolean
   description?: string
   googlePlaceId?: string
+  /**
+   * The shop's Google rating, from the SAME cached Business Profile feed the
+   * hosted site renders (`ClientGbpReviews`). Sent rather than left for the
+   * directory to fetch: it is one feed, already paid for, and without it the
+   * directory needs a Places key of its own to show a Partner a single star.
+   */
+  rating?: number
+  reviewCount?: number
+  /** Header logo. The directory references it; both Blobs are ours. */
+  logoUrl?: string
+  lat?: number
+  lng?: number
   slug?: string
   dryRun?: boolean
 }
@@ -100,7 +112,12 @@ export interface SyncableClient {
   offersSunroofRepair: boolean
   offersAdasCalibration: boolean
   filesInsuranceClaims: boolean
+  latitude: number | null
+  longitude: number | null
+  logoUrl: string | null
   domains?: { domain: string; isPrimary: boolean }[]
+  gbpReviews?: { rating: number; reviewCount: number } | null
+  siteContent?: { footerBlurb: string | null } | null
 }
 
 export function wrhqSyncEnabled(): boolean {
@@ -201,6 +218,26 @@ export function payloadFor(
     mobileService: client.offersMobileService,
     filesInsuranceClaims: client.filesInsuranceClaims,
     googlePlaceId: client.googlePlaceId || undefined,
+    /* THE DIRECTORY'S LISTING WAS A SCRAPE, AND THIS IS THE SHOP'S OWN RECORD.
+       Everything below is a fact this app already holds and had never sent, so
+       a Partner's page carried the description somebody else wrote about them,
+       no rating, no logo and a geocoded pin.
+
+       All of it is FILL-AND-REPLACE on the far side: a field absent here
+       leaves whatever the directory has standing. That matters most for the
+       rating — a Business Profile lookup that is failing this week must not
+       blank a rating the listing already shows. */
+    description: client.siteContent?.footerBlurb?.trim() || undefined,
+    // Same numbers the hosted site renders, from the cached GBP feed. Never
+    // computed, never rounded up: the directory prints what Google says.
+    rating: client.gbpReviews?.rating ?? undefined,
+    reviewCount: client.gbpReviews?.reviewCount ?? undefined,
+    logoUrl: client.logoUrl || undefined,
+    // Both or neither. Half a coordinate pair puts a pin in the ocean, and
+    // this app has already drawn one map in the Atlantic.
+    ...(client.latitude != null && client.longitude != null
+      ? { lat: client.latitude, lng: client.longitude }
+      : {}),
     ...(opts?.dryRun ? { dryRun: true } : {}),
   }
 }
@@ -326,5 +363,10 @@ export const WRHQ_SYNC_SELECT = {
   offersSunroofRepair: true,
   offersAdasCalibration: true,
   filesInsuranceClaims: true,
+  latitude: true,
+  longitude: true,
+  logoUrl: true,
   domains: { select: { domain: true, isPrimary: true } },
+  gbpReviews: { select: { rating: true, reviewCount: true } },
+  siteContent: { select: { footerBlurb: true } },
 } as const
