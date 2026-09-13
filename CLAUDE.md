@@ -1328,6 +1328,58 @@ practice nobody ever did.
   instead — the flag the Business tab actually sets, which already gates this
   claim across the hosted sites, and which is a fact about the SHOP'S PROCESS
   rather than a claim of endorsement BY an insurer.
+- **A PARTNER USED TO WEAR THE BADGE OVER A SCRAPE.** The sync wrote the shop
+  record only when it CREATED the listing, so a client MATCHED to one of the
+  directory's ~3,000 existing listings — three of the first nine — kept the
+  description somebody else wrote about them, no rating and no logo,
+  permanently. Those listings are in a JSON file a running site cannot edit, so
+  there was no write to make; the data rides on the binding and is overlaid at
+  read time on the far side, the way `claimed` already is. What now goes:
+  `footerBlurb` as the description (declared on the payload type since the
+  module was written and never once set — a dead field), `Client.logoUrl` in
+  place of the 128px favicon the directory scrapes, `latitude`/`longitude`
+  **both or neither**, and the `ClientGbpReviews` rating and count. Those
+  numbers are the whole reason a Partner's listing can show a star: the
+  directory has no Places key and is not getting one, and this app already
+  fetches the same Business Profile feed for the site it hosts. It is
+  fill-and-replace and never clears over there, so a sync running while the
+  Business Profile lookup is failing leaves the rating the listing already
+  shows. `logoUrl`/`latitude`/`longitude` are in `WRHQ_SYNC_FIELDS` because
+  they are RENDERED there now — a logo swapped in one app and not the other is
+  the drift nobody notices until a client points at their own listing.
+- **THE DIRECTORY TALKS BACK: shop signals** (`directory-signals.ts`,
+  `directory-signal-types.ts`, `POST /api/webhooks/wrhq/events`,
+  `DirectorySignal`, bootstrap: `DIRECTORY_SIGNAL_SQL`, **Shop signals** in the
+  sidebar). The listing sync runs one way; this is the other. WRHQ fires an
+  event the moment a shop claims a listing, submits one, publishes, buys
+  Featured, drops in city rank or clicks through for an audit, and it had been
+  firing them at nothing — the config existed on that side, the receiver never
+  existed on this one. Needs `WRHQ_EVENT_SECRET` here and the same value as
+  `AGMP_WEBHOOK_SECRET` there, with `AGMP_WEBHOOK_URL` pointed at the route.
+  - **A signal is NOT a Lead.** A Lead is a consumer with a cracked windscreen
+    and belongs to one client; this is a business that might become one, and
+    belongs to nobody — hence no `clientId` and no foreign key. The directory's
+    promise that a consumer quote goes to the one shop it was sent to and is
+    never resold holds on this side too: the payload carries business data
+    only.
+  - **HOT vs WARM decides whether the email means anything.** Hot is a human
+    spending something — money, or the effort of a claim form with their phone
+    number on it. A rank slipping one place at 3am is not a reason to look at
+    your phone.
+  - **The signature is checked over the RAW body**, and an unset secret
+    refuses rather than waving everything through. A missing secret answers
+    **503**, not 401: one says "wrong secret", the other says "no secret
+    here yet", and they are fixed in different places.
+  - **A REPLAY MUST ANSWER 200.** There is no event id and the directory
+    retries on a non-2xx, so `dedupeKey` is type + shop + `occurredAt`, and a
+    `P2002` is reported as a duplicate rather than an error. Answering non-2xx
+    to a duplicate is how a webhook retries for ever over something already
+    stored. The EMAIL failing is not the endpoint failing, for the same
+    reason — and `notifiedAt` is stamped so a retry cannot mail a row twice.
+  - The labels live in a LEAF module because the list is a client component
+    and the library reaches Prisma — the same split as
+    `google-ads-conversion-setup.ts`, and the alternative is two copies of the
+    labels that describe one event differently in the email and on the screen.
 - **The service keys are the DIRECTORY's, not ours** — `chip-repair`,
   `side-window`, `rear-window`. Its endpoint silently drops keys it does not
   recognise, so a wrong name here is not an error anywhere, it just quietly
@@ -1341,6 +1393,15 @@ practice nobody ever did.
   own time budget and names who it did not reach: sequential pushes with an
   8-second timeout each can otherwise be KILLED mid-run, which leaves no
   response and no way to tell how far it got.
+- **The backfill runs its own dry pass first and REFUSES itself** with a 409
+  when more than half the clients would get a brand-new listing. That reading
+  means matching stopped working — a changed payload field, a directory
+  deploy, a bad state code — not that the shops are new, and going ahead would
+  give them a second page competing with their first, which is work to undo on
+  the far side and splits the ranking meanwhile. The check lives in the route
+  rather than in a screen so it covers the Maintenance runner, a curl and
+  anything added later. `force: true` (or `?force`) overrides it and is
+  deliberately in no UI.
 - Needs `WRHQ_SYNC_URL` and `WRHQ_SYNC_SECRET` (the latter shared with the
   directory's `AGMP_SYNC_SECRET`). Absent, it is a silent no-op.
 

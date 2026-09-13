@@ -29,7 +29,12 @@ const WRHQ_SYNC_FIELDS = [
   'offersRockChipRepair',
   'offersAdasCalibration',
   'filesInsuranceClaims',
-  // The directory renders these on the listing; an edit here has to reach it.
+  // Fields the directory now RENDERS, so an edit to one has to reach it. A
+  // logo swapped here and not there is the kind of drift nobody notices until
+  // a client points at their own listing.
+  'logoUrl',
+  'latitude',
+  'longitude',
   'socialLinks',
 ] as const
 

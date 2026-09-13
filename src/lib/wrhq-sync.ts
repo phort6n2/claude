@@ -75,16 +75,30 @@ export interface WrhqClientPayload {
   description?: string
   googlePlaceId?: string
   /**
+   * The shop's Google rating, from the SAME cached Business Profile feed the
+   * hosted site renders (`ClientGbpReviews`). Sent rather than left for the
+   * directory to fetch: it is one feed, already paid for, and without it the
+   * directory needs a Places key of its own to show a Partner a single star.
+   */
+  rating?: number
+  reviewCount?: number
+  /** Header logo. The directory references it; both Blobs are ours. */
+  logoUrl?: string
+  /** Their gallery, best first. The directory's hero shows one. */
+  photos?: string[]
+  lat?: number
+  lng?: number
+  /**
    * The shop's social profiles, `{ facebook: "https://…", … }`, one per
    * platform — facebook, instagram, x, youtube, tiktok, linkedin, pinterest.
    *
-   * THE DIRECTORY HAS TO RECOGNISE THIS KEY OR NOTHING HAPPENS, AND NOTHING
-   * WILL SAY SO. Its endpoint silently drops keys it does not know — the same
-   * trap the service keys record two functions down, where a wrong name is not
-   * an error anywhere, it just quietly loses the data. So until
-   * windshieldrepairhq.com reads `social` (this exact spelling, this exact
-   * shape), these links are stored and reviewable here and invisible there.
-   * That is deliberate: having them on file is the half that is ours.
+   * ONE NESTED KEY RATHER THAN SEVEN FLAT ONES, so the two sides have one
+   * name to agree on instead of seven chances to misspell one — and a
+   * misspelling here is not an error anywhere. The directory's endpoint drops
+   * keys it does not recognise (the same trap the service keys record two
+   * functions down), so until windshieldrepairhq.com reads `social` in this
+   * shape these links are stored, screened and reviewable here and invisible
+   * there. Having them on file is the half that is ours.
    */
   social?: Record<string, string>
   slug?: string
@@ -114,10 +128,21 @@ export interface SyncableClient {
   offersSunroofRepair: boolean
   offersAdasCalibration: boolean
   filesInsuranceClaims: boolean
+  latitude: number | null
+  longitude: number | null
+  logoUrl: string | null
   /** JSON column; read through readSocialLinks, never trusted as-is. */
   socialLinks?: unknown
   domains?: { domain: string; isPrimary: boolean }[]
+  sitePhotos?: { url: string }[]
+  gbpReviews?: { rating: number; reviewCount: number } | null
+  siteContent?: { footerBlurb: string | null } | null
 }
+
+/* The directory shows one photo on the hero and a handful in its gallery, and
+   this list rides in every sync — a client with ninety photos would make each
+   push large for nothing. Matches the cap on the receiving schema. */
+const PHOTO_LIMIT = 12
 
 export function wrhqSyncEnabled(): boolean {
   return !!(process.env.WRHQ_SYNC_URL && process.env.WRHQ_SYNC_SECRET)
@@ -217,6 +242,36 @@ export function payloadFor(
     mobileService: client.offersMobileService,
     filesInsuranceClaims: client.filesInsuranceClaims,
     googlePlaceId: client.googlePlaceId || undefined,
+    /* THE DIRECTORY'S LISTING WAS A SCRAPE, AND THIS IS THE SHOP'S OWN RECORD.
+       Everything below is a fact this app already holds and had never sent, so
+       a Partner's page carried the description somebody else wrote about them,
+       no rating, no logo and a geocoded pin.
+
+       All of it is FILL-AND-REPLACE on the far side: a field absent here
+       leaves whatever the directory has standing. That matters most for the
+       rating — a Business Profile lookup that is failing this week must not
+       blank a rating the listing already shows. */
+    description: client.siteContent?.footerBlurb?.trim() || undefined,
+    // Same numbers the hosted site renders, from the cached GBP feed. Never
+    // computed, never rounded up: the directory prints what Google says.
+    rating: client.gbpReviews?.rating ?? undefined,
+    reviewCount: client.gbpReviews?.reviewCount ?? undefined,
+    logoUrl: client.logoUrl || undefined,
+    /* Their own gallery. Until now a Partner's listing had no photograph at
+       all, so the directory fell back to reading og:image off their website —
+       which is the SHARE CARD this app generates for them, business name set
+       large across it, cropped by object-cover into a slab of unreadable
+       type. Real pictures are the fix; the directory has stopped using
+       og:image either way. GALLERY only: BODY shots are process details cut
+       to sit beside prose, and they read as fragments on their own. */
+    ...(client.sitePhotos?.length
+      ? { photos: client.sitePhotos.map((p) => p.url).slice(0, PHOTO_LIMIT) }
+      : {}),
+    // Both or neither. Half a coordinate pair puts a pin in the ocean, and
+    // this app has already drawn one map in the Atlantic.
+    ...(client.latitude != null && client.longitude != null
+      ? { lat: client.latitude, lng: client.longitude }
+      : {}),
     /* RE-SCREENED ON THE WAY OUT, not merely read. A row written before a
        rule existed — or pasted by hand into an earlier version of the card —
        must not reach a public directory page because it is already in the
@@ -353,6 +408,17 @@ export const WRHQ_SYNC_SELECT = {
   offersSunroofRepair: true,
   offersAdasCalibration: true,
   filesInsuranceClaims: true,
+  latitude: true,
+  longitude: true,
+  logoUrl: true,
   socialLinks: true,
   domains: { select: { domain: true, isPrimary: true } },
+  sitePhotos: {
+    where: { pool: 'GALLERY' },
+    select: { url: true },
+    orderBy: { sortOrder: 'asc' },
+    take: 12,
+  },
+  gbpReviews: { select: { rating: true, reviewCount: true } },
+  siteContent: { select: { footerBlurb: true } },
 } as const

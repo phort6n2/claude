@@ -22,6 +22,7 @@ import {
   ClipboardList,
   Wrench,
   Megaphone,
+  Store,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -56,6 +57,10 @@ const navigation: NavSection[] = [
       // Not "Ads:" any more — the same queue now carries site checks that run
       // for every client, ads-managed or not.
       { name: 'Needs action', href: '/admin/ads-findings', icon: Megaphone },
+      // Shops on the directory that have shown they are in the market. Under
+      // CRM rather than System: this is a list somebody rings, not a health
+      // readout.
+      { name: 'Shop signals', href: '/admin/directory-signals', icon: Store },
     ],
   },
   {
