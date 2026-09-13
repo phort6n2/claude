@@ -1287,6 +1287,25 @@ practice nobody ever did.
   instead — the flag the Business tab actually sets, which already gates this
   claim across the hosted sites, and which is a fact about the SHOP'S PROCESS
   rather than a claim of endorsement BY an insurer.
+- **A PARTNER USED TO WEAR THE BADGE OVER A SCRAPE.** The sync wrote the shop
+  record only when it CREATED the listing, so a client MATCHED to one of the
+  directory's ~3,000 existing listings — three of the first nine — kept the
+  description somebody else wrote about them, no rating and no logo,
+  permanently. Those listings are in a JSON file a running site cannot edit, so
+  there was no write to make; the data rides on the binding and is overlaid at
+  read time on the far side, the way `claimed` already is. What now goes:
+  `footerBlurb` as the description (declared on the payload type since the
+  module was written and never once set — a dead field), `Client.logoUrl` in
+  place of the 128px favicon the directory scrapes, `latitude`/`longitude`
+  **both or neither**, and the `ClientGbpReviews` rating and count. Those
+  numbers are the whole reason a Partner's listing can show a star: the
+  directory has no Places key and is not getting one, and this app already
+  fetches the same Business Profile feed for the site it hosts. It is
+  fill-and-replace and never clears over there, so a sync running while the
+  Business Profile lookup is failing leaves the rating the listing already
+  shows. `logoUrl`/`latitude`/`longitude` are in `WRHQ_SYNC_FIELDS` because
+  they are RENDERED there now — a logo swapped in one app and not the other is
+  the drift nobody notices until a client points at their own listing.
 - **The service keys are the DIRECTORY's, not ours** — `chip-repair`,
   `side-window`, `rear-window`. Its endpoint silently drops keys it does not
   recognise, so a wrong name here is not an error anywhere, it just quietly
