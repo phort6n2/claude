@@ -715,6 +715,55 @@ in this app.
 - Performance Max is **excluded** — its assets live in asset groups and are
   judged on a different standard, so "no sitelinks" against one would be a
   confident finding about the wrong thing.
+- `BUSINESS_NAME` and `BUSINESS_LOGO` are **counted but not required**
+  (`ASSET_STANDARD.reported`): the audit could not see them at all, and a
+  target built on a field_type enum nobody has confirmed against a live
+  account counts zero forever and files a finding nobody can clear. Promote
+  them once an account confirms the spelling.
+- **WEEKLY ALSO READS WHAT THE ASSETS SAY** (`google-ads-asset-claims.ts`,
+  check `asset-claims`). The coverage audit counts assets and had never read
+  one word of them, so an account passes with a full set advertising work the
+  shop does not do, a warranty the site never defines, or a number nothing
+  records. MAG Mobile exceeds every count and its copy could carry four of
+  those at once.
+- **THE LINE THAT KEEPS IT USABLE: every rule needs a fact on OUR side that
+  contradicts the ad.** This is NOT `copy-claims.ts`, which governs copy the
+  platform drafts for fifteen shops and bans a timing promise outright. An ad
+  asset was written by an operator for ONE named shop, so "same-day
+  appointments" may simply be true — and a check that fires on it files dozens
+  of findings nobody can act on, which is how an account goes red forever and
+  people stop reading. So: the service flag is off, the claim flag is off,
+  there are no warranty terms anywhere, the state has no such law, that number
+  is not theirs. Nobody can argue with any of those.
+- **The deductible rule is read per STATE, not banned as a phrase.** "$0 with
+  most FL insurance" is a statement of Florida law and it stands; the same
+  words in a state with no automatic rule are the §2 offer that is illegal to
+  advertise. `insuranceForState` decides. And **Florida's statute is
+  windshield-only** — its own note in `insurance-rules.ts` says door and back
+  glass go through the ordinary deductible — so the identical claim on a
+  back-glass sitelink is wrong while the windshield one is right, and in MAG's
+  list those two sit side by side reading the same. Nothing but that pairing
+  could catch it.
+- **A sitelink's descriptions belong to its LINK TEXT**, and the glass type is
+  in the link text while the claim is in the description. Checking a line on
+  its own finds nothing — caught by the fixture, which is MAG's real asset
+  list verbatim, kept precisely because what this check stays SILENT about is
+  its most valuable property.
+- A phone number in an asset that is not one of the shop's is an **ALERT**:
+  the bad case is not a wrong number but a RIGHT one this app does not track,
+  taking calls the ads paid for on a line nothing records — `rogue-numbers` in
+  the ad account. Known numbers are the real line, the display number, each
+  location's, and every tracking number bought in-app.
+- The **one timing claim that is checked** is a response-time promise against
+  the MEASURED median (`response-time.ts`), needing 8+ measured leads and 3×
+  the promise before it fires. That is the shop's own data contradicting their
+  own ad, not an opinion about speed.
+- One finding per PROBLEM, not per asset — twelve sitelinks with the same
+  fault are one thing to fix — and the entity is the problem, so a persisting
+  condition is one row whose `lastSeenAt` moves.
+- `ASSET_CLAIM_CHECK` joins `judged` **only when the text fetch succeeded**; a
+  check told it "ran" on a failed fetch auto-resolves everything it filed last
+  week. The count findings still file when the copy query fails.
 - **Anything that files its own findings stays OUT of `WEEKLY_CHECKS`.** That
   list is the set the playbook run is allowed to auto-resolve; a self-filing
   check listed there is told it "ran" while `result.drafts` holds none of its
