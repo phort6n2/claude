@@ -128,6 +128,15 @@ function businessEntity(
   // When the client has stored shops, the primary one is the canonical
   // address — the scalar Client address may be stale head-office data.
   const primary = locations.find((l) => l.isPrimary && !l.isSynthetic) || null
+  /* A SERVICE-AREA BUSINESS HAS NO STREET ADDRESS TO PUBLISH, and its own
+     Business Profile is where that is settled: Google's guidance for a SAB is
+     to hide the address, so the profile these pages are cross-checked against
+     carries a locality and no street. Emitting one here would be markup
+     disagreeing with the listing it is meant to corroborate — a worse NAP than
+     omitting it, and the one field a customer might act on. Locality, region
+     and postcode stay: those the profile does carry, and they are what the
+     legal pages and the rank grid are built on. */
+  const shop = client.hasShopLocation !== false
   const entity: Record<string, unknown> = {
     '@type': 'AutoRepair',
     '@id': businessId(origin),
@@ -136,7 +145,7 @@ function businessEntity(
     telephone: schemaPhone(primary?.phone || client.phone),
     address: {
       '@type': 'PostalAddress',
-      streetAddress: primary?.streetAddress || client.streetAddress,
+      ...(shop ? { streetAddress: primary?.streetAddress || client.streetAddress } : {}),
       addressLocality: primary?.city || client.city,
       addressRegion: primary?.state || client.state,
       postalCode: primary?.postalCode || client.postalCode,
@@ -202,7 +211,12 @@ export function homeJsonLd({
       publisher: { '@id': businessId(origin) },
     },
     businessEntity(origin, client, services, extras.galleryPhotos, locations),
-    ...branchEntities(origin, client.businessName, locations),
+    // No branch entities for a service-area business: a branch IS a street
+    // address, so a leftover imported row would publish in the graph the one
+    // address the pages themselves now refuse to show.
+    ...(client.hasShopLocation === false
+      ? []
+      : branchEntities(origin, client.businessName, locations)),
   ]
   if (extras.faq.length) {
     graph.push({

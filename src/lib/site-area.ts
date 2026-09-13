@@ -105,17 +105,41 @@ export function servingShort(client: AreaNaming): string {
  * Both halves on purpose. "Serving Orange County" alone loses the city that
  * makes the shop findable and believable; the city alone is the problem this
  * whole field exists to fix.
+ *
+ * THE SECOND HALF USED TO ASSERT A SHOP. It read "from our shop in Orlando",
+ * and for a service-area business there is no shop in Orlando — §2's invented
+ * fact about a business, in the line under the H1 on every page. The city is
+ * still worth naming (it is what makes them findable, and it is true), so the
+ * no-premises form keeps the city and drops the building: "based in Orlando,
+ * FL". Nothing else on the line changes, and the fourteen shops with premises
+ * read exactly as they did.
+ *
+ * `hasShopLocation` is REQUIRED here for the same reason `marketArea` is on
+ * AreaNaming: every site page loads its client through an explicit Prisma
+ * select, and an option a caller could forget is a page that compiles cleanly
+ * and claims a shop forever.
  */
-export function servingLine(client: AreaNaming, mobile: boolean): string {
+export function servingLine(
+  client: AreaNaming,
+  opts: { mobile: boolean; hasShopLocation: boolean }
+): string {
   const city = clean(client.city)
   const state = clean(client.state)
+  const { mobile } = opts
+  const shop = opts.hasShopLocation !== false
   if (!usesMarketArea(client)) {
+    // Neither of these named a building, so both stand as they were.
     return mobile
       ? `Mobile service across ${city} & nearby — we come to your home or workplace`
       : `Serving ${city}, ${state} and nearby`
   }
   const area = headlineArea(client)
-  return mobile
-    ? `Mobile service across ${area} — we come to your home or workplace, from our shop in ${city}`
-    : `Serving ${area} from our ${city}, ${state} shop`
+  if (mobile) {
+    return shop
+      ? `Mobile service across ${area} — we come to your home or workplace, from our shop in ${city}`
+      : `Mobile service across ${area} — we come to your home or workplace, based in ${city}, ${state}`
+  }
+  return shop
+    ? `Serving ${area} from our ${city}, ${state} shop`
+    : `Serving ${area}, based in ${city}, ${state}`
 }

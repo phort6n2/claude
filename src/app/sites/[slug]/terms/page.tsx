@@ -53,6 +53,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!client || !(await canViewSite(client.status))) return { title: 'Not Found' }
   return {
     title: `Terms & Conditions | ${client.businessName}`,
+    // Its own, because with none set Next inherits the ROOT layout's — so a
+    // client's terms page described itself as "Leads and call coaching
+    // platform for auto glass shops", which is this platform talking about
+    // itself on their page.
+    description: `The terms that cover work performed by ${client.businessName} and use of this website.`,
     robots: { index: false },
     alternates: {
       canonical: `https://${client.siteSubdomain || client.slug}.glassleads.app/terms`,
