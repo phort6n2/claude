@@ -834,9 +834,27 @@ const WIDGET_SOURCE = String.raw`(function () {
            below stays on cfg.phone: that direction is inbound and wants
            recording. See lib/site-phone. */
         var callFrom = cfg.callbackPhone || '';
+        var callTo = cfg.phone || '';
+        /* TWO NUMBERS ON ONE CARD NEED TWO ROLES, or the pair reads as a
+           mistake: "we will call from (714)" directly above a button saying
+           "call (689)" leaves the customer wondering which one is the shop
+           and whether they misread. So the sentence is about the call WE
+           make and the button is about the call THEY make, and the labels say
+           which — by ACTION, not by naming a department. "Our dedicated quote
+           team" was the suggested framing and it cannot go here: this string
+           renders for fifteen shops and most of them are one or two people in
+           a van, so it would be §2's invented fact about a business, the same
+           staffing claim copy-claims.ts refuses for the drafters.
+
+           When a shop has no tracking number the two are the same number and
+           the split would be nonsense, so that case keeps the single
+           sentence it always had. */
+        var split = callFrom && callTo && callFrom.replace(/\D/g, '') !== callTo.replace(/\D/g, '');
         ok.appendChild(el('p', {
           text: 'Your request is in.' + (callFrom
-            ? ' We will call from ' + callFrom + ' to confirm the glass, your coverage and a time — save the number so you do not miss it.'
+            ? (split
+              ? ' We will call you from ' + callFrom + ' to confirm the glass, your coverage and a time — save it so you know it is us.'
+              : ' We will call from ' + callFrom + ' to confirm the glass, your coverage and a time — save the number so you do not miss it.')
             : ' We will call to confirm the glass, your coverage and a time that works.')
         }));
         /* Only when the shop's line can actually receive a text — and pointed
@@ -848,8 +866,15 @@ const WIDGET_SOURCE = String.raw`(function () {
         if (callFrom && cfg.smsCapable && !data.damage_photo_url) {
           ok.appendChild(el('p', { text: 'Didn\u2019t send a photo of the damage? Text one to ' + callFrom + ' — it is the fastest way to a firm price.' }));
         }
-        if (cfg.phone) {
-          ok.appendChild(el('a', { href: 'tel:' + cfg.phone.replace(/[^+\d]/g, ''), text: 'Call ' + cfg.businessName + ' — ' + cfg.phone }));
+        if (callTo) {
+          /* The button is the INBOUND path and stays on the displayed number
+             so the call is recorded and attributed. Its label carries the
+             other half of the split: the sentence above is the call we make,
+             this is the one they make if they would rather not wait. */
+          ok.appendChild(el('a', {
+            href: 'tel:' + callTo.replace(/[^+\d]/g, ''),
+            text: split ? 'Rather not wait? Call ' + callTo : 'Call ' + cfg.businessName + ' — ' + callTo
+          }));
         }
         body.appendChild(ok);
         try { okHead.focus(); } catch (e) {}
