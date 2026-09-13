@@ -56,11 +56,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Too many events in one post' }, { status: 413 })
   }
 
+  /* The directory marks its own "is this wired up" press with this header.
+     It is STORED, not dropped: what that button needs to prove is that a row
+     and an email both happened, and a receiver that silently discards the one
+     event you can send on demand is a receiver you cannot test. What it must
+     not do is appear in the prospect list, where "TEST — Windshield Repair HQ
+     wiring check" reads as a shop in Testville with a phone number on it. */
+  const isTest = request.headers.get('x-wrhq-test') === '1'
+
   const stored: string[] = []
   let duplicates = 0
   const errors: string[] = []
   for (const event of events) {
-    const res = await recordSignal(event)
+    const res = await recordSignal(event, { isTest })
     if (res.stored && res.id) stored.push(res.id)
     else if (res.duplicate) duplicates++
     else if (res.error) errors.push(res.error)
@@ -77,6 +85,7 @@ export async function POST(request: Request) {
     ok: errors.length === 0,
     received: events.length,
     stored: stored.length,
+    ...(isTest ? { test: true } : {}),
     duplicates,
     emailed: notified.sent,
     ...(notified.error ? { emailError: notified.error } : {}),

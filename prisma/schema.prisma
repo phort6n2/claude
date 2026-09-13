@@ -880,6 +880,12 @@ model DirectorySignal {
   /// than a signal — the same reason the rank payloads are stored raw.
   payload Json?
 
+  /// Arrived with the directory's X-WRHQ-Test header — its "is this wired up"
+  /// button, not a shop. Stored rather than dropped, because the answer the
+  /// button needs is that the row and the email both happened; kept out of the
+  /// list and out of any count so it can never be rung.
+  isTest Boolean @default(false)
+
   /// NEW → DISMISSED (dealt with, or not worth ringing). Never deleted: the
   /// history is who has been circling.
   status      String    @default("NEW")

@@ -371,6 +371,16 @@ export const DIRECTORY_SIGNAL_SQL: string[] = [
    )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "DirectorySignal_dedupeKey_key" ON "DirectorySignal"("dedupeKey")`,
   `CREATE INDEX IF NOT EXISTS "DirectorySignal_status_occurredAt_idx" ON "DirectorySignal"("status", "occurredAt")`,
+  // Added after the table shipped. Prisma selects every scalar on a model, so
+  // without this ALTER in the same commit every query against the table breaks.
+  `ALTER TABLE "DirectorySignal" ADD COLUMN IF NOT EXISTS "isTest" BOOLEAN NOT NULL DEFAULT false`,
+  /* Rows that arrived before the column existed default to false, so the
+     wiring test already sitting in the list would stay there looking like a
+     shop in Testville with a phone number on it. `test-shop` is the
+     directory's own fixed slug for that press (sendTestLeadEvent) and can
+     never belong to a real listing, so this is safe to re-run and narrow
+     enough not to catch anything else. */
+  `UPDATE "DirectorySignal" SET "isTest" = true WHERE "slug" = 'test-shop' AND "isTest" = false`,
 ]
 
 /**
