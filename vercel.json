@@ -45,6 +45,10 @@
     {
       "path": "/api/cron/sync-site-analytics",
       "schedule": "20 7 * * *"
+    },
+    {
+      "path": "/api/cron/monthly-reports",
+      "schedule": "0 13 1 * *"
     }
   ]
 }

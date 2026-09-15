@@ -260,6 +260,9 @@ model Client {
   // Who gets told when a lead arrives
   notification ClientNotification?
 
+  // One stored report per calendar month — see lib/monthly-digest.ts
+  monthlyReports ClientMonthlyReport[]
+
   // Editorial content + photos for the hosted site
   siteContent ClientSiteContent?
   sitePhotos  ClientSitePhoto[]
@@ -445,7 +448,7 @@ model LeadMessage {
 
   /// inbound | outbound. Only inbound exists today; the column is here so an
   /// outbound reply does not need a migration to be recorded truthfully.
-  direction String @default("inbound")
+  direction String   @default("inbound")
   body      String?
   /// Our OWN copies, in Blob storage. Twilio's media URLs need Basic auth and
   /// do not outlive the message, so a stored Twilio URL is a photo that works
@@ -455,7 +458,7 @@ model LeadMessage {
   /// Twilio's MessageSid. UNIQUE, because Twilio retries a webhook that
   /// answered slowly and a replay must not become a second message — the same
   /// guard twilioCallSid gives the call webhooks.
-  twilioSid String @unique
+  twilioSid  String @unique
   /// The customer, E.164.
   fromNumber String
   /// The tracking number they texted, E.164.
@@ -858,15 +861,15 @@ model DirectorySignal {
 
   /// shop.claimed / shop.listing_submitted / shop.published / shop.featured /
   /// shop.rank_dropped / shop.audit_click — the directory's own event names.
-  type String
+  type      String
   /// type + slug/name + occurredAt. The directory sends no event id, and it
   /// retries: without this, one claim arriving twice is two rows in the inbox
   /// and the second one reads as a second shop.
   dedupeKey String @unique
 
   /// Directory slug, when the shop already has a listing.
-  slug String?
-  name String
+  slug    String?
+  name    String
   email   String?
   phone   String?
   city    String?
@@ -879,8 +882,8 @@ model DirectorySignal {
   previousRank Int?
 
   /// What the claim form captured. The reason to ring them, in their words.
-  monthlyVolume     String?
-  frustration       String?
+  monthlyVolume      String?
+  frustration        String?
   wantsMarketingHelp Boolean?
 
   /// The event exactly as it arrived, so a reader bug costs a re-read rather
@@ -1622,4 +1625,44 @@ model ClientPage {
 
   @@unique([clientId, path])
   @@index([clientId, publishedAt])
+}
+
+/// A month's report for one client, BUILT ONCE AND STORED WHOLE.
+///
+/// Snapshotted rather than recomputed because it gets emailed: the message
+/// sent on 1 March and the portal page opened in June have to agree forever,
+/// and they cannot if one of them re-asks Google Ads, whose numbers move.
+/// Same reasoning as ClarityDay keeping its raw payload.
+model ClientMonthlyReport {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  /// The month, as a person says it: 2026 and 2 mean February 2026.
+  ///
+  /// TWO INTEGERS, NOT A DATE. "The first of the month at midnight" is a
+  /// timezone question every time it is read, and this app has already fixed
+  /// two hours lost to exactly that (see lib/tz.ts). A year and a month
+  /// cannot be misread in a zone.
+  year  Int
+  month Int
+
+  /// The whole computed digest — see MonthlyDigest in lib/monthly-digest.ts.
+  payload Json
+
+  /// The operator's own next-steps note, in their words. Never generated:
+  /// monthly advice written by a model and mailed to a real business owner is
+  /// the invented fact §2 forbids, with a stamp on it.
+  note String?
+
+  builtAt   DateTime  @default(now())
+  /// Null until somebody sends it. The cron builds; a person sends.
+  sentAt    DateTime?
+  /// Exactly which addresses it went to, so "they never got it" is answerable.
+  sentTo    String[]  @default([])
+  /// What the provider said when a send failed. Cleared by a successful send.
+  sendError String?
+
+  @@unique([clientId, year, month])
+  @@index([sentAt])
 }

@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { monthLabel, monthWindow, zoneParts } from '@/lib/tz'
 
 /**
  * Leads → booked → revenue, by month.
@@ -68,10 +69,34 @@ export async function getMonthlyReport(
   clientId: string,
   monthsBack = 12
 ): Promise<MonthlyReport> {
-  const start = new Date()
-  start.setMonth(start.getMonth() - (monthsBack - 1))
-  start.setDate(1)
-  start.setHours(0, 0, 0, 0)
+  /* BUCKETED IN THE SHOP'S TIMEZONE, not the server's.
+     
+     This used to read `d.getFullYear()`/`d.getMonth()`, which in production is
+     UTC — so a lead that arrived at 23:30 on the 31st in Los Angeles counted
+     into the NEXT month. Wrong on its own, and visibly wrong once the stored
+     month digest was put on the same page: the detail block (built in the
+     shop's zone, see lib/monthly-digest.ts) said six enquiries for August
+     while the row underneath it said seven. Two numbers for one month, four
+     inches apart, in the report a shop reads when deciding whether to keep
+     paying. Now both use lib/tz and agree by construction. */
+  const client = await prisma.client
+    .findUnique({ where: { id: clientId }, select: { timezone: true } })
+    .catch(() => null)
+  const timezone = client?.timezone || 'America/Denver'
+
+  const now = zoneParts(new Date(), timezone)
+  // The months to show, newest last, as {year, month} in the shop's calendar.
+  const periods: Array<{ year: number; month: number }> = []
+  for (let i = monthsBack - 1; i >= 0; i--) {
+    let year = now.year
+    let month = now.month - i
+    while (month < 1) {
+      month += 12
+      year -= 1
+    }
+    periods.push({ year, month })
+  }
+  const start = monthWindow(periods[0].year, periods[0].month, timezone).start
 
   const [leads, calls] = await Promise.all([
     prisma.lead
@@ -90,18 +115,20 @@ export async function getMonthlyReport(
       .catch(() => []),
   ])
 
-  const key = (d: Date) => `${d.getFullYear()}-${d.getMonth()}`
+  // The bucket a timestamp falls in, read in the shop's own calendar.
+  const key = (d: Date) => {
+    const { year, month } = zoneParts(d, timezone)
+    return `${year}-${month}`
+  }
   const buckets = new Map<string, ReportMonth>()
 
   // Every month in the window exists, including the empty ones. A month that
   // vanishes because nothing happened makes a quiet month invisible instead of
   // visible, and a quiet month is the one worth talking about.
-  for (let i = 0; i < monthsBack; i++) {
-    const d = new Date(start)
-    d.setMonth(start.getMonth() + i)
-    buckets.set(key(d), {
-      month: d,
-      label: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+  for (const period of periods) {
+    buckets.set(`${period.year}-${period.month}`, {
+      month: monthWindow(period.year, period.month, timezone).start,
+      label: monthLabel(period.year, period.month),
       leads: 0,
       booked: 0,
       lost: 0,

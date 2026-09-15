@@ -23,6 +23,7 @@ import {
   Wrench,
   Megaphone,
   Store,
+  BarChart3,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -61,6 +62,10 @@ const navigation: NavSection[] = [
       // CRM rather than System: this is a list somebody rings, not a health
       // readout.
       { name: 'Shop signals', href: '/admin/directory-signals', icon: Store },
+      // Built by the 1st-of-month cron, sent by hand. Under CRM for the same
+      // reason as Shop signals: a queue somebody works through, not a health
+      // readout.
+      { name: 'Monthly reports', href: '/admin/monthly-reports', icon: BarChart3 },
     ],
   },
   {

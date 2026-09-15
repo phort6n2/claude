@@ -401,6 +401,35 @@ export const MARKET_AREA_SQL: string[] = [
 ]
 
 /**
+ * One stored report per client per calendar month, built by the 1st-of-month
+ * cron and sent by hand. See lib/monthly-digest.ts.
+ *
+ * The month is a YEAR and a MONTH integer rather than a date: "the first at
+ * midnight" is a timezone question every time it is read, and lib/tz.ts
+ * records two hours already lost to that.
+ */
+export const MONTHLY_REPORT_SQL: string[] = [
+  `CREATE TABLE IF NOT EXISTS "ClientMonthlyReport" (
+     "id" TEXT PRIMARY KEY,
+     "clientId" TEXT NOT NULL REFERENCES "Client"("id") ON DELETE CASCADE,
+     "year" INTEGER NOT NULL,
+     "month" INTEGER NOT NULL,
+     "payload" JSONB NOT NULL,
+     "note" TEXT,
+     "builtAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     "sentAt" TIMESTAMP(3),
+     "sentTo" TEXT[] DEFAULT ARRAY[]::TEXT[],
+     "sendError" TEXT
+   )`,
+  // The guard against two reports for one month, which is what a re-run of the
+  // cron would otherwise produce — and the second one would be the row the
+  // portal happened to read.
+  `CREATE UNIQUE INDEX IF NOT EXISTS "ClientMonthlyReport_clientId_year_month_key"
+     ON "ClientMonthlyReport" ("clientId", "year", "month")`,
+  `CREATE INDEX IF NOT EXISTS "ClientMonthlyReport_sentAt_idx" ON "ClientMonthlyReport" ("sentAt")`,
+]
+
+/**
  * The shop's social profiles, for the directory listing — not the site.
  * `{ "facebook": "https://…", … }`, one per platform. See lib/social-links.ts.
  */
@@ -517,6 +546,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...PATH_OVERRIDE_SQL,
   ...MARKET_AREA_SQL,
   ...SOCIAL_LINKS_SQL,
+  ...MONTHLY_REPORT_SQL,
   ...CALL_TRACKING_SQL,
   ...OFFLINE_CONVERSION_SQL,
   ...CLAIM_FLAGS_SQL,

@@ -1519,10 +1519,98 @@ tracking, Check the live site) hide on that tab.
   "How this site is measured" section — **only** for a shop that actually has
   a project id, so no site claims a tool it does not use.
 
-### Results (the monthly report)
+### Reporting (the monthly report, and the email)
 
-`monthly-report.ts` + `components/MonthlyReport.tsx`, on the client's portal
-(linked from the Booked tile, not a tab) and the admin's Results tab.
+`monthly-digest.ts` (one month in depth), `monthly-report.ts` (the twelve-month
+trend), `monthly-report-run.ts` (the build), `monthly-report-email.ts` (the
+send), `ClientMonthlyReport` (bootstrap: `MONTHLY_REPORT_SQL`), the cron at
+`/api/cron/monthly-reports`, **Monthly reports** in the admin sidebar, and
+**Reports** in the portal at `/portal/results`.
+
+**ONE PAGE, TWO QUESTIONS.** The trend answers "is this working"; the month
+answers "what happened in February". They sit on the same page because a shop
+owner asking one is thirty seconds from asking the other. The URL stayed
+`/portal/results` so the Booked tile still lands there, and it is a TAB now —
+the seventh, measured at 360px before it went in: seven columns are 51px each,
+one row, no overflow. The tab says **Reports** and not the page's own
+"Reporting" for one reason: "Reporting" measures 52px in a 51px cell and
+rendered flush against "Rankings", reading as one word. Seven is the ceiling.
+
+**THE CRON BUILDS; A PERSON SENDS.** `/api/cron/monthly-reports` runs on the
+1st and stores a digest per client. Nothing is emailed until somebody presses
+Send on the admin page. An email to fifteen real business owners cannot be
+unsent, and the figures most likely to be wrong are the ones nobody has looked
+at: a cost per conversion flattered by an account still counting calls twice, a
+spend of nothing because the API was down, a booked count of zero because the
+shop never ticked the box. Each is obvious to a human in two seconds and
+invisible to the code that built it.
+
+- **13:00 UTC, NOT MIDNIGHT, and the hour is load-bearing.** At 00:00 UTC on
+  the 1st it is still last month in every US timezone, so "last month"
+  resolves to the month BEFORE last for every client — February's report would
+  cover January, every month, with nothing about the output looking wrong.
+  `scripts/check-tz-windows.ts` asserts the trap, not just the fix.
+- **SNAPSHOTTED, NOT RECOMPUTED.** Ad spend is fetched live everywhere else in
+  this app, which is right for a screen and wrong for a report: the email sent
+  on 1 March and the portal page opened in June have to agree forever, and
+  cannot if one re-asks an API whose numbers move. Same reason `ClarityDay`
+  stores its raw payload. A report already SENT is never rebuilt — the shop
+  has that email, so the stored copy is a record of what they were told.
+- **COST PER CONVERSION IS GOOGLE'S NUMBER, not spend ÷ our leads.** Their
+  `cost_micros ÷ conversions`, so it reconciles against the shop's own Ads
+  account. Dividing spend by our enquiry count — which includes organic and
+  direct — gives a figure that matches nothing, always flatters, and teaches
+  the shop that one of the two numbers is invented. The page and the email
+  both SAY whose figure it is, because the two counts sit inches apart and
+  differ. Worth knowing when one looks too good: an account still carrying
+  HighLevel's `AGMP Call` beside this app's `AGMP Website Call` counts one
+  call twice, which inflates conversions; nothing here can detect it.
+- **THE CHANNEL SPLIT IS A PARTITION, NEVER AN ADDITION.** A tracked call
+  writes a Lead (`source: 'PHONE'`) and so does a text (`SMS`), so
+  form + phone + sms + other IS the total. Adding `CallAnalysis` rows on top —
+  which the twelve-month trend shows in its own separate column — would double
+  every phone enquiry, and the first place that shows is cost per conversion
+  reading half what it is.
+- **RECOMMENDED NEXT STEPS ARE NOT WRITTEN BY A MODEL.** They are the open
+  `AdsFinding` rows the daily and weekly sweeps already filed — structured
+  claims with their evidence attached and their own cooldowns — under an
+  operator's own note typed on the admin page. Monthly advice invented for a
+  named business and mailed to its owner is §2's fabricated fact with a stamp
+  on it. DISMISSED findings are excluded: that means "known, stop telling me".
+- **WORK COMPLETED comes from the Activity feed**, filtered to the month —
+  derived from things that happened, so it cannot claim work nobody did. Its
+  OWN lead and call tallies are dropped: they are not work we did, and they
+  DISAGREED. The feed buckets by UTC and the report by the shop's zone, so a
+  lead at 23:30 on 31 July in Los Angeles made the first real build say "6
+  enquiries" at the top and "7 enquiries delivered" in the list below it.
+- **THE TREND NOW BUCKETS IN THE SHOP'S TIMEZONE TOO**, which it never did —
+  it read `getMonth()`, i.e. UTC in production. Wrong on its own and visibly
+  wrong once the month digest sat on the same page: 6 in one block, 7 in the
+  row beneath it. Both use `lib/tz` now and agree by construction.
+- **Recipients are the PORTAL LOGINS** (`ClientUser`), not
+  `ClientNotification.emailTo`. Same no-fallback rule as the lead alerts, a
+  different list on purpose: the alert list is whoever needs waking when a
+  lead lands, which on several clients is a technician. A month's spend and
+  revenue is for whoever owns the business, and the portal invite went to the
+  address that has proven it reaches one. No portal user sends NOTHING and the
+  row says so — the report is on the portal either way, so the email is the
+  nudge rather than the artifact.
+- **Every section strips itself when empty, and a FAILURE does not.** A
+  self-serve client has no ads account, so their report is enquiries and work
+  done — that is the right report, not a broken one. But an ads block missing
+  because the API was down says so, because "we spent nothing on your ads"
+  is a different claim from "we could not read your account".
+- A zero booked count carries its own caveat in both the email and the page:
+  it almost always means nobody ticked the box, and read without that sentence
+  it is an argument against the service, made by us, in our own report.
+- `scripts/check-monthly-digest.ts` holds the arithmetic against real-shaped
+  API rows (`costMicros` as a string, in micros, camelCase) because nothing
+  local can reach Google Ads, plus every branch of the email — quiet month,
+  no ads account, ads failure, unmarked booked, and an operator note with a
+  `<script>` tag in it.
+
+**The twelve-month trend** (`monthly-report.ts` + `components/MonthlyReport.tsx`)
+renders under the month block, and on the admin's Results tab.
 
 - **Every figure is the shop's own bookkeeping.** Booked counts and revenue are
   what they marked and what they typed. Nothing is estimated or grossed up — a

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Inbox, Globe, MapPin, Sparkles, Search } from 'lucide-react'
+import { Home, Inbox, Globe, MapPin, Sparkles, Search, BarChart3 } from 'lucide-react'
 
 /**
  * Portal navigation, named the way a shop owner talks. Bottom tab bar on a
@@ -37,6 +37,12 @@ const ACTIVITY_TAB: Tab = { href: '/portal/activity', label: 'Activity', icon: S
    buying the service. "Traffic" rather than the page's own "How people find
    you" — a tab label has one line of an eighth of a phone screen. */
 const TRAFFIC_TAB: Tab = { href: '/portal/traffic', label: 'Traffic', icon: Search }
+/* Reporting, which used to be reachable only from the Booked tile. Same
+   lesson Traffic taught: a tile-only report is a report the shop never finds,
+   and this is now the page that says what the ads cost and what came of it —
+   the one a shop opens when deciding whether to keep paying. The month's
+   email links straight here. */
+const REPORTING_TAB: Tab = { href: '/portal/results', label: 'Reports', icon: BarChart3 }
 
 /**
  * The flag is false until there is something behind the tab. A tab that
@@ -47,9 +53,16 @@ function useTabs(showRankings: boolean, siteUrl?: string | null) {
   const pathname = usePathname()
   // Activity is always offered: it has a floor (the day the site went live),
   // so unlike Rankings it can never lead to an empty page.
-  // Results is deliberately NOT a tab: it is reached from the Booked tile on
-  // the home screen, which is where someone asking "what have I made" already
-  // is.
+  // Reporting IS a tab now, at /portal/results — the Booked tile still links
+  // there, so nothing moved, but the page is no longer only reachable from a
+  // tile somebody has to notice.
+  //
+  // MEASURED AT 360px WITH SEVEN TABS, as the note below this one says to.
+  // Seven columns are 51px each, one row, no horizontal overflow. The label
+  // is "Reports" and not the page's own "Reporting" for that reason and no
+  // other: "Reporting" measures 52px in a 51px cell, so it rendered flush
+  // against "Rankings" with no gap, reading as one word. Seven is the
+  // ceiling — an eighth tab is 44px a column and every label wraps.
   //
   // Traffic IS one. It was a tile for the same reason, on the assumption that
   // a sixth tab wraps on a phone — an assumption nobody had measured. It does
@@ -64,6 +77,7 @@ function useTabs(showRankings: boolean, siteUrl?: string | null) {
     ...(siteUrl ? [{ href: siteUrl, label: 'My site', icon: Globe, external: true }] : []),
     ACTIVITY_TAB,
     TRAFFIC_TAB,
+    REPORTING_TAB,
     ...(showRankings ? [RANKINGS_TAB] : []),
   ]
   const isActive = (tab: Tab) =>
