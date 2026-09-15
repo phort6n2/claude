@@ -1,4 +1,8 @@
 import { prisma } from '@/lib/db'
+// The day window lives in lib/tz beside the month window the monthly report
+// needs. One copy of the timezone arithmetic: two would drift, and a drift
+// here means a lead counted into a different day than the one it deduped in.
+import { dayWindow } from '@/lib/tz'
 
 /**
  * Same-day lead deduplication helpers.
@@ -39,35 +43,6 @@ interface DedupLookupArgs {
   timezone?: string
   /** Optional: ignore this Lead id (used for backfill so a row doesn't dedupe to itself). */
   excludeLeadId?: string
-}
-
-/**
- * Compute the start/end of the calendar day containing `at` in the given
- * timezone, returned as UTC Date instances.
- */
-function dayWindow(at: Date, timezone: string): { start: Date; end: Date } {
-  const fmt = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
-  const parts = fmt.formatToParts(at).reduce<Record<string, string>>((acc, p) => {
-    if (p.type !== 'literal') acc[p.type] = p.value
-    return acc
-  }, {})
-  // Construct local-midnight in that zone, then offset back to UTC.
-  const localMidnightStr = `${parts.year}-${parts.month}-${parts.day}T00:00:00`
-  const localMidnightAsUtc = new Date(localMidnightStr + 'Z')
-  const offsetStr = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    timeZoneName: 'shortOffset',
-  }).format(at)
-  const offsetMatch = offsetStr.match(/GMT([+-]?\d+)/)
-  const offsetHours = offsetMatch ? parseInt(offsetMatch[1], 10) : 0
-  const start = new Date(localMidnightAsUtc.getTime() - offsetHours * 60 * 60 * 1000)
-  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1)
-  return { start, end }
 }
 
 /**
