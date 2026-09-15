@@ -6,6 +6,7 @@ import { deleteStoredPhoto, processAndStorePhoto } from '@/lib/photo-upload'
 import { mirrorRemoteImage } from '@/lib/photo-mirror'
 import { validatePublicUrl } from '@/lib/site-import'
 import { asChapters } from '@/lib/site-content'
+import { syncClientPhotosToWrhq } from '@/lib/wrhq-sync'
 
 export const dynamic = 'force-dynamic'
 // Decoding and re-encoding a camera-sized JPEG is not instant.
@@ -144,7 +145,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   )
 
   revalidatePath(`/sites/${client.slug}`, 'layout')
-  return NextResponse.json({ photo, watermarked: result.photo.watermarked })
+  /* AND THE DIRECTORY. Their WRHQ listing renders this gallery, and nothing
+     here reached it: the sync hangs off the field diff in PUT
+     /api/clients/[id], and photos are not a field on Client — they are rows in
+     SitePhoto with their own routes. So a Partner's photographs only ever
+     arrived when some unrelated edit happened to trigger a sync, and one whose
+     record had not been touched since kept the branded fallback cover. */
+  const wrhq = await syncClientPhotosToWrhq(id)
+  return NextResponse.json({ photo, watermarked: result.photo.watermarked, wrhq })
 }
 
 /** DELETE ?photoId=… — remove the row, and the file when we host it. */
@@ -189,7 +197,10 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
 
   const client = await prisma.client.findUnique({ where: { id }, select: { slug: true } })
   if (client) revalidatePath(`/sites/${client.slug}`, 'layout')
-  return NextResponse.json({ ok: true })
+  // Removals too: a photo deleted here and still on their listing is the same
+  // drift in the other direction.
+  const wrhq = await syncClientPhotosToWrhq(id)
+  return NextResponse.json({ ok: true, wrhq })
 }
 
 /**
@@ -232,5 +243,10 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
   const client = await prisma.client.findUnique({ where: { id }, select: { slug: true } })
   if (client) revalidatePath(`/sites/${client.slug}`, 'layout')
-  return NextResponse.json({ ok: true })
+  /* Reordering matters as much as adding. The directory takes the first
+     twelve GALLERY photos in sort order, so "make this the hero" decides which
+     picture their listing leads with — and without this it would lead with the
+     old one until something else happened to sync. */
+  const wrhq = await syncClientPhotosToWrhq(id)
+  return NextResponse.json({ ok: true, wrhq })
 }

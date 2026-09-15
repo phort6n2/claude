@@ -327,6 +327,38 @@ async function recordSync(clientId: string, result: WrhqSyncResult): Promise<voi
  * Push a client to the directory. Always resolves — callers can await it
  * without risking the request they are serving.
  */
+/**
+ * Re-push one client to the directory, loading it fresh by id.
+ *
+ * FOR THE PATHS THAT CHANGE WHAT THE DIRECTORY RENDERS BUT DO NOT GO THROUGH
+ * `PUT /api/clients/[id]`. The sync hangs off that route's field diff, and a
+ * client's PHOTOS are not a field on Client at all — they are rows in
+ * `SitePhoto`, written by their own routes. So the gallery this module has
+ * been sending since it learned to send photos only ever reached the directory
+ * when some UNRELATED edit happened to trigger a sync, and a Partner whose
+ * record had not been touched since kept the branded fallback cover while the
+ * photographs sat here. Auto Glass Kings is that shop.
+ *
+ * Never throws and never reports a failure as fatal: the photo is already
+ * saved, and a directory that is down must not read to the operator as an
+ * upload that did not work.
+ */
+export async function syncClientPhotosToWrhq(
+  clientId: string
+): Promise<{ ok: boolean; error?: string }> {
+  if (!wrhqSyncEnabled()) return { ok: false, error: 'WRHQ sync is not configured' }
+  try {
+    const full = await prisma.client.findUnique({
+      where: { id: clientId },
+      select: WRHQ_SYNC_SELECT,
+    })
+    if (!full) return { ok: false, error: 'Client not found' }
+    return await syncClientToWrhq(full)
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Sync failed' }
+  }
+}
+
 export async function syncClientToWrhq(
   client: SyncableClient,
   opts?: { dryRun?: boolean }
