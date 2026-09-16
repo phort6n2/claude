@@ -115,12 +115,19 @@ console.log('\nThe check: only "failed" is the forwarding not connecting')
   else fail('  the detail does not name the forward target')
 
   /* THE CASES THAT MUST STAY SILENT. Each of these is a real shop having a
-     normal week, and a finding on any of them is a finding on every client. */
+     normal week, and a finding on any of them is a finding on every client.
+
+     `busy` carries one `completed` alongside it, because busy-to-EVERYTHING
+     with nothing ever ringing is its own finding (see alwaysBusy) — this
+     asserts that an ordinary busy week is not. The first version of this
+     case was five straight busies, which the always-busy rule then caught;
+     the rule was right and the fixture was the thing that had to change. */
   for (const status of ['no-answer', 'busy', 'canceled', 'completed']) {
-    const quiet = evaluateCallConnect({
-      calls: [call(status, 0), call(status, 1), call(status, 2), call(status, 3), call(status, 4)],
-      forwardTargets: ['+19725550100'],
-    })
+    const week =
+      status === 'busy'
+        ? [call('busy', 0), call('busy', 1), call('busy', 2), call('completed', 3), call('busy', 4)]
+        : [call(status, 0), call(status, 1), call(status, 2), call(status, 3), call(status, 4)]
+    const quiet = evaluateCallConnect({ calls: week, forwardTargets: ['+19725550100'] })
     if (quiet.drafts.length === 0 && quiet.judged)
       pass(`${status} × 5: judged, no finding`)
     else fail(`${status} filed ${quiet.drafts.length} findings — it would fire on every shop`)
@@ -174,6 +181,68 @@ console.log('\nThe check: only "failed" is the forwarding not connecting')
   })
   if (!unknown.judged) pass('rows with no status are not counted as calls')
   else fail('blank statuses were counted, so one real failure looked like a quarter')
+}
+
+// --- The day that produced this check -------------------------------------
+
+console.log("\nNorthStar's real day, from the runtime logs")
+{
+  /* VERBATIM from the Vercel logs for 16 September 2026. Four calls to
+     +14699495188, forwarding to +12149274145:
+       09:19 CDT  no-answer  (status 26s after the dial — it RANG)
+       12:41 CDT  busy       (1s)
+       12:42 CDT  busy       (2s)
+       12:42 CDT  busy       (1s)
+     One customer, three attempts inside 90 seconds, engaged every time. The
+     9:19 no-answer is the proof the line is reachable, and it is the reason
+     this has to stay SILENT: a busy lunchtime is not a fault. */
+  const realDay = evaluateCallConnect({
+    calls: [
+      { at: '2026-09-16T14:19:06Z', status: 'no-answer', line: '+14699495188' },
+      { at: '2026-09-16T17:41:52Z', status: 'busy', line: '+14699495188' },
+      { at: '2026-09-16T17:42:22Z', status: 'busy', line: '+14699495188' },
+      { at: '2026-09-16T17:42:54Z', status: 'busy', line: '+14699495188' },
+    ],
+    forwardTargets: ['+12149274145'],
+  })
+  if (realDay.judged && realDay.drafts.length === 0)
+    pass('three busy calls with one that rang: judged, and silent')
+  else
+    fail(`NorthStar's real day filed ${realDay.drafts.length} findings — it would fire on a busy lunchtime`)
+
+  /* THE SAME SHAPE WITH NOTHING EVER RINGING is the case nothing reported. A
+     line busy to everything for a week is rejecting calls, not engaged on
+     them — and the shop is told they missed every one. */
+  const neverRings = evaluateCallConnect({
+    calls: [
+      { at: '2026-09-10T14:00:00Z', status: 'busy', line: '+14699495188' },
+      { at: '2026-09-11T15:00:00Z', status: 'busy', line: '+14699495188' },
+      { at: '2026-09-12T16:00:00Z', status: 'busy', line: '+14699495188' },
+      { at: '2026-09-13T17:00:00Z', status: 'busy', line: '+14699495188' },
+    ],
+    forwardTargets: ['+12149274145'],
+  })
+  if (neverRings.drafts.length === 1 && neverRings.drafts[0].severity === 'REVIEW')
+    pass('busy to everything, never once ringing: a REVIEW finding')
+  else
+    fail(`always-busy came out ${neverRings.drafts.length} drafts at ${neverRings.drafts[0]?.severity}`)
+  if ((neverRings.drafts[0]?.detail || '').includes('+12149274145'))
+    pass('  and names the number to ring and listen to')
+  else fail('  the detail does not name the forward target')
+
+  // ONE call that connects is enough to prove the line works.
+  const oneGoodCall = evaluateCallConnect({
+    calls: [
+      { at: '2026-09-10T14:00:00Z', status: 'busy', line: '+1' },
+      { at: '2026-09-11T15:00:00Z', status: 'busy', line: '+1' },
+      { at: '2026-09-12T16:00:00Z', status: 'busy', line: '+1' },
+      { at: '2026-09-13T17:00:00Z', status: 'completed', line: '+1' },
+    ],
+    forwardTargets: [],
+  })
+  if (oneGoodCall.drafts.length === 0)
+    pass('one connected call proves the line works — silent again')
+  else fail('a week with one good call still filed an always-busy finding')
 }
 
 console.log(

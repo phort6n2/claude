@@ -67,6 +67,63 @@ export interface CallConnectInput {
 }
 
 /**
+ * EVERY CALL BUSY, AND NOT ONE OF THEM EVER RANG.
+ *
+ * `busy` on its own is a fact about the shop, not a fault — which is why it
+ * files nothing above. But a destination that returns busy to EVERYTHING,
+ * across a whole week, with not one call ever ringing or connecting, is not a
+ * shop permanently on the phone: it is a line rejecting the calls. Call
+ * waiting switched off, Do Not Disturb left on, a handset blocking unknown
+ * callers, a full mailbox on some carriers. Indistinguishable from a busy
+ * week from inside the app, and indistinguishable to the shop too — they get
+ * a "missed call" for each one.
+ *
+ * FOUND BY READING A REAL DAY. NorthStar took four calls: one at 9:19 that
+ * came back `no-answer` after 26 seconds — so the line rings, it is reachable,
+ * and this check correctly stays silent — then three inside 90 seconds at
+ * lunchtime that all came back `busy` in one or two seconds. One customer,
+ * three attempts, engaged every time. That is a real engaged line and it must
+ * not file anything. But the same shape with NOTHING ever ringing, for a week,
+ * is the case nothing would have reported, and the monthly report would have
+ * told them they missed every call.
+ *
+ * THE EVIDENCE THAT TELLS THEM APART is whether the destination is ever
+ * reached at all — a single `no-answer` or `completed` in the window proves
+ * the line works, and this stays quiet.
+ */
+function alwaysBusy(known: DialAttempt[], forwardTargets: string[]): FindingDraft[] {
+  const busy = known.filter((c) => c.status === 'busy')
+  if (busy.length !== known.length) return []
+  const targets = forwardTargets.filter(Boolean)
+
+  return [
+    {
+      check: CONNECT_CHECK,
+      // REVIEW, not ALERT: a genuinely engaged line is the likelier reading
+      // for a small shop, and being wrong loudly here is how the queue gets
+      // ignored. It still needs somebody to ring the number and listen.
+      severity: 'REVIEW',
+      entity: 'call-forwarding',
+      title: `All ${known.length} calls in ${WINDOW_DAYS} days came back busy — none ever rang`,
+      detail:
+        `Every one of the ${known.length} calls to their tracking number in the last ${WINDOW_DAYS} days returned "busy", and not one of them ever rang or connected. ` +
+        `A busy line is normally just a busy shop, and this check ignores it — but a destination that is busy to EVERYTHING and never once rings is usually rejecting the calls rather than engaged on them: call waiting switched off, Do Not Disturb left on, a handset silencing unknown callers, or a full mailbox. ` +
+        `Ring ${targets.length ? targets.join(', ') : 'their forward-to number'} from a number they do not know and listen to what happens. ` +
+        `Nothing else reports this: each busy call still writes a lead, still sends a "missed call" alert and still counts in their monthly report — so the shop is told they missed calls their phone never rang for.`,
+      evidence: {
+        windowDays: WINDOW_DAYS,
+        calls: known.length,
+        busy: busy.length,
+        everRang: false,
+        forwardTargets: targets,
+        firstAt: busy[0]?.at ?? null,
+        lastAt: busy[busy.length - 1]?.at ?? null,
+      },
+    },
+  ]
+}
+
+/**
  * Returns the drafts AND whether this client could be judged.
  *
  * `judged: false` keeps the check out of the run's resolve set — a week with
@@ -81,11 +138,15 @@ export function evaluateCallConnect(input: CallConnectInput): {
   if (known.length < MIN_CALLS) return { judged: false, drafts: [] }
 
   const failed = known.filter((c) => c.status === 'failed')
-  if (failed.length === 0) return { judged: true, drafts: [] }
+  if (failed.length === 0) {
+    return { judged: true, drafts: alwaysBusy(known, input.forwardTargets) }
+  }
 
   const share = failed.length / known.length
   // A stray failure is a carrier moment, not a broken line.
-  if (share < FAILURE_SHARE) return { judged: true, drafts: [] }
+  if (share < FAILURE_SHARE) {
+    return { judged: true, drafts: alwaysBusy(known, input.forwardTargets) }
+  }
 
   const none = failed.length === known.length
   const lines = [...new Set(failed.map((c) => c.line).filter(Boolean))] as string[]

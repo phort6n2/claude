@@ -280,6 +280,21 @@ webhook routes.
   `judged: false` under `MIN_CALLS` so a quiet week cannot resolve a live
   finding. `scripts/check-call-connect.ts` holds both directions, the silent
   cases first.
+  - **BUSY TO EVERYTHING, NEVER ONCE RINGING, is its own REVIEW.** A busy line
+    is normally a busy shop and files nothing — but a destination that returns
+    busy to every call for a week while nothing ever rings is rejecting them,
+    not engaged on them: call waiting off, Do Not Disturb left on, a handset
+    silencing unknown callers. A single `no-answer` or `completed` in the
+    window proves the line works and it stays quiet. Found by reading a real
+    day rather than reasoning about it — NorthStar's 9:19 call came back
+    `no-answer` after 26 seconds, which is the proof that made the three
+    lunchtime busies an ordinary engaged line and not a fault.
+- **Vercel's runtime logs ARE the Twilio log for the last day** (Pro retention
+  is 24h; wider windows return nothing and a broad query times out — scope to
+  an hour or two). `[Twilio Voice]` names the client, the tracking number and
+  the `forwardTo`; `[Twilio Status]` names the `DialCallStatus` and the
+  duration. Those two lines answer "what happened on this call" without Twilio
+  credentials, which this environment does not have.
 - Recording URLs need Basic auth, so recordings are copied to Blob storage.
 - Webhook responses: `new Response(null, { status: 204 })`. A 204 **with** a
   body throws, which returns 500, which makes Twilio retry, which runs the
