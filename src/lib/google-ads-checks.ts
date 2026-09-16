@@ -9,6 +9,11 @@ import {
   SETTLE_MINUTES,
   MIN_SECONDS,
 } from '@/lib/call-recording-health'
+import {
+  CONNECT_CHECK,
+  WINDOW_DAYS as CONNECT_WINDOW_DAYS,
+  evaluateCallConnect,
+} from '@/lib/call-connect-health'
 
 /**
  * The Google Ads heartbeat: scheduled checks that file FINDINGS.
@@ -451,6 +456,83 @@ export async function runCallRecordingChecks(
       'DAILY',
       drafts,
       judged ? new Set([RECORDING_CHECK]) : new Set<string>(),
+      summary
+    )
+  }
+
+  await runCallConnectChecks(summary)
+}
+
+/**
+ * Are the forwarded calls reaching the shop's phone at all?
+ *
+ * Its own runner rather than a branch of the recording one, because the client
+ * set is different: recording needs a number SET to record, and this needs
+ * only an active number. A shop with recording switched off still has a
+ * forwarding line that can stop connecting.
+ *
+ * See call-connect-health.ts. The short version: a `forwardTo` that can never
+ * connect writes a "missed call" lead every time, so nothing looks absent and
+ * the shop is told monthly that they missed calls their phone never rang for.
+ */
+export async function runCallConnectChecks(
+  summary: Pick<DailyRunSummary, 'newFindings' | 'resolved' | 'stillOpen'>
+): Promise<void> {
+  const clients = await prisma.client
+    .findMany({
+      where: { status: { in: ['ACTIVE', 'ONBOARDING'] } },
+      select: {
+        id: true,
+        businessName: true,
+        adsTracking: { select: { googleAdsCustomerId: true } },
+        trackingNumbers: {
+          where: { active: true },
+          select: { phoneNumber: true, forwardTo: true },
+        },
+      },
+      orderBy: { businessName: 'asc' },
+    })
+    .catch(() => [])
+
+  const windowStart = new Date(Date.now() - CONNECT_WINDOW_DAYS * 86_400_000)
+
+  for (const client of clients) {
+    if (client.trackingNumbers.length === 0) continue
+
+    const calls = await prisma.lead
+      .findMany({
+        where: {
+          clientId: client.id,
+          // Only calls through OUR TwiML. A HighLevel call is dialled by
+          // their Twilio account and says nothing about this app's forward.
+          twilioCallSid: { not: null },
+          callStatus: { not: null },
+          createdAt: { gte: windowStart },
+        },
+        select: { createdAt: true, callStatus: true, trackingNumber: true },
+        orderBy: { createdAt: 'asc' },
+        take: 500,
+      })
+      .catch(() => null)
+
+    // A failed read is not an all-clear — skip rather than resolve.
+    if (!calls) continue
+
+    const { judged, drafts } = evaluateCallConnect({
+      calls: calls.map((c) => ({
+        at: c.createdAt.toISOString(),
+        status: c.callStatus || '',
+        line: c.trackingNumber,
+      })),
+      forwardTargets: [...new Set(client.trackingNumbers.map((n) => n.forwardTo))],
+    })
+
+    await fileFindings(
+      client,
+      client.adsTracking?.googleAdsCustomerId || '',
+      'DAILY',
+      drafts,
+      judged ? new Set([CONNECT_CHECK]) : new Set<string>(),
       summary
     )
   }

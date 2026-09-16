@@ -245,6 +245,41 @@ webhook routes.
   contract is that whatever goes wrong the caller still reaches the shop, and
   every path in it returns TwiML — which the signature check broke by throwing
   above the comment that says so.
+- **"NOBODY PICKED UP" IS A CLAIM ABOUT THE SHOP, and three of the four missed
+  statuses do not support it** (`callOutcome` in `call-display.ts`).
+  `MISSED_CALL_STATUSES` is `no-answer | busy | failed | canceled`, and every
+  one of them produced that single sentence. Only `no-answer` means it rang and
+  nobody answered. `busy` is an engaged line, `canceled` is the caller hanging
+  up mid-ring, and **`failed` means Twilio could not place the forwarded call
+  at all** — a `forwardTo` changed at the shop and not here, a disconnected
+  line, a carrier rejection, a geo permission. Reported by a shop who got
+  "Missed Call — Nobody picked up" and said their phone never rang: both were
+  true, and the alert was the thing that was wrong. The copy now names which it
+  was, says plainly when the phone never rang, and OWNS the `failed` case as
+  ours — a shop reading that has done nothing wrong, and telling them to answer
+  faster would be the worst sentence in the app. `canceled` reports `rang:
+  null`, never a guess: how much of the ringing reached the handset depends on
+  the carrier.
+- **`Lead.callStatus` was stored from day one and rendered NOWHERE.** Counted
+  and bucketed, never shown — so "the client says it never rang" could only be
+  answered from Twilio's console, which is the one place the person asking is
+  not. The lead page now names the outcome, whether the phone rang, Twilio's
+  own word for it and the number dialled.
+- **A FORWARD THAT NEVER CONNECTS IS THE `<Dial record>` FAILURE WITH A WRONG
+  ROW INSTEAD OF NO ROW, WHICH IS WORSE** (`call-connect-health.ts`, check
+  `calls-not-connecting`, in the daily sweep). A `failed` dial still writes a
+  lead, still sends the alert and still counts in the monthly report, so
+  nothing is absent and nothing looks broken: the paid clicks keep arriving,
+  the phone never rings, and the report tells the shop every month that they
+  missed every call. The only person who can see it is the shop, and what they
+  see is us blaming them. **ONLY `failed` FILES A FINDING** — `busy`,
+  `no-answer` and `canceled` are facts about the shop or the caller, and firing
+  on those files one against every shop that has ever been engaged, which is
+  how a queue goes permanently red and people stop reading it. ALERT when
+  nothing connects, REVIEW past `FAILURE_SHARE`, silent for a stray, and
+  `judged: false` under `MIN_CALLS` so a quiet week cannot resolve a live
+  finding. `scripts/check-call-connect.ts` holds both directions, the silent
+  cases first.
 - Recording URLs need Basic auth, so recordings are copied to Blob storage.
 - Webhook responses: `new Response(null, { status: 204 })`. A 204 **with** a
   body throws, which returns 500, which makes Twilio retry, which runs the

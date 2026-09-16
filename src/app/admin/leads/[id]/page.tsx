@@ -27,6 +27,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { STATUS_CONFIG, STATUS_OPTIONS, relativeAge, statusStyle } from '@/lib/lead-display'
+import { callOutcome } from '@/lib/call-display'
 import { LeadTexts, type LeadTextMessage } from '@/components/leads/DamagePhoto'
 import { Button } from '@/components/ui/Button'
 
@@ -55,6 +56,11 @@ interface Lead {
   formData: Record<string, unknown> | null
   /** Texts to and from this lead, with the photos in them. */
   messages?: LeadTextMessage[] | null
+  /** Twilio's DialCallStatus, and how long the forwarding leg lasted. */
+  callStatus?: string | null
+  callDurationSecs?: number | null
+  trackingNumber?: string | null
+  twilioCallSid?: string | null
   highlevelContactId: string | null
   qualified: boolean | null
   qualificationNotes: string | null
@@ -210,6 +216,7 @@ export default function LeadDetailPage() {
 
   const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown Contact'
   const isPhoneLead = lead.source === 'PHONE'
+  const outcome = callOutcome(lead.callStatus, lead.callDurationSecs)
   const fd = lead.formData as Record<string, unknown> | null
   const rawPayload = fd?._rawPayload as Record<string, unknown> | null
 
@@ -308,10 +315,61 @@ export default function LeadDetailPage() {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-4">
             {/* Phone lead indicator */}
+            {/* WHAT ACTUALLY HAPPENED ON THE CALL. `callStatus` has been
+                stored on every call lead since call tracking shipped and was
+                rendered NOWHERE — so "the client says it never rang" could
+                only be answered by opening Twilio's console, which is the one
+                place the person asking is not. Three of the four missed
+                statuses mean the phone never rang, and one of them
+                (`failed`) is our own end; telling them apart is the whole
+                answer to that complaint. See callOutcome in call-display.ts. */}
             {isPhoneLead && (
-              <div className="bg-orange-50 border border-orange-200 rounded-2xl p-3 flex items-center gap-2">
-                <Phone className="h-4 w-4 text-orange-600" />
-                <span className="text-sm text-orange-800 font-medium">Phone Call Lead</span>
+              <div
+                className={`rounded-2xl border p-3 ${
+                  outcome.rang === false
+                    ? 'border-red-200 bg-red-50'
+                    : outcome.missed
+                      ? 'border-orange-200 bg-orange-50'
+                      : 'border-green-200 bg-green-50'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Phone
+                    className={`h-4 w-4 ${
+                      outcome.rang === false
+                        ? 'text-red-600'
+                        : outcome.missed
+                          ? 'text-orange-600'
+                          : 'text-green-600'
+                    }`}
+                  />
+                  <span
+                    className={`text-sm font-medium ${
+                      outcome.rang === false
+                        ? 'text-red-800'
+                        : outcome.missed
+                          ? 'text-orange-800'
+                          : 'text-green-800'
+                    }`}
+                  >
+                    Phone call — {outcome.label}
+                    {lead.callDurationSecs ? ` · ${lead.callDurationSecs}s` : ''}
+                  </span>
+                </div>
+                {/* Said plainly, because it is the difference between a shop
+                    that ignored a ringing phone and a shop whose line we
+                    could not reach. */}
+                <p className="mt-1 text-xs text-gray-600">
+                  {outcome.rang === false
+                    ? 'Their phone did not ring on this call.'
+                    : outcome.rang === null && outcome.missed
+                      ? 'Whether their phone rang cannot be known from this — the caller hung up during ringing.'
+                      : outcome.missed
+                        ? 'Their phone rang for the full timeout.'
+                        : ''}
+                  {lead.callStatus ? ` Twilio reported “${lead.callStatus}”.` : ''}
+                  {lead.trackingNumber ? ` Dialled ${lead.trackingNumber}.` : ''}
+                </p>
               </div>
             )}
 

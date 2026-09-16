@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db'
-import { isMissedCall } from '@/lib/call-display'
+import { callOutcome, isMissedCall } from '@/lib/call-display'
 import { earliestSameDayContact } from '@/lib/lead-dedup'
 import { notifyNewLead as notifyLeadRecipients } from '@/lib/lead-notifications'
 import { notifyNewLead as notifyAdminPush } from '@/lib/push-notifications'
@@ -75,6 +75,7 @@ export async function recordCall(
   facts: CallFacts
 ): Promise<string> {
   const missed = isMissedCall(facts.status)
+  const outcome = callOutcome(facts.status, facts.durationSeconds)
 
   const existing = await prisma.lead.findUnique({
     where: { twilioCallSid: facts.callSid },
@@ -167,14 +168,23 @@ export async function recordCall(
           number.clientId,
           number.client.businessName,
           {
-            name: missed ? 'Missed call' : 'Answered call',
+            // The headline names the outcome rather than only "Missed call",
+            // so the sentence underneath is not the first the shop hears of
+            // it — and so an alert about our own failure to connect does not
+            // read as an alert about their phone.
+            name: missed ? `Missed call — ${outcome.label.toLowerCase()}` : 'Answered call',
             phone: facts.from,
             email: '',
             service: '',
             vehicle: '',
             postalCode: '',
+            /* WHICH KIND OF MISSED — see callOutcome in call-display.ts.
+               This was one sentence for all four missed statuses: "Nobody
+               picked up." Three of them mean the phone never rang, so a shop
+               whose line could not be reached was told they had ignored it.
+               NorthStar reported exactly that, and they were right. */
             message: missed
-              ? 'Nobody picked up. The caller has not left any details — calling straight back is the whole opportunity.'
+              ? outcome.note
               : `Somebody answered${spoken ? ` and spoke for ${spoken}` : ''}. Nothing to do — this is your record of the call, with the number to hand if you need to ring them back.`,
             source: sourceLabel(number, missed),
             isCall: true,
