@@ -1180,6 +1180,19 @@ export function MapSection({
     area: headlineArea(client),
     city: lead?.city || client.city,
   })
+  /* HOURS ARE NOT A PREMISES CLAIM, so a service-area business keeps them.
+     `ordered` is empty for one on purpose — the flag wins over stored rows for
+     anything that says a customer can turn up somewhere — and hours came off
+     the page with the street as collateral, because both were printed from the
+     same `lead`. WHEN somebody can reach you is a different fact from WHERE,
+     and it is the one a mobile shop can least afford to lose: without it the
+     card read "Based in Little Elm, TX — we come to the vehicle, wherever it
+     is" and said nothing about whether anybody is there to answer at 7pm.
+     Read off the raw rows for that reason: a leftover row's ADDRESS is a claim
+     about premises and its HOURS are not. */
+  const openHours = hasPremises(premises)
+    ? lead?.hours || null
+    : locations.find((l) => l.hours)?.hours || null
   return (
     <section className="border-t border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
@@ -1255,32 +1268,50 @@ export function MapSection({
                   <br />
                   {lead?.city || client.city}, {lead?.state || client.state}{' '}
                   {lead?.postalCode || client.postalCode}
-                  {lead?.hours && (
+                  {openHours && (
                     <>
                       <br />
-                      <span className="text-[var(--tx-muted)]">{lead.hours}</span>
+                      <span className="text-[var(--tx-muted)]">{openHours}</span>
                     </>
                   )}
                 </div>
               </div>
             ) : (
-              <div>
-                <div className="text-[11px] font-bold uppercase tracking-[.09em] text-[var(--tx-muted)] mb-1">
-                  Based in
+              <>
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-[.09em] text-[var(--tx-muted)] mb-1">
+                    Based in
+                  </div>
+                  <div className="text-sm text-[var(--tx2)] leading-relaxed">
+                    {client.city}, {client.state}
+                    <br />
+                    <span className="text-[var(--tx-muted)]">
+                      {/* Not "there is no shop to visit". A negation still puts
+                          the word on the page, and what the visitor needs is
+                          what DOES happen, not what does not. */}
+                      {offersMobileService
+                        ? 'We come to the vehicle, wherever it is.'
+                        : 'We work across the area below.'}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-sm text-[var(--tx2)] leading-relaxed">
-                  {client.city}, {client.state}
-                  <br />
-                  <span className="text-[var(--tx-muted)]">
-                    {/* Not "there is no shop to visit". A negation still puts
-                        the word on the page, and what the visitor needs is
-                        what DOES happen, not what does not. */}
-                    {offersMobileService
-                      ? 'We come to the vehicle, wherever it is.'
-                      : 'We work across the area below.'}
-                  </span>
-                </div>
-              </div>
+                {/* LABELLED, unlike the shop's, which sits unlabelled under a
+                    street where the reading is obvious. Under "Based in" a bare
+                    line of times reads as when that place is open — which is
+                    the premises implication this whole branch exists to remove.
+                    "Hours" is what their own Business Profile calls the same
+                    field, and it asserts nothing beyond what the shop typed:
+                    "when we work" would be us deciding whether they meant the
+                    van or the phone, and nothing here knows which. */}
+                {openHours && (
+                  <div>
+                    <div className="text-[11px] font-bold uppercase tracking-[.09em] text-[var(--tx-muted)] mb-1">
+                      Hours
+                    </div>
+                    <div className="text-sm text-[var(--tx2)] leading-relaxed">{openHours}</div>
+                  </div>
+                )}
+              </>
             )}
             {areas && areas.length > 0 && (
               <div>

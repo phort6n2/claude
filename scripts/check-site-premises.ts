@@ -16,6 +16,10 @@
  * anywhere.
  */
 
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { MapSection } from '../src/components/sites/shared'
+import type { SiteLocation } from '../src/lib/client-locations'
 import { servingLine } from '../src/lib/site-area'
 import {
   areaMapQuery,
@@ -298,6 +302,104 @@ console.log('\nLocalBusiness JSON-LD')
   if (serialized.includes(base.streetAddress))
     fail('the street address appears somewhere else in the graph')
   else pass('the street appears nowhere in the graph')
+}
+
+// --- The map card, rendered -------------------------------------------------
+
+/*
+ * WHAT THE CARD SAYS, out of the real component.
+ *
+ * Everything above this point checks the libraries, and the bug that prompted
+ * these cases was in neither: the street and the hours were printed from the
+ * same `lead`, so ticking the flag took the hours off the page as collateral.
+ * No library function was wrong, nothing went red, and the only symptom was a
+ * mobile shop's card saying where they are based and nothing about when
+ * anybody is there to answer. So the card itself is rendered here, in every
+ * configuration, and the shop's own copy is asserted unchanged beside it —
+ * that half is the one that costs fourteen clients if this drifts.
+ */
+
+console.log('\nThe map card, rendered')
+{
+  const client = {
+    slug: 'sab',
+    businessName: 'MAG Mobile Auto Glass',
+    phone: '(689) 366-6860',
+    email: null,
+    streetAddress: '1200 Example Pkwy',
+    city: 'Orlando',
+    state: 'FL',
+    postalCode: '32801',
+    marketArea: 'Central Florida',
+    logoUrl: null,
+    footerLogoUrl: null,
+    primaryColor: null,
+    accentColor: null,
+    hasShopLocation: true,
+    googleMapsUrl: null,
+  }
+  const row: SiteLocation = {
+    id: 'loc1',
+    label: 'Orlando',
+    streetAddress: '1200 Example Pkwy',
+    city: 'Orlando',
+    state: 'FL',
+    postalCode: '32801',
+    country: 'US',
+    phone: '(689) 366-6860',
+    hours: 'Mon–Sat 8:00 AM – 6:00 PM',
+    googleMapsUrl: null,
+    rating: null,
+    reviewCount: null,
+    isPrimary: true,
+    isSynthetic: false,
+  }
+
+  const cardText = (hasShopLocation: boolean, locations: SiteLocation[]) => {
+    const html = renderToStaticMarkup(
+      createElement(MapSection, {
+        client: { ...client, hasShopLocation },
+        reviews: { rating: 4.9, reviewCount: 88, quotes: [] },
+        areas: ['Orlando', 'Kissimmee'],
+        offersMobileService: true,
+        locations,
+        activeCity: null,
+      })
+    )
+    return html
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&[a-z]+;|&#\d+;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  }
+
+  const shop = cardText(true, [row])
+  if (shop.includes('Orlando shop 1200 Example Pkwy') && shop.includes(row.hours!))
+    pass('a shop still prints its street and its hours, unlabelled, as it always did')
+  else fail(`a shop's card changed: ${shop}`)
+
+  const sab = cardText(false, [row])
+  expectNoPremises('the card of a service-area business with hours', sab)
+  if (!sab.includes('1200 Example Pkwy')) pass('no street on the card')
+  else fail('a service-area business printed its street on the card')
+  // The whole point of the change: the flag drops the street, not the hours.
+  if (sab.includes(`Hours ${row.hours}`))
+    pass('the hours survive, under a label of their own')
+  else fail(`the hours were lost with the street: ${sab}`)
+  if (sab.includes('Based in Orlando, FL')) pass('the city survives as "Based in"')
+  else fail('a service-area business lost its city from the card')
+
+  // A section with no data strips itself — never an invented or empty label.
+  const noHours = cardText(false, [{ ...row, hours: null }])
+  if (!noHours.includes('Hours')) pass('no hours, no label')
+  else fail('an empty Hours block rendered')
+  // `getClientLocations` returns nothing at all for a mobile-only client with
+  // no stored rows, and the synthetic row it would otherwise build carries no
+  // hours either — so this is the common case, not the odd one.
+  const noRows = cardText(false, [])
+  if (!noRows.includes('Hours') && noRows.includes('Based in Orlando, FL'))
+    pass('no location rows: the city still renders, the hours do not')
+  else fail(`the no-rows card is wrong: ${noRows}`)
 }
 
 console.log(
