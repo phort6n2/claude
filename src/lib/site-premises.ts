@@ -156,7 +156,13 @@ export function mapIntro(
  * the same rule for exactly that reason.
  */
 export const PREMISES_WORDS: RegExp[] = [
-  /\b(our|the) (shop|garage|facility|workshop|premises|store)\b/i,
+  /* "THIS shop" is here because the screen missed it on a real page. The
+     warranty band read "The cover this shop offers, in their own words" — a
+     premises word AND the third person, template copy, live on every site.
+     Two and three catch a possessive and an article; a demonstrative is the
+     third way English names the same building. "repair shop" in the statutory
+     sentence survives, because none of the three sits in front of it. */
+  /\b(our|the|this) (shop|garage|facility|workshop|premises|store)\b/i,
   /\bin[- ]shop\b/i,
   /\bcome (in|by|down)\b/i,
   /\bbring (it|the vehicle|your (car|vehicle))\b/i,

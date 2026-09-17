@@ -304,6 +304,49 @@ console.log('\nLocalBusiness JSON-LD')
   else pass('the street appears nowhere in the graph')
 }
 
+// --- The screen itself, both directions -------------------------------------
+
+console.log('\nThe premises screen')
+{
+  // Found on a live page, so it is pinned first. The warranty band said this
+  // on all fifteen sites and the screen read straight past it.
+  const traps = [
+    'The cover this shop offers, in their own words.',
+    'Ask the shop to check the calibration.',
+    'Bring it to us while it is small.',
+    'You can come to the shop in Little Elm or we can meet you where the vehicle is.',
+    'Drop the car off and we will call you.',
+    'Wait in our waiting room while we fit it.',
+    'In-shop calibration included.',
+    'Come by any time before five.',
+    'Visit us at the address below.',
+  ]
+  for (const t of traps) {
+    const hit = premisesClaim(t)
+    if (hit) pass(`caught “${hit}” in: ${t.slice(0, 52)}…`)
+    else fail(`MISSED a premises claim: ${t}`)
+  }
+
+  /* THE SECOND HALF IS WHAT KEEPS IT USABLE. Being too eager here costs a
+     service-area business the sentences it most needs — the statutory line
+     about their customer's rights says nothing about our premises, and
+     "bonded into the body" is the same trap `check-story-sections.ts`
+     records for a bare "bonded". */
+  const allowed = [
+    'Your choice of repair shop is yours to make.',
+    'We are an independent auto glass company.',
+    'The glass is bonded into the body, so the fit matters.',
+    'We come to the vehicle, wherever it is.',
+    'Based in Orlando, FL',
+    'Hours Mon–Sat 8:00 AM – 6:00 PM',
+  ]
+  for (const a of allowed) {
+    const hit = premisesClaim(a)
+    if (!hit) pass(`silent on: ${a.slice(0, 52)}`)
+    else fail(`fired “${hit}” on copy a service-area business may use: ${a}`)
+  }
+}
+
 // --- The map card, rendered -------------------------------------------------
 
 /*

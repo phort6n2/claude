@@ -169,7 +169,13 @@ export function PrivacyContent({ client }: { client: LegalClient }) {
       <section>
         <h2>4. Where your enquiry goes</h2>
         <p>
-          Form submissions are delivered to the lead-management systems we use to run the shop —
+          {/* "run the shop" means "run the business" and is first person, so it
+              is not the broker slip — but it still puts a premises word on a
+              service-area business's privacy page, and the rule for them is
+              absolute because the screen cannot read intent. One word, true for
+              all fifteen, and now the rule actually holds. */}
+          Form submissions are delivered to the lead-management systems we use to run the
+          business —
           our website platform and our customer-relationship system — so we can quote, schedule,
           and follow up on your enquiry. We do not sell your information, and we do not share it
           with anyone except the service providers that process it on our behalf.

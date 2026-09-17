@@ -1023,7 +1023,15 @@ export function WarrantyBand({ extras }: { extras: SiteExtras | null }) {
           <p className="mt-3 mb-0 text-[17px] leading-[1.55] text-[var(--tx2)]">
             {warrantyStatesTerms(extras.warrantyText)
               ? 'In writing, in full, right here — not a claim with the terms hidden somewhere else.'
-              : 'The cover this shop offers, in their own words.'}
+              : /* "THIS SHOP … THEIR OWN WORDS" was a lead broker describing a
+                   supplier, on the shop's own page, for all fifteen. The same
+                   third-person slip as "Ask the shop to check" and "the shop
+                   comes to you", missed because those were found by reading a
+                   service-area business's page and this line reads as neutral
+                   until you notice whose site it is on. Fixed to "we", not
+                   gated: it was wrong for every client, not just the one with
+                   no premises. */
+                'The cover we offer, in our own words.'}
           </p>
         </div>
         {/* The badge sits ON the terms card, like a seal on the document it
