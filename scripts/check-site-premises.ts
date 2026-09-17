@@ -312,6 +312,11 @@ console.log('\nThe premises screen')
   // on all fifteen sites and the screen read straight past it.
   const traps = [
     'The cover this shop offers, in their own words.',
+    // The determiner and the noun are not adjacent. This exact sentence was
+    // live in an FAQ answer and every screen read past it.
+    "and where you'd like the work done, at our Little Elm shop or at your home",
+    'Collect it from the Orlando shop when it is ready.',
+    'Our main shop handles calibration.',
     'Ask the shop to check the calibration.',
     'Bring it to us while it is small.',
     'You can come to the shop in Little Elm or we can meet you where the vehicle is.',

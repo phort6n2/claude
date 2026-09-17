@@ -162,7 +162,15 @@ export const PREMISES_WORDS: RegExp[] = [
      Two and three catch a possessive and an article; a demonstrative is the
      third way English names the same building. "repair shop" in the statutory
      sentence survives, because none of the three sits in front of it. */
-  /\b(our|the|this) (shop|garage|facility|workshop|premises|store)\b/i,
+  /* THE DETERMINER AND THE NOUN ARE USUALLY NOT ADJACENT, and requiring that
+     was the hole. A shop names the town in between — "at our LITTLE ELM shop",
+     "the ORLANDO shop", "our MAIN shop" — and that is the form that actually
+     turns up in copy, because it is what you write when you have one. It sat
+     in a live FAQ answer while this screen, the drafters' screen and the
+     template check all read past it. Up to two words, each word-like, so it
+     cannot jump punctuation or a sentence boundary; "your choice of repair
+     shop" still survives, because "of" is not one of the three. */
+  /\b(our|the|this)(?:\s+[\w'’-]+){0,2}\s+(shop|garage|facility|workshop|premises|store)\b/i,
   /\bin[- ]shop\b/i,
   /\bcome (in|by|down)\b/i,
   /\bbring (it|the vehicle|your (car|vehicle))\b/i,

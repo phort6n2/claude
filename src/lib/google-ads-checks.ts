@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { adsSearch } from '@/lib/google-ads'
 import { secretSetting } from '@/lib/secret-settings'
 import { evaluateRogueNumbers, editorialFields } from '@/lib/rogue-numbers'
+import { evaluatePremisesCopy, PREMISES_COPY_CHECK } from '@/lib/premises-copy-health'
 import {
   evaluateCallRecording,
   RECORDING_CHECK,
@@ -560,6 +561,7 @@ export async function runSiteContentChecks(
         businessName: true,
         phone: true,
         siteDisplayPhone: true,
+        hasShopLocation: true,
         adsTracking: { select: { googleAdsCustomerId: true } },
         trackingNumbers: {
           where: { active: true, useOnSite: true },
@@ -583,20 +585,32 @@ export async function runSiteContentChecks(
     // The number the SITE shows, resolved the same way site-phone does it.
     const siteNumber =
       client.trackingNumbers[0]?.phoneNumber || client.siteDisplayPhone || client.phone
-    const drafts = evaluateRogueNumbers({
-      fields: editorialFields({
-        content: client.siteContent,
-        cityContent: client.cityContent,
-        keptPages: client.customPages,
-      }),
-      siteNumber,
+    // Flattened once: both checks read the same editorial fields, and a field
+    // added to one of them must not be a field the other stops looking at.
+    const fields = editorialFields({
+      content: client.siteContent,
+      cityContent: client.cityContent,
+      keptPages: client.customPages,
     })
+    const drafts = evaluateRogueNumbers({ fields, siteNumber })
+
+    // The service-area tick cannot reach free text; this is what does.
+    const premises = evaluatePremisesCopy({
+      hasShopLocation: client.hasShopLocation,
+      fields,
+    })
+
     await fileFindings(
       client,
       client.adsTracking?.googleAdsCustomerId || '',
       'DAILY',
-      drafts,
-      new Set(['rogue-phone-number']),
+      [...drafts, ...premises.drafts],
+      // `judged: false` for a client WITH premises keeps this check out of the
+      // resolve set, so a finding filed while the tick was on is not resolved
+      // by somebody un-ticking it — the copy would still be wrong.
+      premises.judged
+        ? new Set(['rogue-phone-number', PREMISES_COPY_CHECK])
+        : new Set(['rogue-phone-number']),
       summary
     )
   }

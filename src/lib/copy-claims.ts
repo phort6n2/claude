@@ -1,5 +1,6 @@
 import { SERVICE_PAGES, type ServiceFlag } from '@/lib/site-services'
 import { PHONE_RE } from '@/lib/rogue-numbers'
+import { PREMISES_WORDS } from '@/lib/site-premises'
 
 /**
  * THE CLAIMS A DRAFT IS NOT ALLOWED TO MAKE, in one place.
@@ -214,9 +215,17 @@ function gatedRules(input: ClaimContext): Rule[] {
     })
   }
   if (!input.hasShopLocation) {
+    /* ONE LIST, shared with the template — the same reason `PHONE_RE` is
+       imported from `rogue-numbers` above rather than written again here.
+       This rule used to carry its own copy and it had drifted narrower than
+       the one the site is screened against: no `store`, no `in-shop`, no
+       `visit us`, no `this shop`, and — the one that mattered — no
+       "bring it / bring the vehicle". A drafter could therefore write
+       "Bring it to us while it's small" for a shop with nowhere to bring it
+       to, and both screens would pass it. Found on a real page. */
     rules.push({
       reason: 'points the customer at premises this shop does not have',
-      patterns: [/\b(our|the) (shop|garage|facility|workshop|premises)\b/i, /\bcome (in|by|down)\b/i, /\bwaiting (room|area)\b/i, /\bdrop (it|the car|your car) off\b/i],
+      patterns: PREMISES_WORDS,
     })
   }
   if (!input.smsCapable) {
