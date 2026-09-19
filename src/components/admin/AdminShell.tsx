@@ -90,7 +90,24 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <Image src="/logo.png" alt="Auto Glass Marketing Pros" width={120} height={48} priority />
         </header>
 
-        <main className="flex-1 overflow-auto">{children}</main>
+        {/* `relative` IS THE FIX FOR A WHOLE CLASS OF BUG, not a style choice.
+            `overflow-auto` only clips a descendant that this element is the
+            containing block for. An absolutely positioned one with NO
+            positioned ancestor is laid out against the page root instead, so
+            `main` cannot clip it, and its box counts toward the DOCUMENT's
+            scrollable height — the page grows past `h-screen`, the window
+            itself starts scrolling, and the sidebar (exactly 100vh) slides off
+            the top leaving bare white below it.
+
+            That is what a `sr-only` file input did on the client Website tab.
+            `sr-only` means `position: absolute`, the label around it was only
+            `inline-flex`, and its static position sits 2,386px down a 6,019px
+            scroll region — so the document measured 2,387px against a 900px
+            viewport. Scroll down, scroll back up, and you are looking at half
+            a screen of nothing. Positioning `main` makes it the containing
+            block for every such descendant, so they are clipped with
+            everything else. */}
+        <main className="relative flex-1 overflow-auto">{children}</main>
       </div>
     </div>
   )

@@ -279,7 +279,13 @@ export default function PhotoManager({
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <label className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 cursor-pointer">
+        {/* `relative` because the input below is `sr-only`, which is
+            `position: absolute`. Without a positioned ancestor it is laid out
+            against the page root, escapes the admin's scroll container, and
+            stretches the document to its own static position — see the note in
+            AdminShell. Fixed in both places: here so the markup is correct on
+            its own, and there so the next one cannot do it again. */}
+        <label className="relative inline-flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 cursor-pointer">
           <ImagePlus size={15} />
           Add photos
           <input
