@@ -224,6 +224,25 @@ webhook routes.
 
 - Numbers are bought in-app (`/api/clients/[id]/tracking-numbers`) with the
   VoiceUrl set in the purchase request.
+- **THE COUNTRY IS IN TWILIO'S PATH, AND IT WAS HARDCODED `US`**
+  (`phone-country.ts`, `twilioCountryFor`). The search route takes a client id
+  and never read it, so a British Columbian shop's 604 was searched against
+  the US inventory — and the US and Canada share +1 and the same area-code
+  plan, so that is a perfectly VALID request: HTTP 200,
+  `available_phone_numbers: []`. Indistinguishable from "Twilio has none left
+  in 805". The operator pressed search, nothing appeared, and there was
+  nothing anywhere to read. **The PROVINCE beats `Client.country`**, because
+  country defaults on old records while `state: BC` is typed from the address
+  and no province code is shared between the two countries — deferring to
+  `country` would reproduce the bug on the very client it was found on. `CA`
+  is the one ambiguous code and the two live in different fields: `state: CA`
+  is California, `country: CA` is Canada. The route also stopped swallowing
+  Twilio's `message` and `code` — a refusal here is usually about the ACCOUNT
+  (a country not enabled on it, a regulatory requirement for that country's
+  local numbers) and Twilio says which, while "HTTP 400" is the one sentence
+  nobody can act on. **An empty list now carries a note** naming the country
+  it searched and why. `scripts/check-phone-country.ts` holds the stale-country
+  case first.
 - **TwiML is built by `dialTwiml()`, and `<Dial record>` must be one of FIVE
   documented values** (`DIAL_RECORD_VALUES`). Twilio does not reject an
   attribute value it cannot parse — it warns in the account debugger, drops

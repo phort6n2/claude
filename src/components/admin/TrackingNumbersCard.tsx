@@ -37,6 +37,8 @@ const BLANK = {
 
 export default function TrackingNumbersCard({ clientId }: { clientId: string }) {
   const [numbers, setNumbers] = useState<TrackingNumber[] | null>(null)
+  /** Which country the last search actually looked in. See phone-country.ts. */
+  const [searchCountry, setSearchCountry] = useState<string | null>(null)
   const [stats, setStats] = useState<Record<string, { calls: number; missed: number; minutes: number }>>({})
   const [usage, setUsage] = useState<
     { month: string; records: Array<{ category: string; usage: number; usageUnit: string; price: number }> } | null
@@ -105,6 +107,16 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Search failed')
       setCandidates(data.numbers || [])
+      setSearchCountry(typeof data.countryName === 'string' ? data.countryName : null)
+      /* AN EMPTY RESULT USED TO SAY NOTHING AT ALL — the spinner stopped and
+         the list stayed blank, which is what a search against the wrong
+         country looks like and also what a genuinely sold-out area code looks
+         like. The route now returns a note naming the country it searched and
+         why; showing it is the whole difference between "broken" and "try
+         another area code". */
+      if ((data.numbers || []).length === 0 && data.note) {
+        setMessage({ ok: false, text: data.note })
+      }
     } catch (err) {
       setMessage({ ok: false, text: err instanceof Error ? err.message : 'Failed' })
     } finally {
@@ -117,7 +129,14 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
       setMessage({ ok: false, text: 'Fill in "Rings this number" above first — a bought number has to forward somewhere from the moment it exists.' })
       return
     }
-    if (!confirm(`Buy ${phoneNumber} from Twilio?\n\nTwilio bills its standard monthly rate for a US local number (about $1.15/mo) until you release it.`)) return
+    // The price is named only where it is known. A Canadian local number is
+    // billed at Twilio's own rate for Canada, and quoting the US figure for it
+    // would be a made-up number on a confirmation dialog about money.
+    const price =
+      searchCountry === 'the United States' || searchCountry === null
+        ? 'Twilio bills its standard monthly rate for a US local number (about $1.15/mo) until you release it.'
+        : `Twilio bills its standard monthly rate for a local number in ${searchCountry} until you release it.`
+    if (!confirm(`Buy ${phoneNumber} from Twilio?\n\n${price}`)) return
     setBuying(phoneNumber)
     setMessage(null)
     try {

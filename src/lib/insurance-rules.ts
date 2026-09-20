@@ -297,6 +297,31 @@ export const CHIP_REPAIRABLE_NOTE =
  * Two-letter code to full name, for copy that reads like a person wrote it.
  * "Glass claims in Florida", not "Glass claims in FL".
  */
+/**
+ * Canadian provinces and territories, by code.
+ *
+ * Read by `STATE_NAMES` below and by `phone-country.ts`, which decides which
+ * of Twilio's national inventories to search. The territories are here even
+ * though no client is in one: the cost of listing them is nothing, and the
+ * cost of leaving one out is a shop whose area code is searched against the
+ * wrong country and comes back empty with no error.
+ */
+export const CANADIAN_PROVINCES: Record<string, string> = {
+  AB: 'Alberta',
+  BC: 'British Columbia',
+  MB: 'Manitoba',
+  NB: 'New Brunswick',
+  NL: 'Newfoundland and Labrador',
+  NS: 'Nova Scotia',
+  NT: 'Northwest Territories',
+  NU: 'Nunavut',
+  ON: 'Ontario',
+  PE: 'Prince Edward Island',
+  QC: 'Quebec',
+  SK: 'Saskatchewan',
+  YT: 'Yukon',
+}
+
 const STATE_NAMES: Record<string, string> = {
   AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California',
   CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware', DC: 'Washington DC',
@@ -310,10 +335,10 @@ const STATE_NAMES: Record<string, string> = {
   RI: 'Rhode Island', SC: 'South Carolina', SD: 'South Dakota',
   TN: 'Tennessee', TX: 'Texas', UT: 'Utah', VT: 'Vermont', VA: 'Virginia',
   WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming',
-  // Canadian provinces — clients can be set to country CA.
-  AB: 'Alberta', BC: 'British Columbia', MB: 'Manitoba', NB: 'New Brunswick',
-  NL: 'Newfoundland and Labrador', NS: 'Nova Scotia', ON: 'Ontario',
-  PE: 'Prince Edward Island', QC: 'Quebec', SK: 'Saskatchewan',
+  // Canadian provinces — clients can be set to country CA. ONE list, below,
+  // because "which codes are Canadian" is now also asked by the Twilio number
+  // search, and a second copy is the one that goes stale.
+  ...CANADIAN_PROVINCES,
 }
 
 export function stateNameFor(state: string | null | undefined): string | null {
