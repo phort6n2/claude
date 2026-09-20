@@ -244,6 +244,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       phoneNumber,
       forwardTo,
       twilioSid: repoint.sid ?? null,
+      // Recorded only after Twilio accepted it above — this is a note of what
+      // we set, and a write that failed set nothing. It is what the dashboard
+      // reads to say whether a texted photo can reach this shop.
+      smsUrl,
       label: String(body.label || '').trim() || null,
       recordCalls: body.recordCalls !== false,
       announceRecording: body.announceRecording !== false,

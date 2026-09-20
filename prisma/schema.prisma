@@ -1049,6 +1049,17 @@ model TrackingNumber {
    */
   forwardTo String
 
+  /**
+   * What we last set this number's SmsUrl to at Twilio, or null if we never
+   * have. Twilio holds the truth; this is our record of the write, and it is
+   * the only thing that can answer "will a texted photo reach this shop?"
+   * without a Twilio round trip per number. Null is the number the
+   * Maintenance re-sms run exists to fix — and it is NOT inferred from
+   * whether any text has arrived, because a correctly configured number
+   * nobody has texted looks identical to one that swallows them.
+   */
+  smsUrl String?
+
   recordCalls       Boolean @default(true)
   /**
    * Played to the caller before connecting. Recording a call without telling

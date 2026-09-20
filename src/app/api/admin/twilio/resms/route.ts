@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
   const numbers = await prisma.trackingNumber.findMany({
     where: { active: true },
     select: {
+      id: true,
       phoneNumber: true,
       label: true,
       client: { select: { businessName: true } },
@@ -58,6 +59,15 @@ export async function POST(request: NextRequest) {
     Authorization: `Basic ${auth}`,
     'Content-Type': 'application/x-www-form-urlencoded',
   }
+
+  /**
+   * Mirror the value we just confirmed at Twilio onto the row.
+   *
+   * Never fatal: the number IS configured whatever happens here, and failing
+   * the whole re-point run over a bookkeeping write would undo real work.
+   */
+  const recordSmsUrl = (id: string, url: string) =>
+    prisma.trackingNumber.update({ where: { id }, data: { smsUrl: url } }).catch(() => {})
 
   const results: Array<Record<string, unknown>> = []
 
@@ -98,6 +108,10 @@ export async function POST(request: NextRequest) {
       if (entry.sms_url === smsUrl) {
         row.changed = false
         row.note = 'already set'
+        // Nothing changed at Twilio, but we just LEARNED the value, and a
+        // number configured before this column existed would otherwise sit
+        // red on the dashboard for ever with no run able to clear it.
+        await recordSmsUrl(number.id, smsUrl)
         results.push(row)
         continue
       }
@@ -126,6 +140,7 @@ export async function POST(request: NextRequest) {
       }
       row.changed = true
       row.note = 'SmsUrl set'
+      await recordSmsUrl(number.id, smsUrl)
     } catch (error) {
       row.changed = false
       row.error = error instanceof Error ? error.message : String(error)

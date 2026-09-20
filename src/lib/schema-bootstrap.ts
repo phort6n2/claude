@@ -540,6 +540,17 @@ export const SMS_INBOX_SQL: string[] = [
     ALTER TABLE "LeadMessage" ADD CONSTRAINT "LeadMessage_leadId_fkey"
       FOREIGN KEY ("leadId") REFERENCES "Lead"("id") ON DELETE CASCADE ON UPDATE CASCADE;
   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  /* WHAT WE LAST POINTED THIS NUMBER'S TEXTS AT.
+     Twilio holds the real SmsUrl and nothing here mirrored it, so "can this
+     number receive a text?" could only be answered by calling Twilio — which
+     a dashboard cannot do per number on every render. The alternative was to
+     infer it from whether any LeadMessage exists, and that is the absence
+     this codebase keeps getting caught by: a number configured correctly that
+     nobody has texted looks exactly like one that swallows them.
+     Written by the two places that SET the value, so it is a record of what
+     we did rather than a guess. NULL means we have never pointed it anywhere,
+     which is exactly the number the Maintenance re-sms run exists to fix. */
+  `ALTER TABLE "TrackingNumber" ADD COLUMN IF NOT EXISTS "smsUrl" TEXT`,
 ]
 
 export const BOOTSTRAP_SQL: string[] = [
