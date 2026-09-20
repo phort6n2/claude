@@ -64,6 +64,16 @@ const EXCEPTIONS: Record<string, FixSurface> = {
   // Tracking numbers, forwarding and recording.
   'calls-not-connecting': 'calls',
   'calls-not-recorded': 'calls',
+  // The number the SITE shows: which tracking number is flagged for it, and
+  // whether the rendered pages agree. Both are settled on the same card.
+  'tracking-number-not-shown': 'calls',
+  'tracking-number-not-used-on-site': 'calls',
+  /* The schema one goes to BUSINESS, not to call tracking, and the reason is
+     the likeliest cause rather than the subject. The markup is built from the
+     real client before the swap, so a tracking number reaching it almost
+     always means `Client.phone` itself was set to the tracking number — which
+     is a field on the Business tab. The detail carries the other possibility. */
+  'tracking-number-in-schema': 'business',
 }
 
 export interface FindingAction {

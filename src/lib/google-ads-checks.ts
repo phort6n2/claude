@@ -4,6 +4,15 @@ import { secretSetting } from '@/lib/secret-settings'
 import { evaluateRogueNumbers, editorialFields } from '@/lib/rogue-numbers'
 import { evaluatePremisesCopy, PREMISES_COPY_CHECK } from '@/lib/premises-copy-health'
 import {
+  auditPhones,
+  NOT_ON_SITE_CHECK,
+  PHONE_RENDER_CHECK,
+  SCHEMA_PHONE_CHECK,
+} from '@/lib/site-phone-audit'
+import { scanSitePages } from '@/lib/site-phone-scan'
+import { siteOriginFor, PRIMARY_DOMAIN_SELECT } from '@/lib/site-origin'
+import { siteIsLive } from '@/lib/site-preview'
+import {
   evaluateCallRecording,
   RECORDING_CHECK,
   WINDOW_DAYS,
@@ -550,6 +559,47 @@ export async function runCallConnectChecks(
  * is fixed, and can be dismissed. Its own fileFindings call is safe alongside
  * the ads one: auto-resolve only touches checks named in `ranChecks`.
  */
+/** How long the whole book's page fetching may take inside one sweep. */
+export const PHONE_AUDIT_BUDGET_MS = 90_000
+
+/**
+ * The phone audit for one client: resolve the site, read a few pages, judge.
+ *
+ * Returns `judged: false` whenever no page was read — a site that is down, a
+ * client with no host yet, or the budget having run out. That flag is what
+ * keeps a silent morning from resolving a finding that is still true.
+ */
+async function auditSitePhones(
+  client: {
+    slug: string
+    status: string
+    siteSubdomain: string | null
+    phone: string
+    siteDisplayPhone: string | null
+    domains: Array<{ domain: string; verified: boolean; misconfigured: boolean }>
+    trackingNumbers: Array<{ phoneNumber: string; useOnSite: boolean }>
+  },
+  deadline: number
+) {
+  const active = client.trackingNumbers
+  const onSite = active.find((n) => n.useOnSite)
+  const input = {
+    displayNumber: onSite?.phoneNumber || client.siteDisplayPhone || client.phone,
+    trackingNumbers: active.map((n) => n.phoneNumber),
+    realPhone: client.phone,
+    hasActiveNumberButNoneOnSite: active.length > 0 && !onSite,
+    pages: [] as Awaited<ReturnType<typeof scanSitePages>>,
+  }
+
+  // No host to fetch, or not public: judge only what needs no pages.
+  const canFetch =
+    siteIsLive(client.status) && !!client.siteSubdomain && Date.now() < deadline
+  if (canFetch) {
+    input.pages = await scanSitePages(siteOriginFor(client))
+  }
+  return auditPhones(input)
+}
+
 export async function runSiteContentChecks(
   summary: Pick<DailyRunSummary, 'newFindings' | 'resolved' | 'stillOpen'>
 ): Promise<void> {
@@ -559,14 +609,17 @@ export async function runSiteContentChecks(
       select: {
         id: true,
         businessName: true,
+        slug: true,
+        status: true,
+        siteSubdomain: true,
         phone: true,
         siteDisplayPhone: true,
         hasShopLocation: true,
         adsTracking: { select: { googleAdsCustomerId: true } },
+        domains: PRIMARY_DOMAIN_SELECT,
         trackingNumbers: {
-          where: { active: true, useOnSite: true },
-          select: { phoneNumber: true },
-          take: 1,
+          where: { active: true },
+          select: { phoneNumber: true, useOnSite: true },
         },
         siteContent: {
           select: { warrantyText: true, footerBlurb: true, faq: true, chapters: true },
@@ -581,10 +634,16 @@ export async function runSiteContentChecks(
     })
     .catch(() => [])
 
+  /* One budget for the whole book, not per client. Fifteen sites × six pages
+     is ninety requests inside a 300s function that also has the ads work to
+     do, so the sweep stops FETCHING when it runs out and the clients it did
+     not reach are simply not judged — named absence beats a false pass. */
+  const phoneDeadline = Date.now() + PHONE_AUDIT_BUDGET_MS
+
   for (const client of clients) {
     // The number the SITE shows, resolved the same way site-phone does it.
-    const siteNumber =
-      client.trackingNumbers[0]?.phoneNumber || client.siteDisplayPhone || client.phone
+    const onSite = client.trackingNumbers.find((n) => n.useOnSite)
+    const siteNumber = onSite?.phoneNumber || client.siteDisplayPhone || client.phone
     // Flattened once: both checks read the same editorial fields, and a field
     // added to one of them must not be a field the other stops looking at.
     const fields = editorialFields({
@@ -600,17 +659,33 @@ export async function runSiteContentChecks(
       fields,
     })
 
+    /* ---- Is the tracking number actually ON the rendered page? ----
+       Everything above reads the database. This one reads the SITE, because
+       they answer different questions: the copy can be clean and the page
+       still print the shop's own line in every call button. Bounded by a
+       budget and by MAX_PAGES — a sweep that hangs on one slow site costs
+       the other fourteen their checks. */
+    const phone = await auditSitePhones(client, phoneDeadline)
     await fileFindings(
       client,
       client.adsTracking?.googleAdsCustomerId || '',
       'DAILY',
-      [...drafts, ...premises.drafts],
+      [...drafts, ...premises.drafts, ...phone.drafts],
       // `judged: false` for a client WITH premises keeps this check out of the
       // resolve set, so a finding filed while the tick was on is not resolved
       // by somebody un-ticking it — the copy would still be wrong.
-      premises.judged
-        ? new Set(['rogue-phone-number', PREMISES_COPY_CHECK])
-        : new Set(['rogue-phone-number']),
+      new Set([
+        'rogue-phone-number',
+        ...(premises.judged ? [PREMISES_COPY_CHECK] : []),
+        /* The two page checks resolve only when pages were actually READ. A
+           site that was down, or a sweep that ran out of budget before
+           reaching it, must not read as an all-clear and resolve yesterday's
+           finding — the rule every fetch-backed check here follows.
+           NOT_ON_SITE_CHECK is different: it needs no pages at all, so it is
+           always judged. */
+        ...(phone.judged ? [PHONE_RENDER_CHECK, SCHEMA_PHONE_CHECK] : []),
+        NOT_ON_SITE_CHECK,
+      ]),
       summary
     )
   }

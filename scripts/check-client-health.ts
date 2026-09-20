@@ -289,6 +289,11 @@ console.log('\nWhere a finding gets fixed')
      to the sweeps gets Advertising rather than a dead link — unhelpful at
      worst, never a hunt for a control that is not on that screen. */
   expect('a check added tomorrow', at('some-future-check'), '/admin/clients/c1/advertising')
+  // The number the site shows is settled on the tracking-number card.
+  expect('tracking number not shown', at('tracking-number-not-shown'), '/admin/clients/c1/leads-setup')
+  expect('tracking number unused', at('tracking-number-not-used-on-site'), '/admin/clients/c1/leads-setup')
+  // But the schema one is almost always Client.phone, which is a Business field.
+  expect('tracking number in schema', at('tracking-number-in-schema'), '/admin/clients/c1/business')
   // Every action names its destination, or the button is a mystery box.
   for (const check of ['rogue-phone-number', 'calls-not-connecting', 'spend-cliff']) {
     const a = fixActionFor(check, 'c1')
