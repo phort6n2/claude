@@ -49,6 +49,19 @@ export interface ClientHealthRow {
   cells: Record<HealthColumnId, HealthCell>
   /** Sorts the worst clients to the top. */
   score: number
+  /** The open findings themselves, so the Action cell can act on them. */
+  findings: OpenFinding[]
+  /** Required readiness checks still outstanding, each with the tab that fixes it. */
+  todo: Array<{ id: string; label: string; detail: string; href: string }>
+}
+
+/** One open finding, as the board needs it. */
+export interface OpenFinding {
+  id: string
+  check: string
+  severity: string
+  title: string
+  detail: string
 }
 
 export type HealthColumnId =
@@ -90,8 +103,15 @@ const na = (detail: string): HealthCell => ({ state: 'na', detail })
 const bad = (detail: string, badge?: string): HealthCell => ({ state: 'bad', detail, badge })
 const warn = (detail: string, badge?: string): HealthCell => ({ state: 'warn', detail, badge })
 
-/** Worst first. A red is worth more than an amber; a dash is worth nothing. */
-const WEIGHT: Record<CellState, number> = { bad: 10, warn: 3, ok: 0, na: 0 }
+/**
+ * How much each state counts toward "this client needs something".
+ *
+ * EXPORTED so the board can re-weigh a row after a dismissal without a second
+ * definition drifting from this one — the summary line and the server's own
+ * score have to mean the same thing or the count disagrees with the table
+ * under it.
+ */
+export const CELL_WEIGHT: Record<CellState, number> = { bad: 10, warn: 3, ok: 0, na: 0 }
 
 /** Recording lands a minute or two after the call, so recent calls prove nothing. */
 const RECORDING_SETTLE_MINUTES = 60
@@ -151,10 +171,16 @@ export async function getClientHealth(): Promise<ClientHealthRow[]> {
       },
       take: 5000,
     }).catch(() => null),
-    prisma.adsFinding.groupBy({
-      by: ['clientId', 'severity'],
+    /* The ROWS, not a count. The cell is actionable now: it lists what is
+       open and dismisses one at a time, so a number alone would mean a
+       second round trip the moment anybody clicked it. Bounded, because an
+       account having a very bad week must not load a thousand rows into a
+       page that only ever shows a handful per client. */
+    prisma.adsFinding.findMany({
       where: { status: 'OPEN' },
-      _count: { _all: true },
+      select: { id: true, clientId: true, check: true, severity: true, title: true, detail: true },
+      orderBy: [{ severity: 'asc' }, { lastSeenAt: 'desc' }],
+      take: 500,
     }).catch(() => null),
     /* Two months, not one: "last month" is resolved per client in THEIR
        timezone, so on the 1st two different clients can legitimately be
@@ -178,12 +204,17 @@ export async function getClientHealth(): Promise<ClientHealthRow[]> {
     list.push(row)
     callsByClient.set(row.clientId, list)
   }
-  const findingsByClient = new Map<string, { alerts: number; total: number }>()
+  const findingsByClient = new Map<string, OpenFinding[]>()
   for (const row of findingRows || []) {
-    const cur = findingsByClient.get(row.clientId) || { alerts: 0, total: 0 }
-    cur.total += row._count._all
-    if (row.severity === 'ALERT') cur.alerts += row._count._all
-    findingsByClient.set(row.clientId, cur)
+    const list = findingsByClient.get(row.clientId) || []
+    list.push({
+      id: row.id,
+      check: row.check,
+      severity: row.severity,
+      title: row.title,
+      detail: row.detail,
+    })
+    findingsByClient.set(row.clientId, list)
   }
 
   const reportsByClient = new Map<string, Array<{ year: number; month: number; sentAt: Date | null }>>()
@@ -225,7 +256,14 @@ export async function getClientHealth(): Promise<ClientHealthRow[]> {
         recorded: !!c.callRecordingUrl,
         line: c.trackingNumber,
       })),
-      findings: findingRows === null ? null : findingsByClient.get(client.id) || { alerts: 0, total: 0 },
+      findings:
+        findingRows === null
+          ? null
+          : {
+              alerts: (findingsByClient.get(client.id) || []).filter((f) => f.severity === 'ALERT')
+                .length,
+              total: (findingsByClient.get(client.id) || []).length,
+            },
       rank: {
         googlePlaceId: client.googlePlaceId,
         latitude: client.latitude,
@@ -239,13 +277,21 @@ export async function getClientHealth(): Promise<ClientHealthRow[]> {
       now,
     })
 
+    const report = readiness.get(client.id)
     return {
       id: client.id,
       businessName: client.businessName,
       status: client.status,
       href: `/admin/clients/${client.id}`,
       cells,
-      score: Object.values(cells).reduce((n, c) => n + WEIGHT[c.state], 0),
+      score: Object.values(cells).reduce((n, c) => n + CELL_WEIGHT[c.state], 0),
+      findings: findingsByClient.get(client.id) || [],
+      // Required only. The recommended ones are real work but they are not
+      // why a client is failing, and a list of eleven makes the four that
+      // matter unfindable.
+      todo: (report?.checks || [])
+        .filter((c) => !c.ok && c.severity === 'required')
+        .map((c) => ({ id: c.id, label: c.label, detail: c.detail, href: c.href })),
     }
   })
 }

@@ -2,8 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Check, X, Minus, TriangleAlert } from 'lucide-react'
-import type { ClientHealthRow, HealthCell, HealthColumn } from '@/lib/client-health'
+import { Check, X, Minus, TriangleAlert, ArrowRight, AlertCircle } from 'lucide-react'
+import type { ClientHealthRow, HealthCell, HealthColumn, HealthColumnId } from '@/lib/client-health'
+import { CELL_WEIGHT } from '@/lib/client-health'
+import { fixActionFor, DISMISS_MEANING } from '@/lib/finding-actions'
+import { errorFrom } from '@/lib/http-error'
 
 /**
  * THE WHOLE BOOK, ONE ROW EACH, AND A CROSS MEANS SOMEBODY HAS TO DO SOMETHING.
@@ -47,6 +50,38 @@ export default function ClientHealthTable({
   // explanations unfolded is a board you have to scroll to read.
   const [open, setOpen] = useState<string | null>(null)
   const [onlyProblems, setOnlyProblems] = useState(false)
+  /* Dismissals are held here rather than re-fetched. Pressing Dismiss on six
+     findings in a row should feel like crossing things off, not like six page
+     loads — the same reason the autosaving cards flip their state first and
+     reconcile after. A failure puts the row back and says why. */
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  async function dismiss(findingId: string) {
+    setBusy(findingId)
+    setError(null)
+    setDismissed((s) => new Set(s).add(findingId))
+    try {
+      const res = await fetch(`/api/admin/ads-findings/${findingId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'dismiss' }),
+      })
+      if (!res.ok) throw new Error(await errorFrom(res))
+    } catch (err) {
+      // Put it back. A finding that looks cleared but is not is worse than
+      // one that never went away, because nobody looks at it again.
+      setDismissed((s) => {
+        const next = new Set(s)
+        next.delete(findingId)
+        return next
+      })
+      setError(err instanceof Error ? err.message : 'Could not dismiss that one')
+    } finally {
+      setBusy(null)
+    }
+  }
 
   if (rows.length === 0) {
     return (
@@ -56,7 +91,28 @@ export default function ClientHealthTable({
     )
   }
 
-  const needing = rows.filter((r) => r.score > 0)
+  /* THE CELL HAS TO MOVE WHEN YOU CLEAR THE LAST ONE. Dismissing every
+     finding and watching the cross sit there is the moment somebody decides
+     the button did not work and presses it again. Recomputed from the same
+     dismissed set the panel filters on, so the mark, the badge, the tally and
+     the summary can never disagree with the list underneath them. */
+  const liveCell = (r: ClientHealthRow, id: HealthColumnId): HealthCell => {
+    if (id !== 'findings') return r.cells[id]
+    const left = r.findings.filter((f) => !dismissed.has(f.id))
+    if (r.cells.findings.state === 'na' || r.cells.findings.state === 'warn' && r.findings.length === 0)
+      return r.cells.findings
+    if (left.length === 0) return { state: 'ok', detail: '' }
+    const alerts = left.filter((f) => f.severity === 'ALERT').length
+    return {
+      state: alerts > 0 ? 'bad' : 'warn',
+      detail: alerts > 0 ? `${alerts} alert${alerts === 1 ? '' : 's'} of ${left.length} open.` : `${left.length} open to review.`,
+      badge: String(left.length),
+    }
+  }
+  const liveScore = (r: ClientHealthRow) =>
+    columns.reduce((n, c) => n + CELL_WEIGHT[liveCell(r, c.id).state], 0)
+
+  const needing = rows.filter((r) => liveScore(r) > 0)
   const problems = needing.length
   const shown = onlyProblems ? needing : rows
 
@@ -68,10 +124,18 @@ export default function ClientHealthTable({
      trouble, so it has to be visible without scrolling. */
   const tally = new Map<string, { bad: number; warn: number }>()
   for (const col of columns) {
-    const bad = rows.filter((r) => r.cells[col.id].state === 'bad').length
-    const warn = rows.filter((r) => r.cells[col.id].state === 'warn').length
+    const bad = rows.filter((r) => liveCell(r, col.id).state === 'bad').length
+    const warn = rows.filter((r) => liveCell(r, col.id).state === 'warn').length
     tally.set(col.id, { bad, warn })
   }
+  const openPanel = (() => {
+    if (!open) return null
+    const [rowId, colId] = open.split(':')
+    const row = rows.find((r) => r.id === rowId)
+    const column = columns.find((c) => c.id === colId)
+    return row && column ? { row, column } : null
+  })()
+
   const worst = columns
     .map((c) => ({ col: c, ...tally.get(c.id)! }))
     .filter((t) => t.bad >= 2)
@@ -106,6 +170,13 @@ export default function ClientHealthTable({
           text="Doesn't apply"
         />
       </div>
+
+      {error && (
+        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-800">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Its OWN scroll box, never the page's. Eight columns plus a name do not
           fit a phone, and a table that takes the whole page sideways is the
@@ -144,7 +215,6 @@ export default function ClientHealthTable({
           </thead>
           <tbody>
             {shown.map((row) => {
-              const openInThisRow = columns.find((c) => open === `${row.id}:${c.id}`)
               return (
                 <tr key={row.id} className="border-b border-gray-100 last:border-0 align-middle">
                   <td className="px-4 py-2">
@@ -159,15 +229,10 @@ export default function ClientHealthTable({
                         {row.status}
                       </span>
                     )}
-                    {openInThisRow && (
-                      <p className="mt-1 max-w-[46ch] text-xs leading-relaxed text-gray-600">
-                        <span className="font-semibold text-gray-900">{openInThisRow.label}:</span>{' '}
-                        {row.cells[openInThisRow.id].detail || openInThisRow.meaning}
-                      </p>
-                    )}
+
                   </td>
                   {columns.map((col) => {
-                    const cell = row.cells[col.id]
+                    const cell = liveCell(row, col.id)
                     const key = `${row.id}:${col.id}`
                     return (
                       <td key={col.id} className="px-2 py-2 text-center">
@@ -202,6 +267,42 @@ export default function ClientHealthTable({
         </table>
       </div>
 
+      {openPanel && (
+        /* OUTSIDE the horizontally-scrolling table, deliberately. It used to
+           open inside the client's name cell, which reads well on a desktop
+           and is unusable on a phone: eleven columns do not fit, so tapping
+           the Action mark means the table is scrolled right and the panel is
+           sitting off-screen to the LEFT behind a tall empty row. Below the
+           table it is visible wherever the columns happen to be scrolled to,
+           so it names its client and column instead of relying on being next
+           to them. */
+        <div className="rounded-xl border border-gray-200 bg-white p-3">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-xs font-semibold text-gray-900">
+              {openPanel.row.businessName}
+              <span className="text-gray-400"> · </span>
+              {openPanel.column.label}
+            </p>
+            <button
+              type="button"
+              onClick={() => setOpen(null)}
+              className="-m-1 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" strokeWidth={2.5} />
+            </button>
+          </div>
+          <CellPanel
+            column={openPanel.column}
+            row={openPanel.row}
+            cell={liveCell(openPanel.row, openPanel.column.id)}
+            dismissed={dismissed}
+            onDismiss={dismiss}
+            busy={busy}
+          />
+        </div>
+      )}
+
       {/* A column red most of the way down is one BROKEN THING, not several
           broken shops — which is the shape the `<Dial record>` typo and the
           Twilio import both had, and neither was noticed for weeks. */}
@@ -225,6 +326,111 @@ export default function ClientHealthTable({
         .
       </p>
     </div>
+  )
+}
+
+/**
+ * What opens under a client's name when a mark is tapped.
+ *
+ * TWO COLUMNS ARE A LIST OF THINGS TO DO rather than a sentence, because they
+ * already hold one: every open finding knows the screen that changes the fact
+ * it was filed on, and every outstanding readiness check carries the tab that
+ * satisfies it. Reading "3 required checks outstanding: Logo, Google reviews
+ * connected, Leads reach the shop" and then hunting three tabs by hand is work
+ * the row already had the answers for.
+ *
+ * NOTHING HERE CLAIMS TO FIX ANYTHING. "Fix" navigates; "Dismiss" writes the
+ * one state that exists. See finding-actions.ts for why there is no third
+ * button.
+ */
+function CellPanel({
+  column,
+  row,
+  cell,
+  dismissed,
+  onDismiss,
+  busy,
+}: {
+  column: HealthColumn
+  row: ClientHealthRow
+  cell: HealthCell
+  dismissed: Set<string>
+  onDismiss: (id: string) => void
+  busy: string | null
+}) {
+  const findings = row.findings.filter((f) => !dismissed.has(f.id))
+
+  if (column.id === 'findings' && findings.length > 0) {
+    return (
+      <div className="mt-2 max-w-[62ch] space-y-2">
+        {findings.map((f) => {
+          const action = fixActionFor(f.check, row.id)
+          return (
+            <div key={f.id} className="rounded-lg border border-gray-200 bg-gray-50 p-2.5">
+              <div className="flex items-start gap-2">
+                <span
+                  className={`mt-1 h-2 w-2 shrink-0 rounded-full ${
+                    f.severity === 'ALERT' ? 'bg-red-600' : 'bg-amber-500'
+                  }`}
+                  aria-hidden
+                />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-gray-900">{f.title}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-gray-600">{f.detail}</p>
+                </div>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2 pl-4">
+                <Link
+                  href={action.href}
+                  title={action.hint}
+                  className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white hover:bg-black"
+                >
+                  {action.label}
+                  <ArrowRight className="h-3 w-3" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => onDismiss(f.id)}
+                  disabled={busy === f.id}
+                  title={DISMISS_MEANING}
+                  className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {busy === f.id ? 'Dismissing…' : 'Dismiss'}
+                </button>
+              </div>
+            </div>
+          )
+        })}
+        <p className="text-[11px] leading-relaxed text-gray-500">{DISMISS_MEANING}</p>
+      </div>
+    )
+  }
+
+  if (column.id === 'setup' && row.todo.length > 0) {
+    return (
+      <div className="mt-2 max-w-[62ch] space-y-1.5">
+        {row.todo.map((t) => (
+          <Link
+            key={t.id}
+            href={t.href}
+            className="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2 hover:border-gray-300 hover:bg-white"
+          >
+            <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-gray-400" />
+            <span className="min-w-0">
+              <span className="block text-xs font-semibold text-gray-900">{t.label}</span>
+              <span className="block text-xs leading-relaxed text-gray-600">{t.detail}</span>
+            </span>
+          </Link>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <p className="mt-1 max-w-[52ch] text-xs leading-relaxed text-gray-600">
+      <span className="font-semibold text-gray-900">{column.label}:</span>{' '}
+      {cell.detail || column.meaning}
+    </p>
   )
 }
 

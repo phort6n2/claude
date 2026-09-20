@@ -17,6 +17,7 @@
  */
 
 import { healthCells, type HealthInput } from '../src/lib/client-health'
+import { fixActionFor, DISMISS_MEANING } from '../src/lib/finding-actions'
 
 let failures = 0
 const fail = (msg: string) => {
@@ -270,6 +271,33 @@ console.log('\nLast month’s report')
   )
   expect('paused', cells({ status: 'PAUSED' }).report.state, 'na')
   expect('query failed', cells({ reports: null }).report.state, 'warn')
+}
+
+console.log('\nWhere a finding gets fixed')
+{
+  const at = (check: string) => fixActionFor(check, 'c1').href
+  // The two families whose fix is NOT on the Advertising tab.
+  expect('rogue phone number', at('rogue-phone-number'), '/admin/clients/c1/site')
+  expect('premises claim in copy', at('premises-claim-in-copy'), '/admin/clients/c1/site')
+  expect('calls not connecting', at('calls-not-connecting'), '/admin/clients/c1/leads-setup')
+  expect('calls not recorded', at('calls-not-recorded'), '/admin/clients/c1/leads-setup')
+  // Everything else is a Google Ads check, and that is the default.
+  expect('spend cliff', at('spend-cliff'), '/admin/clients/c1/advertising')
+  expect('disapproved ads', at('disapproved-ads'), '/admin/clients/c1/advertising')
+  /* A CHECK NOBODY MAPPED must still land somewhere real. The exceptions
+     list is deliberately exceptions-over-a-default, so the next check added
+     to the sweeps gets Advertising rather than a dead link — unhelpful at
+     worst, never a hunt for a control that is not on that screen. */
+  expect('a check added tomorrow', at('some-future-check'), '/admin/clients/c1/advertising')
+  // Every action names its destination, or the button is a mystery box.
+  for (const check of ['rogue-phone-number', 'calls-not-connecting', 'spend-cliff']) {
+    const a = fixActionFor(check, 'c1')
+    if (a.label.length > 4 && a.hint.length > 10) pass(`${check}: "${a.label}"`)
+    else fail(`${check} has no usable label or hint`)
+  }
+  // Dismiss must never read as "fixed" anywhere it is shown.
+  if (/does not fix/i.test(DISMISS_MEANING)) pass('Dismiss says plainly that it fixes nothing')
+  else fail('DISMISS_MEANING does not say it fixes nothing')
 }
 
 console.log('\nA clean client is clean')
