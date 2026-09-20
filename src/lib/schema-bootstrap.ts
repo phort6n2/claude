@@ -609,6 +609,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...PORTAL_SESSION_SQL,
   ...SMS_INBOX_SQL,
   ...DIRECTORY_SIGNAL_SQL,
+  ...INSURANCE_PROGRAM_SQL,
 ]
 
 /**

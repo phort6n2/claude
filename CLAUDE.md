@@ -132,8 +132,22 @@ Three consequences, each of which has already caused a production incident:
   the `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` to `schema-bootstrap.ts` in
   the same commit, always.
 - Add new statements to the right array (`CALL_TRACKING_SQL`,
-  `OFFLINE_CONVERSION_SQL`, `CLAIM_FLAGS_SQL`) so `BOOTSTRAP_SQL` picks them
-  up and the boot hook and setup endpoint can never disagree.
+  `OFFLINE_CONVERSION_SQL`, `CLAIM_FLAGS_SQL`) **and spread that array into
+  `BOOTSTRAP_SQL`**, so the boot hook and the setup endpoint can never
+  disagree. **DECLARING THE ARRAY AND NOT SPREADING IT IN IS INVISIBLE**: it
+  compiles, lints, passes every other check here and deploys, because the only
+  thing that notices is a query against a table nothing created.
+  `INSURANCE_PROGRAM_SQL` shipped that way — written in the same commit as the
+  model exactly as the rule above requires, verified locally against a real
+  render because a scratch script had created the table directly, and the
+  first press of Save in production answered 500 with `P2021: The table
+  public.ClientInsuranceProgram does not exist`. `scripts/check-schema-
+  bootstrap.ts` now reads the module's own exports and fails on any `*_SQL`
+  array that is not applied, so an array added tomorrow is covered without
+  anybody remembering the script exists. It also asserts every statement
+  re-runs without RAISING — the test is "does it throw", not "does it look
+  guarded", because the boot hook stops at the first error and the statements
+  after it silently never run.
 
 ---
 
