@@ -8,7 +8,9 @@ import {
   PROGRAM_KEYS,
   MAX_STEPS,
   programFor,
+  programDefaultCopy,
   publishProblem,
+  type DefaultCopy,
   type ProgramKey,
 } from '@/lib/insurance-programs'
 import { publicInsurerFor } from '@/lib/insurance-rules'
@@ -44,6 +46,7 @@ export default function InsuranceProgramCard({
   initial,
   suggested,
   state,
+  facts,
 }: {
   clientId: string
   /** The site's own origin, so the preview link goes to the real page. */
@@ -53,6 +56,8 @@ export default function InsuranceProgramCard({
   suggested: ProgramKey
   /** `Client.state`, so a BC shop is told the network tick is in here. */
   state: string | null
+  /** The flags the filled-in copy is gated on — see programDefaultCopy. */
+  facts: { filesClaims: boolean; mobile: boolean; hasShopLocation: boolean }
 }) {
   // THE TICK IS THE REASON SOMEBODY OPENS THIS CARD, and until it is added
   // the card says nothing about it — so an operator looking for "where do I
@@ -74,6 +79,26 @@ export default function InsuranceProgramCard({
 
   const program = programFor(key)!
   const path = `/${program.slug}`
+  const standard = programDefaultCopy(program, { ...facts, inNetwork })
+  const hasStandard = !!standard.coverageNote || standard.claimSteps.length > 0
+  const empty = !coverageNote.trim() && steps.filter((x) => x.trim()).length === 0
+
+  /**
+   * Fill the page in from the reviewed copy for this programme.
+   *
+   * ONLY OVER AN EMPTY PAGE when it fires by itself. Ticking the network box
+   * changes what the standard copy SAYS — it is the difference between "we
+   * submit the claim for you" and "we give them what they need" — so the tick
+   * filling a blank page is the operator getting what they asked for. The
+   * same tick silently rewriting a paragraph somebody spent ten minutes on is
+   * the bulk city drafter's rule broken: a button that overwrites a hand-
+   * edited answer is one nobody presses twice. The explicit press below says
+   * so before it replaces anything.
+   */
+  function fillFromStandard(next: DefaultCopy) {
+    if (next.coverageNote) setCoverageNote(next.coverageNote)
+    if (next.claimSteps.length) setSteps(next.claimSteps)
+  }
   const draft = {
     programKey: key,
     inNetwork,
@@ -169,7 +194,14 @@ export default function InsuranceProgramCard({
         <label className="block text-sm font-medium text-gray-700">Which page</label>
         <select
           value={key}
-          onChange={(e) => setKey(e.target.value as ProgramKey)}
+          onChange={(e) => {
+            const next = e.target.value as ProgramKey
+            setKey(next)
+            const chosen = programFor(next)
+            if (empty && chosen) {
+              fillFromStandard(programDefaultCopy(chosen, { ...facts, inNetwork }))
+            }
+          }}
           className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
         >
           {PROGRAM_KEYS.map((k) => (
@@ -197,6 +229,29 @@ export default function InsuranceProgramCard({
           )}
         </p>
       </div>
+
+      {hasStandard && (
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="m-0 text-sm font-medium text-gray-900">
+              There is reviewed {program.short} copy for this page
+            </p>
+            <button
+              type="button"
+              onClick={() => fillFromStandard(standard)}
+              className="rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+            >
+              {empty ? 'Write it for me' : 'Replace with the standard copy'}
+            </button>
+          </div>
+          <p className="mt-1.5 mb-0 text-xs text-gray-600">
+            It fills itself in when you pick the page or tick the network box. What it says
+            changes with the tick and with this shop&rsquo;s own flags, so it is true for them
+            rather than true in general — read it, edit anything that is not right, then publish.
+            {!empty && ' Pressing the button above overwrites what is in the boxes now.'}
+          </p>
+        </div>
+      )}
 
       {program.needsTypedCoverage && (
         <div>
@@ -271,7 +326,15 @@ export default function InsuranceProgramCard({
           <input
             type="checkbox"
             checked={inNetwork}
-            onChange={(e) => setInNetwork(e.target.checked)}
+            onChange={(e) => {
+              const on = e.target.checked
+              setInNetwork(on)
+              // "I want the page written for me if I click the box." Only
+              // while there is nothing to lose — see fillFromStandard.
+              if (empty) {
+                fillFromStandard(programDefaultCopy(program, { ...facts, inNetwork: on }))
+              }
+            }}
             className="mt-0.5"
           />
           <span className="text-sm">

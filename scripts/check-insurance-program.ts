@@ -32,6 +32,7 @@ import {
   programFor,
   programForPath,
   programIsPublished,
+  programDefaultCopy,
   programSections,
   programTitle,
   publishProblem,
@@ -391,9 +392,128 @@ console.log('\nTHE NETWORK TICK CARRIES THE ONE FACT THAT CHANGES THE DRIVER\'S 
   const on = networkSentence(INSURANCE_PROGRAMS.icbc, record({ inNetwork: true }), AGS)
   if (/do not need to contact ICBC yourself/.test(on)) pass('ticked, it says what the network changes')
   else fail(`the tick says nothing useful: ${on}`)
+
+  // …but only where the shop actually files the claim. The process line IS a
+  // claim-handling claim, and the tick is not permission to make it.
+  const noFile = networkSentence(INSURANCE_PROGRAMS.icbc, record({ inNetwork: true }), {
+    ...AGS,
+    filesClaims: false,
+  })
+  if (/is part of the ICBC Repair Network/.test(noFile)) pass('membership still stated with the flag off')
+  else fail('lost the membership fact')
+  if (!/submit the claim|do not need to contact/i.test(noFile)) {
+    pass('and the "we submit it for you" half is dropped with filesInsuranceClaims off')
+  } else fail(`claimed claim handling for a shop with the flag off: ${noFile}`)
   if (/approved|preferred|endorse|recommend|premier vendor/i.test(on)) {
     fail('the process line reads as an endorsement')
   } else pass('and still carries no endorsement wording')
+}
+
+console.log('\nTHE TICK FILLS THE PAGE IN, AND WHAT IT FILLS IN IS SOURCED')
+{
+  const FACTS = { filesClaims: true, mobile: true, hasShopLocation: true }
+  const filled = programDefaultCopy(INSURANCE_PROGRAMS.icbc, { ...FACTS, inNetwork: true })
+  const all = [filled.coverageNote || '', ...filled.claimSteps].join(' ')
+
+  if (filled.coverageNote && filled.claimSteps.length >= 3) pass('ICBC fills a coverage note and a process')
+  else fail('the ICBC default copy is not a usable page')
+  // The whole point: filled in, the page publishes.
+  if (!publishProblem(record({ coverageNote: filled.coverageNote, claimSteps: filled.claimSteps }))) {
+    pass('and the filled page passes the publish gate without anything being typed')
+  } else fail('the copy it writes cannot be published')
+
+  /* WHAT THE SOURCE SAYS AND THIS MUST NOT. The page this is drawn from also
+     advertises "Premier Vendor with major insurance providers such as Family
+     Insurance, BCAA, and Manitoba Public Insurance" and a "lifetime
+     guarantee". The first is §2's preferred-provider claim; the second is a
+     named warranty with no terms beside it. A source is a source, not a
+     licence, and copying from a real page is exactly when this slips. */
+  const TRAPS: Array<[RegExp, string]> = [
+    [/premier vendor|preferred|approved by|endorsed|accredited/i, 'a preferred-provider claim'],
+    [/family insurance|bcaa|manitoba public insurance/i, "another insurer's name"],
+    [/lifetime (guarantee|warranty)|\bguarantee\b/i, 'a warranty claim with no terms beside it'],
+    [/\$\s?\d|\bdeductible is\b|\bno cost\b|\bfree\b/i, 'a price or deductible figure'],
+    [/same[- ]day|within (an?|the|\d+)\s*(hour|minute|day)|\bfast\b/i, 'a timing promise'],
+    [/\bthey (will|can)\b|\bthe shop (will|can|does)\b/i, 'the shop in the third person'],
+  ]
+  for (const [re, what] of TRAPS) {
+    const hit = all.match(re)
+    if (!hit) pass(`no ${what} carried over`)
+    else fail(`${what} carried over from the source: “${hit[0]}”`)
+  }
+
+  console.log('  — and every line is gated on this shop, not on the shop it was read from')
+  {
+    // Untucked, it must not claim the network anywhere.
+    const noTick = programDefaultCopy(INSURANCE_PROGRAMS.icbc, { ...FACTS, inNetwork: false })
+    const text = [noTick.coverageNote || '', ...noTick.claimSteps].join(' ')
+    if (!/network/i.test(text)) pass('no network claim in the copy the unticked box writes')
+    else fail(`claimed the network without the tick: ${text.match(/[^.]*network[^.]*/i)?.[0]}`)
+    if (/submit the claim on your behalf|do not need to call them/i.test(text)) {
+      fail('kept the network-only process claim without the tick')
+    } else pass('and drops the "we submit it for you" line that only a network shop can make')
+
+    // A service-area business with no mobile unit: the unhandled pair. It must
+    // name no place at all rather than falling through to "our shop".
+    const sab = programDefaultCopy(INSURANCE_PROGRAMS.icbc, {
+      inNetwork: true,
+      filesClaims: true,
+      mobile: false,
+      hasShopLocation: false,
+    })
+    const sabText = sab.claimSteps.join(' ')
+    if (!/\bshop\b|\bcome to you\b/i.test(sabText)) {
+      pass('no premises and no mobile unit names no place at all')
+    } else fail(`sent a customer somewhere: ${sabText.match(/[^.]*(shop|come to you)[^.]*/i)?.[0]}`)
+
+    const mobileOnly = programDefaultCopy(INSURANCE_PROGRAMS.icbc, {
+      inNetwork: true, filesClaims: true, mobile: true, hasShopLocation: false,
+    })
+    if (/come to you/i.test(mobileOnly.claimSteps.join(' '))) pass('a mobile SAB says we come to you')
+    else fail('a mobile service-area business lost its one true fitting line')
+    if (!/\bour shop\b/i.test(mobileOnly.claimSteps.join(' '))) pass('and never names a shop it has not got')
+    else fail('a service-area business was made to claim premises')
+
+    /* A SHOP THAT DOES NOT FILE CLAIMS MUST NOT SAY IT DOES, AND THE TICK IS
+       NOT PERMISSION TO. The source page runs network membership and claim
+       submission together because at that shop both are true; they are two
+       facts and `filesInsuranceClaims` is the one §2 gates claim handling on.
+       Both cases here, because the first version of this passed the
+       inNetwork:false case and still wrote "we submit the claim to ICBC for
+       you" the moment the box was ticked — found by rendering the page, where
+       the coverage note and the section below it disagreed in plain sight. */
+    for (const inNetwork of [false, true]) {
+      const noFiling = programDefaultCopy(INSURANCE_PROGRAMS.icbc, {
+        inNetwork, filesClaims: false, mobile: true, hasShopLocation: true,
+      })
+      const text = [noFiling.coverageNote || '', ...noFiling.claimSteps].join(' ')
+      if (!/submit the claim|on your behalf|deal with ICBC directly|we handle the paperwork/i.test(text)) {
+        pass(`does not file claims (network=${inNetwork}): never says it does`)
+      } else fail(
+        `claimed claims handling for a shop that does not do it (network=${inNetwork}): ` +
+          `${text.match(/[^.]*(submit the claim|on your behalf|handle the paperwork)[^.]*/i)?.[0]}`
+      )
+      // And the page must not contradict the section rendered below it.
+      const says = programSections(
+        INSURANCE_PROGRAMS.icbc,
+        record({ inNetwork, coverageNote: noFiling.coverageNote, claimSteps: noFiling.claimSteps }),
+        { ...AGS, filesClaims: false }
+      ).map((x) => x.body).join(' ')
+      const filesBoth =
+        /we submit the claim|on your behalf/i.test(says) &&
+        /give ICBC everything they need from our side/i.test(says)
+      if (!filesBoth) pass(`  and the filled page does not disagree with itself (network=${inNetwork})`)
+      else fail(`the page says both "we submit it" and "we give them what they need" (network=${inNetwork})`)
+    }
+  }
+
+  // An unsourced programme writes NOTHING rather than a plausible paragraph.
+  for (const key of ['sgi', 'mpi', 'general'] as const) {
+    const none = programDefaultCopy(INSURANCE_PROGRAMS[key], { ...FACTS, inNetwork: true })
+    if (!none.coverageNote && none.claimSteps.length === 0) {
+      pass(`${INSURANCE_PROGRAMS[key].short}: no default copy, because nobody has sourced it`)
+    } else fail(`${key} wrote copy nobody checked`)
+  }
 }
 
 console.log('\nEvery catalogue entry is coherent')

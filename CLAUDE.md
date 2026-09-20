@@ -427,14 +427,40 @@ at it. Two kinds, one mechanism.
   That asymmetry is the design: the lesson of the story sections is that a box
   an operator has to fill stays empty, and "do you take insurance" is the
   objection every shop's ads run into.
-- **THE CATALOGUE HOLDS NAMES ONLY.** What the insurer covers, what the
-  deductible is, whether a claim moves a premium — those are facts about the
-  INSURER, exactly the kind a model answers fluently and wrongly, and they
-  change. So a named insurer's coverage is TYPED BY AN OPERATOR and the
-  section strips itself when empty, the same rule `Client.marketArea` follows.
-  Publishing is REFUSED until something programme-specific exists, because an
-  empty page at an ad's destination costs the same per click as a full one and
-  answers nothing — which is the exact state the page type exists to prevent.
+- **NO MODEL WRITES THIS PAGE, AND THE ICBC ONE STILL WRITES ITSELF**
+  (`programDefaultCopy`). "What does ICBC cover" is the worst question to hand
+  a model — it answers fluently, confidently, and with a deductible figure it
+  invented. But that argument is about a MODEL, not about a SOURCE: a BC
+  shop's own published ICBC page is a business's own statement about its own
+  process, which is what §2 has always permitted and where the importer gets
+  everything else. So the ICBC copy is a fixed paragraph and a fixed sequence,
+  reviewed once, filled in when an operator picks the programme or ticks the
+  network box, and edited freely afterwards — the `insurance-rules.ts` shape,
+  not a drafter. SGI, MPI and the general page have NO default for the same
+  reason they have no network name: a paragraph nobody checked is worse than
+  an empty box, because the empty box is the one that gets filled in.
+  Publishing is still REFUSED while a named programme has nothing
+  programme-specific, because an empty page at an ad's destination costs the
+  same per click as a full one and answers nothing.
+- **A SOURCE IS A SOURCE, NOT A LICENCE.** The page that copy is drawn from
+  also advertises "Premier Vendor with major insurance providers such as
+  Family Insurance, BCAA, and Manitoba Public Insurance" and a bare "lifetime
+  guarantee". The first is §2's preferred-provider claim — how insurers RANK a
+  shop, rather than a network whose membership is checkable — and the second
+  is a named warranty with no terms beside it. Copying from a real page is
+  exactly when those slip through, which is why `check-insurance-program.ts`
+  holds all of them as traps.
+- **EVERY FILLED LINE IS GATED ON THIS SHOP'S OWN FLAGS**, so the page is true
+  for the shop it is filled for rather than for the shop it was read from —
+  and **NETWORK MEMBERSHIP IS NOT PERMISSION TO SAY WE FILE THE CLAIM.** The
+  source runs the two together because at that shop both are true; they are
+  separate facts and `filesInsuranceClaims` is the one §2 gates claim handling
+  on. Ungated, the filled page said "we submit the claim for you" in the
+  coverage note and "give ICBC what they need from our side" three inches
+  below it — the page disagreeing with itself about the one thing the reader
+  came to find out. It was in TWO places (`programDefaultCopy` and
+  `networkSentence`) and was found by RENDERING the page, not by reading the
+  code: the first check passed because it only tested the untick case.
 - **`inNetwork` IS THE ONE CLAIM §2 OTHERWISE BANS**, so it is a TICK and not
   a text box — nobody can widen it into "approved by" on the way in — it says
   MEMBERSHIP and never endorsement, and it renders NOTHING for a programme

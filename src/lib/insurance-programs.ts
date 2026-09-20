@@ -416,7 +416,19 @@ export function networkSentence(
   ctx: ProgramCopyContext
 ): string {
   if (!record.inNetwork || !program.networkName) return ''
-  return [`${ctx.businessName} is part of ${program.networkName}.`, program.networkProcessLine]
+  /* THE MEMBERSHIP IS THE FACT; THE PROCESS LINE IS A CLAIM-HANDLING CLAIM.
+     "We can submit the claim for you" is what `filesInsuranceClaims` gates
+     everywhere else on these sites, and it does not stop being that claim
+     because it arrived attached to a network membership. Ungated, a shop with
+     the flag off rendered "we can submit the claim for you" here and "give
+     ICBC everything they need from our side" in the section directly above —
+     the page disagreeing with itself about the one thing the reader came for.
+     Same bug as in `programDefaultCopy`, in a second place, which is why both
+     now read the flag rather than the tick. */
+  return [
+    `${ctx.businessName} is part of ${program.networkName}.`,
+    ctx.filesClaims ? program.networkProcessLine : '',
+  ]
     .filter(Boolean)
     .join(' ')
 }
@@ -449,4 +461,123 @@ export function programDescription(
   if (record.metaDescription) return record.metaDescription
   const who = program.key === 'general' ? 'an insurance' : `a ${program.short}`
   return `How ${who} glass claim works with ${ctx.businessName} in ${ctx.area}: what to have ready, what we do with your carrier, and how to book. Free quotes.`
+}
+
+// ---------------------------------------------------------------------------
+// The copy the tick fills in
+// ---------------------------------------------------------------------------
+
+/**
+ * THE PAGE WRITES ITSELF WHEN THE PROGRAMME IS ONE WE HAVE SOURCED.
+ *
+ * The page type shipped refusing to publish until an operator typed the
+ * coverage note, on the reasoning that what ICBC covers is a fact about ICBC
+ * that nothing here knows. That reasoning holds for a MODEL — asked "what
+ * does ICBC cover" it answers fluently, confidently, and with a deductible
+ * figure it invented — and it does not hold for a SOURCE. A BC shop's own
+ * published ICBC page is a business's own statement about its own process,
+ * which is the one thing §2 has always permitted and is where the importer
+ * gets everything else on these sites.
+ *
+ * So there is no drafter here and no model call. This is a fixed paragraph
+ * and a fixed sequence, reviewed once, filled in when an operator picks the
+ * programme, and edited freely afterwards — the same shape as
+ * `insurance-rules.ts`, for the same reason: compliance-reviewed copy belongs
+ * in a leaf module where it can be read, not regenerated per shop.
+ *
+ * WHAT THE SOURCE SAYS AND THIS DOES NOT. The page it is drawn from also
+ * advertises "Premier Vendor with major insurance providers such as Family
+ * Insurance, BCAA, and Manitoba Public Insurance". That is §2's preferred-
+ * provider claim — a statement about how insurers RANK a shop, rather than a
+ * network whose membership they can prove — and it is the one insurer claim
+ * these sites may never make. Being in a named repair network is different,
+ * is checkable, and is what the tick is for. A source is a source, not a
+ * licence: the screen exists precisely because the copy came from somewhere
+ * real.
+ *
+ * EVERY LINE IS GATED ON A FLAG THIS APP ALREADY HOLDS, so the filled page is
+ * true for the shop it is filled for and not merely true for the shop it was
+ * read from. A shop that has not ticked the network box gets the version that
+ * claims no network; a shop with no mobile unit is never made to say it comes
+ * to you.
+ */
+export interface DefaultCopyFacts {
+  /** The operator has CONFIRMED membership of the insurer's repair network. */
+  inNetwork: boolean
+  /** `Client.filesInsuranceClaims`. */
+  filesClaims: boolean
+  /** `Client.offersMobileService`. */
+  mobile: boolean
+  /** `Client.hasShopLocation` — false for a service-area business. */
+  hasShopLocation: boolean
+}
+
+export interface DefaultCopy {
+  coverageNote: string | null
+  claimSteps: string[]
+}
+
+export function programDefaultCopy(
+  program: InsuranceProgram,
+  facts: DefaultCopyFacts
+): DefaultCopy {
+  // Only a programme whose claim process has actually been sourced. SGI and
+  // MPI have no default for the same reason they have no network name: a
+  // paragraph nobody checked is worse than an empty box, because the empty
+  // box is the one that gets filled in.
+  if (program.key !== 'icbc') return { coverageNote: null, claimSteps: [] }
+
+  const insurer = program.short
+  /* NETWORK MEMBERSHIP IS NOT PERMISSION TO SAY WE FILE THE CLAIM, and the
+     first render of this got it wrong. The source page runs the two together
+     — "As an ICBC Repair Network facility, we can submit the claim on your
+     behalf" — because at that shop both are true. They are separate facts:
+     `filesInsuranceClaims` is the flag §2 gates claim handling on across
+     every one of these sites, and a shop can be in the network and still
+     want the customer to open the claim. Read together, the filled page said
+     "we submit the claim for you" in the coverage note and "give ICBC what
+     they need from our side" three inches below it, which is the page
+     disagreeing with itself about the one thing the customer came to find
+     out. Caught by rendering it, not by reading it. */
+  const networkClaim = facts.inNetwork && !!program.networkName
+  const weFile = networkClaim && facts.filesClaims
+
+  const coverageNote = [
+    `If you have comprehensive coverage and only the glass on your vehicle is damaged — no other related body damage — the repair or replacement goes through your ${insurer} coverage.`,
+    weFile
+      ? `Because we are part of ${program.networkName}, there is no need to contact ${insurer} yourself: we can submit the claim on your behalf and handle the paperwork, so you do not have to.`
+      : facts.filesClaims
+        ? `We deal with ${insurer} directly on your behalf and handle the paperwork, so you do not have to.`
+        : `We will check the coverage with you and give ${insurer} everything they need from our side, so the claim moves without you chasing it.`,
+    `What you pay depends on the coverage you hold, so we will confirm that with you before any work starts.`,
+  ].join(' ')
+
+  // Where the glass actually gets fitted. Premises and mobile are
+  // INDEPENDENT, and the unhandled pair — neither — must name no place at
+  // all rather than falling through to "bring it to the shop", which is the
+  // sentence a service-area business can never make true.
+  const fitting =
+    facts.mobile && facts.hasShopLocation
+      ? 'We fit the glass — at your home or work, or here at our shop, whichever suits you.'
+      : facts.mobile
+        ? 'We come to you — home, work or roadside — and fit the glass there.'
+        : facts.hasShopLocation
+          ? 'We fit the glass here at our shop.'
+          : 'We book you in and fit the glass.'
+
+  return {
+    coverageNote,
+    claimSteps: [
+      `Tell us what happened — where the damage is, and a photo of it if you can get one.`,
+      weFile
+        ? `We submit the claim to ${insurer} for you. If only the glass is damaged, you do not need to call them yourself.`
+        : facts.filesClaims
+          ? `We deal with ${insurer} directly on your behalf.`
+          : `We confirm your coverage with you and give ${insurer} what they need from our side.`,
+      facts.filesClaims
+        ? `We handle the paperwork, so you do not have to.`
+        : `You open the claim with ${insurer}, and we give them everything they ask us for.`,
+      fitting,
+    ],
+  }
 }
