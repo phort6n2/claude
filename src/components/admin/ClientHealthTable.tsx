@@ -46,6 +46,7 @@ export default function ClientHealthTable({
   // One open cell at a time, keyed by row+column. A board with six
   // explanations unfolded is a board you have to scroll to read.
   const [open, setOpen] = useState<string | null>(null)
+  const [onlyProblems, setOnlyProblems] = useState(false)
 
   if (rows.length === 0) {
     return (
@@ -55,7 +56,26 @@ export default function ClientHealthTable({
     )
   }
 
-  const problems = rows.filter((r) => r.score > 0).length
+  const needing = rows.filter((r) => r.score > 0)
+  const problems = needing.length
+  const shown = onlyProblems ? needing : rows
+
+  /* HOW MANY CLIENTS ARE RED IN EACH COLUMN — the payoff for reading DOWN.
+     The `<Dial record>` typo and the Twilio namespace import were not one
+     client having a bad day, they were every client at once, and the tell is
+     a column that is red all the way down rather than a row that is. With the
+     table locked to alphabetical order this tally is also what finds the
+     trouble, so it has to be visible without scrolling. */
+  const tally = new Map<string, { bad: number; warn: number }>()
+  for (const col of columns) {
+    const bad = rows.filter((r) => r.cells[col.id].state === 'bad').length
+    const warn = rows.filter((r) => r.cells[col.id].state === 'warn').length
+    tally.set(col.id, { bad, warn })
+  }
+  const worst = columns
+    .map((c) => ({ col: c, ...tally.get(c.id)! }))
+    .filter((t) => t.bad >= 2)
+    .sort((a, b) => b.bad - a.bad)[0]
 
   return (
     <div className="space-y-3">
@@ -65,6 +85,19 @@ export default function ClientHealthTable({
             ? `All ${rows.length} clients clear.`
             : `${problems} of ${rows.length} need something.`}
         </span>
+        {problems > 0 && (
+          <button
+            type="button"
+            onClick={() => setOnlyProblems((v) => !v)}
+            className={`rounded-md border px-2 py-1 font-medium ${
+              onlyProblems
+                ? 'border-gray-900 bg-gray-900 text-white'
+                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            {onlyProblems ? `Showing ${problems} — show all` : 'Only those needing something'}
+          </button>
+        )}
         <Legend icon={<Check className="h-3.5 w-3.5 text-green-600" strokeWidth={3} />} text="Working" />
         <Legend icon={<X className="h-3.5 w-3.5 text-red-600" strokeWidth={3} />} text="Broken — act" />
         <Legend icon={<TriangleAlert className="h-3.5 w-3.5 text-amber-600" strokeWidth={2.5} />} text="Worth a look" />
@@ -93,12 +126,24 @@ export default function ClientHealthTable({
                   className="px-2 py-2.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-500"
                 >
                   {col.short}
+                  {/* The count sits under the heading rather than in a footer
+                      row: a tally you have to scroll past fifteen clients to
+                      reach is one nobody reads. */}
+                  <span className="mt-0.5 block text-[11px] font-bold normal-case tracking-normal">
+                    {tally.get(col.id)!.bad > 0 ? (
+                      <span className="text-red-600">{tally.get(col.id)!.bad}</span>
+                    ) : tally.get(col.id)!.warn > 0 ? (
+                      <span className="text-amber-600">{tally.get(col.id)!.warn}</span>
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    )}
+                  </span>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => {
+            {shown.map((row) => {
               const openInThisRow = columns.find((c) => open === `${row.id}:${c.id}`)
               return (
                 <tr key={row.id} className="border-b border-gray-100 last:border-0 align-middle">
@@ -157,8 +202,20 @@ export default function ClientHealthTable({
         </table>
       </div>
 
+      {/* A column red most of the way down is one BROKEN THING, not several
+          broken shops — which is the shape the `<Dial record>` typo and the
+          Twilio import both had, and neither was noticed for weeks. */}
+      {worst && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <span className="font-semibold">{worst.bad} clients</span> are failing the same check —{' '}
+          <span className="font-semibold">{worst.col.label}</span>. That is usually one thing
+          wrong on this side rather than {worst.bad} shops having the same bad week.
+        </p>
+      )}
+
       <p className="text-xs text-gray-500">
-        Tap any mark to read what it means. Column headings:{' '}
+        The number under each heading is how many clients that column is red for. Tap any mark to
+        read what it means. Column headings:{' '}
         {columns.map((c, i) => (
           <span key={c.id}>
             {i > 0 && ' · '}

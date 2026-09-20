@@ -3,6 +3,9 @@ import { getClientReadiness } from '@/lib/client-readiness'
 import { evaluateCallConnect, WINDOW_DAYS as CONNECT_WINDOW_DAYS } from '@/lib/call-connect-health'
 import { evaluateCallRecording } from '@/lib/call-recording-health'
 import { LIVE_STATUSES } from '@/lib/site-preview'
+import { rankSetupState, type RankSetupInput } from '@/lib/rank-campaigns'
+import { localDominatorKey } from '@/lib/local-dominator'
+import { monthLabel, monthWindow, previousMonthOf } from '@/lib/tz'
 import type { ReadinessCheck } from '@/lib/client-readiness'
 
 /**
@@ -56,6 +59,8 @@ export type HealthColumnId =
   | 'recording'
   | 'sms'
   | 'ads'
+  | 'rank'
+  | 'report'
   | 'findings'
 
 export interface HealthColumn {
@@ -75,6 +80,8 @@ export const HEALTH_COLUMNS: HealthColumn[] = [
   { id: 'recording', short: 'Rec', label: 'Calls recorded', meaning: 'Answered calls are producing recordings to score.' },
   { id: 'sms', short: 'SMS', label: 'Texts land in the app', meaning: 'Their tracking number has an SmsUrl, so a texted photo is not swallowed.' },
   { id: 'ads', short: 'Ads', label: 'Ad tracking wired', meaning: 'A conversion action is configured for the tag that is loading.' },
+  { id: 'rank', short: 'Rank', label: 'Rank tracking running', meaning: 'A geogrid campaign exists, so their rankings are actually being measured.' },
+  { id: 'report', short: 'Report', label: 'Last month’s report', meaning: 'Last month’s report was built and somebody sent it.' },
   { id: 'findings', short: 'Action', label: 'Open findings', meaning: 'What the morning sweep has filed and nobody has cleared.' },
 ]
 
@@ -103,6 +110,12 @@ export async function getClientHealth(): Promise<ClientHealthRow[]> {
       status: true,
       siteSubdomain: true,
       callCoachingEnabled: true,
+      timezone: true,
+      createdAt: true,
+      googlePlaceId: true,
+      latitude: true,
+      longitude: true,
+      rankTrackingId: true,
       adsTracking: {
         select: {
           googleAdsCustomerId: true,
@@ -125,7 +138,7 @@ export async function getClientHealth(): Promise<ClientHealthRow[]> {
   /* THREE QUERIES FOR THE WHOLE BOOK, not three per client. Fifteen clients
      each firing their own aggregate is how an admin page that opens instantly
      with four shops takes six seconds with forty. */
-  const [callRows, findingRows] = await Promise.all([
+  const [callRows, findingRows, reportRows, rankKey] = await Promise.all([
     prisma.lead.findMany({
       where: { twilioCallSid: { not: null }, createdAt: { gte: since } },
       select: {
@@ -143,6 +156,20 @@ export async function getClientHealth(): Promise<ClientHealthRow[]> {
       where: { status: 'OPEN' },
       _count: { _all: true },
     }).catch(() => null),
+    /* Two months, not one: "last month" is resolved per client in THEIR
+       timezone, so on the 1st two different clients can legitimately be
+       asking about two different months. Fetching both and picking below is
+       cheaper than a query per client and cannot get the boundary wrong —
+       the trap `check-tz-windows.ts` exists for. */
+    prisma.clientMonthlyReport
+      .findMany({
+        where: { builtAt: { gte: new Date(Date.now() - 75 * 86_400_000) } },
+        select: { clientId: true, year: true, month: true, sentAt: true },
+      })
+      .catch(() => null),
+    // One lookup for the whole book: the key is platform-wide, and asking
+    // per client would be fifteen reads of the same encrypted setting.
+    localDominatorKey().then((k) => !!k).catch(() => false),
   ])
 
   const callsByClient = new Map<string, NonNullable<typeof callRows>>()
@@ -157,6 +184,13 @@ export async function getClientHealth(): Promise<ClientHealthRow[]> {
     cur.total += row._count._all
     if (row.severity === 'ALERT') cur.alerts += row._count._all
     findingsByClient.set(row.clientId, cur)
+  }
+
+  const reportsByClient = new Map<string, Array<{ year: number; month: number; sentAt: Date | null }>>()
+  for (const row of reportRows || []) {
+    const list = reportsByClient.get(row.clientId) || []
+    list.push({ year: row.year, month: row.month, sentAt: row.sentAt })
+    reportsByClient.set(row.clientId, list)
   }
 
   /* Readiness is the expensive one — a dozen queries per client — so it runs
@@ -192,6 +226,16 @@ export async function getClientHealth(): Promise<ClientHealthRow[]> {
         line: c.trackingNumber,
       })),
       findings: findingRows === null ? null : findingsByClient.get(client.id) || { alerts: 0, total: 0 },
+      rank: {
+        googlePlaceId: client.googlePlaceId,
+        latitude: client.latitude,
+        longitude: client.longitude,
+        rankTrackingId: client.rankTrackingId,
+        keyConfigured: rankKey,
+      },
+      timezone: client.timezone || 'America/Denver',
+      createdAt: client.createdAt,
+      reports: reportRows === null ? null : reportsByClient.get(client.id) || [],
       now,
     })
 
@@ -229,6 +273,14 @@ export interface HealthInput {
   }>
   /** Null when the findings query failed. */
   findings: { alerts: number; total: number } | null
+  /** Everything `rankSetupState` needs, minus the status it shares with us. */
+  rank: Omit<RankSetupInput, 'status'>
+  /** The shop's own zone — "last month" is not the same month everywhere. */
+  timezone: string
+  /** So a client onboarded this month is not marked down for last month's report. */
+  createdAt: Date
+  /** Null when the report query failed. */
+  reports: Array<{ year: number; month: number; sentAt: Date | null }> | null
   now: Date
 }
 
@@ -351,6 +403,44 @@ export function healthCells(input: HealthInput): Record<HealthColumnId, HealthCe
         ? bad('The UET tag is installed but no event action is set, so no goal can match.')
         : ok()
 
+  /* ---- Rank tracking ----
+     THE CLIENT WITH NO CAMPAIGN HAD NO SURFACE ANYWHERE: the sweep counted a
+     skip with no name, the Rankings page omitted them, the portal hid the tab.
+     `rankSetupState` is the one module that answers "is it measured, and if
+     not what is blocking it" — reused rather than re-reasoned, so this cell
+     and the SEO tab cannot disagree about the same client. */
+  const rankState = rankSetupState({ ...input.rank, status: input.status })
+  const rank: HealthCell = rankState.hasCampaign
+    ? ok()
+    : !live
+      ? na(`Status is ${input.status}, so nothing is scanned.`)
+      : // The key is missing for EVERY client at once, which is one fix, not
+        // fifteen — amber so it does not read as fifteen broken shops.
+        !input.rank.keyConfigured
+        ? warn(rankState.problem || 'No Local Dominator API key configured.')
+        : bad(rankState.problem || 'No rank campaign, and nothing says why.')
+
+  /* ---- Last month's report ----
+     THE CRON BUILDS AND A PERSON SENDS, deliberately — so "built, unsent" is
+     the normal state for a few days and is amber, not red. What is red is the
+     month having closed with nothing built at all: that is the cron having
+     failed, and nothing else would ever mention it. */
+  const { year, month } = previousMonthOf(input.now, input.timezone)
+  const bornBefore = input.createdAt < monthWindow(year, month, input.timezone).end
+  const reportCell: HealthCell = !input.reports
+    ? warn('Could not read the reports.')
+    : !live
+      ? na(`Status is ${input.status}, so no report is built.`)
+      : !bornBefore
+        ? na('Onboarded since that month — there is nothing to report on yet.')
+        : (() => {
+            const row = input.reports.find((r) => r.year === year && r.month === month)
+            if (!row) return bad(`No report was built for ${monthLabel(year, month)}.`)
+            return row.sentAt
+              ? ok()
+              : warn(`${monthLabel(year, month)} is built and waiting for you to read it and press send.`)
+          })()
+
   // ---- Open findings ----
   const findingsCell: HealthCell = !findings
     ? warn('Could not read the findings queue.')
@@ -371,6 +461,8 @@ export function healthCells(input: HealthInput): Record<HealthColumnId, HealthCe
     recording: recordingCell,
     sms,
     ads,
+    rank,
+    report: reportCell,
     findings: findingsCell,
   }
 }

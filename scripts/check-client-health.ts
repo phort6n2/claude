@@ -38,6 +38,18 @@ const base: HealthInput = {
   readiness: { requiredOpen: 0, recommendedOpen: 0, checks: [] },
   calls: [],
   findings: { alerts: 0, total: 0 },
+  rank: {
+    googlePlaceId: 'place-1',
+    latitude: 33.1,
+    longitude: -96.9,
+    rankTrackingId: 'camp-1',
+    keyConfigured: true,
+  },
+  timezone: 'America/Chicago',
+  // Well before the month under test, so the report column has something to
+  // judge rather than excusing this client for being new.
+  createdAt: new Date('2025-01-01T00:00:00Z'),
+  reports: [{ year: 2026, month: 8, sentAt: new Date('2026-09-02T00:00:00Z') }],
   now: NOW,
 }
 
@@ -208,6 +220,56 @@ console.log('\nCalls: the same evaluator the morning sweep uses')
     cells({ trackingNumbers: [{ ...num, recordCalls: false }], calls: make('completed', 6) }).recording.state,
     'na'
   )
+}
+
+console.log('\nRank tracking: the client with no campaign that had no surface anywhere')
+{
+  const noCampaign = { ...base.rank, rankTrackingId: null }
+  expect('campaign exists', cells({}).rank.state, 'ok')
+  expect(
+    'no campaign, nothing blocking it',
+    cells({ rank: noCampaign }).rank.state,
+    'bad'
+  )
+  /* The key is missing for EVERY client at once and is ONE fix. Fifteen reds
+     over a single unset setting is the permanently-red board again. */
+  expect(
+    'no API key at all → amber, not red',
+    cells({ rank: { ...noCampaign, keyConfigured: false } }).rank.state,
+    'warn'
+  )
+  expect(
+    'paused → nothing is scanned',
+    cells({ status: 'PAUSED', rank: noCampaign }).rank.state,
+    'na'
+  )
+  // Coordinates backfill from the Place ID, so their absence is not a blocker
+  // — but a missing Place ID is, and the cell has to say which.
+  const noPlace = cells({ rank: { ...noCampaign, googlePlaceId: null } })
+  if (/business profile/i.test(noPlace.rank.detail)) pass('a missing Place ID says so')
+  else fail(`the rank cell does not name the blocker: ${noPlace.rank.detail}`)
+}
+
+console.log('\nLast month’s report')
+{
+  // The cron builds on the 1st and a PERSON sends. "Built, unsent" is the
+  // designed state for a few days, so it is amber — never red.
+  expect('built and sent', cells({}).report.state, 'ok')
+  expect(
+    'built, waiting to be sent',
+    cells({ reports: [{ year: 2026, month: 8, sentAt: null }] }).report.state,
+    'warn'
+  )
+  // Nothing built at all once the month has closed is the cron having failed,
+  // and nothing else in the app would ever mention it.
+  expect('month closed, nothing built', cells({ reports: [] }).report.state, 'bad')
+  expect(
+    'onboarded after that month',
+    cells({ reports: [], createdAt: new Date('2026-09-15T00:00:00Z') }).report.state,
+    'na'
+  )
+  expect('paused', cells({ status: 'PAUSED' }).report.state, 'na')
+  expect('query failed', cells({ reports: null }).report.state, 'warn')
 }
 
 console.log('\nA clean client is clean')

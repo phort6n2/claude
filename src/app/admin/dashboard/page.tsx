@@ -85,8 +85,15 @@ export default async function AdminDashboard() {
 
 async function HealthBoard() {
   const rows = await getClientHealth()
-  // Worst first. A board sorted alphabetically asks you to read all fifteen
-  // rows to find the one that needs you.
-  const sorted = [...rows].sort((a, b) => b.score - a.score || a.businessName.localeCompare(b.businessName))
+  /* ALWAYS ALPHABETICAL, and never re-ordered by how bad a client's morning
+     is. A board that sorts itself worst-first moves rows around between
+     visits, so the shop you looked at yesterday is somewhere else today and
+     you have to read the column to find it again — and the one thing an
+     operator does most on this page is check a client they already have in
+     mind. The summary line and the per-column tally do the finding instead,
+     which is why they exist. `localeCompare` so "Álvarez" files under A. */
+  const sorted = [...rows].sort((a, b) =>
+    a.businessName.localeCompare(b.businessName, 'en', { sensitivity: 'base' })
+  )
   return <ClientHealthTable rows={sorted} columns={HEALTH_COLUMNS} />
 }
