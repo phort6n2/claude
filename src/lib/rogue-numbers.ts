@@ -43,9 +43,33 @@ export interface RogueNumber {
   context: string
 }
 
+/**
+ * WHICH FIELD THIS IS, in terms a write can use.
+ *
+ * `where` is for a person — "FAQ answer 8" reads well in a finding and is
+ * useless to anything that has to put a corrected sentence back. Adding the
+ * machine address here rather than in a second scanner keeps the two in step:
+ * a field added to `editorialFields` is a field every consumer sees, which is
+ * the whole reason this list is shared.
+ */
+export type FieldTarget =
+  | { kind: 'warrantyText' }
+  | { kind: 'footerBlurb' }
+  | { kind: 'faq'; index: number }
+  | { kind: 'chapter'; index: number }
+  | { kind: 'cityContent'; city: string }
+  /* Kept pages are raw HTML from the shop's old site. They are SCANNED, so a
+     problem in one is still reported, but never written back to: a sentence
+     lifted out of markup will not match the source byte for byte once
+     entities and tags are in play, and a near-miss replacement mangles the
+     page. Those are fixed by hand, and the UI says so. */
+  | { kind: 'keptPage'; path: string; writable: false }
+
 export interface ScannedField {
   where: string
   text: string | null | undefined
+  /** Absent for anything that cannot be addressed for a write. */
+  target?: FieldTarget
 }
 
 /**
@@ -144,27 +168,40 @@ export function editorialFields(input: {
   const fields: ScannedField[] = []
   const c = input.content
   if (c) {
-    fields.push({ where: 'the warranty text', text: c.warrantyText })
-    fields.push({ where: 'the footer blurb', text: c.footerBlurb })
+    fields.push({ where: 'the warranty text', text: c.warrantyText, target: { kind: 'warrantyText' } })
+    fields.push({ where: 'the footer blurb', text: c.footerBlurb, target: { kind: 'footerBlurb' } })
     if (Array.isArray(c.faq)) {
       for (const [i, row] of (c.faq as Array<{ q?: string; a?: string }>).entries()) {
-        fields.push({ where: `FAQ answer ${i + 1}`, text: `${row?.q || ''} ${row?.a || ''}` })
+        fields.push({
+          where: `FAQ answer ${i + 1}`,
+          text: `${row?.q || ''} ${row?.a || ''}`,
+          target: { kind: 'faq', index: i },
+        })
       }
     }
     if (Array.isArray(c.chapters)) {
-      for (const row of c.chapters as Array<{ heading?: string; body?: string }>) {
+      for (const [i, row] of (c.chapters as Array<{ heading?: string; body?: string }>).entries()) {
         fields.push({
           where: `the story section “${row?.heading || 'untitled'}”`,
           text: `${row?.heading || ''} ${row?.body || ''}`,
+          target: { kind: 'chapter', index: i },
         })
       }
     }
   }
   for (const city of input.cityContent || []) {
-    fields.push({ where: `the ${city.city} city copy`, text: city.body })
+    fields.push({
+      where: `the ${city.city} city copy`,
+      text: city.body,
+      target: { kind: 'cityContent', city: city.city },
+    })
   }
   for (const page of input.keptPages || []) {
-    fields.push({ where: `the kept page ${page.path}`, text: `${page.title || ''} ${page.bodyHtml || ''}` })
+    fields.push({
+      where: `the kept page ${page.path}`,
+      text: `${page.title || ''} ${page.bodyHtml || ''}`,
+      target: { kind: 'keptPage', path: page.path, writable: false },
+    })
   }
   return fields
 }

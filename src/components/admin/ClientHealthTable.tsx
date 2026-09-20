@@ -6,6 +6,8 @@ import { Check, X, Minus, TriangleAlert, ArrowRight, AlertCircle } from 'lucide-
 import type { ClientHealthRow, HealthCell, HealthColumn, HealthColumnId } from '@/lib/client-health'
 import { CELL_WEIGHT } from '@/lib/client-health'
 import { fixActionFor, DISMISS_MEANING } from '@/lib/finding-actions'
+import { PREMISES_COPY_CHECK } from '@/lib/premises-copy-health'
+import PremisesFixButton from '@/components/admin/PremisesFixButton'
 import { errorFrom } from '@/lib/http-error'
 
 /**
@@ -388,6 +390,9 @@ function CellPanel({
                   {action.label}
                   <ArrowRight className="h-3 w-3" />
                 </Link>
+                {f.check === PREMISES_COPY_CHECK && (
+                  <PremisesFixButton clientId={row.id} />
+                )}
                 <button
                   type="button"
                   onClick={() => onDismiss(f.id)}

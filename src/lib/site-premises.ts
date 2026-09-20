@@ -174,7 +174,11 @@ export const PREMISES_WORDS: RegExp[] = [
   /\bin[- ]shop\b/i,
   /\bcome (in|by|down)\b/i,
   /\bbring (it|the vehicle|your (car|vehicle))\b/i,
-  /\bdrop (in|it off|the car off|your car off)\b/i,
+  /* The noun varies and the claim does not. This listed "the car off" and
+     "your car off" and missed "the VEHICLE off" — which is the word this
+     template uses everywhere else, so it is the word a rewrite reaches for. */
+  /\bdrop (in|by)\b/i,
+  /\bdrop (it|the car|the vehicle|your car|your vehicle|the keys) off\b/i,
   /\bvisit (us|the)\b/i,
   /\bwaiting (room|area)\b/i,
 ]

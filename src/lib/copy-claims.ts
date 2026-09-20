@@ -76,7 +76,9 @@ const RULES: Rule[] = [
       /\bnext[- ]day\b/i,
       /\b24[/\- ]?7\b/i,
       /\baround the clock\b/i,
-      /\bwithin (an?|\d+)\s*(hour|minute|day)/i,
+      // "the" alongside "a/an/<number>": "within the hour" is the way people
+      // actually write this one, and it slipped straight through.
+      /\bwithin (an?|the|\d+)\s*(hour|minute|day)/i,
       /\b\d+\s*(minutes|hours)\b/i,
       /\bin (minutes|under an hour)\b/i,
       // NOT "immediately" or "right away", which were here and had to come

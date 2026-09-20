@@ -1,5 +1,5 @@
 import { premisesClaim } from '@/lib/site-premises'
-import type { ScannedField } from '@/lib/rogue-numbers'
+import type { ScannedField, FieldTarget } from '@/lib/rogue-numbers'
 import type { FindingDraft } from '@/lib/google-ads-checks'
 
 /**
@@ -39,6 +39,10 @@ export interface PremisesCopyHit {
   where: string
   /** Enough of the sentence to find it by eye. */
   context: string
+  /** The sentence exactly as it appears, so a rewrite can replace it. */
+  sentence: string
+  /** Where to write a correction back, when the field allows one. */
+  target?: FieldTarget
 }
 
 /**
@@ -69,6 +73,8 @@ export function findPremisesClaims(fields: ScannedField[]): PremisesCopyHit[] {
         claim,
         where: field.where,
         context: sentence.length > 200 ? `${sentence.slice(0, 200)}…` : sentence,
+        sentence,
+        target: field.target,
       })
     }
   }
