@@ -504,10 +504,35 @@ at it. Two kinds, one mechanism.
   rogue numbers and premises claims like any other editorial field — marked
   `writable: false`, because a near-miss rewrite of a coverage note changes
   what a shop promises about somebody's insurance.
+- **THE MEMBERSHIP IS THE SELLING POINT, SO IT CANNOT LIVE ON ONE PAGE**
+  (`networkHighlight`). It rendered in exactly two places — one sentence
+  inside the claim page and the small print under the insurance band — so a
+  visitor landing on the windscreen page, which is where most paid clicks go,
+  never saw it. It is now the badge in the top bar, the first item in the
+  footer trust bar, a hero trust line, and a CALLOUT BAND directly under the
+  hero on every page type. ONE function decides all of them, because the gate
+  is subtle twice over: the TEXT needs the tick and a confirmed network name,
+  and the LINK needs the page PUBLISHED as well — `path` stays null until
+  then, since a nav entry pointing at an unpublished page puts a 404 in the
+  header of every page on the site.
+  - **The nav SPENDS a slot rather than adding one.** `SiteHeader` is
+    width-budgeted — four service links plus both buttons already do not fit
+    an lg row — so `withNetworkNav` puts the claim page first and drops the
+    services to three.
+  - `NumberedSteps` is ONE implementation, read by "how it works" and by the
+    claim steps. The second one was written as its own card grid and looked
+    like a different website: plain boxes, small number chips, no eyebrow, no
+    connector — and four steps in a fixed three-column grid left the fourth
+    alone under a half-empty row. `stepColumns` derives the grid from the
+    count so no row holds one, and the connector is suppressed at the end of
+    every row rather than only on the last step.
 - `scripts/check-insurance-program.ts` holds both directions, the ABSENCE
   cases first: no network claim without the tick, no invented coverage, no
-  hedge for an unconfirmed network, and the disclaimer byte-for-byte unchanged
-  for the fourteen shops with no programme.
+  hedge for an unconfirmed network, no link while the page is a draft, the nav
+  unchanged in every negative case, and the disclaimer byte-for-byte unchanged
+  for the fourteen shops with no programme. The last one is also checked
+  against a real render — a no-network shop's page is identical to what it was
+  before any of this existed.
 
 **A PUBLIC-INSURER PROVINCE HAS NO "CARRIER", AND EVERY SHARED LINE SAID IT
 DID** (`PUBLIC_INSURERS` and `insurerNoun()` in `insurance-rules.ts`). With

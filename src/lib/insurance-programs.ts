@@ -581,3 +581,67 @@ export function programDefaultCopy(
     ],
   }
 }
+
+// ---------------------------------------------------------------------------
+// The network, everywhere
+// ---------------------------------------------------------------------------
+
+/**
+ * THE MEMBERSHIP IS THE SELLING POINT, SO IT CANNOT LIVE ON ONE PAGE.
+ *
+ * Being in an insurer's repair network is the strongest thing a shop in a
+ * public-insurer province can say, and it was rendering in exactly two
+ * places: one sentence inside the claim page, and the small print under the
+ * insurance band. A visitor who lands on the windscreen page — which is where
+ * most paid clicks go — never saw it at all.
+ *
+ * This is the ONE decision every surface asks: the badge in the top bar, the
+ * nav link, the callout band under the hero, the hero bullet and the footer.
+ * One function rather than five conditions, because the gate is subtle in two
+ * ways and getting it wrong in one place is worse than not having it:
+ *
+ *   - THE TEXT is gated on the tick AND a confirmed network name, like every
+ *     other membership claim here.
+ *   - THE LINK is gated on the page being PUBLISHED as well. An unpublished
+ *     programme page 404s, so a nav entry pointing at it would put a dead link
+ *     in the header of every page on the site — the one kind of breakage a
+ *     shop's customers find before the shop does. `path` is null until the
+ *     page is real, and every caller renders the claim without a link rather
+ *     than a link to nothing.
+ */
+export interface NetworkHighlight {
+  /** "the ICBC Repair Network" — the full name, for prose. */
+  name: string
+  /** "ICBC Repair Network" — the badge, with no article. */
+  label: string
+  /** "ICBC". */
+  short: string
+  /** A banner heading. */
+  headline: string
+  /** What membership changes for the reader. */
+  body: string
+  /** The claim page, or null while it is unpublished — see above. */
+  path: string | null
+  linkLabel: string
+}
+
+export function networkHighlight(
+  program: InsuranceProgram | null,
+  record: ProgramRecord | null,
+  ctx: { businessName: string; filesClaims: boolean }
+): NetworkHighlight | null {
+  if (!program || !record || !record.inNetwork || !program.networkName) return null
+  const label = program.networkName.replace(/^the\s+/i, '')
+  return {
+    name: program.networkName,
+    label,
+    short: program.short,
+    headline: `We are part of ${program.networkName}`,
+    body:
+      ctx.filesClaims && program.networkProcessLine
+        ? program.networkProcessLine
+        : `Your glass claim goes through ${program.short}, and we will give them everything they need from our side.`,
+    path: programIsPublished(record) ? programPath(program) : null,
+    linkLabel: `How an ${program.short} claim works`,
+  }
+}

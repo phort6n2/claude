@@ -33,8 +33,10 @@ import {
   buildTrustItems,
   defaultHeroBullets,
   prioritizeServices,
+  withNetworkNav,
 } from '@/components/sites/site-body'
 import { getSiteExtras, getInsuranceProgram } from '@/lib/site-content'
+import { networkHighlight } from '@/lib/insurance-programs'
 import { sitePaletteVars } from '@/lib/site-theme'
 import { getClientLocations } from '@/lib/client-locations'
 import { cityIsIndexable, getCityContent } from '@/lib/city-content'
@@ -209,10 +211,21 @@ export default async function ClientSitePage({ params }: PageProps) {
     filesInsuranceClaims: client.filesInsuranceClaims,
     smsCapable: client.smsCapable,
   }
-  const nav = prioritizeServices(services).slice(0, 4).map((s) => ({
-    href: `${basePath}${servicePath(s.slug, readPathOverrides(client.pathOverrides))}`,
-    label: s.name,
-  }))
+  // The repair-network mark, for the top bar and the nav. SiteBody and
+  // SiteChrome derive their own from the same record, so nothing here can
+  // claim a network another band on the page does not.
+  const network = networkHighlight(insuranceProgram.program, insuranceProgram.record, {
+    businessName: client.businessName,
+    filesClaims: client.filesInsuranceClaims,
+  })
+  const nav = withNetworkNav(
+    network,
+    basePath,
+    prioritizeServices(services).map((s) => ({
+      href: `${basePath}${servicePath(s.slug, readPathOverrides(client.pathOverrides))}`,
+      label: s.name,
+    }))
+  )
 
   const siteOrigin = siteOriginFor(client)
   const jsonLd = homeJsonLd({
@@ -261,7 +274,7 @@ export default async function ClientSitePage({ params }: PageProps) {
   // different set of reasons. When it did not, both are derived from the same
   // flags and say the same four things twice — so the strip stands down.
   const wroteOwnBullets = extras.heroBullets.length > 0
-  const heroBullets = wroteOwnBullets ? extras.heroBullets : defaultHeroBullets(flags)
+  const heroBullets = wroteOwnBullets ? extras.heroBullets : defaultHeroBullets(flags, client.state)
   // The strip is told what the bullets above it already say, so the two
   // cannot repeat each other — see TRUST_TOPICS.
   const trustItems = wroteOwnBullets ? buildTrustItems(client, flags, extras, heroBullets) : []
@@ -287,6 +300,7 @@ export default async function ClientSitePage({ params }: PageProps) {
 
       <SkipLink />
       <UtilBar
+        network={network}
         client={client}
         note={servingLine(client, {
           mobile: client.offersMobileService,
@@ -423,6 +437,7 @@ export default async function ClientSitePage({ params }: PageProps) {
       </main>
 
       <SiteChrome
+        insuranceProgram={insuranceProgram}
         client={client}
         flags={flags}
         reviews={reviews}

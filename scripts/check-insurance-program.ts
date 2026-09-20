@@ -33,6 +33,7 @@ import {
   programForPath,
   programIsPublished,
   programDefaultCopy,
+  networkHighlight,
   programSections,
   programTitle,
   publishProblem,
@@ -44,6 +45,7 @@ import {
   type ProgramRecord,
 } from '../src/lib/insurance-programs'
 import { pathOverrideProblem } from '../src/lib/site-paths'
+import { withNetworkNav } from '../src/components/sites/site-body'
 import {
   heroCostLineFor,
   insuranceForState,
@@ -514,6 +516,83 @@ console.log('\nTHE TICK FILLS THE PAGE IN, AND WHAT IT FILLS IN IS SOURCED')
       pass(`${INSURANCE_PROGRAMS[key].short}: no default copy, because nobody has sourced it`)
     } else fail(`${key} wrote copy nobody checked`)
   }
+}
+
+console.log('\nTHE NETWORK IS ON EVERY PAGE, AND THE LINK WAITS FOR THE PAGE')
+{
+  const CTX = { businessName: 'AGS Affordable Glass Services', filesClaims: true }
+  const live = record({ inNetwork: true, coverageNote: 'x', publishedAt: new Date() })
+
+  const h = networkHighlight(INSURANCE_PROGRAMS.icbc, live, CTX)
+  if (h) pass('a ticked, published ICBC client gets a highlight')
+  else fail('no highlight for the client this is for')
+  if (h?.path === '/icbc-glass-claims') pass(`links to ${h?.path}`)
+  else fail(`wrong link target: ${h?.path}`)
+  if (h?.label === 'ICBC Repair Network') pass('the badge is the network name, with no article')
+  else fail(`badge reads "${h?.label}"`)
+  if (!/approved|preferred|official|authoris|authoriz|endorse/i.test(`${h?.headline} ${h?.body} ${h?.label}`)) {
+    pass('no endorsement wording in the badge, headline or body')
+  } else fail('the banner reads as an endorsement')
+
+  /* THE LINK WAITS FOR THE PAGE. The text is gated on the tick; the LINK is
+     gated on publication as well, because the nav entry and the band's button
+     render on every page of the site — pointing them at an unpublished page
+     would put a 404 in the header of a live site, which is the one kind of
+     breakage a shop's customers find before the shop does. */
+  const unpublished = networkHighlight(
+    INSURANCE_PROGRAMS.icbc,
+    record({ inNetwork: true, coverageNote: 'x' }),
+    CTX
+  )
+  if (unpublished) pass('an unpublished page still states the membership')
+  else fail('dropped the membership claim just because the page is a draft')
+  if (unpublished?.path === null) pass('…and offers NO link, so nothing points at a 404')
+  else fail(`linked to an unpublished page: ${unpublished?.path}`)
+
+  // Ticked but the page never published: the nav must be the plain service
+  // list, exactly as it is for every other shop.
+  const services = [1, 2, 3, 4, 5].map((n) => ({ href: `/s${n}`, label: `S${n}` }))
+  const navDraft = withNetworkNav(unpublished, '', services)
+  if (navDraft.length === 4 && navDraft.every((l) => l.label.startsWith('S'))) {
+    pass('a draft page leaves the header nav untouched')
+  } else fail(`a draft page changed the nav: ${JSON.stringify(navDraft)}`)
+
+  const navLive = withNetworkNav(h, '', services)
+  if (navLive.length === 4) pass('the nav is still four items — the header is width-budgeted')
+  else fail(`nav grew to ${navLive.length}, which overflows the header`)
+  if (navLive[0].label === 'ICBC claims' && navLive[0].href === '/icbc-glass-claims') {
+    pass('the claim page leads it, and a service link is SPENT rather than added')
+  } else fail(`nav does not lead with the claim page: ${JSON.stringify(navLive[0])}`)
+
+  // A shop with no network: every surface is byte-for-byte what it was.
+  for (const [label, rec] of [
+    ['the tick off', record({ coverageNote: 'x', publishedAt: new Date() })],
+    ['no programme', null],
+  ] as const) {
+    const none = networkHighlight(rec ? INSURANCE_PROGRAMS.icbc : null, rec, CTX)
+    if (none === null) pass(`no highlight with ${label}`)
+    else fail(`a highlight appeared with ${label}`)
+    const nav = withNetworkNav(none, '', services)
+    if (nav.length === 4 && nav[0].label === 'S1') pass(`  and the nav is unchanged with ${label}`)
+    else fail(`the nav changed with ${label}`)
+  }
+
+  // SGI/MPI: ticked, published, and still nothing — no confirmed network name.
+  for (const key of ['sgi', 'mpi'] as const) {
+    const q = networkHighlight(
+      INSURANCE_PROGRAMS[key],
+      record({ programKey: key, inNetwork: true, coverageNote: 'x', publishedAt: new Date() }),
+      CTX
+    )
+    if (q === null) pass(`${INSURANCE_PROGRAMS[key].short}: no banner without a confirmed network name`)
+    else fail(`${key} rendered a banner for a network nobody has named`)
+  }
+
+  // The body is a claim-handling claim, so it respects the flag like the rest.
+  const noFile = networkHighlight(INSURANCE_PROGRAMS.icbc, live, { ...CTX, filesClaims: false })
+  if (!/submit the claim|do not need to contact/i.test(noFile?.body || '')) {
+    pass('the banner does not claim claim-handling for a shop with the flag off')
+  } else fail(`banner claimed filing with filesInsuranceClaims off: ${noFile?.body}`)
 }
 
 console.log('\nEvery catalogue entry is coherent')

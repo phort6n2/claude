@@ -1,4 +1,4 @@
-import { Phone, MapPin, ShieldCheck, Check, MessageSquare } from 'lucide-react'
+import { Phone, MapPin, ShieldCheck, Check, MessageSquare, ArrowRight } from 'lucide-react'
 import { servicePath, locationPath, readPathOverrides } from '@/lib/site-paths'
 import { ReviewsGrid } from '@/components/sites/reviews-grid'
 import GalleryPhotos from '@/components/sites/gallery-lightbox'
@@ -6,6 +6,7 @@ import { wordmarkParts } from '@/lib/wordmark'
 import { smsHref } from '@/lib/contact-links'
 import { headlineArea, servingShort } from '@/lib/site-area'
 import { mostMentionedName } from '@/lib/review-names'
+import type { NetworkHighlight } from '@/lib/insurance-programs'
 import type { SiteExtras, FaqItem } from '@/lib/site-content'
 import { locationPages } from '@/lib/site-locations'
 import { orderLocationsForCity, mapQuery, type SiteLocation } from '@/lib/client-locations'
@@ -328,7 +329,98 @@ export function CallButton({
  * Phones get the clause before the first " & " too, which is a complete short
  * sentence; the call block never reflows.
  */
-export function UtilBar({ client, note }: { client: SiteClient; note: string }) {
+/**
+ * The repair-network mark — see `networkHighlight` in lib/insurance-programs.
+ *
+ * A BADGE, NOT A CLAIM OF APPROVAL. §2 forbids "approved by" and "preferred
+ * provider"; membership of a named network is a different thing and is
+ * checkable, so the label is the network's own name and nothing else. No
+ * "official", no "authorised", no tick-in-a-rosette that reads as an
+ * endorsement the insurer never gave.
+ */
+export function NetworkBadge({
+  network,
+  tone = 'dark',
+  className = '',
+}: {
+  network: NetworkHighlight
+  /** `dark` for the top bar and footer band, `light` for the page body. */
+  tone?: 'dark' | 'light'
+  className?: string
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-bold leading-none whitespace-nowrap ${
+        tone === 'dark'
+          ? 'bg-white/10 text-[var(--on-dark)] ring-1 ring-inset ring-white/20'
+          : 'bg-[var(--tint-accent)] text-[var(--brand)] ring-1 ring-inset ring-[var(--line-strong)]'
+      } ${className}`}
+    >
+      <ShieldCheck className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      {network.label}
+    </span>
+  )
+}
+
+/**
+ * The network callout, directly under the hero on every page.
+ *
+ * THE HIGHEST SLOT IN THE BODY, on purpose. Most paid clicks land on a service
+ * or city page rather than the claim page, and the membership is the strongest
+ * thing those visitors could be told — it was previously visible only to
+ * somebody who had already found the claim page, which is the wrong way round.
+ *
+ * The CTA renders only when `path` is set, i.e. when the claim page is
+ * actually published. A button to a 404 in a band on every page of the site
+ * is worse than no button.
+ */
+export function NetworkBand({
+  network,
+  basePath = '',
+}: {
+  network: NetworkHighlight
+  basePath?: string
+}) {
+  return (
+    <section className="border-t border-[var(--line)] bg-[var(--tint-accent)]">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-start gap-4 min-w-0">
+          <span className="hidden sm:flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--brand)] text-white">
+            <ShieldCheck className="h-6 w-6" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="m-0 text-[clamp(1.125rem,1rem+.7vw,1.5rem)] leading-[1.25] font-extrabold tracking-tight text-[var(--tx)]">
+              {network.headline}
+            </h2>
+            <p className="mt-1.5 mb-0 text-[15px] leading-relaxed text-[var(--tx2)] max-w-[62ch]">
+              {network.body}
+            </p>
+          </div>
+        </div>
+        {network.path && (
+          <a
+            href={`${basePath}${network.path}`}
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[var(--cta)] text-[var(--on-cta)] px-5 py-3 text-sm font-bold no-underline hover:brightness-95 max-md:w-full max-md:justify-center"
+          >
+            {network.linkLabel}
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </a>
+        )}
+      </div>
+    </section>
+  )
+}
+
+export function UtilBar({
+  client,
+  note,
+  network,
+}: {
+  client: SiteClient
+  note: string
+  /** Rendered as a badge beside the serving line. See NetworkBadge. */
+  network?: NetworkHighlight | null
+}) {
   const [noteHead, ...noteRest] = note.split(' — ')
   const noteTail = noteRest.length ? ` — ${noteRest.join(' — ')}` : ''
   const [noteShort, ...noteMid] = noteHead.split(' & ')
@@ -340,6 +432,11 @@ export function UtilBar({ client, note }: { client: SiteClient; note: string }) 
         {/* Below 390 even the shortest clause loses to the call block by a
             few pixels, and a truncated note is worth less than no note — the
             number is the half of this bar anyone uses. */}
+        {/* Below md the bar is already fighting for room against the call
+            block — see the note below — so the badge appears only where there
+            is space for it. The band under the hero carries it everywhere
+            else, including on a phone. */}
+        {network && <NetworkBadge network={network} className="hidden md:inline-flex" />}
         <span className="flex-1 min-w-0 truncate hidden min-[390px]:block">
           {noteShort}
           {noteHeadTail && <span className="hidden min-[430px]:inline">{noteHeadTail}</span>}
@@ -739,6 +836,98 @@ export function StatBand({
  * with the connector running between them at disc height, text below. Copy is
  * generic to the trade, conditioned only on flags the client actually has.
  */
+/**
+ * How many columns a numbered sequence should sit in, so no row holds ONE.
+ *
+ * A LEFTOVER CARD IS WHAT MADE THIS LOOK BROKEN. Four operator-written claim
+ * steps landed in a fixed three-column grid: three across, then one alone
+ * under a half-empty row, which reads as a layout that gave up rather than as
+ * a fourth step. The count is not fixed — an operator writes between two and
+ * MAX_STEPS of them — so the grid has to come from the count.
+ *
+ * Pure, so the awkward numbers can be asserted rather than eyeballed: 5 and 6
+ * go three wide, 7 and 8 go four, and nothing in the range leaves a row of
+ * one.
+ */
+export function stepColumns(count: number): number {
+  if (count <= 4) return Math.max(1, count)
+  if (count <= 6) return 3
+  return 4
+}
+
+/**
+ * A numbered sequence, in the one visual language this site uses for them.
+ *
+ * ONE IMPLEMENTATION, read by "how it works" and by the insurance page's claim
+ * steps. The second one was written as its own card grid and looked like
+ * somebody else's website: plain boxes, small chips for numbers, no eyebrow,
+ * no connector, and a different type scale from the band directly above it.
+ * Two implementations of "numbered steps" is the shape this codebase keeps
+ * refusing, and the cost here is visible rather than theoretical.
+ *
+ * THE CONNECTOR IS SUPPRESSED AT THE END OF EVERY ROW, not just on the last
+ * step. `.gl-step::after` draws a rule to the right of each disc, so a step in
+ * the last column drew one into the margin — invisible with three fixed steps
+ * on one row, obvious the moment a sequence wraps.
+ */
+export function NumberedSteps({
+  steps,
+  columns,
+}: {
+  steps: Array<{ title?: string; body: string }>
+  /** Defaults to whatever `stepColumns` says fits the count. */
+  columns?: number
+}) {
+  if (steps.length === 0) return null
+  const cols = columns ?? stepColumns(steps.length)
+  const gridCols =
+    cols >= 4
+      ? 'md:grid-cols-2 lg:grid-cols-4'
+      : cols === 3
+        ? 'md:grid-cols-3'
+        : cols === 2
+          ? 'md:grid-cols-2'
+          : 'md:grid-cols-1'
+  return (
+    <div className={`grid ${gridCols} gap-8 md:gap-x-12`}>
+      {steps.map((step, i) => {
+        // End of a row, or the very last step: no rule into empty space.
+        const endsRow = (i + 1) % cols === 0 || i === steps.length - 1
+        return (
+          // Mobile: disc beside the text so the vertical connector stays in
+          // its own gutter. Desktop: disc on top, text below — the .co look.
+          <div
+            key={`${i}-${step.title || step.body.slice(0, 24)}`}
+            className={`${endsRow ? '' : 'gl-step'} grid grid-cols-[48px_minmax(0,1fr)] gap-4 items-start md:block`}
+          >
+            <div
+              className={`gl-step-n h-12 w-12 rounded-full flex items-center justify-center text-lg font-extrabold tabular-nums ${
+                i === steps.length - 1
+                  ? 'bg-[var(--cta)] text-[var(--on-cta)]'
+                  : 'bg-[var(--dark)] text-white'
+              }`}
+            >
+              {i + 1}
+            </div>
+            <div className="md:mt-7">
+              {step.title && (
+                <h3 className="m-0 text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold">
+                  {step.title}
+                </h3>
+              )}
+              <p
+                className={`${step.title ? 'mt-1.5' : 'mt-0'} mb-0 text-sm text-[var(--tx2)] leading-relaxed`}
+              >
+                {step.body}
+              </p>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export function ProcessSection({
   client,
   offersMobileService,
@@ -771,32 +960,9 @@ export function ProcessSection({
     <section className="bg-[var(--s2)] border-t border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
         <SectionHead eyebrow="How it works" title={processTitle(premises)} />
-        <div className="grid md:grid-cols-3 gap-8 md:gap-x-12">
-          {steps.map((step, i) => (
-            // Mobile: disc beside the text so the vertical connector stays in
-            // its own gutter. Desktop: disc on top, text below — the .co look.
-            <div
-              key={step.title}
-              className="gl-step grid grid-cols-[48px_minmax(0,1fr)] gap-4 items-start md:block"
-            >
-              <div
-                className={`gl-step-n h-12 w-12 rounded-full flex items-center justify-center text-lg font-extrabold tabular-nums ${
-                  i === steps.length - 1
-                    ? 'bg-[var(--cta)] text-[var(--on-cta)]'
-                    : 'bg-[var(--dark)] text-white'
-                }`}
-              >
-                {i + 1}
-              </div>
-              <div className="md:mt-7">
-                <h3 className="m-0 text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold">
-                  {step.title}
-                </h3>
-                <p className="mt-1.5 mb-0 text-sm text-[var(--tx2)] leading-relaxed">{step.body}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* Three fixed steps, so the column count is stated rather than
+            derived — this band is the same shape on every site. */}
+        <NumberedSteps steps={steps} columns={3} />
       </div>
     </section>
   )
@@ -1741,7 +1907,10 @@ export function SiteFooter({
   locations = [],
   linkableCities,
   pages = [],
+  network,
 }: {
+  /** The repair-network mark, in the dark band. See NetworkBadge. */
+  network?: NetworkHighlight | null
   client: SiteClient
   extras?: SiteExtras | null
   services?: Array<{ slug: string; name: string }>
@@ -1766,6 +1935,19 @@ export function SiteFooter({
   // Identity-bar trust items: restate claims made further up the page —
   // every one data-backed, never a third-party mark.
   const barTrust = [
+    /* THE NETWORK LEADS, and it is allowed here despite the "never a
+       third-party mark" rule above — that rule is about rendering somebody
+       else's logo, and this is a sentence naming a membership the operator
+       confirmed, said the same way the rest of the site says it. It takes the
+       first slot because the list is capped at four and this is the strongest
+       item on it for the shop that has it. */
+    ...(network
+      ? [{
+          icon: <ShieldCheck className="h-[18px] w-[18px] text-[var(--brand-light)]" />,
+          b: network.label,
+          s: `${network.short} claims handled here`,
+        }]
+      : []),
     ...(reviews
       ? [{
           icon: <GoogleG size={18} />,

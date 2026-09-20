@@ -19,6 +19,8 @@ import {
 } from 'lucide-react'
 import {
   SectionHead,
+  NetworkBand,
+  NetworkBadge,
   ReviewsBand,
   StatBand,
   ProcessSection,
@@ -39,9 +41,12 @@ import {
 import type { SiteExtras } from '@/lib/site-content'
 import {
   affiliationLine,
+  networkHighlight,
+  type NetworkHighlight,
   type InsuranceProgram,
   type ProgramRecord,
 } from '@/lib/insurance-programs'
+import { insurerNoun } from '@/lib/insurance-rules'
 import { withDefaultFaq } from '@/lib/site-faq'
 import type { SiteLocation } from '@/lib/client-locations'
 
@@ -311,7 +316,15 @@ export function buildTrustItems(
       ? [{ icon: <ScanLine className="h-5 w-5" />, title: 'ADAS calibration included', text: 'No second trip to the dealer' }]
       : []),
     flags.filesInsuranceClaims
-      ? { icon: <ShieldCheck className="h-5 w-5" />, title: 'Insurance claims handled', text: 'We work with your carrier directly' }
+      ? {
+          icon: <ShieldCheck className="h-5 w-5" />,
+          title: 'Insurance claims handled',
+          // NOT "your carrier". In a public-insurer province there is one
+          // insurer and no market to have a carrier in — this strip sits in
+          // the hero, so it was the first insurance sentence a BC visitor
+          // read. See PUBLIC_INSURERS in insurance-rules.ts.
+          text: `We work with ${insurerNoun(client.state)} directly`,
+        }
       : { icon: <ShieldCheck className="h-5 w-5" />, title: 'Insurance or cash', text: 'We quote it both ways so you can choose' },
     ...(extras.warrantyText
       ? [{ icon: <BadgeCheck className="h-5 w-5" />, title: extras.warrantyTitle || 'Workmanship warranty', text: 'Full terms further down this page' }]
@@ -353,7 +366,11 @@ function echoes(item: TrustItem, spoken: Set<string>): boolean {
  * the first real section. The caller drops the trust strip when it is falling
  * back to these.
  */
-export function defaultHeroBullets(flags: SiteFlags): Array<{ lead: string; text: string }> {
+export function defaultHeroBullets(
+  flags: SiteFlags,
+  /** `Client.state`, so a public-insurer province names its insurer. */
+  state?: string | null
+): Array<{ lead: string; text: string }> {
   return [
     ...(flags.offersMobileService
       ? [{ lead: 'Mobile service available.', text: 'Home, office, or roadside.' }]
@@ -362,9 +379,37 @@ export function defaultHeroBullets(flags: SiteFlags): Array<{ lead: string; text
       ? [{ lead: 'ADAS calibration included.', text: 'No second trip to the dealer.' }]
       : []),
     flags.filesInsuranceClaims
-      ? { lead: 'Insurance claims handled.', text: 'We work with your carrier directly.' }
+      ? {
+          lead: 'Insurance claims handled.',
+          text: `We work with ${insurerNoun(state)} directly.`,
+        }
       : { lead: 'Insurance or cash.', text: 'We quote it both ways so you can choose.' },
     { lead: 'Free quote first.', text: 'A real price before anything is booked.' },
+  ]
+}
+
+/**
+ * The header nav, with the claim page in FRONT of the services.
+ *
+ * THE HEADER IS WIDTH-BUDGETED — four service links plus both buttons already
+ * do not fit an lg row (see SiteHeader), so this does not add a fifth item, it
+ * SPENDS one: the network link takes the first slot and the services drop to
+ * three. On the shop this is for, "ICBC claims" is worth more than a fourth
+ * service link.
+ *
+ * Only when the page is actually published. `network.path` is null until
+ * then, and a nav entry pointing at an unpublished page would put a 404 in the
+ * header of every page on the site.
+ */
+export function withNetworkNav(
+  network: NetworkHighlight | null,
+  basePath: string,
+  serviceLinks: Array<{ href: string; label: string }>
+): Array<{ href: string; label: string }> {
+  if (!network?.path) return serviceLinks.slice(0, 4)
+  return [
+    { href: `${basePath}${network.path}`, label: `${network.short} claims` },
+    ...serviceLinks.slice(0, 3),
   ]
 }
 
@@ -425,8 +470,24 @@ export function SiteBody({
     .filter((s) => s.slug !== currentServiceSlug)
     .slice(0, flags.offersMobileService ? 5 : 6)
 
+  // The membership, on every page rather than only on the claim page — see
+  // networkHighlight. Computed here so SiteBody's own affiliation line and
+  // this band can never disagree about whether the shop is in a network.
+  const network = networkHighlight(
+    insuranceProgram?.program ?? null,
+    insuranceProgram?.record ?? null,
+    { businessName: client.businessName, filesClaims: !!flags.filesInsuranceClaims }
+  )
+
   return (
     <>
+      {/* THE FIRST THING UNDER THE HERO. Most paid clicks land on a service or
+          city page, and this is the strongest thing those visitors can be
+          told — it used to be readable only by somebody who had already found
+          the claim page. Strips itself for the fourteen shops with no
+          network, so every other site is unchanged. */}
+      {network && <NetworkBand network={network} basePath={basePath} />}
+
       {/* Services — capped at 6 cards so the grid never leaves an open gap */}
       {gridServices.length > 0 && (
         <section className="border-t border-[var(--line)]">
@@ -612,10 +673,13 @@ export function SiteChrome({
   locations = [],
   linkableCities,
   pages = [],
+  insuranceProgram,
 }: {
   client: SiteClient
   flags: SiteFlags
   reviews: ReviewsData | null
+  /** Same record SiteBody takes — the footer carries the network mark too. */
+  insuranceProgram?: { program: InsuranceProgram | null; record: ProgramRecord | null }
   extras: SiteExtras
   services: Array<{ slug: string; name: string; short: string }>
   areas: string[]
@@ -627,6 +691,11 @@ export function SiteChrome({
   return (
     <>
       <SiteFooter
+        network={networkHighlight(
+          insuranceProgram?.program ?? null,
+          insuranceProgram?.record ?? null,
+          { businessName: client.businessName, filesClaims: !!flags.filesInsuranceClaims }
+        )}
         client={client}
         extras={extras}
         services={services}

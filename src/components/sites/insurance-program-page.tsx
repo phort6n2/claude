@@ -23,6 +23,8 @@ import {
   SkipLink,
   TrustRow,
   ChapterSections,
+  SectionHead,
+  NumberedSteps,
   type ReviewsData,
   type ReviewQuote,
 } from '@/components/sites/shared'
@@ -34,6 +36,7 @@ import {
   buildTrustItems,
   defaultHeroBullets,
   prioritizeServices,
+  withNetworkNav,
 } from '@/components/sites/site-body'
 import { getSiteExtras } from '@/lib/site-content'
 import { heroCostLineFor } from '@/lib/insurance-rules'
@@ -60,6 +63,7 @@ import {
   type InsuranceProgram,
   type ProgramCopyContext,
   type ProgramRecord,
+  networkHighlight,
 } from '@/lib/insurance-programs'
 
 /**
@@ -272,9 +276,21 @@ export default async function InsuranceProgramPage({ params }: PageProps) {
     filesInsuranceClaims: client.filesInsuranceClaims,
     smsCapable: client.smsCapable,
   }
-  const nav = prioritizeServices(services)
-    .slice(0, 4)
-    .map((s) => ({ href: `${basePath}${servicePath(s.slug, overrides)}`, label: s.name }))
+  // The repair-network mark, for the top bar and the nav. SiteBody and
+  // SiteChrome derive their own from the same record, so nothing here can
+  // claim a network another band on the page does not.
+  const network = networkHighlight(program, record, {
+    businessName: client.businessName,
+    filesClaims: client.filesInsuranceClaims,
+  })
+  const nav = withNetworkNav(
+    network,
+    basePath,
+    prioritizeServices(services).map((s) => ({
+      href: `${basePath}${servicePath(s.slug, overrides)}`,
+      label: s.name,
+    }))
+  )
 
   const linkableCities = new Set(
     areas
@@ -283,7 +299,7 @@ export default async function InsuranceProgramPage({ params }: PageProps) {
   )
 
   const wroteOwnBullets = extras.heroBullets.length > 0
-  const heroBullets = wroteOwnBullets ? extras.heroBullets : defaultHeroBullets(flags)
+  const heroBullets = wroteOwnBullets ? extras.heroBullets : defaultHeroBullets(flags, client.state)
   const trustItems = wroteOwnBullets ? buildTrustItems(client, flags, extras, heroBullets) : []
 
   const heading = programTitle(program, ctx)
@@ -328,6 +344,7 @@ export default async function InsuranceProgramPage({ params }: PageProps) {
 
       <SkipLink />
       <UtilBar
+        network={network}
         client={client}
         note={servingLine(client, {
           mobile: client.offersMobileService,
@@ -448,6 +465,7 @@ export default async function InsuranceProgramPage({ params }: PageProps) {
       </main>
 
       <SiteChrome
+        insuranceProgram={{ program, record }}
         client={client}
         flags={flags}
         reviews={reviews}
@@ -465,28 +483,28 @@ export default async function InsuranceProgramPage({ params }: PageProps) {
   )
 }
 
-/** The operator's claim steps, numbered. Strips itself when there are none. */
+/**
+ * The operator's claim steps. Strips itself when there are none.
+ *
+ * THE SAME BLOCK "how it works" USES, not a card grid of its own. The first
+ * version was plain white boxes with small number chips, no eyebrow and no
+ * connector — a band that looked like a different website from the one
+ * directly above it, and with four steps in a fixed three-column grid the
+ * fourth sat alone under a half-empty row, reading as a layout that had given
+ * up rather than as a step. `NumberedSteps` owns both the look and the column
+ * count now; see `stepColumns`.
+ */
 function ProgramSteps({ steps, short }: { steps: string[]; short: string }) {
   if (steps.length === 0) return null
   return (
     <section className="bg-[var(--s2)] border-t border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
-        <h2 className="text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight m-0">
-          How the {short === 'insurance' ? 'claim' : `${short} claim`} works
-        </h2>
-        <ol className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 list-none p-0">
-          {steps.map((step, i) => (
-            <li
-              key={i}
-              className="bg-white rounded-[20px] border border-[var(--line-card)] shadow-sm p-6"
-            >
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--tint-accent)] text-[var(--brand)] font-extrabold">
-                {i + 1}
-              </span>
-              <p className="mt-3 mb-0 text-[15px] text-[var(--tx2)] leading-relaxed">{step}</p>
-            </li>
-          ))}
-        </ol>
+        <SectionHead
+          eyebrow="The claim"
+          title={`How the ${short === 'insurance' ? 'claim' : `${short} claim`} works`}
+          lead="Start with the form or a call — we will tell you what it costs before anything is booked."
+        />
+        <NumberedSteps steps={steps.map((body) => ({ body }))} />
       </div>
     </section>
   )
