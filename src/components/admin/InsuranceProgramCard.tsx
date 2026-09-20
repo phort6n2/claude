@@ -11,6 +11,7 @@ import {
   publishProblem,
   type ProgramKey,
 } from '@/lib/insurance-programs'
+import { publicInsurerFor } from '@/lib/insurance-rules'
 
 /**
  * The insurance-claim landing page — see lib/insurance-programs.ts.
@@ -42,6 +43,7 @@ export default function InsuranceProgramCard({
   siteUrl,
   initial,
   suggested,
+  state,
 }: {
   clientId: string
   /** The site's own origin, so the preview link goes to the real page. */
@@ -49,7 +51,14 @@ export default function InsuranceProgramCard({
   initial: Saved | null
   /** The programme this shop's province points at — a suggestion, never a default. */
   suggested: ProgramKey
+  /** `Client.state`, so a BC shop is told the network tick is in here. */
+  state: string | null
 }) {
+  // THE TICK IS THE REASON SOMEBODY OPENS THIS CARD, and until it is added
+  // the card says nothing about it — so an operator looking for "where do I
+  // mark them as in the ICBC network" finds a card about landing pages and
+  // moves on. The collapsed state names it.
+  const publicInsurer = publicInsurerFor(state)
   const [on, setOn] = useState(!!initial)
   const [key, setKey] = useState<ProgramKey>(
     (initial?.programKey as ProgramKey) || suggested
@@ -124,6 +133,15 @@ export default function InsuranceProgramCard({
           or &ldquo;ICBC&rdquo; ad group should land: a click on an ad about the claim currently
           arrives on a page that answers it two-thirds of the way down.
         </p>
+        {publicInsurer && (
+          <p className="mt-2 text-sm text-gray-500">
+            This is also where you mark this shop as part of{' '}
+            <span className="font-medium text-gray-700">{publicInsurer.short}</span>&rsquo;s repair
+            network — add the {publicInsurer.short} page and the tick is inside it. That one tick
+            changes the small print under the insurance band on every page of the site, so the
+            site cannot claim the network in one place and deny any affiliation in another.
+          </p>
+        )}
         <button
           type="button"
           onClick={() => setOn(true)}

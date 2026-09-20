@@ -40,13 +40,23 @@ Two things worth knowing before you do:
   reach it** — ad copy is written by an operator for one named shop, so it may
   simply be true. `asset-claims` only fires where a fact on our side
   contradicts it. Decide it on the facts, not on the page.
-- **The BC insurance band still reads as US private insurance.** With
-  `state: BC`, `insurance-rules.ts` falls through to the standard answer —
-  "your comprehensive deductible applies", "most carriers" — which is the
-  wrong shape for a province with a public monopoly insurer. Nothing here can
-  source the right copy, so it is not guessed. If you write the ICBC coverage
-  note, that is the page that answers the question properly; the band is
-  still worth a pass with you and whoever reviews compliance.
+- **Their own site's "Premier Vendor with major insurance providers such as
+  Family Insurance, BCAA, and Manitoba Public Insurance" is NOT carried over,
+  deliberately.** That is §2's preferred-provider claim — a statement about
+  how an insurer ranks them rather than a network they can prove they are in —
+  and it is the one insurer claim these sites may never make. Being in the
+  ICBC Repair Network is different and it does go on the page, because it is
+  membership and it is checkable. If "Premier Vendor" is a real, named status
+  with terms, tell me what it is and it can be looked at; as a phrase it
+  cannot go on a template site.
+
+Already handled, so you do not need to do anything about it: the BC insurance
+copy no longer reads as US private insurance. `state: BC` used to fall through
+to "most carriers", "your carrier" and "every carrier and policy is different"
+— a market with one insurer in it — across the hero cost line, the insurance
+band, its small print and the default FAQ. Those now name ICBC. The
+deductible question is still not answered anywhere, because nothing here can
+source it; the coverage note you write is what answers it.
 
 ### 0.00b Every other client: the general insurance claims page
 **Blocks:** nothing, and it needs no typing.

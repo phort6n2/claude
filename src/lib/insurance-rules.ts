@@ -40,6 +40,94 @@ export type GlassDeductibleRule =
   | 'optional'
   /** No special rule — the ordinary comprehensive deductible applies. */
   | 'standard'
+  /**
+   * ONE PUBLIC INSURER, NOT A MARKET. See `PUBLIC_INSURERS`.
+   *
+   * Everything else in this file is written for a driver choosing among
+   * private carriers, and every sentence of it is wrong in the provinces
+   * where there is no choosing: "most carriers", "your carrier", "check with
+   * your carrier" name a market that does not exist there. So this rule is
+   * not a softer version of `standard` — it is the case where the DEFAULT
+   * copy is the false claim.
+   */
+  | 'public'
+
+/**
+ * The provinces where auto insurance is a public monopoly.
+ *
+ * ONE LIST, HERE, because this is the leaf module — `insurance-programs.ts`
+ * builds its landing-page catalogue from it rather than restating the names,
+ * and the hosted site's insurance band, the hero cost line and the default
+ * FAQ all ask this file who the driver is actually dealing with. Two copies
+ * of "who insures a driver in British Columbia" is the shape this codebase
+ * keeps refusing.
+ *
+ * QUEBEC IS DELIBERATELY ABSENT. The SAAQ covers bodily injury; property
+ * damage — which is all glass ever is — goes through a private insurer, so a
+ * Quebec driver really does have a carrier and the ordinary copy is right for
+ * them. Alberta, Ontario and the rest are private markets throughout.
+ */
+export interface PublicInsurer {
+  /** Province code, matching `Client.state`. */
+  province: string
+  /** What a driver calls it. */
+  short: string
+  /** The full legal name, for the one place copy introduces it. */
+  full: string
+  /**
+   * What is known about how glass sits in their coverage, or null.
+   *
+   * Null is the honest default and stays null until somebody sources it.
+   * "SGI is the auto insurer in Saskatchewan" is a fact about the province;
+   * what SGI pays for is a fact about a policy, and this platform is not the
+   * driver's insurer.
+   */
+  coverageLine: string | null
+}
+
+export const PUBLIC_INSURERS: Record<string, PublicInsurer> = {
+  BC: {
+    province: 'BC',
+    short: 'ICBC',
+    full: 'the Insurance Corporation of British Columbia',
+    // Sourced from a BC shop's own published ICBC page, which states the
+    // claim in these terms: comprehensive coverage, glass-only damage. The
+    // rest of what that page says — that a Repair Network facility can submit
+    // the claim without the driver contacting ICBC — is gated on a per-shop
+    // flag in insurance-programs.ts, because it is only true at such a shop.
+    coverageLine:
+      'Glass sits under the comprehensive part of your coverage, so what you pay depends on the coverage you hold.',
+  },
+  SK: {
+    province: 'SK',
+    short: 'SGI',
+    full: 'Saskatchewan Government Insurance',
+    coverageLine: null,
+  },
+  MB: {
+    province: 'MB',
+    short: 'MPI',
+    full: 'Manitoba Public Insurance',
+    coverageLine: null,
+  },
+}
+
+/** The public insurer for this place, or null in a private market. */
+export function publicInsurerFor(state: string | null | undefined): PublicInsurer | null {
+  return PUBLIC_INSURERS[(state || '').trim().toUpperCase()] || null
+}
+
+/**
+ * Who the driver is actually dealing with, for copy to name.
+ *
+ * "ICBC" in British Columbia, "your carrier" everywhere else. Every line on
+ * these sites that used to hardcode the second now asks this, because on a
+ * BC shop's page "check with your carrier" tells a driver to ring somebody
+ * who does not exist.
+ */
+export function insurerNoun(state: string | null | undefined): string {
+  return publicInsurerFor(state)?.short || 'your carrier'
+}
 
 export interface StateInsuranceRule {
   rule: GlassDeductibleRule
@@ -117,6 +205,26 @@ const STANDARD: StateInsuranceRule = {
  */
 export function insuranceForState(state: string | null | undefined): StateInsuranceRule {
   const code = (state || '').trim().toUpperCase()
+  // A public-insurer province first: the STANDARD answer below is not a
+  // weaker version of the truth there, it is a description of a private
+  // market the driver is not in.
+  const publicInsurer = PUBLIC_INSURERS[code]
+  if (publicInsurer) {
+    const name = STATE_NAMES[code] || publicInsurer.province
+    return {
+      rule: 'public',
+      summary: [
+        `In ${name} a glass claim goes through ${publicInsurer.short} rather than a private insurer.`,
+        publicInsurer.coverageLine,
+        `Check your policy with ${publicInsurer.short} before you commit to anything — we are not your insurer and cannot read your coverage for you.`,
+      ]
+        .filter(Boolean)
+        .join(' '),
+      // No note. There is a real one to write here about deductibles and
+      // about what a claim does to a driver's record, and nothing in this
+      // app can source either — so the card is shorter rather than confident.
+    }
+  }
   return STATE_RULES[code] || STANDARD
 }
 
@@ -150,11 +258,37 @@ export function heroCostLineFor(state: string | null | undefined): string {
   if (rule.rule === 'automatic' && name) {
     return `In ${name}, a comprehensive policy can’t put a deductible on a windshield replacement — for most drivers that’s nothing out of pocket.`
   }
+  // A PUBLIC-INSURER PROVINCE GETS NEITHER OF THE OTHER TWO LINES. "Most
+  // carriers" is a claim about a market with one insurer in it, and this is
+  // the first line under the H1 on every page — the single most-read sentence
+  // on the site.
+  const publicInsurer = publicInsurerFor(state)
+  if (publicInsurer && name) {
+    return `In ${name}, a glass claim goes through ${publicInsurer.short} — what you pay depends on the coverage you hold, so it’s worth checking before you book.`
+  }
   return 'Most carriers waive the deductible entirely on a chip repair — if yours can still be repaired, that’s usually the cheapest way out.'
 }
 
+/**
+ * Only true where there ARE most carriers. See `CHIP_DEDUCTIBLE_NOTE_FOR`.
+ */
 export const CHIP_DEDUCTIBLE_NOTE =
   'Most carriers waive the deductible on a chip repair even where a replacement would carry one — a repair costs them a fraction of new glass.'
+
+/**
+ * The chip-repair deductible point, or '' where it cannot be claimed.
+ *
+ * Dropped in a statutory-waiver state, where it only restates what the card
+ * opposite just said, and dropped in a public-insurer province, where "most
+ * carriers" describes a market of one. `CHIP_REPAIRABLE_NOTE` carries the
+ * half that is true everywhere, because it is about glass rather than about
+ * insurance.
+ */
+export function chipDeductibleNoteFor(state: string | null | undefined): string {
+  const rule = insuranceForState(state)
+  if (rule.rule === 'automatic' || rule.rule === 'public') return ''
+  return CHIP_DEDUCTIBLE_NOTE
+}
 
 export const CHIP_REPAIRABLE_NOTE =
   'Damage smaller than a dollar bill, out of the driver’s line of sight and away from the edge, can usually still be repaired — which is quicker, cheaper, and keeps the original factory seal. Once it spreads, it is a replacement, so it is worth calling early.'

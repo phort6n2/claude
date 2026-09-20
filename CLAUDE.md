@@ -440,7 +440,13 @@ at it. Two kinds, one mechanism.
   MEMBERSHIP and never endorsement, and it renders NOTHING for a programme
   whose network name this platform has not confirmed (SGI, MPI). A membership
   claim with nothing named is unfalsifiable, and a hedge would be worse than
-  silence.
+  silence. The tick's real value to a reader is `networkProcessLine` — what
+  being in the network CHANGES ("you do not need to contact ICBC yourself"),
+  sourced from a BC shop's own published page — not the badge. Set on the
+  **Website tab → Insurance claims page**, and the collapsed card names it for
+  a shop in a public-insurer province, because "where do I mark them as in the
+  network" is the question that brings somebody to this card and it used to
+  talk only about landing pages.
 - **THE DISCLAIMER HAD TO MOVE WITH IT.** The insurance band's small print
   ends "not affiliated with or endorsed by any insurance company" — true for
   fourteen of fifteen and flatly untrue on a site that says elsewhere the shop
@@ -462,6 +468,37 @@ at it. Two kinds, one mechanism.
   cases first: no network claim without the tick, no invented coverage, no
   hedge for an unconfirmed network, and the disclaimer byte-for-byte unchanged
   for the fourteen shops with no programme.
+
+**A PUBLIC-INSURER PROVINCE HAS NO "CARRIER", AND EVERY SHARED LINE SAID IT
+DID** (`PUBLIC_INSURERS` and `insurerNoun()` in `insurance-rules.ts`). With
+`state: BC` every piece of insurance copy fell through to the private-market
+answer, so a British Columbian shop's own site told its customers that "most
+carriers waive the deductible on a chip repair", to "check with your carrier",
+and that "every carrier and policy is different" — in a province with exactly
+one insurer, which is not a softer truth but a description of a market the
+reader is not in. Nothing goes red for it: it renders perfectly, it reads
+fluently, and the only person who can see it is somebody who lives there.
+
+- `insuranceForState` returns a **`'public'`** rule for BC (ICBC), SK (SGI)
+  and MB (MPI), naming the insurer and pointing the driver at them. `note` is
+  deliberately absent: there is a real one to write about deductibles and
+  about what a claim does to a record, and nothing here can source either, so
+  the card is SHORTER rather than confident.
+- **QUEBEC IS NOT ON THE LIST.** The SAAQ covers bodily injury; glass is
+  property damage and goes through a private insurer, so a Quebec driver
+  really does have a carrier. Alberta and Ontario are private markets
+  throughout. Adding a province here is a claim about that province.
+- `insurerNoun()` is what the hero cost line, the insurance band's four
+  "carrier" sentences, its disclaimer and the default FAQ all ask, so the name
+  is decided once. `chipDeductibleNoteFor()` drops the "most carriers waive
+  it" point where there is no market to waive it.
+- **`insurance-programs.ts` BUILDS ITS CATALOGUE FROM THIS TABLE.** The leaf
+  module already had to know who insures a driver in British Columbia, and a
+  second list of insurer names is the copy that drifts — as one page calling
+  it ICBC while another says "your carrier", which is the bug itself.
+- The `coverageLine` on an entry is null until somebody SOURCES it. "SGI is
+  the auto insurer in Saskatchewan" is a fact about the province; what SGI
+  pays for is a fact about a policy, and this platform is not the insurer.
 
 **Headlines name an AREA, not the address** (`site-area.ts`, `Client.marketArea`,
 edited on the Website tab; bootstrap: `MARKET_AREA_SQL`). A shop sits in one
@@ -1789,9 +1826,11 @@ client says the leads are bad.
   network dependency inside a build looks like when it breaks. Do not put it
   back. Refreshing the files means re-reading Google's `css2` output; they rev
   the URL when the font revs.
-- `insurance-rules.ts` — per-state glass deductible rules, and
+- `insurance-rules.ts` — per-state glass deductible rules, `PUBLIC_INSURERS`
+  / `insurerNoun()` for the provinces with one public insurer, and
   `heroCostLineFor()` for the above-the-fold cost line. All of it already
-  compliance-reviewed; reuse it rather than writing new insurance copy.
+  compliance-reviewed; reuse it rather than writing new insurance copy, and
+  never hardcode "your carrier" — ask `insurerNoun()`.
 - `vin-decode.ts` — free NHTSA vPIC decode. **Blank driver-assist fields mean
   unknown, not absent**, so there is no "no camera" verdict — only likely /
   possible / unknown. A wrong "no calibration needed" gets one skipped.

@@ -43,6 +43,14 @@ import {
   type ProgramRecord,
 } from '../src/lib/insurance-programs'
 import { pathOverrideProblem } from '../src/lib/site-paths'
+import {
+  heroCostLineFor,
+  insuranceForState,
+  insurerNoun,
+  chipDeductibleNoteFor,
+  PUBLIC_INSURERS,
+} from '../src/lib/insurance-rules'
+import { defaultFaq } from '../src/lib/site-faq'
 
 let failures = 0
 const fail = (msg: string) => {
@@ -315,6 +323,77 @@ console.log('\nThe headline names the AREA, not the address')
   if (!/\bgeneral\b/i.test(general) && /Insurance glass claims/.test(general)) {
     pass(`${general} — the general page names no insurer, and does not call itself "general"`)
   } else fail(`the general page's headline leaked its key: ${general}`)
+}
+
+console.log('\nNO US PRIVATE-INSURANCE COPY REACHES A PUBLIC-INSURER PROVINCE')
+{
+  /* The failure this replaced was silent and total: with `state: BC` every
+     shared line fell through to the private-market answer, so a BC shop's own
+     site told its customers to ring "your carrier" and that "most carriers"
+     waive a deductible — in a province with exactly one insurer. Nothing goes
+     red for that. It renders perfectly, it reads fluently, and the only
+     person who can see it is a British Columbian who knows better. */
+  const MARKET = /most carriers|every carrier|your carrier|shop around/i
+
+  for (const [code, insurer] of Object.entries(PUBLIC_INSURERS)) {
+    const shared = [
+      insuranceForState(code).summary,
+      insuranceForState(code).note || '',
+      heroCostLineFor(code),
+      chipDeductibleNoteFor(code),
+      ...defaultFaq({ state: code, offersAdasCalibration: true }).map((f) => f.a),
+      ...programSections(
+        INSURANCE_PROGRAMS.general,
+        record({ programKey: 'general' }),
+        { ...AGS, state: code }
+      ).map((x) => x.body),
+    ].join(' ')
+
+    const hit = shared.match(MARKET)
+    if (!hit) pass(`${code}: no private-market wording anywhere in the shared copy`)
+    else fail(`${code} still talks about a market of carriers: “${hit[0]}”`)
+
+    if (shared.includes(insurer.short)) pass(`${code}: names ${insurer.short} instead`)
+    else fail(`${code}: never names ${insurer.short}, so the copy says nothing useful`)
+
+    if (insurerNoun(code) === insurer.short) pass(`${code}: insurerNoun is ${insurer.short}`)
+    else fail(`${code}: insurerNoun answered "${insurerNoun(code)}"`)
+
+    // The chip-repair deductible point is a claim about a market of insurers
+    // competing on the cost of a repair. There is no market here.
+    if (chipDeductibleNoteFor(code) === '') pass(`${code}: the "most carriers waive it" note is dropped`)
+    else fail(`${code}: kept a note about most carriers`)
+  }
+
+  // Quebec is NOT one of these: the SAAQ covers bodily injury and glass is
+  // property damage, so a Quebec driver really does have a carrier.
+  if (insurerNoun('QC') === 'your carrier') pass('QC keeps the private-market copy — glass there is private')
+  else fail('QC was treated as a public-insurer province')
+  for (const code of ['AB', 'ON', 'TX', 'FL']) {
+    if (insurerNoun(code) === 'your carrier') pass(`${code} is unchanged`)
+    else fail(`${code} was treated as a public-insurer province`)
+  }
+  // And the states with a law of their own keep it, byte for byte.
+  if (/Florida law/.test(insuranceForState('FL').summary)) pass('Florida keeps its statute copy')
+  else fail('the Florida rule was disturbed')
+  if (insuranceForState('TX').rule === 'standard') pass('an ordinary state still gets the standard answer')
+  else fail('an ordinary state changed rule')
+}
+
+console.log('\nTHE NETWORK TICK CARRIES THE ONE FACT THAT CHANGES THE DRIVER\'S DAY')
+{
+  // The badge is not the point — "you do not have to ring ICBC yourself" is,
+  // and it is only true at a Repair Network shop, so it is gated on the tick.
+  const off = networkSentence(INSURANCE_PROGRAMS.icbc, record(), AGS)
+  if (off === '') pass('nothing about the claim process without the tick')
+  else fail(`leaked the network process line: ${off}`)
+
+  const on = networkSentence(INSURANCE_PROGRAMS.icbc, record({ inNetwork: true }), AGS)
+  if (/do not need to contact ICBC yourself/.test(on)) pass('ticked, it says what the network changes')
+  else fail(`the tick says nothing useful: ${on}`)
+  if (/approved|preferred|endorse|recommend|premier vendor/i.test(on)) {
+    fail('the process line reads as an endorsement')
+  } else pass('and still carries no endorsement wording')
 }
 
 console.log('\nEvery catalogue entry is coherent')

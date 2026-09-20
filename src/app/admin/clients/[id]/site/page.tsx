@@ -45,6 +45,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         clientId={client.id}
         siteUrl={siteOriginFor(client)}
         suggested={suggestedProgram(client.state).key}
+        state={client.state}
         initial={
           program
             ? {

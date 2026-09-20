@@ -1,4 +1,11 @@
-import { insuranceForState, stateNameFor, CHIP_REPAIRABLE_NOTE } from '@/lib/insurance-rules'
+import {
+  insuranceForState,
+  insurerNoun,
+  stateNameFor,
+  CHIP_REPAIRABLE_NOTE,
+  PUBLIC_INSURERS,
+  type PublicInsurer,
+} from '@/lib/insurance-rules'
 
 /**
  * A LANDING PAGE ABOUT THE CLAIM, because "do you take insurance" is the
@@ -78,8 +85,40 @@ export interface InsuranceProgram {
    * nothing: see the note at the top.
    */
   networkName: string | null
+  /**
+   * What being in that network CHANGES for the driver, or null.
+   *
+   * The tick's whole value to somebody reading the page is this sentence, not
+   * the badge — "we can do the claim without you ringing them" is the reason
+   * to book here rather than anywhere. It is gated on the tick because it is
+   * only true at such a shop, and it stays null until sourced, for the same
+   * reason `networkName` does.
+   */
+  networkProcessLine: string | null
   /** True when the page's coverage copy has to be typed by an operator. */
   needsTypedCoverage: boolean
+}
+
+/**
+ * Names come from `PUBLIC_INSURERS`, never from a second list here.
+ *
+ * `insurance-rules.ts` is the leaf and already had to know who insures a
+ * driver in British Columbia — the insurance band, the hero cost line and the
+ * default FAQ all ask it. A catalogue that restated the names would be the
+ * copy that drifts, and the drift would show up as one page calling it ICBC
+ * and another calling it "your carrier".
+ */
+function named(
+  insurer: PublicInsurer,
+  extra: Pick<InsuranceProgram, 'key' | 'slug' | 'networkName' | 'networkProcessLine'>
+): InsuranceProgram {
+  return {
+    short: insurer.short,
+    full: insurer.full,
+    province: insurer.province,
+    needsTypedCoverage: true,
+    ...extra,
+  }
 }
 
 export const INSURANCE_PROGRAMS: Record<ProgramKey, InsuranceProgram> = {
@@ -90,39 +129,32 @@ export const INSURANCE_PROGRAMS: Record<ProgramKey, InsuranceProgram> = {
     province: null,
     slug: 'insurance-glass-claims',
     networkName: null,
+    networkProcessLine: null,
     // Its coverage copy is the reviewed per-state rule. Nothing to type.
     needsTypedCoverage: false,
   },
-  icbc: {
+  // Confirmed against the shop's own published ICBC page and with the
+  // operator, for this one programme. The others stay null until somebody
+  // confirms them the same way — see the top of this file.
+  icbc: named(PUBLIC_INSURERS.BC, {
     key: 'icbc',
-    short: 'ICBC',
-    full: 'the Insurance Corporation of British Columbia',
-    province: 'BC',
     slug: 'icbc-glass-claims',
-    // Confirmed against the shop's own site and the operator, for this one
-    // programme. The others stay null until somebody confirms them the same
-    // way — see the top of this file.
     networkName: 'the ICBC Repair Network',
-    needsTypedCoverage: true,
-  },
-  sgi: {
+    networkProcessLine:
+      'If only the glass is damaged and there is no other body damage, you do not need to contact ICBC yourself — we can submit the claim for you and deal with the paperwork.',
+  }),
+  sgi: named(PUBLIC_INSURERS.SK, {
     key: 'sgi',
-    short: 'SGI',
-    full: 'Saskatchewan Government Insurance',
-    province: 'SK',
     slug: 'sgi-glass-claims',
     networkName: null,
-    needsTypedCoverage: true,
-  },
-  mpi: {
+    networkProcessLine: null,
+  }),
+  mpi: named(PUBLIC_INSURERS.MB, {
     key: 'mpi',
-    short: 'MPI',
-    full: 'Manitoba Public Insurance',
-    province: 'MB',
     slug: 'mpi-glass-claims',
     networkName: null,
-    needsTypedCoverage: true,
-  },
+    networkProcessLine: null,
+  }),
 }
 
 export const PROGRAM_KEYS = Object.keys(INSURANCE_PROGRAMS) as ProgramKey[]
@@ -318,7 +350,7 @@ export function programSections(
     // of it states what the programme pays for.
     body: [
       'It goes faster if you have these to hand when you call or fill in the form:',
-      `Your driver's licence, the vehicle's plate number, where and when the damage happened, and a photo of the damage if you can get one. If ${claimNumberHolder(program)} has already given you a claim number, have that too.`,
+      `Your driver's licence, the vehicle's plate number, where and when the damage happened, and a photo of the damage if you can get one. If ${claimNumberHolder(program, ctx)} has already given you a claim number, have that too.`,
       `Not sure whether it is a repair or a replacement? Send the photo with your quote request and we will tell you. ${CHIP_REPAIRABLE_NOTE}`,
     ].join('\n\n'),
   })
@@ -346,14 +378,21 @@ function coverageHeading(state: string | null | undefined): string {
   return name ? `What your policy covers in ${name}` : 'What your policy covers'
 }
 
-/** Who the driver would have got a claim number from. */
-function claimNumberHolder(program: InsuranceProgram): string {
-  return program.key === 'general' ? 'your carrier' : program.short
+/**
+ * Who the driver would have got a claim number from.
+ *
+ * The GENERAL page still names the real insurer in a public-insurer province:
+ * a BC shop that uses the general page rather than the ICBC one must not tell
+ * its readers to ring "your carrier". Same rule, same table — see
+ * `insurerNoun` in insurance-rules.ts.
+ */
+function claimNumberHolder(program: InsuranceProgram, ctx: ProgramCopyContext): string {
+  return program.key === 'general' ? insurerNoun(ctx.state) : program.short
 }
 
 /** Gated on `filesInsuranceClaims`, exactly as the insurance band is. */
 function claimHandlingLine(program: InsuranceProgram, ctx: ProgramCopyContext): string {
-  const who = claimNumberHolder(program)
+  const who = claimNumberHolder(program, ctx)
   return ctx.filesClaims
     ? `We deal with ${who} directly. Give us your claim details and we handle the paperwork from there, so you are not on the phone about it.`
     : `We will check your coverage with you before you commit to anything, and give ${who} everything they need from our side: the exact glass, the part numbers and a written quote.`
@@ -377,7 +416,9 @@ export function networkSentence(
   ctx: ProgramCopyContext
 ): string {
   if (!record.inNetwork || !program.networkName) return ''
-  return `${ctx.businessName} is part of ${program.networkName}.`
+  return [`${ctx.businessName} is part of ${program.networkName}.`, program.networkProcessLine]
+    .filter(Boolean)
+    .join(' ')
 }
 
 /**

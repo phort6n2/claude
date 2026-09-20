@@ -1,5 +1,5 @@
 import type { FaqItem } from '@/lib/site-content'
-import { insuranceForState, stateNameFor } from '@/lib/insurance-rules'
+import { insuranceForState, insurerNoun, stateNameFor } from '@/lib/insurance-rules'
 
 /**
  * The questions every glass customer asks, answered once for every shop.
@@ -22,12 +22,19 @@ import { insuranceForState, stateNameFor } from '@/lib/insurance-rules'
  * never asks the same thing twice.
  */
 
-function rateAnswer(): string {
+function rateAnswer(state?: string | null): string {
+  // "Every carrier and policy is different" describes a market, and in a
+  // public-insurer province there is one insurer — so the sentence sends a
+  // driver to shop around a choice they do not have. See PUBLIC_INSURERS.
+  const insurer = insurerNoun(state)
+  const whoConfirms =
+    insurer === 'your carrier'
+      ? 'Every carrier and policy is different, though, so your carrier is the one who can confirm it for yours.'
+      : `Policies differ, though, so ${insurer} is the one who can confirm it for yours.`
   return (
     'Glass damage is handled under the comprehensive part of your policy, not collision or ' +
     'liability, and comprehensive claims are generally treated differently from an at-fault ' +
-    'accident. Every carrier and policy is different, though, so your carrier is the one who ' +
-    'can confirm it for yours. Either way, nothing is filed until you tell us to.'
+    `accident. ${whoConfirms} Either way, nothing is filed until you tell us to.`
   )
 }
 
@@ -71,7 +78,7 @@ export function defaultFaq(opts: {
   offersWindshieldRepair?: boolean
 }): FaqItem[] {
   const items: FaqItem[] = [
-    { q: 'Will filing a glass claim raise my rates?', a: rateAnswer() },
+    { q: 'Will filing a glass claim raise my rates?', a: rateAnswer(opts.state) },
     { q: 'Should I use insurance or just pay cash?', a: deductibleAnswer(opts.state) },
   ]
   if (opts.offersWindshieldRepair !== false) {

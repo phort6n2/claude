@@ -18,7 +18,8 @@ import {
   processTitle,
 } from '@/lib/site-premises'
 import {
-  CHIP_DEDUCTIBLE_NOTE,
+  chipDeductibleNoteFor,
+  insurerNoun,
   CHIP_REPAIRABLE_NOTE,
   insuranceForState,
   insuranceHeadingFor,
@@ -844,6 +845,10 @@ export function InsuranceBand({
 }) {
   const rule = insuranceForState(state)
   const stateName = stateNameFor(state)
+  // WHO THE DRIVER ACTUALLY RINGS. "your carrier" is four separate sentences
+  // in this band, and in a public-insurer province every one of them names
+  // somebody who does not exist — see PUBLIC_INSURERS.
+  const insurer = insurerNoun(state)
 
   return (
     <section className="bg-[var(--tint-warm)] border-b border-[var(--line)]">
@@ -854,10 +859,10 @@ export function InsuranceBand({
             rule.rule === 'automatic' && stateName
               ? `${stateName} law is on your side here`
               : filesClaims
-                ? 'We handle the claim with your carrier'
+                ? `We handle the claim with ${insurer}`
                 : 'Going through insurance'
           }
-          lead="Glass coverage sits in the comprehensive part of your policy — and we do the paperwork."
+          lead={`Glass coverage sits in the comprehensive part of your policy — and we do the paperwork with ${insurer}.`}
         />
         <div className="grid md:grid-cols-2 gap-5">
           <div className="bg-white rounded-[20px] border border-[var(--line-card)] shadow-sm p-6">
@@ -870,8 +875,8 @@ export function InsuranceBand({
             )}
             <p className="mt-3 mb-0 text-sm text-[var(--tx2)] leading-relaxed">
               {filesClaims
-                ? 'We file the claim with your carrier and deal with them directly, so you are not on hold for an afternoon. Call us with your policy number and we will check your coverage with you before you commit to anything.'
-                : 'Call us with your policy number and we will check your coverage with you before you commit to anything — and give your carrier everything they need: the exact glass, the part numbers and a written quote.'}
+                ? `We file the claim with ${insurer} and deal with them directly, so you are not on hold for an afternoon. Call us with your policy number and we will check your coverage with you before you commit to anything.`
+                : `Call us with your policy number and we will check your coverage with you before you commit to anything — and give ${insurer} everything they need: the exact glass, the part numbers and a written quote.`}
             </p>
           </div>
           <div className="bg-white rounded-[20px] border border-[var(--line-card)] shadow-sm p-6">
@@ -884,9 +889,9 @@ export function InsuranceBand({
                 cheap and it expires when the chip spreads. The deductible half
                 is dropped in statutory-waiver states, where it only restates
                 what the card opposite already said. */}
-            {rule.rule !== 'automatic' && (
+            {chipDeductibleNoteFor(state) && (
               <p className="mt-2 mb-0 text-sm text-[var(--tx2)] leading-relaxed">
-                {CHIP_DEDUCTIBLE_NOTE}
+                {chipDeductibleNoteFor(state)}
               </p>
             )}
             <p className="mt-2 mb-0 text-sm text-[var(--tx2)] leading-relaxed">
@@ -896,7 +901,7 @@ export function InsuranceBand({
         </div>
         <p className="mt-5 mb-0 text-xs text-[var(--tx-muted)]">
           General information only, not advice about your policy — coverage depends on the policy
-          you hold, so check with your carrier. {affiliation}
+          you hold, so check with {insurer}. {affiliation}
         </p>
       </div>
     </section>
