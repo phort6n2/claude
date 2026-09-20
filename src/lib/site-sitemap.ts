@@ -5,6 +5,7 @@ import { locationPages, mergeServiceAreas } from '@/lib/site-locations'
 import { canonicalHostFor } from '@/lib/site-origin'
 import { cityIsIndexable, getCityContent } from '@/lib/city-content'
 import { LIVE_STATUSES } from '@/lib/site-preview'
+import type { SitemapGroup } from '@/lib/sitemap-groups'
 import {
   programFor,
   programIsPublished,
@@ -28,7 +29,9 @@ import {
  * anything specific about that city yet — which is invisible from the XML.
  */
 
-export type SitemapGroup = 'home' | 'service' | 'city' | 'kept' | 'insurance' | 'legal'
+// Defined in a leaf module so the admin card can share it — see
+// lib/sitemap-groups.ts for what went wrong when it could not.
+export type { SitemapGroup } from '@/lib/sitemap-groups'
 
 export interface SitemapEntry {
   path: string

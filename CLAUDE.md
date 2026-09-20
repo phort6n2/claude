@@ -499,7 +499,15 @@ at it. Two kinds, one mechanism.
   answers 200, which is what `site-paths.ts` exists to prevent; the catch-all
   imports it exactly as it imports the city and service pages, metadata
   included. The slugs are reserved in `pathOverrideProblem`, listed in the
-  sitemap when published and listed as EXCLUDED with the reason when not. The
+  sitemap when published and listed as EXCLUDED with the reason when not —
+  and **the page-kind list is a LEAF MODULE** (`sitemap-groups.ts`) because
+  adding `insurance` to `SitemapGroup` left three hand-written copies in
+  `SitePagesCard` behind. The header counts `entries.length` while the rows
+  render per known group, so the card read "12 pages listed" and showed 11,
+  with the missing one being the page somebody had just built — on the card
+  whose whole job is answering "is this page in the sitemap". The union is now
+  DERIVED from the ordered array and the labels are a `Record` over it, so a
+  new group cannot compile without a position and a name. The
   operator-typed copy joins `editorialFields`, so the daily sweep reads it for
   rogue numbers and premises claims like any other editorial field — marked
   `writable: false`, because a near-miss rewrite of a coverage note changes

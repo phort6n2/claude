@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { Loader2, ExternalLink, EyeOff, TriangleAlert } from 'lucide-react'
+import {
+  SITEMAP_GROUPS,
+  SITEMAP_GROUP_LABEL,
+  type SitemapGroup,
+} from '@/lib/sitemap-groups'
 
 /**
  * Every page this site publishes, read from the same function that renders
@@ -17,7 +22,10 @@ import { Loader2, ExternalLink, EyeOff, TriangleAlert } from 'lucide-react'
 interface Entry {
   path: string
   loc: string
-  group: 'home' | 'service' | 'city' | 'kept' | 'legal'
+  /* IMPORTED, never restated. A hand-written copy of this union is what let a
+     new page type be counted in the header and rendered in no group — see
+     lib/sitemap-groups.ts. */
+  group: SitemapGroup
   lastmod: string
 }
 
@@ -25,14 +33,6 @@ interface Excluded {
   path: string
   group: string
   reason: string
-}
-
-const GROUP_LABEL: Record<Entry['group'], string> = {
-  home: 'Home',
-  service: 'Service pages',
-  city: 'City pages',
-  kept: 'Pages kept from the old site',
-  legal: 'Legal',
 }
 
 export default function SitePagesCard({ clientId }: { clientId: string }) {
@@ -60,9 +60,18 @@ export default function SitePagesCard({ clientId }: { clientId: string }) {
     )
   }
 
-  const groups = (['home', 'service', 'city', 'kept', 'legal'] as const)
-    .map((g) => ({ group: g, rows: data.entries.filter((e) => e.group === g) }))
-    .filter((g) => g.rows.length > 0)
+  const groups = SITEMAP_GROUPS.map((g) => ({
+    group: g,
+    rows: data.entries.filter((e) => e.group === g),
+  })).filter((g) => g.rows.length > 0)
+  /* A ROW IN NO GROUP IS THE BUG THIS CARD HAD, so it is now visible rather
+     than dropped: the header counts every entry, and anything the list above
+     did not place would otherwise vanish between the two. It should always be
+     empty — the union makes that so — and if it ever is not, the operator
+     sees the page instead of a count that does not add up. */
+  const ungrouped = data.entries.filter(
+    (e) => !SITEMAP_GROUPS.includes(e.group as SitemapGroup)
+  )
 
   return (
     <div className="px-6 pb-5 space-y-4">
@@ -89,10 +98,30 @@ export default function SitePagesCard({ clientId }: { clientId: string }) {
         </p>
       )}
 
+      {ungrouped.length > 0 && (
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+            Not in any group{' '}
+            <span className="font-normal normal-case tracking-normal">({ungrouped.length})</span>
+          </h3>
+          <p className="mt-0.5 text-xs text-amber-800">
+            These are in the sitemap and this card does not know what to call them. Add the group
+            to <code>lib/sitemap-groups.ts</code>.
+          </p>
+          <ul className="mt-1 grid gap-x-6 gap-y-0.5 sm:grid-cols-2 lg:grid-cols-3">
+            {ungrouped.map((e) => (
+              <li key={e.path} className="min-w-0 truncate text-sm text-amber-900">
+                {e.path}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {groups.map(({ group, rows }) => (
         <div key={group}>
           <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-            {GROUP_LABEL[group]}{' '}
+            {SITEMAP_GROUP_LABEL[group]}{' '}
             <span className="font-normal normal-case tracking-normal">({rows.length})</span>
           </h3>
           <ul className="mt-1 grid gap-x-6 gap-y-0.5 sm:grid-cols-2 lg:grid-cols-3">
