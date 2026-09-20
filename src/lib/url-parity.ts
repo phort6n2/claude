@@ -233,6 +233,12 @@ export interface ParityClient {
   flags: Record<ServiceFlag, boolean>
   /** Pages already moved onto one of the old site's addresses. */
   pathOverrides?: unknown
+  /**
+   * The insurance-claim page's address, when this shop has a PUBLISHED one.
+   * Unpublished is deliberately absent: the address 404s, and offering a 404
+   * as a redirect target is worse than reporting the old page as unmatched.
+   */
+  insurancePath?: string | null
 }
 
 /** Every path the hosted site actually serves for this shop. */
@@ -246,6 +252,7 @@ export function hostedPathsFor(client: ParityClient): string[] {
     '/',
     ...servicesForClient(client.flags).map((s) => servicePath(s.slug, overrides)),
     ...locationPages(areas).map((l) => locationPath(l.slug, overrides)),
+    ...(client.insurancePath ? [client.insurancePath] : []),
     '/privacy',
     '/terms',
   ]

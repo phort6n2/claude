@@ -34,7 +34,7 @@ import {
   defaultHeroBullets,
   prioritizeServices,
 } from '@/components/sites/site-body'
-import { getSiteExtras } from '@/lib/site-content'
+import { getSiteExtras, getInsuranceProgram } from '@/lib/site-content'
 import { sitePaletteVars } from '@/lib/site-theme'
 import { getClientLocations } from '@/lib/client-locations'
 import { cityIsIndexable, getCityContent } from '@/lib/city-content'
@@ -188,13 +188,14 @@ export default async function ClientSitePage({ params }: PageProps) {
   const preview = await isPreview(client.status)
   if (!siteIsLive(client.status) && !preview) return <SiteUnavailable />
 
-  const [reviews, extras, locations, adsTracking, cityContent, keptPages] = await Promise.all([
+  const [reviews, extras, locations, adsTracking, cityContent, keptPages, insuranceProgram] = await Promise.all([
     getReviews(client.id),
     getSiteExtras(client.id),
     getClientLocations(client.id, client),
     getAdsTracking(client.id),
     getCityContent(client.id),
     keptPagesFor(client.id, client.businessName),
+    getInsuranceProgram(client.id),
   ])
   const services = servicesForClient(client as Record<ServiceFlag, boolean>)
   // Shop cities are part of the coverage list and lead the location pages —
@@ -417,7 +418,8 @@ export default async function ClientSitePage({ params }: PageProps) {
         basePath={basePath}
         locations={locations}
         linkableCities={linkableCities}
-      />
+        insuranceProgram={insuranceProgram}
+        />
       </main>
 
       <SiteChrome

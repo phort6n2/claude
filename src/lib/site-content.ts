@@ -1,4 +1,10 @@
 import { prisma } from '@/lib/db'
+import {
+  programFor,
+  readProgramRecord,
+  type InsuranceProgram,
+  type ProgramRecord,
+} from '@/lib/insurance-programs'
 
 /**
  * Editorial content + photos for hosted sites. Reads are defensive: if the
@@ -141,4 +147,27 @@ export async function getSiteExtras(clientId: string): Promise<SiteExtras> {
   } catch {
     return EMPTY_EXTRAS
   }
+}
+
+/**
+ * The client's insurance-claim page record, or null.
+ *
+ * READ BY EVERY PAGE TYPE, not just by the page it belongs to, because the
+ * one thing it settles is the affiliation sentence in the insurance band —
+ * and that band is on every page. A shop whose claim page says they are in an
+ * insurer's repair network while the home page says they are not affiliated
+ * with any insurer has published both halves of a contradiction, and the one
+ * a customer reads first decides which of them reads as the lie.
+ *
+ * Defensive for the same reason `getSiteExtras` is: a database that predates
+ * the table costs this one sentence rather than every page on the site.
+ */
+export async function getInsuranceProgram(
+  clientId: string
+): Promise<{ program: InsuranceProgram | null; record: ProgramRecord | null }> {
+  const row = await prisma.clientInsuranceProgram
+    .findUnique({ where: { clientId } })
+    .catch(() => null)
+  const record = readProgramRecord(row)
+  return { program: record ? programFor(record.programKey) : null, record }
 }

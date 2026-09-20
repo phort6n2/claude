@@ -10,6 +10,54 @@ Last reviewed: 2026-08-15
 
 ## 0. New since the landing-page overhaul — five minutes each
 
+### 0.00 AGS: build the ICBC page, then repoint the ICBC ads
+**Blocks:** the whole ICBC campaign's compliance footing, and every click it
+has already paid for.
+
+Today all seven ENABLED ads in AGS's `ICBC` campaign (customer `6109211627`,
+campaign `23359081886`) have `final_urls: ["https://glassbc.com/"]` — the bare
+WordPress home page, which is not a page about ICBC and is not on this
+platform. Three of its ad groups are named ICBC, Insurance and Glass Express,
+and five of the seven carry a pinned headline "Same Day ICBC Claims".
+
+The page type now exists. What is left is data only, and it is data nobody
+here has:
+
+1. **Website tab → Insurance claims page → ICBC.** Write *what ICBC covers*
+   and the *claim steps* in your own words. Nothing in this app knows either,
+   so the page will not publish until one of them is written — that is
+   deliberate, not a bug to work around.
+2. **Tick "part of the ICBC Repair Network"** if you have checked it. It says
+   they take part in it and never that ICBC approves them, and ticking it also
+   changes the small print under the insurance band on EVERY page of the site
+   so the two cannot contradict each other.
+3. **Publish**, check the page, then repoint the campaign's final URLs at
+   `https://ags.glassleads.app/icbc-glass-claims`.
+
+Two things worth knowing before you do:
+
+- **"Same Day ICBC Claims" is a pinned headline and §2's timing rule does not
+  reach it** — ad copy is written by an operator for one named shop, so it may
+  simply be true. `asset-claims` only fires where a fact on our side
+  contradicts it. Decide it on the facts, not on the page.
+- **The BC insurance band still reads as US private insurance.** With
+  `state: BC`, `insurance-rules.ts` falls through to the standard answer —
+  "your comprehensive deductible applies", "most carriers" — which is the
+  wrong shape for a province with a public monopoly insurer. Nothing here can
+  source the right copy, so it is not guessed. If you write the ICBC coverage
+  note, that is the page that answers the question properly; the band is
+  still worth a pass with you and whoever reviews compliance.
+
+### 0.00b Every other client: the general insurance claims page
+**Blocks:** nothing, and it needs no typing.
+
+Website tab → **Insurance claims page** → *General insurance claims* →
+Publish. It builds itself from the reviewed per-state deductible copy already
+on the site, and lands at `/insurance-glass-claims`. Worth doing for any shop
+whose ads have an insurance or "does insurance cover it" ad group, since that
+click currently lands on a page that answers the question two-thirds of the
+way down.
+
 ### 0.0 Set the rank report share domain
 **Blocks:** nothing, but until it is set every client sees Local Dominator's
 domain inside their own portal instead of yours.

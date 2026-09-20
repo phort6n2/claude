@@ -5,6 +5,13 @@ import { locationPages, mergeServiceAreas } from '@/lib/site-locations'
 import { canonicalHostFor } from '@/lib/site-origin'
 import { cityIsIndexable, getCityContent } from '@/lib/city-content'
 import { LIVE_STATUSES } from '@/lib/site-preview'
+import {
+  programFor,
+  programIsPublished,
+  programPath,
+  publishProblem,
+  readProgramRecord,
+} from '@/lib/insurance-programs'
 
 /**
  * Which pages a hosted site publishes, as one list.
@@ -21,7 +28,7 @@ import { LIVE_STATUSES } from '@/lib/site-preview'
  * anything specific about that city yet — which is invisible from the XML.
  */
 
-export type SitemapGroup = 'home' | 'service' | 'city' | 'kept' | 'legal'
+export type SitemapGroup = 'home' | 'service' | 'city' | 'kept' | 'insurance' | 'legal'
 
 export interface SitemapEntry {
   path: string
@@ -130,6 +137,17 @@ export async function siteSitemap(
   const areas = mergeServiceAreas(client.serviceAreas || [], cities)
   const cityContent = await getCityContent(client.id)
 
+  // The insurance-claim page, when this shop has one — see
+  // lib/insurance-programs.ts. Read here as well as rendered, because the
+  // Website tab reads this same list: a page that is served and not listed is
+  // exactly the thing an operator cannot see from anywhere else.
+  const programRecord = readProgramRecord(
+    await prisma.clientInsuranceProgram
+      .findUnique({ where: { clientId: client.id } })
+      .catch(() => null)
+  )
+  const program = programRecord ? programFor(programRecord.programKey) : null
+
   const keptPages = await prisma.clientPage
     .findMany({
       where: { clientId: client.id },
@@ -162,11 +180,25 @@ export async function siteSitemap(
     ...keptPages
       .filter((p) => p.publishedAt && !keptPathProblem(p.path))
       .map((p) => at(p.path, 'kept', '0.6', 'monthly', p.updatedAt.toISOString())),
+    ...(program && programIsPublished(programRecord)
+      ? [at(programPath(program), 'insurance', '0.8', 'monthly')]
+      : []),
     at('/privacy', 'legal', '0.1', 'yearly'),
     at('/terms', 'legal', '0.1', 'yearly'),
   ]
 
   const excluded: ExcludedPage[] = [
+    ...(program && programRecord && !programIsPublished(programRecord)
+      ? [
+          {
+            path: programPath(program),
+            group: 'insurance' as const,
+            reason:
+              publishProblem(programRecord) ||
+              'Not published yet — the address 404s, so an ad pointed at it would pay for a 404. Publish it on the Website tab.',
+          },
+        ]
+      : []),
     ...thin.map((l) => ({
       path: locationPath(l.slug, overrides),
       group: 'city' as const,

@@ -192,11 +192,19 @@ export default function PremisesFixButton({ clientId }: { clientId: string }) {
           )}
 
           {handOnly.length > 0 && (
-            <p className="rounded-md border border-gray-200 bg-gray-50 p-2 text-xs text-gray-600">
-              {handOnly.length} of these {handOnly.length === 1 ? 'is' : 'are'} on a page kept from
-              the shop&rsquo;s old site. Those are raw HTML and are edited by hand — a replacement
-              that nearly matches mangles the markup.
-            </p>
+            <div className="rounded-md border border-gray-200 bg-gray-50 p-2 text-xs text-gray-600">
+              <p className="m-0">
+                {handOnly.length} of these {handOnly.length === 1 ? 'is' : 'are'} in a field this
+                cannot write back to — a kept page is raw HTML a near-miss replacement would
+                mangle, and the insurance page&rsquo;s copy is a compliance statement somebody
+                typed on purpose. Edit {handOnly.length === 1 ? 'it' : 'those'} by hand:
+              </p>
+              <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                {handOnly.map((h, i) => (
+                  <li key={i}>{h.where}</li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
       )}

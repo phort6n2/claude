@@ -553,6 +553,35 @@ export const SMS_INBOX_SQL: string[] = [
   `ALTER TABLE "TrackingNumber" ADD COLUMN IF NOT EXISTS "smsUrl" TEXT`,
 ]
 
+/**
+ * The insurer-specific landing page — see lib/insurance-programs.ts.
+ *
+ * A separate table rather than columns on Client for the ordinary reason:
+ * most clients will never have one, and `claimSteps` is a list. The unique
+ * index on clientId is what makes it one-per-client, and it is the constraint
+ * the upsert relies on.
+ */
+export const INSURANCE_PROGRAM_SQL: string[] = [
+  `CREATE TABLE IF NOT EXISTS "ClientInsuranceProgram" (
+     "id"              TEXT NOT NULL,
+     "clientId"        TEXT NOT NULL,
+     "programKey"      TEXT NOT NULL,
+     "inNetwork"       BOOLEAN NOT NULL DEFAULT false,
+     "coverageNote"    TEXT,
+     "claimSteps"      JSONB,
+     "metaDescription" TEXT,
+     "publishedAt"     TIMESTAMP(3),
+     "createdAt"       TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     "updatedAt"       TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     CONSTRAINT "ClientInsuranceProgram_pkey" PRIMARY KEY ("id")
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "ClientInsuranceProgram_clientId_key" ON "ClientInsuranceProgram"("clientId")`,
+  `DO $$ BEGIN
+    ALTER TABLE "ClientInsuranceProgram" ADD CONSTRAINT "ClientInsuranceProgram_clientId_fkey"
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+]
+
 export const BOOTSTRAP_SQL: string[] = [
   ...PATH_OVERRIDE_SQL,
   ...MARKET_AREA_SQL,

@@ -37,6 +37,11 @@ import {
   type TrustItem,
 } from '@/components/sites/shared'
 import type { SiteExtras } from '@/lib/site-content'
+import {
+  affiliationLine,
+  type InsuranceProgram,
+  type ProgramRecord,
+} from '@/lib/insurance-programs'
 import { withDefaultFaq } from '@/lib/site-faq'
 import type { SiteLocation } from '@/lib/client-locations'
 
@@ -377,10 +382,19 @@ export function SiteBody({
   linkableCities,
   storyChapters = [],
   storyFallbackPhotos = [],
+  insuranceProgram,
 }: {
   client: SiteClient
   flags: SiteFlags
   reviews: ReviewsData | null
+  /**
+   * The shop's insurance-claim page, when they have one — see
+   * lib/insurance-programs.ts. Only the insurance band reads it, and only to
+   * settle the affiliation line: a site that says the shop is in an insurer's
+   * repair network cannot also print "not affiliated with or endorsed by any
+   * insurance company" further down the same page.
+   */
+  insuranceProgram?: { program: InsuranceProgram | null; record: ProgramRecord | null }
   /**
    * The shop's own long-form story. Rendered AFTER the reviews rather than
    * before the services: it is the block that talks about the business
@@ -533,7 +547,14 @@ export function SiteBody({
       {/* Insurance — the warm band; the warranty follows immediately so the
           price/risk question the insurance copy raises gets answered while
           it's fresh */}
-      <InsuranceBand state={client.state} filesClaims={flags.filesInsuranceClaims} />
+      <InsuranceBand
+        state={client.state}
+        filesClaims={flags.filesInsuranceClaims}
+        affiliation={affiliationLine(
+          insuranceProgram?.program ?? null,
+          insuranceProgram?.record ?? null
+        )}
+      />
       <WarrantyBand extras={extras} />
 
       {/* Range-of-work gallery (stripped when no photos) */}

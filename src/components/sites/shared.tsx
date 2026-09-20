@@ -818,10 +818,29 @@ export function ProcessSection({
 export function InsuranceBand({
   state,
   filesClaims = false,
+  affiliation,
 }: {
   state?: string | null
   /** Only shops that confirmed it get to say they file the claim for you. */
   filesClaims?: boolean
+  /**
+   * The affiliation sentence in the small print, from
+   * `affiliationLine()` in lib/insurance-programs.ts.
+   *
+   * IT IS A PROP BECAUSE ONE SHOP'S ANSWER IS THE OPPOSITE OF THE OTHERS'.
+   * The default — "not affiliated with or endorsed by any insurance company" —
+   * is true for fourteen of fifteen and flatly untrue on a site that says
+   * elsewhere that the shop is in an insurer's repair network. A page that
+   * makes both claims contradicts itself in front of the customer it is
+   * trying to convince, and the one under the network claim is the one that
+   * reads as the lie.
+   *
+   * REQUIRED, with no default here. A compliance sentence written out in two
+   * places is the shape this codebase keeps refusing: the copy that would sit
+   * here as a fallback is the copy `affiliationLine()` already returns for a
+   * shop with no programme, and two of them drift.
+   */
+  affiliation: string
 }) {
   const rule = insuranceForState(state)
   const stateName = stateNameFor(state)
@@ -877,9 +896,7 @@ export function InsuranceBand({
         </div>
         <p className="mt-5 mb-0 text-xs text-[var(--tx-muted)]">
           General information only, not advice about your policy — coverage depends on the policy
-          you hold, so check with your carrier. We are an independent auto glass company and are
-          not affiliated with or endorsed by any insurance company. Your choice of repair shop is
-          yours to make.
+          you hold, so check with your carrier. {affiliation}
         </p>
       </div>
     </section>

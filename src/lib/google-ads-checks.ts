@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { adsSearch } from '@/lib/google-ads'
 import { secretSetting } from '@/lib/secret-settings'
 import { evaluateRogueNumbers, editorialFields } from '@/lib/rogue-numbers'
+import { readSteps } from '@/lib/insurance-programs'
 import { evaluatePremisesCopy, PREMISES_COPY_CHECK } from '@/lib/premises-copy-health'
 import {
   auditPhones,
@@ -629,6 +630,11 @@ export async function runSiteContentChecks(
           where: { publishedAt: { not: null } },
           select: { path: true, title: true, bodyHtml: true },
         },
+        // The insurance-claim page is a landing page carrying operator-typed
+        // copy, so it is scanned like every other editorial field. Read
+        // whether or not it is published: an unpublished page is one press
+        // away from being live, and its copy is reviewed the same way.
+        insuranceProgram: { select: { coverageNote: true, claimSteps: true } },
       },
       orderBy: { businessName: 'asc' },
     })
@@ -650,6 +656,12 @@ export async function runSiteContentChecks(
       content: client.siteContent,
       cityContent: client.cityContent,
       keptPages: client.customPages,
+      insuranceProgram: client.insuranceProgram
+        ? {
+            coverageNote: client.insuranceProgram.coverageNote,
+            claimSteps: readSteps(client.insuranceProgram.claimSteps),
+          }
+        : null,
     })
     const drafts = evaluateRogueNumbers({ fields, siteNumber })
 

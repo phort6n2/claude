@@ -36,7 +36,7 @@ import {
   defaultHeroBullets,
   prioritizeServices,
 } from '@/components/sites/site-body'
-import { getSiteExtras } from '@/lib/site-content'
+import { getSiteExtras, getInsuranceProgram } from '@/lib/site-content'
 import { heroCostLineFor } from '@/lib/insurance-rules'
 import { sitePaletteVars } from '@/lib/site-theme'
 import { getClientLocations } from '@/lib/client-locations'
@@ -188,13 +188,14 @@ export default async function LocationPage({ params, atOverride }: PageProps) {
   // would drop it. See site-phone.ts.
   Object.assign(client, await withSitePhone(client))
 
-  const [reviews, extras, locations, adsTracking, cityContent, keptPages] = await Promise.all([
+  const [reviews, extras, locations, adsTracking, cityContent, keptPages, insuranceProgram] = await Promise.all([
     getReviews(client.id),
     getSiteExtras(client.id),
     getClientLocations(client.id, client),
     getAdsTracking(client.id),
     getCityContent(client.id),
     keptPagesFor(client.id, client.businessName),
+    getInsuranceProgram(client.id),
   ])
 
   // Shop cities are part of the coverage list and lead the location pages —
@@ -429,7 +430,8 @@ export default async function LocationPage({ params, atOverride }: PageProps) {
         locations={locations}
         linkableCities={linkableCities}
         activeCity={location.area}
-      />
+        insuranceProgram={insuranceProgram}
+        />
       </main>
 
       <SiteChrome

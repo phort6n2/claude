@@ -391,7 +391,9 @@ webhook routes.
 ### Hosted sites
 
 `src/app/sites/[slug]/` (home, `services/[service]`, `locations/[city]`,
-privacy, terms) rendering `components/sites/shared.tsx` and `site-body.tsx`.
+privacy, terms, and the catch-all that serves kept pages, flat city addresses
+and the insurance-claim page) rendering `components/sites/shared.tsx` and
+`site-body.tsx`.
 Middleware rewrites `{sub}.glassleads.app/*` to `/sites/{sub}/*`.
 
 Every page type is the same body with a different hero and lead-in. Page
@@ -401,6 +403,65 @@ service areas, closing CTA. The story sits after the proof on purpose — it is
 the block that talks about the business rather than the customer, and ahead of
 the proof it stood between a paid visitor and every section that answers
 "what will this cost me".
+
+**AN "INSURANCE" AD GROUP NEEDS A PAGE ABOUT THE CLAIM**
+(`insurance-programs.ts`, `components/sites/insurance-program-page.tsx`,
+`ClientInsuranceProgram`, bootstrap: `INSURANCE_PROGRAM_SQL`, the card on the
+Website tab). The full page shell — hero, quote widget, tracked number, gclid
+capture — at its own flat address, which is the whole point: an ad can point
+at it. Two kinds, one mechanism.
+
+- **A NAMED PUBLIC INSURER** (`icbc`, `sgi`, `mpi`). Canada's provincial
+  insurers are public monopolies with trademarked names, and a shop
+  advertising "ICBC windshield repair" is naming somebody else's trademark in
+  ad copy. The carve-out that makes that lawful turns on the LANDING PAGE
+  being primarily about the trademarked service, so an ICBC ad group pointed
+  at a general auto glass page is the ad text hanging on nothing. All seven of
+  AGS's enabled ICBC ads had `final_urls: ["https://glassbc.com/"]`, the bare
+  home page, while three of the ad groups were named ICBC, Insurance and
+  Glass Express.
+- **THE GENERAL PAGE** (`general`, `/insurance-glass-claims`) for everyone
+  else. Its coverage section is the per-state rule out of `insurance-rules.ts`
+  — copy that is ALREADY compliance-reviewed and already renders in the band
+  — so it is complete the moment it is switched on and has NO publish gate.
+  That asymmetry is the design: the lesson of the story sections is that a box
+  an operator has to fill stays empty, and "do you take insurance" is the
+  objection every shop's ads run into.
+- **THE CATALOGUE HOLDS NAMES ONLY.** What the insurer covers, what the
+  deductible is, whether a claim moves a premium — those are facts about the
+  INSURER, exactly the kind a model answers fluently and wrongly, and they
+  change. So a named insurer's coverage is TYPED BY AN OPERATOR and the
+  section strips itself when empty, the same rule `Client.marketArea` follows.
+  Publishing is REFUSED until something programme-specific exists, because an
+  empty page at an ad's destination costs the same per click as a full one and
+  answers nothing — which is the exact state the page type exists to prevent.
+- **`inNetwork` IS THE ONE CLAIM §2 OTHERWISE BANS**, so it is a TICK and not
+  a text box — nobody can widen it into "approved by" on the way in — it says
+  MEMBERSHIP and never endorsement, and it renders NOTHING for a programme
+  whose network name this platform has not confirmed (SGI, MPI). A membership
+  claim with nothing named is unfalsifiable, and a hedge would be worse than
+  silence.
+- **THE DISCLAIMER HAD TO MOVE WITH IT.** The insurance band's small print
+  ends "not affiliated with or endorsed by any insurance company" — true for
+  fourteen of fifteen and flatly untrue on a site that says elsewhere the shop
+  is in an insurer's repair network. So `affiliationLine()` decides it, every
+  page type loads the record (`getInsuranceProgram`) to ask, and the band takes
+  it as a REQUIRED prop with no copy of its own. Both halves published is a
+  contradiction invisible from either page on its own, and the one under the
+  network claim is what reads as the lie.
+- **NO ROUTE FILE.** A `page.tsx` would give it a second address that also
+  answers 200, which is what `site-paths.ts` exists to prevent; the catch-all
+  imports it exactly as it imports the city and service pages, metadata
+  included. The slugs are reserved in `pathOverrideProblem`, listed in the
+  sitemap when published and listed as EXCLUDED with the reason when not. The
+  operator-typed copy joins `editorialFields`, so the daily sweep reads it for
+  rogue numbers and premises claims like any other editorial field — marked
+  `writable: false`, because a near-miss rewrite of a coverage note changes
+  what a shop promises about somebody's insurance.
+- `scripts/check-insurance-program.ts` holds both directions, the ABSENCE
+  cases first: no network claim without the tick, no invented coverage, no
+  hedge for an unconfirmed network, and the disclaimer byte-for-byte unchanged
+  for the fourteen shops with no programme.
 
 **Headlines name an AREA, not the address** (`site-area.ts`, `Client.marketArea`,
 edited on the Website tab; bootstrap: `MARKET_AREA_SQL`). A shop sits in one

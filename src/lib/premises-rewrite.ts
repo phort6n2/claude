@@ -1,3 +1,4 @@
+import { targetIsWritable } from '@/lib/rogue-numbers'
 import { premisesClaim } from '@/lib/site-premises'
 import { claimProblem, type ClaimContext } from '@/lib/copy-claims'
 import type { PremisesCopyHit } from '@/lib/premises-copy-health'
@@ -198,7 +199,11 @@ export function screenRewrites(
 /** Stable ids, so a rewrite can be matched back to the sentence it is for. */
 export function targetsFrom(hits: PremisesCopyHit[]): RewriteTarget[] {
   return hits
-    .filter((h) => h.target && h.target.kind !== 'keptPage')
+    // `writable: false` rather than a list of kinds. A field added to
+    // `editorialFields` that this button cannot write back to has to be
+    // excluded by the marker it carries, or the next one is excluded by
+    // nobody and gets a rewrite applied to a field that does not exist.
+    .filter((h) => targetIsWritable(h.target))
     .map((h, i) => ({
       id: `s${i + 1}`,
       sentence: h.sentence,

@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireAdmin } from '@/lib/admin-guard'
 import { secretSetting } from '@/lib/secret-settings'
-import { editorialFields } from '@/lib/rogue-numbers'
-import { findPremisesClaims } from '@/lib/premises-copy-health'
+import { editorialFields, targetIsWritable } from '@/lib/rogue-numbers'
+import { findPremisesClaims, type PremisesCopyHit } from '@/lib/premises-copy-health'
 import { parseDraftArray } from '@/lib/draft-json'
+import { readSteps } from '@/lib/insurance-programs'
 import { headlineArea } from '@/lib/site-area'
 import {
   rewritePrompt,
@@ -60,6 +61,7 @@ const SELECT = {
   siteContent: { select: { warrantyText: true, footerBlurb: true, faq: true, chapters: true } },
   cityContent: { select: { city: true, body: true } },
   customPages: { where: { publishedAt: { not: null } }, select: { path: true, title: true, bodyHtml: true } },
+  insuranceProgram: { select: { coverageNote: true, claimSteps: true } },
 } as const
 
 type LoadedClient = NonNullable<Awaited<ReturnType<typeof loadClient>>>
@@ -86,14 +88,35 @@ function contextFor(client: LoadedClient): ClaimContext {
   }
 }
 
+/**
+ * Fields this route reports but will not write to.
+ *
+ * Keyed on the target's own `writable: false` marker rather than on a list of
+ * kinds, so a field added to `editorialFields` lands in one of the two
+ * buckets by construction. Before this it was `kind === 'keptPage'`, and a
+ * third unwritable kind would have fallen into neither — reported by the
+ * sweep, absent from the proposals, absent from the "left alone" list, and
+ * therefore invisible.
+ */
+function handEdited(hit: PremisesCopyHit): boolean {
+  return !!hit.target && !targetIsWritable(hit.target)
+}
+
 function hitsFor(client: LoadedClient) {
   return findPremisesClaims(
     editorialFields({
       content: client.siteContent,
       cityContent: client.cityContent,
       keptPages: client.customPages,
+      insuranceProgram: programFields(client),
     })
   )
+}
+
+/** The insurance page's typed copy, for scanning only — never for a write. */
+function programFields(client: LoadedClient) {
+  const p = client.insuranceProgram
+  return p ? { coverageNote: p.coverageNote, claimSteps: readSteps(p.claimSteps) } : null
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -123,13 +146,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   if (targets.length === 0) {
-    const handOnly = hits.filter((h) => h.target?.kind === 'keptPage')
+    const handOnly = hits.filter((h) => handEdited(h))
     return NextResponse.json({
       proposals: [],
       rejected: [],
       handOnly: handOnly.map((h) => ({ where: h.where, sentence: h.sentence })),
       message: handOnly.length
-        ? 'Everything left is on a page kept from the old site, which has to be edited by hand.'
+        ? 'Everything left is in a field this cannot write back to, so it has to be edited by hand.'
         : 'Nothing left to rewrite.',
     })
   }
@@ -203,9 +226,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     )
     return NextResponse.json({
       ...screened,
-      handOnly: hits
-        .filter((h) => h.target?.kind === 'keptPage')
-        .map((h) => ({ where: h.where, sentence: h.sentence })),
+      handOnly: hits.filter(handEdited).map((h) => ({ where: h.where, sentence: h.sentence })),
     })
   } catch (error) {
     console.error('[premises-rewrite] failed:', error)

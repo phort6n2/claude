@@ -37,7 +37,7 @@ import {
   defaultHeroBullets,
   prioritizeServices,
 } from '@/components/sites/site-body'
-import { getSiteExtras } from '@/lib/site-content'
+import { getSiteExtras, getInsuranceProgram } from '@/lib/site-content'
 import { heroCostLineFor } from '@/lib/insurance-rules'
 import { sitePaletteVars } from '@/lib/site-theme'
 import { getClientLocations } from '@/lib/client-locations'
@@ -55,6 +55,10 @@ import LocationPage, { generateMetadata as locationMetadata } from '@/app/sites/
 import ServicePage, { generateMetadata as serviceMetadata } from '@/app/sites/[slug]/services/[service]/page'
 import { getServicePage } from '@/lib/site-services'
 import { cityFromPath, canonicalForCustom, readPathOverrides } from '@/lib/site-paths'
+import InsuranceProgramPage, {
+  insuranceProgramMetadata,
+} from '@/components/sites/insurance-program-page'
+import { programForPath } from '@/lib/insurance-programs'
 
 
 export const dynamic = 'force-dynamic'
@@ -206,6 +210,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     if (getServicePage(flat)) {
       return serviceMetadata({ params: Promise.resolve({ slug, service: flat }) })
     }
+    // The insurance-claim page. It has no route file of its own on purpose —
+    // one flat address per page — so this and the render below are the only
+    // two places it resolves, and they have to agree. When the head and the
+    // body disagree the page renders perfectly and is titled "Not Found",
+    // which is the bug this whole fallthrough exists to record.
+    if (programForPath(flat)) {
+      return insuranceProgramMetadata({ params: Promise.resolve({ slug, program: flat }) })
+    }
     return { title: 'Not Found' }
   }
 
@@ -271,6 +283,12 @@ export default async function CatchAllPage({ params }: PageProps) {
     if (getServicePage(flat)) {
       return <ServicePage params={Promise.resolve({ slug, service: flat })} atOverride={!!moved} />
     }
+    // The insurance-claim page — see lib/insurance-programs.ts. It 404s
+    // itself unless THIS client's record names this programme and the page is
+    // published, so the slug existing does not make the page exist.
+    if (programForPath(flat)) {
+      return <InsuranceProgramPage params={Promise.resolve({ slug, program: flat })} />
+    }
 
     notFound()
   }
@@ -285,13 +303,14 @@ export default async function CatchAllPage({ params }: PageProps) {
   Object.assign(client, await withSitePhone(client))
   const siteOwnsTracking = client.phone !== realPhone
 
-  const [reviews, extras, locations, adsTracking, cityContent, keptPages] = await Promise.all([
+  const [reviews, extras, locations, adsTracking, cityContent, keptPages, insuranceProgram] = await Promise.all([
     getReviews(client.id),
     getSiteExtras(client.id),
     getClientLocations(client.id, client),
     getAdsTracking(client.id),
     getCityContent(client.id),
     keptPagesFor(client.id, client.businessName),
+    getInsuranceProgram(client.id),
   ])
 
   const services = servicesForClient(client as Record<ServiceFlag, boolean>)
@@ -488,6 +507,7 @@ export default async function CatchAllPage({ params }: PageProps) {
           basePath={basePath}
           locations={locations}
           linkableCities={linkableCities}
+          insuranceProgram={insuranceProgram}
         />
       </main>
 

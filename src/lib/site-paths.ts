@@ -2,6 +2,7 @@
 // rewrites them. It was written out here as well, and a copy of a list whose
 // whole job is to match another list is a copy that eventually does not.
 import { FLAT_SERVICE_PATHS } from '@/lib/site-services'
+import { PROGRAM_PATHS } from '@/lib/insurance-programs'
 
 /**
  * The addresses these sites use for services and cities.
@@ -138,6 +139,13 @@ export function pathOverrideProblem(
   }
   if (bare.startsWith(LOCATION_PREFIX)) {
     return `${to} is the shape of a city page address, which resolves first. Pick another.`
+  }
+  // Every programme's slug is a real address on every site — the page 404s
+  // unless the client's own record names that programme — so moving another
+  // page onto one would be accepted today and silently shadowed the moment
+  // somebody switched the insurance page on.
+  if (PROGRAM_PATHS.includes(to)) {
+    return `${to} is where the insurance-claim page lives. Pick another.`
   }
   if (reserved.map(normaliseSitePath).includes(to)) {
     return `${to} is already a page on this site.`

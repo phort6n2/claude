@@ -64,6 +64,25 @@ export type FieldTarget =
      entities and tags are in play, and a near-miss replacement mangles the
      page. Those are fixed by hand, and the UI says so. */
   | { kind: 'keptPage'; path: string; writable: false }
+  /* The insurance-claim page's operator-typed copy. SCANNED but not written
+     back to: a coverage note is a compliance-sensitive statement somebody
+     typed on purpose, and the one field on this site where a near-miss
+     rewrite would change what a shop promises about somebody's insurance.
+     Fixed on the Website tab, and the UI says so. */
+  | { kind: 'insuranceProgram'; field: 'coverageNote' | 'claimStep'; index?: number; writable: false }
+
+/**
+ * Can a correction be written back to this field?
+ *
+ * The marker lives on the target rather than in a list of kinds at each
+ * caller, so a field added to `editorialFields` is classified by the thing
+ * that describes it. A caller matching on `kind === 'keptPage'` silently
+ * mis-sorted the next unwritable kind, and a hit in neither bucket is a hit
+ * nothing mentions at all.
+ */
+export function targetIsWritable(target: FieldTarget | undefined): boolean {
+  return !!target && !('writable' in target && target.writable === false)
+}
 
 export interface ScannedField {
   where: string
@@ -164,6 +183,8 @@ export function editorialFields(input: {
   } | null
   cityContent?: Array<{ city: string; body?: string | null }>
   keptPages?: Array<{ path: string; title?: string | null; bodyHtml?: string | null }>
+  /** The insurance-claim page's operator-typed copy, when there is one. */
+  insuranceProgram?: { coverageNote?: string | null; claimSteps?: string[] } | null
 }): ScannedField[] {
   const fields: ScannedField[] = []
   const c = input.content
@@ -196,6 +217,25 @@ export function editorialFields(input: {
       target: { kind: 'cityContent', city: city.city },
     })
   }
+  const program = input.insuranceProgram
+  if (program) {
+    // IT IS A LANDING PAGE, which is the reason it is scanned at all. An old
+    // phone number in a coverage note is a paid click arriving on a line
+    // nothing records, and this is the page the ad money points at.
+    fields.push({
+      where: 'the insurance page coverage note',
+      text: program.coverageNote,
+      target: { kind: 'insuranceProgram', field: 'coverageNote', writable: false },
+    })
+    for (const [i, step] of (program.claimSteps || []).entries()) {
+      fields.push({
+        where: `insurance page claim step ${i + 1}`,
+        text: step,
+        target: { kind: 'insuranceProgram', field: 'claimStep', index: i, writable: false },
+      })
+    }
+  }
+
   for (const page of input.keptPages || []) {
     fields.push({
       where: `the kept page ${page.path}`,

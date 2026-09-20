@@ -275,6 +275,9 @@ model Client {
 
   // Scheduled Google Ads checks file what needs action here
   adsFindings AdsFinding[]
+
+  // The insurer-specific landing page, when this shop needs one
+  insuranceProgram ClientInsuranceProgram?
 }
 
 enum ClientStatus {
@@ -1293,6 +1296,46 @@ model ClientLocation {
 // registration line renders only when a number is set, FAQs and photos are
 // per-client editorial content entered in the admin, not generated.
 // ============================================
+
+/**
+ * The insurer-specific landing page — see lib/insurance-programs.ts.
+ *
+ * One programme per client: a shop is in one province, and the province
+ * decides which public insurer its drivers claim through. Two programmes
+ * would be two pages competing for the same intent on the same site.
+ *
+ * Everything here that states a FACT about the programme is typed by an
+ * operator and strips itself when empty. `inNetwork` is a verified claim
+ * about this shop's membership of the insurer's repair network, and it is a
+ * tick rather than free text because § 2 forbids inventing one.
+ */
+model ClientInsuranceProgram {
+  id       String @id @default(cuid())
+  clientId String @unique
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // 'icbc' | 'sgi' | 'mpi' — the catalogue key, not a free-text insurer name.
+  programKey String
+
+  // Operator-VERIFIED membership. Renders nothing for a programme whose
+  // network name this platform has not confirmed.
+  inNetwork Boolean @default(false)
+
+  // What the programme covers, in an operator's own words. Never drafted.
+  coverageNote String? @db.Text
+
+  // The claim step by step: ["Call us with your claim number", …]
+  claimSteps Json?
+
+  metaDescription String?
+
+  // Unpublished means the page 404s and is in no sitemap. An empty page at an
+  // ad's destination is worse than no page at all.
+  publishedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
 model ClientSiteContent {
   id       String @id @default(cuid())

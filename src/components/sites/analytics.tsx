@@ -35,7 +35,14 @@
 // the pages carried over from a shop's old site, they are where live ads
 // already point, and how they convert against the template's own pages is
 // exactly the comparison worth being able to make.
-export type SitePageType = 'home' | 'service' | 'location' | 'legal' | 'blog' | 'kept'
+export type SitePageType =
+  | 'home'
+  | 'service'
+  | 'location'
+  | 'legal'
+  | 'blog'
+  | 'kept'
+  | 'insurance'
 
 const LOADER = (projectId: string) =>
   `(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};` +
