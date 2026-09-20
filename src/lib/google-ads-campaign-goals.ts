@@ -72,6 +72,13 @@ export interface StandardActionRef {
   shouldBid: boolean
   /** Present when the account really has this action today. */
   actionId?: string
+  /**
+   * The action's own `primary_for_goal`. False excludes it from bidding
+   * "regardless of their customer conversion goal or campaign conversion
+   * goal" — Google's words — so a goal being biddable is only half the
+   * question. Custom goals are the documented exception and ignore it.
+   */
+  primaryForGoal: boolean
 }
 
 /**
@@ -92,12 +99,15 @@ export function standardRefsFrom(audit: ConversionAudit): StandardActionRef[] {
       goalKey: `${spec.category}~${spec.origin}`,
       shouldBid: spec.biddable,
       actionId: exists ? finding?.actionId : undefined,
+      // Omitted means Primary; only an explicit false excludes the action.
+      primaryForGoal: finding?.primaryForGoal !== false,
       exists,
     }
   })
     .filter((r) => r.exists)
-    .map(({ key, name, goalKey, shouldBid, actionId }) => ({
+    .map(({ key, name, goalKey, shouldBid, actionId, primaryForGoal }) => ({
       key,
+      primaryForGoal,
       name,
       goalKey,
       shouldBid,
@@ -264,9 +274,15 @@ export function evaluateCampaignGoals(input: {
       level === 'CAMPAIGN' ? perCampaign.get(campaignId) || new Set<string>() : customerBiddable
 
     for (const ref of refs) {
+      /* THE ACTION'S OWN SWITCH COUNTS TOO. A goal can be biddable while the
+         action inside it is set to Secondary, which is what the Ads UI does
+         when somebody marks one action Secondary — and without this the
+         audit reports that action as bidding and tells the operator to undo
+         a setting they made correctly. Custom goals are the documented
+         exception: they ignore `primary_for_goal` entirely. */
       const bids = customGoal
         ? !!ref.actionId && customGoal.actionIds.has(ref.actionId)
-        : biddableKeys.has(ref.goalKey)
+        : biddableKeys.has(ref.goalKey) && ref.primaryForGoal
       if (bids) bidding.push(ref.name)
       if (ref.shouldBid && !bids) ignored.push(ref.name)
       if (!ref.shouldBid && bids) premature.push(ref.name)

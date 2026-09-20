@@ -180,6 +180,12 @@ export interface ConversionFinding {
   /** The action this finding is about, when one was matched. */
   actionId?: string
   actionName?: string
+  /**
+   * The ACTION's own bidding switch. False takes it out of bidding whatever
+   * the goal says, so anything reasoning about what drives Smart Bidding
+   * needs this alongside the goal — see the note at the goal comparison.
+   */
+  primaryForGoal?: boolean
   /** What to do, in the admin's words. */
   fix?: string
   /** Each setting that disagrees with the standard. */
@@ -221,6 +227,16 @@ interface RawAction {
   countingType: string
   clickLookbackDays: number
   callSeconds: number
+  /**
+   * The ACTION's own bidding switch, which is not the goal's.
+   *
+   * `false` takes the action out of bidding whatever its goal says — Google's
+   * words: "not biddable for all campaigns regardless of their customer
+   * conversion goal or campaign conversion goal". Omitted means true, the
+   * usual protobuf-drops-defaults rule that `biddable` already needs going the
+   * other way.
+   */
+  primaryForGoal: boolean
 }
 
 const str = (v: unknown): string => (v === null || v === undefined ? '' : String(v))
@@ -247,6 +263,9 @@ function readActions(rows: Record<string, unknown>[]): RawAction[] {
       countingType: str(a.countingType),
       clickLookbackDays: num(a.clickThroughLookbackWindowDays),
       callSeconds: num(a.phoneCallDurationSeconds),
+      // Omitted means TRUE here, the opposite default from `biddable`: false
+      // is the non-default value, so it is the one protobuf actually sends.
+      primaryForGoal: (a.primaryForGoal ?? (a as { primary_for_goal?: unknown }).primary_for_goal) !== false,
     }
   })
 }
@@ -271,7 +290,8 @@ export async function auditConversionSetup(
             conversion_action.origin,
             conversion_action.counting_type,
             conversion_action.click_through_lookback_window_days,
-            conversion_action.phone_call_duration_seconds
+            conversion_action.phone_call_duration_seconds,
+            conversion_action.primary_for_goal
      FROM conversion_action`
   )
   if (!listed.ok) return listed
@@ -412,6 +432,7 @@ export function compareToStandard(
       state: differences.length ? ('settings' as const) : ('ok' as const),
       actionId: matched.id,
       actionName: matched.name,
+      primaryForGoal: matched.primaryForGoal,
       differences,
       fix: differences.length ? `Open ${spec.name} and correct: ${differences.join(' ')}` : undefined,
     }
@@ -427,15 +448,41 @@ export function compareToStandard(
       // a missing key means secondary, not unknown.
       biddable.set(`${str(g.category)}~${str(g.origin)}`, g.biddable === true)
     }
+    /* TWO SWITCHES, AND READING ONLY ONE OF THEM MADE A FALSE CLAIM.
+       Biddability is per CATEGORY~ORIGIN goal, which is why the goals are read
+       at all — but the ACTION carries its own `primary_for_goal`, and Google is
+       explicit that false there takes the action out of bidding "regardless of
+       their customer conversion goal or campaign conversion goal". So an
+       account can have PURCHASE~WEBSITE biddable and AGMP Sale still excluded,
+       which is exactly what the Ads UI shows when somebody sets that action to
+       Secondary. This reported the goal and NAMED THE ACTION — "AGMP Sale …
+       should be Secondary" about an action that already was, which is the
+       queue telling an operator to undo something they had done correctly.
+
+       The question is therefore whether the ACTION drives bidding, which needs
+       both to be true. (The documented exception is a campaign using a CUSTOM
+       conversion goal, which ignores `primary_for_goal`; campaign-level goals
+       are audited separately in google-ads-campaign-goals.ts.) */
     for (const spec of CONVERSION_STANDARD) {
       const key = `${spec.category}~${spec.origin}`
-      const is = biddable.get(key)
-      if (is === undefined) continue
-      if (is !== spec.biddable) {
+      const goalBiddable = biddable.get(key)
+      if (goalBiddable === undefined) continue
+      const matched = actions.find((a) => a.name.trim().toLowerCase() === spec.name.toLowerCase())
+      // No action to speak about: the goal alone says nothing an operator can
+      // act on, and the missing action is already reported above.
+      if (!matched) continue
+      const drivesBidding = goalBiddable && matched.primaryForGoal
+
+      if (spec.biddable && !drivesBidding) {
         goalIssues.push(
-          spec.biddable
+          matched.primaryForGoal
             ? `${spec.name}: its goal (${key}) is Secondary — it should be Primary, or bidding ignores it.`
-            : `${spec.name}: its goal (${key}) is Primary — it should be Secondary until this shop has the volume for value bidding.`
+            : `${spec.name}: the action itself is set to Secondary, so bidding ignores it. Open the action and set it back to Primary.`
+        )
+      } else if (!spec.biddable && drivesBidding) {
+        goalIssues.push(
+          `${spec.name}: it is driving bidding — its goal (${key}) is Primary and the action is Primary. ` +
+            `Set the ACTION to Secondary until this shop has the volume for value bidding; leaving the goal alone keeps the other actions in it biddable.`
         )
       }
     }

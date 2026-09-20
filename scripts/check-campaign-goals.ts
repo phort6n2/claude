@@ -32,6 +32,7 @@ const LEAD_FORM: StandardActionRef = {
   goalKey: 'SUBMIT_LEAD_FORM~WEBSITE',
   shouldBid: true,
   actionId: '7748136217',
+  primaryForGoal: true,
 }
 const WEBSITE_CALL: StandardActionRef = {
   key: 'website-call',
@@ -39,6 +40,7 @@ const WEBSITE_CALL: StandardActionRef = {
   goalKey: 'PHONE_CALL_LEAD~WEBSITE',
   shouldBid: true,
   actionId: '7748136300',
+  primaryForGoal: true,
 }
 const CALL_FROM_ADS: StandardActionRef = {
   key: 'call-from-ads',
@@ -46,6 +48,7 @@ const CALL_FROM_ADS: StandardActionRef = {
   goalKey: 'PHONE_CALL_LEAD~CALL_FROM_ADS',
   shouldBid: true,
   actionId: '7073468340',
+  primaryForGoal: true,
 }
 const SALE: StandardActionRef = {
   key: 'sale',
@@ -53,6 +56,9 @@ const SALE: StandardActionRef = {
   goalKey: 'PURCHASE~WEBSITE',
   shouldBid: false,
   actionId: '7748140000',
+  // Primary on the action: the fixtures exercise the GOAL being wrong, so the
+  // action's own switch is left on. The case where it is off is below.
+  primaryForGoal: true,
 }
 
 /** snake_case, exactly as the live account returned them. */
@@ -317,6 +323,50 @@ check(
   'an unreadable custom goal is reported as unknown, never as fine',
   customUnknown.problems.length === 1 && /could not be read/.test(customUnknown.problems[0].problem || '')
 )
+
+/* THE ACTION'S OWN SWITCH, which this used to ignore entirely. A campaign can
+   inherit a biddable PURCHASE~WEBSITE goal while AGMP Sale is set to Secondary
+   on the action — Google excludes it from bidding "regardless of their
+   customer conversion goal or campaign conversion goal", so reporting it as
+   bidding told an operator to undo a setting they had made correctly. */
+{
+  const secondaryAction = { ...SALE, primaryForGoal: false }
+  const withRefs = (refs: StandardActionRef[]) =>
+    evaluateCampaignGoals({
+      refs,
+      configRows: [
+        {
+          campaign: { id: '1', name: 'Inheriting', advertisingChannelType: 'SEARCH' },
+          conversionGoalCampaignConfig: { campaign: 'x/1', goalConfigLevel: 'CUSTOMER' },
+        },
+      ],
+      campaignGoalRows: [],
+      // Every account default biddable, including PURCHASE~WEBSITE — MAG's
+      // real shape, and the one that produced the false claim.
+      customerGoalRows: [
+        'SUBMIT_LEAD_FORM~WEBSITE',
+        'PHONE_CALL_LEAD~WEBSITE',
+        'PHONE_CALL_LEAD~CALL_FROM_ADS',
+        'PURCHASE~WEBSITE',
+      ].map((k) => ({
+        customerConversionGoal: {
+          category: k.split('~')[0],
+          origin: k.split('~')[1],
+          biddable: true,
+        },
+      })),
+    })
+  const off = withRefs([LEAD_FORM, WEBSITE_CALL, CALL_FROM_ADS, secondaryAction])
+  check(
+    'an action set Secondary is not reported as bidding, even under a biddable goal',
+    off.problems.every((p) => !(p.premature || []).includes('AGMP Sale'))
+  )
+  const on = withRefs([LEAD_FORM, WEBSITE_CALL, CALL_FROM_ADS, SALE])
+  check(
+    'and with the action Primary it still is',
+    on.problems.some((p) => (p.premature || []).includes('AGMP Sale'))
+  )
+}
 
 console.log(bad === 0 ? '\nAll campaign-goal cases pass.' : `\n${bad} case(s) wrong.`)
 process.exit(bad === 0 ? 0 : 1)
