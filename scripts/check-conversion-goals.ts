@@ -141,7 +141,7 @@ console.log('\nThe three that SHOULD bid')
       [goal('SUBMIT_LEAD_FORM', 'WEBSITE', true)]
     ).goalIssues
   )
-  if (actionOff.length === 1 && /action itself is set to Secondary/.test(actionOff[0]))
+  if (actionOff.length === 1 && /ACTION itself is set to Secondary/.test(actionOff[0]))
     pass('an action switched off under a Primary goal is caught')
   else fail(`missed an action excluded from bidding: ${JSON.stringify(actionOff)}`)
 
@@ -153,9 +153,102 @@ console.log('\nThe three that SHOULD bid')
       [goal('SUBMIT_LEAD_FORM', 'WEBSITE')]
     ).goalIssues
   )
-  if (goalOff.length === 1 && /its goal .* is Secondary/.test(goalOff[0]))
+  if (goalOff.length === 1 && /Its GOAL, .* is not an account-default goal/.test(goalOff[0]))
     pass('a Secondary goal under a Primary action is caught')
   else fail(`missed a non-biddable goal: ${JSON.stringify(goalOff)}`)
+}
+
+console.log('\nAGS, verbatim: BOTH call goals Secondary while both actions read Primary')
+{
+  /* THE FINDING WAS CORRECT AND WAS REPORTED AS A BUG, which is the failure
+     this section exists to prevent. Read off customer 6109211627: both call
+     actions carry `primary_for_goal: true`, so the conversion actions table
+     shows them as "Primary action" — and PHONE_CALL_LEAD~WEBSITE and
+     PHONE_CALL_LEAD~CALL_FROM_ADS are both absent from the biddable goals, at
+     customer level and on all six enabled campaigns. Every word of "its goal
+     is Secondary" was true, and the only screen it named was the one showing
+     the opposite word.
+
+     So what is asserted here is not the verdict — that never changed — but
+     that the sentence cannot be read as contradicting the actions table. */
+  const CALLS = ['AGMP Website Call', 'AGMP Call From Ads']
+  const issues = compareToStandard(
+    '6109211627',
+    [
+      action('AGMP Lead Form', 'SUBMIT_LEAD_FORM', 'WEBSITE', {
+        primaryForGoal: true,
+        includeInConversionsMetric: true,
+      }),
+      // Verbatim shape: primary_for_goal true, and Google excluding them from
+      // the Conversions column — its own derived answer to the same question.
+      action('AGMP Website Call', 'PHONE_CALL_LEAD', 'WEBSITE', {
+        primaryForGoal: true,
+        includeInConversionsMetric: false,
+      }),
+      action('AGMP Call From Ads', 'PHONE_CALL_LEAD', 'CALL_FROM_ADS', {
+        primaryForGoal: true,
+        includeInConversionsMetric: false,
+      }),
+    ],
+    [
+      goal('SUBMIT_LEAD_FORM', 'WEBSITE', true),
+      goal('PHONE_CALL_LEAD', 'WEBSITE'),
+      goal('PHONE_CALL_LEAD', 'CALL_FROM_ADS'),
+    ]
+  ).goalIssues
+
+  for (const name of CALLS) {
+    const line = issues.find((i) => i.startsWith(name))
+    if (!line) {
+      fail(`${name}: no finding at all — the call goals really are not biddable`)
+      continue
+    }
+    // The contradiction has to be answered IN the sentence, before the
+    // operator can open the actions table and find the opposite word.
+    if (/which is set to Primary and should stay that way/.test(line)) {
+      pass(`${name}: says the action's "Primary action" label is correct and not the fault`)
+    } else fail(`${name}: leaves the actions table contradicting it — "${line}"`)
+
+    if (/GOAL/.test(line)) pass(`${name}: names WHICH switch is wrong`)
+    else fail(`${name}: does not distinguish the goal's switch from the action's`)
+
+    // The enum is not a word on any screen. A readable goal name is what an
+    // operator can search the interface for.
+    if (/"Phone call leads"/.test(line)) pass(`${name}: names the goal as the UI names it`)
+    else fail(`${name}: only names the enum: "${line}"`)
+
+    // A finding an operator can verify in two seconds beats one they have to
+    // take on trust, and this is Google's own arithmetic agreeing with ours.
+    if (/excluded from the Conversions column/.test(line)) {
+      pass(`${name}: cites the Conversions column as corroboration`)
+    } else fail(`${name}: omits the one fact that settles it on screen`)
+  }
+
+  // The form IS biddable here and must stay silent — being too eager would
+  // bury the two real findings among three.
+  if (!issues.some((i) => i.startsWith('AGMP Lead Form'))) {
+    pass('AGMP Lead Form, correctly biddable, files nothing')
+  } else fail('fired on the one action that is set up correctly')
+}
+
+console.log('\nThe Conversions-column clause appears only when it AGREES')
+{
+  /* It is corroboration, never the verdict: `include_in_conversions_metric`
+     was independently settable in older accounts, so quoting it when it
+     disagrees would put a false sentence inside a true finding. */
+  const line = compareToStandard(
+    '123',
+    [
+      action('AGMP Website Call', 'PHONE_CALL_LEAD', 'WEBSITE', {
+        primaryForGoal: true,
+        includeInConversionsMetric: true,
+      }),
+    ],
+    [goal('PHONE_CALL_LEAD', 'WEBSITE')]
+  ).goalIssues[0]
+  if (line && !/Conversions column/.test(line)) {
+    pass('an action still counted in Conversions is not claimed to be excluded')
+  } else fail(`claimed an exclusion that is not there: ${line}`)
 }
 
 console.log('\nNo action, nothing to say about its goal')

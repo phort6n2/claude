@@ -146,8 +146,23 @@ export interface CampaignGoalReport {
 
 const CAMPAIGN_FIX =
   'Fix it on the campaign: Campaign → Settings → Conversion goals (this campaign carries its own set, so the account default does not reach it).'
+/* The grouping is named as well as the screen. Menu labels move; the split
+   between account-default goals and everything else is the thing an operator
+   can find whatever it is called that month. */
 const CUSTOMER_FIX =
-  'This campaign follows the account defaults, so the fix is at Goals → Conversions → Settings — and it moves every other campaign that follows them too.'
+  'This campaign follows the account defaults, so the fix is at Goals → Conversions → Summary: the goal is sitting under "Other available goals" and has to be set as an account-default goal — which moves every other campaign that follows the defaults too.'
+
+/* THE WORD "SECONDARY" POINTS AT A SCREEN THAT SAYS "PRIMARY", so it cannot
+   be left to stand on its own. Biddability is the GOAL's setting; the
+   conversion actions table shows the ACTION's `primary_for_goal` in a column
+   also labelled Primary/Secondary. On AGS both call actions read "Primary
+   action" while their goals are not account-default goals — every word true,
+   and the report reads as wrong. Same sentence, same disambiguation, as the
+   account-level audit next door. */
+const GOAL_NOT_ACTION =
+  'That is the GOAL\'s setting, not the action\'s — the conversion action reads "Primary action" in the actions table, and that is correct; leave it.'
+const ACTION_NOT_GOAL =
+  'The ACTION itself is also set to Secondary, which excludes it from bidding whatever the goal says, so that switch has to be thrown too.'
 
 /**
  * The comparison, with no network in it.
@@ -289,9 +304,16 @@ export function evaluateCampaignGoals(input: {
     }
 
     if (ignored.length) {
+      /* Which switch is wrong decides which sentence is honest. An action
+         whose own `primary_for_goal` is false is genuinely Secondary on the
+         actions table; one whose is true reads "Primary action" there, and
+         saying "it is Secondary" without saying WHICH Secondary is how a
+         correct finding gets reported as a bug. */
+      const anyActionOff = refs.some((r) => ignored.includes(r.name) && !r.primaryForGoal)
       problem =
         `${ignored.join(', ')} ${ignored.length === 1 ? 'is' : 'are'} measured on this campaign and not bid on — ` +
-        `${ignored.length === 1 ? 'its goal is' : 'their goals are'} Secondary here, so Smart Bidding optimises as if ${ignored.length === 1 ? 'that lead' : 'those leads'} never happened. ${fixWhere}`
+        `${ignored.length === 1 ? 'its goal is' : 'their goals are'} not biddable here, so Smart Bidding optimises as if ${ignored.length === 1 ? 'that lead' : 'those leads'} never happened. ` +
+        `${anyActionOff ? ACTION_NOT_GOAL : GOAL_NOT_ACTION} ${fixWhere}`
     } else if (premature.length) {
       problem = `${premature.join(', ')} is Primary on this campaign. The standard holds it Secondary until this shop has the volume for value bidding — bidding to it now makes the bidding worse, not better. ${fixWhere}`
     }

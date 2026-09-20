@@ -1214,6 +1214,38 @@ action, so two lead actions in one category cannot be told apart by bidding.
 - The audit **reads only**, on the Advertising tab per client and at
   `/api/admin/google-ads/conversion-audit` for all of them. An audit that
   fixes things is one nobody can run to find out what is wrong.
+- **"SECONDARY" IS TWO DIFFERENT SETTINGS, AND THE WORD IS ON BOTH SCREENS.**
+  `customer_conversion_goal.biddable` is the GOAL's; `conversion_action
+  .primary_for_goal` is the ACTION's, shown in the conversion actions table as
+  "Primary action". Either one off takes the action out of bidding, and the
+  two are fixed in different places. A finding that only says "Secondary"
+  therefore points at a screen that may say the opposite word — which is
+  exactly what happened: AGS's audit reported *"AGMP Call From Ads: its goal
+  (PHONE_CALL_LEAD~CALL_FROM_ADS) is Secondary"*, every word of it true
+  (verified live — both call goals non-biddable at customer level and on all
+  six enabled campaigns), and the operator opened the actions table, read
+  "Primary action" against that very action, and filed it as a bug. **The
+  logic was right and the sentence was unreadable**, which costs the same
+  thing: a queue nobody believes. So each finding names WHICH switch it means
+  before the operator can find the one contradicting it, says the correctly-set
+  switch is correct and to leave it, and names the screen the wrong one is on
+  (`goalLabel()` for the goal in the UI's own words, never the bare enum).
+  Both halves do it — `google-ads-conventions.ts` and
+  `google-ads-campaign-goals.ts` — and the campaign one picks its sentence
+  from which switch is actually off, because telling somebody their action
+  "reads Primary and is correct" about one they set Secondary is the same
+  false sentence pointing the other way.
+- **`include_in_conversions_metric` is quoted as CORROBORATION, never as the
+  verdict.** Across all thirteen live actions in AGS's account it equalled
+  `goal biddable && primary_for_goal` exactly — Google's own derived answer to
+  the question the audit computes — so the finding can add "this is excluded
+  from your Conversions column", which the operator can check in two seconds
+  on the screen they are already looking at. It was independently settable in
+  older accounts, so the clause is emitted ONLY when it agrees; a disagreement
+  is a curiosity, and the verdict stays with the two switches that decide
+  bidding. `scripts/check-conversion-goals.ts` holds AGS's shape verbatim and
+  asserts both — that the clause appears, and that it does not appear when the
+  action really is still counted.
 - **The setup STEPS are a leaf module** (`google-ads-conversion-setup.ts`,
   importing only the names) because `google-ads-conventions.ts` reaches the
   API and a client component cannot import it. That is why the "Booked jobs

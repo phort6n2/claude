@@ -202,7 +202,17 @@ const inheritsBad = inherits(['PHONE_CALL_LEAD~CALL_FROM_ADS'])
 check(
   'inheriting a Secondary default is flagged, and the fix names the account',
   inheritsBad.problems.length === 1 &&
-    /Goals → Conversions → Settings/.test(inheritsBad.problems[0].problem || ''),
+    /account-default goal/.test(inheritsBad.problems[0].problem || ''),
+  inheritsBad.problems[0]?.problem || ''
+)
+/* THE SENTENCE HAS TO SURVIVE THE OPERATOR OPENING THE ACTIONS TABLE. On AGS
+   both call actions read "Primary action" there while their goals are not
+   account-default goals — so "its goal is not biddable" is true and looks
+   flatly wrong next to the screen, and was reported as a bug. Naming which of
+   the two switches is meant is what keeps a correct finding readable. */
+check(
+  'and says which switch — the goal, not the action that reads Primary',
+  /GOAL's setting, not the action's/.test(inheritsBad.problems[0]?.problem || ''),
   inheritsBad.problems[0]?.problem || ''
 )
 
@@ -365,6 +375,19 @@ check(
   check(
     'and with the action Primary it still is',
     on.problems.some((p) => (p.premature || []).includes('AGMP Sale'))
+  )
+
+  /* THE DISAMBIGUATION CUTS BOTH WAYS. Telling an operator their action
+     "reads Primary and is correct" about an action they have set to Secondary
+     is the same false sentence in the other direction — and it would send
+     them to the goals screen when the fix is on the action. */
+  const formOff = withRefs([{ ...LEAD_FORM, primaryForGoal: false }])
+  const line = formOff.problems[0]?.problem || ''
+  check(
+    'an ignored action that is ITSELF Secondary is not described as reading Primary',
+    /ACTION itself is also set to Secondary/.test(line) &&
+      !/reads "Primary action"/.test(line),
+    line
   )
 }
 

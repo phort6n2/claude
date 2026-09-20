@@ -237,7 +237,62 @@ interface RawAction {
    * other way.
    */
   primaryForGoal: boolean
+  /**
+   * Whether Google counts this action in the "Conversions" column, as opposed
+   * to "All conversions" only.
+   *
+   * Read for ONE purpose: to corroborate a finding in words the operator can
+   * check in two seconds on the screen they are already looking at. Across all
+   * thirteen live actions in the account this was written against, it equalled
+   * `goal biddable && primary_for_goal` exactly — Google's own derived answer
+   * to the same question this audit computes. It is quoted, never trusted as
+   * the source: it was independently settable in older accounts, so a
+   * disagreement is a curiosity rather than a verdict, and the verdict stays
+   * with the two switches that actually decide bidding.
+   */
+  countedInConversions: boolean
 }
+
+/**
+ * A goal key in the words the Google Ads interface uses for it.
+ *
+ * `PHONE_CALL_LEAD~CALL_FROM_ADS` is not a string anybody can search for in
+ * the UI, and a finding that only names the enum sends the operator looking
+ * for a word that is not on any screen.
+ */
+export function goalLabel(category: string, origin: string): string {
+  const categories: Record<string, string> = {
+    SUBMIT_LEAD_FORM: 'Submit lead form',
+    PHONE_CALL_LEAD: 'Phone call leads',
+    PURCHASE: 'Purchases',
+    CONTACT: 'Contact',
+    CONVERTED_LEAD: 'Converted lead',
+    REQUEST_QUOTE: 'Request quote',
+    BOOK_APPOINTMENT: 'Book appointment',
+  }
+  const origins: Record<string, string> = {
+    WEBSITE: 'website',
+    CALL_FROM_ADS: 'calls from ads',
+    GOOGLE_HOSTED: 'Google-hosted',
+    STORE: 'store',
+    APP: 'app',
+  }
+  // Unknown enums fall through to the raw value rather than to a blank: a
+  // category Google adds next year must still produce a readable sentence.
+  const name = categories[category] || category
+  const where = origins[origin] || origin
+  return `"${name}" (${where})`
+}
+
+/**
+ * Where an account-default goal is changed.
+ *
+ * The GROUPING is named as well as the menu item, because menu wording moves
+ * and the two-column split does not — a finding whose only instruction is a
+ * label that has since been renamed is a finding nobody can act on.
+ */
+const ACCOUNT_GOAL_SCREEN =
+  'Goals → Conversions → Summary, where it is listed under "Other available goals" rather than "Account-default goals"'
 
 const str = (v: unknown): string => (v === null || v === undefined ? '' : String(v))
 const num = (v: unknown): number => {
@@ -266,6 +321,12 @@ function readActions(rows: Record<string, unknown>[]): RawAction[] {
       // Omitted means TRUE here, the opposite default from `biddable`: false
       // is the non-default value, so it is the one protobuf actually sends.
       primaryForGoal: (a.primaryForGoal ?? (a as { primary_for_goal?: unknown }).primary_for_goal) !== false,
+      // Omitted means TRUE, the same direction as primaryForGoal: an action
+      // excluded from the Conversions column is the non-default state.
+      countedInConversions:
+        (a.includeInConversionsMetric ??
+          (a as { include_in_conversions_metric?: unknown }).include_in_conversions_metric) !==
+        false,
     }
   })
 }
@@ -291,7 +352,8 @@ export async function auditConversionSetup(
             conversion_action.counting_type,
             conversion_action.click_through_lookback_window_days,
             conversion_action.phone_call_duration_seconds,
-            conversion_action.primary_for_goal
+            conversion_action.primary_for_goal,
+            conversion_action.include_in_conversions_metric
      FROM conversion_action`
   )
   if (!listed.ok) return listed
@@ -474,10 +536,33 @@ export function compareToStandard(
       const drivesBidding = goalBiddable && matched.primaryForGoal
 
       if (spec.biddable && !drivesBidding) {
+        /* THE FINDING HAS TO SURVIVE THE OPERATOR OPENING THE SCREEN IT IS
+           ABOUT, and the first version of this did not. "its goal
+           (PHONE_CALL_LEAD~CALL_FROM_ADS) is Secondary" is TRUE — verified
+           against AGS's live account, where both call goals are non-biddable
+           at customer level and on all six enabled campaigns — but the
+           operator's next move is to open the conversion actions table, where
+           the row for that very action reads "Primary action", because
+           `primary_for_goal` is a DIFFERENT switch and it is set correctly.
+           One line saying Secondary, one screen saying Primary, and the
+           report is the thing that looks broken. It was reported as a bug.
+
+           So the sentence names which of the two switches it means BEFORE the
+           operator can find the one that contradicts it, says the action is
+           right and should be left alone, and names the screen where the goal
+           actually lives — which is not the one the action is on. */
+        const label = goalLabel(spec.category, spec.origin)
+        const counted = matched.countedInConversions
+          ? ''
+          : ` Google is already showing this: ${spec.name} is excluded from the Conversions column and counted under All conversions only.`
         goalIssues.push(
           matched.primaryForGoal
-            ? `${spec.name}: its goal (${key}) is Secondary — it should be Primary, or bidding ignores it.`
-            : `${spec.name}: the action itself is set to Secondary, so bidding ignores it. Open the action and set it back to Primary.`
+            ? `${spec.name}: bidding ignores it — and NOT because of the action, which is set to Primary and should stay that way. ` +
+              `Its GOAL, ${label}, is not an account-default goal here, and the goal is the switch Smart Bidding reads. ` +
+              `Set it as an account-default goal in ${ACCOUNT_GOAL_SCREEN} (${key}).${counted}`
+            : `${spec.name}: the ACTION itself is set to Secondary, which takes it out of bidding whatever its goal says. ` +
+              `Open the action — Goals → Conversions → ${spec.name} → mark it as a primary action. ` +
+              `Its goal, ${label}, is not the problem here.${counted}`
         )
       } else if (!spec.biddable && drivesBidding) {
         goalIssues.push(
