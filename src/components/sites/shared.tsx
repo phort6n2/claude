@@ -1100,136 +1100,84 @@ function warrantyStatesTerms(text: string | null | undefined): boolean {
  * the landing-template rules exist to prevent.
  */
 /**
- * The warranty badge — an ORIGINAL shield drawn in SVG, in the spirit of the
- * gold-shield badges auto glass sites love, and deliberately not any
- * particular one of them: those are other businesses' artwork, and the
- * popular ones hardcode "LIFETIME", which would pin a lifetime claim on
- * every shop including the ones whose warranty says nothing of the sort.
- * This one renders the shop's OWN warranty title, so the badge can never
- * out-claim the text beside it. No stars — five gold stars on a badge read
- * as a rating, and ratings here come only from the live Google feed.
+ * The warranty terms, as a document rather than as a seal.
+ *
+ * WHAT WAS HERE AND WHY IT WENT. A hand-drawn gold-rimmed shield with the
+ * shop's warranty title inside it and a ribbon reading WARRANTY, in the
+ * spirit of the badges auto glass sites love. Two things were wrong with it.
+ * It was skeuomorphic clipart on a page that is otherwise flat, soft-cornered
+ * and sans-serif, so it read as pasted on from somewhere else — and it said
+ * the warranty's name a second time, three inches under the H2 that already
+ * said it. A seal whose only content is a heading repeated is decoration
+ * pretending to be certification.
+ *
+ * THE RULE THAT OUTLIVES IT: whatever marks this band, it may never out-claim
+ * the text beside it. No stars, which read as a rating nobody gave; no
+ * hardcoded "LIFETIME", which would pin that claim on shops whose warranty
+ * says nothing of the sort; and nothing lifted from another business's
+ * artwork. The shield icon here is the same lucide mark the rest of the site
+ * uses and asserts nothing on its own.
+ *
+ * THE LAYOUT WAS THE OTHER HALF. A two-column grid, `items-center`, with the
+ * heading in the left column and the card in the right: on a wide screen the
+ * left column held three lines of text against a card six times as tall, so
+ * most of the band was empty space with a sticker floating in it. Every other
+ * band on this site puts `SectionHead` full width and the content underneath,
+ * which is what this does now — the terms get the whole width and a readable
+ * measure instead of a 45-character gutter.
+ *
+ * Rendered only when warranty text exists, and always in full: a warranty
+ * headline without its terms is the § 2 failure this band exists to prevent.
  */
-function WarrantyBadge({ title }: { title: string }) {
-  // "Lifetime Workmanship Warranty" → shield says "LIFETIME WORKMANSHIP",
-  // ribbon says "WARRANTY". A title that IS just "Warranty" keeps a generic
-  // shield line.
-  const withoutWord = title.replace(/\bwarranty\b/gi, '').replace(/\s+/g, ' ').trim()
-  const shieldWords = (withoutWord || 'Our').toUpperCase().split(' ').slice(0, 3)
-  return (
-    <svg viewBox="0 0 240 230" role="img" aria-label={title} className="w-32 md:w-36 h-auto shrink-0 mx-auto">
-      {/* Gold rim */}
-      <path
-        d="M120 6 L214 34 V118 C214 168 174 204 120 222 C66 204 26 168 26 118 V34 Z"
-        fill="#d4a437"
-      />
-      <path
-        d="M120 16 L204 41 V117 C204 162 168 195 120 211 C72 195 36 162 36 117 V41 Z"
-        fill="#f3cd6b"
-      />
-      {/* Dark face, brand-tinted. Fixed navy on a page with no navy in it was
-          the most off-brand object on the site; --dark is the same near-black
-          the page's own dark bands use. The RIM stays metal: rim, face and
-          ribbon are three different roles, and painting two of them the brand
-          colour collapses the seal into a monochrome sticker. */}
-      <path
-        d="M120 24 L196 47 V116 C196 157 163 187 120 202 C77 187 44 157 44 116 V47 Z"
-        fill="var(--dark, #1c2431)"
-      />
-      {/* Check mark where the reference put stars — a mark of assurance,
-          not a rating */}
-      <path
-        d="M104 62 l10 10 l22 -22"
-        stroke="var(--brand-light, #f3cd6b)"
-        strokeWidth="7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      {shieldWords.map((word, i) => (
-        <text
-          key={word + i}
-          x="120"
-          y={104 + i * 24}
-          textAnchor="middle"
-          fill="#ffffff"
-          fontFamily="inherit"
-          fontWeight="800"
-          fontSize={word.length >= 10 ? 17 : 22}
-          letterSpacing="0.5"
-          // Long words squeeze to the shield's face instead of escaping it —
-          // "WORKMANSHIP" was clipping the rim.
-          {...(word.length >= 10 ? { textLength: 140, lengthAdjust: 'spacingAndGlyphs' } : {})}
-        >
-          {word}
-        </text>
-      ))}
-      {/* Ribbon */}
-      <path d="M14 158 L54 150 V186 L14 194 L28 176 Z" fill="var(--cta-b, #991b1b)" />
-      <path d="M226 158 L186 150 V186 L226 194 L212 176 Z" fill="var(--cta-b, #991b1b)" />
-      <rect x="40" y="148" width="160" height="40" rx="4" fill="var(--cta, #b91c1c)" />
-      {/* The ribbon is painted --cta, so this is the one text on the badge
-          that has to follow it: white on a yellow ribbon measured 1.17:1. */}
-      <text
-        x="120"
-        y="175"
-        textAnchor="middle"
-        fill="var(--on-cta, #ffffff)"
-        fontFamily="inherit"
-        fontWeight="800"
-        fontSize="24"
-        letterSpacing="1.5"
-      >
-        WARRANTY
-      </text>
-    </svg>
-  )
-}
-
 export function WarrantyBand({ extras }: { extras: SiteExtras | null }) {
   if (!extras?.warrantyText) return null
   return (
     <section className="bg-[var(--tint)] border-b border-[var(--line)]">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-12 lg:items-center">
-        <div>
-          <Eyebrow>Our warranty</Eyebrow>
-          <h2 className="text-[clamp(1.5rem,1.18rem+1.7vw,2.35rem)] leading-[1.16] font-extrabold tracking-tight text-[var(--tx)] m-0">
-            {extras.warrantyTitle || 'What the warranty covers'}
-          </h2>
-          {/* "In full, right here" is a claim the PLATFORM makes about the
-              shop's text, and it is only true if that text actually defines
-              something. On a live client it headlined "Lifetime Warranty" over
-              two sentences naming no scope, no exclusions and no
-              transferability — a named warranty without its terms, which §2
-              calls out by name, under a line promising the opposite.
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
+        <SectionHead
+          eyebrow="Our warranty"
+          title={extras.warrantyTitle || 'What the warranty covers'}
+          /* "In full, right here" is a claim the PLATFORM makes about the
+             shop's text, and it is only true if that text actually defines
+             something. On a live client it headlined "Lifetime Warranty" over
+             two sentences naming no scope, no exclusions and no
+             transferability — a named warranty without its terms, which § 2
+             calls out by name, under a line promising the opposite.
 
-              The terms themselves can never be written here: inventing
-              "covers leaks and workmanship, non-transferable" for a shop is
-              the fabricated-fact failure the rules exist to prevent. So the
-              lead adapts instead — the strong version only when the shop has
-              genuinely spelled it out, and otherwise a line that is true for
-              everyone. */}
-          <p className="mt-3 mb-0 text-[17px] leading-[1.55] text-[var(--tx2)]">
-            {warrantyStatesTerms(extras.warrantyText)
+             The terms themselves can never be written here: inventing
+             "covers leaks and workmanship, non-transferable" for a shop is
+             the fabricated-fact failure the rules exist to prevent. So the
+             lead adapts instead — the strong version only when the shop has
+             genuinely spelled it out, and otherwise a line that is true for
+             everyone.
+
+             The weaker one used to read "The cover we offer, in our own
+             words", which is the platform talking about its own field rather
+             than the shop talking to a customer: a visitor does not care
+             whose words they are, they care what is covered. */
+          lead={
+            warrantyStatesTerms(extras.warrantyText)
               ? 'In writing, in full, right here — not a claim with the terms hidden somewhere else.'
-              : /* "THIS SHOP … THEIR OWN WORDS" was a lead broker describing a
-                   supplier, on the shop's own page, for all fifteen. The same
-                   third-person slip as "Ask the shop to check" and "the shop
-                   comes to you", missed because those were found by reading a
-                   service-area business's page and this line reads as neutral
-                   until you notice whose site it is on. Fixed to "we", not
-                   gated: it was wrong for every client, not just the one with
-                   no premises. */
-                'The cover we offer, in our own words.'}
-          </p>
-        </div>
-        {/* The badge sits ON the terms card, like a seal on the document it
-            certifies — floating alone in a column it read as a sticker that
-            missed its page. Side by side on desktop, stacked on a phone. */}
-        <div className="bg-white rounded-[20px] border border-[var(--line-card)] shadow-sm p-6 md:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-6">
-          <WarrantyBadge title={extras.warrantyTitle || 'Warranty'} />
-          <p className="m-0 text-[15px] text-[var(--tx2)] leading-relaxed whitespace-pre-line sm:pt-2">
-            {extras.warrantyText}
-          </p>
+              : 'What we stand behind on every job.'
+          }
+        />
+        {/* The same card treatment the quote form uses — a CTA-coloured top
+            rule on white — so the one document on the page that a customer
+            may have to hold us to looks like it belongs to this site. */}
+        {/* CAPPED, because the card IS the measure. Full width with a 72ch
+            paragraph inside it left an empty third down the right-hand side —
+            the same void the two-column layout had, moved inboard. */}
+        <div className="max-w-4xl bg-white rounded-[20px] border-t-4 border-t-[var(--cta)] border border-[var(--line-card)] shadow-sm p-6 sm:p-8 lg:p-10">
+          <div className="flex flex-col gap-5 sm:flex-row sm:gap-7">
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--tint-accent)] text-[var(--brand)]">
+              <ShieldCheck className="h-7 w-7" aria-hidden="true" />
+            </span>
+            {/* Generous leading: the terms are the one block on this page
+                somebody reads end to end rather than skims. */}
+            <p className="m-0 text-[16px] leading-[1.75] text-[var(--tx2)] whitespace-pre-line">
+              {extras.warrantyText}
+            </p>
+          </div>
         </div>
       </div>
     </section>
