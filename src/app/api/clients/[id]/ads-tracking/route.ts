@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
-import { parseCallSnippet, parseLeadSnippet } from '@/lib/ads-snippet'
+import { parseCallSnippet, parseLeadSnippet, isAccountMove } from '@/lib/ads-snippet'
 
 export const dynamic = 'force-dynamic'
 
@@ -98,8 +98,15 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     .findUnique({ where: { clientId: id } })
     .catch(() => null)
 
-  const keepLead = !leadInput && body.clearLead !== true && !!existing
-  const keepCall = !callInput && body.clearCall !== true && !!existing
+  /* MOVING TO A DIFFERENT ADS ACCOUNT CLEARS THE CONVERSIONS — a blank slate
+     is the only honest state once the account changes. The rule, and the
+     three neighbouring cases that must NOT clear, live in `isAccountMove`
+     with the incident that produced them. */
+  const existingAccount = existing?.googleAdsCustomerId || ''
+  const accountMoved = isAccountMove(existingAccount, googleAdsCustomerId)
+
+  const keepLead = !accountMoved && !leadInput && body.clearLead !== true && !!existing
+  const keepCall = !accountMoved && !callInput && body.clearCall !== true && !!existing
 
   const data: {
     conversionId: string | null
@@ -140,13 +147,32 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     if (!parsed.ok || !parsed.value) {
       return NextResponse.json({ error: `Lead snippet: ${parsed.error}` }, { status: 400 })
     }
-    // The same one-account rule the call branch enforces, in the other
-    // direction: a new lead snippet must not orphan a call conversion that
-    // is being kept from a different account.
+    /* The same one-account rule the call branch enforces, in the other
+       direction: a new lead snippet must not orphan a call conversion that is
+       being kept from a different account.
+
+       THIS REFUSAL IS ALMOST ALWAYS AN ACCOUNT MOVE IN PROGRESS. A shop whose
+       Ads account is replaced — a suspension, a billing mess, an agency
+       handover — gets the new account picked on the card, which moves the
+       customer id and leaves both conversion snippets pointing at the old
+       one. The operator then pastes the new lead snippet, the first box on
+       the card, and lands here. The rule is right and the moment is right;
+       what was missing was naming what is actually happening, so the refusal
+       read as the app rejecting a correct snippet rather than as it catching
+       a half-finished move. Pasting BOTH snippets in one save has always
+       worked — both boxes filled means neither old conversion is kept — so
+       the message leads with that. */
     if (keepCall && data.conversionId && data.conversionId !== parsed.value.conversionId) {
       return NextResponse.json(
         {
-          error: `That lead snippet is from a different Ads account (${parsed.value.conversionId}) than the call conversion already saved (${data.conversionId}). Both have to come from the same account — paste a matching call snippet too, or remove the saved call conversion first.`,
+          error:
+            `Moving this shop to a new Ads account? Paste the CALL snippet from ${parsed.value.conversionId} ` +
+            `into the box below and save both together — that replaces the pair in one go. ` +
+            `On its own, this lead snippet (${parsed.value.conversionId}) would leave the saved call ` +
+            `conversion from ${data.conversionId} behind, and one site cannot report to two Ads accounts: ` +
+            `whichever one loses is silently never credited again. ` +
+            `If this shop genuinely has no call conversion any more, press Remove on the "Calls from the ` +
+            `website" row first, then paste this snippet again.`,
         },
         { status: 400 }
       )
@@ -207,6 +233,20 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
 
   return NextResponse.json({
     ok: true,
+    /* The card has to be able to SAY what the move did. A save that silently
+       empties two configured conversions is the same invisible change this
+       whole block exists to stop, just in the other direction — so the clear
+       is reported, with the account it belonged to, and the card repeats it
+       to the operator instead of quietly showing two empty rows. */
+    accountMoved: accountMoved
+      ? {
+          from: existingAccount,
+          to: googleAdsCustomerId,
+          clearedConversionId: existing?.conversionId || null,
+          clearedLead: !!existing?.leadConversionLabel,
+          clearedCall: !!existing?.callConversionLabel,
+        }
+      : null,
     parsed: {
       conversionId: data.conversionId,
       leadConversionLabel: data.leadConversionLabel,

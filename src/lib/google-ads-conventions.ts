@@ -295,6 +295,17 @@ const ACCOUNT_GOAL_SCREEN =
   'Goals → Conversions → Summary, where it is listed under "Other available goals" rather than "Account-default goals"'
 
 const str = (v: unknown): string => (v === null || v === undefined ? '' : String(v))
+
+/**
+ * The digits of a conversion tracking id, however it is spelled.
+ *
+ * The same account is written `AW-715255323` in a pasted snippet and
+ * `"715255323"` by the API — and the API returns it as a STRING, the int64
+ * rule this file already records for the lookback windows. Comparing the two
+ * forms directly is always false, which would report every correctly-tagged
+ * site as tagged for the wrong account.
+ */
+const digitsOf = (v: unknown): string => str(v).replace(/\D/g, '')
 const num = (v: unknown): number => {
   // int64 fields come back as STRINGS in the REST JSON — "30", not 30. A bare
   // === comparison against a number is then always false, which would report
@@ -339,7 +350,12 @@ function readActions(rows: Record<string, unknown>[]): RawAction[] {
  */
 export async function auditConversionSetup(
   customerId: string,
-  options: { offlineConversionActionId?: string | null } = {}
+  options: {
+    offlineConversionActionId?: string | null
+    /** The `AW-…` this client's SITE is tagged with, so the audit can say
+     *  whether the website reports to the account it is reading. */
+    siteConversionId?: string | null
+  } = {}
 ): Promise<{ ok: true; audit: ConversionAudit } | { ok: false; error: string }> {
   const listed = await adsSearch(
     customerId,
@@ -381,11 +397,19 @@ export async function auditConversionSetup(
    * Found because an operator went looking through the Ads UI and came across
    * a settings page nobody had opened.
    */
+  /* The conversion TRACKING id rides along on the same `customer` row, so it
+     costs nothing extra. It is the number in the `AW-…` the site's tag
+     carries, which is the only readable link between the account this audit
+     is reading and the account the website is actually reporting to. See the
+     check that uses it. */
   const callSetting = await adsSearch(
     customerId,
     `SELECT customer.call_reporting_setting.call_reporting_enabled,
             customer.call_reporting_setting.call_conversion_reporting_enabled,
-            customer.call_reporting_setting.call_conversion_action
+            customer.call_reporting_setting.call_conversion_action,
+            customer.conversion_tracking_setting.conversion_tracking_id,
+            customer.conversion_tracking_setting.cross_account_conversion_tracking_id,
+            customer.conversion_tracking_setting.conversion_tracking_status
      FROM customer`
   )
 
@@ -415,6 +439,12 @@ export function compareToStandard(
     offlineConversionActionId?: string | null
     /** The `customer` row carrying call_reporting_setting, when it was read. */
     callSettingRows?: Record<string, unknown>[] | null
+    /**
+     * The `AW-…` this client's SITE is tagged with — `ClientAdsTracking
+     * .conversionId`, as pasted from a snippet. Given, the audit can say
+     * whether the website reports to the account it is reading.
+     */
+    siteConversionId?: string | null
   } = {}
 ): ConversionAudit {
   const all = readActions(actionRows)
@@ -739,6 +769,72 @@ export function compareToStandard(
       const other = all.find((a) => a.id === chosen)
       accountSettings.push(
         `Calls from ads are reporting to ${other ? `"${other.name}"` : `action ${chosen}`}, not ${callSpec.name} (${callFinding.actionId}). Change it at Goals → Conversions → Settings → Call conversion action.`
+      )
+    }
+  }
+
+  /**
+   * IS THE WEBSITE EVEN REPORTING TO THIS ACCOUNT?
+   *
+   * `ClientAdsTracking` holds TWO names for one account — the customer id
+   * picked from a dropdown, and the `AW-…` that arrived inside a pasted
+   * snippet — and NOTHING made them agree. A shop whose account is replaced
+   * (it happens: a suspension, a billing mess, an agency handover) gets the
+   * new customer id set on the card, while the conversion snippets from the
+   * OLD account stay exactly where they were. The site then tags for an
+   * account nobody is looking at, and every form lead and website call it
+   * reports lands there: this audit, the landing-page check, the offline
+   * upload and the monthly report's cost per conversion all interrogate the
+   * NEW account and find a tidy, correct, empty setup. Nothing errors, the
+   * tag loads, the page looks right.
+   *
+   * The only thing that ever noticed was the one-account rule in the save
+   * route, when an operator pasting the new lead snippet was refused by the
+   * old call conversion sitting beside it — which reads as the app being
+   * broken rather than as the app catching a half-finished account move.
+   *
+   * `conversion_tracking_setting.conversion_tracking_id` IS that number:
+   * checked against a live account, customer 6109211627 answers 715255323,
+   * which is the `AW-715255323` its site carries. So this is provable rather
+   * than inferred.
+   *
+   * CROSS-ACCOUNT CONVERSION TRACKING IS THE LEGITIMATE EXCEPTION and firing
+   * on it would be a confident finding about a correct setup. An account whose
+   * conversions are managed by its manager reports to the MANAGER's id, which
+   * arrives as `cross_account_conversion_tracking_id`. Either id is accepted.
+   * Both keys are OMITTED when they do not apply — the same
+   * protobuf-drops-defaults rule `biddable` and `primary_for_goal` already
+   * need — so a missing one is "not this" and never "unknown", and an account
+   * that returns NEITHER is not judged at all.
+   */
+  const siteTag = digitsOf(options.siteConversionId)
+  if (siteTag) {
+    const tracking = (callRow as { customer?: Record<string, unknown> } | undefined)?.customer as
+      | Record<string, unknown>
+      | undefined
+    // REST answers camelCase; rows captured from a protobuf client are
+    // snake_case, and a reader that knows only one of them sees an account
+    // with no tracking id and stays silent about a real mismatch.
+    const setting = (tracking?.conversionTrackingSetting ??
+      tracking?.conversion_tracking_setting) as Record<string, unknown> | undefined
+    const own = digitsOf(setting?.conversionTrackingId ?? setting?.conversion_tracking_id)
+    const cross = digitsOf(
+      setting?.crossAccountConversionTrackingId ?? setting?.cross_account_conversion_tracking_id
+    )
+    const accepted = [own, cross].filter(Boolean)
+
+    // No readable id at all: say nothing. An account that has never had a
+    // conversion action returns none, and "your tag is wrong" about that is a
+    // finding nobody can act on.
+    if (accepted.length && !accepted.includes(siteTag)) {
+      const theirs = own ? `AW-${own}` : `AW-${cross}`
+      accountSettings.push(
+        `THE SITE IS TAGGED FOR A DIFFERENT ACCOUNT. Its conversion snippets report to AW-${siteTag}, ` +
+          `but this account's conversion tracking id is ${theirs}. Every form lead and website call this ` +
+          `site sends is landing in AW-${siteTag}, which is not the account audited here — so the actions ` +
+          `above can all be correct and still receive nothing. Re-paste BOTH snippets from ${theirs} on the ` +
+          `Advertising tab (both at once: a lead snippet on its own is refused while the old call conversion ` +
+          `is still saved).`
       )
     }
   }

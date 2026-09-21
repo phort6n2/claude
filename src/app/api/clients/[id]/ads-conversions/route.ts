@@ -24,7 +24,15 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const tracking = await prisma.clientAdsTracking
     .findUnique({
       where: { clientId: id },
-      select: { googleAdsCustomerId: true, offlineConversionActionId: true },
+      // `conversionId` is the AW- the SITE is tagged with. The audit compares
+      // it against the account's own conversion tracking id, because the two
+      // are separate fields naming one account and nothing else makes them
+      // agree — see the check in google-ads-conventions.ts.
+      select: {
+        googleAdsCustomerId: true,
+        offlineConversionActionId: true,
+        conversionId: true,
+      },
     })
     .catch(() => null)
 
@@ -40,6 +48,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
   const result = await auditConversionSetup(tracking.googleAdsCustomerId, {
     offlineConversionActionId: tracking.offlineConversionActionId,
+    siteConversionId: tracking.conversionId,
   })
   if (!result.ok) {
     return NextResponse.json({ standard: CONVERSION_STANDARD, audit: null, reason: result.error })

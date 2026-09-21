@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
 import { auditConversionSetup } from '@/lib/google-ads-conventions'
+import { LIVE_STATUSES } from '@/lib/site-preview'
 
 export const dynamic = 'force-dynamic'
 // One account is two Google calls; a dozen accounts is the whole budget.
@@ -26,11 +27,23 @@ export async function GET(_request: NextRequest) {
 
   const clients = await prisma.client
     .findMany({
-      where: { status: 'ACTIVE', adsTracking: { googleAdsCustomerId: { not: null } } },
+      /* ONBOARDING IS LIVE — the third module to get this wrong. `=== 'ACTIVE'`
+         skipped every shop onboarded the normal way, because intake approval
+         creates them as ONBOARDING and those sites are up and spending on
+         purpose. So the one sweep that reads every account at once quietly
+         omitted exactly the clients whose setup is newest and least checked.
+         Use LIVE_STATUSES, never an equality check. */
+      where: { status: { in: [...LIVE_STATUSES] }, adsTracking: { googleAdsCustomerId: { not: null } } },
       select: {
         id: true,
         businessName: true,
-        adsTracking: { select: { googleAdsCustomerId: true, offlineConversionActionId: true } },
+        adsTracking: {
+          select: {
+            googleAdsCustomerId: true,
+            offlineConversionActionId: true,
+            conversionId: true,
+          },
+        },
       },
       orderBy: { businessName: 'asc' },
     })
@@ -42,6 +55,7 @@ export async function GET(_request: NextRequest) {
     if (!customerId) continue
     const audit = await auditConversionSetup(customerId, {
       offlineConversionActionId: client.adsTracking?.offlineConversionActionId,
+      siteConversionId: client.adsTracking?.conversionId,
     })
     results.push({
       clientId: client.id,
@@ -55,6 +69,13 @@ export async function GET(_request: NextRequest) {
                 .filter((f) => f.state !== 'ok')
                 .map((f) => `${f.name}: ${f.fix || f.differences.join(' ')}`),
               ...audit.audit.goalIssues,
+              /* accountSettings was left out, so the ONE view that reads every
+                 account at once was blind to the account-level plumbing —
+                 including a site tagged for the wrong account, which is the
+                 fault this sweep is most likely to be the first to see. It
+                 counts against `clean`, so omitting it printed a client as
+                 having problems with nothing listed under them. */
+              ...audit.audit.accountSettings,
             ],
           }
         : { clean: false, problems: [audit.error] }),

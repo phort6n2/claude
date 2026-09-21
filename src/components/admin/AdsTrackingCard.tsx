@@ -394,6 +394,26 @@ export default function AdsTrackingCard({
       if (data.parsed?.bingLeadEventAction) setBingAction(data.parsed.bingLeadEventAction)
       setLeadSnippet('')
       setCallSnippet('')
+      /* An account move clears the conversions from the account being left.
+         That is a bigger thing than "Saved", and the operator has to be told
+         what to do next — otherwise the two rows read as having emptied
+         themselves, which is exactly the silent change this card keeps
+         getting wrong. */
+      const moved = data.accountMoved as {
+        from: string
+        clearedConversionId: string | null
+      } | null
+      if (moved?.clearedConversionId && !data.parsed?.conversionId) {
+        setMessage({
+          ok: true,
+          text:
+            `Account changed. The conversions from ${moved.clearedConversionId} (account ${moved.from}) ` +
+            `have been cleared, because they report to the account you have just left — this shop's site is ` +
+            `now sending nothing to Google Ads. Paste the lead and call snippets from the NEW account below ` +
+            `to start it reporting again.`,
+        })
+        return true
+      }
       setMessage({
         ok: true,
         text:
@@ -417,10 +437,23 @@ export default function AdsTrackingCard({
    * status right here (§6: newer cards autosave with a status line).
    */
   async function saveAccount(next: string) {
+    /* Moving to a different account CLEARS the old conversions server-side —
+       they belong to the account being left, and a tag reporting to an
+       account nobody reads looks configured while crediting nothing. The
+       route decides it, so a curl behaves the same way; this only reports it.
+       Saying nothing would leave the operator looking at two rows that went
+       empty on their own, which is the same invisible change in reverse. */
+    const previous = customerId
     setCustomerId(next)
     setAccountStatus('saving')
     const ok = await save(undefined, next)
     setAccountStatus(ok ? 'saved' : 'failed')
+    if (ok && previous && next && previous !== next) {
+      // Boxes are already blank after a save; this is the blank slate asked
+      // for, and the next paste has nothing to conflict with.
+      setLeadSnippet('')
+      setCallSnippet('')
+    }
     if (ok) setTimeout(() => setAccountStatus(null), 4000)
   }
 

@@ -1213,7 +1213,61 @@ action, so two lead actions in one category cannot be told apart by bidding.
 
 - The audit **reads only**, on the Advertising tab per client and at
   `/api/admin/google-ads/conversion-audit` for all of them. An audit that
-  fixes things is one nobody can run to find out what is wrong.
+  fixes things is one nobody can run to find out what is wrong. That
+  all-clients route filtered `status: 'ACTIVE'` — **the THIRD module to make
+  the ONBOARDING mistake**, after the WRHQ sync and rank tracking — so the one
+  view that reads every account at once omitted exactly the shops whose setup
+  is newest and least checked. It also dropped `accountSettings` from its
+  `problems` list while still counting it against `clean`, so a client could
+  print as having problems with nothing listed under them.
+- **ONE ACCOUNT HAS TWO NAMES HERE, AND NOTHING MADE THEM AGREE.**
+  `ClientAdsTracking.googleAdsCustomerId` is picked from a dropdown;
+  `ClientAdsTracking.conversionId` is the `AW-…` that arrives inside a pasted
+  snippet. A shop whose Ads account is replaced — a suspension, a billing
+  mess, an agency handover — got the new customer id saved while both
+  conversion snippets stayed pointed at the OLD account, so the site reported
+  every form lead and website call to an account nobody reads. Nothing
+  errored: the tag loaded, the page was fine, and this audit, the
+  landing-page check, the offline upload and the monthly report's cost per
+  conversion all interrogated the NEW account and found a tidy, correct,
+  EMPTY setup. The only thing that ever noticed was the one-account rule in
+  the save route, refusing the new lead snippet because the old call
+  conversion sat beside it — which reads as the app rejecting a correct
+  snippet rather than as it catching a half-finished move, and was reported
+  as a bug.
+  - **A MOVE CLEARS THE CONVERSIONS** (`isAccountMove` in `ads-snippet.ts`,
+    read by the save route). They are not stale, they are WRONG — a tag
+    crediting an abandoned account is worse than no tag, because it looks
+    configured — so the operator gets the blank slate and pastes the new pair.
+    **This does not weaken the rule that an empty snippet box means "leave it
+    alone"**: that rule is about INCIDENTAL saves, since the card blanks both
+    boxes after every save. This is an explicit change of account, the one
+    event that proves the stored conversions belong somewhere else.
+  - **NARROW ON PURPOSE — three neighbours look identical and must NOT
+    clear**: the FIRST selection (nothing → an account; pasting snippets then
+    picking the account is the normal setup order), UNSELECTING (an account →
+    nothing; the id interrogates the account, it does not tag the site, so a
+    client running their own Ads has valid snippets), and the same account
+    re-saved, which every visit to the card does. It is a named function with
+    a test rather than a condition inline for exactly that reason.
+  - **`conversion_tracking_setting.conversion_tracking_id` IS the `AW-`
+    number**, which makes the mismatch provable rather than inferred — checked
+    live: customer 6109211627 answers `"715255323"`, and its site carries
+    `AW-715255323`. It rides on the same `customer` row the call setting
+    already reads, so it costs no extra call. It comes back as a **string**
+    (the int64 rule) against an `AW-`-prefixed stored value, and comparing the
+    two forms directly is always false — which would report every correctly
+    tagged site in the book as wrong.
+  - **CROSS-ACCOUNT CONVERSION TRACKING IS THE LEGITIMATE EXCEPTION.** An
+    account whose conversions are managed by its manager reports to the
+    MANAGER's id, arriving as `cross_account_conversion_tracking_id`; either
+    id is accepted. Both keys are OMITTED when they do not apply — the same
+    protobuf rule as `biddable` — and an account returning NEITHER is not
+    judged at all, because an absence is not evidence.
+  - `scripts/check-ads-account-move.ts` holds both halves, the silent cases
+    first, and imports the real `isAccountMove` rather than restating it — a
+    check that re-implements its own rule passes for ever while the route
+    drifts underneath it.
 - **"SECONDARY" IS TWO DIFFERENT SETTINGS, AND THE WORD IS ON BOTH SCREENS.**
   `customer_conversion_goal.biddable` is the GOAL's; `conversion_action
   .primary_for_goal` is the ACTION's, shown in the conversion actions table as

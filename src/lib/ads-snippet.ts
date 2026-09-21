@@ -123,3 +123,48 @@ export function parseCallSnippet(input: string): ParseResult<CallSnippet> {
     value: { conversionId, callConversionLabel: label, phoneNumber: phoneMatch[1].trim() },
   }
 }
+
+/**
+ * Is this save MOVING the shop to a different Google Ads account?
+ *
+ * One account has two names in this app — the customer id picked from a
+ * dropdown, and the `AW-…` that arrives inside a pasted conversion snippet —
+ * and nothing made them agree. A shop whose Ads account is replaced (a
+ * suspension, a billing mess, an agency handover) had the new customer id
+ * saved while both conversion snippets stayed pointed at the OLD account. The
+ * site then reported every form lead and website call to an account nobody
+ * reads, and NOTHING errored: the tag loaded, the page was fine, and the
+ * audit, the landing-page check, the offline upload and the monthly report's
+ * cost per conversion all interrogated the new account and found a tidy,
+ * correct, empty setup.
+ *
+ * A move CLEARS the stored conversions, because they are not stale, they are
+ * wrong — a tag crediting an abandoned account is worse than no tag, since it
+ * looks configured. The operator then pastes the new pair into empty boxes.
+ *
+ * NARROW ON PURPOSE. Three neighbouring cases look identical and must not
+ * clear, which is why this is a named function with a test rather than a
+ * condition inline in the route:
+ *
+ * - FIRST selection (nothing → an account). Pasting the snippets and then
+ *   picking the account is the normal setup order; clearing there wipes what
+ *   was just saved.
+ * - UNSELECTING (an account → nothing). The customer id exists to interrogate
+ *   the account, not to tag the site, so a client running their own Ads has
+ *   no id here and perfectly valid snippets.
+ * - The SAME account re-saved, which every visit to the card does.
+ *
+ * This does not weaken the rule that an empty snippet box means "leave it
+ * alone". That rule is about INCIDENTAL saves — the card blanks both boxes
+ * after every save, so revisiting it to change the Bing tag must not wipe two
+ * live conversions. This is the opposite: an explicit change of account, the
+ * one event that proves the stored conversions belong somewhere else.
+ */
+export function isAccountMove(
+  existingCustomerId: string | null | undefined,
+  nextCustomerId: string | null | undefined
+): boolean {
+  const before = (existingCustomerId || '').trim()
+  const after = (nextCustomerId || '').trim()
+  return !!before && !!after && before !== after
+}
