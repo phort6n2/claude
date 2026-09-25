@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { decrypt } from '@/lib/encryption'
 import { Prisma } from '@prisma/client'
+import { requireAdmin } from '@/lib/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,10 +38,8 @@ async function lookupPlaceWebsite(placeId: string): Promise<string | null> {
 }
 
 export async function GET(request: NextRequest, { params }: RouteContext) {
-  const session = await auth()
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const denied = await requireAdmin()
+  if (denied) return denied
 
   try {
     const { id } = await params
@@ -117,10 +115,8 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 
 /** PUT — replace editorial content and the photo list. */
 export async function PUT(request: NextRequest, { params }: RouteContext) {
-  const session = await auth()
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const denied = await requireAdmin()
+  if (denied) return denied
 
   try {
     const { id } = await params

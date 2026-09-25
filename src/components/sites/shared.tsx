@@ -98,6 +98,26 @@ export function telHrefFor(phone: string) {
 }
 
 /**
+ * Google sometimes returns or an operator pastes the review-writing endpoint
+ * instead of the public listing. A link labelled "Read them", "listing", or
+ * "Directions" must not drop a visitor into the review composer.
+ */
+export function googleListingHref(url: string): string {
+  try {
+    const parsed = new URL(url)
+    if (parsed.hostname === 'g.page' && /\/review\/?$/i.test(parsed.pathname)) {
+      parsed.pathname = parsed.pathname.replace(/\/review\/?$/i, '') || '/'
+      parsed.search = ''
+      parsed.hash = ''
+      return parsed.toString()
+    }
+  } catch {
+    // Existing validation owns malformed URLs; preserve the current fallback.
+  }
+  return url
+}
+
+/**
  * Page-level base rules the reference sets on bare elements: visible focus
  * ring, link underline metrics, balanced headings, and a scroll-driven header
  * shadow (progressive enhancement — browsers without scroll timelines simply
@@ -694,7 +714,7 @@ export function RatingChip({ reviews, client }: { reviews: ReviewsData | null; c
 
   return (
     <a
-      href={client.googleMapsUrl}
+      href={googleListingHref(client.googleMapsUrl)}
       target="_blank"
       rel="noopener noreferrer"
       className={`flex w-full sm:inline-flex sm:w-auto ${cls}`}
@@ -1028,7 +1048,11 @@ export function InsuranceBand({
                 ? `We handle the claim with ${insurer}`
                 : 'Going through insurance'
           }
-          lead={`Glass coverage sits in the comprehensive part of your policy — and we do the paperwork with ${insurer}.`}
+          lead={
+            filesClaims
+              ? `Glass coverage sits in the comprehensive part of your policy — and we do the paperwork with ${insurer}.`
+              : `Glass coverage sits in the comprehensive part of your policy — and we help you confirm what yours covers.`
+          }
         />
         <div className="grid md:grid-cols-2 gap-5">
           <div className="bg-white rounded-[20px] border border-[var(--line-card)] shadow-sm p-6">
@@ -1476,7 +1500,7 @@ export function MapSection({
                 similar-sounding competitor. */}
             {!!reviews && (lead?.googleMapsUrl || client.googleMapsUrl) && (
               <a
-                href={lead?.googleMapsUrl || client.googleMapsUrl || '#'}
+                href={googleListingHref(lead?.googleMapsUrl || client.googleMapsUrl || '#')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-auto inline-flex items-center justify-center min-h-[48px] px-5 rounded-[14px] font-bold text-[15px] no-underline text-[var(--tx)] bg-white border-[1.5px] border-[var(--line-strong)] hover:bg-[var(--s1)]"
@@ -1645,7 +1669,7 @@ function LocationCard({
         </a>
         <a
           href={
-            location.googleMapsUrl ||
+            (location.googleMapsUrl && googleListingHref(location.googleMapsUrl)) ||
             `https://maps.google.com/maps?q=${mapQuery(client.businessName, location)}`
           }
           target="_blank"

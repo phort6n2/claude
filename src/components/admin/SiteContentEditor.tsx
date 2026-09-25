@@ -620,7 +620,7 @@ export default function SiteContentEditor({
       {/* Editorial chapters */}
       <div>
         <label className="block text-xs font-semibold text-gray-600 mb-1">
-          Story sections (between hero and services; max 5)
+          Story sections (after reviews; max 5)
         </label>
         <p className="text-xs text-gray-400 mb-2">
           The long-form middle of the site — their history, their approach, what makes them
