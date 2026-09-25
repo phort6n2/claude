@@ -59,6 +59,8 @@ import type { SiteLocation } from '@/lib/client-locations'
 
 export interface SiteFlags {
   offersMobileService: boolean
+  /** Whether this shop actually offers windshield repair. */
+  offersWindshieldRepair: boolean
   offersAdasCalibration: boolean
   /**
    * Whether this shop actually files the claim for the customer. Some do;
@@ -159,7 +161,7 @@ export function WidgetMount({ client, service }: { client: SiteClient; service?:
   const placeholder = `
     <div class="bg-white rounded-[20px] border-t-4 border-t-[var(--cta)] border border-[var(--line-card)] shadow-lg p-6">
       <p class="m-0 text-xl font-extrabold tracking-tight text-[var(--tx)]">Get your free quote</p>
-      <p class="mt-1.5 mb-0 text-sm text-[var(--tx-muted)]">Four quick questions and you&rsquo;ll have a real number.</p>
+      <p class="mt-1.5 mb-0 text-sm text-[var(--tx-muted)]">A few quick details and you&rsquo;ll have a real number.</p>
       <form method="post" action="${esc(action)}" class="mt-4 grid gap-3">
         <input type="hidden" name="form_name" value="glassleads-noscript" />
         <input type="hidden" name="source_label" value="Landing page" />
@@ -649,6 +651,7 @@ export function SiteBody({
         extras={null}
         extraFaq={withDefaultFaq(extras.faq, {
           state: client.state,
+          offersWindshieldRepair: flags.offersWindshieldRepair,
           offersAdasCalibration: flags.offersAdasCalibration,
         })}
       />
