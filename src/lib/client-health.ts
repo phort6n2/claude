@@ -7,6 +7,7 @@ import { rankSetupState, type RankSetupInput } from '@/lib/rank-campaigns'
 import { localDominatorKey } from '@/lib/local-dominator'
 import { monthLabel, monthWindow, previousMonthOf } from '@/lib/tz'
 import type { ReadinessCheck } from '@/lib/client-readiness'
+import { headerIsDark } from '@/lib/logo-surface'
 
 /**
  * ONE ROW PER CLIENT, AND EVERY COLUMN IS SOMETHING THAT FAILS SILENTLY.
@@ -46,6 +47,11 @@ export interface ClientHealthRow {
   status: string
   /** The client page, for the name link. */
   href: string
+  /** For the small logo tile beside the name. */
+  logoUrl: string | null
+  primaryColor: string | null
+  /** The logo is drawn for a dark background — see lib/logo-surface.ts. */
+  logoOnDark: boolean
   cells: Record<HealthColumnId, HealthCell>
   /** Sorts the worst clients to the top. */
   score: number
@@ -128,6 +134,11 @@ export async function getClientHealth(): Promise<ClientHealthRow[]> {
       id: true,
       businessName: true,
       status: true,
+      logoUrl: true,
+      primaryColor: true,
+      logoSurface: true,
+      logoSurfaceUrl: true,
+      headerTheme: true,
       siteSubdomain: true,
       callCoachingEnabled: true,
       timezone: true,
@@ -283,6 +294,9 @@ export async function getClientHealth(): Promise<ClientHealthRow[]> {
       businessName: client.businessName,
       status: client.status,
       href: `/admin/clients/${client.id}`,
+      logoUrl: client.logoUrl,
+      primaryColor: client.primaryColor,
+      logoOnDark: !!client.logoUrl && headerIsDark(client),
       cells,
       score: Object.values(cells).reduce((n, c) => n + CELL_WEIGHT[c.state], 0),
       findings: findingsByClient.get(client.id) || [],

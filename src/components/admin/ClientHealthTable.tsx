@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import ClientLogoTile from '@/components/ui/ClientLogoTile'
 import { Check, X, Minus, TriangleAlert, ArrowRight, AlertCircle } from 'lucide-react'
 import type { ClientHealthRow, HealthCell, HealthColumn, HealthColumnId } from '@/lib/client-health'
 import { CELL_WEIGHT } from '@/lib/client-health'
@@ -220,18 +221,27 @@ export default function ClientHealthTable({
               return (
                 <tr key={row.id} className="border-b border-gray-100 last:border-0 align-middle">
                   <td className="px-4 py-2">
-                    <Link
-                      href={row.href}
-                      className="font-medium text-gray-900 hover:text-blue-700 hover:underline"
-                    >
-                      {row.businessName}
-                    </Link>
-                    {row.status !== 'ACTIVE' && (
-                      <span className="ml-2 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                        {row.status}
-                      </span>
-                    )}
-
+                    <div className="flex items-center gap-2.5">
+                      <ClientLogoTile
+                        logoUrl={row.logoUrl}
+                        businessName={row.businessName}
+                        primaryColor={row.primaryColor}
+                        onDark={row.logoOnDark}
+                      />
+                      <div className="min-w-0">
+                        <Link
+                          href={row.href}
+                          className="font-medium text-gray-900 hover:text-blue-700 hover:underline"
+                        >
+                          {row.businessName}
+                        </Link>
+                        {row.status !== 'ACTIVE' && (
+                          <span className="ml-2 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                            {row.status}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </td>
                   {columns.map((col) => {
                     const cell = liveCell(row, col.id)
