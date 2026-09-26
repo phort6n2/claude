@@ -1944,7 +1944,8 @@ owner asking one is thirty seconds from asking the other. The URL stayed
 the seventh, measured at 360px before it went in: seven columns are 51px each,
 one row, no overflow. The tab says **Reports** and not the page's own
 "Reporting" for one reason: "Reporting" measures 52px in a 51px cell and
-rendered flush against "Rankings", reading as one word. Seven is the ceiling.
+rendered flush against "Rankings", reading as one word. Seven was called the
+ceiling — and it was already past it: see the portal nav note in §6.
 
 **THE CRON BUILDS; A PERSON SENDS.** `/api/cron/monthly-reports` runs on the
 1st and stores a digest per client. Nothing is emailed until somebody presses
@@ -2121,8 +2122,23 @@ client says the leads are bad.
   - The portal was built this way from the start: a bottom tab bar below `sm`
     with `pb-[env(safe-area-inset-bottom)]`, grid columns computed from the
     RENDERED tab count (hardcoding it wrapped the last tab onto a second row
-    twice), and `pb-24 sm:pb-10` so content clears the bar. Six tabs at 360px
-    is measured, not assumed — re-measure before adding a seventh.
+    twice), and `pb-24 sm:pb-10` so content clears the bar.
+  - **The portal nav is FOUR TABS AND "MORE"** (`PortalNav.tsx`): Home,
+    Leads, Calls, Reports; Activity, Traffic, Rankings and My site under
+    More. It grew to seven one tab at a time, each "measured at 360px" — and a
+    real render of a shop with BOTH My site and Rankings at 390px read "ome"
+    at the left edge and "Rankin" at the right. The measurements were taken on
+    a shop without the full set. Meanwhile the Calls page, holding the
+    call-quality chart, was tile-only because "the bar is full", and the
+    owner's first question was where to find it — the third time a tile-only
+    page has gone unfound (Traffic and Reports before it). On a phone More is
+    a PANEL rising above the bar, not a dropdown: a menu hanging off a bottom
+    bar has nowhere to drop. It takes the NAME of the page you are on when
+    that page lives inside it, and it is open ON A PAGE (it stores the
+    pathname it was opened on), so navigating closes it by construction
+    rather than by an effect. **Measure with the WORST-CASE shop** — every
+    conditional tab present — at 320/360/390 and 640/1024/1440; the earlier
+    measurements passed because the shop measured did not have them all.
 - **Autosaving admin UI.** Newer cards (tracking numbers, site content) save
   on change with a status line, no save button. Flip optimistic state first,
   then reconcile — a controlled checkbox that waits on a round trip feels

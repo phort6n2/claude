@@ -27,8 +27,12 @@ export default async function PortalLayout({ children }: { children: React.React
   // Only offer this tab once there is something behind it. A tab that leads
   // to a permanent empty state reads as something broken rather than
   // something not bought.
-  const [rankScans, client] = await Promise.all([
+  const [rankScans, trackingNumbers, coachedCalls, client] = await Promise.all([
     prisma.localRankScan.count({ where: { clientId: session.clientId } }).catch(() => 0),
+    // Calls has something to show once a line is tracked here, or once any
+    // call has been coached (older shops' calls arrived through HighLevel).
+    prisma.trackingNumber.count({ where: { clientId: session.clientId } }).catch(() => 0),
+    prisma.callAnalysis.count({ where: { clientId: session.clientId } }).catch(() => 0),
     prisma.client
       .findUnique({
         where: { id: session.clientId },
@@ -48,6 +52,7 @@ export default async function PortalLayout({ children }: { children: React.React
   // between signing up and the first Tuesday scan. The page says which
   // keywords are being measured and when the scans run.
   const hasRankings = rankScans > 0 || !!client?.rankTrackingId
+  const hasCalls = trackingNumbers > 0 || coachedCalls > 0
   // Their own address once a custom domain is live, ours until then. Only a
   // real, reachable address gets a tab — the preview path is an operator's
   // tool, not something to hand a shop.
@@ -93,7 +98,7 @@ export default async function PortalLayout({ children }: { children: React.React
           )}
           <span className="font-bold text-gray-900 truncate">{session.businessName}</span>
           <div className="ml-auto">
-            <PortalNav showRankings={hasRankings} siteUrl={siteUrl} />
+            <PortalNav showRankings={hasRankings} siteUrl={siteUrl} showCalls={hasCalls} />
           </div>
         </div>
       </header>
@@ -103,7 +108,7 @@ export default async function PortalLayout({ children }: { children: React.React
       {/* Outside the header on purpose: the header's backdrop-blur makes it a
           containing block for fixed children, which pinned this bar to the
           top of the screen instead of the bottom. */}
-      <PortalTabBar showRankings={hasRankings} siteUrl={siteUrl} />
+      <PortalTabBar showRankings={hasRankings} siteUrl={siteUrl} showCalls={hasCalls} />
     </div>
   )
 }

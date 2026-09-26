@@ -10,11 +10,13 @@ import { CallQualityTrend } from '@/components/portal/CallQualityTrend'
  * "Your phone" — missed calls, when the phone actually rings, and whether the
  * team is getting better at answering it.
  *
- * Reached from a home-screen tile rather than a tab: the phone tab bar is
- * measured full at six (see PortalNav), and a seventh would clip "Rankings"
- * at 320px. Missed calls are urgent enough that the home screen also carries
- * a banner when any are outstanding — the page is where they are worked
- * through, not where they are discovered.
+ * A TAB NOW ("Calls"), not only a home-screen tile. It was tile-only on the
+ * grounds that the bar was full — and when the call-quality chart shipped
+ * here, the owner's first question was where to find it. The bar became four
+ * tabs and "More" (see PortalNav) partly so this page could have a place in
+ * it. Missed calls still get a banner on the home screen, because they are
+ * urgent: the banner is where they are discovered, this page is where they
+ * are worked through.
  */
 export default async function PortalCallsPage() {
   const session = await getPortalSession()
