@@ -3,8 +3,9 @@ import { requireAdmin } from '@/lib/admin-guard'
 import { suggestServiceAreas } from '@/lib/nearby-cities'
 
 export const dynamic = 'force-dynamic'
-// A model call plus a geocode per candidate.
-export const maxDuration = 60
+// A model call that thinks before it answers, plus a geocode per candidate
+// (in parallel). 60 was sized for a model call that did not think.
+export const maxDuration = 120
 
 /**
  * POST — propose service-area cities for this client.

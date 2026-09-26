@@ -147,7 +147,10 @@ Return ONLY this JSON, no other text:
     const anthropic = new Anthropic({ apiKey: key })
     const message = await anthropic.messages.create({
       model: 'claude-opus-5',
-      max_tokens: 1200,
+      // Room for the default thinking as well as the copy: this model thinks
+      // by default and pays for it out of max_tokens, so a budget sized for
+      // the answer alone ends the reply before the answer (nearby-cities.ts).
+      max_tokens: 6000,
       messages: [{ role: 'user', content: prompt }],
     })
     if (message.stop_reason === 'refusal') {

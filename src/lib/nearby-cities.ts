@@ -2,6 +2,8 @@ import Anthropic from '@anthropic-ai/sdk'
 import { prisma } from '@/lib/db'
 import { decrypt } from '@/lib/encryption'
 import { LOCATION_PAGE_LIMIT } from '@/lib/site-locations'
+import { parseNameList } from '@/lib/draft-json'
+import { twilioCountryFor, type TwilioCountry } from '@/lib/phone-country'
 
 /**
  * Proposes the service-area cities a shop's location pages are built from.
@@ -92,10 +94,18 @@ interface GeocodeHit {
  * street or a business is a name the model made up, and a location page for
  * it would be a page about a place that does not exist.
  */
-async function geocodeCity(city: string, state: string, key: string): Promise<GeocodeHit | null> {
+async function geocodeCity(
+  city: string,
+  state: string,
+  country: TwilioCountry,
+  key: string
+): Promise<GeocodeHit | null> {
+  // The shop's OWN country. This was hardcoded US, so a British Columbian
+  // shop's towns were looked up in the United States — the same mistake
+  // phone-country.ts records for the tracking-number search.
   const url =
     `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(`${city}, ${state}`)}` +
-    `&components=country:US&key=${key}`
+    `&components=country:${country}&key=${key}`
   const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
   const data = await res.json()
   if (data.status === 'REQUEST_DENIED') throw new Error(data.error_message || 'REQUEST_DENIED')
@@ -120,6 +130,7 @@ export async function suggestServiceAreas(
       businessName: true,
       city: true,
       state: true,
+      country: true,
       latitude: true,
       longitude: true,
       serviceAreas: true,
@@ -141,7 +152,11 @@ export async function suggestServiceAreas(
   const listed = [...new Set([...shopCities, ...(client.serviceAreas || []), client.city])]
   const listedLower = new Set(listed.map((c) => c.trim().toLowerCase()))
 
-  const prompt = `List the towns and cities nearest to ${client.city}, ${client.state}, USA.
+  const { country } = twilioCountryFor(client)
+  const countryLabel = country === 'CA' ? 'Canada' : 'USA'
+  const region = country === 'CA' ? 'province' : 'state'
+
+  const prompt = `List the towns and cities nearest to ${client.city}, ${client.state}, ${countryLabel}.
 
 They are for the service-area pages of a local auto glass shop based there${
     client.offersMobileService ? ', which runs a mobile unit to the customer' : ''
@@ -150,7 +165,7 @@ They are for the service-area pages of a local auto glass shop based there${
 RULES
 1. Real, separately named populated places only — incorporated cities, towns, or census-designated places that people give as their own address. No neighbourhoods or districts of ${client.city} itself, no counties, no regions.
 2. Within about ${MAX_MILES} miles by road. Closest first.
-3. Same state where possible; a nearer town over a state line is fine if people there genuinely drive to ${client.city}.
+3. Same ${region} where possible; a nearer town over a ${region} line is fine if people there genuinely drive to ${client.city}.
 4. Do NOT include any of these, which are already covered: ${listed.join(', ')}
 5. Return ${ASK_FOR} of them. If there genuinely are not that many, return fewer — do not pad the list with places further away than the rule allows.
 
@@ -161,17 +176,40 @@ Return ONLY a JSON array of names, no other text: ["Name", "Name"]`
     const anthropic = new Anthropic({ apiKey: anthropicKey })
     const message = await anthropic.messages.create({
       model: 'claude-opus-5',
-      max_tokens: 800,
+      /* 800 WAS THE WHOLE BUG. This model THINKS BY DEFAULT, and the thinking
+         is paid out of max_tokens — so deciding which towns are near the shop
+         used the budget up and the reply stopped before the list was written.
+         Every press in production answered 400 ("No text in the response" or
+         "Could not read the list that came back") and nothing was logged. The
+         tokens are only spent if they are used; a budget that only just fits
+         turns a thoughtful answer into no answer. Same lesson as draft-story. */
+      max_tokens: 6000,
       messages: [{ role: 'user', content: prompt }],
     })
-    const block = message.content.find((b) => b.type === 'text')
-    if (!block || block.type !== 'text') return { ok: false, error: 'No text in the response.' }
-    const match = block.text.match(/\[[\s\S]*\]/)
-    if (!match) return { ok: false, error: 'Could not read the list that came back.' }
-    names = (JSON.parse(match[0]) as unknown[])
-      .filter((n): n is string => typeof n === 'string')
-      .map((n) => n.trim())
-      .filter(Boolean)
+    const text = message.content
+      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+      .map((b) => b.text)
+      .join('\n')
+    // Logged on every call, because the one time this failed nothing here
+    // said why — the stop reason and the size settle it in one line.
+    console.log(
+      `[NearbyCities] ${client.businessName}: stop=${message.stop_reason} out=${message.usage?.output_tokens} text=${text.length}ch`
+    )
+    if (message.stop_reason === 'refusal') return { ok: false, error: 'The model declined to suggest towns.' }
+    const parsed = parseNameList(text)
+    if (!parsed.ok) {
+      console.warn(`[NearbyCities] unreadable reply (${parsed.kind}): ${text.slice(0, 600)}`)
+      return {
+        ok: false,
+        error:
+          parsed.kind === 'truncated'
+            ? 'The reply was cut off before any town names — press again.'
+            : parsed.kind === 'no-json'
+              ? `The model answered in words instead of a list: ${text.trim().slice(0, 160)}`
+              : `The list that came back was malformed (${parsed.detail}).`,
+      }
+    }
+    names = parsed.names
   } catch (error) {
     console.error('Nearby-city suggestion failed:', error)
     return { ok: false, error: error instanceof Error ? error.message : 'Suggestion failed' }
@@ -202,24 +240,29 @@ Return ONLY a JSON array of names, no other text: ["Name", "Name"]`
   const candidates: AreaCandidate[] = []
   let geocoderRefused = false
 
-  for (const name of fresh) {
-    if (geocoderRefused) break
-    try {
-      const hit = await geocodeCity(name, client.state, placesKey)
-      if (!hit) continue
-      const key = hit.name.trim().toLowerCase()
-      if (seen.has(key) || listedLower.has(key)) continue
-      const miles = origin ? Math.round(milesBetween(origin, hit) * 10) / 10 : null
-      // Measured, not claimed. A town the model called nearby and the map puts
-      // fifty miles out is exactly the page that should never be built.
-      if (miles !== null && miles > MAX_MILES) continue
-      seen.add(key)
-      candidates.push({ city: hit.name, miles, verified: true })
-    } catch (error) {
-      // One refusal is the key's answer for all of them; stop spending calls.
-      geocoderRefused = true
-      console.warn('[NearbyCities] geocode refused:', error)
-    }
+  // In parallel: fourteen lookups one after another, each allowed eight
+  // seconds, sat on top of a model call that now has room to think and could
+  // run the route past its limit. A refusal from any one is the key's answer
+  // for all of them.
+  const hits = await Promise.all(
+    fresh.map((name) =>
+      geocodeCity(name, client.state, country, placesKey).catch((error) => {
+        geocoderRefused = true
+        console.warn('[NearbyCities] geocode refused:', error)
+        return null
+      })
+    )
+  )
+  for (const hit of hits) {
+    if (!hit) continue
+    const key = hit.name.trim().toLowerCase()
+    if (seen.has(key) || listedLower.has(key)) continue
+    const miles = origin ? Math.round(milesBetween(origin, hit) * 10) / 10 : null
+    // Measured, not claimed. A town the model called nearby and the map puts
+    // fifty miles out is exactly the page that should never be built.
+    if (miles !== null && miles > MAX_MILES) continue
+    seen.add(key)
+    candidates.push({ city: hit.name, miles, verified: true })
   }
 
   if (geocoderRefused) {

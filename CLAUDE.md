@@ -1138,6 +1138,22 @@ distance that orders the list is measured rather than claimed. It writes
 nothing: coverage is a business fact, and a town twenty minutes away across a
 river they never cross looks exactly like one they serve daily.
 
+**EVERY MODEL CALL NEEDS ROOM TO THINK** (`scripts/check-model-budgets.ts`).
+The model these features call THINKS BY DEFAULT and pays for it out of
+`max_tokens`. "Suggest nearby cities" asked for 800 — sized for fourteen names,
+with nothing for deciding which towns they were — so every production press
+stopped before the list and answered 400 ("No text in the response" / "Could
+not read the list that came back") with nothing logged. The warranty expander
+(600) and the city-page writer (1200, which the bulk button runs) carried the
+same trap. A small budget looks fine in a diff and fails only on the day the
+model thinks longer, so the check reads the SOURCE and fails any call to a
+thinking model under 4000 — including one written tomorrow. The suggester also
+logs the stop reason and size on every call, reads its reply with
+`parseNameList` (the greedy `/\[[\s\S]*\]/` was the same fragile parser
+`draft-json.ts` records), geocodes in parallel, and uses the shop's own country
+(`twilioCountryFor`) — it was hardcoded to the US, so a BC shop's towns were
+looked up in the wrong country, the tracking-number search's bug again.
+
 ### Onboarding (intake → approval → walkthrough)
 
 `client-intake.ts` (ONE field list read by the form, the review page and the

@@ -56,7 +56,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const anthropic = new Anthropic({ apiKey })
     const message = await anthropic.messages.create({
       model: 'claude-opus-5',
-      max_tokens: 600,
+      // Room for the default thinking as well as the text: see the same
+      // comment in lib/nearby-cities.ts — 600 could end before a word.
+      max_tokens: 4000,
       messages: [
         {
           role: 'user',
