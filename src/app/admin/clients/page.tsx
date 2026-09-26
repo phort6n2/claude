@@ -9,6 +9,7 @@ import { prisma } from '@/lib/db'
 import { Plus, Users, Activity } from 'lucide-react'
 import ClientsListView from '@/components/admin/ClientsListView'
 import { requireAdminPage } from '@/lib/admin-guard'
+import { headerIsDark } from '@/lib/logo-surface'
 
 async function getClients() {
   const clients = await prisma.client.findMany({ orderBy: { createdAt: 'desc' } })
@@ -43,6 +44,9 @@ async function getClients() {
     ...c,
     leadsLast7: counts.get(c.id) ?? 0,
     lastLeadAt: lastAt.get(c.id) ?? null,
+    // The same rule the dashboard tile and the site header use, so a white
+    // logo gets its dark tile here too rather than vanishing into the row.
+    logoOnDark: !!c.logoUrl && headerIsDark(c),
   }))
 }
 

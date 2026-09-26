@@ -15,7 +15,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react'
 import { StatusBadge } from '@/components/ui/Badge'
-import ClientLogo from '@/components/ui/ClientLogo'
+import ClientLogoTile from '@/components/ui/ClientLogoTile'
 
 interface Client {
   id: string
@@ -26,6 +26,8 @@ interface Client {
   status: string
   logoUrl: string | null
   primaryColor: string | null
+  /** Decided on the server by headerIsDark — the dashboard's rule. */
+  logoOnDark: boolean
   googleMapsUrl: string | null
   callCoachingEnabled: boolean
   leadsLast7: number
@@ -189,11 +191,11 @@ export default function ClientsListView({ clients }: ClientsListViewProps) {
                     {/* Client */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <ClientLogo
+                        <ClientLogoTile
                           logoUrl={client.logoUrl}
                           businessName={client.businessName}
                           primaryColor={client.primaryColor}
-                          size="sm"
+                          onDark={client.logoOnDark}
                         />
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
@@ -266,12 +268,15 @@ export default function ClientsListView({ clients }: ClientsListViewProps) {
               />
 
               <div className="p-5">
-                {/* Header Row */}
-                <div className="flex items-start gap-4 mb-4">
-                  <ClientLogo
+                {/* Header Row. Stacked, tile over name: side by side, four
+                    cards across left the name about 110px and every one
+                    truncated to "Auto Glas…". */}
+                <div className="flex flex-col items-start gap-3 mb-4">
+                  <ClientLogoTile
                     logoUrl={client.logoUrl}
                     businessName={client.businessName}
                     primaryColor={client.primaryColor}
+                    onDark={client.logoOnDark}
                     size="lg"
                   />
                   <div className="flex-1 min-w-0">
