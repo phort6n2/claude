@@ -13,6 +13,10 @@ things waiting on the owner, and the ranked backlog. `docs/HANDOFF.md` is a
 longer narrative of the lead pipeline (written 2026-08-09; still accurate on
 attribution and dedup, predates call tracking, notifications and the landing
 page work). The root `README.md` is a short public-facing summary.
+**`docs/GOOGLE-ADS-SETUP.md` is the AGMP conversion tracking standard** — the
+four actions, the goals, the HighLevel migration order, and the hand-checked
+rules the audit does not automate yet. Read it before touching a Google Ads
+account or `google-ads-conventions.ts`, and change the two together.
 
 ---
 

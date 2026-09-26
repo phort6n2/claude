@@ -1,4 +1,11 @@
-# Google Ads setup — the same in every account
+# Google Ads setup — the AGMP conversion tracking standard
+
+**This is the conversion tracking standard.** It lives in the repo, not in a
+chat or a saved skill, so it loads with the code that enforces it and changes
+in the same commit. The campaign-building blueprint (keywords, negatives, geo,
+budgets) is kept privately because it carries client figures; its
+conversion-tracking rules are folded in here — see *Rules the automated audit
+does not check yet* below.
 
 Every client account gets the **same four conversion actions, under the same
 four names**. That is the whole point: with one convention a report can span
@@ -150,9 +157,28 @@ Goals → Conversions → **Goals** tab:
 - `Phone call lead` — Primary
 - `Purchase` — **Secondary**
 
-Everything else Google created by itself (store visits, directions, page views,
-"Local actions - …") stays Secondary. They are engagement, not leads, and
-bidding to them buys traffic that does not ring the phone.
+**Leave Google's Local Actions alone** ("Local actions - Directions / Website
+visits / Other engagements / Menu views", store visits, "Clicks to call").
+An earlier version of this file said to demote them, and that was wrong. Every
+one carries `include_in_conversions_metric: false`: they show in *All
+conversions* only, never in the *Conversions* column, and never feed Smart
+Bidding. Demoting them fixes nothing and costs two to three weeks of bidding
+retraining. On one live account 299 of 596 "conversions" were Local Actions,
+and the reported CPA was still right, because only the 259 real leads counted.
+
+What does need Secondary (or pausing) is anything that IS counted and is not a
+lead. Found on live accounts:
+
+- **A tap on the phone number, not a call.** A website action in *Outbound
+  click*, named something like "Phone call click". It fires when a visitor
+  taps the `tel:` link, whether or not the call ever connects. `AGMP Website
+  Call` counts the call itself.
+- **App installs, Default, YouTube and engagement goals** left biddable.
+  They only reach bidding through a campaign that inherits the account's goals
+  (`CUSTOMER` level). That is usually a Performance Max campaign nobody gave its
+  own goals, and it then bids on every one of them.
+- **A previous agency's actions** (one account still counted "TechSol - Call
+  Click" in its Conversions column).
 
 ---
 
@@ -175,6 +201,11 @@ Typical corrections, all seen in live accounts:
   one, and plenty of real enquiries in this trade are over inside fifteen
   seconds. Both call actions must carry the same number, or one inbound call
   counts differently depending on which way it arrived.
+
+  The campaign blueprint argues for 60s, because 10s counts hang-ups and wrong
+  numbers. The owner reviewed that on 2026-09-26 and **kept 10s**. If it is ever
+  raised, reported conversions drop overnight. Tell the shop before that month's
+  report says so.
 
 If two enabled actions have the same shape, keep the one carrying the history,
 rename it, and **pause** the other. Pausing keeps its past conversions in the
@@ -246,6 +277,71 @@ type `GOOGLE_ANALYTICS_4_PURCHASE`, status HIDDEN. Dormant is correct. **Leave
 them that way.** The audit reports one that is merely dormant as a note, one
 that is enabled but Secondary as acceptable, and one that is enabled AND
 Primary as a failure.
+
+---
+
+## Rules the automated audit does not check yet
+
+These come from the campaign blueprint and from a read-only audit of every
+account under the MCC on 2026-09-26. Check them by hand at onboarding and
+before launch. A rule that moves into code should move out of this list.
+
+**A double count is two actions with `include_in_conversions_metric: true`
+recording the same event.** Two actions merely sharing a goal is not proof.
+The shape that is nearly always real: an upload (HighLevel's `AGMP Call` /
+`AGMP Form`) beside a native tag (`AGMP Website Call` / `AGMP Lead Form`),
+both in the goals of a campaign that spends, and **both recording conversions
+in the last 30 days**. That last test separates a live double count from a
+leftover. An upload that recorded nothing for a month is dead weight, not a
+double count.
+
+**Read the goals per campaign that spends, not per account.** A campaign whose
+own goals are only *Converted lead* bids on HighLevel's uploads alone. Calls
+from its own call assets then teach it nothing, even though the account counts
+them. It is also the opposite failure from the one the campaign-goal check
+files. A Performance Max campaign left at `CUSTOMER` level inherits every junk
+goal the account has made biddable.
+
+**A spending account whose only counted conversion is a leftover** —
+"Calls from Smart Campaign Ads" (30s, from a Smart campaign long gone) while
+the form and website calls record nothing — is bidding blind to most of its
+leads. Look for an upload that stopped, or ads landing on a page with no tag.
+
+**Call assets, per asset.** The account-level call conversion action is
+covered above; each asset can also carry its own setting:
+
+- `call_conversion_reporting_state` must not be `DISABLED`. One account had it
+  disabled on both live campaigns, and no call from the ad button counted.
+- `USE_ACCOUNT_LEVEL_CALL_CONVERSION_ACTION` is right when one agency runs the
+  account. `USE_RESOURCE_LEVEL_CALL_CONVERSION_ACTION` pointed at `AGMP Call
+  From Ads` is right when two agencies share it.
+- Two call-from-ads actions both recording conversions usually means one asset
+  still points at the old action. Repoint the asset rather than calling it a
+  double count; each call reports to exactly one.
+- No `ad_schedule_targets` on the asset unless deliberate.
+- **Coverage is `phone_impressions ÷ impressions`.** Call assets only render on
+  Search surfaces, so 1% coverage on Performance Max means it is buying Display
+  and video, and no asset setting fixes that.
+- Use the shop's own number, never one inherited from a previous agency.
+
+**Click windows:** 30 days for calls, never 90. A 90-day window lets any call
+be credited to a months-old cheap click. A 7-day window (found on a live "Call
+from Ads") drops real ones.
+
+**`Purchase` must not drive bidding.** It has been found Primary on three
+accounts. Either switch off takes `AGMP Sale` out of bidding (see "SECONDARY
+IS TWO DIFFERENT SETTINGS" in CLAUDE.md). The standard sets the action to
+Secondary and counts **One**, never *Every*.
+
+**Two agencies in one account:** give our campaigns **campaign-level conversion
+goals**, so they bid only on our actions. Account-level goals apply to every
+campaign. Demoting the other agency's actions demotes ours too when they share
+a `CATEGORY~ORIGIN`. Set this before launch, when a campaign has nothing to
+retrain. Later it costs two to three weeks of unstable CPA.
+
+**Changing goals retrains bidding.** Every goal change on a campaign that
+spends restarts learning. Batch them, make them once, and leave the campaign
+alone for fourteen days after.
 
 ---
 
