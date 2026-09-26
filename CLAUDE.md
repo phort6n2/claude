@@ -988,6 +988,69 @@ nothing anywhere going red.
   draws each shape as raw pixels and runs it through the real decoder, the
   stay-white cases first.
 
+**THE SITE WEARS THE SHOP'S OWN COLOURS, READ OFF THEIR WEBSITE**
+(`brand-colors.ts` decides, `brand-scan.ts` fetches and writes,
+`Client.brandColorsSource`/`ReadAt`/`Note`, bootstrap: `SITE_BRANDING_SQL`,
+"Colours from their website" on the Business tab's Branding card). Every shop
+used to launch in the platform's default blue and amber, and those three
+swatches sat untouched on the card for good.
+- **SCORED BY USE, NEVER BY VARIABLE NAME.** EliteProGlass's page declares
+  three variables literally named "primary" — The Post Grid's Bootstrap blue,
+  LatePoint's booking-widget blue, Astra's stock palette — and the site is
+  black with red (#d40000) buttons, menu and headings, a colour in no variable
+  at all. A button background outweighs a menu colour, which outweighs a bare
+  declaration. Plugin style blocks are skipped by id, plugin-injected elements
+  by class (the Call Now Button's inline green outscored Speedy's blue), and
+  framework, WordPress-core, social-network and theme-stock colours are
+  refused by value (`NOT_THE_SHOP`, each one seen on a real page). Colours
+  reached through `var()` count at a discount, because a theme routes every
+  DEFAULT through its palette while the shop's choice is usually typed
+  literally into a rule that overrides it; hover/focus states and blog
+  furniture (tag clouds, calendars, comment links) barely count at all.
+- **THE LOGO IS THE TIEBREAK** — the logo is the brand by definition, so a page
+  colour it is drawn in is the shop's rather than a plugin's.
+- **A DARK BASE IS ITS OWN SCHEME.** A black site with one strong colour is a
+  black-and-that-colour brand: primary is the dark (the page's own surface
+  colour where it declares one — AGK's charcoal #1b1d29, not a generic black),
+  and the strong colour becomes the accent, which the theme then uses for the
+  buttons. Signals: `theme-color`, a dark `body` background, or a logo drawn
+  for dark (`logo-surface.ts`).
+- **NEVER OVERWRITES A CHOICE.** Changing a swatch on the Business tab marks the
+  colours `manual` (compared with what is stored — the form sends every field).
+  The automatic read (morning sweep, and Maintenance → "Read every shop's
+  colours off their own website") only touches colours that are still the
+  platform defaults or came from the site. The card's button overrides
+  anything, because the press IS the choice, and it SAVES — the form rebases
+  those three fields (`useDirtyForm.rebase`) so they do not read as unsaved and
+  nothing else typed on the tab is disturbed.
+- Refused, with the reason stored and shown: a bot wall (`challengeReason`),
+  a page with no colour of its own, and **our own hosted site** (`isOurOwnSite`
+  — a `websiteUrl` still pointing at the shop's domain after cutover would read
+  our template back). Only same-host stylesheets are fetched, through
+  `validatePublicUrl`, capped.
+- Measured against five real shop sites before shipping: EliteProGlass black +
+  red, Speedy #3182ce, NorthStar #00aaff, AGS #fe0000, AGK yellow on
+  charcoal. `scripts/check-brand-colors.ts` holds their real traps, the silent
+  cases first.
+
+**THE CALL TO ACTION STANDS OUT** (`sitePaletteVars` in `site-theme.ts`).
+The button was the brand colour — the same as every eyebrow, icon and link on
+the page — so the one thing to press was the one thing that did not stand out.
+- **A shop's own accent takes the button** when it is genuinely a different
+  colour: not the platform default (every client has that, nobody chose it),
+  35°+ round the wheel from the brand, saturated. Only the CTA family changes
+  (`--cta`, its text, its shadow, `--hdr-cta`); tints and text stay the brand.
+  Default-accent shops render exactly as before.
+- **Neutral is judged by CHROMA as well as saturation** — HSL saturation
+  inflates near black, so AGK's charcoal read as a blue brand and got navy
+  buttons.
+- **A pale button gets an edge** (an inset ring in `--sh-cta`): yellow on the
+  white hero is 1.1:1, the text reads and the button barely exists.
+- **The call button is always the SECONDARY** — white, outlined in
+  `--cta-on-light`. It was the same solid fill as the quote button beside it,
+  so with a shop's own red on both, neither stood out. The header already drew
+  that pair as filled + outlined.
+
 **A logo has to look right at ANY shape, and two separate things decide that.**
 Fifteen shops send wordmarks near 5:1, plain rectangles, square badges and
 circles, into one header slot.

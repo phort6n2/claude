@@ -237,8 +237,25 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     if (has('allowedOrigins')) patch.allowedOrigins = allowedOrigins
 
     const before = await prisma.client
-      .findUnique({ where: { id }, select: { seoClient: true } })
+      .findUnique({
+        where: { id },
+        select: { seoClient: true, primaryColor: true, secondaryColor: true, accentColor: true },
+      })
       .catch(() => null)
+
+    // A COLOUR SOMEBODY CHANGED HERE IS A DECISION. Marked, so the daily read
+    // of their website never replaces it (lib/brand-colors.ts). Compared with
+    // what is stored, not merely present: the Business tab sends every colour
+    // on every save, and an unchanged one is not a choice anybody just made.
+    const colorKeys = ['primaryColor', 'secondaryColor', 'accentColor'] as const
+    if (
+      before &&
+      colorKeys.some(
+        (k) => has(k) && String(patch[k] ?? '').toLowerCase() !== String(before[k] ?? '').toLowerCase()
+      )
+    ) {
+      patch.brandColorsSource = 'manual'
+    }
 
     const client = await prisma.client.update({
       where: { id },

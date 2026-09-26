@@ -318,7 +318,16 @@ export function CtaButton({
 }
 
 /**
- * Call button — solid brand on light surfaces, outlined on dark bands.
+ * Call button — outlined in the CTA colour on light surfaces, outlined in
+ * white on dark bands. ALWAYS the secondary beside the quote button.
+ *
+ * It was a solid CTA fill on light surfaces, sitting beside the quote button
+ * in the same solid fill — two identical buttons, and with a shop's own red
+ * or yellow now on both, the page's main ask had nothing to stand out from.
+ * The header already drew this pair as filled + outlined; the hero now does
+ * too. The border and text use --cta-on-light, which falls back to near-black
+ * where the CTA colour cannot be read on white (a yellow outline on white is
+ * no outline at all).
  *
  * `onDark` is used in exactly one place, the closing band, and it used to
  * paint solid white there. Once the primary quote button also inverted to
@@ -343,7 +352,7 @@ export function CallButton({
       className={`inline-flex items-center justify-center gap-2.5 min-h-[52px] px-6 rounded-[14px] font-bold text-[17px] no-underline shadow-[0_1px_2px_rgba(11,27,43,.16)] transition-colors ${
         onDark
           ? 'bg-transparent text-white border-[1.5px] border-white/70 hover:bg-white/10'
-          : 'text-[var(--on-cta)] bg-[var(--cta)] border-[1.5px] border-[var(--cta)] hover:bg-[var(--cta-b)] hover:border-[var(--cta-b)]'
+          : 'text-[var(--cta-on-light)] bg-white border-[1.5px] border-[var(--cta-on-light)] hover:bg-[var(--s1)]'
       } ${block ? 'flex w-full' : ''}`}
     >
       <Phone className="h-[18px] w-[18px]" />

@@ -223,6 +223,12 @@ export const SITE_BRANDING_SQL: string[] = [
   `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "logoSurface" TEXT`,
   `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "logoSurfaceUrl" TEXT`,
   `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "headerTheme" TEXT`,
+  // Colours read from the shop's own website: where the current colours came
+  // from ('site' | 'manual' | null), when the site was last read, and what
+  // was found or why nothing was. lib/brand-colors.ts.
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "brandColorsSource" TEXT`,
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "brandColorsReadAt" TIMESTAMP(3)`,
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "brandColorsNote" TEXT`,
 ]
 
 /**

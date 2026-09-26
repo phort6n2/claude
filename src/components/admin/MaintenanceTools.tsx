@@ -140,6 +140,22 @@ const WRITES: Tool[] = [
     cost: 'Writes footerLogoUrl and uploads one PNG per derived logo to blob storage. Never overwrites a footer logo that already exists. Safe to run twice.',
   },
   {
+    key: 'brand-colors-dry',
+    name: "Whose colours would be read off their website? (reads only)",
+    path: '/api/admin/brand-colors?dryRun=1',
+    method: 'POST',
+    what: 'Lists every live client with a website on file whose colours are still the defaults and have never been read. Colours chosen by hand on the Business tab are never on this list.',
+    cost: 'Reads the database only. Fetches nothing and writes nothing.',
+  },
+  {
+    key: 'brand-colors',
+    name: "Read every shop's colours off their own website",
+    path: '/api/admin/brand-colors',
+    method: 'POST',
+    what: "Fetches each listed shop's home page and its own stylesheets, works out the colour the site is built on and the colour its buttons use, checks them against the logo, and saves them as the site colours. The morning sweep does this for new shops on its own; this is the backfill.",
+    cost: "One fetch of each shop's website plus up to four of its stylesheets. Changes the colours of live sites for shops whose colours were never chosen. Never touches colours chosen by hand. Safe to run twice — a shop already read is skipped.",
+  },
+  {
     key: 'measure-logos-dry',
     name: 'Which logos have not been matched to a header yet? (reads only)',
     path: '/api/admin/measure-logos?dryRun=1',

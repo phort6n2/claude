@@ -397,6 +397,16 @@ export async function runDailyAdsChecks(): Promise<DailyRunSummary> {
   } catch (err) {
     console.warn('[AdsDaily] skipped measuring logo backgrounds:', err)
   }
+  // Read the colours off the website of any new shop whose colours are still
+  // the defaults, so a site goes live in its own scheme without anybody
+  // remembering to press the button (lib/brand-scan.ts). Never touches a
+  // colour chosen by hand; a failure only costs this morning's read.
+  try {
+    const { readUnreadBrandColors } = await import('@/lib/brand-scan')
+    await readUnreadBrandColors({ budgetMs: 45_000 })
+  } catch (err) {
+    console.warn('[AdsDaily] skipped reading brand colours:', err)
+  }
   return summary
 }
 

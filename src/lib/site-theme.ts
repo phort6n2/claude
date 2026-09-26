@@ -179,15 +179,41 @@ export function sitePaletteVars(
    * A saturated brand is untouched: `useAccent` is false and every value
    * below is what it was.
    */
-  const brandIsNeutral = brandHsl.s < 0.12
+  // CHROMA as well as saturation: HSL saturation is inflated near black, so
+  // Auto Glass Kings' charcoal-navy #1b1d29 measures s 0.21 and read as a
+  // blue brand — navy buttons on a site whose own buttons are yellow. A
+  // colour with under ~10% chroma is a neutral whatever its saturation says.
+  const chroma = Math.max(brand.r, brand.g, brand.b) - Math.min(brand.r, brand.g, brand.b)
+  const brandIsNeutral = brandHsl.s < 0.12 || chroma < 26
   const accentUsable = accentHsl.s > 0.25
   const useAccent = brandIsNeutral && accentUsable
+
+  /**
+   * THE CALL TO ACTION STANDS OUT, when the shop has a colour for it.
+   *
+   * On a saturated brand the button was the brand colour — the same colour as
+   * every eyebrow, icon, link and rule on the page, so the one thing a
+   * visitor is meant to press was the one thing that did not stand out from
+   * the rest. A site whose own buttons are a DIFFERENT colour from its brand
+   * (read off their website, lib/brand-colors.ts, into accentColor) keeps
+   * that: the button takes the accent, and everything else stays the brand.
+   *
+   * Only an accent that is theirs and is genuinely a different colour: not
+   * the platform default (every client has it, nobody chose it), at least
+   * 35° round the wheel from the brand, and saturated enough to be a colour.
+   * Every other shop's buttons are exactly what they were.
+   */
+  const accentIsTheirs = (accentColor || '').toLowerCase() !== SITE_THEME_DEFAULT_ACCENT && !!accentColor
+  const hueApart = Math.min(Math.abs(brandHsl.h - accentHsl.h), 360 - Math.abs(brandHsl.h - accentHsl.h))
+  const accentStandsOut =
+    accentIsTheirs && accentHsl.s >= 0.4 && accentHsl.l >= 0.25 && accentHsl.l <= 0.85 && hueApart >= 35
+  const ctaFromAccent = useAccent || (!brandIsNeutral && accentStandsOut)
 
   // Buttons carry white text, so a light brand color is darkened until the
   // pair holds up — the template's "darkened until white text passes AA" rule.
   // An accent CTA keeps its own colour and takes readable text instead: the
   // point of a yellow button is that it is yellow.
-  const cta = useAccent
+  const cta = ctaFromAccent
     ? accent
     : lightness(brand) > 0.45
       ? withLightness(brand, 0.38)
@@ -279,7 +305,12 @@ export function sitePaletteVars(
   // Focus ring color and the brand-tinted CTA shadow, per the reference.
   out['--ring'] = out['--tx']
   const ctaRgb = `${Math.round(cta.r)},${Math.round(cta.g)},${Math.round(cta.b)}`
-  out['--sh-cta'] = `0 1px 1px rgba(0,0,0,.18), 0 6px 14px -4px rgba(${ctaRgb},.34)`
+  // A PALE button needs an edge. Yellow on the white hero is 1.1:1 — the text
+  // on it reads, the button itself barely exists. An inset ring a shade
+  // darker than the fill gives it a shape without changing its colour; every
+  // CTA already carries this shadow, so no component has to know.
+  const edge = contrast(cta, WHITE) < 1.6 ? `, inset 0 0 0 1.5px ${toHex(mix(cta, BLACK, 0.28))}` : ''
+  out['--sh-cta'] = `0 1px 1px rgba(0,0,0,.18), 0 6px 14px -4px rgba(${ctaRgb},.34)${edge}`
   return out
 }
 

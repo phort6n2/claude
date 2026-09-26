@@ -1,6 +1,7 @@
 import sharp from 'sharp'
 import { prisma } from '@/lib/db'
 import { surfaceFromPixels, type SurfaceReading } from '@/lib/logo-surface'
+import { isChromatic, type LogoColors } from '@/lib/brand-colors'
 
 /**
  * Read a logo file and say which background it was drawn for. See
@@ -120,4 +121,45 @@ export async function measureStaleLogos({
     rows.push({ clientId: c.id, businessName: c.businessName, ...result })
   }
   return rows
+}
+
+/**
+ * The colours a logo is drawn in, for reading a shop's brand off its website
+ * (lib/brand-colors.ts): chromatic pixels only, bucketed, with each colour's
+ * share of the logo's visible ink. The logo is the brand by definition, so a
+ * page colour it agrees with is the shop's rather than a plugin's.
+ */
+export async function readLogoColors(file: Buffer): Promise<LogoColors> {
+  const { data, info } = await sharp(file, { failOn: 'none' })
+    .rotate()
+    .resize({ width: 96, height: 96, fit: 'inside', withoutEnlargement: true })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true })
+  const px = new Uint8Array(data)
+  const total = info.width * info.height
+  const buckets = new Map<string, { r: number; g: number; b: number; n: number }>()
+  let visible = 0
+  for (let p = 0; p < total; p++) {
+    const i = p * 4
+    if (px[i + 3] < 128) continue
+    visible++
+    const c = { r: px[i], g: px[i + 1], b: px[i + 2] }
+    if (!isChromatic(c)) continue
+    // 24-step buckets: anti-aliased edges and JPEG noise land with their fill.
+    const key = [c.r, c.g, c.b].map((v) => Math.floor(v / 24)).join(',')
+    const cur = buckets.get(key) || { r: 0, g: 0, b: 0, n: 0 }
+    cur.r += c.r
+    cur.g += c.g
+    cur.b += c.b
+    cur.n++
+    buckets.set(key, cur)
+  }
+  const colors = visible
+    ? [...buckets.values()]
+        .sort((a, b) => b.n - a.n)
+        .slice(0, 3)
+        .map((b) => ({ color: { r: b.r / b.n, g: b.g / b.n, b: b.b / b.n }, share: b.n / visible }))
+    : []
+  return { colors, surface: surfaceFromPixels(px, info.width, info.height)?.surface ?? null }
 }

@@ -61,6 +61,17 @@ export function useDirtyForm<T extends object>(initial: T) {
     setBaselineVersion((v) => v + 1)
   }, [values])
 
+  /**
+   * Fields the SERVER just saved on its own (a scan that writes, say): moved
+   * into both the values and the baseline, so they neither read as unsaved
+   * nor disturb anything else the user has typed and not yet saved.
+   */
+  const rebase = useCallback((saved: Partial<T>) => {
+    baseline.current = { ...baseline.current, ...saved }
+    setValues((prev) => ({ ...prev, ...saved }))
+    setBaselineVersion((v) => v + 1)
+  }, [])
+
   const discard = useCallback(() => {
     setValues(baseline.current)
     setBaselineVersion((v) => v + 1)
@@ -88,7 +99,7 @@ export function useDirtyForm<T extends object>(initial: T) {
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [isDirty])
 
-  return { values, setValues, setField, dirtyFields, isDirty, changedPayload, commit, discard }
+  return { values, setValues, setField, dirtyFields, isDirty, changedPayload, commit, rebase, discard }
 }
 
 /** True when the user confirms leaving unsaved work (or there is none). */

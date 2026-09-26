@@ -48,6 +48,10 @@ interface ClientData {
   primaryColor: string | null
   secondaryColor: string | null
   accentColor: string | null
+  /** 'site' | 'manual' | null — see lib/brand-colors.ts. */
+  brandColorsSource?: string | null
+  brandColorsReadAt?: string | Date | null
+  brandColorsNote?: string | null
   timezone: string
   // Browser origins allowed to POST leads directly to the webhook (CORS)
   allowedOrigins: string[]
@@ -99,7 +103,7 @@ const TIMEZONE_OPTIONS = [
 ]
 
 export default function ClientBusinessForm({ client }: { client: ClientData }) {
-  const { values: formData, setValues: setFormData, setField, dirtyFields, isDirty, changedPayload, commit, discard } =
+  const { values: formData, setValues: setFormData, setField, dirtyFields, isDirty, changedPayload, commit, rebase, discard } =
     useDirtyForm<ClientData>(client)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
@@ -682,6 +686,15 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
                 </div>
               )}
             </div>
+            <BrandColorsFromSite
+              clientId={client.id}
+              websiteUrl={formData.websiteUrl}
+              source={client.brandColorsSource ?? null}
+              readAt={client.brandColorsReadAt ?? null}
+              note={client.brandColorsNote ?? null}
+              colorsDirty={['primaryColor', 'secondaryColor', 'accentColor'].some((k) => dirtyFields.has(k))}
+              onRead={(colors) => rebase(colors)}
+            />
             {/* One column until there is room for three. At 900px the accent
                 hex input ran past the card's own border. */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -747,6 +760,105 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
         onSave={handleSave}
         onDiscard={() => { if (confirmDiscard(isDirty)) discard() }}
       />
+    </div>
+  )
+}
+
+/**
+ * "Read from their website" — the colours off the shop's own site (lib/brand-
+ * scan.ts). The morning sweep does this by itself for a new shop whose
+ * colours are still the defaults; the button is for now, for a redesign, and
+ * for overriding colours somebody picked by hand.
+ *
+ * The route SAVES, so the swatches below are moved into the form's baseline
+ * rather than marked unsaved — and anything else typed on this tab and not
+ * yet saved is left exactly as it was.
+ */
+function BrandColorsFromSite({
+  clientId,
+  websiteUrl,
+  source,
+  readAt,
+  note,
+  colorsDirty,
+  onRead,
+}: {
+  clientId: string
+  websiteUrl: string | null
+  source: string | null
+  readAt: string | Date | null
+  note: string | null
+  colorsDirty: boolean
+  onRead: (colors: { primaryColor: string; secondaryColor: string; accentColor: string }) => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null)
+  // What the standing line describes, moved on by a press: it read "Not read
+  // yet" directly above the message saying the read had just been saved.
+  const [current, setCurrent] = useState({ source, readAt })
+
+  async function read() {
+    setBusy(true)
+    setStatus(null)
+    try {
+      const res = await fetch(`/api/clients/${clientId}/brand-colors`, { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || data.note || 'Could not read their website.')
+      if (data.colors) {
+        onRead(data.colors)
+        setCurrent({ source: 'site', readAt: new Date() })
+      } else if (data.status === 'no-reading') {
+        setCurrent((prev) => ({ ...prev, readAt: new Date() }))
+      }
+      setStatus({
+        ok: data.status === 'updated' || data.status === 'unchanged',
+        text:
+          data.status === 'updated'
+            ? `Saved. ${data.note} The site updates within about 5 minutes.`
+            : data.status === 'unchanged'
+              ? `Their website still says the same. ${data.note}`
+              : data.note,
+      })
+    } catch (err) {
+      setStatus({ ok: false, text: err instanceof Error ? err.message : 'Could not read their website.' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const standing =
+    current.source === 'site'
+      ? `From their website${current.readAt ? `, read ${new Date(current.readAt).toLocaleDateString()}` : ''}.`
+      : current.source === 'manual'
+        ? 'Chosen by hand — the automatic read leaves these alone.'
+        : current.readAt
+          ? `Their website was read ${new Date(current.readAt).toLocaleDateString()} and gave no colours.`
+          : websiteUrl
+            ? 'Not read yet — the morning sweep reads their website while these are still the defaults.'
+            : 'No website on file, so there is nothing to read them from.'
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-gray-800">Colours from their website</p>
+          <p className="text-xs text-gray-500">{standing}</p>
+        </div>
+        <button
+          type="button"
+          onClick={read}
+          disabled={busy || !websiteUrl || colorsDirty}
+          title={colorsDirty ? 'Save or discard the colour changes first' : undefined}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+        >
+          {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+          Read from their website
+        </button>
+      </div>
+      {!status && note && current.source !== 'manual' && <p className="text-xs text-gray-600">{note}</p>}
+      {status && (
+        <p className={`text-xs ${status.ok ? 'text-green-700' : 'text-red-700'}`}>{status.text}</p>
+      )}
     </div>
   )
 }
