@@ -1,4 +1,4 @@
-import { SERVICE_PAGES, type ServiceFlag } from '@/lib/site-services'
+import { SERVICE_PAGES, type GlassServiceFlag } from '@/lib/site-services'
 import { insuranceForState } from '@/lib/insurance-rules'
 import { PHONE_RE, last10 } from '@/lib/rogue-numbers'
 import type { FindingDraft } from '@/lib/google-ads-checks'
@@ -54,7 +54,7 @@ export interface ClaimFacts {
   smsCapable: boolean
   /** Whether the site states warranty terms anywhere. */
   hasWarrantyTerms: boolean
-  services: Record<ServiceFlag, boolean>
+  services: Record<GlassServiceFlag, boolean>
   /** Every number that legitimately belongs to this shop, any format. */
   knownPhones: string[]
   /**
@@ -75,7 +75,7 @@ export interface ClaimProblem {
 }
 
 /** Keywords that name a service, per flag. Deliberately narrow. */
-const SERVICE_WORDS: Array<[ServiceFlag, RegExp]> = [
+const SERVICE_WORDS: Array<[GlassServiceFlag, RegExp]> = [
   ['offersWindshieldReplacement', /\bwindshield replacement\b/i],
   ['offersWindshieldRepair', /\bwindshield repair\b/i],
   ['offersRockChipRepair', /\b(rock ?chip|chip repair)\b/i],

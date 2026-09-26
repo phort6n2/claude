@@ -13,6 +13,7 @@ import {
   getServicePage,
   servicesForClient,
   serviceHeading,
+  sectionsFor,
   type ServiceFlag,
 } from '@/lib/site-services'
 import {
@@ -281,7 +282,7 @@ export default async function ServicePage({ params, atOverride }: PageProps) {
   // right call", "what the job involves") is objection handling and keeps the
   // high slot. The shop's general story is about the business, so it moves
   // below the proof like it does on the home page.
-  const serviceChapters = page.sections.map((s) => ({
+  const serviceChapters = sectionsFor(page, client).map((s) => ({
     heading: s.heading,
     body: s.body,
     photoUrl: '',
@@ -360,7 +361,7 @@ export default async function ServicePage({ params, atOverride }: PageProps) {
           </div>
 
           <div id="quote" className="w-full scroll-mt-24 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:justify-self-end">
-            <WidgetMount client={client} service={page.name} />
+            <WidgetMount client={client} service={page.preselect === false ? undefined : page.name} />
           </div>
 
           <div className="lg:col-start-1 lg:row-start-2">

@@ -1,4 +1,4 @@
-import { SERVICE_PAGES, type ServiceFlag } from '@/lib/site-services'
+import { GLASS_SERVICE_PAGES, type GlassServiceFlag } from '@/lib/site-services'
 import { claimProblem, type ClaimContext } from '@/lib/copy-claims'
 
 /**
@@ -87,8 +87,8 @@ export interface StoryScreenResult {
 }
 
 /** The service names this shop actually offers, in the site's own wording. */
-export function offeredServices(services: Record<ServiceFlag, boolean>): string[] {
-  return SERVICE_PAGES.filter((s) => services[s.flag]).map((s) => s.name.toLowerCase())
+export function offeredServices(services: Record<GlassServiceFlag, boolean>): string[] {
+  return GLASS_SERVICE_PAGES.filter((s) => services[s.flag]).map((s) => s.name.toLowerCase())
 }
 
 /** How the site's own headlines name this shop's patch. */
@@ -105,7 +105,7 @@ export function areaName(input: Pick<StoryInput, 'marketArea' | 'city' | 'state'
  */
 export function storyFacts(input: StoryInput): string[] {
   const offered = offeredServices(input.services)
-  const missing = SERVICE_PAGES.filter((s) => !input.services[s.flag]).map((s) =>
+  const missing = GLASS_SERVICE_PAGES.filter((s) => !input.services[s.flag]).map((s) =>
     s.name.toLowerCase()
   )
   return [

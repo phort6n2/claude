@@ -27,6 +27,19 @@ export type ServiceFlag =
   | 'offersBackWindowRepair'
   | 'offersSunroofRepair'
   | 'offersAdasCalibration'
+  | 'offersMobileService'
+
+/**
+ * The flags that are KINDS OF GLASS WORK — every service except mobile.
+ *
+ * The drafters' and screens' `services` maps are keyed by this, not by
+ * ServiceFlag, because mobile already travels beside them as its own
+ * top-level fact (`offersMobileService`), with its own screen rules. Putting
+ * it in the map too would give one fact two places to disagree — "they run a
+ * mobile unit" in one line of a prompt and "work they do NOT do: mobile" in
+ * the next.
+ */
+export type GlassServiceFlag = Exclude<ServiceFlag, 'offersMobileService'>
 
 export interface ServicePage {
   slug: string
@@ -34,7 +47,34 @@ export interface ServicePage {
   name: string
   short: string
   heroLine: string
-  sections: Array<{ heading: string; body: string }>
+  /**
+   * A section that is only true for a shop doing some OTHER work too renders
+   * only when that flag is on — the copy rule is "true for every shop it
+   * renders for", and a page can be offered by a shop missing the service a
+   * paragraph talks about.
+   */
+  sections: Array<{ heading: string; body: string; requires?: ServiceFlag }>
+  /**
+   * Whether the quote form arrives with this service chosen. False for a way
+   * of DELIVERING the work rather than a kind of glass: the form's service
+   * list is glass types, and a lead that says only "mobile" does not say what
+   * is broken.
+   */
+  preselect?: false
+  /**
+   * Resolved by the catch-all route, NOT rewritten in middleware.
+   *
+   * Middleware sends a flat service address straight to the service route,
+   * ahead of the kept pages and redirects the catch-all checks first, and it
+   * cannot read the database to know better. That was safe for the original
+   * slugs, which existed before any shop had a kept page. A slug added later
+   * may already be a KEPT page or a redirect on a live site — "mobile auto
+   * glass" is exactly what an old site calls its mobile page — and putting it
+   * in middleware would silently replace that shop's page with ours. Left to
+   * the catch-all, their kept page or redirect wins and everyone else gets
+   * the template page at the same flat address.
+   */
+  yieldsToKeptPages?: true
 }
 
 export const SERVICE_PAGES: ServicePage[] = [
@@ -173,11 +213,57 @@ export const SERVICE_PAGES: ServicePage[] = [
       },
     ],
   },
+  {
+    // A way of delivering the work rather than a kind of glass, so it names
+    // no glass it cannot vouch for: a mobile shop may do chips and nothing
+    // else. Every sentence is true for any shop with the mobile box ticked —
+    // no radius, no response time, no "same day", nothing about roadside
+    // (a shop that comes to a driveway may not come to a hard shoulder).
+    slug: 'mobile-auto-glass',
+    flag: 'offersMobileService',
+    name: 'Mobile Auto Glass Service',
+    short: 'We come to you — at home or at work, inside our service area.',
+    // Not "so you do not have to bring it in": the premises screen refuses it,
+    // rightly — on a shop with no premises it implies somewhere to bring it.
+    heroLine: 'Auto glass work done where your car is already parked — at home or at work.',
+    preselect: false,
+    yieldsToKeptPages: true,
+    sections: [
+      {
+        heading: 'How mobile service works',
+        body: 'Tell us the year, make and model, what is damaged, and where the vehicle will be. The technician brings what the job needs to that spot and does the work there — the same materials and the same job it would be anywhere else, without you having to drive a damaged car to it.',
+      },
+      {
+        heading: 'Where the work can be done',
+        body: 'A driveway, a garage or a parking space usually works, as long as there is room to open the doors and work around the vehicle. If the car will be at your workplace, check that it can stay where it is for the job and for the time the work needs afterwards before it is driven.',
+      },
+      {
+        // Adhesive is a replacement fact. A shop doing only chip repair on
+        // the road has no adhesive cure to talk about.
+        heading: 'Weather and drive-away time',
+        body: 'The adhesive that holds a windshield in place has a minimum safe drive-away time, and cold or wet weather affects how it cures. For outdoor work, tell us where the car will be parked when you book so the job can be planned around it. Your installer will tell you when it is safe to drive.',
+        requires: 'offersWindshieldReplacement',
+      },
+      {
+        // Only for a shop that calibrates at all. For one that does not, the
+        // honest sentence is "somebody else will have to", and that belongs
+        // in a conversation, not on their own page.
+        heading: 'If your car has a camera behind the glass',
+        body: 'Lane-keep, automatic braking and similar systems read the road through a camera mounted behind the windshield, and it has to be recalibrated after a replacement. Some calibrations need a controlled space rather than a driveway, so ask how it will be handled for your vehicle when you book.',
+        requires: 'offersAdasCalibration',
+      },
+    ],
+  },
 ]
 
 export function servicesForClient(flags: Record<ServiceFlag, boolean>): ServicePage[] {
   return SERVICE_PAGES.filter((s) => flags[s.flag])
 }
+
+/** The pages that are a kind of glass work — see GlassServiceFlag. */
+export const GLASS_SERVICE_PAGES = SERVICE_PAGES.filter(
+  (s): s is ServicePage & { flag: GlassServiceFlag } => s.flag !== 'offersMobileService'
+)
 
 /**
  * Addresses the shops' OLD sites used for a service this template names
@@ -231,8 +317,24 @@ export function serviceHeading(slug: string): string {
   return SERVICE_ALIASES[slug]?.name || getServicePage(slug)?.name || ''
 }
 
-/** Every flat address middleware resolves to a service page. */
+/**
+ * Every flat address MIDDLEWARE resolves to a service page.
+ *
+ * Not every service page: one marked `yieldsToKeptPages` is served at its
+ * flat address by the catch-all instead, after the shop's kept pages and
+ * redirects have had their turn — see the note on that field.
+ */
 export const FLAT_SERVICE_PATHS: string[] = [
-  ...SERVICE_PAGES.map((s) => s.slug),
+  ...SERVICE_PAGES.filter((s) => !s.yieldsToKeptPages).map((s) => s.slug),
   ...Object.keys(SERVICE_ALIASES),
 ]
+
+/** The service's own sections that are true for THIS shop. */
+export function sectionsFor(
+  page: ServicePage,
+  flags: Partial<Record<ServiceFlag, boolean | null>>
+): Array<{ heading: string; body: string }> {
+  return page.sections
+    .filter((s) => !s.requires || !!flags[s.requires])
+    .map(({ heading, body }) => ({ heading, body }))
+}

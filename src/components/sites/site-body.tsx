@@ -253,17 +253,24 @@ const SERVICE_ICONS: Record<string, LucideIcon> = {
   'back-glass-replacement': CarFront,
   'sunroof-repair': Sun,
   'adas-calibration': ScanLine,
+  'mobile-auto-glass': Truck,
 }
 
 // The services GRID caps at 6 cards so the last row is always full, like the
-// reference. Highest-value services first; the mobile-service card takes one
-// slot when offered. The footer still lists every service.
+// reference. Highest-value services first. The footer still lists every
+// service.
+//
+// Mobile sits sixth, which is where its card always landed when it was a
+// special extra linking to the form: five glass services and then mobile, so
+// a shop offering it still always shows it. EVERY slug must be listed —
+// indexOf answers -1 for a missing one, which sorts it FIRST.
 const GRID_PRIORITY = [
   'windshield-replacement',
   'windshield-repair',
   'adas-calibration',
   'side-window-replacement',
   'back-glass-replacement',
+  'mobile-auto-glass',
   'rock-chip-repair',
   'sunroof-repair',
 ]
@@ -473,7 +480,7 @@ export function SiteBody({
   // cards, a full screen tall on a phone, linking to itself.
   const gridServices = prioritized
     .filter((s) => s.slug !== currentServiceSlug)
-    .slice(0, flags.offersMobileService ? 5 : 6)
+    .slice(0, 6)
 
   // The membership, on every page rather than only on the claim page — see
   // networkHighlight. Computed here so SiteBody's own affiliation line and
@@ -545,40 +552,17 @@ export function SiteBody({
                   </a>
                 )
               })}
-              {flags.offersMobileService && (
-                <a
-                  href="#quote"
-                  className="group p-5 sm:p-6 rounded-[20px] border border-[var(--line-card)] bg-white shadow-sm hover:shadow-md hover:border-[var(--line-strong)] hover:-translate-y-0.5 transition-all no-underline"
-                >
-                  {/* Same treatment as the service cards it sits beside. */}
-                  <div className="flex items-center gap-3 sm:block">
-                    <div className="h-10 w-10 shrink-0 rounded-[14px] flex items-center justify-center sm:mb-4 bg-[var(--tint-accent)]">
-                      <Truck className="h-5 w-5 text-[var(--on-tint-accent)]" />
-                    </div>
-                    <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold text-[var(--tx)] m-0">
-                      Mobile Service
-                    </h3>
-                  </div>
-                  <p className="text-[var(--tx-muted)] text-sm mt-2.5 sm:mt-1.5 mb-0">
-                    {/* "We", not "the shop". The site speaks AS the business
-                        (see the confirmation-card note in widget.js), and on a
-                        service-area business "the shop comes to you" also
-                        names premises there are none of. */}
-                    Home, office, or roadside — we come to you.
-                  </p>
-                  <span className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-[var(--brand)]">
-                    Get a quote
-                    <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-                  </span>
-                </a>
-              )}
+              {/* Mobile used to be a special extra card here, linking to the
+                  form. It is a real page now ('mobile-auto-glass' in
+                  site-services.ts) and arrives through gridServices like any
+                  other, so it links to its page. */}
               {/* A shop that ticked only one or two services leaves the grid
                   looking abandoned rather than focused. The filler card is
                   built ONLY from data already on the record — city, state —
                   and points at the quote form, so it claims nothing the shop
                   never said. It disappears the moment a third real card
                   exists. */}
-              {gridServices.length + (flags.offersMobileService ? 1 : 0) < 3 && (
+              {gridServices.length < 3 && (
                 <a
                   href="#quote"
                   className="group p-5 sm:p-6 rounded-[20px] border border-[var(--line-card)] bg-white shadow-sm hover:shadow-md hover:border-[var(--line-strong)] hover:-translate-y-0.5 transition-all no-underline"

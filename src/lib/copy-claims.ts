@@ -1,4 +1,4 @@
-import { SERVICE_PAGES, type ServiceFlag } from '@/lib/site-services'
+import { SERVICE_PAGES, type GlassServiceFlag } from '@/lib/site-services'
 import { PHONE_RE } from '@/lib/rogue-numbers'
 import { PREMISES_WORDS } from '@/lib/site-premises'
 
@@ -33,7 +33,7 @@ export interface ClaimContext {
   offersMobileService: boolean
   filesInsuranceClaims: boolean
   smsCapable: boolean
-  services: Record<ServiceFlag, boolean>
+  services: Record<GlassServiceFlag, boolean>
 }
 
 /** What tripped, in words an operator can act on, and the words that did it. */
@@ -241,7 +241,7 @@ function gatedRules(input: ClaimContext): Rule[] {
   // paragraph mentioning it does not strip anything — it simply advertises
   // work the shop does not do, and the first call about it is somebody's
   // wasted afternoon.
-  const byFlag: Array<[ServiceFlag, RegExp[]]> = [
+  const byFlag: Array<[GlassServiceFlag, RegExp[]]> = [
     ['offersWindshieldReplacement', [/\bwindshield replacement\b/i, /\breplac\w* (the |your |a )?windshield\b/i]],
     ['offersWindshieldRepair', [/\bwindshield repair\b/i, /\brepair\w* (the |your |a )?windshield\b/i]],
     ['offersSideWindowRepair', [/\b(side|door|quarter|vent) (window|glass)\b/i]],

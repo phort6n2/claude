@@ -525,6 +525,29 @@ the block that talks about the business rather than the customer, and ahead of
 the proof it stood between a paid visitor and every section that answers
 "what will this cost me".
 
+**MOBILE IS A SERVICE PAGE** (`mobile-auto-glass` in `SERVICE_PAGES`, gated on
+`offersMobileService`, `scripts/check-mobile-service-page.ts`). The Mobile
+service tick used to buy one special grid card that linked to the quote form,
+so there was nothing for a "mobile auto glass" ad group to land on. It is now
+an ordinary service page — grid card, nav, footer, sitemap, cutover row — with
+three differences, each a field on `ServicePage`:
+- **`yieldsToKeptPages`: NOT rewritten in middleware.** The original slugs
+  predate every kept page; a slug added now may already be a shop's kept page
+  or redirect ("mobile auto glass" is exactly what an old site calls its
+  mobile page), and middleware would replace it silently. The catch-all serves
+  it after kept pages and redirects. Verified: a kept page at the address still
+  wins on the client host and the preview.
+- **`preselect: false`**: it is a way of delivering the work, not a glass
+  type, so the form arrives unselected and the lead still says what is broken.
+- **`requires` on a section**: adhesive cure only with replacement ticked,
+  camera calibration only with ADAS ticked — a chips-only mobile unit gets
+  neither. The copy is run through `copy-claims.ts` in the check, which caught
+  "so you do not have to bring it in" as a premises claim on a shop with none.
+- The drafters' `services` maps are keyed by **`GlassServiceFlag`**, which
+  excludes mobile: mobile already travels as its own top-level fact, and both
+  would let a prompt say "they run a mobile unit" and "work they do NOT do:
+  mobile" about one shop.
+
 **AN "INSURANCE" AD GROUP NEEDS A PAGE ABOUT THE CLAIM**
 (`insurance-programs.ts`, `components/sites/insurance-program-page.tsx`,
 `ClientInsuranceProgram`, bootstrap: `INSURANCE_PROGRAM_SQL`, the card on the
