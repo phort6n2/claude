@@ -70,6 +70,47 @@ interface PageProps {
   params: Promise<{ slug: string }>
 }
 
+function homeServiceName(client: {
+  offersWindshieldRepair: boolean
+  offersWindshieldReplacement: boolean
+}): string {
+  if (client.offersWindshieldRepair && client.offersWindshieldReplacement) {
+    return 'Windshield Repair & Replacement'
+  }
+  if (client.offersWindshieldReplacement) return 'Windshield Replacement'
+  if (client.offersWindshieldRepair) return 'Windshield Repair'
+  return 'Auto Glass Service'
+}
+
+function homeHeroTitle(
+  client: {
+    offersMobileService: boolean
+    offersWindshieldRepair: boolean
+    offersWindshieldReplacement: boolean
+  },
+  area: string
+): string {
+  const mobile = client.offersMobileService ? ' We come to you.' : ''
+  if (client.offersWindshieldRepair && client.offersWindshieldReplacement) {
+    return client.offersMobileService
+      ? `Cracked windshield in ${area}?${mobile}`
+      : `Windshield repair and replacement in ${area}`
+  }
+  if (client.offersWindshieldReplacement) {
+    return client.offersMobileService
+      ? `Need a new windshield in ${area}?${mobile}`
+      : `Windshield replacement in ${area}`
+  }
+  if (client.offersWindshieldRepair) {
+    return client.offersMobileService
+      ? `Windshield damage in ${area}?${mobile}`
+      : `Windshield repair in ${area}`
+  }
+  return client.offersMobileService
+    ? `Broken auto glass in ${area}?${mobile}`
+    : `Auto glass service in ${area}`
+}
+
 async function getClient(slug: string) {
   // The label in the URL may be the full slug or the short siteSubdomain.
   return prisma.client.findFirst({
@@ -160,8 +201,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // has said otherwise — see lib/site-area.ts. The schema below still carries
   // the real locality.
   const area = areaWithState(client)
-  const title = `${client.businessName} | Auto Glass Repair & Replacement in ${area}`
-  const description = `Fast, professional windshield repair and replacement in ${area}. Free quotes, insurance assistance${client.offersMobileService ? ', mobile service to your home or office' : ''}. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
+  const serviceName = homeServiceName(client)
+  const title = `${client.businessName} | ${serviceName} in ${area}`
+  const description = `Fast, professional ${serviceName.toLowerCase()} in ${area}. Free quotes, insurance assistance${client.offersMobileService ? ', mobile service to your home or office' : ''}. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
 
   return {
     title,
@@ -207,6 +249,7 @@ export default async function ClientSitePage({ params }: PageProps) {
   const palette = sitePaletteVars(client.primaryColor, client.accentColor)
   const flags = {
     offersMobileService: client.offersMobileService,
+    offersWindshieldRepair: client.offersWindshieldRepair,
     offersAdasCalibration: client.offersAdasCalibration,
     filesInsuranceClaims: client.filesInsuranceClaims,
     smsCapable: client.smsCapable,
@@ -258,9 +301,7 @@ export default async function ClientSitePage({ params }: PageProps) {
   // the shop actually sits is carried by the serving line, the contact card,
   // the map and the schema, none of which move.
   const area = headlineArea(client)
-  const heroTitle = client.offersMobileService
-    ? `Cracked windshield in ${area}? We come to you.`
-    : `Windshield repair and replacement in ${area}`
+  const heroTitle = homeHeroTitle(client, area)
 
   // Cities the site is willing to link to: a shop is there, or the client has
   // written something specific about it.
@@ -345,7 +386,7 @@ export default async function ClientSitePage({ params }: PageProps) {
                 sight; the eyebrow's job is the keyword anchor — and the
                 keyword is the AREA, the same one the H1 names. */}
             <Eyebrow>
-              Windshield repair &amp; replacement · {areaWithState(client)}
+              {homeServiceName(client)} · {areaWithState(client)}
             </Eyebrow>
             <h1 className="text-[clamp(1.875rem,1.35rem+2.6vw,3.4rem)] font-extrabold leading-[1.08] tracking-[-.02em] text-[var(--tx)]">
               {heroTitle}

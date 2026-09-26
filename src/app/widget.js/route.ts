@@ -363,9 +363,9 @@ const WIDGET_SOURCE = String.raw`(function () {
     var REQ = '<span class="req" aria-hidden="true">*</span>';
 
     var name = el('input', { type: 'text', name: 'full_name', autocomplete: 'name', placeholder: 'Alex Ramirez' });
-    var phone = el('input', { type: 'tel', name: 'phone', inputmode: 'tel', autocomplete: 'tel', placeholder: '(714) 555-0142' });
+    var phone = el('input', { type: 'tel', name: 'phone', inputmode: 'tel', autocomplete: 'tel', placeholder: '(555) 555-0142' });
     var email = el('input', { type: 'email', name: 'email', inputmode: 'email', autocomplete: 'email', placeholder: 'you@example.com' });
-    var zip = el('input', { type: 'text', name: 'postal_code', autocomplete: 'postal-code', inputmode: 'numeric', maxlength: '5', placeholder: '92614' });
+    var zip = el('input', { type: 'text', name: 'postal_code', autocomplete: 'postal-code', inputmode: 'numeric', maxlength: '5', placeholder: '5-digit ZIP' });
     var service = el('select', { name: 'service' });
     // Template spec: no placeholder option — the most common job is the default.
     (cfg.services || []).forEach(function (s) { service.appendChild(el('option', { value: s, text: s })); });
@@ -607,7 +607,7 @@ const WIDGET_SOURCE = String.raw`(function () {
     var moreBtn = el('button', { type: 'button', class: 'more-btn', 'aria-expanded': 'false' });
     moreBtn.appendChild(el('span', {
       html: '<span class="more-t">Speed up my quote <span class="opt">(optional)</span></span><br>' +
-        '<span class="more-s">VIN, insurance, email — anything that helps them quote</span>'
+        '<span class="more-s">VIN, insurance, email — anything that helps us quote</span>'
     }));
     moreBtn.appendChild(el('span', {
       class: 'chev',
@@ -703,7 +703,7 @@ const WIDGET_SOURCE = String.raw`(function () {
     // heading-order audit, and the thing a screen-reader user navigating by
     // heading actually trips over.
     head.appendChild(el('h2', { text: 'Get your free quote' }));
-    head.appendChild(el('p', { text: "Four quick questions. We'll confirm what your insurance covers before anything is booked — no obligation." }));
+    head.appendChild(el('p', { text: "A few quick details. We'll confirm what your insurance covers before anything is booked — no obligation." }));
     headwrap.appendChild(head);
     card.appendChild(headwrap);
     var body = el('div'); body.className = 'body';

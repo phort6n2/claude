@@ -59,6 +59,8 @@ import type { SiteLocation } from '@/lib/client-locations'
 
 export interface SiteFlags {
   offersMobileService: boolean
+  /** Whether this shop actually offers windshield repair. */
+  offersWindshieldRepair: boolean
   offersAdasCalibration: boolean
   /**
    * Whether this shop actually files the claim for the customer. Some do;
@@ -159,7 +161,7 @@ export function WidgetMount({ client, service }: { client: SiteClient; service?:
   const placeholder = `
     <div class="bg-white rounded-[20px] border-t-4 border-t-[var(--cta)] border border-[var(--line-card)] shadow-lg p-6">
       <p class="m-0 text-xl font-extrabold tracking-tight text-[var(--tx)]">Get your free quote</p>
-      <p class="mt-1.5 mb-0 text-sm text-[var(--tx-muted)]">Four quick questions and you&rsquo;ll have a real number.</p>
+      <p class="mt-1.5 mb-0 text-sm text-[var(--tx-muted)]">A few quick details and you&rsquo;ll have a real number.</p>
       <form method="post" action="${esc(action)}" class="mt-4 grid gap-3">
         <input type="hidden" name="form_name" value="glassleads-noscript" />
         <input type="hidden" name="source_label" value="Landing page" />
@@ -463,6 +465,9 @@ export function SiteBody({
   linkableCities?: Set<string>
 }) {
   const prioritized = prioritizeServices(services)
+  const offersRepair = prioritized.some(
+    (service) => service.slug === 'windshield-repair' || service.slug === 'rock-chip-repair'
+  )
   // Never the page you are standing on. On a service page the grid is headed
   // "Everything we handle" and included the current service — one of only six
   // cards, a full screen tall on a phone, linking to itself.
@@ -495,7 +500,11 @@ export function SiteBody({
             <SectionHead
               eyebrow="Services"
               title={currentServiceSlug ? 'Everything we handle' : 'What we handle'}
-              lead="Not sure whether yours is a repair or a replacement? Send a photo with your quote and we'll tell you — a chip caught early is a great deal cheaper than the crack it turns into."
+              lead={
+                offersRepair
+                  ? "Not sure whether yours is a repair or a replacement? Send a photo with your quote and we'll tell you — a chip caught early is a great deal cheaper than the crack it turns into."
+                  : "Send the vehicle details with your quote and we'll identify the correct replacement glass before anything is scheduled."
+              }
             />
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {gridServices.map((s) => {
@@ -582,7 +591,9 @@ export function SiteBody({
                   </h3>
                   <p className="text-[var(--tx-muted)] text-sm mt-1.5 mb-0">
                     Based in {client.city}, {client.state} — talk to the people doing the work and
-                    get a straight answer on repair versus replacement.
+                    {offersRepair
+                      ? ' get a straight answer on repair versus replacement.'
+                      : ' get a clear windshield replacement quote.'}
                   </p>
                   <span className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-[var(--brand)]">
                     Get a quote
@@ -611,6 +622,7 @@ export function SiteBody({
       <InsuranceBand
         state={client.state}
         filesClaims={flags.filesInsuranceClaims}
+        offersRepair={offersRepair}
         affiliation={affiliationLine(
           insuranceProgram?.program ?? null,
           insuranceProgram?.record ?? null
@@ -649,6 +661,7 @@ export function SiteBody({
         extras={null}
         extraFaq={withDefaultFaq(extras.faq, {
           state: client.state,
+          offersWindshieldRepair: flags.offersWindshieldRepair,
           offersAdasCalibration: flags.offersAdasCalibration,
         })}
       />

@@ -320,6 +320,7 @@ export default async function CatchAllPage({ params }: PageProps) {
   const palette = sitePaletteVars(client.primaryColor, client.accentColor)
   const flags = {
     offersMobileService: client.offersMobileService,
+    offersWindshieldRepair: client.offersWindshieldRepair,
     offersAdasCalibration: client.offersAdasCalibration,
     filesInsuranceClaims: client.filesInsuranceClaims,
     smsCapable: client.smsCapable,
