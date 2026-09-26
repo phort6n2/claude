@@ -423,7 +423,7 @@ export default function PortalLeadsPage() {
 
       {/* Recurring coaching themes across this shop's calls */}
       <div className="max-w-3xl mx-auto px-4 pt-3">
-        <CoachingFocusAreas />
+        <CoachingFocusAreas trendHref="/portal/calls#call-quality" />
       </div>
 
       {/* Lead Count */}

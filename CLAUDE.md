@@ -326,6 +326,57 @@ webhook routes.
     missed call sat unmarked until refresh. Verified against a render: the row
     arrived bare and turned "Missed call" when the status landed.
   - `scripts/check-call-badge.ts` holds the collision first, both directions.
+- **THE GRADER GIVES FEEDBACK THE WAY THE RESEARCH SAYS ADULTS CAN USE IT**
+  (`coaching-prompt.ts`). Kluger & DeNisi's meta-analysis (1996) found over a
+  third of feedback interventions made performance WORSE, and worse the more
+  it pointed at the person rather than the task; Hattie & Timperley (2007)
+  found praise of the person diverts attention from the work; and the
+  "feedback sandwich" changes how feedback feels but not what people do, and
+  trains them to hear praise as the warning before a "but". So: feedback is
+  about moments on the call, never traits; praise is specific, quoted, and
+  never a warm-up for criticism; a tip looks FORWARD ("Next time, try …",
+  with words the rep can use); one tip in the note. The report says "Try
+  next time", not "Better approach".
+  - **A BOOKED CALL IS CELEBRATED.** Floor `BOOKED_SCORE_FLOOR` (80), a
+    praise-only note, two specific things done well, at most one "idea for
+    next time" and only if something risked the booking. The floor is
+    ENFORCED in code (`settleAnalysis`, in the pipeline) as well as asked for
+    in the prompt — a model does not follow every instruction every time, and
+    a booked call scored low shows as a dip on the week the shop did best.
+  - **§2 IN THE RUBRIC.** "Mentioned differentiators — warranty, OEM glass,
+    certified techs, ADAS (10)" paid a shop to make those claims, and a shop
+    without certified techs could only earn the points by saying something
+    untrue. The rubric now credits whatever the rep actually said about why to
+    choose them, never deducts for a missing claim, and never suggests a claim
+    the transcript does not show is true. The focus-area label lost its list
+    of claims for the same reason.
+  - **Question-only calls are not graded as sales** at the source now, as
+    well as in the display.
+- **CALL QUALITY OVER TIME** (`quality-trend.ts`, `CallQualityTrend`,
+  `/api/portal/call-quality`, on the portal's "Your phone" page, linked from
+  "Top 3 things to work on"). Weekly average score for sales calls over twelve
+  weeks, headlined by the last four weeks against the four before — the
+  sentence is the point, the chart is the evidence.
+  - **Every silence is deliberate**, because the chart makes a claim about
+    PEOPLE in front of their boss: no verdict under `MIN_CALLS_HEADLINE` calls
+    a side (2 v 2 is a coin toss), within ±2 points is "holding steady", an
+    empty week is a GAP never a zero, and averages are pooled over calls, not
+    weeks, so one bad call in a quiet week cannot weigh like twelve.
+  - **Per rep, only from what the rep SAID.** Every call forwards to the
+    shop's one line, so nothing here knows who picked up; the grader records
+    `rep_name` from the rep's own introduction ("this is Mike") and nothing
+    else. `normalizeRepName` runs on write and again on read. It handles any
+    letter — the first cut stripped accents, turning "José" into "Jos", and its
+    own test asserted the mangled form. Unnamed calls count for the team.
+  - **Four lines at most** (team + `MAX_REP_LINES` 3): the reference palette
+    order is validated for colour-blind separation as a set of four, and two
+    of its hues sit under 3:1 on white, so a table view ships with the chart.
+  - The y floor follows the data but never above 40, with the top pinned at
+    100: 0-100 left half the plot empty, and a scale zoomed to the data turns
+    a two-point wobble into a cliff.
+  - Weeks are Monday–Sunday in the SHOP's timezone.
+    `scripts/check-call-quality-trend.ts` holds the Sunday-11pm-in-LA case,
+    the silent cases first.
 - **`Lead.callStatus` was stored from day one and rendered NOWHERE.** Counted
   and bucketed, never shown — so "the client says it never rang" could only be
   answered from Twilio's console, which is the one place the person asking is
@@ -2102,8 +2153,18 @@ Notes:
 
 - Prisma CLI is `./node_modules/.bin/prisma` (no global install).
 - Playwright must be launched with `executablePath: '/opt/pw-browsers/chromium'`.
-- Kill a stale server with `pgrep -x next-server | xargs -r kill` — a bare
-  `pkill -f next` also matches your own shell and kills the command running it.
+- **Kill a stale server BY PID, and confirm the port is free before trusting
+  a render.** The process is named `next-server (v16.1.1)`, so
+  `pgrep -x next-server` matches NOTHING and the old server keeps the port; a
+  new `next start` then dies with EADDRINUSE into its log while the old one
+  goes on answering — serving HTML that points at chunk hashes the new build
+  replaced, so the page loads, a chunk 500s, and the feature under test
+  silently does not render. That produced a false "it's broken" once and a
+  false "no difference" once. What works:
+  `ps -eo pid,args | awk '/next-server \(v16/ && !/awk/ {print $1}' | xargs -r kill`,
+  then check the new log says "Ready". A bare `pkill -f next` also matches
+  your own shell and kills the command running it; `lsof` cannot see the
+  listener in this container.
 - The importer and any model-backed feature need `ANTHROPIC_API_KEY`, which is
   usually absent locally. Those paths cannot be tested here; say so rather
   than claiming they were verified.

@@ -116,7 +116,14 @@ function Columns({
   )
 }
 
-export default function CallInsight({ insight }: { insight: Insight | null }) {
+export default function CallInsight({
+  insight,
+  after,
+}: {
+  insight: Insight | null
+  /** Rendered below the call patterns in either state — the quality trend. */
+  after?: React.ReactNode
+}) {
   if (!insight) {
     return (
       <div className="space-y-5">
@@ -125,6 +132,7 @@ export default function CallInsight({ insight }: { insight: Insight | null }) {
           No calls have come through your tracked number yet. Once they do, this page shows which
           ones went unanswered and what times your phone is busiest.
         </p>
+        {after}
       </div>
     )
   }
@@ -252,6 +260,8 @@ export default function CallInsight({ insight }: { insight: Insight | null }) {
           {p.worstHour.total} calls in that hour went unanswered.
         </p>
       )}
+
+      {after}
 
       <p className="text-sm text-gray-400">
         <Link href="/portal" className="underline">

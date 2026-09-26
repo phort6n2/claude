@@ -15,7 +15,14 @@
  * So the first cases here are the collision itself, in both directions.
  */
 
-import { callBadge, COMPETENT_SCORE } from '../src/lib/call-analysis/rating'
+import {
+  callBadge,
+  COMPETENT_SCORE,
+  BOOKED_SCORE_FLOOR,
+  FOCUS_AREAS,
+  normalizeRepName,
+  settleAnalysis,
+} from '../src/lib/call-analysis/rating'
 import { MISSED_CALL_STATUSES } from '../src/lib/call-display'
 import { buildCoachingPrompt } from '../src/lib/call-analysis/coaching-prompt'
 
@@ -151,9 +158,82 @@ console.log('\nTHE DISPLAY AND THE PROMPT AGREE ON WHAT "COMPETENT" MEANS')
   if (prompt.includes(`belongs in the ${COMPETENT_SCORE}-80 range`)) {
     pass('the prompt reads the same constant')
   } else fail('the prompt no longer states the competent band from COMPETENT_SCORE')
-  // The interpolation must not have changed a byte of the old wording.
-  if (prompt.includes('belongs in the 65-80 range')) pass('and its text is unchanged (65-80)')
-  else fail('the prompt text changed — every score going forward would shift')
+}
+
+console.log('\nTHE GRADER\'S RULES: praise for a booking, no claims, adult feedback')
+{
+  const prompt = buildCoachingPrompt({
+    transcript: { results: { utterances: [] } },
+    metrics: {
+      durationSeconds: 60, repTalkPct: 50, customerTalkPct: 50,
+      interruptionsByRep: 0, longestSilenceSeconds: 2, repSpeakerIndex: 0,
+    } as never,
+    clientContext: { businessName: 'Test Glass', city: 'Austin', state: 'TX' },
+  })
+
+  /* §2: the rubric paid 10 points for "certified techs, OEM glass", so a shop
+     without them could only score by saying something untrue. The words may
+     appear only inside the instruction NOT to deduct for them. */
+  const creditLine = prompt.split('\n').find((l) => /\(10\)/.test(l) && /shop/i.test(l)) || ''
+  if (!/certified|OEM/i.test(creditLine)) pass('the 10-point value line lists no claims to make')
+  else fail(`the rubric still pays for specific claims: ${creditLine}`)
+  if (/NEVER deduct for a\s+particular claim being absent/.test(prompt)) pass('and says never to deduct for a missing claim')
+  else fail('nothing stops the grader deducting for a credential the shop may not have')
+  if (!/certified techs/i.test(FOCUS_AREAS.value_differentiators)) {
+    pass(`the focus label names no claim: "${FOCUS_AREAS.value_differentiators}"`)
+  } else fail(`the focus label still coaches a claim: ${FOCUS_AREAS.value_differentiators}`)
+
+  if (prompt.includes(`score it ${BOOKED_SCORE_FLOOR} or above`)) pass(`a booked call is floored at ${BOOKED_SCORE_FLOOR}`)
+  else fail('the prompt does not state the booked floor from BOOKED_SCORE_FLOOR')
+  if (/praise only/i.test(prompt) && /no tip in the note/i.test(prompt)) pass('a booked call gets a praise-only note')
+  else fail('a booked call can still be handed a criticism in its headline note')
+
+  if (/not a sales call|FIRST, IS THIS A SALES CALL/i.test(prompt) && /do NOT grade them against the sales rubric/.test(prompt)) {
+    pass('question-only calls are not graded against the sales rubric')
+  } else fail('the grader still scores a parts query as a failed sale')
+
+  // The research, as rules the model can follow.
+  if (/About the CALL, never the person/.test(prompt)) pass('feedback is about the call, never the person')
+  else fail('nothing keeps feedback off the person')
+  if (/"but" or "however"/.test(prompt)) pass('praise is not a warm-up for a "but"')
+  else fail('the grader may still sandwich praise around criticism')
+  if (/Tips look FORWARD/.test(prompt)) pass('tips are forward-looking')
+  else fail('tips are not asked to look forward')
+
+  if (/rep_name/.test(prompt) && /never the customer's name, never a guess/.test(prompt)) {
+    pass('rep_name is only what the rep says about themselves')
+  } else fail('rep_name is not restricted to the rep\'s own introduction')
+}
+
+console.log('\nThe prompt\'s rules are ENFORCED, not just asked for')
+{
+  const low = settleAnalysis({ score: 52, outcome: 'booked', rep_name: 'mike' })
+  if (low.score === BOOKED_SCORE_FLOOR) pass(`a booked call scored 52 is stored as ${BOOKED_SCORE_FLOOR}`)
+  else fail(`a booked call kept a score below the floor: ${low.score}`)
+  const high = settleAnalysis({ score: 93, outcome: 'booked' })
+  if (high.score === 93) pass('a booked call above the floor keeps its score')
+  else fail(`a high booked score was flattened: ${high.score}`)
+  const lost = settleAnalysis({ score: 41, outcome: 'lost' })
+  if (lost.score === 41) pass('the floor applies to booked calls only')
+  else fail(`the floor lifted a call that did not book: ${lost.score}`)
+  if (low.rep_name === 'Mike') pass('the rep name is tidied: "mike" → "Mike"')
+  else fail(`rep name not normalised: ${low.rep_name}`)
+}
+
+console.log('\nRep names: only something that is plausibly a first name')
+{
+  const cases: Array<[unknown, string | null]> = [
+    ['Mike', 'Mike'], ['mike', 'Mike'], ['MIKE', 'Mike'], ['  Mike Johnson ', 'Mike'],
+    // Names keep their own shape and their accents. The first version turned
+    // "José" into "Jos" and "O'Neil" into "O'neil" — and this list asserted
+    // the mangled forms, which is how a check ends up guarding a bug.
+    ["O'Neil", "O'Neil"], ['McKenzie', 'McKenzie'], ['José', 'José'], ['Maria-José', 'Maria-José'],
+    ['zoë', 'Zoë'], ['Mike,', 'Mike'],
+    [null, null], ['', null], ['unknown', null], ['N/A', null], ['Rep', null], ['x', null], [42, null],
+  ]
+  const bad = cases.filter(([raw, want]) => normalizeRepName(raw) !== want)
+  if (bad.length === 0) pass(`all ${cases.length} name cases read as expected`)
+  else fail(`name cases wrong: ${bad.map(([r, w]) => `${JSON.stringify(r)}→${normalizeRepName(r)} (want ${w})`).join('; ')}`)
 }
 
 console.log('\nNOTHING TRUE TO SAY, SAY NOTHING')

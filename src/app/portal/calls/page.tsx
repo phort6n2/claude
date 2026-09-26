@@ -4,9 +4,11 @@ import { redirect } from 'next/navigation'
 import { getPortalSession } from '@/lib/portal-auth'
 import { getCallInsight } from '@/lib/call-patterns'
 import CallInsightView from '@/components/portal/CallInsight'
+import { CallQualityTrend } from '@/components/portal/CallQualityTrend'
 
 /**
- * "Your phone" — missed calls, and when the phone actually rings.
+ * "Your phone" — missed calls, when the phone actually rings, and whether the
+ * team is getting better at answering it.
  *
  * Reached from a home-screen tile rather than a tab: the phone tab bar is
  * measured full at six (see PortalNav), and a seventh would clip "Rankings"
@@ -20,5 +22,7 @@ export default async function PortalCallsPage() {
 
   const insight = await getCallInsight(session.clientId).catch(() => null)
 
-  return <CallInsightView insight={insight} />
+  // How well the calls are HANDLED, beside when they come in and which were
+  // missed — the one page about the phone.
+  return <CallInsightView insight={insight} after={<CallQualityTrend />} />
 }

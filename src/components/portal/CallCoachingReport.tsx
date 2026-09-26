@@ -342,7 +342,7 @@ function CollapsibleDetails({
             <span className="text-xs text-gray-500 font-normal">
               {didWellCount > 0 && `${didWellCount} did well`}
               {didWellCount > 0 && missedCount > 0 && ' • '}
-              {missedCount > 0 && `${missedCount} to work on`}
+              {missedCount > 0 && (a.outcome === 'booked' ? `${missedCount} idea${missedCount === 1 ? "" : "s"} for next time` : `${missedCount} to work on`)}
             </span>
           )}
         </span>
@@ -373,7 +373,9 @@ function CollapsibleDetails({
               "missed" next to a phone call reads as a call nobody answered,
               and that word is reserved for exactly that now. */}
           {a.missed_opportunities?.length > 0 && (
-            <Section title="What to Work On">
+            /* A booked call is celebrated (see the prompt): its one tip, if
+               any, is an idea for next time, not a thing that went wrong. */
+            <Section title={a.outcome === 'booked' ? 'One idea for next time' : 'What to Work On'}>
               <ul className="space-y-4">
                 {a.missed_opportunities.map((m, i) => (
                   <li key={i} className="border-l-2 border-orange-300 pl-3">
@@ -385,7 +387,7 @@ function CollapsibleDetails({
                       [{m.timestamp}] &ldquo;{m.transcript_quote}&rdquo;
                     </div>
                     <div className="mt-1 text-sm text-gray-700">
-                      <span className="font-medium">Better approach:</span>{' '}
+                      <span className="font-medium">Try next time:</span>{' '}
                       {m.what_should_have_happened}
                     </div>
                     <button

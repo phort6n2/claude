@@ -24,8 +24,11 @@ interface FocusSummary {
  */
 export function CoachingFocusAreas({
   endpoint = '/api/portal/coaching-focus',
+  trendHref,
 }: {
   endpoint?: string
+  /** Where the week-by-week quality chart lives, when this card is in the portal. */
+  trendHref?: string
 }) {
   const [data, setData] = useState<FocusSummary | null>(null)
   const [loading, setLoading] = useState(true)
@@ -115,6 +118,17 @@ export function CoachingFocusAreas({
             </div>
           ))}
         </div>
+      )}
+
+      {/* The list says WHAT to work on; the chart says whether it is working.
+          Linked from here because this is where a shop meets its coaching. */}
+      {trendHref && (
+        <a
+          href={trendHref}
+          className="block border-t border-gray-100 px-4 py-2.5 text-sm font-medium text-blue-600 hover:bg-gray-50"
+        >
+          See how your calls are trending →
+        </a>
       )}
     </div>
   )

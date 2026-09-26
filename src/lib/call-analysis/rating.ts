@@ -49,6 +49,52 @@ import { callOutcome, isMissedCall } from '@/lib/call-display'
  */
 export const COMPETENT_SCORE = 65
 
+/**
+ * THE LOWEST SCORE A BOOKED CALL GETS. Booking the job is the whole point of
+ * the call, and a booked call is praised, not marked: at 75 it read as a C in
+ * a report written for the person who won the job. The prompt interpolates
+ * it, so the grader and anything drawn from its scores agree.
+ */
+export const BOOKED_SCORE_FLOOR = 80
+
+/**
+ * What the pipeline stores, after the rules the PROMPT asks for are made true
+ * in code as well. The prompt asks; this guarantees — a booked call scored
+ * below the floor would show in the trend as a dip on the week the shop did
+ * best, and a model does not follow every instruction every time.
+ */
+export function settleAnalysis<T extends { score: number; outcome: string; rep_name?: unknown }>(
+  analysis: T
+): T & { rep_name: string | null } {
+  const score =
+    analysis.outcome === 'booked' ? Math.max(analysis.score, BOOKED_SCORE_FLOOR) : analysis.score
+  return { ...analysis, score, rep_name: normalizeRepName(analysis.rep_name) }
+}
+
+/**
+ * A rep's name as the model heard it in their own introduction — "thanks for
+ * calling, this is Mike" — reduced to a first name for grouping.
+ *
+ * Only ever what the rep SAID, never inferred: a name guessed from a voice or
+ * taken from the customer's half of the call would pin one person's scores on
+ * another, in front of their boss. Anything that is not a plausible single
+ * first name is dropped rather than repaired.
+ */
+export function normalizeRepName(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null
+  const token = raw.trim().split(/\s+/)[0] ?? ''
+  if (/^(unknown|none|null|rep|agent|n\/?a|the|shop)$/i.test(token)) return null
+  // ANY letter, not A-Z: the first cut stripped accents and turned "José"
+  // into "Jos" — a mangled name on a chart the person's boss reads.
+  const first = token.replace(/[^\p{L}'-]/gu, '')
+  if (first.length < 2 || first.length > 20) return null
+  // Title-case only a name given in ONE case ("mike", "MIKE"), so the same
+  // person groups as one line; "McKenzie" and "O'Neil" keep their own shape.
+  const oneCase = first === first.toLowerCase() || first === first.toUpperCase()
+  const body = oneCase ? first.toLowerCase() : first
+  return body[0].toUpperCase() + body.slice(1)
+}
+
 export type CallBadgeKind =
   | 'missed'
   | 'not-connected'
@@ -192,7 +238,12 @@ export const FOCUS_AREAS = {
   discovery_damage: 'Ask where the damage is and how big it is',
   discovery_insurance: 'Find out if it is insurance or cash up front',
   discovery_location: 'Confirm mobile service vs in-shop, and location',
-  value_differentiators: 'Mention what sets the shop apart (warranty, OEM glass, certified techs, ADAS)',
+  // No examples of CLAIMS in the label. It used to read "(warranty, OEM glass,
+  // certified techs, ADAS)", which coached every shop to say those things —
+  // and a shop without certified techs can only follow that advice by saying
+  // something untrue about itself (§2). What sets a shop apart is theirs to
+  // name.
+  value_differentiators: 'Mention what genuinely sets your shop apart',
   value_urgency: 'Explain the safety reason not to wait',
   price_framing: 'Quote the price with value around it, not a bare number',
   ask_for_appointment: 'Actually ask for the appointment',

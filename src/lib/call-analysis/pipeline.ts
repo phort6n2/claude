@@ -5,6 +5,7 @@ import { Prisma } from '@prisma/client'
 import { prisma, withRetry } from '@/lib/db'
 import { computeAudioMetrics } from './audio-metrics'
 import { buildCoachingPrompt } from './coaching-prompt'
+import { settleAnalysis } from './rating'
 
 interface CoachingAnalysis {
   score: number
@@ -16,6 +17,8 @@ interface CoachingAnalysis {
     deductions: number
   }
   outcome: string
+  /** The rep's own stated first name, or null. Drives the per-rep trend. */
+  rep_name?: string | null
   missed_opportunities: Array<{
     moment: string
     transcript_quote: string
@@ -168,7 +171,10 @@ export async function runCallAnalysisPipeline(callAnalysisId: string): Promise<b
 
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-5',
-      max_tokens: 2000,
+      // Headroom, not a target: tokens are only billed when used, and a
+      // budget that only just fits turns a slightly long answer into a
+      // truncated one that fails to parse and loses the whole call's work.
+      max_tokens: 4000,
       messages: [{ role: 'user', content: prompt }],
     })
 
@@ -182,7 +188,9 @@ export async function runCallAnalysisPipeline(callAnalysisId: string): Promise<b
 
     let analysis: CoachingAnalysis
     try {
-      analysis = parseJsonResponse(textBlock.text)
+      // The floor for a booked call and a clean rep name, enforced here as
+      // well as asked for in the prompt — see settleAnalysis.
+      analysis = settleAnalysis(parseJsonResponse(textBlock.text))
     } catch (err) {
       await markFailed(
         callAnalysisId,
