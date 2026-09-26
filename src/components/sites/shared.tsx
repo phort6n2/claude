@@ -985,11 +985,14 @@ export function ProcessSection({
 export function InsuranceBand({
   state,
   filesClaims = false,
+  offersRepair = true,
   affiliation,
 }: {
   state?: string | null
   /** Only shops that confirmed it get to say they file the claim for you. */
   filesClaims?: boolean
+  /** Whether repair advice belongs on this shop's page at all. */
+  offersRepair?: boolean
   /**
    * The affiliation sentence in the small print, from
    * `affiliationLine()` in lib/insurance-programs.ts.
@@ -1055,14 +1058,16 @@ export function InsuranceBand({
                 cheap and it expires when the chip spreads. The deductible half
                 is dropped in statutory-waiver states, where it only restates
                 what the card opposite already said. */}
-            {chipDeductibleNoteFor(state) && (
+            {offersRepair && chipDeductibleNoteFor(state) && (
               <p className="mt-2 mb-0 text-sm text-[var(--tx2)] leading-relaxed">
                 {chipDeductibleNoteFor(state)}
               </p>
             )}
-            <p className="mt-2 mb-0 text-sm text-[var(--tx2)] leading-relaxed">
-              {CHIP_REPAIRABLE_NOTE}
-            </p>
+            {offersRepair && (
+              <p className="mt-2 mb-0 text-sm text-[var(--tx2)] leading-relaxed">
+                {CHIP_REPAIRABLE_NOTE}
+              </p>
+            )}
           </div>
         </div>
         <p className="mt-5 mb-0 text-xs text-[var(--tx-muted)]">
