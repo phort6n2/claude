@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
 import { secretSetting } from '@/lib/secret-settings'
+import { warrantyBody } from '@/lib/warranty-text'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -76,13 +77,17 @@ HARD RULES — these come from advertising-compliance review and are not style p
 - NO exclusions or conditions they did not state.
 - If they wrote "labor" or "workmanship", that means: problems caused by the installation itself (leaks, wind noise, loose trim) will be corrected at no charge. Nothing more.
 - Write as the shop ("we"), plainly, no marketing superlatives.
+- NO instructions to the customer about what to do or where to go ("bring it back to us", "just call us") — how a claim is made is a fact about the shop that their words do not state, and many of these shops come to the customer.
+- Plain sentences only: no heading, no title line, no markdown, no bullet points. The page already shows the warranty's name above this text.
 
 Return ONLY the warranty text, no preamble, no quotes.`,
         },
       ],
     })
     const block = message.content.find((b) => b.type === 'text')
-    const draft = block && block.type === 'text' ? block.text.trim() : ''
+    // Cleaned on the way out too: a heading line here is printed literally
+    // on the site (see lib/warranty-text.ts).
+    const draft = block && block.type === 'text' ? warrantyBody(block.text, title) : ''
     if (!draft) {
       return NextResponse.json({ error: 'The model returned nothing usable.' }, { status: 502 })
     }

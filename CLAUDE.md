@@ -1046,6 +1046,22 @@ the page — so the one thing to press was the one thing that did not stand out.
   buttons.
 - **A pale button gets an edge** (an inset ring in `--sh-cta`): yellow on the
   white hero is 1.1:1, the text reads and the button barely exists.
+- **A BLACK BRAND'S TINTS ARE LIGHT, AND ITS ICONS ARE ITS ACCENT.** Every
+  surface tint is the brand's own hue, so once EliteProGlass's colours were
+  read as black + red, `--tint` came out a heavy #e4e4e4 — the warranty band
+  a dull grey slab where a blue shop gets a fresh pale blue at the same
+  strength — and the icon tiles 30% red (salmon) with black glyphs. A neutral
+  brand now gets a light clean grey (4.5%), the accent tile is 16%, and the
+  glyph on it is `--on-tint-accent`: the accent where it clears 3:1 on the
+  tile, the brand otherwise (AGK's yellow cannot, so charcoal). Saturated
+  brands render byte-for-byte as before; the check pins their values.
+- **Warranty text is rendered through `warrantyBody()`** (`warranty-text.ts`),
+  which removes markup and a first line repeating the title, and never
+  changes a word. "Expand warranty" returned "# 1-Year Workmanship Warranty"
+  as its first line and the card printed it, hash and all, under the H2
+  saying the same thing. The expander is also told no headings, no markdown
+  and no instructions to the customer — it had added "just bring the vehicle
+  back to us", a process claim their words never made, on a mobile shop.
 - **The call button is always the SECONDARY** — white, outlined in
   `--cta-on-light`. It was the same solid fill as the quote button beside it,
   so with a shop's own red on both, neither stood out. The header already drew

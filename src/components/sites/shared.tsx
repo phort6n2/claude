@@ -6,6 +6,7 @@ import { wordmarkParts } from '@/lib/wordmark'
 import { smsHref } from '@/lib/contact-links'
 import { headlineArea, servingShort } from '@/lib/site-area'
 import { headerIsDark } from '@/lib/logo-surface'
+import { warrantyBody } from '@/lib/warranty-text'
 import { mostMentionedName } from '@/lib/review-names'
 import type { NetworkHighlight } from '@/lib/insurance-programs'
 import type { SiteExtras, FaqItem } from '@/lib/site-content'
@@ -1249,13 +1250,13 @@ export function WarrantyBand({ extras }: { extras: SiteExtras | null }) {
             the same void the two-column layout had, moved inboard. */}
         <div className="max-w-4xl bg-white rounded-[20px] border-t-4 border-t-[var(--cta)] border border-[var(--line-card)] shadow-sm p-6 sm:p-8 lg:p-10">
           <div className="flex flex-col gap-5 sm:flex-row sm:gap-7">
-            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--tint-accent)] text-[var(--brand)]">
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--tint-accent)] text-[var(--on-tint-accent)]">
               <ShieldCheck className="h-7 w-7" aria-hidden="true" />
             </span>
             {/* Generous leading: the terms are the one block on this page
                 somebody reads end to end rather than skims. */}
             <p className="m-0 text-[16px] leading-[1.75] text-[var(--tx2)] whitespace-pre-line">
-              {extras.warrantyText}
+              {warrantyBody(extras.warrantyText, extras.warrantyTitle)}
             </p>
           </div>
         </div>

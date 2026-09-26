@@ -237,13 +237,19 @@ export function sitePaletteVars(
   const tintWarm = warmOk ? mix(WHITE, accent, 0.09) : parseHex('#FBF3EC')!
 
   const darkBand = mix({ r: 20, g: 20, b: 20 }, brand, 0.08)
+  const tintAccent = useAccent ? mix(WHITE, accent, 0.16) : mix(WHITE, brand, 0.105)
   const hdrCta = contrast(cta, darkBand) >= 3 ? cta : WHITE
 
   const vars: Record<string, [Rgb, Rgb, number] | Rgb> = {
     '--paper': WHITE,
     '--s1': [WHITE, brand, 0.035],
     '--s2': [WHITE, brand, 0.065],
-    '--tint': [WHITE, brand, 0.105],
+    // A NEUTRAL brand's tint is a grey, and at 10.5% of black it is a heavy
+    // one: EliteProGlass's warranty band read as a dull #e4e4e4 slab, while a
+    // blue shop at the same strength gets a fresh pale blue. Same lightness,
+    // very different feel — a grey that dark reads as dirty, not as a colour.
+    // So a neutral brand's tint is a light, clean grey instead.
+    '--tint': brandIsNeutral ? mix(WHITE, brand, 0.045) : [WHITE, brand, 0.105],
     '--tint-warm': tintWarm,
     '--dark': [{ r: 20, g: 20, b: 20 }, brand, 0.08],
     '--dark-2': [{ r: 13, g: 13, b: 13 }, brand, 0.05],
@@ -271,9 +277,13 @@ export function sitePaletteVars(
     // glyphs — the single largest "any shop" signal on the site. A FILL only:
     // the glyph on top stays dark, because a mid-tone accent as a glyph on
     // white is the unreadable case this file exists to avoid.
-    '--tint-accent': useAccent
-      ? mix(WHITE, accent, 0.3)
-      : ([WHITE, brand, 0.105] as [Rgb, Rgb, number]),
+    // 30% was salmon on a red accent — a tile louder than the icon in it,
+    // and a whole network band that colour. 16% still carries the colour.
+    '--tint-accent': tintAccent,
+    // The glyph ON that tile: the shop's accent when it reads there (3:1 is
+    // the bar for a graphic), otherwise the brand. A black glyph on a pink
+    // tile read as an icon somebody forgot to colour.
+    '--on-tint-accent': useAccent && contrast(accent, tintAccent) >= 3 ? accent : brand,
     '--accent': accent,
     '--on-accent': readableOn(accent),
     '--on-cta': readableOn(cta),

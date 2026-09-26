@@ -2,6 +2,7 @@ import { SiteBaseStyles, telHrefFor, type SiteClient } from '@/components/sites/
 import { SiteAnalytics } from '@/components/sites/analytics'
 import { sitePaletteVars } from '@/lib/site-theme'
 import { canonicalHostFor } from '@/lib/site-origin'
+import { warrantyBody } from '@/lib/warranty-text'
 
 /**
  * Legal pages (privacy / terms) for hosted client sites, ported from the
@@ -275,7 +276,7 @@ export function TermsContent({
       {warrantyText && (
         <section>
           <h2>4. {warrantyTitle || 'Workmanship warranty'}</h2>
-          <p className="whitespace-pre-line">{warrantyText}</p>
+          <p className="whitespace-pre-line">{warrantyBody(warrantyText)}</p>
         </section>
       )}
       <section>

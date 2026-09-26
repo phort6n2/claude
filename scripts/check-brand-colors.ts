@@ -19,6 +19,7 @@ import {
   PLATFORM_DEFAULT_COLORS,
 } from '../src/lib/brand-colors'
 import { sitePaletteVars } from '../src/lib/site-theme'
+import { warrantyBody } from '../src/lib/warranty-text'
 
 let failures = 0
 const fail = (msg: string) => {
@@ -176,6 +177,33 @@ function main() {
     else fail('a pale button got no edge')
     if (!base['--sh-cta'].includes('inset')) pass('a deep button gets no ring (unchanged)')
     else fail('the default button changed its shadow')
+  }
+
+  console.log('\nTINTS: a black brand gets a clean light grey, every other shop is unchanged')
+  {
+    const blue = sitePaletteVars('#1e40af', '#f59e0b')
+    // The values every saturated-brand shop rendered before this change.
+    eq('default blue: --tint unchanged', blue['--tint'], '#e7ebf7')
+    eq('default blue: icon tile unchanged', blue['--tint-accent'], '#e7ebf7')
+    eq('default blue: icon glyph is the brand, as before', blue['--on-tint-accent'], '#1e40af')
+    const elite = sitePaletteVars('#000000', '#d40000')
+    eq('EliteProGlass: the warranty band is a light grey, not #e4e4e4', elite['--tint'], '#f4f4f4')
+    eq('EliteProGlass: the icon tile is a soft red, not salmon', elite['--tint-accent'], '#f8d6d6')
+    eq('EliteProGlass: the icon is their red', elite['--on-tint-accent'], '#d40000')
+    const agk = sitePaletteVars('#1b1d29', '#f5f45a')
+    eq('AGK: yellow cannot be read on its own pale tile, so the glyph is the brand', agk['--on-tint-accent'], '#1b1d29')
+  }
+
+  console.log('\nWARRANTY TEXT: markup removed, wording never touched')
+  {
+    const md = '# 1-Year Workmanship Warranty\n\nWe stand behind the work we do.'
+    eq('a markdown heading repeating the title is dropped', warrantyBody(md, '1-Year Workmanship Warranty'), 'We stand behind the work we do.')
+    eq('a heading that is NOT the title keeps its words', warrantyBody('## What is covered\nLeaks.', 'Lifetime'), 'What is covered\nLeaks.')
+    eq('bold markers go, the words stay', warrantyBody('Covers **leaks** and wind noise.'), 'Covers leaks and wind noise.')
+    eq('bullets stay bullets', warrantyBody('- Leaks\n- Wind noise'), '• Leaks\n• Wind noise')
+    const plain = 'We fix leaks — for as long as you own the car.\nNot transferable.'
+    eq('plain text is returned exactly', warrantyBody(plain, 'Lifetime Warranty'), plain)
+    eq('a one-line text equal to the title is kept (never blank the band)', warrantyBody('Lifetime Warranty', 'Lifetime Warranty'), 'Lifetime Warranty')
   }
 
   console.log(failures === 0 ? '\nAll brand-colour checks passed.' : `\n${failures} brand-colour check${failures === 1 ? '' : 's'} FAILED.`)

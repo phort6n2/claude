@@ -527,7 +527,7 @@ export function SiteBody({
                         exactly the stack it always was. */}
                     <div className="flex items-center gap-3 sm:block">
                       <div className="h-10 w-10 shrink-0 rounded-[14px] flex items-center justify-center sm:mb-4 bg-[var(--tint-accent)]">
-                        <Icon className="h-5 w-5 text-[var(--brand)]" />
+                        <Icon className="h-5 w-5 text-[var(--on-tint-accent)]" />
                       </div>
                       <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold text-[var(--tx)] m-0">
                         {s.name}
@@ -553,7 +553,7 @@ export function SiteBody({
                   {/* Same treatment as the service cards it sits beside. */}
                   <div className="flex items-center gap-3 sm:block">
                     <div className="h-10 w-10 shrink-0 rounded-[14px] flex items-center justify-center sm:mb-4 bg-[var(--tint-accent)]">
-                      <Truck className="h-5 w-5 text-[var(--brand)]" />
+                      <Truck className="h-5 w-5 text-[var(--on-tint-accent)]" />
                     </div>
                     <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold text-[var(--tx)] m-0">
                       Mobile Service
@@ -584,7 +584,7 @@ export function SiteBody({
                   className="group p-5 sm:p-6 rounded-[20px] border border-[var(--line-card)] bg-white shadow-sm hover:shadow-md hover:border-[var(--line-strong)] hover:-translate-y-0.5 transition-all no-underline"
                 >
                   <div className="h-10 w-10 rounded-[14px] flex items-center justify-center mb-4 bg-[var(--tint-accent)]">
-                    <MapPin className="h-5 w-5 text-[var(--brand)]" />
+                    <MapPin className="h-5 w-5 text-[var(--on-tint-accent)]" />
                   </div>
                   <h3 className="text-[clamp(1.1875rem,1.1rem+.4vw,1.375rem)] leading-[1.3] font-bold text-[var(--tx)] m-0">
                     Local Auto Glass Experts
