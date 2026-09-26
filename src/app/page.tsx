@@ -105,6 +105,17 @@ export default function Home() {
       <footer className="max-w-5xl w-full mx-auto px-6 py-8 text-sm text-slate-500 flex flex-wrap items-center justify-between gap-3 border-t border-slate-800/70">
         <span>© {new Date().getFullYear()} GlassLeads</span>
         <span>Websites, alerts, and call coaching for auto glass shops.</span>
+        <span>
+          Built and run by{' '}
+          <a
+            href="https://autoglassmarketingpros.com"
+            target="_blank"
+            rel="noopener"
+            className="font-medium text-slate-300 underline decoration-slate-600 underline-offset-2 hover:text-white hover:decoration-slate-300"
+          >
+            Auto Glass Marketing Pros
+          </a>
+        </span>
       </footer>
     </div>
   )
