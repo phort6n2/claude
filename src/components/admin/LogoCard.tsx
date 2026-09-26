@@ -22,21 +22,34 @@ import { LOGO_FORMATS_SENTENCE } from '@/lib/image-formats'
  * Autosaves, like the other newer cards: each preview flips as soon as the
  * server answers, and there is no save button to leave unpressed.
  */
+export interface HeaderState {
+  /** The operator's override; null follows the logo. */
+  headerTheme: string | null
+  /** What the site draws now. */
+  headerDark: boolean
+  /** The measured reading for the CURRENT logo file, or null if none yet. */
+  detected: string | null
+}
+
 export default function LogoCard({
   clientId,
   headerLogoUrl,
   footerLogoUrl,
   businessName,
+  header: initialHeader,
 }: {
   clientId: string
   headerLogoUrl: string | null
   footerLogoUrl: string | null
   businessName: string
+  header: HeaderState
 }) {
   const [urls, setUrls] = useState<Record<Slot, string | null>>({
     header: headerLogoUrl,
     footer: footerLogoUrl,
   })
+  const [header, setHeader] = useState<HeaderState>(initialHeader)
+  const [themeBusy, setThemeBusy] = useState(false)
   const [busy, setBusy] = useState<Slot | null>(null)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
   const router = useRouter()
@@ -49,6 +62,7 @@ export default function LogoCard({
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Could not save that.')
       setUrls((prev) => ({ ...prev, [slot]: data.url ?? null }))
+      if (data.header) setHeader(data.header)
       // The photo card reads the logo too — it is what watermarks an upload —
       // and says "no logo set" until this page is re-rendered.
       router.refresh()
@@ -80,14 +94,59 @@ export default function LogoCard({
 
   const clear = (slot: Slot) => send(slot, { method: 'DELETE' }, `?slot=${slot}`)
 
+  // Optimistic, like the other autosaving cards: the preview flips at once
+  // and comes back if the save fails.
+  async function setTheme(choice: 'auto' | 'light' | 'dark') {
+    const before = header
+    const headerTheme = choice === 'auto' ? null : choice
+    setHeader({
+      ...header,
+      headerTheme,
+      headerDark: headerTheme ? headerTheme === 'dark' : header.detected === 'dark',
+    })
+    setThemeBusy(true)
+    setMessage(null)
+    try {
+      const res = await fetch(`/api/clients/${clientId}/logo`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ headerTheme: choice }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not save that.')
+      if (data.header) setHeader(data.header)
+      setMessage({ ok: true, text: 'Saved. The site updates within about 5 minutes.' })
+    } catch (err) {
+      setHeader(before)
+      setMessage({ ok: false, text: err instanceof Error ? err.message : 'Could not save that.' })
+    } finally {
+      setThemeBusy(false)
+    }
+  }
+
+  const choice = header.headerTheme === 'light' || header.headerTheme === 'dark' ? header.headerTheme : 'auto'
+  const detectedLabel =
+    header.detected === 'dark'
+      ? 'this logo is drawn for a dark background'
+      : header.detected === 'light'
+        ? 'this logo reads on white'
+        : urls.header
+          ? 'not measured yet — white until it is'
+          : 'no logo'
+
   return (
     <div className="p-6 pt-4 space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <LogoSlot
           slot="header"
           title="Header logo"
-          hint="Drawn on white, at the top of every page."
+          hint={
+            header.headerDark
+              ? 'Drawn on a dark header, at the top of every page.'
+              : 'Drawn on white, at the top of every page.'
+          }
           url={urls.header}
+          onDark={header.headerDark}
           busy={busy === 'header'}
           onUpload={upload}
           onUrl={setFromUrl}
@@ -107,6 +166,42 @@ export default function LogoCard({
           onClear={clear}
           businessName={businessName}
         />
+      </div>
+      {/* WHICH HEADER. Automatic reads the logo's pixels when it is saved: a
+          logo drawn for a dark background — white lettering on transparency —
+          gets a dark header, because on white it simply is not there. The
+          buttons exist for the case the measurement gets wrong. */}
+      <div className="rounded-xl border border-gray-200 p-4 space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Header background</h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Automatic: {detectedLabel}
+              {choice === 'auto' && urls.header ? ` — so the header is ${header.headerDark ? 'dark' : 'white'}.` : '.'}
+            </p>
+          </div>
+          <div
+            role="radiogroup"
+            aria-label="Header background"
+            className="inline-flex rounded-lg border border-gray-300 bg-gray-50 p-0.5"
+          >
+            {(['auto', 'light', 'dark'] as const).map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                role="radio"
+                aria-checked={choice === opt}
+                disabled={themeBusy}
+                onClick={() => choice !== opt && setTheme(opt)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors disabled:opacity-60 ${
+                  choice === opt ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {opt === 'auto' ? 'Automatic' : opt === 'light' ? 'White' : 'Dark'}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
       {message && (
         <p className={`text-sm flex items-start gap-1.5 ${message.ok ? 'text-green-700' : 'text-red-700'}`}>

@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
 import { getPortalSession } from '@/lib/portal-auth'
-import { getCallInsight } from '@/lib/call-patterns'
+import { getCallInsight, getCallsToRingBack } from '@/lib/call-patterns'
 import CallInsightView from '@/components/portal/CallInsight'
 import { CallQualityTrend } from '@/components/portal/CallQualityTrend'
 
@@ -22,9 +22,18 @@ export default async function PortalCallsPage() {
   const session = await getPortalSession()
   if (!session) redirect('/portal/login')
 
-  const insight = await getCallInsight(session.clientId).catch(() => null)
+  const [insight, ringBack] = await Promise.all([
+    getCallInsight(session.clientId).catch(() => null),
+    getCallsToRingBack(session.clientId).catch(() => []),
+  ])
 
   // How well the calls are HANDLED, beside when they come in and which were
   // missed — the one page about the phone.
-  return <CallInsightView insight={insight} after={<CallQualityTrend />} />
+  return (
+    <CallInsightView
+      insight={insight}
+      ringBackCount={ringBack.length}
+      after={<CallQualityTrend />}
+    />
+  )
 }

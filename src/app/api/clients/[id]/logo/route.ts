@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { storeLogoUpload } from '@/lib/photo-upload'
 import { mirrorRemoteImage } from '@/lib/photo-mirror'
 import { validatePublicUrl } from '@/lib/site-import'
+import { headerThemeFrom, headerIsDark } from '@/lib/logo-surface'
 
 export const dynamic = 'force-dynamic'
 // Decoding and re-encoding an image is not instant.
@@ -30,6 +31,17 @@ function slotOf(value: unknown): Slot | null {
 
 async function apply(clientId: string, slot: Slot, url: string | null) {
   await prisma.client.update({ where: { id: clientId }, data: { [SLOTS[slot]]: url } })
+  // Measure which background the new header logo was drawn for, so the
+  // header can follow it (lib/logo-surface.ts). Guarded like the footer copy
+  // below, for the same reason: the logo is saved, and this is decoration.
+  if (slot === 'header') {
+    try {
+      const { ensureLogoSurface } = await import('@/lib/logo-surface-measure')
+      await ensureLogoSurface(clientId)
+    } catch (err) {
+      console.warn('[Logo] skipped measuring the logo background:', err)
+    }
+  }
   // A new header logo (or a cleared footer slot) is the moment to derive the
   // footer's white copy — self-guarding, and never overwrites an uploaded
   // footer file. Dynamic import keeps sharp out of this route's module load.
@@ -43,6 +55,20 @@ async function apply(clientId: string, slot: Slot, url: string | null) {
     } catch (err) {
       console.warn('[Logo] skipped the white footer logo:', err)
     }
+  }
+}
+
+/** What the header now is, for the card's preview and its "detected" note. */
+async function headerState(clientId: string) {
+  const c = await prisma.client.findUnique({
+    where: { id: clientId },
+    select: { logoUrl: true, logoSurface: true, logoSurfaceUrl: true, headerTheme: true },
+  })
+  if (!c) return null
+  return {
+    headerTheme: c.headerTheme,
+    headerDark: headerIsDark(c),
+    detected: c.logoUrl && c.logoSurfaceUrl === c.logoUrl ? c.logoSurface : null,
   }
 }
 
@@ -80,7 +106,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
     await apply(id, slot, result.url)
     revalidatePath(`/sites/${client.slug}`, 'layout')
-    return NextResponse.json({ ok: true, url: result.url, stored: true })
+    return NextResponse.json({ ok: true, url: result.url, stored: true, header: await headerState(id) })
   }
 
   const body = await request.json().catch(() => ({}))
@@ -105,6 +131,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     ok: true,
     url,
     stored: !!mirrored,
+    header: await headerState(id),
     warning: mirrored
       ? undefined
       : `Saved, but it could not be copied to our storage — the site will load it from ${safe.url.hostname}. If that site goes away, so does the logo.`,
@@ -125,5 +152,34 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
 
   await apply(id, slot, null)
   revalidatePath(`/sites/${client.slug}`, 'layout')
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, header: await headerState(id) })
+}
+
+/**
+ * PATCH — the header background: `{ headerTheme: 'auto' | 'light' | 'dark' }`.
+ *
+ * 'auto' follows the measured logo, and is what every client has until
+ * somebody disagrees with the measurement. Answers with what the header now
+ * IS, so the card's preview cannot drift from the site.
+ */
+export async function PATCH(request: NextRequest, { params }: RouteContext) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
+  const { id } = await params
+  const body = await request.json().catch(() => ({}))
+  const theme = headerThemeFrom(body.headerTheme)
+  if (theme === undefined) {
+    return NextResponse.json({ error: "headerTheme must be 'auto', 'light' or 'dark'" }, { status: 400 })
+  }
+  const client = await prisma.client
+    .update({
+      where: { id },
+      data: { headerTheme: theme },
+      select: { slug: true, logoUrl: true, logoSurface: true, logoSurfaceUrl: true, headerTheme: true },
+    })
+    .catch(() => null)
+  if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+  revalidatePath(`/sites/${client.slug}`, 'layout')
+  return NextResponse.json({ ok: true, header: await headerState(id) })
 }

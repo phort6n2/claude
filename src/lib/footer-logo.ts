@@ -47,6 +47,12 @@ export async function deriveFooterLogo(clientId: string): Promise<void> {
     const alpha = stats.channels[stats.channels.length - 1]
     if (!alpha || alpha.min >= 250) return
 
+    // A logo DRAWN for a dark background already reads on the footer, in its
+    // own colours. Whitening it would throw those away — EliteProGlass's red
+    // "PRO" came out white — to solve a problem it does not have.
+    const { readLogoSurface } = await import('@/lib/logo-surface-measure')
+    if ((await readLogoSurface(source))?.surface === 'dark') return
+
     // White ink on the original alpha: every visible pixel becomes white,
     // the shape stays exactly theirs.
     const alphaChannel = await sharp(source, { failOn: 'none' })

@@ -5,9 +5,16 @@ import { Bell, BellOff, Loader2 } from 'lucide-react'
 
 interface NotificationToggleProps {
   className?: string
+  /**
+   * `row` is a labelled line for the account menu. The bare bell sat in the
+   * Leads page's own header with nothing to say what it switched, and the
+   * one thing a shop owner needs to know about it — that it is alerts on
+   * THIS phone — was only in a hover title a phone never shows.
+   */
+  variant?: 'icon' | 'row'
 }
 
-export function NotificationToggle({ className = '' }: NotificationToggleProps) {
+export function NotificationToggle({ className = '', variant = 'icon' }: NotificationToggleProps) {
   const [isSupported, setIsSupported] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -137,6 +144,35 @@ export function NotificationToggle({ className = '' }: NotificationToggleProps) 
   // Don't render if not supported
   if (!isSupported) {
     return null
+  }
+
+  if (variant === 'row') {
+    const state = isLoading ? '…' : permission === 'denied' ? 'Blocked' : isSubscribed ? 'On' : 'Off'
+    const Icon = isLoading ? Loader2 : isSubscribed ? Bell : BellOff
+    return (
+      <button
+        type="button"
+        disabled={isLoading || permission === 'denied'}
+        onClick={isSubscribed ? unsubscribe : subscribe}
+        title={permission === 'denied' ? 'Blocked — turn notifications on in this browser\'s settings' : undefined}
+        className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 ${className}`}
+      >
+        <Icon className={`h-4 w-4 text-gray-500 ${isLoading ? 'animate-spin' : ''}`} />
+        <span className="flex-1">
+          Lead alerts on this device
+          {permission === 'denied' && (
+            <span className="block text-xs font-normal text-gray-400">Turn on in your browser settings</span>
+          )}
+        </span>
+        <span
+          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+            isSubscribed ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'
+          }`}
+        >
+          {state}
+        </span>
+      </button>
+    )
   }
 
   // Show loading state

@@ -164,6 +164,15 @@ model Client {
   /// owns. Empty means "use logoUrl", so a shop whose logo works on both
   /// backgrounds sets nothing.
   footerLogoUrl  String?
+  /// Which background the header logo was drawn for — 'light' or 'dark' —
+  /// MEASURED from its pixels (lib/logo-surface.ts). Counts only while
+  /// logoSurfaceUrl still equals logoUrl: several paths write the logo, and a
+  /// verdict about the previous file must not colour the header for this one.
+  logoSurface    String?
+  logoSurfaceUrl String?
+  /// The operator's override on the logo card: 'light', 'dark', or null to
+  /// follow the logo. See headerIsDark().
+  headerTheme    String?
   primaryColor   String? @default("#1e40af")
   secondaryColor String? @default("#3b82f6")
   accentColor    String? @default("#f59e0b")

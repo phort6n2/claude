@@ -9,6 +9,7 @@ import CustomDomainsCard from '@/components/admin/CustomDomainsCard'
 import CityContentEditor from '@/components/admin/CityContentEditor'
 import PhotoManager from '@/components/admin/PhotoManager'
 import LogoCard from '@/components/admin/LogoCard'
+import { headerIsDark } from '@/lib/logo-surface'
 import ServiceAreaPlanner from '@/components/admin/ServiceAreaPlanner'
 import MarketAreaCard from '@/components/admin/MarketAreaCard'
 import SiteScriptsCard from '@/components/admin/SiteScriptsCard'
@@ -32,6 +33,9 @@ export default function ClientSiteForm({
     siteSubdomain: string | null
     logoUrl: string | null
     footerLogoUrl: string | null
+    logoSurface: string | null
+    logoSurfaceUrl: string | null
+    headerTheme: string | null
     serviceAreas: string[]
     headScripts: string | null
     bodyEndScripts: string | null
@@ -229,6 +233,12 @@ export default function ClientSiteForm({
           headerLogoUrl={pendingLogo || client.logoUrl}
           footerLogoUrl={client.footerLogoUrl}
           businessName={client.businessName}
+          header={{
+            headerTheme: client.headerTheme,
+            headerDark: headerIsDark(client),
+            detected:
+              client.logoUrl && client.logoSurfaceUrl === client.logoUrl ? client.logoSurface : null,
+          }}
         />
       </section>
 

@@ -16,7 +16,8 @@ import { deliverabilityGuide } from '@/lib/alert-deliverability'
 import GettingStartedCard from '@/components/portal/GettingStartedCard'
 import { PRIMARY_DOMAIN_SELECT } from '@/lib/site-origin'
 import { DEFAULT_RANGE } from '@/lib/site-analytics'
-import { countRecentMissed, countAnsweredCalls } from '@/lib/call-patterns'
+import { countRecentMissed, countAnsweredCalls, getCallsToRingBack } from '@/lib/call-patterns'
+import { getPortalSections } from '@/lib/portal-sections'
 import { formatMoney } from '@/lib/monthly-report'
 import Stars from '@/components/ui/Stars'
 
@@ -220,6 +221,8 @@ export default async function PortalHomePage() {
     answeredCalls,
     bookedEver,
     leadsEver,
+    ringBack,
+    sections,
   ] = await Promise.all([
     prisma.clientOnboarding.findUnique({ where: { clientId: session.clientId } }).catch(() => null),
     prisma.clientNotification
@@ -253,6 +256,10 @@ export default async function PortalHomePage() {
     prisma.lead
       .count({ where: { clientId: session.clientId, duplicateOfLeadId: null } })
       .catch(() => 0),
+    // The banner counts what the Leads list will SHOW, by the same rule — a
+    // banner saying three over a list of one is the app contradicting itself.
+    getCallsToRingBack(session.clientId).catch(() => []),
+    getPortalSections(session.clientId),
   ])
 
   const alertsConfirmed = !!onboarding?.alertsConfirmedAt
@@ -307,14 +314,14 @@ export default async function PortalHomePage() {
           thing: somebody tried to reach this shop and nobody has got back to
           them. It was recorded from the day call tracking shipped and shown
           to nobody. */}
-      {missedCalls > 0 && (
+      {ringBack.length > 0 && (
         <Link
-          href="/portal/calls"
+          href="/portal/leads#ring-back"
           className="flex items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-900 no-underline"
         >
           <span className="flex items-center gap-3 font-semibold">
             <PhoneMissed className="h-5 w-5" />
-            {missedCalls} missed {missedCalls === 1 ? 'call' : 'calls'} in the last 7 days
+            {ringBack.length} missed {ringBack.length === 1 ? 'call' : 'calls'} to ring back
           </span>
           <ArrowRight className="h-5 w-5" />
         </Link>
@@ -421,7 +428,11 @@ export default async function PortalHomePage() {
           />
         </Link>
 
-        <Link href="/portal/calls" className={TILE_LINK}>
+        {/* Linked only where the Calls page exists — the same answer the menu
+            reads (getPortalSections). It used to link for every shop, into a
+            page the nav hid from shops with no calls. */}
+        {sections.hasCalls ? (
+          <Link href="/portal/calls" className={TILE_LINK}>
           {/* LEADS WITH ANSWERED, not missed. The missed count is already in
               the amber banner 250px above; repeating it made the tile a
               duplicate when there were any and a dash when there were none. */}
@@ -436,7 +447,25 @@ export default async function PortalHomePage() {
             icon={Phone}
             muted={!answeredCalls && !missedCalls}
           />
-        </Link>
+          </Link>
+        ) : (
+          <div>
+          {/* LEADS WITH ANSWERED, not missed. The missed count is already in
+              the amber banner 250px above; repeating it made the tile a
+              duplicate when there were any and a dash when there were none. */}
+          <Tile
+            label="Calls answered"
+            value={answeredCalls.toLocaleString()}
+            sub={
+              answeredCalls || missedCalls
+                ? 'through your tracked line · see when people ring'
+                : 'once calls come through your tracked line'
+            }
+            icon={Phone}
+            muted={!answeredCalls && !missedCalls}
+          />
+          </div>
+        )}
 
         <Link href="/portal/traffic" className={TILE_LINK}>
           <Tile

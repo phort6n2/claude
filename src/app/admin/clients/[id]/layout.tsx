@@ -9,6 +9,7 @@ import { UnsavedWorkProvider } from '@/components/admin/UnsavedWorkGuard'
 import ClientReadinessBadge from '@/components/admin/ClientReadinessBadge'
 import ViewAsClientButton from '@/components/admin/ViewAsClientButton'
 import { requireAdminPage } from '@/lib/admin-guard'
+import { headerIsDark } from '@/lib/logo-surface'
 
 /**
  * Shell for everything under a single client: identity header, live-site
@@ -39,6 +40,9 @@ export default async function ClientLayout({
       // domain, and goes on pointing at the subdomain after a cutover.
       domains: PRIMARY_DOMAIN_SELECT,
       logoUrl: true,
+      logoSurface: true,
+      logoSurfaceUrl: true,
+      headerTheme: true,
     },
   })
   if (!client) notFound()
@@ -72,7 +76,11 @@ export default async function ClientLayout({
             <img
               src={client.logoUrl}
               alt=""
-              className="h-11 w-11 rounded-xl object-contain bg-white border border-gray-200 p-1"
+              // The tile follows the logo, like the site's header does: a
+              // logo drawn for a dark background is invisible on this white.
+              className={`h-11 w-11 rounded-xl object-contain border p-1 ${
+                headerIsDark(client) ? 'bg-[#16181d] border-gray-700' : 'bg-white border-gray-200'
+              }`}
             />
           ) : (
             <div className="h-11 w-11 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold">

@@ -353,7 +353,7 @@ webhook routes.
   - **Question-only calls are not graded as sales** at the source now, as
     well as in the display.
 - **CALL QUALITY OVER TIME** (`quality-trend.ts`, `CallQualityTrend`,
-  `/api/portal/call-quality`, on the portal's "Your phone" page, linked from
+  `/api/portal/call-quality`, on Reports → Calls in the portal, linked from
   "Top 3 things to work on"). Weekly average score for sales calls over twelve
   weeks, headlined by the last four weeks against the four before — the
   sentence is the point, the chart is the evidence.
@@ -952,6 +952,41 @@ pasted address is COPIED to blob storage rather than referenced: these
 addresses are usually on the old site this platform is replacing, and the
 week it is switched off is the week the logo would vanish. When the copy
 cannot be made the original is kept and the card says so.
+
+**THE HEADER FOLLOWS THE LOGO** (`logo-surface.ts`, `logo-surface-measure.ts`,
+`Client.logoSurface`/`logoSurfaceUrl`/`headerTheme`, bootstrap:
+`SITE_BRANDING_SQL`, "Header background" on the logo card). The header was
+white for every shop, and a logo is drawn for one background or the other.
+EliteProGlass's is white lettering with a red "PRO" on transparency: on the
+white header a visitor saw a lone "PRO" and no name, on every paid click, with
+nothing anywhere going red.
+- **Measured from the pixels at save**, never guessed from a filename. A
+  transparent logo goes dark only when under half its ink shows on white AND
+  80% shows on the dark band; anything that reads on BOTH (a mid-blue
+  wordmark, white letters in a red badge, a white fill with a black outline)
+  keeps the white header, so the fourteen shops that looked right yesterday
+  look the same today. An opaque logo goes dark only when nearly all of its
+  EDGE is dark — a file exported on a navy rectangle. Their real file reads
+  14% on white, 100% on dark.
+- **A reading counts only for the file it was taken from**
+  (`logoSurfaceUrl === logoUrl`). Several paths write `logoUrl` — the card,
+  the client PUT, the importer, mirroring, the re-tidy — and a verdict about
+  the last file applied to a new one is how a dark-ink logo lands on a dark
+  header. Stale means white until measured again: on every logo save, when the
+  Website tab opens, in the daily sweep, and by **Maintenance → "Match every
+  header to its logo"** (dry run first).
+- **Everything in the bar changes with it**, including the scroll layer
+  (`.site-hdr-dark::after`, or scrolling paints it white) and the quote
+  button: `--hdr-cta` is the brand fill only when it clears 3:1 on the band,
+  otherwise white — the same 1.44:1 lesson as `CtaButton onDark`.
+- The portal header and the admin client header put such a logo on a dark
+  TILE rather than turning their bars dark; those bars hold controls styled
+  for white. `deriveFooterLogo` no longer whitens a logo already drawn for
+  dark — it reads on the footer in its own colours, and whitening threw away
+  the red.
+- Operator override: Automatic / White / Dark. `scripts/check-logo-surface.ts`
+  draws each shape as raw pixels and runs it through the real decoder, the
+  stay-white cases first.
 
 **A logo has to look right at ANY shape, and two separate things decide that.**
 Fifteen shops send wordmarks near 5:1, plain rectangles, square badges and
@@ -1940,12 +1975,9 @@ send), `ClientMonthlyReport` (bootstrap: `MONTHLY_REPORT_SQL`), the cron at
 **ONE PAGE, TWO QUESTIONS.** The trend answers "is this working"; the month
 answers "what happened in February". They sit on the same page because a shop
 owner asking one is thirty seconds from asking the other. The URL stayed
-`/portal/results` so the Booked tile still lands there, and it is a TAB now —
-the seventh, measured at 360px before it went in: seven columns are 51px each,
-one row, no overflow. The tab says **Reports** and not the page's own
-"Reporting" for one reason: "Reporting" measures 52px in a 51px cell and
-rendered flush against "Rankings", reading as one word. Seven was called the
-ceiling — and it was already past it: see the portal nav note in §6.
+`/portal/results` so the Booked tile still lands there, and it is the
+**Summary** sub-tab that the Reports tab opens on — see the portal nav note in
+§6 for how seven tabs became three.
 
 **THE CRON BUILDS; A PERSON SENDS.** `/api/cron/monthly-reports` runs on the
 1st and stores a digest per client. Nothing is emailed until somebody presses
@@ -2123,22 +2155,48 @@ client says the leads are bad.
     with `pb-[env(safe-area-inset-bottom)]`, grid columns computed from the
     RENDERED tab count (hardcoding it wrapped the last tab onto a second row
     twice), and `pb-24 sm:pb-10` so content clears the bar.
-  - **The portal nav is FOUR TABS AND "MORE"** (`PortalNav.tsx`): Home,
-    Leads, Calls, Reports; Activity, Traffic, Rankings and My site under
-    More. It grew to seven one tab at a time, each "measured at 360px" — and a
-    real render of a shop with BOTH My site and Rankings at 390px read "ome"
-    at the left edge and "Rankin" at the right. The measurements were taken on
-    a shop without the full set. Meanwhile the Calls page, holding the
-    call-quality chart, was tile-only because "the bar is full", and the
-    owner's first question was where to find it — the third time a tile-only
-    page has gone unfound (Traffic and Reports before it). On a phone More is
-    a PANEL rising above the bar, not a dropdown: a menu hanging off a bottom
-    bar has nowhere to drop. It takes the NAME of the page you are on when
-    that page lives inside it, and it is open ON A PAGE (it stores the
-    pathname it was opened on), so navigating closes it by construction
-    rather than by an effect. **Measure with the WORST-CASE shop** — every
-    conditional tab present — at 320/360/390 and 640/1024/1440; the earlier
-    measurements passed because the shop measured did not have them all.
+  - **The portal nav is THREE TABS: Home · Leads · Reports** (`lib/portal-nav.ts`
+    is the menu as DATA, `PortalNav.tsx` draws it). It grew to seven one tab
+    at a time, each "measured at 360px" — and a real render of a shop with the
+    full set at 390px read "ome" at the left edge and "Rankin" at the right,
+    because every measurement had been taken on a shop without every
+    conditional tab. Four-plus-More followed and still hid pages behind a
+    menu. The structure a UX review settled on is how an owner talks: "who
+    called", "who do I ring back", "how's it going". So:
+    - **Reports holds Summary, Calls, Traffic, Rankings and Work done as
+      visible SUB-TABS** (`ReportsSubNav`), on every screen size, in the same
+      place — a scrolling underline row with an edge fade, never a dropdown.
+      Calls and Rankings appear only when the shop has something behind them
+      (`lib/portal-sections.ts`, ONE decision read by the sub-tabs, the
+      Summary page's "More reports" cards and the home tiles — the Calls
+      tile once linked to a page the menu said did not exist). The Summary
+      page also links every section, so nothing depends on noticing the row.
+    - **"Work done", not "Activity"**: in a leads app "activity" reads as lead
+      activity.
+    - **The account menu** (top right, every page): View my website, lead
+      alerts on this device (labelled — the old bell was an unlabelled
+      toggle), Sign out. Sign-out used to exist only on the Leads pages, which
+      drew a SECOND header of their own inside the portal's.
+    - **"Ring these back" lives on Leads** (`getCallsToRingBack` in
+      `call-patterns.ts`, `RingBackCard`), NOT on the Calls page, where it sat
+      as an action among charts. ONE rule, read by the card, the home banner
+      and the Calls page's pointer: a missed call in the last seven days whose
+      CANONICAL lead is still untouched (a duplicate's own status stays NEW
+      for ever), unless a LATER call from the same number was answered, one
+      row per person, withheld numbers never merged. Not filtered by the date
+      picker — yesterday's missed call is the one most worth making. "Done"
+      moves the canonical lead to Contacted.
+    - **The Leads page is inside the shell now, so it is full-bleed by
+      negative margin and `overflow-x-clip`, never `overflow-x-hidden`** —
+      hidden makes the wrapper a scroll container, and its sticky date bar
+      then offset itself inside it and sat on top of the first card.
+    - The "Powered by" line is in the shell's flow on every page. It was a
+      FIXED bar on the Leads page alone, which on a phone sat on the tab bar.
+    - `scripts/check-portal-menu.ts` holds the menu (every report path lights
+      Reports, a prefix is not a match, no sub-tab to a missing page) and the
+      ring-back rule, the silent cases first. **Measure with the WORST-CASE
+      shop** — every conditional section present — at 320/360/390 and
+      640/1024/1440.
 - **Autosaving admin UI.** Newer cards (tracking numbers, site content) save
   on change with a status line, no save button. Flip optimistic state first,
   then reconcile — a controlled checkbox that waits on a round trip feels

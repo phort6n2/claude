@@ -140,6 +140,22 @@ const WRITES: Tool[] = [
     cost: 'Writes footerLogoUrl and uploads one PNG per derived logo to blob storage. Never overwrites a footer logo that already exists. Safe to run twice.',
   },
   {
+    key: 'measure-logos-dry',
+    name: 'Which logos have not been matched to a header yet? (reads only)',
+    path: '/api/admin/measure-logos?dryRun=1',
+    method: 'POST',
+    what: 'Lists every client whose header logo has no reading of which background it was drawn for — the ones the next step would read.',
+    cost: 'Reads the database only. Fetches nothing and writes nothing.',
+  },
+  {
+    key: 'measure-logos',
+    name: 'Match every header to its logo (dark header for a light logo)',
+    path: '/api/admin/measure-logos',
+    method: 'POST',
+    what: "Reads each header logo's pixels and records which background it was drawn for. A logo made for a dark background — white lettering on transparency — gets a dark header automatically, so it stops vanishing on white. Logos that read on white keep the white header they have. Only logos not measured yet are read; the Website tab's logo card overrides any shop.",
+    cost: 'Downloads each unmeasured logo once and writes two columns. Changes the header colour on live sites where the logo needs it. Dry run lists who would be measured. Safe to run twice.',
+  },
+  {
     key: 'restamp-photos',
     name: "Watermark gallery photos imported before the mark existed",
     path: '/api/admin/restamp-photos',

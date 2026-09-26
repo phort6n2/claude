@@ -218,6 +218,11 @@ export const CUTOVER_SQL: string[] = [
  */
 export const SITE_BRANDING_SQL: string[] = [
   `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "footerLogoUrl" TEXT`,
+  // The header's colour follows the logo: which background it was drawn for,
+  // the file that was measured, and the operator's override. lib/logo-surface.
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "logoSurface" TEXT`,
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "logoSurfaceUrl" TEXT`,
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "headerTheme" TEXT`,
 ]
 
 /**

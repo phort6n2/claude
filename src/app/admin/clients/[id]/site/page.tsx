@@ -20,6 +20,25 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   })
   if (!client) notFound()
 
+  // A logo nobody has measured yet is measured on the way in, so the logo
+  // card says what the header IS rather than "not measured yet" — and the site
+  // switches to a dark header within minutes of anybody opening this tab,
+  // without waiting for the morning sweep. Guarded: it loads sharp.
+  if (client.logoUrl && client.logoSurfaceUrl !== client.logoUrl) {
+    try {
+      const { ensureLogoSurface } = await import('@/lib/logo-surface-measure')
+      const result = await ensureLogoSurface(client.id)
+      // No revalidatePath here: it is not allowed during a render. The
+      // site's own five-minute revalidation picks the reading up.
+      if (result.measured) {
+        client.logoSurface = result.surface
+        client.logoSurfaceUrl = client.logoUrl
+      }
+    } catch (err) {
+      console.warn('[Site tab] skipped measuring the logo background:', err)
+    }
+  }
+
   const program = readProgramRecord(
     await prisma.clientInsuranceProgram
       .findUnique({ where: { clientId: client.id } })

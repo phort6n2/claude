@@ -210,6 +210,9 @@ export function sitePaletteVars(
   const warmOk = accentHsl.h >= 20 && accentHsl.h <= 60 && accentHsl.s > 0.2
   const tintWarm = warmOk ? mix(WHITE, accent, 0.09) : parseHex('#FBF3EC')!
 
+  const darkBand = mix({ r: 20, g: 20, b: 20 }, brand, 0.08)
+  const hdrCta = contrast(cta, darkBand) >= 3 ? cta : WHITE
+
   const vars: Record<string, [Rgb, Rgb, number] | Rgb> = {
     '--paper': WHITE,
     '--s1': [WHITE, brand, 0.035],
@@ -249,6 +252,13 @@ export function sitePaletteVars(
     '--on-accent': readableOn(accent),
     '--on-cta': readableOn(cta),
     '--cta-on-light': ctaOnLight(cta, mix({ r: 18, g: 18, b: 18 }, brand, 0.055)),
+    // The call-to-action on a DARK header (lib/logo-surface.ts). The brand
+    // fill when it stands off the band; white when it does not. Same lesson
+    // as CtaButton's onDark: a navy shop's navy button on a near-black bar
+    // measured 1.44:1, and the header's quote button is the one ask that
+    // follows the visitor down the whole page.
+    '--hdr-cta': hdrCta,
+    '--on-hdr-cta': readableOn(hdrCta),
     '--brand-pale': [WHITE, brand, 0.18],
   }
 

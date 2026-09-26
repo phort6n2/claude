@@ -11,7 +11,6 @@ import {
   Clock,
   MessageSquare,
   TrendingUp,
-  LogOut,
   X,
   Loader2,
   PlayCircle,
@@ -19,14 +18,13 @@ import {
   Inbox,
   RefreshCw,
 } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
-import { NotificationToggle } from '@/components/portal/NotificationToggle'
 import { CallCoachingReport } from '@/components/portal/CallCoachingReport'
 import { CallBadgeChip } from '@/components/leads/CallBadgeChip'
 import { CoachingFocusAreas } from '@/components/portal/CoachingFocusAreas'
+import { RingBackCard } from '@/components/portal/RingBackCard'
+import type { RingBackCall } from '@/lib/call-patterns'
 import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefresh'
-import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
 import { LeadQuickActions } from '@/components/leads/LeadQuickActions'
 import {
@@ -137,6 +135,7 @@ export default function PortalLeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [sales, setSales] = useState<SalesStats | null>(null)
+  const [ringBack, setRingBack] = useState<RingBackCall[]>([])
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date()
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
@@ -177,6 +176,7 @@ export default function PortalLeadsPage() {
       const res = await fetch(`/api/portal/leads?date=${selectedDate}&limit=1000`)
       const data = await res.json()
       setLeads(data.leads || [])
+      setRingBack(data.ringBack || [])
       if (data.sales) {
         setSales(data.sales)
       }
@@ -301,11 +301,6 @@ export default function PortalLeadsPage() {
     })
   }
 
-  async function handleLogout() {
-    await fetch('/api/portal/auth/logout', { method: 'POST' })
-    router.push('/portal/login')
-  }
-
   function handleLeadUpdate(updatedLead: Lead) {
     setLeads((prev) =>
       prev.map((l) => (l.id === updatedLead.id ? updatedLead : l))
@@ -328,7 +323,7 @@ export default function PortalLeadsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 overflow-x-hidden">
+    <div className="-mx-4 -mt-6 sm:-mx-6 overflow-x-clip">
       {/* Pull to Refresh Indicator */}
       <PullToRefreshIndicator
         pullDistance={pullDistance}
@@ -336,34 +331,12 @@ export default function PortalLeadsPage() {
         isRefreshing={isRefreshing}
       />
 
-      {/* Header - Compact */}
-      <header className="bg-white border-b sticky top-0 z-40">
-        <div className="max-w-3xl mx-auto px-4 py-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <HeaderLogo
-                logoUrl={session.user?.logoUrl}
-                businessName={session.user?.businessName || ''}
-                primaryColor={session.user?.primaryColor}
-                size="sm"
-              />
-              <div>
-                <h1 className="text-base font-bold text-gray-900 leading-tight">{session.user?.businessName}</h1>
-                <p className="text-[10px] text-gray-500">Lead Portal</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1">
-              <NotificationToggle />
-              <Button variant="outline" size="sm" onClick={handleLogout} className="h-8 px-2">
-                <LogOut className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
+      {/* NO HEADER OF ITS OWN. This page drew a second one inside the portal's
+          — logo, name, "Lead Portal", an unlabelled bell and a sign-out icon —
+          so it looked like a different app, and sign-out existed nowhere else.
+          Both moved to the account menu in the portal header. */}
       {/* Date Navigation + Sales Stats - Compact */}
-      <div className="bg-white border-b sticky top-[49px] z-30">
+      <div className="bg-white border-b sticky top-[61px] z-20">
         <div className="max-w-3xl mx-auto px-4 py-2">
           <div className="flex items-center justify-between">
             {/* Date Nav */}
@@ -420,6 +393,14 @@ export default function PortalLeadsPage() {
           </div>
         </div>
       </div>
+
+      {/* Missed calls still waiting for a call back — not tied to the day
+          picked above, because yesterday's missed call is today's job. */}
+      {ringBack.length > 0 && (
+        <div className="max-w-3xl mx-auto px-4 pt-3">
+          <RingBackCard calls={ringBack} onDone={() => loadLeads('manual')} />
+        </div>
+      )}
 
       {/* Recurring coaching themes across this shop's calls */}
       <div className="max-w-3xl mx-auto px-4 pt-3">
@@ -547,54 +528,7 @@ export default function PortalLeadsPage() {
         </>
       )}
 
-      <PoweredByFooter />
     </div>
-  )
-}
-
-// Header Logo Component
-function HeaderLogo({
-  logoUrl,
-  businessName,
-  primaryColor,
-  size = 'md'
-}: {
-  logoUrl: string | null | undefined
-  businessName: string
-  primaryColor: string | null | undefined
-  size?: 'sm' | 'md'
-}) {
-  const [imageError, setImageError] = useState(false)
-
-  // The MONOGRAM is a circle, because an initial on a brand colour is an
-  // avatar and that is what avatars look like.
-  if (!logoUrl || imageError) {
-    return (
-      <div
-        className={`${size === 'sm' ? 'h-8 w-8 text-sm' : 'h-10 w-10 text-lg'} rounded-full flex items-center justify-center text-white font-bold flex-shrink-0`}
-        style={{ backgroundColor: primaryColor || '#1e40af' }}
-      >
-        {businessName[0] || '?'}
-      </div>
-    )
-  }
-
-  // A REAL LOGO IS NOT. It was drawn square, cropped to fill and clipped to a
-  // circle, which for a wordmark — and almost every one of these shops has a
-  // wordmark — kept the middle few letters and threw the rest away: "AUTO
-  // GLASS KINGS" arrived in the client's own portal as "J GL / KIN".
-  //
-  // So the height is fixed and the width runs, capped so a very wide mark
-  // cannot push the business name off a phone. object-contain, no rounding:
-  // a logo is a picture of a brand, not a face.
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={logoUrl}
-      alt={businessName}
-      className={`${size === 'sm' ? 'h-8' : 'h-10'} w-auto max-w-[132px] object-contain flex-shrink-0`}
-      onError={() => setImageError(true)}
-    />
   )
 }
 

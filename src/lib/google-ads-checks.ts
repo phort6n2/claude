@@ -387,6 +387,16 @@ export async function runDailyAdsChecks(): Promise<DailyRunSummary> {
 
   await runSiteContentChecks(summary)
   await runCallRecordingChecks(summary)
+  // Measure any logo written by a path that does not measure it (the
+  // importer, mirroring, the re-tidy), so the header follows it by tomorrow
+  // morning at the latest. See lib/logo-surface.ts. Guarded: it loads sharp,
+  // and a missing native binary must not cost the sweep its findings.
+  try {
+    const { measureStaleLogos } = await import('@/lib/logo-surface-measure')
+    await measureStaleLogos()
+  } catch (err) {
+    console.warn('[AdsDaily] skipped measuring logo backgrounds:', err)
+  }
   return summary
 }
 

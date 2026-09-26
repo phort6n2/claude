@@ -1,10 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { Phone, PhoneMissed, Clock, CalendarDays, CheckCircle2 } from 'lucide-react'
+import { Phone, PhoneMissed, Clock, CalendarDays } from 'lucide-react'
 import { hourLabel, weekdayLabel, type CallInsight as Insight } from '@/lib/call-display'
-import { formatPhoneDisplay } from '@/lib/lead-display'
-import { telHref } from '@/lib/contact-links'
 
 /**
  * "Your phone" — the calls that went unanswered, and when the phone rings.
@@ -119,10 +117,13 @@ function Columns({
 export default function CallInsight({
   insight,
   after,
+  ringBackCount = 0,
 }: {
   insight: Insight | null
   /** Rendered below the call patterns in either state — the quality trend. */
   after?: React.ReactNode
+  /** Missed calls still waiting — the list itself lives on Leads. */
+  ringBackCount?: number
 }) {
   if (!insight) {
     return (
@@ -137,8 +138,7 @@ export default function CallInsight({
     )
   }
 
-  const { patterns: p, recentMissed } = insight
-  const unhandled = recentMissed.filter((c) => !c.handled)
+  const { patterns: p } = insight
 
   return (
     <div className="space-y-5">
@@ -176,54 +176,21 @@ export default function CallInsight({
         />
       </div>
 
-      {unhandled.length > 0 && (
-        <section className="bg-white rounded-2xl border border-amber-300 shadow-sm p-5">
-          <h2 className="font-semibold text-gray-900">
-            {unhandled.length} missed {unhandled.length === 1 ? 'call' : 'calls'} nobody has rung
-            back
-          </h2>
-          <p className="text-sm text-gray-500 mb-3">
-            They rang, it went unanswered, and no one has picked this up yet. Tap to call them.
-          </p>
-          <ul className="divide-y divide-gray-100">
-            {unhandled.map((call) => (
-              <li key={call.id} className="flex items-center justify-between gap-3 py-2.5">
-                <div className="min-w-0">
-                  <p className="font-semibold text-gray-900">
-                    {call.phone ? formatPhoneDisplay(call.phone) || call.phone : 'Number withheld'}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    {new Date(call.at).toLocaleString(undefined, {
-                      weekday: 'short',
-                      day: 'numeric',
-                      month: 'short',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                    })}
-                  </p>
-                </div>
-                {call.phone && telHref(call.phone) ? (
-                  <a
-                    href={telHref(call.phone) as string}
-                    className="shrink-0 rounded-xl px-4 py-2 text-sm font-bold text-white no-underline"
-                    style={{ backgroundColor: 'var(--brand, #1d4ed8)' }}
-                  >
-                    Call back
-                  </a>
-                ) : (
-                  <span className="shrink-0 text-sm text-gray-400">no number</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {recentMissed.length > 0 && unhandled.length === 0 && (
-        <p className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-emerald-900 flex items-center gap-2">
-          <CheckCircle2 className="h-5 w-5 shrink-0" />
-          Every missed call has been picked up. Nice.
-        </p>
+      {/* THE CALL-BACK LIST MOVED TO LEADS. It sat here among charts of when
+          the phone rings — an action on a page of analysis — and "who do I
+          call back?" is what Leads answers. This page keeps a pointer, counted
+          by the same rule (getCallsToRingBack), so the two cannot disagree. */}
+      {ringBackCount > 0 && (
+        <Link
+          href="/portal/leads#ring-back"
+          className="flex items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 font-semibold text-amber-900 no-underline"
+        >
+          <span className="flex items-center gap-2">
+            <PhoneMissed className="h-5 w-5 shrink-0" />
+            {ringBackCount} missed {ringBackCount === 1 ? 'call' : 'calls'} to ring back
+          </span>
+          <span className="text-sm">Go to Leads →</span>
+        </Link>
       )}
 
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
@@ -277,8 +244,8 @@ function Header() {
     <div>
       <h1 className="text-2xl font-extrabold text-gray-900">Your phone</h1>
       <p className="text-gray-500">
-        Every call to your tracked number — which ones went unanswered, and when people actually
-        ring.
+        Every call to your tracked number — how many get answered, when people actually ring,
+        and how well the calls go.
       </p>
     </div>
   )

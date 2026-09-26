@@ -16,7 +16,6 @@ import {
   MessageSquare,
   TrendingUp,
   Loader2,
-  LogOut,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { CallCoachingReport } from '@/components/portal/CallCoachingReport'
@@ -153,11 +152,6 @@ export default function PortalLeadDetailPage({ params }: { params: Promise<{ id:
     }
   }
 
-  async function handleLogout() {
-    await fetch('/api/portal/auth/logout', { method: 'POST' })
-    router.push('/portal/login')
-  }
-
   function formatDate(dateString: string) {
     return new Date(dateString).toLocaleDateString('en-US', {
       weekday: 'short',
@@ -230,10 +224,6 @@ export default function PortalLeadDetailPage({ params }: { params: Promise<{ id:
               <p className="text-sm text-gray-500">Lead Details</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
         </div>
       </header>
 

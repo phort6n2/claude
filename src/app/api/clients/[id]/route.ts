@@ -265,6 +265,14 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       } catch (err) {
         console.warn('[Client] skipped the white footer logo:', err)
       }
+      // And which background it was drawn for, so the header follows it
+      // (lib/logo-surface.ts). Same guard, same reason.
+      try {
+        const { ensureLogoSurface } = await import('@/lib/logo-surface-measure')
+        await ensureLogoSurface(id)
+      } catch (err) {
+        console.warn('[Client] skipped measuring the logo background:', err)
+      }
     }
 
     // Moving a shop between tiers has to reach the scan itself: four keywords

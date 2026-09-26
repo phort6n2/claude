@@ -10,10 +10,9 @@ import TrafficReport, { TrafficUpsell, TrafficConnecting } from '@/components/po
  * "How people find you" — the shop's own website in Google Analytics and
  * Search Console.
  *
- * NOT A TAB, and that is deliberate rather than an oversight. The phone tab
- * bar already carries five, and the comment in PortalNav records what a sixth
- * does to a 360px screen. This is reached from a tile on the home screen, the
- * same way Results is.
+ * A SUB-TAB OF REPORTS ("Traffic"). It was once reachable only from a home
+ * tile, on the grounds that the tab bar was full — and a tile-only report is
+ * one the shop never finds. See lib/portal-nav.ts for the menu as it stands.
  *
  * WHICH STATE RENDERS is decided by the DATA, not by the plan flag. A shop
  * whose property is connected sees their numbers whether or not the SEO box

@@ -5,6 +5,7 @@ import GalleryPhotos from '@/components/sites/gallery-lightbox'
 import { wordmarkParts } from '@/lib/wordmark'
 import { smsHref } from '@/lib/contact-links'
 import { headlineArea, servingShort } from '@/lib/site-area'
+import { headerIsDark } from '@/lib/logo-surface'
 import { mostMentionedName } from '@/lib/review-names'
 import type { NetworkHighlight } from '@/lib/insurance-programs'
 import type { SiteExtras, FaqItem } from '@/lib/site-content'
@@ -61,6 +62,16 @@ export interface SiteClient {
   logoUrl: string | null
   /** Only for the dark footer band; falls back to logoUrl. */
   footerLogoUrl: string | null
+  /**
+   * Which background the logo was drawn for, the file that was measured, and
+   * the operator's override — read only through headerIsDark(). REQUIRED, not
+   * optional, for the reason AreaNaming.marketArea is: every page loads its
+   * client through an explicit select, and an optional field lets a page that
+   * forgot it compile cleanly and draw a white header under a white logo.
+   */
+  logoSurface: string | null
+  logoSurfaceUrl: string | null
+  headerTheme: string | null
   primaryColor: string | null
   accentColor: string | null
   hasShopLocation: boolean
@@ -134,6 +145,8 @@ const SITE_BASE_CSS = `
 /* Header scroll shadow paints on a compositable ::after opacity layer, and
    all scroll-driven motion respects prefers-reduced-motion. */
 .gl-site .site-hdr::after{content:"";position:absolute;inset:0;z-index:-1;background:#fff;box-shadow:0 2px 4px -1px rgba(11,27,43,.06),0 6px 14px -3px rgba(11,27,43,.09);opacity:0;pointer-events:none}
+/* A dark header's scroll layer is the band colour, or scrolling paints it white. */
+.gl-site .site-hdr-dark::after{background:var(--dark);box-shadow:0 2px 4px -1px rgba(0,0,0,.3),0 8px 18px -4px rgba(0,0,0,.4)}
 @media (prefers-reduced-motion: no-preference) {
   @supports (animation-timeline: scroll()) {
     .gl-site .site-hdr::after{animation:gl-hdr-shadow linear both;animation-timeline:scroll();animation-range:0 60px}
@@ -555,8 +568,20 @@ export function SiteHeader({
   // body bands (max-w-7xl vs 6xl), a 4-link nav waits for xl, and the brand
   // is the one element allowed to truncate under pressure.
   const navBreakpoint = (nav?.length ?? 0) >= 4 ? 'hidden xl:flex' : 'hidden lg:flex'
+  // THE HEADER FOLLOWS THE LOGO. A logo drawn for a dark background — white
+  // lettering on transparency — vanished on the white bar; EliteProGlass's
+  // header showed a lone red "PRO" and nothing else. Measured from the file
+  // at save; see lib/logo-surface.ts. Everything in the bar changes with it,
+  // including the buttons, whose fills are checked against the band.
+  const dark = headerIsDark(client)
   return (
-    <header className="site-hdr sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-[var(--line)]">
+    <header
+      className={`site-hdr sticky top-0 z-40 backdrop-blur border-b ${
+        dark
+          ? 'site-hdr-dark on-dark bg-[var(--dark)]/95 border-[var(--line-on-dark)] border-t border-t-[var(--line-on-dark)]'
+          : 'bg-white/95 border-[var(--line)]'
+      }`}
+    >
       {/* WIDER STAGE ONCE THE FOUR-LINK NAV APPEARS. Measured with four
           service links: the row wants 1295px (brand 240 + nav 677 + two
           buttons 332 + three 16px gaps) and max-w-7xl gives it 1232 — a 63px
@@ -598,7 +623,7 @@ export function SiteHeader({
               className="h-auto w-auto max-h-[56px] max-w-[min(240px,100%)]"
             />
           ) : (
-            <Wordmark businessName={client.businessName} />
+            <Wordmark businessName={client.businessName} onDark={dark} />
           )}
         </a>
         {nav && nav.length > 0 && (
@@ -607,7 +632,11 @@ export function SiteHeader({
               <a
                 key={link.href}
                 href={link.href}
-                className="text-[15px] font-semibold text-[var(--tx2)] no-underline whitespace-nowrap py-1.5 hover:text-[var(--tx)] hover:shadow-[inset_0_-2px_0_var(--cta)]"
+                className={`text-[15px] font-semibold no-underline whitespace-nowrap py-1.5 ${
+                  dark
+                    ? 'text-[var(--on-dark-2)] hover:text-white hover:shadow-[inset_0_-2px_0_var(--brand-light)]'
+                    : 'text-[var(--tx2)] hover:text-[var(--tx)] hover:shadow-[inset_0_-2px_0_var(--cta)]'
+                }`}
               >
                 {link.label}
               </a>
@@ -630,12 +659,12 @@ export function SiteHeader({
           <div className="ml-auto lg:hidden flex shrink-0 flex-col items-center leading-none gap-[3px]">
             <span className="flex items-center gap-1">
               <GoogleG size={13} />
-              <span className="text-[15px] font-extrabold text-[var(--tx)] tabular-nums">
+              <span className={`text-[15px] font-extrabold tabular-nums ${dark ? 'text-white' : 'text-[var(--tx)]'}`}>
                 {reviews.rating.toFixed(1)}
               </span>
             </span>
             <StarRow rating={reviews.rating} size={11} />
-            <span className="text-[11px] font-semibold text-[var(--tx-muted)] whitespace-nowrap">
+            <span className={`text-[11px] font-semibold whitespace-nowrap ${dark ? 'text-[var(--on-dark-2)]' : 'text-[var(--tx-muted)]'}`}>
               {/* "Google" is redundant beside the G logo directly above it, and
                   on a phone it is ~55px taken from the shop's own name. */}
               {reviews.reviewCount}
@@ -647,14 +676,27 @@ export function SiteHeader({
             sticky mobile bar covers phones. */}
         <a
           href="#quote"
-          className={`${nav && nav.length > 0 ? 'lg:ml-2 ' : ''}${reviews ? '' : 'lg:ml-auto '}hidden lg:inline-flex items-center min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] text-[var(--on-cta)] shrink-0 no-underline`}
-          style={{ background: 'linear-gradient(180deg, var(--cta), var(--cta-b))', boxShadow: 'var(--sh-cta), inset 0 1px 0 rgba(255,255,255,.2)' }}
+          className={`${nav && nav.length > 0 ? 'lg:ml-2 ' : ''}${reviews ? '' : 'lg:ml-auto '}hidden lg:inline-flex items-center min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] shrink-0 no-underline ${
+            dark ? 'text-[var(--on-hdr-cta)]' : 'text-[var(--on-cta)]'
+          }`}
+          style={
+            dark
+              ? { background: 'var(--hdr-cta)', boxShadow: '0 6px 16px -4px rgba(0,0,0,.45)' }
+              : { background: 'linear-gradient(180deg, var(--cta), var(--cta-b))', boxShadow: 'var(--sh-cta), inset 0 1px 0 rgba(255,255,255,.2)' }
+          }
         >
           Get my free quote
         </a>
         <a
           href={telHrefFor(client.phone)}
-          className={`${reviews ? '' : 'ml-auto lg:ml-0 '}inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] shrink-0 no-underline bg-white text-[var(--cta-on-light)] border-[1.5px] border-[var(--cta)] shadow-[0_1px_2px_rgba(11,27,43,.16)] hover:bg-[var(--s1)] transition-colors max-lg:bg-[var(--cta)] max-lg:text-[var(--on-cta)]`}
+          className={`${reviews ? '' : 'ml-auto lg:ml-0 '}inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-[14px] font-extrabold text-[15px] shrink-0 no-underline transition-colors ${
+            dark
+              ? // Outlined in white beside the filled quote button, as on the
+                // closing band: two filled buttons side by side compete. On a
+                // phone it is the only button, so it takes the fill.
+                'bg-transparent text-white border-[1.5px] border-white/70 hover:bg-white/10 max-lg:bg-[var(--hdr-cta)] max-lg:text-[var(--on-hdr-cta)] max-lg:border-transparent'
+              : 'bg-white text-[var(--cta-on-light)] border-[1.5px] border-[var(--cta)] shadow-[0_1px_2px_rgba(11,27,43,.16)] hover:bg-[var(--s1)] max-lg:bg-[var(--cta)] max-lg:text-[var(--on-cta)]'
+          }`}
         >
           <Phone className="h-4 w-4" />
           {/* "Call", not a bare glyph. The number itself only fits from sm

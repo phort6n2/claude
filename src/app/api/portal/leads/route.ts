@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getPortalSession } from '@/lib/portal-auth'
+import { getCallsToRingBack } from '@/lib/call-patterns'
 
 export const dynamic = 'force-dynamic'
 
@@ -242,7 +243,14 @@ export async function GET(request: NextRequest) {
       }),
     ])
 
+    /* The missed calls still waiting for a call back, pinned above the list.
+       DELIBERATELY NOT FILTERED BY THE DATE PICKER: the list below is one day,
+       and a call that rang out yesterday afternoon would vanish from view the
+       moment the page opened on today — the one call most worth making. */
+    const ringBack = await getCallsToRingBack(session.clientId)
+
     return NextResponse.json({
+      ringBack,
       leads: leadsWithAnalysis,
       total,
       limit,

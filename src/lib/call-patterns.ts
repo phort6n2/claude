@@ -217,3 +217,110 @@ export async function countRecentMissed(clientId: string, days = 7): Promise<num
     })
     .catch(() => 0)
 }
+
+/** How far back the "Ring these back" list and the home banner look. */
+export const RING_BACK_DAYS = 7
+
+export interface RingBackCall {
+  /** The call's own row. */
+  id: string
+  /**
+   * The lead to open and to mark done — the CANONICAL row. A second call
+   * from the same person the same day is a duplicate row whose own status
+   * stays NEW for ever, because status lives on the canonical; judging or
+   * updating the duplicate would show a shop a call they already dealt with,
+   * and "Done" would change nothing they can see.
+   */
+  leadId: string
+  phone: string | null
+  at: string
+  callStatus: string
+  durationSecs: number | null
+}
+
+/**
+ * The missed calls somebody still needs to ring back — the list pinned at the
+ * top of Leads, and the number on the home banner. ONE RULE for both, so the
+ * banner can never say three while the list shows one.
+ *
+ * It lived on the Calls page, mixed in with charts of when the phone rings —
+ * an action on a page of analysis, which is why it moved: "who do I call
+ * back?" is the question Leads answers. Three conditions, each one a way the
+ * old list overstated:
+ *
+ * - MISSED, in the last RING_BACK_DAYS. The old list reached back 180 days
+ *   while the banner that linked to it said "last 7 days".
+ * - NOT HANDLED: the canonical lead has moved off NEW or been touched.
+ * - NOT SINCE REACHED: no LATER answered call from the same number. Someone
+ *   whose first call rang out and whose second got through has been spoken
+ *   to — the same "latest call wins" rule the lead badges use.
+ */
+export async function getCallsToRingBack(clientId: string): Promise<RingBackCall[]> {
+  const since = new Date(Date.now() - RING_BACK_DAYS * 86400000)
+  const calls = await prisma.lead
+    .findMany({
+      where: { clientId, source: 'PHONE', createdAt: { gte: since } },
+      select: {
+        id: true,
+        phone: true,
+        createdAt: true,
+        callStatus: true,
+        callDurationSecs: true,
+        status: true,
+        firstTouchedAt: true,
+        duplicateOfLeadId: true,
+        duplicateOf: { select: { status: true, firstTouchedAt: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 500,
+    })
+    .catch(() => [])
+
+  return selectCallsToRingBack(calls)
+}
+
+export interface RingBackRow {
+  id: string
+  phone: string | null
+  createdAt: Date
+  callStatus: string | null
+  callDurationSecs: number | null
+  status: string
+  firstTouchedAt: Date | null
+  duplicateOfLeadId: string | null
+  duplicateOf: { status: string; firstTouchedAt: Date | null } | null
+}
+
+/** The rule, with no database in it — see getCallsToRingBack. Rows newest first. */
+export function selectCallsToRingBack(calls: RingBackRow[]): RingBackCall[] {
+  // The latest ANSWERED call per number, to rule out people already reached.
+  const lastAnswered = new Map<string, number>()
+  for (const c of calls) {
+    if (!c.phone || !c.callStatus || isMissedCall(c.callStatus)) continue
+    const t = c.createdAt.getTime()
+    if (t > (lastAnswered.get(c.phone) ?? 0)) lastAnswered.set(c.phone, t)
+  }
+
+  const out: RingBackCall[] = []
+  const seen = new Set<string>()
+  for (const c of calls) {
+    if (!isMissedCall(c.callStatus)) continue
+    const owner = c.duplicateOf ?? c
+    if (owner.firstTouchedAt || owner.status !== 'NEW') continue
+    if (c.phone && (lastAnswered.get(c.phone) ?? 0) > c.createdAt.getTime()) continue
+    // One row per person: three missed calls from one number are one call
+    // back, shown at its most recent attempt (the list is newest first).
+    const key = c.phone || c.id
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push({
+      id: c.id,
+      leadId: c.duplicateOfLeadId ?? c.id,
+      phone: c.phone || null,
+      at: c.createdAt.toISOString(),
+      callStatus: c.callStatus as string,
+      durationSecs: c.callDurationSecs,
+    })
+  }
+  return out
+}
