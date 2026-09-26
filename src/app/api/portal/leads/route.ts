@@ -79,6 +79,13 @@ export async function GET(request: NextRequest) {
           saleDate: true,
           saleNotes: true,
           callRecordingUrl: true,
+          // WHETHER THE CALL WAS ANSWERED. Never selected here before, so the
+          // list could not tell a call that rang out from one the shop took —
+          // and "Missed" ended up on the answered ones (a coaching grade)
+          // while the genuinely missed ones carried no marker at all. See
+          // callBadge() in lib/call-analysis/rating.ts.
+          callStatus: true,
+          callDurationSecs: true,
           // Attribution — drives the paid-vs-organic channel badge.
           gclid: true,
           gbraid: true,
@@ -125,6 +132,10 @@ export async function GET(request: NextRequest) {
               createdAt: true,
               callRecordingUrl: true,
               formName: true,
+              // A second call from the same person that day can be the missed
+              // one — it needs its own marker in the contact history.
+              callStatus: true,
+              callDurationSecs: true,
               gclid: true,
               gbraid: true,
               wbraid: true,

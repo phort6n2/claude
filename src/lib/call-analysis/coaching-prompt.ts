@@ -1,5 +1,5 @@
 import type { AudioMetrics } from './audio-metrics'
-import { FOCUS_AREAS, FOCUS_AREA_CODES } from './rating'
+import { FOCUS_AREAS, FOCUS_AREA_CODES, COMPETENT_SCORE } from './rating'
 
 // Rendered into the prompt so the model can only choose from the fixed
 // taxonomy — free-text missed opportunities can't be aggregated reliably.
@@ -106,7 +106,7 @@ INSTRUCTIONS:
    lead the coaching note with what worked. Only go below 75 on a booked call if
    the rep did something that actively risks losing the customer.
 2. Grade like a supportive coach, not an auditor. A competent call that moves
-   the customer forward belongs in the 65-80 range. Reserve scores under 50 for
+   the customer forward belongs in the ${COMPETENT_SCORE}-80 range. Reserve scores under 50 for
    calls where the rep clearly mishandled a real opportunity. Do not nitpick a
    call that went fine.
 3. Find at least one genuine thing the rep did well on every call, and say it

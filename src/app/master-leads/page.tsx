@@ -32,7 +32,7 @@ import { ChannelBadge } from '@/components/leads/ChannelBadge'
 import { LeadSourceDetails } from '@/components/leads/LeadSourceDetails'
 import { useLeadStream } from '@/hooks/useLeadStream'
 import { CallCoachingReport } from '@/components/portal/CallCoachingReport'
-import { getCallRating, RATING_META } from '@/lib/call-analysis/rating'
+import { CallBadgeChip } from '@/components/leads/CallBadgeChip'
 import { Inbox } from 'lucide-react'
 
 interface CallAnalysisSummary {
@@ -48,6 +48,8 @@ interface LeadDuplicate {
   createdAt: string
   callRecordingUrl: string | null
   formName: string | null
+  callStatus?: string | null
+  callDurationSecs?: number | null
   callAnalysis: CallAnalysisSummary | null
   gclid?: string | null
   gbraid?: string | null
@@ -79,6 +81,8 @@ interface Lead {
   saleDate: string | null
   saleNotes: string | null
   callRecordingUrl: string | null
+  callStatus?: string | null
+  callDurationSecs?: number | null
   createdAt: string
   formName: string | null
   formData: Record<string, unknown> | null
@@ -746,33 +750,6 @@ function getAllFormFields(lead: Lead): Array<{ label: string; value: string }> {
 }
 
 // Expandable Lead Row Component
-function CallScoreChip({ analysis }: { analysis: CallAnalysisSummary }) {
-  if (analysis.status !== 'COMPLETE' || analysis.score == null) {
-    if (analysis.status === 'FAILED') return null
-    return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
-        <Loader2 className="h-2.5 w-2.5 animate-spin" />
-        Coaching
-      </span>
-    )
-  }
-
-  // Outcome-driven face rather than the raw score — booking the job is what
-  // matters, and a bare number reads harsher than it should.
-  const rating = getCallRating(analysis.outcome, analysis.score)
-  const meta = RATING_META[rating]
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${meta.bg} ${meta.text}`}
-      title={`${meta.label} — ${meta.description} (coaching score ${analysis.score}/100)`}
-    >
-      <span role="img" aria-label={meta.label}>{meta.emoji}</span>
-      {meta.label}
-    </span>
-  )
-}
-
 function ContactHistory({ lead }: { lead: Lead }) {
   const events = [
     {
@@ -781,12 +758,16 @@ function ContactHistory({ lead }: { lead: Lead }) {
       createdAt: lead.createdAt,
       callRecordingUrl: lead.callRecordingUrl,
       formName: lead.formName,
+      callStatus: lead.callStatus,
+      callDurationSecs: lead.callDurationSecs,
       callAnalysis: lead.callAnalysis,
     },
     ...(lead.duplicates ?? []).map((d) => ({
       id: d.id,
       source: d.source,
       createdAt: d.createdAt,
+      callStatus: d.callStatus,
+      callDurationSecs: d.callDurationSecs,
       callRecordingUrl: d.callRecordingUrl,
       formName: d.formName,
       callAnalysis: d.callAnalysis,
@@ -827,7 +808,7 @@ function ContactHistory({ lead }: { lead: Lead }) {
             {e.callRecordingUrl && (
               <PlayCircle className="h-3.5 w-3.5 text-violet-500 ml-auto" />
             )}
-            {e.callAnalysis && <CallScoreChip analysis={e.callAnalysis} />}
+            <CallBadgeChip callStatus={e.callStatus} durationSecs={e.callDurationSecs} analysis={e.callAnalysis} />
             {i === 0 && (
               <span className="text-[10px] text-gray-400 ml-auto">First contact</span>
             )}
@@ -967,7 +948,7 @@ function LeadRow({
               {lead.callRecordingUrl && (
                 <PlayCircle className="h-4 w-4 text-violet-500 flex-shrink-0" />
               )}
-              {lead.callAnalysis && <CallScoreChip analysis={lead.callAnalysis} />}
+              <CallBadgeChip callStatus={lead.callStatus} durationSecs={lead.callDurationSecs} analysis={lead.callAnalysis} />
               {lead.duplicates && lead.duplicates.length > 0 && (
                 <span
                   className="text-[10px] font-medium bg-blue-100 text-blue-700 rounded px-1.5 py-0.5"

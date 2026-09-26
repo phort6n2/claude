@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, CheckCircle2, AlertTriangle, Play, ChevronDown, ChevronUp } from 'lucide-react'
-import { Badge } from '@/components/ui/Badge'
-import { getCallRating, RATING_META } from '@/lib/call-analysis/rating'
+import { callBadge } from '@/lib/call-analysis/rating'
+import { callBadgeIcon, TONE_CLASSES } from '@/components/leads/CallBadgeChip'
 
 interface MissedOpportunity {
   moment: string
@@ -75,14 +75,6 @@ interface Props {
    *  Client portal views set true so shop owners see the full coaching
    *  without clicking. */
   defaultDetailsOpen?: boolean
-}
-
-const OUTCOME_LABELS: Record<string, { label: string; variant: 'success' | 'info' | 'default' }> = {
-  booked: { label: 'Booked', variant: 'success' },
-  quote_sent: { label: 'Quote Sent', variant: 'info' },
-  callback_scheduled: { label: 'Callback Scheduled', variant: 'info' },
-  lost: { label: 'Lost', variant: 'default' },
-  info_only: { label: 'Info Only', variant: 'default' },
 }
 
 function progressBarColor(score: number, max: number): string {
@@ -258,38 +250,34 @@ function ReportBody({
 
   const a = data.analysis
   const metrics = data.audioMetrics
-  const outcomeBadge = OUTCOME_LABELS[a.outcome] ?? {
-    label: a.outcome,
-    variant: 'default' as const,
-  }
+  /* ONE HEADLINE. This card used to carry a badge reading "Quote Sent" in the
+     corner AND a face tile reading "😐 In progress" beside it — two
+     vocabularies for one call, on one card — and the red face said "Missed"
+     about a call the shop had answered. The same `callBadge()` the leads lists
+     use decides it here, so the list and the report can never disagree. The
+     rubric score stays in the breakdown below; it is detail, not the verdict. */
+  const badge = callBadge({ analysis: { status: 'COMPLETE', outcome: a.outcome, score: a.score } })
 
   return (
     <div className="border-t pt-6">
       <div className="flex items-center justify-between mb-4">
         <h4 className="text-base font-semibold text-gray-900">Coaching Report</h4>
-        <Badge variant={outcomeBadge.variant}>{outcomeBadge.label}</Badge>
       </div>
 
-      {/* Rating + sentiment. The headline is the outcome-driven face, not the
-          raw rubric score — the numeric breakdown lives in the details below. */}
       <div className="flex items-center gap-6 mb-6">
-        {(() => {
-          const rating = getCallRating(a.outcome, a.score)
-          const meta = RATING_META[rating]
-          return (
-            <div
-              className={`flex flex-col items-center justify-center rounded-lg border-2 ${meta.bg} ${meta.border} ${meta.text} w-24 h-24`}
-              title={meta.description}
-            >
-              <div className="text-4xl leading-none" role="img" aria-label={meta.label}>
-                {meta.emoji}
+        {badge &&
+          (() => {
+            const Icon = callBadgeIcon(badge.kind)
+            return (
+              <div
+                className={`flex flex-col items-center justify-center rounded-lg border-2 px-2 text-center ${TONE_CLASSES[badge.tone].tile} w-28 h-24`}
+                title={badge.detail}
+              >
+                <Icon className="h-8 w-8" aria-hidden="true" />
+                <div className="mt-1.5 text-xs font-semibold leading-tight">{badge.label}</div>
               </div>
-              <div className="mt-1 text-xs font-semibold uppercase tracking-wide">
-                {meta.label}
-              </div>
-            </div>
-          )
-        })()}
+            )
+          })()}
         <div className="text-sm text-gray-700 space-y-1">
           <div>
             <span className="text-gray-500">Customer:</span>{' '}
@@ -354,7 +342,7 @@ function CollapsibleDetails({
             <span className="text-xs text-gray-500 font-normal">
               {didWellCount > 0 && `${didWellCount} did well`}
               {didWellCount > 0 && missedCount > 0 && ' • '}
-              {missedCount > 0 && `${missedCount} missed`}
+              {missedCount > 0 && `${missedCount} to work on`}
             </span>
           )}
         </span>
@@ -381,9 +369,11 @@ function CollapsibleDetails({
             </Section>
           )}
 
-          {/* Missed opportunities */}
+          {/* The model's `missed_opportunities`. Shown as "what to work on":
+              "missed" next to a phone call reads as a call nobody answered,
+              and that word is reserved for exactly that now. */}
           {a.missed_opportunities?.length > 0 && (
-            <Section title="Missed Opportunities">
+            <Section title="What to Work On">
               <ul className="space-y-4">
                 {a.missed_opportunities.map((m, i) => (
                   <li key={i} className="border-l-2 border-orange-300 pl-3">

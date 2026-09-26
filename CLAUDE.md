@@ -293,6 +293,39 @@ webhook routes.
   faster would be the worst sentence in the app. `canceled` reports `rang:
   null`, never a guess: how much of the ringing reached the handset depends on
   the carrier.
+- **"MISSED" MEANT TWO OPPOSITE THINGS, AND SHOPS READ THE WRONG ONE**
+  (`callBadge()` in `lib/call-analysis/rating.ts`, `CallBadgeChip`). The
+  coaching rating put "🙁 Missed" on an ANSWERED call the model graded poorly —
+  shorthand for "opportunities were missed" — while the portal leads list
+  never selected `callStatus`, so a call that genuinely rang out carried NO
+  marker. The home screen's "3 missed calls in the last 7 days" sent the shop
+  into a list where those three were unmarked and three answered ones said
+  "Missed": exactly backwards, on the screen whose job is who to ring back.
+  - **"Missed call" now means a call nobody answered, and nothing else uses
+    the word.** It is the only RED badge, because it is the only one needing
+    action; `failed` reads "Call didn't connect" (ours, per the note above) and
+    is still red because the caller still needs ringing back.
+  - **The coaching grade names what happened ON THE CALL** — Booked on call,
+    Quote given, Callback set, Well handled, Coaching tips — never a lead
+    state. "In progress" read as the lead's status and kept saying so after
+    the shop marked the job booked; "Quote given" is still true a month later.
+    The coaching report used to show "Quote Sent" in a badge beside a face
+    reading "😐 In progress" — one call, two vocabularies, one card. It now
+    asks the same function the lists do.
+  - **A question is not graded as a sale.** `info_only` shows "Question call":
+    the rubric is a sales rubric, and "are you open Saturday?" answered
+    perfectly scores badly against it.
+  - **`COMPETENT_SCORE` (65) is read by the prompt AND the display.** The
+    prompt calls 65–80 competent; the display split that band at 70, so a call
+    the model scored competent was shown as "opportunities were missed".
+  - **The row's badge is its LATEST call** (`latestCall`): someone whose first
+    call rang out and whose second got through has been spoken to.
+  - **A call's row arrives before its outcome** — `recordCall` writes it as the
+    call comes in — so the portal stream now re-sends call facts as
+    `lead-call` and the page MERGES only those fields; without it a live
+    missed call sat unmarked until refresh. Verified against a render: the row
+    arrived bare and turned "Missed call" when the status landed.
+  - `scripts/check-call-badge.ts` holds the collision first, both directions.
 - **`Lead.callStatus` was stored from day one and rendered NOWHERE.** Counted
   and bucketed, never shown — so "the client says it never rang" could only be
   answered from Twilio's console, which is the one place the person asking is

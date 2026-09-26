@@ -22,7 +22,7 @@ import {
 import { Button } from '@/components/ui/Button'
 import { NotificationToggle } from '@/components/portal/NotificationToggle'
 import { CallCoachingReport } from '@/components/portal/CallCoachingReport'
-import { getCallRating, RATING_META } from '@/lib/call-analysis/rating'
+import { CallBadgeChip } from '@/components/leads/CallBadgeChip'
 import { CoachingFocusAreas } from '@/components/portal/CoachingFocusAreas'
 import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefresh'
@@ -39,7 +39,7 @@ import {
 import { getLeadDisplayName, displayNameIsPhone, formatPhoneDisplay, formatFieldValue } from '@/lib/lead-display'
 import { ChannelBadge } from '@/components/leads/ChannelBadge'
 import { LeadSourceDetails } from '@/components/leads/LeadSourceDetails'
-import { useLeadStream } from '@/hooks/useLeadStream'
+import { useLeadStream, type LeadCallUpdate } from '@/hooks/useLeadStream'
 
 interface CallAnalysisSummary {
   id: string
@@ -54,6 +54,8 @@ interface LeadDuplicate {
   createdAt: string
   callRecordingUrl: string | null
   formName: string | null
+  callStatus?: string | null
+  callDurationSecs?: number | null
   callAnalysis: CallAnalysisSummary | null
   gclid?: string | null
   gbraid?: string | null
@@ -78,6 +80,9 @@ interface Lead {
   saleDate: string | null
   saleNotes: string | null
   callRecordingUrl: string | null
+  /** Twilio's word for how the call ended — what "Missed call" is read from. */
+  callStatus?: string | null
+  callDurationSecs?: number | null
   gclid: string | null
   gbraid?: string | null
   wbraid?: string | null
@@ -207,7 +212,33 @@ export default function PortalLeadsPage() {
     setLeads((prev) => (prev.some((l) => l.id === lead.id) ? prev : [lead, ...prev]))
   }, [])
 
-  useLeadStream<Lead>({ url: streamUrl, enabled: streamEnabled, onLead: handleStreamedLead })
+  /* A call already on screen learning how it ended. Only the call facts are
+     merged — never the row — so a status the shop has just changed locally
+     cannot be overwritten by a stream event about the phone line. */
+  const handleCallUpdate = useCallback((u: LeadCallUpdate) => {
+    const facts = {
+      callStatus: u.callStatus,
+      callDurationSecs: u.callDurationSecs,
+      callRecordingUrl: u.callRecordingUrl,
+      callAnalysis: u.callAnalysis,
+    }
+    setLeads((prev) =>
+      prev.map((l) => {
+        if (l.id === u.id) return { ...l, ...facts }
+        if (u.duplicateOfLeadId === l.id && l.duplicates?.some((d) => d.id === u.id)) {
+          return { ...l, duplicates: l.duplicates.map((d) => (d.id === u.id ? { ...d, ...facts } : d)) }
+        }
+        return l
+      })
+    )
+  }, [])
+
+  useLeadStream<Lead>({
+    url: streamUrl,
+    enabled: streamEnabled,
+    onLead: handleStreamedLead,
+    onCallUpdate: handleCallUpdate,
+  })
 
   // Catch up when the tab becomes visible again — covers the gap where the
   // SSE connection was dropped while backgrounded.
@@ -662,33 +693,33 @@ function getAllFormFields(lead: Lead): Array<{ label: string; value: string }> {
   return fields
 }
 
-// Expandable Lead Row Component
-function CallScoreChip({ analysis }: { analysis: CallAnalysisSummary }) {
-  if (analysis.status !== 'COMPLETE' || analysis.score == null) {
-    if (analysis.status === 'FAILED') return null
-    // Still processing.
-    return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
-        <Loader2 className="h-2.5 w-2.5 animate-spin" />
-        Coaching
-      </span>
-    )
-  }
-
-  // Outcome-driven face rather than the raw score — booking the job is what
-  // matters, and a bare number reads harsher than it should.
-  const rating = getCallRating(analysis.outcome, analysis.score)
-  const meta = RATING_META[rating]
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${meta.bg} ${meta.text}`}
-      title={`${meta.label} — ${meta.description} (coaching score ${analysis.score}/100)`}
-    >
-      <span role="img" aria-label={meta.label}>{meta.emoji}</span>
-      {meta.label}
-    </span>
-  )
+/**
+ * Which call speaks for the row, when one person contacted several times.
+ *
+ * THE LATEST CALL. The row's badge answers "does this person still need a
+ * call back?", and only their most recent call can answer it: somebody whose
+ * first call rang out and whose second got through has been spoken to, and a
+ * red "Missed call" on their row would send the shop to ring them again. The
+ * contact history underneath still badges every call on its own.
+ */
+function latestCall(lead: Lead): {
+  callStatus?: string | null
+  durationSecs?: number | null
+  analysis?: CallAnalysisSummary | null
+} {
+  const calls = [
+    { createdAt: lead.createdAt, source: lead.source, callStatus: lead.callStatus, durationSecs: lead.callDurationSecs, analysis: lead.callAnalysis },
+    ...(lead.duplicates ?? []).map((d) => ({
+      createdAt: d.createdAt,
+      source: d.source,
+      callStatus: d.callStatus,
+      durationSecs: d.callDurationSecs,
+      analysis: d.callAnalysis,
+    })),
+  ].filter((c) => c.source === 'PHONE')
+  if (calls.length === 0) return { analysis: lead.callAnalysis }
+  const latest = calls.reduce((a, b) => (new Date(b.createdAt) > new Date(a.createdAt) ? b : a))
+  return { callStatus: latest.callStatus, durationSecs: latest.durationSecs, analysis: latest.analysis }
 }
 
 function ContactHistory({ lead }: { lead: Lead }) {
@@ -701,6 +732,8 @@ function ContactHistory({ lead }: { lead: Lead }) {
       createdAt: lead.createdAt,
       callRecordingUrl: lead.callRecordingUrl,
       formName: lead.formName,
+      callStatus: lead.callStatus,
+      callDurationSecs: lead.callDurationSecs,
       callAnalysis: lead.callAnalysis,
     },
     ...(lead.duplicates ?? []).map((d) => ({
@@ -709,6 +742,8 @@ function ContactHistory({ lead }: { lead: Lead }) {
       createdAt: d.createdAt,
       callRecordingUrl: d.callRecordingUrl,
       formName: d.formName,
+      callStatus: d.callStatus,
+      callDurationSecs: d.callDurationSecs,
       callAnalysis: d.callAnalysis,
     })),
   ].sort(
@@ -747,7 +782,11 @@ function ContactHistory({ lead }: { lead: Lead }) {
             {e.callRecordingUrl && (
               <PlayCircle className="h-3.5 w-3.5 text-violet-500 ml-auto" />
             )}
-            {e.callAnalysis && <CallScoreChip analysis={e.callAnalysis} />}
+            <CallBadgeChip
+              callStatus={e.callStatus}
+              durationSecs={e.callDurationSecs}
+              analysis={e.callAnalysis}
+            />
             {i === 0 && (
               <span className="text-[10px] text-gray-400 ml-auto">First contact</span>
             )}
@@ -905,7 +944,7 @@ function LeadRow({
               {lead.callRecordingUrl && (
                 <PlayCircle className="h-4 w-4 text-violet-500 flex-shrink-0" />
               )}
-              {lead.callAnalysis && <CallScoreChip analysis={lead.callAnalysis} />}
+              <CallBadgeChip {...latestCall(lead)} />
               {lead.duplicates && lead.duplicates.length > 0 && (
                 <span
                   className="text-[10px] font-medium bg-blue-100 text-blue-700 rounded px-1.5 py-0.5"

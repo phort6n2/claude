@@ -96,8 +96,59 @@ export async function GET(request: NextRequest) {
       const autoClose = setTimeout(close, CLOSE_AFTER_MS)
       request.signal.addEventListener('abort', close)
 
+      /* A CALL'S ROW ARRIVES BEFORE ITS OUTCOME. `recordCall` writes the lead
+         the moment a call comes in, so this stream sends it with no
+         `callStatus` — and the status lands half a minute later, when the
+         dial leg ends, on a row this stream had already sent and would never
+         send again. So a call that rang out appeared in the open portal with
+         no "Missed call" marker until somebody refreshed: the one moment the
+         marker exists for is the moment it was missing.
+
+         This second poll re-sends the CALL FACTS of any phone lead whose row
+         changed, as `lead-call`, and the page merges only those fields into a
+         row it already has. Merging is idempotent, so the generous lookback —
+         which covers the gap while EventSource reconnects every ~55s — costs
+         a repeated identical merge at worst, never a wrong one. No event id,
+         deliberately: `Last-Event-ID` is the NEW-lead cursor and an update
+         must not move it. */
+      let outcomeSince = new Date(Date.now() - 120_000)
+      const pollOutcomes = async () => {
+        const started = new Date()
+        const changed = await prisma.lead.findMany({
+          where: {
+            clientId: session.clientId,
+            source: 'PHONE',
+            callStatus: { not: null },
+            updatedAt: { gt: outcomeSince },
+          },
+          select: {
+            id: true,
+            duplicateOfLeadId: true,
+            callStatus: true,
+            callDurationSecs: true,
+            callRecordingUrl: true,
+            callAnalyses: {
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+              select: { id: true, status: true, score: true, outcome: true },
+            },
+          },
+          take: 25,
+        })
+        outcomeSince = started
+        for (const { callAnalyses, ...rest } of changed) {
+          send('lead-call', { ...rest, callAnalysis: callAnalyses[0] ?? null })
+        }
+      }
+
       const poll = async () => {
         if (closed) return
+        try {
+          await pollOutcomes()
+        } catch (err) {
+          // An outcome update failing must not stop NEW leads arriving.
+          console.error('[portal/leads/stream] outcome poll error', err)
+        }
         try {
           const createdAt: Record<string, Date> = { gt: lastSeen, ...dateRange }
           const newLeads = await prisma.lead.findMany({
@@ -123,6 +174,10 @@ export async function GET(request: NextRequest) {
               saleDate: true,
               saleNotes: true,
               callRecordingUrl: true,
+              // Usually still null here — the row is written as the call
+              // arrives — and filled in by the `lead-call` poll above.
+              callStatus: true,
+              callDurationSecs: true,
               // Attribution — drives the paid-vs-organic channel badge.
               gclid: true,
               gbraid: true,

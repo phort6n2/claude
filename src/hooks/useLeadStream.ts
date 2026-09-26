@@ -9,6 +9,21 @@ interface UseLeadStreamOptions<L> {
   enabled?: boolean
   /** Called once per newly-arrived lead. */
   onLead: (lead: L) => void
+  /**
+   * Called when a call already in the list learns how it ended — see the
+   * `lead-call` poll in the portal stream. The payload carries only the call
+   * facts; merge them, never replace the row.
+   */
+  onCallUpdate?: (update: LeadCallUpdate) => void
+}
+
+export interface LeadCallUpdate {
+  id: string
+  duplicateOfLeadId: string | null
+  callStatus: string | null
+  callDurationSecs: number | null
+  callRecordingUrl: string | null
+  callAnalysis: { id: string; status: string; score: number | null; outcome: string | null } | null
 }
 
 /**
@@ -21,13 +36,15 @@ interface UseLeadStreamOptions<L> {
  *     ~25–55s self-close cycle the server uses, so events aren't lost across
  *     reconnects.
  */
-export function useLeadStream<L>({ url, enabled = true, onLead }: UseLeadStreamOptions<L>) {
+export function useLeadStream<L>({ url, enabled = true, onLead, onCallUpdate }: UseLeadStreamOptions<L>) {
   // Keep the latest onLead in a ref so changing handlers don't force a
   // reconnect (callers usually wrap in useCallback already, but be defensive).
   const onLeadRef = useRef(onLead)
+  const onCallUpdateRef = useRef(onCallUpdate)
   useEffect(() => {
     onLeadRef.current = onLead
-  }, [onLead])
+    onCallUpdateRef.current = onCallUpdate
+  }, [onLead, onCallUpdate])
 
   useEffect(() => {
     if (!enabled) return
@@ -44,15 +61,25 @@ export function useLeadStream<L>({ url, enabled = true, onLead }: UseLeadStreamO
       }
     }
 
+    const handleCall = (event: MessageEvent) => {
+      try {
+        onCallUpdateRef.current?.(JSON.parse(event.data) as LeadCallUpdate)
+      } catch (err) {
+        console.error('[useLeadStream] failed to parse lead-call event', err)
+      }
+    }
+
     const open = () => {
       if (source) return
       source = new EventSource(url, { withCredentials: true })
       source.addEventListener('lead', handleLead)
+      source.addEventListener('lead-call', handleCall)
     }
 
     const close = () => {
       if (!source) return
       source.removeEventListener('lead', handleLead)
+      source.removeEventListener('lead-call', handleCall)
       source.close()
       source = null
     }

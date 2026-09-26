@@ -97,6 +97,9 @@ export async function GET(request: NextRequest) {
                 createdAt: true,
                 callRecordingUrl: true,
                 formName: true,
+                // How a same-day repeat call ended — it can be the missed one.
+                callStatus: true,
+                callDurationSecs: true,
                 // Attribution so a phone call can inherit the channel from a
                 // same-day form submission by the same person.
                 gclid: true,
