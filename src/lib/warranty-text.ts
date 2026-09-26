@@ -38,3 +38,16 @@ export function warrantyBody(text: string, title?: string | null): string {
   }
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim()
 }
+
+/**
+ * The opening sentence of the terms, set apart as the card's lead, and the
+ * rest. Typography only: every word is theirs and in their order — the
+ * emphasis is on the sentence they chose to put first. Returns no lead when
+ * there is nothing to split (one sentence, a list, or an opener too long to
+ * read as a lead), so the text simply renders whole.
+ */
+export function warrantyLead(body: string): { lead: string | null; rest: string } {
+  const m = body.match(/^([^\n•]{12,160}?[.!?])[ \t]+(\S[\s\S]*)$/)
+  if (!m) return { lead: null, rest: body }
+  return { lead: m[1], rest: m[2] }
+}

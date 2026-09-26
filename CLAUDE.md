@@ -1062,6 +1062,15 @@ the page — so the one thing to press was the one thing that did not stand out.
   saying the same thing. The expander is also told no headings, no markdown
   and no instructions to the customer — it had added "just bring the vehicle
   back to us", a process claim their words never made, on a mobile shop.
+- **The warranty band is ONE CARD with two halves** (`WarrantyBand`): the
+  heading on a dark half with a large faint shield, the terms on white with
+  their own first sentence set as the lead (`warrantyLead`, typography only —
+  every word theirs, in their order). It was a heading over a white box with a
+  small icon and one paragraph: correct, and a form letter. The title is said
+  ONCE, inside the card — the seal before it died partly for saying it twice —
+  and nothing on it out-claims the text: no stars, no duration their words do
+  not contain. The icon tile uses `--hdr-cta` so a brand that would vanish on
+  the dark half turns white instead.
 - **The call button is always the SECONDARY** — white, outlined in
   `--cta-on-light`. It was the same solid fill as the quote button beside it,
   so with a shop's own red on both, neither stood out. The header already drew

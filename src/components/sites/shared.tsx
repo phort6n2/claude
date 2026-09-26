@@ -6,7 +6,7 @@ import { wordmarkParts } from '@/lib/wordmark'
 import { smsHref } from '@/lib/contact-links'
 import { headlineArea, servingShort } from '@/lib/site-area'
 import { headerIsDark } from '@/lib/logo-surface'
-import { warrantyBody } from '@/lib/warranty-text'
+import { warrantyBody, warrantyLead } from '@/lib/warranty-text'
 import { mostMentionedName } from '@/lib/review-names'
 import type { NetworkHighlight } from '@/lib/insurance-programs'
 import type { SiteExtras, FaqItem } from '@/lib/site-content'
@@ -1199,65 +1199,74 @@ function warrantyStatesTerms(text: string | null | undefined): boolean {
  * artwork. The shield icon here is the same lucide mark the rest of the site
  * uses and asserts nothing on its own.
  *
- * THE LAYOUT WAS THE OTHER HALF. A two-column grid, `items-center`, with the
- * heading in the left column and the card in the right: on a wide screen the
- * left column held three lines of text against a card six times as tall, so
- * most of the band was empty space with a sticker floating in it. Every other
- * band on this site puts `SectionHead` full width and the content underneath,
- * which is what this does now — the terms get the whole width and a readable
- * measure instead of a 45-character gutter.
+ * THE LAYOUT WAS THE OTHER HALF, TWICE. First a two-column grid with the
+ * heading floating beside a card six times as tall — a sticker in empty
+ * space. Then a full-width heading over a white box with a small icon and
+ * one paragraph — correct, and a form letter. Now it is ONE card whose two
+ * halves are the same height by construction: the heading on the dark half,
+ * the terms on the white half. The halves share a row, so neither can float.
  *
  * Rendered only when warranty text exists, and always in full: a warranty
  * headline without its terms is the § 2 failure this band exists to prevent.
  */
 export function WarrantyBand({ extras }: { extras: SiteExtras | null }) {
   if (!extras?.warrantyText) return null
+  const body = warrantyBody(extras.warrantyText, extras.warrantyTitle)
+  const { lead: opener, rest } = warrantyLead(body)
+  /* "In full, right here" is a claim the PLATFORM makes about the shop's
+     text, and it is only true if that text actually defines something. On a
+     live client it headlined "Lifetime Warranty" over two sentences naming no
+     scope, no exclusions and no transferability — a named warranty without
+     its terms, which § 2 calls out by name, under a line promising the
+     opposite. The terms themselves can never be written here, so the lead
+     adapts instead: the strong version only when the shop has genuinely
+     spelled it out, otherwise a line that is true for everyone. */
+  const lead = warrantyStatesTerms(extras.warrantyText)
+    ? 'In writing, in full, right here — not a claim with the terms hidden somewhere else.'
+    : 'What we stand behind on every job.'
+
+  /* ONE CARD, TWO HALVES, THE TITLE ONCE. The band was a section heading over
+     a white box holding a 56px icon and one long paragraph: correct, and
+     visually a form letter — most of the card was empty and nothing said
+     "this is the thing you can hold us to". Now the heading lives IN the
+     card, on the dark half, so the warranty's name is said exactly once (the
+     seal this replaced died partly for saying it twice), and the terms sit on
+     the white half with their own first sentence set as the lead.
+
+     Still under the rule above: nothing here out-claims the text. The shield
+     is the same flat lucide mark the rest of the site uses, drawn large and
+     faint as a watermark, and asserts nothing; no stars, no duration that the
+     shop's own words do not contain, no ribbon. */
   return (
     <section className="bg-[var(--tint)] border-b border-[var(--line)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
-        <SectionHead
-          eyebrow="Our warranty"
-          title={extras.warrantyTitle || 'What the warranty covers'}
-          /* "In full, right here" is a claim the PLATFORM makes about the
-             shop's text, and it is only true if that text actually defines
-             something. On a live client it headlined "Lifetime Warranty" over
-             two sentences naming no scope, no exclusions and no
-             transferability — a named warranty without its terms, which § 2
-             calls out by name, under a line promising the opposite.
-
-             The terms themselves can never be written here: inventing
-             "covers leaks and workmanship, non-transferable" for a shop is
-             the fabricated-fact failure the rules exist to prevent. So the
-             lead adapts instead — the strong version only when the shop has
-             genuinely spelled it out, and otherwise a line that is true for
-             everyone.
-
-             The weaker one used to read "The cover we offer, in our own
-             words", which is the platform talking about its own field rather
-             than the shop talking to a customer: a visitor does not care
-             whose words they are, they care what is covered. */
-          lead={
-            warrantyStatesTerms(extras.warrantyText)
-              ? 'In writing, in full, right here — not a claim with the terms hidden somewhere else.'
-              : 'What we stand behind on every job.'
-          }
-        />
-        {/* The same card treatment the quote form uses — a CTA-coloured top
-            rule on white — so the one document on the page that a customer
-            may have to hold us to looks like it belongs to this site. */}
-        {/* CAPPED, because the card IS the measure. Full width with a 72ch
-            paragraph inside it left an empty third down the right-hand side —
-            the same void the two-column layout had, moved inboard. */}
-        <div className="max-w-4xl bg-white rounded-[20px] border-t-4 border-t-[var(--cta)] border border-[var(--line-card)] shadow-sm p-6 sm:p-8 lg:p-10">
-          <div className="flex flex-col gap-5 sm:flex-row sm:gap-7">
-            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--tint-accent)] text-[var(--on-tint-accent)]">
+        <div className="overflow-hidden rounded-[20px] border border-[var(--line-card)] bg-white shadow-sm grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+          <div className="on-dark relative overflow-hidden bg-[var(--dark)] px-6 py-8 sm:px-8 lg:px-10 lg:py-12">
+            <ShieldCheck
+              aria-hidden="true"
+              strokeWidth={1.25}
+              className="pointer-events-none absolute -right-10 -bottom-12 h-56 w-56 text-white/[.06] lg:h-72 lg:w-72"
+            />
+            <span className="relative mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--hdr-cta)] text-[var(--on-hdr-cta)] shadow-[0_8px_20px_-6px_rgba(0,0,0,.5)]">
               <ShieldCheck className="h-7 w-7" aria-hidden="true" />
             </span>
-            {/* Generous leading: the terms are the one block on this page
-                somebody reads end to end rather than skims. */}
-            <p className="m-0 text-[16px] leading-[1.75] text-[var(--tx2)] whitespace-pre-line">
-              {warrantyBody(extras.warrantyText, extras.warrantyTitle)}
-            </p>
+            <div className="relative">
+              <Eyebrow onDark>Our warranty</Eyebrow>
+              <h2 className="m-0 text-[clamp(1.5rem,1.18rem+1.7vw,2.25rem)] leading-[1.15] font-extrabold tracking-tight text-white">
+                {extras.warrantyTitle || 'What the warranty covers'}
+              </h2>
+              <p className="mt-3 mb-0 text-[16px] leading-[1.55] text-[var(--on-dark-2)]">{lead}</p>
+            </div>
+          </div>
+          {/* Generous leading: the terms are the one block on this page
+              somebody reads end to end rather than skims. */}
+          <div className="border-t-4 border-t-[var(--cta)] px-6 py-8 sm:px-8 lg:border-t-0 lg:border-l-4 lg:border-l-[var(--cta)] lg:px-10 lg:py-12 flex flex-col justify-center">
+            {opener && (
+              <p className="m-0 mb-3 text-[clamp(1.125rem,1.05rem+.35vw,1.3rem)] leading-[1.45] font-semibold tracking-[-.01em] text-[var(--tx)]">
+                {opener}
+              </p>
+            )}
+            <p className="m-0 text-[16px] leading-[1.75] text-[var(--tx2)] whitespace-pre-line">{rest}</p>
           </div>
         </div>
       </div>

@@ -19,7 +19,7 @@ import {
   PLATFORM_DEFAULT_COLORS,
 } from '../src/lib/brand-colors'
 import { sitePaletteVars } from '../src/lib/site-theme'
-import { warrantyBody } from '../src/lib/warranty-text'
+import { warrantyBody, warrantyLead } from '../src/lib/warranty-text'
 
 let failures = 0
 const fail = (msg: string) => {
@@ -203,6 +203,14 @@ function main() {
     eq('bullets stay bullets', warrantyBody('- Leaks\n- Wind noise'), '• Leaks\n• Wind noise')
     const plain = 'We fix leaks — for as long as you own the car.\nNot transferable.'
     eq('plain text is returned exactly', warrantyBody(plain, 'Lifetime Warranty'), plain)
+    const split = warrantyLead('We stand behind the work we do. For one year after your installation, we fix leaks.')
+    eq('the opening sentence becomes the lead, every word kept in order', [split.lead, split.rest], [
+      'We stand behind the work we do.',
+      'For one year after your installation, we fix leaks.',
+    ])
+    eq('one sentence → no lead, rendered whole', warrantyLead('We fix leaks for life.').lead, null)
+    eq('a list → no lead', warrantyLead('• Leaks. • Wind noise.').lead, null)
+    eq('"1-yr. warranty" style abbreviations do not split mid-word', warrantyLead('Lifetime. Covers leaks.').lead, null)
     eq('a one-line text equal to the title is kept (never blank the band)', warrantyBody('Lifetime Warranty', 'Lifetime Warranty'), 'Lifetime Warranty')
   }
 
