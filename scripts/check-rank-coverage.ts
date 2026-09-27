@@ -39,6 +39,8 @@ function check(label: string, ok: boolean, detail = '') {
 const READY: RankSetupInput = {
   status: 'ACTIVE',
   googlePlaceId: 'ChIJ_mag_mobile',
+  noBusinessProfile: false,
+  hasShopLocation: true,
   latitude: 33.66,
   longitude: -117.99,
   rankTrackingId: null,
@@ -119,8 +121,33 @@ console.log('\n--- every blocker has words, and they name the fix ---')
     /read from the linked Business Profile/.test(noCoords.problem || ''),
     noCoords.problem || ''
   )
+  // MAG MOBILE: a service-area business. The profile hides the address, so
+  // "read from the profile" is a promise the lookup cannot keep — it has to
+  // name the paste instead. Still pressable: the paste is on the same card.
+  const sab = rankSetupState({ ...READY, hasShopLocation: false, latitude: null, longitude: null })
+  check('a SAB with no coordinates can still be set up', sab.canCreate)
+  check('and is told to paste the centre, not to wait', /Grid centre/.test(sab.problem || '') && !/read from/.test(sab.problem || ''), sab.problem || '')
+  const sabPlaced = rankSetupState({ ...READY, hasShopLocation: false })
+  check('a SAB whose centre is stored has nothing left to say', sabPlaced.problem === null)
   const halfCoords = rankSetupState({ ...READY, longitude: null })
   check('one coordinate alone is treated as none', halfCoords.problem !== null)
+}
+
+console.log('\n--- no Business Profile at all is not a blocker, it is a fact ---')
+{
+  const none = rankSetupState({ ...READY, googlePlaceId: null, noBusinessProfile: true })
+  check('it cannot be created', !none.canCreate)
+  check('it is marked not applicable', none.notApplicable === true)
+  check('and says there is nothing to fix', /Nothing to fix/.test(none.problem || ''), none.problem || '')
+  const noKey = rankSetupState({ ...READY, googlePlaceId: null, noBusinessProfile: true, keyConfigured: false })
+  check('a missing key does not turn it into a blocker', noKey.notApplicable === true, noKey.problem || '')
+  const linked = rankSetupState({ ...READY, noBusinessProfile: true })
+  check('a linked Place ID wins over the tick', linked.canCreate && !linked.notApplicable)
+  const blank = rankSetupState({ ...READY, googlePlaceId: '  ', noBusinessProfile: true })
+  check('a blank Place ID is no Place ID', blank.notApplicable === true)
+  const unticked = rankSetupState({ ...READY, googlePlaceId: null })
+  check('without the tick a missing Place ID is still a blocker', !unticked.notApplicable)
+  check('and that blocker names the tick', /no Google Business Profile/.test(unticked.problem || ''), unticked.problem || '')
 }
 
 console.log('\n--- the order of the blockers is the order of the fixes ---')
@@ -131,6 +158,8 @@ console.log('\n--- the order of the blockers is the order of the fixes ---')
   const everything = rankSetupState({
     status: 'PAUSED',
     googlePlaceId: null,
+    noBusinessProfile: false,
+    hasShopLocation: true,
     latitude: null,
     longitude: null,
     rankTrackingId: null,

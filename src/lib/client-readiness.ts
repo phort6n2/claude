@@ -4,6 +4,7 @@ import { getClientLocations } from '@/lib/client-locations'
 import { mergeServiceAreas, LOCATION_PAGE_LIMIT } from '@/lib/site-locations'
 import { getCityContent, cityIsIndexable, type CityContent } from '@/lib/city-content'
 import { getAdsCredentials } from '@/lib/google-ads'
+import { hasNoBusinessProfile } from '@/lib/business-profile'
 
 /**
  * Is this client actually finished?
@@ -143,13 +144,18 @@ export async function getClientReadiness(clientId: string): Promise<ReadinessRep
 
   // Hours are per shop, and a shop with none shows a blank in the footer where
   // a customer looks to decide whether to drive over.
+  // A shop with no Business Profile has nothing to pull hours FROM, so the
+  // advice changes; the check itself stands — they still need hours.
+  const noProfile = hasNoBusinessProfile(client)
   const shopsWithoutHours = locations.filter((l) => !l.hours?.trim())
   add(
     'hours',
     'Opening hours',
     shopsWithoutHours.length === 0,
     shopsWithoutHours.length === locations.length
-      ? 'No opening hours on file — pull them from Google in the Shops card on the Business tab.'
+      ? noProfile
+        ? 'No opening hours on file — add them in the Shops card on the Business tab.'
+        : 'No opening hours on file — pull them from Google in the Shops card on the Business tab.'
       : `${shopsWithoutHours.length} shop${shopsWithoutHours.length === 1 ? '' : 's'} missing hours: ${shopsWithoutHours.map((l) => l.label || l.city).join(', ')}.`,
     'recommended',
     `${base}/business`
@@ -172,18 +178,24 @@ export async function getClientReadiness(clientId: string): Promise<ReadinessRep
     'required',
     `${base}/business`
   )
-  add(
-    'reviews',
-    'Google reviews connected',
-    !!reviews && !reviews.lastError,
-    reviews?.lastError
-      ? `Google returned: ${reviews.lastError}`
-      : 'No Place ID matched, so the site shows no rating anywhere. The Place ID is on the Business tab.',
-    'required',
-    // Business, not Website: the Place ID this depends on lives there, and
-    // sending someone to a tab with no such field is a dead end.
-    `${base}/business`
-  )
+  // Not reported at all for a shop with no Business Profile: there is no
+  // rating to connect, and "a check that is merely optional for this client is
+  // not reported" (top of file). It used to count as REQUIRED and open, so the
+  // client could never read as ready. A linked Place ID wins over the tick.
+  if (!noProfile) {
+    add(
+      'reviews',
+      'Google reviews connected',
+      !!reviews && !reviews.lastError,
+      reviews?.lastError
+        ? `Google returned: ${reviews.lastError}`
+        : 'No Place ID matched, so the site shows no rating anywhere. Link it on the Business tab — or tick "no Google Business Profile" there if they have none.',
+      'required',
+      // Business, not Website: the Place ID this depends on lives there, and
+      // sending someone to a tab with no such field is a dead end.
+      `${base}/business`
+    )
+  }
   add(
     'photos',
     'Photos',

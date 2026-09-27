@@ -30,6 +30,8 @@ interface ClientData {
   websiteUrl: string | null
   googleMapsUrl: string | null
   hasShopLocation: boolean
+  /** "This business has no Google Business Profile" — see lib/business-profile.ts. */
+  noBusinessProfile?: boolean
   offersMobileService: boolean
   latitude?: number | null
   longitude?: number | null
@@ -161,6 +163,8 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
         postalCode: details.postalCode || prev.postalCode,
         googlePlaceId: details.placeId,
         googleMapsUrl: details.googleMapsUrl,
+        // A listing was just found, so "they have none" is no longer true.
+        noBusinessProfile: false,
         // Their site, straight off the Business Profile — seeds the import
         // field on the Website tab so nobody re-types what Google knows.
         websiteUrl: details.website || prev.websiteUrl,
@@ -279,6 +283,26 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
               <p className="text-xs text-blue-700 mt-2">
                 Search to auto-fill business info from Google, or enter manually below.
               </p>
+              {/* Only while nothing is linked: a linked Place ID wins over the
+                  tick anyway, and offering it beside one invites the two to
+                  disagree. */}
+              {!formData.googlePlaceId?.trim() && (
+                <label className="mt-3 flex items-start gap-2 text-sm text-blue-900">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={!!formData.noBusinessProfile}
+                    onChange={(e) => updateField('noBusinessProfile', e.target.checked)}
+                  />
+                  <span>
+                    This business has no Google Business Profile
+                    <span className="block text-xs text-blue-700">
+                      Google reviews and rank tracking then read as not applicable instead of
+                      missing. Link a listing later and they are checked again.
+                    </span>
+                  </span>
+                </label>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

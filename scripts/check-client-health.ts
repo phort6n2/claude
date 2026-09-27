@@ -41,6 +41,8 @@ const base: HealthInput = {
   findings: { alerts: 0, total: 0 },
   rank: {
     googlePlaceId: 'place-1',
+    noBusinessProfile: false,
+    hasShopLocation: true,
     latitude: 33.1,
     longitude: -96.9,
     rankTrackingId: 'camp-1',
@@ -249,6 +251,28 @@ console.log('\nRank tracking: the client with no campaign that had no surface an
   const noPlace = cells({ rank: { ...noCampaign, googlePlaceId: null } })
   if (/business profile/i.test(noPlace.rank.detail)) pass('a missing Place ID says so')
   else fail(`the rank cell does not name the blocker: ${noPlace.rank.detail}`)
+  expect('a missing Place ID is still red', noPlace.rank.state, 'bad')
+
+  /* DIAMOND: no Business Profile at all. Red for ever over something nobody
+     can fix is the permanently-red board; the operator's tick makes it n/a —
+     but only while nothing is linked, because a Place ID is proof against it. */
+  const noProfile = { ...noCampaign, googlePlaceId: null, noBusinessProfile: true }
+  expect('no Business Profile, ticked → n/a', cells({ rank: noProfile }).rank.state, 'na')
+  expect(
+    'and n/a even with no API key, which would not help',
+    cells({ rank: { ...noProfile, keyConfigured: false } }).rank.state,
+    'na'
+  )
+  expect(
+    'the tick beside a linked Place ID is ignored',
+    cells({ rank: { ...noCampaign, noBusinessProfile: true } }).rank.state,
+    'bad'
+  )
+  expect(
+    'and a campaign that exists still reads as one',
+    cells({ rank: { ...base.rank, googlePlaceId: null, noBusinessProfile: true } }).rank.state,
+    'ok'
+  )
 }
 
 console.log('\nLast month’s report')

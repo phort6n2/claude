@@ -65,6 +65,12 @@ model Client {
 
   // Service Details
   hasShopLocation        Boolean  @default(true)
+  /// "This business has no Google Business Profile" — an operator's answer,
+  /// ticked on the Business tab. It is what tells "none linked YET" (a fault:
+  /// no rating, no rank grid) apart from "there is none" (nothing to fix), so
+  /// the Google-dependent checks can read not-applicable instead of red. A
+  /// stored Place ID always wins over it. See lib/business-profile.ts.
+  noBusinessProfile      Boolean  @default(false)
   offersMobileService    Boolean  @default(false)
   serviceAreas           String[] // Array of cities/neighborhoods
   /// What the site's HEADLINES call the area this shop covers — "Orange

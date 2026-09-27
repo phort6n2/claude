@@ -154,6 +154,8 @@ export async function getClientHealth(): Promise<ClientHealthRow[]> {
       timezone: true,
       createdAt: true,
       googlePlaceId: true,
+      noBusinessProfile: true,
+      hasShopLocation: true,
       latitude: true,
       longitude: true,
       rankTrackingId: true,
@@ -287,6 +289,8 @@ export async function getClientHealth(): Promise<ClientHealthRow[]> {
             },
       rank: {
         googlePlaceId: client.googlePlaceId,
+        noBusinessProfile: client.noBusinessProfile,
+        hasShopLocation: client.hasShopLocation,
         latitude: client.latitude,
         longitude: client.longitude,
         rankTrackingId: client.rankTrackingId,
@@ -482,6 +486,8 @@ export function healthCells(input: HealthInput): Record<HealthColumnId, HealthCe
   const rankState = rankSetupState({ ...input.rank, status: input.status })
   const rank: HealthCell = rankState.hasCampaign
     ? ok()
+    : rankState.notApplicable
+      ? na(rankState.problem || 'No Google Business Profile, so there is nothing to rank.')
     : !live
       ? na(`Status is ${input.status}, so nothing is scanned.`)
       : // The key is missing for EVERY client at once, which is one fix, not

@@ -1743,6 +1743,21 @@ and posts each finished run back, so nothing is polled.
     side of town in a way nothing downstream could ever question. `0,0` is
     refused outright: Null Island is what a missing value coerces to, and this
     app has already drawn one map in the Atlantic.
+  - **`rankSetupState` now SAYS so** (it takes `hasShopLocation`, required):
+    a SAB with no stored centre is told to paste one, not that it "will be read
+    from the linked Business Profile", which for them never happens. Still red
+    on the health board: rank tracking is not running until somebody pastes it.
+- **NO BUSINESS PROFILE AT ALL IS A FACT, NOT A FAULT** (`business-profile.ts`,
+  `Client.noBusinessProfile`, bootstrap: `BUSINESS_PROFILE_SQL`, the tick
+  under the Google search on the Business tab). A missing Place ID meant "not
+  linked yet" to every check, so a shop with no profile (Diamond) carried a
+  red Setup item (Google reviews, REQUIRED) and a red Rank cell that no amount
+  of work could clear — the permanently-red board. The tick makes the reviews
+  check not reported and the rank cell n/a, ahead of the missing-key case
+  because no key would help. **A stored Place ID always wins over the tick**,
+  so a shop that gets a profile later is checked again the moment it is
+  linked. `scripts/check-rank-coverage.ts` and `check-client-health.ts` hold
+  both directions.
 - Flipping `Client.seoClient` PATCHes the live campaign — four keywords and
   weekly, or two and monthly. A downgrade sets the extra terms `inactive`
   rather than removing them, because a removed term takes its history with

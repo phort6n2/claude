@@ -26,6 +26,7 @@ export default function RankTrackingCard({
   hasCampaign,
   canCreate,
   problem,
+  notApplicable = false,
   campaignId,
   keywords,
   seoClient,
@@ -35,6 +36,8 @@ export default function RankTrackingCard({
   hasCampaign: boolean
   canCreate: boolean
   problem: string | null
+  /** No Business Profile: nothing to track and nothing to fix. */
+  notApplicable?: boolean
   campaignId: string | null
   keywords: string[]
   seoClient: boolean
@@ -95,6 +98,11 @@ export default function RankTrackingCard({
             {campaignId ? <span className="text-gray-400"> · campaign {campaignId}</span> : null}
           </p>
         </div>
+      ) : notApplicable ? (
+        // Not the amber "nothing is being measured" warning: that reads as a
+        // job left undone, and for a shop with no Business Profile there is no
+        // job. Linking a Place ID later brings the normal card back.
+        <p className="mt-3 text-sm text-gray-600">{problem}</p>
       ) : (
         <div className="mt-3 space-y-3">
           <p className="text-sm flex items-start gap-1.5 text-amber-700">

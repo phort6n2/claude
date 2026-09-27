@@ -189,6 +189,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     // Booleans.
     for (const key of [
       'hasShopLocation',
+      'noBusinessProfile',
       'offersMobileService',
       'offersWindshieldRepair',
       'offersWindshieldReplacement',

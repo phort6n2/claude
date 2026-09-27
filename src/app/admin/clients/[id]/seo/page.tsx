@@ -43,6 +43,8 @@ export default async function Page({
       // is actually happening — and when it is not, why not.
       status: true,
       googlePlaceId: true,
+      noBusinessProfile: true,
+      hasShopLocation: true,
       latitude: true,
       longitude: true,
       rankTrackingId: true,
@@ -99,6 +101,7 @@ export default async function Page({
       hasCampaign={rankState.hasCampaign}
       canCreate={rankState.canCreate}
       problem={rankState.problem}
+      notApplicable={!!rankState.notApplicable}
       campaignId={client.rankTrackingId}
       keywords={client.rankKeywords}
       seoClient={client.seoClient}

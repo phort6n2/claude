@@ -412,6 +412,14 @@ export const MARKET_AREA_SQL: string[] = [
 ]
 
 /**
+ * "This business has no Google Business Profile", so the checks that depend on
+ * one read not-applicable rather than red. See lib/business-profile.ts.
+ */
+export const BUSINESS_PROFILE_SQL: string[] = [
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "noBusinessProfile" BOOLEAN NOT NULL DEFAULT false`,
+]
+
+/**
  * One stored report per client per calendar month, built by the 1st-of-month
  * cron and sent by hand. See lib/monthly-digest.ts.
  *
@@ -596,6 +604,7 @@ export const INSURANCE_PROGRAM_SQL: string[] = [
 export const BOOTSTRAP_SQL: string[] = [
   ...PATH_OVERRIDE_SQL,
   ...MARKET_AREA_SQL,
+  ...BUSINESS_PROFILE_SQL,
   ...SOCIAL_LINKS_SQL,
   ...MONTHLY_REPORT_SQL,
   ...CALL_TRACKING_SQL,

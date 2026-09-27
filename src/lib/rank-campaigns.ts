@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { decrypt } from '@/lib/encryption'
+import { hasNoBusinessProfile } from '@/lib/business-profile'
 import {
   SCAN_PRESETS,
   campaignMapUrl,
@@ -76,6 +77,14 @@ export interface EnsureResult {
 export interface RankSetupInput {
   status: string
   googlePlaceId: string | null
+  /** The operator's "no Google Business Profile" tick. REQUIRED, not
+   *  optional: a caller that forgot it would compile and file the shop as
+   *  broken forever — the `AreaNaming.marketArea` lesson. */
+  noBusinessProfile: boolean
+  /** False for a service-area business. Its Business Profile hides the
+   *  address, so Google has no point to give us and the centre has to be
+   *  pasted. Required for the same reason as the field above. */
+  hasShopLocation: boolean
   latitude: number | null
   longitude: number | null
   rankTrackingId: string | null
@@ -89,6 +98,8 @@ export interface RankSetupState {
   canCreate: boolean
   /** Null when there is nothing to say; otherwise what to do, in words. */
   problem: string | null
+  /** Nothing to fix: this shop cannot be rank-tracked, by its nature. */
+  notApplicable?: boolean
 }
 
 export function rankSetupState(input: RankSetupInput): RankSetupState {
@@ -106,6 +117,20 @@ export function rankSetupState(input: RankSetupInput): RankSetupState {
       problem: `This client is ${input.status}, so nothing is scanned. Set the status on the Business tab.`,
     }
   }
+  // Before the key: a shop with no Business Profile has no listing to find in
+  // the map pack, so there is nothing to track whatever is configured — and
+  // this is NOT a blocker to fix, which is the whole reason it is its own
+  // state. The generic Place ID sentence below told the operator to go and
+  // link a profile that does not exist.
+  if (hasNoBusinessProfile(input)) {
+    return {
+      hasCampaign: false,
+      canCreate: false,
+      notApplicable: true,
+      problem:
+        'This business has no Google Business Profile (ticked on the Business tab), so there is no map listing to rank. Nothing to fix.',
+    }
+  }
   if (!input.keyConfigured) {
     return {
       hasCampaign: false,
@@ -119,13 +144,26 @@ export function rankSetupState(input: RankSetupInput): RankSetupState {
       hasCampaign: false,
       canCreate: false,
       problem:
-        'No Google Business Profile is linked, and the grid is centred on it. Search for the business on the Business tab.',
+        'No Google Business Profile is linked, and the grid is centred on it. Search for the business on the Business tab — or tick "no Google Business Profile" there if they have none.',
     }
   }
   // Coordinates are NOT a blocker: the sweep backfills them from the Place ID.
   // Said out loud anyway, because it is the one case where a press can fail
   // for a reason nobody could have predicted from this screen.
   if (input.latitude === null || input.longitude === null) {
+    // A SERVICE-AREA BUSINESS HAS NO POINT TO READ. Its profile hides the
+    // address, so the lookup the sentence below promises comes back empty
+    // every night — and "they will be read from the profile" sent the operator
+    // off to wait for something that cannot happen. For them the centre is a
+    // judgement (the middle of the area they cover), so this names the paste.
+    if (!input.hasShopLocation) {
+      return {
+        hasCampaign: false,
+        canCreate: true,
+        problem:
+          'Service-area business, so its Business Profile has no address for Google to centre the grid on. Paste the middle of the area they cover as the Grid centre on the SEO tab (Rank tracking) and press Set up.',
+      }
+    }
     return {
       hasCampaign: false,
       canCreate: true,
@@ -281,6 +319,8 @@ export async function createRankCampaignFor(
         businessName: true,
         status: true,
         googlePlaceId: true,
+        noBusinessProfile: true,
+        hasShopLocation: true,
         latitude: true,
         longitude: true,
         rankTrackingId: true,
@@ -395,6 +435,8 @@ export async function ensureRankCampaigns(origin: string): Promise<EnsureResult>
       id: true,
       businessName: true,
       googlePlaceId: true,
+      noBusinessProfile: true,
+      hasShopLocation: true,
       latitude: true,
       longitude: true,
       seoClient: true,
