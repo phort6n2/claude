@@ -24,6 +24,12 @@ export interface InboxRow {
   problem: string | null
   clientName: string | null
   assignable: boolean
+  /**
+   * For a filed report, where it landed: in that month's report, in one
+   * already sent, in NO report because the month was sent before it arrived,
+   * or waiting because that month has no report built yet.
+   */
+  destination: 'in-report' | 'sent' | 'sent-without' | 'no-report' | null
 }
 
 export default function SeoReportInbox({
@@ -95,9 +101,19 @@ export default function SeoReportInbox({
                 <p className="mt-1 break-words text-blue-800">Gmail forwarding — {r.problem}</p>
               ) : r.problem ? (
                 <p className="mt-1 break-words text-amber-800">{r.problem}</p>
+              ) : r.destination === 'sent-without' ? (
+                <p className="mt-1 text-amber-800">
+                  Filed under {r.clientName}, but their {r.label} report was already sent without
+                  it, so it was left as sent.
+                </p>
+              ) : r.destination === 'no-report' ? (
+                <p className="mt-1 text-gray-700">
+                  Filed under {r.clientName} for {r.label}. No report is built for that month yet;
+                  it goes in when one is.
+                </p>
               ) : (
                 <p className="mt-1 text-green-700">
-                  Read into {r.clientName}&rsquo;s {r.label} report.
+                  In {r.clientName}&rsquo;s {r.label} report{r.destination === 'sent' ? ' (sent)' : ''}.
                 </p>
               )}
 

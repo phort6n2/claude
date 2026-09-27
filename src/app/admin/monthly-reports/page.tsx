@@ -95,7 +95,33 @@ export default async function Page() {
       .catch(() => []),
     prisma.client.findMany({ select: { id: true, businessName: true }, orderBy: { businessName: 'asc' } }),
   ])
+  /* WHERE EACH FILED REPORT ACTUALLY WENT. "Read into X's August report" was
+     printed for every matched row — including one filed for a month with no
+     report built, which is exactly what the first production test produced
+     (August reports had been cleared). The row now says which of the three it
+     is, from the reports themselves. */
+  const filed = inbox.filter((m) => m.clientId && m.year && m.month && !m.problem)
+  const monthRows = filed.length
+    ? await prisma.clientMonthlyReport
+        .findMany({
+          where: {
+            OR: filed.map((m) => ({ clientId: m.clientId!, year: m.year!, month: m.month! })),
+          },
+          select: { clientId: true, year: true, month: true, sentAt: true, payload: true },
+        })
+        .catch(() => [])
+    : []
+  const destinationOf = (m: (typeof inbox)[number]): InboxRow['destination'] => {
+    const report = monthRows.find(
+      (r) => r.clientId === m.clientId && r.year === m.year && r.month === m.month
+    )
+    if (!report) return 'no-report'
+    if ((report.payload as unknown as MonthlyDigest | null)?.seo) return report.sentAt ? 'sent' : 'in-report'
+    return report.sentAt ? 'sent-without' : 'no-report'
+  }
+
   const inboxRows: InboxRow[] = inbox.map((m) => ({
+    destination: m.clientId && !m.problem ? destinationOf(m) : null,
     id: m.id,
     receivedAt: m.receivedAt.toISOString(),
     sender: m.sender,
