@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import ClientLogoTile from '@/components/ui/ClientLogoTile'
 import {
   Check,
@@ -580,11 +581,82 @@ function CellPanel({
     )
   }
 
+  if (column.id === 'report' && (cell.state === 'bad' || cell.state === 'warn')) {
+    return <ReportPanel row={row} cell={cell} />
+  }
+
   return (
     <p className="mt-1 max-w-[52ch] text-xs leading-relaxed text-gray-600">
       <span className="font-semibold text-gray-900">{column.label}:</span>{' '}
       {cell.detail || column.meaning}
     </p>
+  )
+}
+
+/**
+ * The report cell, with the fix beside the fault.
+ *
+ * "No report was built" used to be a sentence with nowhere to go, read on the
+ * dashboard and then solved on a different page the reader had to find. The
+ * first time it fired it was not a failure at all — reporting shipped mid-
+ * September, after the 1st's build, so August simply never ran — and the
+ * answer was one press. It is that press here, for this shop: the SAME build
+ * route the Monthly reports page and the cron use, so a report built from the
+ * dashboard cannot differ from one built anywhere else. It BUILDS and never
+ * sends: sending is still a person reading it first, on Monthly reports.
+ */
+function ReportPanel({ row, cell }: { row: ClientHealthRow; cell: HealthCell }) {
+  const router = useRouter()
+  const [state, setState] = useState<'idle' | 'building' | 'built' | 'failed'>('idle')
+  const [message, setMessage] = useState('')
+
+  async function build() {
+    setState('building')
+    setMessage('')
+    try {
+      const res = await fetch('/api/admin/monthly-reports/build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: row.id }),
+      })
+      if (!res.ok) throw new Error(await errorFrom(res))
+      setState('built')
+      router.refresh()
+    } catch (err) {
+      setState('failed')
+      setMessage(err instanceof Error ? err.message : 'The build failed')
+    }
+  }
+
+  return (
+    <div className="mt-1 max-w-[62ch] space-y-2">
+      <p className="text-xs leading-relaxed text-gray-600">{cell.detail}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        {cell.state === 'bad' && state !== 'built' && (
+          <button
+            type="button"
+            onClick={build}
+            disabled={state === 'building'}
+            className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white hover:bg-black disabled:opacity-60"
+          >
+            {state === 'building' ? 'Building…' : 'Build it now'}
+          </button>
+        )}
+        <Link
+          href="/admin/monthly-reports"
+          className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+        >
+          {cell.state === 'warn' || state === 'built' ? 'Read and send it' : 'Monthly reports'}
+          <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+      {state === 'built' && (
+        <p className="text-xs text-emerald-700">
+          Built. Nothing has been emailed — read it on Monthly reports, then send.
+        </p>
+      )}
+      {state === 'failed' && <p className="text-xs text-red-700">{message}</p>}
+    </div>
   )
 }
 
