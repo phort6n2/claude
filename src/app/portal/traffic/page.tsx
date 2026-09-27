@@ -5,6 +5,7 @@ import { getPortalSession } from '@/lib/portal-auth'
 import { prisma } from '@/lib/db'
 import { getSiteAnalytics, rangeFrom, siteLabelFrom } from '@/lib/site-analytics'
 import TrafficReport, { TrafficUpsell, TrafficConnecting } from '@/components/portal/TrafficReport'
+import { sampleTrafficReport } from '@/lib/sample-traffic'
 
 /**
  * "How people find you" — the shop's own website in Google Analytics and
@@ -48,7 +49,7 @@ export default async function PortalTrafficPage({
     return client?.seoClient ? (
       <TrafficConnecting businessName={session.businessName} />
     ) : (
-      <TrafficUpsell businessName={session.businessName} />
+      <TrafficUpsell businessName={session.businessName} sample={sampleTrafficReport()} />
     )
   }
 

@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { getPortalSession } from '@/lib/portal-auth'
 import RankReport from '@/components/rank/RankReport'
 import { rankScansFor } from '@/lib/rank-report'
+import SeoPitch from '@/components/portal/SeoPitch'
 
 /**
  * "Local Rankings" in the client portal.
@@ -26,6 +27,7 @@ export default async function PortalRankingsPage() {
       rankTrackingId: true,
       rankMapUrl: true,
       rankKeywords: true,
+      seoClient: true,
     },
   })
   const scans = await rankScansFor(session.clientId)
@@ -45,6 +47,14 @@ export default async function PortalRankingsPage() {
         campaignId={client?.rankTrackingId || null}
         trackedTerms={client?.rankKeywords || []}
       />
+      {/* Below the map, never above it: the map is what they came to read, and
+          a shop without SEO is still measured (two searches, monthly). This is
+          the page where SEO's effect on the MAP is visible, so it is where the
+          case for it belongs — the Traffic page only ever made it for the
+          website. */}
+      {client && !client.seoClient && (
+        <SeoPitch where="rankings" businessName={client.businessName} />
+      )}
     </div>
   )
 }

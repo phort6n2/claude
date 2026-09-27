@@ -2302,6 +2302,18 @@ client says the leads are bad.
       Summary page's "More reports" cards and the home tiles — the Calls
       tile once linked to a page the menu said did not exist). The Summary
       page also links every section, so nothing depends on noticing the row.
+    - **THE SEO PITCH IS ONE COMPONENT ON TWO PAGES** (`SeoPitch`): Traffic
+      and Rankings, for a shop without `seoClient`. It names all three places
+      the work shows — map, Google search, AI answers — because the Traffic
+      version only ever mentioned the website, and the map is the report a
+      local shop reads most. It says what the work AIMS at, never a rank or a
+      timescale; the one concrete line is ours (four searches weekly, not two
+      monthly). **Traffic shows a SAMPLE REPORT** under it
+      (`lib/sample-traffic.ts`): the real `TrafficReport` on invented,
+      deterministic numbers for "Example Auto Glass", framed and labelled, with
+      the "straight from Google" line and the range picker swapped out by the
+      `sample` prop. Never the viewer's own name or site above invented
+      numbers — that is how a sample gets read as their report.
     - **"Work done", not "Activity"**: in a leads app "activity" reads as lead
       activity.
     - **The account menu** (top right, every page): View my website, lead

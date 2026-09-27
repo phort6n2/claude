@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import {
-  ArrowRight,
   Globe,
   Search,
   Sparkles,
@@ -25,6 +24,7 @@ import {
 } from '@/lib/site-analytics'
 import TrafficChart from '@/components/portal/TrafficChart'
 import RangePicker from '@/components/portal/RangePicker'
+import SeoPitch from '@/components/portal/SeoPitch'
 
 /**
  * "How people find you" — the shop's own website, measured.
@@ -515,7 +515,21 @@ const WHAT_IT_SHOWS = [
   },
 ]
 
-export function TrafficUpsell({ businessName }: { businessName: string }) {
+/**
+ * Not on SEO: the pitch, then a SAMPLE of the report itself.
+ *
+ * Four cards of prose used to stand where the sample is, describing a report
+ * the owner had never seen. The sample is the real component on made-up
+ * numbers for a made-up shop (lib/sample-traffic.ts), framed and labelled so
+ * it cannot be read as theirs — see `sample` below.
+ */
+export function TrafficUpsell({
+  businessName,
+  sample,
+}: {
+  businessName: string
+  sample: { siteUrl: string; traffic: Traffic; search: SearchReport }
+}) {
   return (
     <div className="space-y-5">
       <div>
@@ -526,43 +540,19 @@ export function TrafficUpsell({ businessName }: { businessName: string }) {
         </p>
       </div>
 
-      <section
-        className="rounded-2xl p-6 text-white shadow-sm"
-        style={{ backgroundColor: 'var(--brand, #1d4ed8)' }}
-      >
-        <p className="text-sm font-semibold uppercase tracking-wide opacity-80">Not switched on</p>
-        <h2 className="mt-1 text-xl font-extrabold">Add SEO and this page fills in</h2>
-        {/* No promises about rank, timing or results — see the content rules.
-            It describes what the REPORTING shows, which is a fact about this
-            page, not a claim about an outcome we cannot guarantee. */}
-        <p className="mt-2 text-white/90">
-          You already pay to be found through ads. This is the other half — what your own
-          website brings in from search, reported from Google&apos;s own numbers, with nothing
-          estimated.
-        </p>
-        <a
-          href="mailto:hello@glassleads.app?subject=SEO%20for%20my%20shop"
-          className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 font-bold no-underline"
-          style={{ color: 'var(--brand-ink, #1e40af)' }}
-        >
-          Ask about SEO
-          <ArrowRight className="h-4 w-4" />
-        </a>
-      </section>
+      <SeoPitch where="traffic" businessName={businessName} />
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {WHAT_IT_SHOWS.map((card) => (
-          <div
-            key={card.title}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
-          >
-            <div className="flex items-center gap-2 text-gray-500 text-sm font-medium">
-              <card.icon className="h-4 w-4" />
-              {card.title}
-            </div>
-            <p className="mt-2 text-sm text-gray-600">{card.body}</p>
-          </div>
-        ))}
+      <div className="rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/40 p-3 sm:p-5">
+        <TrafficReport
+          siteUrl={sample.siteUrl}
+          range="90d"
+          traffic={sample.traffic}
+          search={sample.search}
+          fetchedAt={null}
+          error={null}
+          showPortalLink={false}
+          sample={{ businessName }}
+        />
       </div>
     </div>
   )
@@ -578,7 +568,16 @@ export default function TrafficReport({
   fetchedAt,
   error,
   showPortalLink = true,
+  sample = null,
 }: {
+  /**
+   * Rendering made-up numbers for a shop without SEO (TrafficUpsell). The
+   * report says "Straight from Google — nothing here is estimated" and dates
+   * itself, and both would be lies over sample data, so this swaps the heading
+   * for a label that says whose numbers these are NOT, and drops the range
+   * picker, which would reload the same invention.
+   */
+  sample?: { businessName: string } | null
   /** The shop's OWN site, so nobody has to wonder which one this counts. */
   siteUrl: string | null
   range: RangeKey
@@ -612,24 +611,40 @@ export default function TrafficReport({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      {sample ? (
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900">How people find you</h1>
-          <p className="text-gray-500">Straight from Google — nothing here is estimated.</p>
-          <div className="mt-2">
-            <SiteLine siteUrl={siteUrl} />
-          </div>
-          {/* fetchedAt used to appear ONLY in the error branch, so a healthy
-              page was undated — and snapshots can be six hours old. */}
-          {!nothing && (
-            <p className="mt-2 text-sm text-gray-400">
-              {rangeLabel(range)}
-              {fetchedAt && ` · read from Google ${new Date(fetchedAt).toLocaleString()}`}
-            </p>
-          )}
+          <p className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-amber-800">
+            Sample report
+          </p>
+          <h2 className="mt-2 text-xl font-extrabold text-gray-900">
+            What this page shows with SEO
+          </h2>
+          <p className="text-gray-600 max-w-prose">
+            Example numbers for a made-up shop, not yours. With SEO switched on, this is{' '}
+            {sample.businessName}&apos;s own website, straight from Google — the tabs below work,
+            so have a look around.
+          </p>
         </div>
-        <RangePicker value={range} />
-      </div>
+      ) : (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-extrabold text-gray-900">How people find you</h1>
+            <p className="text-gray-500">Straight from Google — nothing here is estimated.</p>
+            <div className="mt-2">
+              <SiteLine siteUrl={siteUrl} />
+            </div>
+            {/* fetchedAt used to appear ONLY in the error branch, so a healthy
+                page was undated — and snapshots can be six hours old. */}
+            {!nothing && (
+              <p className="mt-2 text-sm text-gray-400">
+                {rangeLabel(range)}
+                {fetchedAt && ` · read from Google ${new Date(fetchedAt).toLocaleString()}`}
+              </p>
+            )}
+          </div>
+          <RangePicker value={range} />
+        </div>
+      )}
 
       {/* Stale data plus a reason beats an empty page: an operator finds out
           the property was un-shared, and the shop still sees last week. */}
