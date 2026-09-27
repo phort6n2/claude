@@ -105,7 +105,7 @@ const API_KEYS: ApiKeyConfig[] = [
     steps: [
       { text: 'Create a Resend account.', href: 'https://resend.com/signup', linkLabel: 'resend.com' },
       { text: 'Add and verify the sending domain — this is the DNS step, and nothing sends until it is green.', href: 'https://resend.com/domains', linkLabel: 'Domains' },
-      { text: 'API Keys → Create API Key with Sending access, then copy it.', href: 'https://resend.com/api-keys', linkLabel: 'API Keys' },
+      { text: 'API Keys → Create API Key with Full access, then copy it. Sending access is enough for alerts, but the reports inbox also READS received mail, and a sending-only key is refused there.', href: 'https://resend.com/api-keys', linkLabel: 'API Keys' },
     ],
     warning:
       'Send from a subdomain you do not use for personal mail — e.g. leads@mail.glassleads.app. If alert volume ever gets marked as spam, it damages that subdomain\u2019s reputation and not your main one.',
@@ -118,6 +118,29 @@ const API_KEYS: ApiKeyConfig[] = [
       { text: 'Use the exact form: Display Name <address@domain>.' },
       { text: 'The domain must be one showing Verified on the Resend Domains page.', href: 'https://resend.com/domains', linkLabel: 'Domains' },
     ],
+  },
+  {
+    key: 'RESEND_INBOUND_SECRET',
+    label: 'Reports inbox webhook secret',
+    description:
+      'Lets the app trust Resend when it passes on an email sent to your reports address — the SEO reports forwarded from Gmail. Without it the inbox refuses everything.',
+    steps: [
+      {
+        text: 'Resend → Webhooks → Add Webhook. Endpoint: https://glassleads.app/api/webhooks/resend/inbound. Event: email.received.',
+        href: 'https://resend.com/webhooks',
+        linkLabel: 'Webhooks',
+      },
+      { text: 'Open the webhook you just made and copy its Signing Secret — it starts with whsec_.' },
+      { text: 'Paste it here and save. Received reports then show up under Monthly reports → Reports inbox.' },
+    ],
+    warning:
+      'The Resend API key above must have Full access: the app reads each received email and its PDF through the API, and a sending-only key cannot.',
+  },
+  {
+    key: 'SEO_REPORT_SENDERS',
+    label: 'Extra addresses allowed to send reports',
+    description:
+      'Optional. Reports are accepted from the SEO supplier\u2019s own address and from ADMIN_EMAIL. Add any other address you might forward one from by hand, separated by commas.',
   },
   {
     key: 'TWILIO_ACCOUNT_SID',

@@ -12,6 +12,9 @@ export const SENSITIVE_KEYS = [
   'DEEPGRAM_API_KEY',
   'GOOGLE_PLACES_API_KEY',
   'RESEND_API_KEY',
+  // Signs Resend's email.received webhook — the reports inbox. A secret: with
+  // it, anybody could post a report into a client's monthly report.
+  'RESEND_INBOUND_SECRET',
   'TWILIO_ACCOUNT_SID',
   'TWILIO_AUTH_TOKEN',
   'GOOGLE_ADS_DEVELOPER_TOKEN',
@@ -48,6 +51,11 @@ export const ALL_KEYS: string[] = [
   'GOOGLE_PLACES_API_KEY',
   'RESEND_API_KEY',
   'RESEND_FROM',
+  // The reports inbox (lib/seo-report-inbound.ts). It shipped read by the code
+  // and absent from this list, so the one setting it cannot run without had no
+  // field — the DEEPGRAM and Local Dominator mistake a third time.
+  'RESEND_INBOUND_SECRET',
+  'SEO_REPORT_SENDERS',
   'TWILIO_ACCOUNT_SID',
   'TWILIO_AUTH_TOKEN',
   'TWILIO_FROM_NUMBER',
