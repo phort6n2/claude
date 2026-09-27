@@ -13,6 +13,8 @@
  *   npx tsx scripts/check-seo-report.ts
  */
 import fixture from './fixtures/seo-report-2026-08.json'
+import levelFixture from './fixtures/seo-report-2026-08-level.json'
+import newSiteFixture from './fixtures/seo-report-2026-08-new-site.json'
 import { parseSeoReport, supplierTraces, type SeoReportInput } from '../src/lib/seo-report'
 import { seoSectionOf, senderAllowed, siteAndMonthFromEmail } from '../src/lib/seo-report-inbound'
 import { renderMonthlyReportEmail } from '../src/lib/monthly-report-email'
@@ -138,6 +140,40 @@ console.log('\n--- direction is read from the sentence, not the line order ---')
   )
   const r = parseSeoReport(down)
   check('"Down 1 point" reads 18 → 17', r.links?.ratingFrom === 18 && r.links?.ratingTo === 17, JSON.stringify(r.links))
+}
+
+console.log('\n--- the second layout: rating held level, mixed-case keywords ---')
+{
+  // Speedy's real August report. Two things in it broke the first reader:
+  // "Level since Jul 2026" (only Up/Down were known) and keywords such as
+  // "XPEL vs 3M", which the case rule read as titles — four titles against
+  // five dates, and the whole list dropped.
+  const r = parseSeoReport(levelFixture as SeoReportInput)
+  check('nothing reported as unreadable', r.problems.length === 0, r.problems.join('; '))
+  check('all five articles listed', r.articles?.list.length === 5, String(r.articles?.list.length))
+  check(
+    'each with its own date',
+    r.articles?.list[0]?.title === 'Repairable Windshield Crack Size: The Exact Limits' &&
+      r.articles?.list[0]?.published === 'Aug 9, 2026' &&
+      r.articles?.list[4]?.published === 'Aug 18, 2026',
+    JSON.stringify(r.articles?.list)
+  )
+  check('a keyword in capitals is not read as a title', !r.articles?.list.some((a) => a.title === 'XPEL vs 3M'))
+  check('"Level since" reads as a rating that held', r.links?.ratingFrom === 10 && r.links?.ratingTo === 10, JSON.stringify(r.links))
+  check('and keeps its links', r.links?.links === 20 && r.links?.referringDomains === 15)
+  check('AI: 5 of 20, up from 0%', r.ai?.named === 5 && r.ai?.share === 25 && r.ai?.previousShare === 0)
+  check('the shop is not its own competitor', !r.ai?.competitors.some((c) => /example/i.test(c.name)), JSON.stringify(r.ai?.competitors))
+}
+
+console.log('\n--- the third layout: a site with nothing run yet ---')
+{
+  // AGK's real August report: no articles, no rating history, and no AI
+  // checks yet. Each of those is an ABSENCE, and none is a failure to read.
+  const r = parseSeoReport(newSiteFixture as SeoReportInput)
+  check('an AI section that was never run is not a problem', r.ai === null && r.problems.length === 0, r.problems.join('; '))
+  check('"Earned, from 7 links" still reads the links', r.links?.links === 7 && r.links?.referringDomains === 7)
+  check('with no rating, since there is no history', r.links?.ratingFrom === null && r.links?.ratingTo === null)
+  check('zero articles is read as zero, not missing', r.articles?.published === 0)
 }
 
 console.log('\n--- who may put a report in front of a client ---')

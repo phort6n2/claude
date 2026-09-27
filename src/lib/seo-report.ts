@@ -219,21 +219,32 @@ function readArticles(input: SeoReportInput, problems: string[]): SeoReportArtic
     const titles = sectionAfter(col.left, 'ARTICLE&TOPKEYWORD', ['WHEREPEOPLEMENTIONED', 'AUTHORITY'])
     const dates = sectionAfter(col.right, 'PUBLISHEDVISITORS', ['WHEREPEOPLEMENTIONED', 'AUTHORITY'])
     if (!titles || !dates) continue
-    const joined: string[] = []
-    let current = ''
-    for (const line of titles) {
-      if (/^[a-z0-9]/.test(line)) {
-        if (current) joined.push(current)
-        current = ''
-      } else {
-        current = current ? `${current} ${line}` : line
-      }
-    }
-    if (current) joined.push(current)
     const when = dates
       .map((d) => d.match(/^([A-Z][a-z]{2} \d{1,2}, \d{4})\b/))
       .filter((m): m is RegExpMatchArray => !!m)
       .map((m) => m[1])
+    /* EXACTLY TWO LINES PER ARTICLE is the common case — a title, then its
+       keyword — and it is decided by COUNT, not by what the lines look like.
+       Case was the first rule and the second real report broke it: Speedy's
+       keywords include "XPEL vs 3M" and "ADAS calibration targets", read as
+       titles, so four titles met five dates and the whole list was dropped.
+       Only when the count does not come out even (a title that wrapped) does
+       the case rule decide, joining a wrapped title back together. */
+    const joined: string[] = []
+    if (titles.length === when.length * 2) {
+      for (let i = 0; i < titles.length; i += 2) joined.push(titles[i])
+    } else {
+      let current = ''
+      for (const line of titles) {
+        if (/^[a-z0-9]/.test(line)) {
+          if (current) joined.push(current)
+          current = ''
+        } else {
+          current = current ? `${current} ${line}` : line
+        }
+      }
+      if (current) joined.push(current)
+    }
     if (joined.length && joined.length === when.length) {
       list = joined.map((title, i) => ({ title, published: when[i] }))
     } else if (joined.length || when.length) {
@@ -258,9 +269,21 @@ function readLinks(input: SeoReportInput, problems: string[]): SeoReportLinks | 
     return null
   }
   const text = col.join(' ')
-  const m = text.match(
+  /* THREE SENTENCES SEEN SO FAR, one per state: "Up 1 point since Jul
+     2026, from 35 links…", "Level since Jul 2026, from 20 links…" (Speedy —
+     the rating did not move), and "Earned, from 7 links…" (AGK — no history
+     yet). The second was read as unreadable until it was seen. */
+  const moved = text.match(
     /(Up|Down)\s+(\d+)\s+points?\s+since\s+([A-Z][a-z]{2,8}\s+\d{4}),\s+from\s+([\d,]+)\s+links\s+across\s+([\d,]+)\s+referring\s+domains/i
   )
+  const level = moved
+    ? null
+    : text.match(/Level\s+since\s+([A-Z][a-z]{2,8}\s+\d{4}),\s+from\s+([\d,]+)\s+links\s+across\s+([\d,]+)\s+referring\s+domains/i)
+  const m = moved
+    ? { delta: int(moved[2]) * (moved[1].toLowerCase() === 'down' ? -1 : 1), since: moved[3], links: moved[4], domains: moved[5] }
+    : level
+      ? { delta: 0, since: level[1], links: level[2], domains: level[3] }
+      : null
   const plain = m ? null : text.match(/from\s+([\d,]+)\s+links\s+across\s+([\d,]+)\s+referring\s+domains/i)
   if (!m && !plain) {
     problems.push('Links: the authority section is there but its sentence could not be read.')
@@ -278,8 +301,15 @@ function readLinks(input: SeoReportInput, problems: string[]): SeoReportLinks | 
   let ratingFrom: number | null = null
   let ratingTo: number | null = null
   if (m && ratings.length) {
-    const delta = int(m[2]) * (m[1].toLowerCase() === 'down' ? -1 : 1)
-    const candidates = ratings.filter((r) => ratings.includes(r - delta))
+    const { delta } = m
+    // Level: every value printed must be the same one, or the sentence and
+    // the chart disagree and neither is used.
+    const candidates =
+      delta === 0
+        ? new Set(ratings).size === 1
+          ? [ratings[0]]
+          : []
+        : ratings.filter((r) => ratings.includes(r - delta))
     if (candidates.length === 1) {
       ratingTo = candidates[0]
       ratingFrom = candidates[0] - delta
@@ -300,11 +330,11 @@ function readLinks(input: SeoReportInput, problems: string[]): SeoReportLinks | 
   }
 
   return {
-    links: int((m ? m[4] : plain![1]) as string),
-    referringDomains: int((m ? m[5] : plain![2]) as string),
+    links: int(m ? m.links : plain![1]),
+    referringDomains: int(m ? m.domains : plain![2]),
     ratingFrom,
     ratingTo,
-    since: m ? m[3] : null,
+    since: m ? m.since : null,
     strongest: strongest.slice(0, 5),
   }
 }
@@ -315,6 +345,12 @@ const ASSISTANTS = /^(ChatGPT|Claude|Gemini|Perplexity|Copilot|Grok|Meta AI|Deep
 function readAi(input: SeoReportInput, problems: string[], ownName: string | null): SeoReportAi | null {
   const col = columnWith(input, 'THISRUN:')
   if (!col) {
+    /* NOT RUN YET IS AN ABSENCE, NOT A FAILURE. AGK's report says "We have
+       not run AI visibility checks for this site yet" under the heading —
+       nothing to read, and nothing wrong with the reader. Only a heading with
+       neither a run nor that sentence is reported. */
+    const all = input.columns.flatMap((c) => [...c.left, ...c.right]).join(' ')
+    if (/not run AI visibility checks|Nothing checked yet/i.test(all)) return null
     for (const c of input.columns) {
       if ([...c.left, ...c.right].some((l) => squash(l).includes('AISEARCHVISIBILITY'))) {
         problems.push('AI answers: the section is there but its headline sentence could not be read.')

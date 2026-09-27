@@ -31,12 +31,28 @@ export default function SeoWorkSection({
   /** Off when the section sits in a card that already names it. */
   showHeading?: boolean
 }) {
-  const { articles, links, ai } = seo
+  const { links, ai } = seo
+  /* ZERO ARTICLES STRIPS THE SECTION. AGK's report says "0 articles published
+     this period" — true, and a large "0" on a client's report is an argument
+     against the service made by us; an empty section hides itself (§2). The
+     count still stands in what was stored. */
+  const articles = seo.articles && seo.articles.published > 0 ? seo.articles : null
   if (!articles && !links && !ai) return null
 
   const rating = links && links.ratingFrom !== null && links.ratingTo !== null ? links : null
   const aiDelta =
     ai && ai.previousShare !== null && ai.previousLabel ? ai.share - ai.previousShare : null
+
+  /* ONE PANEL ALONE TAKES THE ROW. Speedy's report first rendered with the
+     links panel in the left half and nothing in the right, because its
+     article list did not read — a hole in the middle of a client's report.
+     Whichever of the two is missing, the other spans both columns and lays
+     its own contents side by side. */
+  const tileCount = [articles, links, ai].filter(Boolean).length
+  const wideTile = tileCount === 1
+  const showArticles = !!articles && articles.list.length > 0
+  const showLinks = !!links && (!!rating || links.strongest.length > 0)
+  const linksWide = showLinks && !showArticles
 
   /* Share of voice, with the shop IN it. The reader drops the shop's own row
      from the PDF's list (its name wraps, and it must never be listed as its
@@ -53,9 +69,14 @@ export default function SeoWorkSection({
     <section className="space-y-4">
       {showHeading && <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500">SEO</h3>}
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      {/* THE ROW IS AS WIDE AS WHAT IS IN IT. AGK's first report had links
+          only, and one tile in a three-column row left two-thirds of it
+          empty. Columns follow the tile count, and a lone tile lays itself
+          out as a strip. */}
+      <div className={`grid gap-3 ${tileCount === 3 ? 'sm:grid-cols-3' : tileCount === 2 ? 'sm:grid-cols-2' : ''}`}>
         {articles && (
           <Tile
+            wide={wideTile}
             icon={<FileText className="h-4 w-4" />}
             label="Articles published"
             value={String(articles.published)}
@@ -68,6 +89,7 @@ export default function SeoWorkSection({
         )}
         {links && (
           <Tile
+            wide={wideTile}
             icon={<Link2 className="h-4 w-4" />}
             label="Links earned"
             value={String(links.links)}
@@ -76,6 +98,7 @@ export default function SeoWorkSection({
         )}
         {ai && (
           <Tile
+            wide={wideTile}
             icon={<Sparkles className="h-4 w-4" />}
             label="Named in AI answers"
             value={`${ai.share}%`}
@@ -90,9 +113,10 @@ export default function SeoWorkSection({
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
-        {articles && articles.list.length > 0 && (
+        {showArticles && (
           <Panel
             title="Published"
+            className={showLinks ? undefined : 'lg:col-span-2'}
             aside={
               articles.list.length < articles.published
                 ? `${articles.list.length} of ${articles.published} shown`
@@ -115,14 +139,15 @@ export default function SeoWorkSection({
           </Panel>
         )}
 
-        {links && (rating || links.strongest.length > 0) && (
-          <Panel title="Links to your site">
+        {showLinks && links && (
+          <Panel title="Links to your site" className={linksWide ? 'lg:col-span-2' : undefined}>
+            <div className={linksWide && rating && links.strongest.length > 0 ? 'grid gap-5 lg:grid-cols-2' : undefined}>
             {rating && (
               <div className="space-y-2">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="text-sm text-gray-700">
                     <span className="text-2xl font-extrabold tabular-nums text-gray-900">{rating.ratingTo}</span>
-                    <span className="text-gray-500"> / 100 site authority</span>
+                    <span className="text-gray-500"> / 100 site authority (DR)</span>
                   </p>
                   {rating.ratingTo !== rating.ratingFrom && (
                     <Delta
@@ -150,21 +175,35 @@ export default function SeoWorkSection({
                   />
                 </div>
                 <p className="text-xs text-gray-500">
-                  How much weight other sites give yours. It moves slowly, so a point or two is real
-                  progress.
+                  Domain Rating: a 0–100 score for how much weight other sites give yours. It moves
+                  slowly, so a point or two is real progress.
                 </p>
               </div>
             )}
             {links.strongest.length > 0 && (
-              <div className={rating ? 'mt-4 space-y-2.5' : 'space-y-2.5'}>
-                <h5 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Strongest sites linking to you
-                </h5>
-                {links.strongest.map((s) => (
-                  <BarRow key={s.domain} label={s.domain} value={s.rating} display={String(s.rating)} emphasis />
-                ))}
+              <div className={rating && !linksWide ? 'mt-4 space-y-2.5' : 'space-y-2.5'}>
+                <div>
+                  <h5 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Strongest sites linking to you
+                  </h5>
+                  {/* THE NUMBER NEEDED A NAME. A bare "54" beside a domain was
+                      read as a count of something; it is that SITE's own
+                      Domain Rating, and why it matters is the point. */}
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    Each site&rsquo;s own authority (DR, 0–100). A link from a higher-scoring site
+                    counts for more.
+                  </p>
+                </div>
+                {/* Wide and without a meter beside it, the list itself goes
+                    two across rather than running the full width. */}
+                <div className={linksWide && !rating ? 'grid gap-x-6 gap-y-2.5 md:grid-cols-2' : 'space-y-2.5'}>
+                  {links.strongest.map((s) => (
+                    <BarRow key={s.domain} label={s.domain} value={s.rating} display={`DR ${s.rating}`} emphasis />
+                  ))}
+                </div>
               </div>
             )}
+            </div>
           </Panel>
         )}
       </div>
@@ -231,13 +270,31 @@ function Tile({
   value,
   note,
   delta,
+  wide = false,
 }: {
   icon: React.ReactNode
   label: string
   value: string
   note?: string
   delta?: React.ReactNode
+  /** The only tile: one strip across the row rather than a box in a corner. */
+  wide?: boolean
 }) {
+  if (wide) {
+    return (
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-gray-200 bg-white p-4">
+        <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--brand-chip,#eef2ff)] text-[var(--brand-ink,#1d4ed8)]">
+          {icon}
+        </span>
+        <span className="text-3xl font-extrabold leading-none tabular-nums text-gray-900">{value}</span>
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-gray-900">{label}</span>
+          {note && <span className="block text-xs text-gray-500">{note}</span>}
+        </span>
+        {delta}
+      </div>
+    )
+  }
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
       <div className="flex items-center gap-2">
@@ -255,9 +312,19 @@ function Tile({
   )
 }
 
-function Panel({ title, aside, children }: { title: string; aside?: string; children: React.ReactNode }) {
+function Panel({
+  title,
+  aside,
+  className,
+  children,
+}: {
+  title: string
+  aside?: string
+  className?: string
+  children: React.ReactNode
+}) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
+    <div className={`rounded-xl border border-gray-200 bg-white p-4${className ? ` ${className}` : ''}`}>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h4 className="font-semibold text-gray-900">{title}</h4>
         {aside && <span className="text-xs text-gray-500">{aside}</span>}

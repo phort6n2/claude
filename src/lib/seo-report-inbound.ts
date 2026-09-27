@@ -139,6 +139,31 @@ export function seoSectionOf(parsed: SeoReport, receivedAt: Date): DigestSeo | n
   }
 }
 
+/**
+ * READ AGAIN FROM THE STORED LINES, with today's rules. The parse stored at
+ * intake is what the reader understood THEN; the first three real reports
+ * were three layouts, and two of them met a rule written for the first
+ * (Speedy's "Level since Jul" and its mixed-case keywords). Re-reading the
+ * stored `readout` means a reader fix reaches every report already received
+ * without anybody asking the supplier to send it again — which is why the
+ * lines were kept. A report that now shows a supplier trace is dropped here,
+ * the same hold as at intake. Sent monthly reports are untouched: they are a
+ * stored snapshot and never read through this.
+ */
+function currentReading(row: { parsed: unknown; readout: unknown }): SeoReport {
+  if (row.readout) {
+    try {
+      const again = parseSeoReport(row.readout as never)
+      if (again.supplierTraces.length) return { ...again, articles: null, links: null, ai: null }
+      return again
+    } catch {
+      /* A readout the current reader cannot handle falls back to what was
+         stored, rather than costing the shop the section. */
+    }
+  }
+  return row.parsed as unknown as SeoReport
+}
+
 /** The newest usable report for a shop and month, as a report section. */
 export async function latestSeoSection(
   clientId: string,
@@ -149,11 +174,11 @@ export async function latestSeoSection(
     .findFirst({
       where: { clientId, year, month, problem: null, kind: 'report' },
       orderBy: { receivedAt: 'desc' },
-      select: { parsed: true, receivedAt: true },
+      select: { parsed: true, readout: true, receivedAt: true },
     })
     .catch(() => null)
   if (!row?.parsed) return null
-  return seoSectionOf(row.parsed as unknown as SeoReport, row.receivedAt)
+  return seoSectionOf(currentReading(row), row.receivedAt)
 }
 
 /**
@@ -177,11 +202,11 @@ export async function latestSeoReport(
     .findFirst({
       where: { clientId, problem: null, kind: 'report', year: { not: null }, month: { not: null } },
       orderBy: [{ year: 'desc' }, { month: 'desc' }, { receivedAt: 'desc' }],
-      select: { parsed: true, receivedAt: true, year: true, month: true },
+      select: { parsed: true, readout: true, receivedAt: true, year: true, month: true },
     })
     .catch(() => null)
   if (!row?.parsed || !row.year || !row.month) return null
-  const seo = seoSectionOf(row.parsed as unknown as SeoReport, row.receivedAt)
+  const seo = seoSectionOf(currentReading(row), row.receivedAt)
   return seo ? { year: row.year, month: row.month, seo } : null
 }
 

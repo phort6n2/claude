@@ -243,7 +243,10 @@ export function renderMonthlyReportEmail(
      supplier name, no link to their document. Shorter than the portal page:
      the email is the nudge, the page is the report. Every string came from a
      PDF, so every one is escaped. */
+  // Zero articles strips that part, as on the page (SeoWorkSection).
   const seo = digest.seo
+    ? { ...digest.seo, articles: digest.seo.articles && digest.seo.articles.published > 0 ? digest.seo.articles : null }
+    : null
   if (seo && (seo.articles || seo.links || seo.ai)) {
     parts.push(`<h2 style="${H2}">SEO</h2>`)
     const tiles: Array<{ label: string; value: string }> = []

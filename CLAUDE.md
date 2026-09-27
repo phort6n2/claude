@@ -2224,6 +2224,21 @@ that can READ received mail — a sending-only key cannot.
   HEADING is there but whose figures are not readable goes into `problems`
   (shown on the admin row) — never silently dropped. The raw lines are stored
   (`readout`) so a parser fix is a re-read, not a lost month.
+- **THE FIRST THREE REPORTS WERE THREE LAYOUTS**, and the rules written for
+  the first broke on the other two — so each is a fixture now. Speedy's rating
+  said "Level since Jul 2026" (only Up/Down were known) and its keywords
+  include "XPEL vs 3M", which a lower-case rule read as titles; articles now
+  pair by COUNT (two lines each) and the case rule only joins a wrapped title.
+  AGK had nothing run yet — "not run AI visibility checks", "Earned, from 7
+  links", 0 articles — each an ABSENCE, never reported as unreadable.
+- **STORED REPORTS ARE RE-READ WITH TODAY'S RULES** (`currentReading`): the
+  portal card and the build parse the stored `readout` again, so a reader fix
+  reaches every report already received without asking the supplier to send
+  it twice. Sent monthly reports are a snapshot and never pass through it.
+- **Zero articles strips that section** (page and email) — a large "0" on a
+  client's report is an argument against the service made by us. Numbers
+  beside a linking site are labelled DR with what DR means; a lone panel or
+  tile takes the whole row rather than leaving a hole beside it.
 - **READ BY COLUMN.** Pages 4–5 are two columns; read across the page they
   interleave ("Glass Doctor 25% review of windshield repair…" is a competitor
   and a prompt fused), so the reader also splits each page at its middle.
