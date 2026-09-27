@@ -33,3 +33,31 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
   return NextResponse.json({ ok: true })
 }
+
+/**
+ * DELETE — throw away a report that was built and never sent.
+ *
+ * For a month nobody wants reported (August 2026, built by hand after
+ * reporting shipped mid-September) or a build that came out wrong. A report
+ * already SENT is refused: the shop has that email, and the stored copy is
+ * the record of what they were told — the same rule that stops it being
+ * rebuilt.
+ */
+export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
+  const { id } = await params
+  const existing = await prisma.clientMonthlyReport
+    .findUnique({ where: { id }, select: { sentAt: true } })
+    .catch(() => null)
+  if (!existing) return NextResponse.json({ error: 'Report not found' }, { status: 404 })
+  if (existing.sentAt) {
+    return NextResponse.json(
+      { error: 'This report has been sent, so it stays: the shop has that email.' },
+      { status: 409 }
+    )
+  }
+  await prisma.clientMonthlyReport.delete({ where: { id } })
+  return NextResponse.json({ ok: true })
+}

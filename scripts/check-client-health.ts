@@ -253,24 +253,29 @@ console.log('\nRank tracking: the client with no campaign that had no surface an
 
 console.log('\nLast month’s report')
 {
+  // Judged in OCTOBER, about September — the first month reporting covers
+  // (FIRST_REPORT_MONTH). The fixture's own NOW is in September, when last
+  // month is August, which is now "doesn't apply" by design; see below.
+  const OCT = new Date('2026-10-05T12:00:00Z')
+  const sept = (sentAt: Date | null) => [{ year: 2026, month: 9, sentAt }]
   // The cron builds on the 1st and a PERSON sends. "Built, unsent" is the
   // designed state for a few days, so it is amber — never red.
-  expect('built and sent', cells({}).report.state, 'ok')
-  expect(
-    'built, waiting to be sent',
-    cells({ reports: [{ year: 2026, month: 8, sentAt: null }] }).report.state,
-    'warn'
-  )
+  expect('built and sent', cells({ now: OCT, reports: sept(new Date('2026-10-02T00:00:00Z')) }).report.state, 'ok')
+  expect('built, waiting to be sent', cells({ now: OCT, reports: sept(null) }).report.state, 'warn')
   // Nothing built at all once the month has closed is the cron having failed,
   // and nothing else in the app would ever mention it.
-  expect('month closed, nothing built', cells({ reports: [] }).report.state, 'bad')
+  expect('month closed, nothing built', cells({ now: OCT, reports: [] }).report.state, 'bad')
   expect(
     'onboarded after that month',
-    cells({ reports: [], createdAt: new Date('2026-09-15T00:00:00Z') }).report.state,
+    cells({ now: OCT, reports: [], createdAt: new Date('2026-10-01T12:00:00Z') }).report.state,
     'na'
   )
-  expect('paused', cells({ status: 'PAUSED' }).report.state, 'na')
-  expect('query failed', cells({ reports: null }).report.state, 'warn')
+  expect('paused', cells({ now: OCT, status: 'PAUSED' }).report.state, 'na')
+  expect('query failed', cells({ now: OCT, reports: null }).report.state, 'warn')
+  // AUGUST 2026 IS NOBODY'S MISSING REPORT. Reporting shipped mid-September,
+  // after the 1st's build, and the column went red for every shop at once
+  // over a month that was never going to be reported.
+  expect('before reporting began, nothing built', cells({ reports: [] }).report.state, 'na')
 }
 
 console.log('\nWhere a finding gets fixed')

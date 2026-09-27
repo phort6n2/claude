@@ -117,6 +117,16 @@ const warn = (detail: string, badge?: string): HealthCell => ({ state: 'warn', d
  * score have to mean the same thing or the count disagrees with the table
  * under it.
  */
+/**
+ * The first month anybody is owed a report for.
+ *
+ * Reporting shipped on 15 September 2026, after the 1st's build, so August was
+ * never built — and the Report column then went red for every shop at once
+ * over a month that was never going to be reported. A month before this one
+ * is "doesn't apply", never "missing".
+ */
+export const FIRST_REPORT_MONTH = { year: 2026, month: 9 } as const
+
 export const CELL_WEIGHT: Record<CellState, number> = { bad: 10, warn: 3, ok: 0, na: 0 }
 
 /** Recording lands a minute or two after the call, so recent calls prove nothing. */
@@ -487,8 +497,12 @@ export function healthCells(input: HealthInput): Record<HealthColumnId, HealthCe
      failed, and nothing else would ever mention it. */
   const { year, month } = previousMonthOf(input.now, input.timezone)
   const bornBefore = input.createdAt < monthWindow(year, month, input.timezone).end
+  const beforeReporting =
+    year * 12 + month < FIRST_REPORT_MONTH.year * 12 + FIRST_REPORT_MONTH.month
   const reportCell: HealthCell = !input.reports
     ? warn('Could not read the reports.')
+    : beforeReporting
+      ? na(`Monthly reports start with ${monthLabel(FIRST_REPORT_MONTH.year, FIRST_REPORT_MONTH.month)}.`)
     : !live
       ? na(`Status is ${input.status}, so no report is built.`)
       : !bornBefore

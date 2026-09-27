@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2, Mail, Check, AlertCircle } from 'lucide-react'
+import { Loader2, Mail, Check, AlertCircle, Trash2 } from 'lucide-react'
 import { errorFrom } from '@/lib/http-error'
 
 /**
@@ -96,6 +96,22 @@ export default function MonthlyReportsList({ rows }: { rows: ReportRow[] }) {
     }
   }
 
+  async function remove(row: ReportRow) {
+    if (!window.confirm(`Delete ${row.businessName}'s ${row.label} report? It has not been sent.`)) return
+    setBusy(row.id)
+    setMessage(null)
+    try {
+      const res = await fetch(`/api/admin/monthly-reports/${row.id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(await errorFrom(res))
+      setState((s) => s.filter((r) => r.id !== row.id))
+      setMessage({ ok: true, text: `${row.businessName}: ${row.label} report deleted.` })
+    } catch (err) {
+      setMessage({ ok: false, text: err instanceof Error ? err.message : 'Delete failed' })
+    } finally {
+      setBusy(null)
+    }
+  }
+
   async function build() {
     setBuilding(true)
     setMessage(null)
@@ -179,6 +195,18 @@ export default function MonthlyReportsList({ rows }: { rows: ReportRow[] }) {
                 {row.sentTo.length > 0 && ` to ${row.sentTo.join(', ')}`}
               </span>
             ) : (
+              <div className="flex items-center gap-2">
+              {/* Unsent only: a sent report is the record of what the shop
+                  was told, and the route refuses to delete it anyway. */}
+              <button
+                type="button"
+                onClick={() => remove(row)}
+                disabled={busy === row.id}
+                className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </button>
               <button
                 type="button"
                 onClick={() => send(row)}
@@ -197,6 +225,7 @@ export default function MonthlyReportsList({ rows }: { rows: ReportRow[] }) {
                 )}
                 Send
               </button>
+              </div>
             )}
           </div>
 
