@@ -88,6 +88,15 @@ export default function TrafficChart({
     return m || 1
   }, [points, names, hidden])
 
+  /* A VERTICAL SWIPE IS A SCROLL, NOT A READ.
+     onTouchMove used to locate on any movement, so scrolling the page past
+     the chart dragged the crosshair sideways under the thumb. The gesture has
+     to prove it is horizontal first.
+     ABOVE THE EARLY RETURN, like every hook: below it, a chart that went from
+     "not enough days" to drawable — the 1-day range switched to 7 — called
+     one more hook than its previous render and React threw. */
+  const touchStart = useRef<{ x: number; y: number; reading: boolean } | null>(null)
+
   if (points.length < 2 || !names.length) {
     return <p className="text-sm text-gray-500">Not enough days yet to draw a trend.</p>
   }
@@ -108,11 +117,6 @@ export default function TrafficChart({
     setHover(Math.round(ratio * (points.length - 1)))
   }
 
-  /* A VERTICAL SWIPE IS A SCROLL, NOT A READ.
-     onTouchMove used to locate on any movement, so scrolling the page past
-     the chart dragged the crosshair sideways under the thumb. The gesture has
-     to prove it is horizontal first. */
-  const touchStart = useRef<{ x: number; y: number; reading: boolean } | null>(null)
 
   function step(delta: number) {
     setHover((h) => {
