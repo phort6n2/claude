@@ -2248,6 +2248,15 @@ that can READ received mail — a sending-only key cannot.
   pulled out and shown there, since nobody can read an inbox only a webhook
   reads. The email's provenance line changes when SEO figures are in it:
   "every figure is from your own account" stopped being true.
+- **AN ALWAYS-ON SEO CARD on Reports → Summary** (`latestSeoReport`), the
+  owner's call: the newest filed report shows the moment it is read, not only
+  inside a monthly report — which TRADES AWAY the review the Send button
+  gives. What still stands between the PDF and the shop: the sender check,
+  the one-client match, the supplier-trace hold and a parser that cannot
+  invent a number. Newest by the MONTH it covers, then arrival, so a re-sent
+  July cannot replace August. Hidden when the month block above already
+  carries that same month's SEO, so one page never shows one set of figures
+  twice — both cases checked against a render.
 - `unpdf`, not `pdfjs-dist`: PDF.js packaged for serverless with the worker
   inlined; verified bundled into the route's chunk, nothing traced at runtime.
 - `scripts/check-seo-report.ts` runs the REAL August layout (anonymised in

@@ -12,7 +12,14 @@ import type { DigestSeo } from '@/lib/monthly-digest'
  * a client reading "the links section could not be read" learns nothing they
  * can act on and something about how the report is made.
  */
-export default function SeoWorkSection({ seo }: { seo: DigestSeo }) {
+export default function SeoWorkSection({
+  seo,
+  showHeading = true,
+}: {
+  seo: DigestSeo
+  /** Off when the section sits in a card that already names it. */
+  showHeading?: boolean
+}) {
   const { articles, links, ai } = seo
   if (!articles && !links && !ai) return null
 
@@ -29,7 +36,7 @@ export default function SeoWorkSection({ seo }: { seo: DigestSeo }) {
 
   return (
     <section className="space-y-3">
-      <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500">SEO</h3>
+      {showHeading && <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500">SEO</h3>}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         {articles && (

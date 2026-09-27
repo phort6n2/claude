@@ -11,6 +11,9 @@ import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
 import { getPortalSections } from '@/lib/portal-sections'
 import { reportSectionsFor } from '@/lib/portal-nav'
+import { latestSeoReport } from '@/lib/seo-report-inbound'
+import SeoWorkSection from '@/components/portal/SeoWorkSection'
+import { monthLabel } from '@/lib/tz'
 
 /**
  * "Reporting" in the client portal — what the money bought.
@@ -33,7 +36,7 @@ export default async function PortalReportingPage() {
   const session = await getPortalSession()
   if (!session) redirect('/portal/login')
 
-  const [report, latest, sections] = await Promise.all([
+  const [report, latest, sections, seoReport] = await Promise.all([
     getMonthlyReport(session.clientId),
     // The newest month we have BUILT, sent or not. A shop looking at their own
     // report before it has been mailed is not a problem — the email is the
@@ -46,6 +49,7 @@ export default async function PortalReportingPage() {
       })
       .catch(() => null),
     getPortalSections(session.clientId),
+    latestSeoReport(session.clientId).catch(() => null),
   ])
 
   // Every other report, as cards at the foot of the Summary. The sub-tab row
@@ -54,6 +58,17 @@ export default async function PortalReportingPage() {
   const others = reportSectionsFor(sections).filter((s) => s.href !== '/portal/results')
 
   const digest = (latest?.payload as unknown as MonthlyDigest) || null
+
+  /* THE ALWAYS-ON SEO CARD: the newest SEO report, shown the moment it is
+     read rather than only inside a monthly report. Hidden when the month block
+     above already carries that SAME month's SEO section — one page must not
+     show one set of figures twice. See `latestSeoReport` for what showing it
+     before a review trades away. */
+  const seoCard =
+    seoReport &&
+    !(digest?.seo && digest.year === seoReport.year && digest.month === seoReport.month)
+      ? seoReport
+      : null
 
   return (
     <div className="space-y-4">
@@ -65,6 +80,17 @@ export default async function PortalReportingPage() {
         </p>
       </div>
       {digest?.businessName && <LastMonthReport digest={digest} note={latest?.note ?? null} />}
+      {seoCard && (
+        <section className="space-y-4 rounded-2xl border border-gray-200 bg-gray-50/60 p-4 sm:p-6">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[.08em] text-[var(--brand-ink,#1d4ed8)]">
+              {monthLabel(seoCard.year, seoCard.month)}
+            </p>
+            <h2 className="text-xl font-bold text-gray-900">SEO work</h2>
+          </div>
+          <SeoWorkSection seo={seoCard.seo} showHeading={false} />
+        </section>
+      )}
       <MonthlyReportView report={report} />
 
       {others.length > 0 && (

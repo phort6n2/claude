@@ -157,6 +157,35 @@ export async function latestSeoSection(
 }
 
 /**
+ * The shop's NEWEST usable SEO report, whatever month it covers — for the
+ * portal's always-on SEO card.
+ *
+ * THE OWNER'S DECISION, AND IT TRADES AWAY A REVIEW. Inside the monthly report
+ * the figures wait for somebody to read them before the email goes; this card
+ * shows them to the shop the moment the PDF is read. Accepted on purpose so
+ * the work is visible when it lands rather than a month later. What still
+ * stands between the PDF and the shop: the sender check, the one-client match,
+ * the supplier-trace hold, and a parser that cannot invent a number.
+ *
+ * Newest by the MONTH it covers, then by arrival — a re-sent July report
+ * arriving after August's must not replace August on the card.
+ */
+export async function latestSeoReport(
+  clientId: string
+): Promise<{ year: number; month: number; seo: DigestSeo } | null> {
+  const row = await prisma.seoReportEmail
+    .findFirst({
+      where: { clientId, problem: null, kind: 'report', year: { not: null }, month: { not: null } },
+      orderBy: [{ year: 'desc' }, { month: 'desc' }, { receivedAt: 'desc' }],
+      select: { parsed: true, receivedAt: true, year: true, month: true },
+    })
+    .catch(() => null)
+  if (!row?.parsed || !row.year || !row.month) return null
+  const seo = seoSectionOf(row.parsed as unknown as SeoReport, row.receivedAt)
+  return seo ? { year: row.year, month: row.month, seo } : null
+}
+
+/**
  * Put a newly arrived report into that month's stored report — ONLY if it has
  * not been sent. A sent report is a record of what the shop was told, and
  * changing it underneath them would make the portal disagree with their inbox
