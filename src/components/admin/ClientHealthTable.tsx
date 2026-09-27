@@ -3,7 +3,24 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import ClientLogoTile from '@/components/ui/ClientLogoTile'
-import { Check, X, Minus, TriangleAlert, ArrowRight, AlertCircle } from 'lucide-react'
+import {
+  Check,
+  X,
+  TriangleAlert,
+  ArrowRight,
+  AlertCircle,
+  ClipboardCheck,
+  Globe,
+  Inbox,
+  PhoneCall,
+  Mic,
+  MessageSquare,
+  Target,
+  MapPin,
+  FileText,
+  Bell,
+  type LucideIcon,
+} from 'lucide-react'
 import type { ClientHealthRow, HealthCell, HealthColumn, HealthColumnId } from '@/lib/client-health'
 import { CELL_WEIGHT } from '@/lib/client-health'
 import { fixActionFor, DISMISS_MEANING } from '@/lib/finding-actions'
@@ -28,19 +45,54 @@ import { errorFrom } from '@/lib/http-error'
  * rather than squinted at.
  */
 
-const CELL_STYLES = {
-  ok: 'text-green-600',
-  bad: 'text-red-600',
-  warn: 'text-amber-600',
-  na: 'text-gray-300',
-} as const
-
+/* LOUD WHERE IT MATTERS, QUIET WHERE IT DOES NOT. Every mark used to be the
+   same bare glyph at the same weight, so a board of ninety cells with nine
+   crosses read as ninety things to look at. A problem is now a solid dot and a
+   working check a pale one, so the eye lands on the reds before it has read a
+   single column heading — the whole point of laying fifteen shops side by
+   side. A dash is the faintest thing on the board because it is not a state
+   anybody acts on. */
 function CellMark({ cell }: { cell: HealthCell }) {
-  if (cell.state === 'ok') return <Check className="h-[18px] w-[18px]" strokeWidth={3} />
-  if (cell.state === 'na') return <Minus className="h-[18px] w-[18px]" strokeWidth={3} />
-  if (cell.state === 'warn') return <TriangleAlert className="h-[17px] w-[17px]" strokeWidth={2.5} />
-  return <X className="h-[18px] w-[18px]" strokeWidth={3} />
+  if (cell.state === 'ok')
+    return (
+      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+        <Check className="h-3.5 w-3.5" strokeWidth={3} />
+      </span>
+    )
+  if (cell.state === 'na') return <span className="block h-1.5 w-1.5 rounded-full bg-gray-200" />
+  if (cell.state === 'warn')
+    return (
+      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-amber-700 ring-1 ring-amber-300">
+        <TriangleAlert className="h-3.5 w-3.5" strokeWidth={2.5} />
+      </span>
+    )
+  return (
+    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-white shadow-sm shadow-red-600/30">
+      <X className="h-3.5 w-3.5" strokeWidth={3} />
+    </span>
+  )
 }
+
+/** A glyph per column, so a heading is recognised before it is read. */
+const COLUMN_ICONS: Record<HealthColumnId, LucideIcon> = {
+  setup: ClipboardCheck,
+  site: Globe,
+  leads: Inbox,
+  calls: PhoneCall,
+  recording: Mic,
+  sms: MessageSquare,
+  ads: Target,
+  rank: MapPin,
+  report: FileText,
+  findings: Bell,
+}
+
+/** The row's left edge and status line take the colour of its worst cell. */
+const ROW_ACCENT = {
+  bad: 'before:bg-red-500',
+  warn: 'before:bg-amber-400',
+  ok: 'before:bg-emerald-400',
+} as const
 
 export default function ClientHealthTable({
   rows,
@@ -144,34 +196,67 @@ export default function ClientHealthTable({
     .filter((t) => t.bad >= 2)
     .sort((a, b) => b.bad - a.bad)[0]
 
+  /* THE BOOK AT A GLANCE, before any row is read: how many shops are clean,
+     how many have something broken, how many only want a look — and one bar
+     for every applicable check across all of them. Counted from the same live
+     cells the table draws, so a dismissal moves the tiles too. */
+  const worstOf = (r: ClientHealthRow): 'bad' | 'warn' | 'ok' => {
+    const states = columns.map((c) => liveCell(r, c.id).state)
+    return states.includes('bad') ? 'bad' : states.includes('warn') ? 'warn' : 'ok'
+  }
+  const brokenRows = rows.filter((r) => worstOf(r) === 'bad').length
+  const lookRows = rows.filter((r) => worstOf(r) === 'warn').length
+  const clearRows = rows.length - brokenRows - lookRows
+  const cellCounts = { ok: 0, warn: 0, bad: 0 }
+  for (const r of rows)
+    for (const c of columns) {
+      const st = liveCell(r, c.id).state
+      if (st !== 'na') cellCounts[st]++
+    }
+  const applicable = cellCounts.ok + cellCounts.warn + cellCounts.bad || 1
+  const openCol = openPanel?.column.id ?? null
+
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-gray-600">
-        <span className="font-medium text-gray-900">
-          {problems === 0
-            ? `All ${rows.length} clients clear.`
-            : `${problems} of ${rows.length} need something.`}
-        </span>
-        {problems > 0 && (
-          <button
-            type="button"
-            onClick={() => setOnlyProblems((v) => !v)}
-            className={`rounded-md border px-2 py-1 font-medium ${
-              onlyProblems
-                ? 'border-gray-900 bg-gray-900 text-white'
-                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            {onlyProblems ? `Showing ${problems} — show all` : 'Only those needing something'}
-          </button>
-        )}
-        <Legend icon={<Check className="h-3.5 w-3.5 text-green-600" strokeWidth={3} />} text="Working" />
-        <Legend icon={<X className="h-3.5 w-3.5 text-red-600" strokeWidth={3} />} text="Broken — act" />
-        <Legend icon={<TriangleAlert className="h-3.5 w-3.5 text-amber-600" strokeWidth={2.5} />} text="Worth a look" />
-        <Legend
-          icon={<Minus className="h-3.5 w-3.5 text-gray-300" strokeWidth={3} />}
-          text="Doesn't apply"
-        />
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <SummaryTile label="Clients" value={rows.length} tone="neutral" />
+        <SummaryTile label="All clear" value={clearRows} tone="ok" />
+        <SummaryTile label="Something broken" value={brokenRows} tone="bad" />
+        <SummaryTile label="Worth a look" value={lookRows} tone="warn" />
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <p className="text-sm font-semibold text-gray-900">
+            {Math.round((cellCounts.ok / applicable) * 100)}% of checks passing
+            <span className="ml-2 font-normal text-gray-500">
+              {cellCounts.ok} working · {cellCounts.bad} broken · {cellCounts.warn} to check
+            </span>
+          </p>
+          {problems > 0 && (
+            <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs font-medium">
+              <button
+                type="button"
+                onClick={() => setOnlyProblems(false)}
+                className={`rounded-md px-2.5 py-1 ${!onlyProblems ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}
+              >
+                All {rows.length}
+              </button>
+              <button
+                type="button"
+                onClick={() => setOnlyProblems(true)}
+                className={`rounded-md px-2.5 py-1 ${onlyProblems ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}
+              >
+                Needing something ({problems})
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="mt-2.5 flex h-2 overflow-hidden rounded-full bg-gray-100" aria-hidden>
+          <div className="bg-emerald-500" style={{ width: `${(cellCounts.ok / applicable) * 100}%` }} />
+          <div className="bg-amber-400" style={{ width: `${(cellCounts.warn / applicable) * 100}%` }} />
+          <div className="bg-red-500" style={{ width: `${(cellCounts.bad / applicable) * 100}%` }} />
+        </div>
       </div>
 
       {error && (
@@ -183,63 +268,105 @@ export default function ClientHealthTable({
 
       {/* Its OWN scroll box, never the page's. Eight columns plus a name do not
           fit a phone, and a table that takes the whole page sideways is the
-          bug AdminShell's min-w-0 note records. */}
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-        <table className="w-full min-w-[640px] border-collapse text-sm">
+          bug AdminShell's min-w-0 note records. The client column is STICKY,
+          so a row scrolled to its Action mark still says whose it is. */}
+      <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <table className="w-full min-w-[760px] border-collapse text-sm">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+            <tr className="border-b border-gray-200 bg-gray-50/80">
+              <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                 Client
               </th>
-              {columns.map((col) => (
-                <th
-                  key={col.id}
-                  // The full sentence on hover for a mouse; the tap target
-                  // below carries it for everyone else.
-                  title={`${col.label} — ${col.meaning}`}
-                  className="px-2 py-2.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-500"
-                >
-                  {col.short}
-                  {/* The count sits under the heading rather than in a footer
-                      row: a tally you have to scroll past fifteen clients to
-                      reach is one nobody reads. */}
-                  <span className="mt-0.5 block text-[11px] font-bold normal-case tracking-normal">
-                    {tally.get(col.id)!.bad > 0 ? (
-                      <span className="text-red-600">{tally.get(col.id)!.bad}</span>
-                    ) : tally.get(col.id)!.warn > 0 ? (
-                      <span className="text-amber-600">{tally.get(col.id)!.warn}</span>
-                    ) : (
-                      <span className="text-gray-300">—</span>
-                    )}
-                  </span>
-                </th>
-              ))}
+              {columns.map((col) => {
+                const Icon = COLUMN_ICONS[col.id]
+                const t = tally.get(col.id)!
+                return (
+                  <th
+                    key={col.id}
+                    // The full sentence on hover for a mouse; the tap target
+                    // below carries it for everyone else.
+                    title={`${col.label} — ${col.meaning}`}
+                    className={`px-1.5 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-gray-500 ${
+                      openCol === col.id ? 'bg-gray-100' : ''
+                    }`}
+                  >
+                    <Icon className="mx-auto mb-1 h-4 w-4 text-gray-400" strokeWidth={2} />
+                    {col.short}
+                    {/* The count sits under the heading rather than in a footer
+                        row: a tally you have to scroll past fifteen clients to
+                        reach is one nobody reads. */}
+                    <span className="mt-1 flex h-5 justify-center normal-case tracking-normal">
+                      {t.bad > 0 ? (
+                        <span className="min-w-5 rounded-full bg-red-600 px-1.5 text-[11px] font-bold leading-5 text-white">
+                          {t.bad}
+                        </span>
+                      ) : t.warn > 0 ? (
+                        <span className="min-w-5 rounded-full bg-amber-100 px-1.5 text-[11px] font-bold leading-5 text-amber-800">
+                          {t.warn}
+                        </span>
+                      ) : (
+                        <span className="self-center h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                      )}
+                    </span>
+                  </th>
+                )
+              })}
             </tr>
           </thead>
           <tbody>
             {shown.map((row) => {
+              const worstState = worstOf(row)
+              const broken = columns.filter((c) => liveCell(row, c.id).state === 'bad').length
+              const looks = columns.filter((c) => liveCell(row, c.id).state === 'warn').length
               return (
-                <tr key={row.id} className="border-b border-gray-100 last:border-0 align-middle">
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-2.5">
+                <tr
+                  key={row.id}
+                  className="group border-b border-gray-100 last:border-0 align-middle hover:bg-gray-50/70"
+                >
+                  <td
+                    className={`sticky left-0 z-10 bg-white px-4 py-2.5 group-hover:bg-gray-50 before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-r-full ${ROW_ACCENT[worstState]}`}
+                  >
+                    <div className="flex items-center gap-3">
                       <ClientLogoTile
                         logoUrl={row.logoUrl}
                         businessName={row.businessName}
                         primaryColor={row.primaryColor}
                         onDark={row.logoOnDark}
                       />
-                      <div className="min-w-0">
-                        <Link
-                          href={row.href}
-                          className="font-medium text-gray-900 hover:text-blue-700 hover:underline"
+                      {/* CAPPED ON A PHONE. The column is pinned, and pinned at
+                          full width it covered the whole screen, so scrolling
+                          sideways moved marks nobody could see. */}
+                      <div className="min-w-0 max-w-[8.5rem] sm:max-w-none">
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={row.href}
+                            className="truncate font-semibold text-gray-900 hover:text-blue-700 hover:underline"
+                          >
+                            {row.businessName}
+                          </Link>
+                          {row.status !== 'ACTIVE' && (
+                            <span className="hidden sm:inline rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                              {row.status}
+                            </span>
+                          )}
+                        </div>
+                        {/* The row's verdict in words, so nobody has to count
+                            marks along a line to know whether to open it. */}
+                        <p
+                          className={`truncate text-xs ${
+                            worstState === 'bad'
+                              ? 'text-red-700'
+                              : worstState === 'warn'
+                                ? 'text-amber-700'
+                                : 'text-emerald-700'
+                          }`}
                         >
-                          {row.businessName}
-                        </Link>
-                        {row.status !== 'ACTIVE' && (
-                          <span className="ml-2 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                            {row.status}
-                          </span>
-                        )}
+                          {broken === 0 && looks === 0
+                            ? 'All clear'
+                            : [broken && `${broken} broken`, looks && `${looks} to check`]
+                                .filter(Boolean)
+                                .join(' · ')}
+                        </p>
                       </div>
                     </div>
                   </td>
@@ -247,7 +374,10 @@ export default function ClientHealthTable({
                     const cell = liveCell(row, col.id)
                     const key = `${row.id}:${col.id}`
                     return (
-                      <td key={col.id} className="px-2 py-2 text-center">
+                      <td
+                        key={col.id}
+                        className={`px-1.5 py-2.5 text-center ${openCol === col.id ? 'bg-gray-50' : ''}`}
+                      >
                         <button
                           type="button"
                           onClick={() => setOpen(open === key ? null : key)}
@@ -258,13 +388,21 @@ export default function ClientHealthTable({
                              row rule and the cell edge, and a number half
                              over a border is the one thing on this board
                              that has to be read at a glance. */
-                          className={`mx-auto inline-flex h-9 min-w-9 items-center justify-center gap-1 rounded-md px-1.5 hover:bg-gray-100 ${
-                            CELL_STYLES[cell.state]
-                          } ${open === key ? 'bg-gray-100 ring-1 ring-gray-300' : ''}`}
+                          className={`mx-auto inline-flex h-9 min-w-9 items-center justify-center gap-1 rounded-lg px-1.5 transition-colors hover:bg-gray-100 ${
+                            open === key ? 'bg-white ring-2 ring-gray-900' : ''
+                          }`}
                         >
                           <CellMark cell={cell} />
                           {cell.badge && (
-                            <span className="text-[11px] font-bold tabular-nums leading-none">
+                            <span
+                              className={`text-[11px] font-bold tabular-nums leading-none ${
+                                cell.state === 'bad'
+                                  ? 'text-red-700'
+                                  : cell.state === 'warn'
+                                    ? 'text-amber-700'
+                                    : 'text-gray-500'
+                              }`}
+                            >
                               {cell.badge}
                             </span>
                           )}
@@ -327,8 +465,9 @@ export default function ClientHealthTable({
       )}
 
       <p className="text-xs text-gray-500">
-        The number under each heading is how many clients that column is red for. Tap any mark to
-        read what it means. Column headings:{' '}
+        Red is broken and needs doing, amber is worth a look, a pale tick is working and a grey
+        dot means the check does not apply to that client. The number under each heading is how
+        many clients that column is red for. Tap any mark to read what it means. Column headings:{' '}
         {columns.map((c, i) => (
           <span key={c.id}>
             {i > 0 && ' · '}
@@ -449,11 +588,32 @@ function CellPanel({
   )
 }
 
-function Legend({ icon, text }: { icon: React.ReactNode; text: string }) {
+function SummaryTile({
+  label,
+  value,
+  tone,
+}: {
+  label: string
+  value: number
+  tone: 'neutral' | 'ok' | 'bad' | 'warn'
+}) {
+  // A zero goes quiet whatever the tone: none broken is not an alarm, and
+  // none clear is not a celebration.
+  const quiet = value === 0 && tone !== 'neutral'
+  const styles = {
+    neutral: 'border-gray-200 bg-white text-gray-900',
+    ok: quiet ? 'border-gray-200 bg-white text-gray-400' : 'border-emerald-200 bg-emerald-50 text-emerald-800',
+    bad: quiet ? 'border-gray-200 bg-white text-gray-400' : 'border-red-200 bg-red-50 text-red-700',
+    warn: quiet ? 'border-gray-200 bg-white text-gray-400' : 'border-amber-200 bg-amber-50 text-amber-800',
+  }[tone]
+  const dot = { neutral: 'bg-gray-400', ok: 'bg-emerald-500', bad: 'bg-red-600', warn: 'bg-amber-400' }[tone]
   return (
-    <span className="inline-flex items-center gap-1.5">
-      {icon}
-      {text}
-    </span>
+    <div className={`rounded-xl border p-3 sm:p-4 ${styles}`}>
+      <p className="flex items-center gap-1.5 text-xs font-medium opacity-80">
+        <span className={`h-2 w-2 rounded-full ${quiet ? 'bg-gray-300' : dot}`} />
+        {label}
+      </p>
+      <p className="mt-1 text-2xl font-extrabold tabular-nums">{value}</p>
+    </div>
   )
 }
