@@ -4,6 +4,7 @@ import { requireAdminPage } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
 import MonthlyReportsList, { type ReportRow } from '@/components/admin/MonthlyReportsList'
 import { monthLabel } from '@/lib/tz'
+import SeoReportInbox, { type InboxRow } from '@/components/admin/SeoReportInbox'
 import type { MonthlyDigest } from '@/lib/monthly-digest'
 
 /**
@@ -33,6 +34,7 @@ export default async function Page() {
         client: {
           select: {
             businessName: true,
+            seoClient: true,
             // The recipient list, resolved here so the row can say "nobody to
             // send to" rather than the button failing when it is pressed.
             clientUsers: { select: { email: true } },
@@ -63,8 +65,50 @@ export default async function Page() {
       sentTo: r.sentTo,
       sendError: r.sendError,
       recipients: r.client.clientUsers.map((u) => u.email),
+      seo: digest?.seo ? 'included' : r.client.seoClient ? 'waiting' : 'none',
+      seoProblems: digest?.seo?.problems ?? [],
     }
   })
+
+  const [inbox, clients] = await Promise.all([
+    prisma.seoReportEmail
+      .findMany({
+        orderBy: { receivedAt: 'desc' },
+        take: 30,
+        select: {
+          id: true,
+          receivedAt: true,
+          sender: true,
+          subject: true,
+          kind: true,
+          site: true,
+          year: true,
+          month: true,
+          pdfUrl: true,
+          problem: true,
+          clientId: true,
+          parsed: true,
+          client: { select: { businessName: true } },
+        },
+      })
+      // Before the bootstrap has created the table, the page still renders.
+      .catch(() => []),
+    prisma.client.findMany({ select: { id: true, businessName: true }, orderBy: { businessName: 'asc' } }),
+  ])
+  const inboxRows: InboxRow[] = inbox.map((m) => ({
+    id: m.id,
+    receivedAt: m.receivedAt.toISOString(),
+    sender: m.sender,
+    subject: m.subject,
+    kind: m.kind,
+    site: m.site,
+    label: m.year && m.month ? monthLabel(m.year, m.month) : null,
+    pdfUrl: m.pdfUrl,
+    problem: m.problem,
+    clientName: m.client?.businessName ?? null,
+    // Assignable: a report that was READ, but matched no shop.
+    assignable: m.kind === 'report' && !m.clientId && !!m.parsed,
+  }))
 
   return (
     <div className="space-y-4">
@@ -75,6 +119,7 @@ export default async function Page() {
         </p>
       </div>
       <MonthlyReportsList rows={rows} />
+      <SeoReportInbox rows={inboxRows} clients={clients} />
     </div>
   )
 }

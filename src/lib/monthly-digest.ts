@@ -2,6 +2,8 @@ import { prisma } from '@/lib/db'
 import { adsSearch } from '@/lib/google-ads'
 import { getClientActivity } from '@/lib/client-activity'
 import { monthLabel, monthWindow } from '@/lib/tz'
+import { latestSeoSection } from '@/lib/seo-report-inbound'
+import type { SeoReportAi, SeoReportArticles, SeoReportLinks } from '@/lib/seo-report'
 
 /**
  * THE MONTH'S REPORT for one shop: what came in, what the ads cost, what was
@@ -117,6 +119,24 @@ export interface DigestNextStep {
   severity: string
 }
 
+/**
+ * THE SEO WORK, read out of the supplier's monthly PDF (lib/seo-report.ts,
+ * received by lib/seo-report-inbound.ts). Only the three sections chosen —
+ * articles, links, AI answers — and each is null when that PDF did not have
+ * it. The whole section is absent for a shop with no SEO report that month,
+ * which is every shop not on the SEO plan.
+ */
+export interface DigestSeo {
+  /** As the supplier printed it — the window their figures cover. */
+  period: string | null
+  receivedAt: string
+  articles: SeoReportArticles | null
+  links: SeoReportLinks | null
+  ai: SeoReportAi | null
+  /** Sections that were in the PDF but could not be read. Admin only. */
+  problems: string[]
+}
+
 export interface MonthlyDigest {
   clientId: string
   businessName: string
@@ -143,6 +163,11 @@ export interface MonthlyDigest {
   nextSteps: DigestNextStep[]
   /** The operator's own words. Never generated. */
   note: string | null
+  /**
+   * Optional on the TYPE because every report stored before this existed
+   * lacks it; absent and null read the same.
+   */
+  seo?: DigestSeo | null
 }
 
 const KEYWORD_LIMIT = 20
@@ -330,7 +355,7 @@ export async function buildMonthlyDigest(
   const timezone = client.timezone || 'America/Denver'
   const { start, end } = monthWindow(year, month, timezone)
 
-  const [leads, activity, findings] = await Promise.all([
+  const [leads, activity, findings, seo] = await Promise.all([
     prisma.lead
       .findMany({
         // Canonical rows only. `lt end` because the month window's end is
@@ -355,6 +380,9 @@ export async function buildMonthlyDigest(
         take: 5,
       })
       .catch(() => []),
+    // The supplier's report for this month, if it has arrived. When it lands
+    // AFTER the build, the inbox attaches it to the unsent report itself.
+    latestSeoSection(clientId, year, month).catch(() => null),
   ])
 
   const customerId = client.adsTracking?.googleAdsCustomerId || null
@@ -414,6 +442,7 @@ export async function buildMonthlyDigest(
         severity: f.severity,
       })),
       note: null,
+      seo,
     },
   }
 }

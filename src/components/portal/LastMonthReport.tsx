@@ -1,4 +1,5 @@
 import type { MonthlyDigest } from '@/lib/monthly-digest'
+import SeoWorkSection from '@/components/portal/SeoWorkSection'
 
 /**
  * Last month in depth, above the twelve-month trend on the same page.
@@ -181,6 +182,8 @@ export default function LastMonthReport({
           </p>
         </Section>
       )}
+
+      {digest.seo && <SeoWorkSection seo={digest.seo} />}
 
       {digest.work.length > 0 && (
         <Section title="What we did">

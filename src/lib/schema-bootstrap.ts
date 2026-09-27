@@ -449,6 +449,33 @@ export const MONTHLY_REPORT_SQL: string[] = [
 ]
 
 /**
+ * The SEO supplier's monthly report, received by email and read into ours.
+ * See lib/seo-report-inbound.ts.
+ */
+export const SEO_REPORT_SQL: string[] = [
+  `CREATE TABLE IF NOT EXISTS "SeoReportEmail" (
+     "id" TEXT PRIMARY KEY,
+     "inboundId" TEXT NOT NULL,
+     "receivedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     "sender" TEXT NOT NULL,
+     "subject" TEXT NOT NULL,
+     "kind" TEXT NOT NULL DEFAULT 'report',
+     "clientId" TEXT REFERENCES "Client"("id") ON DELETE SET NULL,
+     "site" TEXT,
+     "year" INTEGER,
+     "month" INTEGER,
+     "pdfUrl" TEXT,
+     "parsed" JSONB,
+     "readout" JSONB,
+     "problem" TEXT
+   )`,
+  // The retry guard: a webhook delivered twice must not store two reports.
+  `CREATE UNIQUE INDEX IF NOT EXISTS "SeoReportEmail_inboundId_key" ON "SeoReportEmail" ("inboundId")`,
+  `CREATE INDEX IF NOT EXISTS "SeoReportEmail_clientId_year_month_idx"
+     ON "SeoReportEmail" ("clientId", "year", "month")`,
+]
+
+/**
  * The shop's social profiles, for the directory listing — not the site.
  * `{ "facebook": "https://…", … }`, one per platform. See lib/social-links.ts.
  */
@@ -607,6 +634,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...BUSINESS_PROFILE_SQL,
   ...SOCIAL_LINKS_SQL,
   ...MONTHLY_REPORT_SQL,
+  ...SEO_REPORT_SQL,
   ...CALL_TRACKING_SQL,
   ...OFFLINE_CONVERSION_SQL,
   ...CLAIM_FLAGS_SQL,

@@ -238,6 +238,49 @@ export function renderMonthlyReportEmail(
     lines.push('', 'GOOGLE ADS: could not be read when this report was built.')
   }
 
+  // --- SEO ---------------------------------------------------------------
+  /* Read out of the supplier's PDF (lib/seo-report.ts) and shown as ours; no
+     supplier name, no link to their document. Shorter than the portal page:
+     the email is the nudge, the page is the report. Every string came from a
+     PDF, so every one is escaped. */
+  const seo = digest.seo
+  if (seo && (seo.articles || seo.links || seo.ai)) {
+    parts.push(`<h2 style="${H2}">SEO</h2>`)
+    const tiles: Array<{ label: string; value: string }> = []
+    if (seo.articles) tiles.push({ label: 'Articles published', value: String(seo.articles.published) })
+    if (seo.links) tiles.push({ label: 'Links earned', value: String(seo.links.links) })
+    if (seo.ai) tiles.push({ label: 'Named in AI answers', value: `${seo.ai.share}%` })
+    parts.push(stats(tiles))
+    lines.push('', 'SEO:')
+    for (const t of tiles) lines.push(`  ${t.label}: ${t.value}`)
+
+    const detail: string[] = []
+    if (seo.articles?.list.length) {
+      detail.push(
+        `Published: ${seo.articles.list
+          .slice(0, 3)
+          .map((a) => `<em>${esc(a.title)}</em>`)
+          .join(', ')}${seo.articles.published > 3 ? ` and ${seo.articles.published - Math.min(3, seo.articles.list.length)} more` : ''}.`
+      )
+    }
+    const l = seo.links
+    if (l && l.ratingFrom !== null && l.ratingTo !== null && l.ratingTo !== l.ratingFrom) {
+      detail.push(
+        `Site authority went from ${l.ratingFrom} to ${l.ratingTo}${l.since ? ` since ${esc(l.since)}` : ''}, from ${l.links} links across ${l.referringDomains} sites.`
+      )
+    }
+    const ai = seo.ai
+    if (ai) {
+      const trend =
+        ai.previousShare !== null && ai.previousLabel && ai.previousShare !== ai.share
+          ? `, ${ai.share > ai.previousShare ? 'up' : 'down'} from ${ai.previousShare}% in ${esc(ai.previousLabel)}`
+          : ''
+      detail.push(`AI assistants named you in ${ai.named} of ${ai.asked} answers${trend}.`)
+    }
+    for (const d of detail) parts.push(`<p style="${P}">${d}</p>`)
+    for (const d of detail) lines.push(`  ${d.replace(/<[^>]+>/g, '')}`)
+  }
+
   // --- Work completed ------------------------------------------------------
   if (digest.work.length) {
     parts.push(`<h2 style="${H2}">What we did</h2>`)
@@ -289,12 +332,20 @@ export function renderMonthlyReportEmail(
     }
   }
 
+  /* THE PROVENANCE LINE HAS TO STAY TRUE. "From your own account and your own
+     leads" was true of every figure until the SEO section arrived: authority
+     and AI-answer share are measured by our SEO tracking, not read from the
+     shop's accounts. So a report carrying them says where they come from
+     rather than letting the old sentence claim them. Still no dollar
+     estimates anywhere — lib/seo-report.ts keeps those out. */
+  const provenance = digest.seo
+    ? 'Enquiry and ad figures are from your own leads and your Google Ads account; SEO figures are from our SEO tracking. Nothing is estimated.'
+    : 'Every figure here is from your own account and your own leads. Nothing is estimated.'
   parts.push(
     `<p style="margin:24px 0 0"><a href="${portalUrl()}" style="display:inline-block;background:#1d4ed8;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 18px;border-radius:10px">See the full report</a></p>
-     <p style="margin:14px 0 0;font-size:12px;color:#9ca3af">Every figure here is from your own
-     account and your own leads. Nothing is estimated.</p>`
+     <p style="margin:14px 0 0;font-size:12px;color:#9ca3af">${provenance}</p>`
   )
-  lines.push('', `See the full report: ${portalUrl()}`, '', 'Nothing in this report is estimated.')
+  lines.push('', `See the full report: ${portalUrl()}`, '', provenance)
 
   return {
     subject: `${digest.businessName} — ${digest.label} report`,

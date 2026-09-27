@@ -2198,6 +2198,61 @@ invisible to the code that built it.
   no ads account, ads failure, unmarked booked, and an operator note with a
   `<script>` tag in it.
 
+**THE SEO SUPPLIER'S MONTHLY PDF IS READ INTO OUR REPORT** (`seo-report.ts`
+reads, `seo-report-pdf.ts` extracts lines, `seo-report-inbound.ts` receives,
+`/api/webhooks/resend/inbound`, `SeoReportEmail`, bootstrap: `SEO_REPORT_SQL`,
+`SeoWorkSection`, "Reports inbox" on the Monthly reports page). The supplier
+will only email the owner's Gmail, so a Gmail filter forwards each one to the
+Resend inbound address; Resend posts `email.received` (metadata only) and the
+app fetches the email and attachment through Resend's API
+(`emails.receiving.get`, `…attachments.get` → `download_url`). Needs
+`RESEND_INBOUND_SECRET` (the webhook's signing secret) and a `RESEND_API_KEY`
+that can READ received mail — a sending-only key cannot.
+- **The shop never sees the supplier's document** — §2 white label. The PDF
+  is admin-only; the figures render inside our own report. `supplierTraces()`
+  checks the file's info fields, link annotations and text on EVERY report and
+  holds one that names them: the first was clean, and their template is
+  theirs to change.
+- **THREE SECTIONS, CHOSEN**: articles published, links earned, AI answers.
+  Left out on purpose: their Google Search figures (we read Search Console
+  ourselves, and their small print says theirs cover the first WEEK — two
+  "clicks" for one month on one page), their "ad spend saved"/"backlink cost
+  saved" dollar ESTIMATES, and site health (the owner's call: an audit list
+  reads to a shop as a list of faults).
+- **NO MODEL READS IT.** Fixed rules over the text cannot invent a number.
+  The cost is that a layout change breaks a section, so a section whose
+  HEADING is there but whose figures are not readable goes into `problems`
+  (shown on the admin row) — never silently dropped. The raw lines are stored
+  (`readout`) so a parser fix is a re-read, not a lost month.
+- **READ BY COLUMN.** Pages 4–5 are two columns; read across the page they
+  interleave ("Glass Doctor 25% review of windshield repair…" is a competitor
+  and a prompt fused), so the reader also splits each page at its middle.
+- **THE PDF CONTRADICTS ITSELF, AND EACH FACT HAS ONE SOURCE**: authority from
+  the monthly chart (17 → 18), not the page-1 tile (23, the day it was
+  printed); AI share from the sentence naming its sample ("6 of 20 answers
+  (30%), against 15% in Jul"), not the chart's 23%. Direction comes from
+  "Up/Down N points", never from line order — the chart puts the higher value
+  higher on the page.
+- **WHO MAY SEND IS CHECKED, because the portal shows a built report before
+  anybody presses Send.** The supplier's domain (a filter forward keeps the
+  original From) or `ADMIN_EMAIL`/`SEO_REPORT_SENDERS`; a DMARC fail is
+  refused; SPF is NOT read, because a Gmail forward always fails it. The site
+  must also match exactly ONE client (website, custom domain or subdomain); an
+  unmatched report waits in the inbox with an Assign control.
+- **Timing.** The build reads the inbox; a report that arrives after the build
+  is attached to the month's report if it is UNSENT, and a sent one is never
+  touched. An SEO client's row says "no SEO report has arrived yet" before the
+  Send button, not after.
+- Every email that arrives gets a row with its reason — wrong sender, no PDF,
+  no match, unreadable, held — and Gmail's forwarding CONFIRMATION CODE is
+  pulled out and shown there, since nobody can read an inbox only a webhook
+  reads. The email's provenance line changes when SEO figures are in it:
+  "every figure is from your own account" stopped being true.
+- `unpdf`, not `pdfjs-dist`: PDF.js packaged for serverless with the worker
+  inlined; verified bundled into the route's chunk, nothing traced at runtime.
+- `scripts/check-seo-report.ts` runs the REAL August layout (anonymised in
+  `scripts/fixtures/` — the repo is public), the silent cases first.
+
 **The twelve-month trend** (`monthly-report.ts` + `components/MonthlyReport.tsx`)
 renders under the month block, and on the admin's Results tab.
 

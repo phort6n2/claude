@@ -41,6 +41,13 @@ export interface ReportRow {
   sendError: string | null
   /** Empty means nobody to send to — the portal invite has not gone out. */
   recipients: string[]
+  /**
+   * The SEO section: in the report, still waited for (an SEO client whose
+   * supplier report has not arrived), or not applicable.
+   */
+  seo: 'included' | 'waiting' | 'none'
+  /** Parts of the supplier's report that could not be read. */
+  seoProblems: string[]
 }
 
 const money = (n: number) =>
@@ -256,6 +263,23 @@ export default function MonthlyReportsList({ rows }: { rows: ReportRow[] }) {
             <p className="mt-2 text-xs text-amber-800">
               Ads figures missing: {row.adsProblem} — rebuild before sending, or the shop reads it
               as a month with no spend.
+            </p>
+          )}
+          {/* The SEO section arrives by email on its own schedule. Sending
+              before it lands sends a report without the month's SEO work in
+              it — worth knowing before the button, not after. */}
+          {row.seo === 'waiting' && !row.sentAt && (
+            <p className="mt-2 text-xs text-amber-800">
+              SEO client, and no SEO report has arrived for this month yet. It is added here
+              automatically when it does — send now and the email goes without it.
+            </p>
+          )}
+          {row.seo === 'included' && (
+            <p className="mt-2 text-xs text-gray-600">
+              SEO section included.
+              {row.seoProblems.length > 0 && (
+                <span className="text-amber-800"> Not read: {row.seoProblems.join(' ')}</span>
+              )}
             </p>
           )}
           {row.recipients.length === 0 && !row.sentAt && (

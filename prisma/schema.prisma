@@ -285,6 +285,7 @@ model Client {
 
   // One stored report per calendar month — see lib/monthly-digest.ts
   monthlyReports ClientMonthlyReport[]
+  seoReports     SeoReportEmail[]
 
   // Editorial content + photos for the hosted site
   siteContent ClientSiteContent?
@@ -1742,4 +1743,42 @@ model ClientMonthlyReport {
 
   @@unique([clientId, year, month])
   @@index([sentAt])
+}
+
+/// One email received at the reports inbox — the SEO supplier's monthly PDF,
+/// forwarded from the owner's Gmail. See lib/seo-report-inbound.ts.
+///
+/// Kept even when it could not be used: an email that arrived and was set
+/// aside, with the reason, is the one fact that answers "did it come in?".
+model SeoReportEmail {
+  id         String   @id @default(cuid())
+  /// Resend's id for the received email. UNIQUE: a webhook retried by the
+  /// sender must not store the same report twice.
+  inboundId  String   @unique
+  receivedAt DateTime @default(now())
+  sender     String
+  subject    String
+  /// 'report' | 'gmail-confirmation' | 'ignored'
+  kind       String   @default("report")
+
+  /// Null until matched to a shop by its website.
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  /// The site the report is about, as the report names it.
+  site     String?
+  year     Int?
+  month    Int?
+
+  /// Our own copy of the PDF. ADMIN ONLY: the client sees the figures inside
+  /// our report, never the supplier's document.
+  pdfUrl   String?
+  /// What was read — see SeoReport in lib/seo-report.ts.
+  parsed   Json?
+  /// The raw lines the reader produced, so a parser fix is a re-read rather
+  /// than a lost month.
+  readout  Json?
+  /// Why it was not used, in words. Null when it went into the report.
+  problem  String?
+
+  @@index([clientId, year, month])
 }
