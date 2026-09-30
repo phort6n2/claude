@@ -372,7 +372,7 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
                     onChange={(e) => updateField('offersSideWindowRepair', e.target.checked)}
                     className="rounded"
                   />
-                  <span className="text-sm">Side Window Repair</span>
+                  <span className="text-sm">Side Window Replacement</span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input
@@ -381,7 +381,7 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
                     onChange={(e) => updateField('offersBackWindowRepair', e.target.checked)}
                     className="rounded"
                   />
-                  <span className="text-sm">Back Window Repair</span>
+                  <span className="text-sm">Back Glass Replacement</span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input
@@ -390,7 +390,7 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
                     onChange={(e) => updateField('offersSunroofRepair', e.target.checked)}
                     className="rounded"
                   />
-                  <span className="text-sm">Sunroof Repair</span>
+                  <span className="text-sm">Sunroof Replacement</span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input

@@ -176,19 +176,30 @@ export const SERVICE_PAGES: ServicePage[] = [
     ],
   },
   {
+    // REPLACEMENT, not repair, and the copy says nothing else. Sunroof glass
+    // is replaced, not resin-repaired, and the shops that tick this box do the
+    // glass — M&H said so of theirs. "Repair" and "leak diagnosis" both
+    // promised work on the track, motor and drains, which is a different trade
+    // this page cannot vouch for on fifteen shops' behalf.
+    //
+    // The SLUG stays `sunroof-repair`. It is a live address on every site with
+    // the box ticked — in sitemaps, in Google's index, possibly in an ad's
+    // final URL or a shop's path override — and `site-paths.ts` exists so a
+    // page keeps its address. The flag name (`offersSunroofRepair`) and the
+    // directory's service key are internal and stay too.
     slug: 'sunroof-repair',
     flag: 'offersSunroofRepair',
-    name: 'Sunroof Repair',
-    short: 'Sunroof and moonroof glass repair and replacement.',
-    heroLine: 'Sunroof and moonroof glass replacement and leak diagnosis.',
+    name: 'Sunroof Replacement',
+    short: 'Broken sunroof and moonroof glass replaced.',
+    heroLine: 'Sunroof and moonroof glass replacement after a break, a crack or a failure.',
     sections: [
       {
-        heading: 'Glass, tracks, and drains',
-        body: 'Sunroof problems come in three flavors: broken or leaking glass, failed tracks and motors, and clogged drain tubes that dump water into the headliner. Glass replacement restores the panel itself; if water is appearing inside the cabin, the drains should be checked at the same time.',
+        heading: 'The glass, not the mechanism',
+        body: 'A sunroof is a glass panel riding on tracks, driven by a motor, with drain tubes that carry rainwater away. Replacement restores the glass panel itself. If the glass is intact and water is still getting in, or the roof will not open or close, the cause is usually the drains, the seal or the mechanism rather than the glass — tell us what you are seeing when you call.',
       },
       {
         heading: 'Don’t drive with an open hole',
-        body: 'A shattered sunroof exposed to weather damages the headliner and the electronics below it. A temporary cover is a stopgap, not a fix — get it assessed.',
+        body: 'A shattered sunroof exposed to weather damages the headliner and the electronics below it. A temporary cover is a stopgap, not a fix — get the glass replaced.',
       },
     ],
   },
@@ -264,6 +275,22 @@ export function servicesForClient(flags: Record<ServiceFlag, boolean>): ServiceP
 export const GLASS_SERVICE_PAGES = SERVICE_PAGES.filter(
   (s): s is ServicePage & { flag: GlassServiceFlag } => s.flag !== 'offersMobileService'
 )
+
+/**
+ * The quote form's "what is damaged" options, and the value written onto the
+ * lead: the service pages' own names, never a second list.
+ *
+ * There WAS a second list, written out twice (the inline config and
+ * /api/widget/config), and it had drifted: the form said "Side Window Repair"
+ * and "Back Window Repair" while the pages said Replacement. That is wrong on
+ * its own — tempered glass shatters and is replaced, there is nothing to
+ * repair — and it silently broke the preselect, which matches the page's NAME
+ * against the option's value: on the side-window and back-glass pages the
+ * form arrived with nothing chosen.
+ */
+export function formServiceNames(flags: Partial<Record<ServiceFlag, boolean | null>>): string[] {
+  return GLASS_SERVICE_PAGES.filter((s) => !!flags[s.flag]).map((s) => s.name)
+}
 
 /**
  * Addresses the shops' OLD sites used for a service this template names

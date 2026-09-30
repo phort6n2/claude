@@ -1,5 +1,6 @@
 import { servicePath, readPathOverrides } from '@/lib/site-paths'
 import { widgetCtaColors } from '@/lib/site-theme'
+import { formServiceNames } from '@/lib/site-services'
 import {
   ArrowRight,
   Car,
@@ -92,14 +93,9 @@ interface WidgetClient extends SiteClient {
  * a config round trip. Third-party embeds still fetch.
  */
 export function buildWidgetConfig(client: WidgetClient, privacyUrl?: string) {
-  const services: string[] = []
-  if (client.offersWindshieldReplacement) services.push('Windshield Replacement')
-  if (client.offersWindshieldRepair) services.push('Windshield Repair')
-  if (client.offersRockChipRepair) services.push('Rock Chip Repair')
-  if (client.offersSideWindowRepair) services.push('Side Window Repair')
-  if (client.offersBackWindowRepair) services.push('Back Window Repair')
-  if (client.offersSunroofRepair) services.push('Sunroof Repair')
-  if (client.offersAdasCalibration) services.push('ADAS Calibration')
+  // The page names, so the service page's preselect always finds its option —
+  // see formServiceNames.
+  const services = formServiceNames(client)
   return {
     businessName: client.businessName,
     phone: client.phone,

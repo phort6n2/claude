@@ -798,6 +798,23 @@ there.
   because being too eager here costs fourteen shops the line that makes them
   findable, and being too lenient sends somebody to a car park.
 
+**SUNROOF, SIDE AND BACK GLASS ARE REPLACED, NOT REPAIRED** (`site-services.ts`,
+`formServiceNames`). The sunroof page was "Sunroof Repair … and leak
+diagnosis", and M&H said what is true of every shop with that box ticked: they
+replace the glass. The drains, seal and mechanism are a different trade, so the
+page now says only what the glass job is and points a leak with intact glass
+back at a phone call. The SLUG stays `sunroof-repair`, like the flag name and
+the directory's `sunroof-repair` key: it is a live address in sitemaps, Google's
+index and possibly ad final URLs, and a page keeps its address here.
+- **The quote form's options ARE the page names.** They were a second list,
+  written out twice, still reading "Side Window Repair" and "Back Window Repair"
+  — and the service page preselects the form by matching its NAME against the
+  option values, so on those two pages the form silently arrived with nothing
+  chosen. `scripts/check-form-services.ts` holds every page finding its option,
+  and no "repair" anywhere on replaced glass. Admin checkboxes say Replacement
+  too. Leads from before the change still say "… Repair"; nothing matches on
+  the string.
+
 **What an image upload ACCEPTS lives in `image-formats.ts`, once.** The file
 picker's `accept` list and what sharp can decode are two lists that have to
 agree, and drift is silent in the worse direction: a format the server handles

@@ -1,3 +1,4 @@
+import { formServiceNames } from '@/lib/site-services'
 import { siteIsLive } from '@/lib/site-preview'
 import { widgetCtaColors } from '@/lib/site-theme'
 import { NextRequest, NextResponse } from 'next/server'
@@ -61,14 +62,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Client not found' }, { status: 404, headers: CORS })
   }
 
-  const services: string[] = []
-  if (client.offersWindshieldReplacement) services.push('Windshield Replacement')
-  if (client.offersWindshieldRepair) services.push('Windshield Repair')
-  if (client.offersRockChipRepair) services.push('Rock Chip Repair')
-  if (client.offersSideWindowRepair) services.push('Side Window Repair')
-  if (client.offersBackWindowRepair) services.push('Back Window Repair')
-  if (client.offersSunroofRepair) services.push('Sunroof Repair')
-  if (client.offersAdasCalibration) services.push('ADAS Calibration')
+  // The same list the hosted pages inline — see formServiceNames.
+  const services = formServiceNames(client)
 
   return NextResponse.json(
     {
