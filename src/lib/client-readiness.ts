@@ -125,11 +125,23 @@ export async function getClientReadiness(clientId: string): Promise<ReadinessRep
     'required',
     `${base}/business`
   )
+  /* A SERVICE-AREA BUSINESS IS NEVER ASKED FOR A STREET. Nothing on its site
+     shows one — the map is the city zoomed out, the JSON-LD drops
+     `streetAddress`, the footer says "based in {city}" (site-premises.ts) — so
+     demanding it held K&R, a SAB, at "1 to finish" over a field that could
+     only ever be filled with something the site then hides. City and state are
+     still required: the serving line, the legal pages and the per-state
+     insurance rules all read them. */
+  const sab = client.hasShopLocation === false
   add(
     'address',
-    'Address',
-    !!(client.streetAddress?.trim() && client.city?.trim() && client.state?.trim()),
-    'The map, the schema markup and the footer all need a full street address.',
+    sab ? 'City and state' : 'Address',
+    sab
+      ? !!(client.city?.trim() && client.state?.trim())
+      : !!(client.streetAddress?.trim() && client.city?.trim() && client.state?.trim()),
+    sab
+      ? 'The serving line, the legal pages and the state insurance rules need the city and state they are based in.'
+      : 'The map, the schema markup and the footer all need a full street address.',
     'required',
     `${base}/business`
   )

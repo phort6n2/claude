@@ -783,6 +783,13 @@ there.
   shop to check", "the shop comes to you", "talk to the shop doing the work" —
   which broke the "site speaks as the SHOP: we, never they" rule for all
   fifteen, not just the one with no shop. Fixed to "we" rather than gated.
+- **A SAB IS NEVER ASKED FOR A STREET.** The readiness check demanded a
+  full street address of every client, so K&R — a SAB, whose site never
+  shows one — sat at "1 to finish" over a field the site would only hide. For
+  `hasShopLocation: false` it now asks for city and state (the serving line,
+  the legal pages and `insurance-rules.ts` read them), and the intake form's
+  street field is optional with "mobile only? leave this blank"; a shop that
+  skips it is still caught by readiness.
 - The one "shop" left on a SAB's page is the reviewed statutory sentence *"Your
   choice of repair shop is yours to make"*, which is the customer's legal right
   and says nothing about our premises. `scripts/check-site-premises.ts` holds

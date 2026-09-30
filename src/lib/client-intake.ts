@@ -76,7 +76,16 @@ export const INTAKE_SECTIONS: IntakeSection[] = [
         help: 'The line you want customers to reach. We can add a tracking number later without changing this.',
       },
       { key: 'email', label: 'Business email', kind: 'email', required: true },
-      { key: 'streetAddress', label: 'Street address', kind: 'text', required: true },
+      {
+        key: 'streetAddress',
+        label: 'Street address',
+        kind: 'text',
+        // NOT required: a service-area business (mobile only, no shop to visit)
+        // has no street to give, and its site never shows one — see
+        // site-premises.ts. A shop that does have premises and skips it is
+        // caught by the readiness check, which asks shops for a street.
+        help: 'Where customers come to you. Mobile only, with no shop to visit? Leave this blank.',
+      },
       { key: 'city', label: 'City', kind: 'text', required: true },
       { key: 'state', label: 'State', kind: 'text', required: true, placeholder: 'CO' },
       { key: 'postalCode', label: 'ZIP', kind: 'text', required: true },
