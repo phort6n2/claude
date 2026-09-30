@@ -178,7 +178,7 @@ export const SERVICE_PAGES: ServicePage[] = [
   {
     // REPLACEMENT, not repair, and the copy says nothing else. Sunroof glass
     // is replaced, not resin-repaired, and the shops that tick this box do the
-    // glass — M&H said so of theirs. "Repair" and "leak diagnosis" both
+    // glass — K&R Sunroof said so of theirs. "Repair" and "leak diagnosis" both
     // promised work on the track, motor and drains, which is a different trade
     // this page cannot vouch for on fifteen shops' behalf.
     //

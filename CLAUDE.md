@@ -800,7 +800,7 @@ there.
 
 **SUNROOF, SIDE AND BACK GLASS ARE REPLACED, NOT REPAIRED** (`site-services.ts`,
 `formServiceNames`). The sunroof page was "Sunroof Repair … and leak
-diagnosis", and M&H said what is true of every shop with that box ticked: they
+diagnosis", and K&R Sunroof said what is true of every shop with that box ticked: they
 replace the glass. The drains, seal and mechanism are a different trade, so the
 page now says only what the glass job is and points a leak with intact glass
 back at a phone call. The SLUG stays `sunroof-repair`, like the flag name and
