@@ -52,3 +52,14 @@ export function normalisePostalCode(value: string): string {
   const bare = v.replace(/[ -]/g, '').toUpperCase()
   return `${bare.slice(0, 3)} ${bare.slice(3)}`
 }
+
+/**
+ * What to CALL a stored code: "Postal code" for a Canadian one, "ZIP" for
+ * anything else. Decided by the value's shape rather than the shop's country,
+ * so a US visitor's ZIP on a BC shop's form is still labelled a ZIP, and every
+ * path that shows one (alert email, alert text, lead page) needs nothing
+ * plumbed in to get it right.
+ */
+export function postalCodeLabel(value: string | null | undefined): 'Postal code' | 'ZIP' {
+  return value && new RegExp(CA_POSTAL_SOURCE).test(value.trim()) ? 'Postal code' : 'ZIP'
+}

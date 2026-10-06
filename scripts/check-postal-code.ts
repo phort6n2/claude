@@ -14,10 +14,12 @@ import {
   postalCodeOk,
   normalisePostalCode,
   postalCountryFor,
+  postalCodeLabel,
   US_ZIP_SOURCE,
   CA_POSTAL_SOURCE,
 } from '../src/lib/postal-code'
 import { GET } from '../src/app/widget.js/route'
+import { emailHtml } from '../src/lib/lead-notifications'
 
 let failures = 0
 const check = (ok: boolean, msg: string) => {
@@ -52,6 +54,16 @@ async function main() {
   check(postalCodeOk('97132', 'US'), '"97132" accepted')
   check(!postalCodeOk('V6B 1A1', 'US'), 'a postal code is refused for a US shop, as before')
   check(!postalCodeOk('9713', 'US'), 'four digits refused')
+
+  console.log('\nTHE ALERT CALLS IT WHAT IT IS')
+  check(postalCodeLabel('V6B 1A1') === 'Postal code', 'a Canadian code is a postal code')
+  check(postalCodeLabel('97132') === 'ZIP', 'a ZIP is a ZIP')
+  check(postalCodeLabel('') === 'ZIP' && postalCodeLabel(null) === 'ZIP', 'nothing falls back to ZIP')
+  const lead = { name: 'Test', phone: '+16045550142', email: '', service: 'Windshield Replacement', vehicle: '2019 Civic', message: '', source: 'Website', leadUrl: null }
+  const ca = emailHtml('AGS', { ...lead, postalCode: 'V6B 1A1' })
+  const us = emailHtml('AGK', { ...lead, postalCode: '92648' })
+  check(ca.includes('Postal code') && !/ZIP/.test(ca), 'Canadian alert email says Postal code, never ZIP')
+  check(us.includes('ZIP') && !us.includes('Postal code'), 'US alert email still says ZIP')
 
   console.log('\nTHE SERVED WIDGET CARRIES THE SAME RULE, AND PARSES')
   const src = await (await GET()).text()

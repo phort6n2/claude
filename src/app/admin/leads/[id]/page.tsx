@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { postalCodeLabel } from '@/lib/postal-code'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -445,7 +446,7 @@ export default function LeadDetailPage() {
                   )}
                   {postalCode && (
                     <div>
-                      <span className="text-gray-500">Zip Code</span>
+                      <span className="text-gray-500">{postalCodeLabel(postalCode) === 'ZIP' ? 'Zip Code' : 'Postal Code'}</span>
                       <p className="font-medium text-gray-900">{postalCode}</p>
                     </div>
                   )}

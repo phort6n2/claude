@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { postalCodeLabel } from './postal-code'
 import { decrypt } from '@/lib/encryption'
 import { toE164, telHref, smsHref, firstTextTo } from '@/lib/contact-links'
 import { countSegments, fitSegments } from '@/lib/sms-segments'
@@ -226,7 +227,8 @@ function plainLines(lead: LeadSummary): string[] {
     lead.decodedVehicle && `Decoded: ${lead.decodedVehicle}`,
     lead.insurance && `Insurance: ${lead.insurance}`,
     lead.carrier && `Carrier: ${lead.carrier}`,
-    lead.postalCode && `ZIP: ${lead.postalCode}`,
+    // "Postal code" for a Canadian one — see postal-code.ts.
+    lead.postalCode && `${postalCodeLabel(lead.postalCode)}: ${lead.postalCode}`,
     // Normalised for reading: an alert is scanned on a phone in seconds and
     // +15035550100 is harder to take in than (503) 555-0100.
     lead.phone && `Phone: ${formatPhoneDisplay(lead.phone) || lead.phone}`,
@@ -282,7 +284,7 @@ function smsBody(businessName: string, lead: LeadSummary): string {
       // one segment.
       `${lead.name || 'New lead'} ${formatPhoneDisplay(lead.phone) || lead.phone || ''}`.trim(),
       [lead.service, lead.vehicle].filter(Boolean).join(', '),
-      lead.postalCode ? `ZIP ${lead.postalCode}` : '',
+      lead.postalCode ? `${postalCodeLabel(lead.postalCode)} ${lead.postalCode}` : '',
       businessName,
     ],
     1
