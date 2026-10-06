@@ -1,4 +1,5 @@
 import { formServiceNames } from '@/lib/site-services'
+import { postalCountryFor } from '@/lib/postal-code'
 import { siteIsLive } from '@/lib/site-preview'
 import { widgetCtaColors } from '@/lib/site-theme'
 import { NextRequest, NextResponse } from 'next/server'
@@ -46,6 +47,9 @@ export async function GET(request: NextRequest) {
       secondaryColor: true,
       accentColor: true,
       hasShopLocation: true,
+      // ZIP or postal code — see src/lib/postal-code.ts.
+      state: true,
+      country: true,
       offersMobileService: true,
       smsCapable: true,
       offersWindshieldRepair: true,
@@ -79,6 +83,8 @@ export async function GET(request: NextRequest) {
       offersMobileService: client.offersMobileService,
       smsCapable: client.smsCapable,
       hasShopLocation: client.hasShopLocation,
+      // ZIP or postal code — see src/lib/postal-code.ts.
+      postalCountry: postalCountryFor(client),
     },
     {
       headers: {

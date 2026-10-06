@@ -1,6 +1,7 @@
 import { servicePath, readPathOverrides } from '@/lib/site-paths'
 import { widgetCtaColors } from '@/lib/site-theme'
 import { formServiceNames } from '@/lib/site-services'
+import { postalCountryFor } from '@/lib/postal-code'
 import {
   ArrowRight,
   Car,
@@ -75,6 +76,11 @@ export interface SiteFlags {
 
 interface WidgetClient extends SiteClient {
   slug: string
+  // REQUIRED, not optional: with `state` (already required on SiteClient) it
+  // decides whether the form asks for a ZIP or a Canadian postal code, and a
+  // page whose select forgot it would compile and turn every BC customer
+  // away. See src/lib/postal-code.ts.
+  country: string | null
   secondaryColor?: string | null
   offersWindshieldReplacement?: boolean
   offersWindshieldRepair?: boolean
@@ -108,6 +114,8 @@ export function buildWidgetConfig(client: WidgetClient, privacyUrl?: string) {
     ...widgetCtaColors(client.primaryColor ?? null, client.accentColor ?? null),
     services,
     offersMobileService: !!client.offersMobileService,
+    // ZIP or postal code — see src/lib/postal-code.ts.
+    postalCountry: postalCountryFor(client),
     // Gates every "text us a photo" path. An sms: link pointed at a landline
     // is a dead end, so the copy only appears once a shop confirms the line
     // receives texts.

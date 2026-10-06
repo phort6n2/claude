@@ -196,6 +196,17 @@ server-side; `widget.js` upgrades it in place.
 - `widget.js` **carries across anything already typed** before it swapped the
   form — the script lands about a second after the HTML, and that is the one
   element the page exists for.
+- **A CANADIAN SHOP'S FORM ASKS FOR A POSTAL CODE** (`postal-code.ts`,
+  `postalCountry` in the widget config). The field was a five-digit ZIP for
+  everyone — numeric keyboard, five characters, `^\d{5}$` — so on AGS's site
+  (BC) every customer was refused, and a refused form writes no lead, sends no
+  alert and logs nothing. The country is `twilioCountryFor`'s (the PROVINCE
+  beats a stale `Client.country`); a Canadian shop shows "Postal code", takes
+  A1A 1A1 in any spacing or case, stores it as `V6B 1A1`, and also accepts a US
+  ZIP. Lenient by design: a refused quote is the expensive failure. US shops
+  are byte-for-byte as before. The patterns live once, as regex SOURCES the
+  served script interpolates as literals (a string literal would eat the `\d`),
+  and `scripts/check-postal-code.ts` runs the REAL served script.
 
 ### Notifications
 

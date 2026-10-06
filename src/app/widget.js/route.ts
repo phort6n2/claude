@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { US_ZIP_SOURCE, CA_POSTAL_SOURCE } from '@/lib/postal-code'
 
 export const dynamic = 'force-static'
 
@@ -365,7 +366,13 @@ const WIDGET_SOURCE = String.raw`(function () {
     var name = el('input', { type: 'text', name: 'full_name', autocomplete: 'name', placeholder: 'Alex Ramirez' });
     var phone = el('input', { type: 'tel', name: 'phone', inputmode: 'tel', autocomplete: 'tel', placeholder: '(555) 555-0142' });
     var email = el('input', { type: 'email', name: 'email', inputmode: 'email', autocomplete: 'email', placeholder: 'you@example.com' });
-    var zip = el('input', { type: 'text', name: 'postal_code', autocomplete: 'postal-code', inputmode: 'numeric', maxlength: '5', placeholder: '5-digit ZIP' });
+    // A Canadian shop's customers have postal codes (A1A 1A1), not ZIPs: the
+    // numeric keyboard and the five-character cap made the right answer
+    // impossible to type. See src/lib/postal-code.ts.
+    var CANADA = cfg.postalCountry === 'CA';
+    var zip = CANADA
+      ? el('input', { type: 'text', name: 'postal_code', autocomplete: 'postal-code', autocapitalize: 'characters', maxlength: '7', placeholder: 'A1A 1A1' })
+      : el('input', { type: 'text', name: 'postal_code', autocomplete: 'postal-code', inputmode: 'numeric', maxlength: '5', placeholder: '5-digit ZIP' });
     var service = el('select', { name: 'service' });
     // Template spec: no placeholder option — the most common job is the default.
     (cfg.services || []).forEach(function (s) { service.appendChild(el('option', { value: s, text: s })); });
@@ -565,7 +572,7 @@ const WIDGET_SOURCE = String.raw`(function () {
     //
     // Same number of rows as before: the ZIP (5 digits) and the vehicle
     // (a placeholder about 130px wide) both survive a half column easily.
-    var row2 = el('div', { class: 'row' }, [field('Service ZIP' + REQ, zip, 'zip'), field('Vehicle' + REQ, vehicle, 'vehicle')]);
+    var row2 = el('div', { class: 'row' }, [field((CANADA ? 'Postal code' : 'Service ZIP') + REQ, zip, 'zip'), field('Vehicle' + REQ, vehicle, 'vehicle')]);
     var row3 = el('div', { class: 'row' }, [field('What do you need?' + REQ, service)]);
     form.appendChild(row1);
     form.appendChild(row2);
@@ -646,7 +653,9 @@ const WIDGET_SOURCE = String.raw`(function () {
       check('phone', phone, phDigits(phone.value).length !== 10, 'Please enter a 10-digit mobile number so the shop can reach you.');
       // Optional now — validate the FORMAT only when they actually typed one.
       check('email', email, !!email.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim()), 'That email address does not look right.');
-      check('zip', zip, !/^\d{5}$/.test(zip.value.trim()), 'Please enter your 5-digit ZIP.');
+      var zipValue = zip.value.trim();
+      var zipOk = /${US_ZIP_SOURCE}/.test(zipValue) || (CANADA && /${CA_POSTAL_SOURCE}/.test(zipValue));
+      check('zip', zip, !zipOk, CANADA ? 'Please enter your postal code, like V6B 1A1.' : 'Please enter your 5-digit ZIP.');
       check('vehicle', vehicle, !vehicle.value.trim(), 'Tell us the year, make and model.');
       if (firstBad) {
         err.textContent = 'A couple of fields need attention — see the notes above.';
@@ -662,7 +671,10 @@ const WIDGET_SOURCE = String.raw`(function () {
         email: email.value.trim(),
         service: service.value || null,
         vehicle: vehicle.value.trim(),
-        postal_code: zip.value.trim(),
+        // Stored as "V6B 1A1" however it was typed, so the alert reads cleanly.
+        postal_code: /${CA_POSTAL_SOURCE}/.test(zipValue)
+          ? zipValue.replace(/[ -]/g, '').toUpperCase().replace(/^(...)/, '$1 ')
+          : zipValue,
         vin: vin.value.trim() || null,
         damage_photo_url: photoUrl,
         insurance: insValue,
