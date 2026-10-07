@@ -2402,11 +2402,24 @@ export function MobileCallBar({
         textHref ? 'grid-cols-[1.1fr_1fr_1fr]' : 'grid-cols-[1.15fr_1fr]'
       } gap-2.5 px-4 pt-2.5 pb-[calc(10px+env(safe-area-inset-bottom))] bg-white/95 backdrop-blur border-t border-[var(--line)]`}
     >
+      {/* THE NUMBER IS IN THE TEXT, HIDDEN, AND THAT IS WHAT GETS IT COUNTED.
+          Google's website-call swap (`phone_conversion_number`) finds the
+          number in the page's TEXT and only then rewrites the href of the
+          link around it. "Call Now" contains no number, so this — the button
+          that follows a phone visitor down the whole page — kept the shop's
+          real number and every call from it went uncounted. The header
+          button already carried the number in hidden text, which is why it
+          worked. `data-gl-callsrc` lets widget.js read the swapped number
+          back for its own call links, which Google cannot reach. */}
       <a
         href={telHrefFor(client.phone)}
+        data-gl-callsrc={client.phone.replace(/\D/g, '')}
         className="min-h-[50px] rounded-[14px] font-bold text-base text-[var(--on-cta)] text-center flex items-center justify-center gap-2 no-underline bg-[var(--cta)] hover:bg-[var(--cta-b)]"
       >
         <Phone className="h-4 w-4" /> Call Now
+        <span className="sr-only" data-gl-callnum>
+          {client.phone}
+        </span>
       </a>
       {textHref && (
         <a

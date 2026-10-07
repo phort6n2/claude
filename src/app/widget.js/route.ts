@@ -187,6 +187,45 @@ const WIDGET_SOURCE = String.raw`(function () {
     return node;
   }
 
+  /* EVERY CALL LINK THIS SCRIPT DRAWS ADOPTS GOOGLE'S SWAPPED NUMBER.
+     Google's website-call swap (phone_conversion_number) rewrites the page's
+     own call links for a visitor who came from an ad — but it runs once,
+     shortly after load, and it never looks inside a shadow root. Every link
+     drawn here comes later, and most of them inside the card's shadow root:
+     the "please call us" link on a failed submit, the confirmation's "Rather
+     not wait? Call", the fallback card. So they kept the shop's tracked number
+     and the calls they produced were never counted. The page's sticky call bar
+     is a link Google DOES swap, and it carries data-gl-callsrc (the digits it
+     was rendered with) and a data-gl-callnum span (the number as text): when
+     its href no longer matches those digits, Google has swapped it, and our
+     link takes the same href and text. Checked again on click, so a swap that
+     lands after the link was drawn is still caught. On a site we do not host
+     there is no such bar, and nothing changes. */
+  function swappedCall(digits) {
+    var src = document.querySelector('a[data-gl-callsrc]');
+    if (!src) return null;
+    var mine = String(src.getAttribute('data-gl-callsrc') || '').slice(-10);
+    if (!mine || mine !== digits.slice(-10)) return null;
+    var href = src.getAttribute('href') || '';
+    if (href.replace(/\D/g, '').slice(-10) === mine) return null;
+    var label = src.querySelector('[data-gl-callnum]');
+    return { href: href, text: label ? (label.textContent || '').trim() : '' };
+  }
+  function callLink(number, text) {
+    number = String(number);
+    var digits = number.replace(/\D/g, '');
+    var a = el('a', { href: 'tel:' + number.replace(/[^+\d]/g, ''), text: text });
+    function sync() {
+      var s = swappedCall(digits);
+      if (!s) return;
+      a.setAttribute('href', s.href);
+      if (s.text && a.textContent.indexOf(number) !== -1) a.textContent = a.textContent.split(number).join(s.text);
+    }
+    sync();
+    a.addEventListener('click', sync);
+    return a;
+  }
+
   function darken(hex, f) {
     var m = /^#([0-9a-f]{6})$/i.exec(hex || '');
     if (!m) return hex;
@@ -692,10 +731,7 @@ const WIDGET_SOURCE = String.raw`(function () {
         if (callNumber) {
           var tail = ' Please call us at ';
           err.appendChild(document.createTextNode(friendly.split(tail)[0] + tail));
-          err.appendChild(el('a', {
-            href: 'tel:' + String(callNumber).replace(/[^+\d]/g, ''),
-            text: callNumber
-          }));
+          err.appendChild(callLink(callNumber, String(callNumber)));
           err.appendChild(document.createTextNode('.'));
         } else {
           err.textContent = friendly;
@@ -882,10 +918,7 @@ const WIDGET_SOURCE = String.raw`(function () {
              so the call is recorded and attributed. Its label carries the
              other half of the split: the sentence above is the call we make,
              this is the one they make if they would rather not wait. */
-          ok.appendChild(el('a', {
-            href: 'tel:' + callTo.replace(/[^+\d]/g, ''),
-            text: split ? 'Rather not wait? Call ' + callTo : 'Call ' + cfg.businessName + ' — ' + callTo
-          }));
+          ok.appendChild(callLink(callTo, split ? 'Rather not wait? Call ' + callTo : 'Call ' + cfg.businessName + ' — ' + callTo));
         }
         body.appendChild(ok);
         try { okHead.focus(); } catch (e) {}
@@ -1053,7 +1086,7 @@ const WIDGET_SOURCE = String.raw`(function () {
       var card = el('div');
       card.style.cssText = 'background:#fff;border:1px solid #e2d8d8;border-radius:20px;padding:24px;text-align:center;font-family:sans-serif;box-shadow:0 10px 20px -6px rgba(20,20,20,.08)';
       card.appendChild(el('p', { text: 'Call for your free quote — it takes about a minute.' }));
-      var a = el('a', { href: 'tel:' + phone.replace(/[^+\d]/g, ''), text: 'Call ' + phone });
+      var a = callLink(phone, 'Call ' + phone);
       a.style.cssText = 'display:block;margin-top:10px;padding:14px;border-radius:12px;background:#1a1a1a;color:#fff;font-weight:700;text-decoration:none';
       card.appendChild(a);
       c.appendChild(card);

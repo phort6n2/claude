@@ -43,7 +43,12 @@ export async function runCallCheck(clientId: string, days: number) {
   const today = new Date().toISOString().slice(0, 10)
 
   const leads = await prisma.lead.findMany({
-    where: { clientId, source: 'PHONE', createdAt: { gte: since } },
+    // TWILIO-TRACKED calls only. A PHONE lead without a CallSid is one HighLevel
+    // delivered from ITS numbers — never ours to match — and counting them
+    // read, on HV, ElitePro and Collision, as hundreds of calls "not from an ad
+    // button" that Google had supposedly missed (each with 0 answered, because
+    // HighLevel never told us the outcome).
+    where: { clientId, source: 'PHONE', createdAt: { gte: since }, twilioCallSid: { not: null } },
     select: { id: true, createdAt: true, phone: true, callStatus: true, callDurationSecs: true, twilioCallSid: true },
     orderBy: { createdAt: 'asc' },
   })
