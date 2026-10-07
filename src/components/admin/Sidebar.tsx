@@ -74,6 +74,9 @@ const navigation: NavSection[] = [
       { name: 'Integrations', href: '/admin/api-status', icon: Activity },
       { name: 'Lead capture', href: '/admin/webhook-status', icon: Radio },
       { name: 'Conversion tracking', href: '/admin/conversion-health', icon: Target },
+      // Calls our numbers recorded against the calls Google saw and credited —
+      // the one way to tell "fewer people call" from "Google counts fewer".
+      { name: 'Call check', href: '/admin/call-check', icon: PhoneCall },
       { name: 'Storage', href: '/admin/storage', icon: HardDrive },
       { name: 'Maintenance', href: '/admin/maintenance', icon: Wrench },
     ],

@@ -421,6 +421,27 @@ webhook routes.
     day rather than reasoning about it — NorthStar's 9:19 call came back
     `no-answer` after 26 seconds, which is the proof that made the three
     lunchtime busies an ordinary engaged line and not a fault.
+- **CALL CHECK: "fewer people call" vs "Google counts fewer"** (`call-check.ts`,
+  `/api/admin/call-check/[clientId]`, **Call check** under System in the
+  sidebar). After the move onto the app's pages, Google's `AGMP Website Call`
+  read a fraction of HighLevel's old `AGMP Call` while forms per click did not
+  move — and nothing inside Google Ads can say which of the two it is, because
+  Google only knows the calls it saw. So every PHONE lead is matched against
+  `call_view` (Google's log of calls placed from an AD's call button): same
+  area code when both are known, start times within two minutes, nearest
+  first, one-to-one. **`call_view` times are in the ACCOUNT's zone with no
+  offset on the string** — read `customer.time_zone`, convert twice across a
+  clock change. Matched = from the ad button; ours unmatched = website,
+  Business Profile or direct; Google's unmatched = a paid call that never
+  reached a tracking number (an alarm only if the call asset IS one of ours —
+  the page lists the assets' numbers). Weekly conversions by action sit beside
+  it, HighLevel's `AGMP Call` in its own column, and the conversions query
+  needs a BOUNDED date range or Google refuses it
+  (`EXPECTED_FILTERS_ON_DATE_RANGE`). First reading, ElitePro: the old
+  `AGMP Call` ran 6–14 a week and since cutover `AGMP Call From Ads` reads
+  22 — the calls moved COLUMN, which reads as a page-call collapse to anyone
+  comparing `AGMP Call` with `AGMP Website Call`. Read-only on both sides;
+  `scripts/check-call-check.ts` holds the clock and the matching traps.
 - **Vercel's runtime logs ARE the Twilio log for the last day** (Pro retention
   is 24h; wider windows return nothing and a broad query times out — scope to
   an hour or two). `[Twilio Voice]` names the client, the tracking number and
