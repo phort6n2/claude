@@ -66,6 +66,7 @@ async function handle(request: NextRequest) {
             googleLogStarts: r.googleLogStarts,
             callAssets: r.callAssets,
             totals: t,
+            callOutcomes: r.callOutcomes,
             verdicts: r.verdicts.map((v) => `${v.tone}: ${v.text}`),
           })
       )

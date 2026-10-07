@@ -85,10 +85,7 @@ export async function runCallCheck(clientId: string, days: number) {
         // Google refuses an open-ended range here (EXPECTED_FILTERS_ON_DATE_RANGE).
         `SELECT segments.week, segments.conversion_action_name, metrics.all_conversions FROM campaign WHERE segments.date BETWEEN '${sinceDay}' AND '${today}' AND metrics.all_conversions > 0`
       ),
-      adsSearch(
-        customerId,
-        `SELECT asset.call_asset.phone_number, asset.call_asset.country_code FROM asset WHERE asset.type = 'CALL'`
-      ),
+      liveCallAssets(customerId),
     ])
     if (tz.ok) {
       const zone = (tz.rows[0] as { customer?: { timeZone?: string } })?.customer?.timeZone
@@ -131,6 +128,14 @@ export async function runCallCheck(clientId: string, days: number) {
   }
 
   const match = matchCalls(appCalls, googleCalls)
+  // How each of our calls ended, as Twilio reported it — the difference between
+  // a shop that misses calls (no-answer, busy) and a forward that never
+  // connects (failed), which need opposite fixes.
+  const callOutcomes: Record<string, number> = {}
+  for (const c of appCalls) {
+    const k = c.status || 'unknown'
+    callOutcomes[k] = (callOutcomes[k] || 0) + 1
+  }
   // Every action by name, week by week — the page folds unfamiliar ones into
   // "other", but the old weeks are full of them ("Phone call click", "Calls
   // from ads") and reading the past means seeing which one counted what.
@@ -164,6 +169,7 @@ export async function runCallCheck(clientId: string, days: number) {
     verdicts: callCheckVerdicts({ weeks, callAssets, googleLogStarts }),
     byAction,
     googleLogStarts,
+    callOutcomes,
     // The leftovers, newest first, so a surprising count can be looked at.
     notFromAdButton: recent(match.appOnly).map((c) => ({
       at: c.at.toISOString(),
@@ -179,6 +185,26 @@ export async function runCallCheck(clientId: string, days: number) {
       durationSecs: c.durationSecs,
     })),
   }
+}
+
+/**
+ * The call numbers the ads can ACTUALLY ring: call assets linked and enabled
+ * at account level, or on an enabled campaign or ad group. Listing every CALL
+ * asset in the account read AGK as "6 of 7 not ours" when five of those were
+ * paused leftovers and the one live link was its tracking number — a finding
+ * about numbers nobody can reach.
+ */
+async function liveCallAssets(
+  customerId: string
+): Promise<{ ok: true; rows: Record<string, unknown>[] } | { ok: false; error: string }> {
+  const results = await Promise.all([
+    adsSearch(customerId, `SELECT asset.call_asset.phone_number FROM customer_asset WHERE customer_asset.field_type = 'CALL' AND customer_asset.status = 'ENABLED'`),
+    adsSearch(customerId, `SELECT asset.call_asset.phone_number FROM campaign_asset WHERE campaign_asset.field_type = 'CALL' AND campaign_asset.status = 'ENABLED' AND campaign.status = 'ENABLED'`),
+    adsSearch(customerId, `SELECT asset.call_asset.phone_number FROM ad_group_asset WHERE ad_group_asset.field_type = 'CALL' AND ad_group_asset.status = 'ENABLED' AND campaign.status = 'ENABLED' AND ad_group.status = 'ENABLED'`),
+  ])
+  const failed = results.find((r) => !r.ok)
+  if (failed && !failed.ok) return failed
+  return { ok: true, rows: results.flatMap((r) => (r.ok ? r.rows : [])) }
 }
 
 export type CallCheckResult = NonNullable<Awaited<ReturnType<typeof runCallCheck>>>
