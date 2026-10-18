@@ -186,6 +186,17 @@ export function touchFromLanding(landing: Landing): Omit<Touch, 'firstSeenAt'> |
   if (fromUtm) {
     return { ...base, source: fromUtm, medium: mediumFromUtm(utmMedium) || 'other', evidence: 'utm' }
   }
+  // 2b. The Meta landing page itself. ?v=meta exists only to be the website
+  // URL of a Meta ad, so it is Meta evidence in its own right — and it is the
+  // one that SURVIVES: iOS Link Tracking Protection strips fbclid in Mail,
+  // Messages and private Safari, and an ad set up without the URL parameters
+  // carries no utm_source. Without this a real Meta click could land on the
+  // Meta page and be shown the default number, which is exactly what opening
+  // the page by hand to check it did. After the click ids and UTMs, so a
+  // gclid or a stated utm_source still decides.
+  if ((q.get('v') || '').toLowerCase() === 'meta') {
+    return { ...base, source: 'meta', medium: mediumFromUtm(utmMedium) || 'paid', evidence: 'utm' }
+  }
   // 3. Referrer.
   const fromRef = sourceFromReferrer(referrer, u.host)
   if (fromRef) return { ...base, ...fromRef, evidence: 'referrer' }

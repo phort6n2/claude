@@ -185,7 +185,9 @@ arrive from the hosted sites' own form and from embedded widgets.
 
 - **Source is decided ONCE, on landing, by middleware**: click id
   (gclid/gbraid/wbraid → google, msclkid → microsoft, fbclid → meta), then
-  `utm_source`, then the referrer, then direct. It is written to a first-party
+  `utm_source`, then `?v=meta` (the Meta page exists only as a Meta ad's URL,
+  and it survives where fbclid does not — iOS strips it), then the referrer,
+  then direct. It is written to a first-party
   `gl_src` cookie (90 days) and handed to the page as `x-gl-src`, which
   middleware always OVERWRITES — nothing outside can pick a number by sending
   the header. A paid touch is only replaced by another paid touch; a returning
