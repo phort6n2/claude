@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { retryPendingDeliveries } from '@/lib/webhook-forwarding'
+import { retryPendingMetaDeliveries } from '@/lib/meta-capi'
 import { getFailingDestinations, claimUnalerted, emailDeliveryAlert } from '@/lib/delivery-health'
 
 export const dynamic = 'force-dynamic'
@@ -28,6 +29,16 @@ async function handle(request: NextRequest) {
   try {
     const result = await retryPendingDeliveries()
 
+    // Meta Conversions API events ride the same sweep. Separate try: a Meta
+    // outage must not stop lead forwarding retrying, nor the other way round.
+    let meta: { attempted: number; succeeded: number } | { error: string } = { attempted: 0, succeeded: 0 }
+    try {
+      meta = await retryPendingMetaDeliveries()
+    } catch (error) {
+      meta = { error: error instanceof Error ? error.message : String(error) }
+      console.error('[Cron] Meta CAPI retries failed:', meta.error)
+    }
+
     // Alert AFTER retrying, so a destination that recovered on this run is
     // never reported as failing. Wrapped separately: the retries are the job,
     // and a broken alert must not take them down with it.
@@ -44,7 +55,7 @@ async function handle(request: NextRequest) {
       console.error('[Cron] delivery alerting failed:', error)
     }
 
-    return NextResponse.json({ ...result, alerted })
+    return NextResponse.json({ ...result, alerted, meta })
   } catch (error) {
     // Tables may not exist yet if the code deployed before the SQL ran.
     const message = error instanceof Error ? error.message : String(error)

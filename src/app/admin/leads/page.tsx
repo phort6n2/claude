@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/theme'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
+import { TrafficSourceBadge, TRAFFIC_SOURCE_FILTER_OPTIONS } from '@/components/leads/TrafficSourceBadge'
 import { LeadQuickActions } from '@/components/leads/LeadQuickActions'
 import { DamagePhoto, damagePhotoOf, VehicleDecode } from '@/components/leads/DamagePhoto'
 import { useLeadStream } from '@/hooks/useLeadStream'
@@ -46,6 +47,8 @@ interface Lead {
   lastName: string | null
   status: string
   source: string
+  trafficSource?: string | null
+  trafficMedium?: string | null
   gclid: string | null
   utmCampaign: string | null
   utmKeyword: string | null
@@ -84,6 +87,8 @@ export default function LeadsPage() {
   const searchParams = useSearchParams()
   const [selectedClient, setSelectedClient] = useState<string>(searchParams.get('clientId') || '')
   const [selectedStatus, setSelectedStatus] = useState<string>('')
+  // Which platform sent the lead — lib/traffic-source.ts.
+  const [selectedSource, setSelectedSource] = useState<string>(searchParams.get('trafficSource') || '')
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null)
 
@@ -91,8 +96,8 @@ export default function LeadsPage() {
   // Refresh state (manual button + visibility-change catch-up)
   const [refreshing, setRefreshing] = useState(false)
   const [lastRefreshAt, setLastRefreshAt] = useState<number>(Date.now())
-  const filterRef = useRef({ selectedClient, selectedStatus, searchQuery })
-  filterRef.current = { selectedClient, selectedStatus, searchQuery }
+  const filterRef = useRef({ selectedClient, selectedStatus, selectedSource, searchQuery })
+  filterRef.current = { selectedClient, selectedStatus, selectedSource, searchQuery }
   // The offset for "load more" is the number of rows already held, read at
   // click time rather than closed over.
   const leadsRef = useRef(leads)
@@ -114,10 +119,11 @@ export default function LeadsPage() {
   // the spinner on the Refresh button signals progress without blowing away
   // expanded rows / in-progress edits.
   const fetchLeads = useCallback(async (mode: 'initial' | 'manual' | 'more' = 'initial') => {
-    const { selectedClient, selectedStatus, searchQuery } = filterRef.current
+    const { selectedClient, selectedStatus, selectedSource, searchQuery } = filterRef.current
     const params = new URLSearchParams()
     if (selectedClient) params.set('clientId', selectedClient)
     if (selectedStatus) params.set('status', selectedStatus)
+    if (selectedSource) params.set('trafficSource', selectedSource)
     // Searched server-side. Filtering in the browser only ever searched the
     // page that happened to be loaded, so a customer past the newest 50 came
     // back as "no leads found".
@@ -151,7 +157,7 @@ export default function LeadsPage() {
   // Initial / filter-change load (shows skeleton)
   useEffect(() => {
     fetchLeads('initial')
-  }, [selectedClient, selectedStatus, fetchLeads])
+  }, [selectedClient, selectedStatus, selectedSource, fetchLeads])
 
   // Typing re-queries the server, debounced. Skips the very first run so the
   // load above is not immediately duplicated.
@@ -174,6 +180,12 @@ export default function LeadsPage() {
   }, [selectedClient, selectedStatus])
 
   const handleStreamedLead = useCallback((lead: Lead) => {
+    // The stream does not know about the source filter, so with one set a new
+    // lead is fetched through the filtered list rather than prepended blind.
+    if (filterRef.current.selectedSource) {
+      void fetchLeads('manual')
+      return
+    }
     setLeads((prev) => (prev.some((l) => l.id === lead.id) ? prev : [lead, ...prev]))
     setTotal((t) => t + 1)
     setStats((s) => ({
@@ -183,7 +195,7 @@ export default function LeadsPage() {
         [lead.status]: (s.byStatus[lead.status] || 0) + 1,
       },
     }))
-  }, [])
+  }, [fetchLeads])
 
   useLeadStream<Lead>({ url: streamUrl, onLead: handleStreamedLead })
 
@@ -380,14 +392,32 @@ export default function LeadsPage() {
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
           </div>
 
+          {/* Source Filter */}
+          <div className="relative">
+            <select
+              value={selectedSource}
+              onChange={(e) => setSelectedSource(e.target.value)}
+              aria-label="Filter by source"
+              className="appearance-none pl-4 pr-10 py-2.5 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+            >
+              {TRAFFIC_SOURCE_FILTER_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          </div>
+
           {/* Clear Filters */}
-          {(selectedClient || selectedStatus || searchQuery) && (
+          {(selectedClient || selectedStatus || selectedSource || searchQuery) && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
                 setSelectedClient('')
                 setSelectedStatus('')
+                setSelectedSource('')
                 setSearchQuery('')
               }}
               className="rounded-xl"
@@ -649,6 +679,7 @@ function LeadRow({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
               <span className="font-medium text-gray-900">{fullName}</span>
+              <TrafficSourceBadge source={lead.trafficSource} medium={lead.trafficMedium} />
               {lead.callRecordingUrl && (
                 <PlayCircle className="h-4 w-4 text-violet-500 flex-shrink-0" />
               )}

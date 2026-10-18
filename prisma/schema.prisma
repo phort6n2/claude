@@ -344,6 +344,27 @@ model Lead {
   gbraid String? // Google GBRAID for iOS 14+
   wbraid String? // Google WBRAID for web-to-app
 
+  /// Which platform sent this visitor, decided by lib/traffic-source.ts in the
+  /// stated order: click id, then utm_source, then referrer, then direct.
+  /// google | microsoft | meta | other | direct | unknown. "unknown" is only
+  /// ever a backfill: a lead from before this column with no click id to
+  /// prove where it came from. Deliberately NOT the `source` enum, which is
+  /// the CHANNEL (form, phone, text) and is read by half the app.
+  trafficSource String?
+  /// paid | organic | social | referral | email | other | none.
+  trafficMedium String?
+  /// Microsoft's click id. Kept for the offline upload to Microsoft Ads that
+  /// will want it, the same way gclid is kept for Google's.
+  msclkid       String?
+  /// Meta's click id, and the two first-party Meta cookies the Conversions
+  /// API matches on. _fbc is built from fbclid when the Pixel did not set it.
+  fbclid        String?
+  fbc           String?
+  fbp           String?
+  /// The first time this browser was seen on the site (the gl_src cookie),
+  /// which can be weeks before the lead.
+  firstSeenAt   DateTime?
+
   // UTM Parameters (from your tracking template)
   utmSource    String? // adwords
   utmMedium    String? // {adname}
@@ -457,6 +478,7 @@ model Lead {
   @@index([createdAt])
   @@index([duplicateOfLeadId])
   @@index([clientId, phone, createdAt])
+  @@index([clientId, trafficSource])
 }
 
 /// One SMS/MMS on a tracking number.
@@ -685,6 +707,41 @@ enum WebhookDeliveryStatus {
   PENDING
   SUCCESS
   FAILED
+}
+
+/// One server-side event for Meta's Conversions API.
+///
+/// A row per event rather than a fire-and-forget call, for the same reason
+/// WebhookDelivery exists: the send happens after the lead has been answered,
+/// a network blip must not lose it, and "did Meta get this lead?" needs an
+/// answer that does not depend on a 24-hour log. The 15-minute retry cron
+/// picks up anything PENDING. The payload holds HASHED identifiers only — the
+/// access token is read from ClientAdsTracking at send time, never stored here.
+model MetaEventDelivery {
+  id       String  @id @default(cuid())
+  clientId String
+  leadId   String?
+  /// Shared with the browser Pixel's eventID, which is how Meta dedupes the two.
+  eventId   String
+  eventName String
+  payload   Json
+  /// Set when the event was sent to the Test Events tab rather than live.
+  testEventCode String?
+
+  status         WebhookDeliveryStatus @default(PENDING)
+  attempts       Int                   @default(0)
+  lastAttemptAt  DateTime?
+  responseStatus Int?
+  lastError      String?
+  /// Meta's own answer on success: events_received and its fbtrace_id.
+  response       Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([clientId, eventId, eventName])
+  @@index([status, updatedAt])
+  @@index([leadId])
 }
 
 // ============================================
@@ -1115,6 +1172,17 @@ model TrackingNumber {
    */
   useOnSite Boolean @default(false)
 
+  /**
+   * "microsoft" or "meta": shown on the site INSTEAD of the default number to
+   * visitors an ad on that platform sent (lib/traffic-source.ts), and written
+   * onto every call and text to it as the lead's trafficSource. Null is the
+   * default number — the one `useOnSite` marks — which is also what Google's
+   * own website-call swap is configured against, so Google is never a value
+   * here. One per platform per client, enforced on write, and a number with a
+   * platform is never the default one.
+   */
+  showTo String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1226,6 +1294,42 @@ model ClientAdsTracking {
    */
   bingUetTagId        String?
   bingLeadEventAction String?
+  /**
+   * Event action for a tap on a call link. Off (null) unless set, so a client
+   * that already runs UET sees no new event until somebody creates the goal
+   * and types its action here — an event with no goal behind it is noise.
+   */
+  bingCallEventAction String?
+
+  /**
+   * --- Meta (Facebook / Instagram) ---
+   * The Pixel id is public: it ships in the page source like the AW- id.
+   * The Conversions API token is NOT — it can send events as this business —
+   * so it is encrypted at rest and never leaves the server. The test event
+   * code routes events to Events Manager's Test Events tab instead of the
+   * live dataset; it is for a verification session and should be cleared.
+   */
+  metaPixelId        String?
+  metaCapiToken      String? // Encrypted
+  metaTestEventCode  String?
+  /**
+   * The ?v=meta landing variant. The offer line is optional and only ever
+   * what an operator typed for this shop (§2: never invented). Excluded
+   * services come off the variant's HOME page copy and its form options; a
+   * service page with ?v=meta is still that service, because pointing an ad
+   * at it is a choice somebody made on purpose.
+   */
+  metaVariantOffer            String?
+  metaVariantExcludedServices String[] @default([])
+
+  /**
+   * California's "Do Not Sell or Share" handling: the Global Privacy Control
+   * signal and the footer opt-out link switch off the Meta Pixel, Microsoft
+   * UET and the Conversions API for that visitor, and put Google's tag into
+   * restricted data processing. On by itself whenever a Meta Pixel is set;
+   * this turns it on for a client without one.
+   */
+  privacyChoices Boolean @default(false)
 
   /**
    * Which Google Ads account this client's conversions live in. Chosen from

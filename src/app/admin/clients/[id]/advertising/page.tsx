@@ -10,6 +10,7 @@ import AnalyticsCard from '@/components/admin/AnalyticsCard'
 import { decrypt } from '@/lib/encryption'
 import { formatPhoneDisplay } from '@/lib/lead-display'
 import { requireAdminPage } from '@/lib/admin-guard'
+import { PRIMARY_DOMAIN_SELECT, siteLinkFor } from '@/lib/site-origin'
 
 /**
  * "Advertising" tab: everything the site reports back to an ad network.
@@ -27,6 +28,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     where: { id },
     select: {
       id: true,
+      slug: true,
+      siteSubdomain: true,
+      domains: PRIMARY_DOMAIN_SELECT,
       phone: true,
       clarityProjectId: true,
       clarityApiToken: true,
@@ -79,6 +83,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           siteTrackingNumber={siteNumber}
           clarityProjectId={client.clarityProjectId}
           clarityMaskedToken={maskedToken}
+          siteLink={siteLinkFor(client)}
         />
       </section>
 

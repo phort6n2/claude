@@ -8,6 +8,7 @@ import { formatPhoneDisplay } from '@/lib/lead-display'
 // typed out: instructions that name an action and a checker that looks for a
 // different one is the failure the whole convention exists to prevent.
 import { CONVERSION_NAMES } from '@/lib/google-ads-conversion-names'
+import { MetaPanel, UetCallActionField } from '@/components/admin/MetaPanel'
 import ClarityPanel from '@/components/admin/ClarityPanel'
 import OfflineConversionsCard from '@/components/admin/OfflineConversionsCard'
 import { useConversionAudit } from '@/components/admin/ConversionAudit'
@@ -70,6 +71,9 @@ const NETWORKS = [
   // this one shop. Its own panel says what it actually does, so the shared tab
   // bar cannot imply it is conversion tracking.
   { id: 'clarity', label: 'Microsoft Clarity' },
+  // Pixel + Conversions API + the ?v=meta landing page. Saves through its own
+  // route (MetaPanel), so nothing on it can rebuild a Google conversion.
+  { id: 'meta', label: 'Meta' },
 ] as const
 
 type NetworkId = (typeof NETWORKS)[number]['id']
@@ -281,7 +285,10 @@ export default function AdsTrackingCard({
   siteTrackingNumber,
   clarityProjectId = null,
   clarityMaskedToken = null,
+  siteLink = '',
 }: {
+  /** The site's address, for the Meta landing page link. */
+  siteLink?: string
   clientId: string
   /** Shown in the calls instructions so the number to enter is unambiguous. */
   clientPhone?: string
@@ -291,6 +298,7 @@ export default function AdsTrackingCard({
   clarityMaskedToken?: string | null
 }) {
   const [clarityLive, setClarityLive] = useState(!!clarityProjectId)
+  const [metaLive, setMetaLive] = useState(false)
   const [current, setCurrent] = useState<Parsed | null>(null)
   const [unavailable, setUnavailable] = useState(false)
   const [leadSnippet, setLeadSnippet] = useState('')
@@ -527,7 +535,9 @@ export default function AdsTrackingCard({
               ? leadLive || callLive
               : net.id === 'microsoft'
                 ? bingLive
-                : clarityLive
+                : net.id === 'meta'
+                  ? metaLive
+                  : clarityLive
           const active = network === net.id
           return (
             <button
@@ -1028,6 +1038,7 @@ export default function AdsTrackingCard({
               <code className="font-mono">{DEFAULT_BING_ACTION}</code>.
             </p>
           </div>
+          <UetCallActionField clientId={clientId} enabled={bingLive} />
         </div>
       </div>
       )}
@@ -1036,7 +1047,7 @@ export default function AdsTrackingCard({
           it is one decision about what leaves the page, not a per-network dial.
           Hidden on the Clarity tab: it reports no conversions, so the control
           and its "applies to both networks" label are meaningless there. */}
-      {network !== 'clarity' && (
+      {(network === 'google' || network === 'microsoft') && (
       <label className="flex items-start gap-2 text-sm text-gray-700 border-t border-gray-200 pt-4">
         <input
           type="checkbox"
@@ -1058,7 +1069,7 @@ export default function AdsTrackingCard({
       </label>
       )}
 
-      {network !== 'clarity' && checks && (
+      {(network === 'google' || network === 'microsoft') && checks && (
         <div className="rounded-lg border border-gray-200 divide-y divide-gray-200 text-sm">
           <div className="px-3 py-2 text-xs text-gray-500">
             Checked the live page at {checkedHost || 'the site'}
@@ -1090,6 +1101,13 @@ export default function AdsTrackingCard({
       {/* Clarity saves itself — its two fields go to their own route, and it
           carries its own buttons. The shared footer below belongs to the two
           conversion panels and would be a dead "Save tracking" here. */}
+      {/* Mounted even while another tab is showing, and hidden: the tab bar's
+          live dot for Meta comes from the panel's own load, so it has to have
+          loaded before anybody clicks the tab. It saves through its own route. */}
+      <div hidden={network !== 'meta'}>
+        <MetaPanel clientId={clientId} siteLink={siteLink} onConfiguredChange={setMetaLive} />
+      </div>
+
       {network === 'clarity' && (
         <ClarityPanel
           clientId={clientId}
@@ -1099,7 +1117,7 @@ export default function AdsTrackingCard({
         />
       )}
 
-      {network !== 'clarity' && (
+      {(network === 'google' || network === 'microsoft') && (
       <div className="flex flex-wrap items-center gap-3 border-t border-gray-200 pt-4">
         <button
           type="button"

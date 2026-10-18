@@ -35,6 +35,26 @@ export interface AdsTracking {
    * campaign.
    */
   ga4MeasurementId: string | null
+  /** UET event action for a tap on a call link; null = no call event. */
+  bingCallEventAction: string | null
+  /** Meta Pixel id (public). Null = no Pixel on the page. */
+  metaPixelId: string | null
+  /**
+   * A Test Events code is set: somebody is verifying the Meta setup, so a
+   * dry-run submission may fire the browser Pixel too (lib/lead-test-mode).
+   */
+  metaTestMode: boolean
+  /** A Conversions API token is stored (its value never leaves the server). */
+  metaCapi: boolean
+  /**
+   * California "Do Not Sell or Share" handling is on: GPC and the footer
+   * opt-out switch off Meta and UET and restrict Google. Always on with a
+   * Meta Pixel, because the Pixel is the tag the law is written about.
+   */
+  privacyChoices: boolean
+  /** ?v=meta landing variant settings (components/sites/meta-variant). */
+  metaVariantOffer: string | null
+  metaVariantExcludedServices: string[]
 }
 
 /** "AW-123456789" — anything else is a typo we refuse to emit. */
@@ -63,7 +83,22 @@ export async function getAdsTracking(clientId: string): Promise<AdsTracking | nu
     ? (row.ga4MeasurementId as string).trim().toUpperCase()
     : null
 
+  const bingCallEventAction = bingUetTagId ? (row.bingCallEventAction || '').trim() || null : null
+  const metaPixelId = /^\d{8,20}$/.test((row.metaPixelId || '').trim()) ? (row.metaPixelId as string).trim() : null
+  const meta = {
+    bingCallEventAction,
+    metaPixelId,
+    metaTestMode: !!metaPixelId && !!(row.metaTestEventCode || '').trim(),
+    metaCapi: !!metaPixelId && !!row.metaCapiToken,
+    privacyChoices: !!metaPixelId || row.privacyChoices === true,
+    metaVariantOffer: (row.metaVariantOffer || '').trim() || null,
+    metaVariantExcludedServices: Array.isArray(row.metaVariantExcludedServices) ? row.metaVariantExcludedServices : [],
+  }
+  // Anything that puts a tag on the page is a reason to return a row.
+  const anyTag = !!(bingUetTagId || ga4MeasurementId || metaPixelId || meta.privacyChoices)
+
   const empty = {
+    ...meta,
     conversionId: '',
     leadSendTo: null,
     leadValue: null,
@@ -77,10 +112,10 @@ export async function getAdsTracking(clientId: string): Promise<AdsTracking | nu
   }
 
   // Analytics alone is a complete reason to load the tag.
-  if (!row.conversionId) return bingUetTagId || ga4MeasurementId ? empty : null
+  if (!row.conversionId) return anyTag ? empty : null
 
   const conversionId = row.conversionId.trim()
-  if (!isConversionId(conversionId)) return bingUetTagId || ga4MeasurementId ? empty : null
+  if (!isConversionId(conversionId)) return anyTag ? empty : null
 
   const label = (value: string | null) => {
     const trimmed = (value || '').trim()
@@ -95,7 +130,7 @@ export async function getAdsTracking(clientId: string): Promise<AdsTracking | nu
   // An ID with no lead label can still legitimately exist — a client who only
   // reports calls from the page — but an ID with neither has nothing to
   // report, so there is no reason to load the tag at all.
-  if (!leadSendTo && !callSendTo) return bingUetTagId || ga4MeasurementId ? empty : null
+  if (!leadSendTo && !callSendTo) return anyTag ? empty : null
 
   return {
     conversionId,
@@ -108,5 +143,6 @@ export async function getAdsTracking(clientId: string): Promise<AdsTracking | nu
     bingUetTagId,
     bingLeadEventAction,
     ga4MeasurementId,
+    ...meta,
   }
 }

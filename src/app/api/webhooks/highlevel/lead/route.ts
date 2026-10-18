@@ -15,6 +15,17 @@ import { decideOrigin, requestHost } from '@/lib/lead-origin-policy'
 import { outcomeUrlFor } from '@/lib/lead-outcome-token'
 import { decodeVin, calibrationLabel } from '@/lib/vin-decode'
 import { Prisma } from '@prisma/client'
+import { randomUUID } from 'crypto'
+import { SOURCE_COOKIE, decodeTouch, leadTrafficSource } from '@/lib/traffic-source'
+import {
+  attemptMetaDelivery,
+  buildMetaEvent,
+  clientIpFrom,
+  metaConfigFor,
+  postMetaEvent,
+  queueMetaLead,
+} from '@/lib/meta-capi'
+import { isValidTestToken } from '@/lib/lead-test-mode'
 
 export const dynamic = 'force-dynamic'
 
@@ -573,8 +584,61 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
     const referrerUrl = getText('referrer') ?? asText(attributionSource.referrer) ?? null
 
     // iOS click identifiers, same lookup treatment as gclid.
-    const gbraid = getText('gbraid') ?? asText(attributionSource.gbraid) ?? null
-    const wbraid = getText('wbraid') ?? asText(attributionSource.wbraid) ?? null
+    let gbraid = getText('gbraid') ?? asText(attributionSource.gbraid) ?? null
+    let wbraid = getText('wbraid') ?? asText(attributionSource.wbraid) ?? null
+
+    /* WHERE THE VISITOR CAME FROM (lib/traffic-source.ts).
+       The widget posts its own reading, but the gl_src cookie middleware
+       wrote on landing rides on this request too whenever the form was on our
+       own site — and for the no-JavaScript form it is the ONLY attribution
+       there is, since a plain <form> carries no hidden click ids. So anything
+       the payload lacks is filled from the cookie. A server-to-server post
+       (HighLevel) has no cookie and keeps exactly what it sent. */
+    const touch = decodeTouch(request.cookies.get(SOURCE_COOKIE)?.value)
+    let attrGclid = gclid
+    if (touch) {
+      attrGclid = attrGclid ?? touch.clickIds.gclid ?? null
+      gbraid = gbraid ?? touch.clickIds.gbraid ?? null
+      wbraid = wbraid ?? touch.clickIds.wbraid ?? null
+    }
+    const msclkid = getText('msclkid') ?? touch?.clickIds.msclkid ?? null
+    const fbclid = getText('fbclid') ?? touch?.clickIds.fbclid ?? null
+    const finalUtmSource = utmSource ?? touch?.utm.utm_source ?? null
+    const finalUtmMedium = utmMedium ?? touch?.utm.utm_medium ?? null
+    const finalUtmCampaign = utmCampaign ?? touch?.utm.utm_campaign ?? null
+    const finalLandingPage = landingPageUrl ?? touch?.landingPage ?? null
+    const finalReferrer = referrerUrl ?? touch?.referrer ?? null
+    const traffic = leadTrafficSource({
+      gclid: attrGclid,
+      gbraid,
+      wbraid,
+      msclkid,
+      fbclid,
+      utmSource: finalUtmSource,
+      utmMedium: finalUtmMedium,
+      trafficSource: getText('traffic_source') ?? touch?.source ?? null,
+      trafficMedium: getText('traffic_medium') ?? touch?.medium ?? null,
+      referrer: finalReferrer,
+      landingPage: finalLandingPage,
+    })
+    const firstSeenRaw = getText('first_seen_at')
+    const firstSeenAt = (() => {
+      const d = firstSeenRaw ? new Date(firstSeenRaw) : touch ? new Date(touch.firstSeenAt) : null
+      return d && !Number.isNaN(d.getTime()) && d.getTime() <= Date.now() + 60_000 ? d : null
+    })()
+    const fbp = getText('fbp') ?? request.cookies.get('_fbp')?.value ?? null
+    const fbc =
+      getText('fbc') ??
+      request.cookies.get('_fbc')?.value ??
+      (fbclid ? `fb.1.${touch?.touchedAt ?? Date.now()}.${fbclid}` : null)
+    // The visitor said no to "sharing": the browser's Global Privacy Control
+    // (sent as Sec-GPC on the request itself) or the site's opt-out link.
+    const privacyOptOut =
+      request.headers.get('sec-gpc') === '1' ||
+      getText('privacy_opt_out') === 'yes' ||
+      request.cookies.get('gl_optout')?.value === '1'
+    const isOwnForm = ['glassleads-widget', 'glassleads-noscript'].includes(asText(payload.form_name) || '')
+    const metaEventId = getText('meta_event_id') ?? (isOwnForm ? randomUUID() : null)
 
     // Log attribution data for debugging
     console.log(`[HighLevel Webhook] Attribution data:`, {
@@ -626,6 +690,78 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
       console.log(`[HighLevel Webhook] PHONE LEAD - Recording URL: ${callRecordingUrl || 'not found'}`)
     }
 
+    const leadAttribution = {
+      gclid: attrGclid,
+      gbraid,
+      wbraid,
+      msclkid,
+      fbclid,
+      fbc,
+      fbp,
+      utmSource: finalUtmSource,
+      utmMedium: finalUtmMedium,
+      utmCampaign: finalUtmCampaign,
+      utmContent,
+      utmKeyword,
+      utmMatchtype,
+      campaignId,
+      adGroupId,
+      adId,
+      landingPageUrl: finalLandingPage,
+      referrerUrl: finalReferrer,
+      trafficSource: traffic.source,
+      trafficMedium: traffic.medium,
+    }
+    const metaFacts = {
+      clientId: client.id,
+      eventId: metaEventId || randomUUID(),
+      eventTime: new Date(),
+      eventSourceUrl: getText('page') ?? finalLandingPage,
+      email,
+      phone,
+      firstName: finalFirstName,
+      lastName: finalLastName,
+      zip: postalCode ? String(postalCode) : null,
+      country: asText(payload.country),
+      fbc,
+      fbp,
+      clientIp: clientIpFrom(request.headers),
+      userAgent: request.headers.get('user-agent'),
+    }
+
+    /* DRY RUN (lib/lead-test-mode.ts). Everything above has run exactly as
+       for a real lead, so what comes back is what WOULD be stored. Nothing
+       below runs: no row, no alert, no forwarding. Meta gets the event only
+       through the Test Events code — never the live dataset. */
+    if (isValidTestToken(payload._test_token, client.id)) {
+      let meta: Record<string, unknown> = { sent: false, reason: 'No Meta Conversions API configured for this client' }
+      if (privacyOptOut) {
+        meta = { sent: false, reason: 'Visitor opted out of sharing (GPC or the site link) — nothing would be sent' }
+      } else if (isOwnForm) {
+        const config = await metaConfigFor(client.id)
+        if (config && !config.testEventCode) {
+          meta = { sent: false, reason: 'Set a Test Events code on the Meta tab to send test events' }
+        } else if (config) {
+          const event = buildMetaEvent({ ...metaFacts, leadId: null })
+          const result = await postMetaEvent(config, event, config.testEventCode)
+          meta = { sent: result.ok, testEventCode: config.testEventCode, eventId: metaFacts.eventId, status: result.status, error: result.error, response: result.response }
+          console.log(`[HighLevel Webhook] DRY RUN Meta test event ${metaFacts.eventId}: ${result.ok ? 'sent' : result.error}`)
+        }
+      }
+      console.log(
+        `[HighLevel Webhook] DRY RUN for ${client.businessName} — nothing stored, alerted or forwarded:`,
+        JSON.stringify({ ...leadAttribution, firstSeenAt, source: leadSource })
+      )
+      const body = {
+        success: true,
+        dryRun: true,
+        wouldStore: { ...leadAttribution, firstSeenAt, source: leadSource, formName: asText(payload.form_name) },
+        privacyOptOut,
+        meta,
+      }
+      return isFormPost ? formRedirect(true) : NextResponse.json(body)
+    }
+
     // Same-day dedup: if this customer already contacted us today, the new
     // row is created normally but linked back to the canonical so counts
     // aren't inflated. Status/saleValue still live on the canonical.
@@ -657,21 +793,10 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
         phone,
         firstName: finalFirstName,
         lastName: finalLastName,
-        gclid,
-        gbraid,
-        wbraid,
-        // UTM Parameters
-        utmSource,
-        utmMedium,
-        utmCampaign,
-        utmContent,
-        utmKeyword,
-        utmMatchtype,
-        campaignId,
-        adGroupId,
-        adId,
-        landingPageUrl,
-        referrerUrl,
+        // Click ids, UTMs, landing page, referrer and the traffic source —
+        // the payload's own values first, the gl_src cookie for the gaps.
+        ...leadAttribution,
+        firstSeenAt,
         // Other fields
         source: leadSource,
         formData: Object.keys(formData).length > 0 ? (formData as Prisma.InputJsonValue) : undefined,
@@ -688,6 +813,22 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
         duplicateOfLeadId ? ` (duplicate of ${duplicateOfLeadId})` : ''
       }`
     )
+
+    // Meta Conversions API: the server-side copy of the Pixel's Lead, with the
+    // same event id so Meta keeps one. Only for our own forms (a CRM's copy
+    // of the same enquiry had no Pixel event to pair with), and never for a
+    // visitor who opted out of sharing. queueMetaLead is a no-op for a client
+    // without a Pixel and token, which is every client until one is set.
+    if (isOwnForm && !privacyOptOut) {
+      try {
+        const metaId = await queueMetaLead({ ...metaFacts, leadId: lead.id })
+        if (metaId) after(async () => { await attemptMetaDelivery(metaId) })
+      } catch (err) {
+        console.error('[HighLevel Webhook] Failed to queue Meta event:', err)
+      }
+    } else if (isOwnForm && privacyOptOut) {
+      console.log(`[HighLevel Webhook] Lead ${lead.id}: visitor opted out of sharing — no Meta event`)
+    }
 
     // Forward the original payload to the client's configured outbound
     // webhooks (e.g. their HighLevel inbound webhook). The lead is already
@@ -763,12 +904,7 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
         // insert-time dedup guessed.
         if (survivorId) {
           try {
-            const filled = await mergeAttributionIntoCanonical(survivorId, {
-              gclid, gbraid, wbraid,
-              utmSource, utmMedium, utmCampaign, utmContent, utmKeyword, utmMatchtype,
-              campaignId, adGroupId, adId,
-              landingPageUrl, referrerUrl,
-            })
+            const filled = await mergeAttributionIntoCanonical(survivorId, leadAttribution)
             if (filled.length) {
               console.log(
                 `[HighLevel Webhook] Backfilled ${filled.join(', ')} onto canonical ${survivorId} from ${lead.id}`
@@ -847,17 +983,17 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
           // the alert — which for a shop tagging its links by keyword meant
           // the one field carrying the answer stopped at the database.
           attribution: {
-            gclid,
+            gclid: attrGclid,
             gbraid,
             wbraid,
-            // No Lead columns of their own — they were captured into formData
-            // and stopped there, so a Bing Ads lead reached the shop's inbox
-            // looking untracked while the admin list called it Microsoft Ads.
-            msclkid: text(formData.msclkid) || null,
+            // Columns of their own now, filled from the cookie as well as the
+            // payload — a Bing Ads lead once reached the shop's inbox looking
+            // untracked while the admin list called it Microsoft Ads.
+            msclkid,
             ttclid: text(formData.ttclid) || null,
-            utmSource,
-            utmMedium,
-            utmCampaign,
+            utmSource: finalUtmSource,
+            utmMedium: finalUtmMedium,
+            utmCampaign: finalUtmCampaign,
             utmContent,
             utmKeyword,
           },

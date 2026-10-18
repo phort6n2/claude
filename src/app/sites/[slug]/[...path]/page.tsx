@@ -96,6 +96,7 @@ export const dynamic = 'force-dynamic'
 
 interface PageProps {
   params: Promise<{ slug: string; path: string[] }>
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
 }
 
 async function getClient(slug: string) {
@@ -185,7 +186,7 @@ async function resolve(slug: string, segments: string[]) {
   return { client, path, page, redirect }
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { slug, path } = await params
   const { client, page } = await resolve(slug, path)
   if (!client) return { title: 'Not Found' }
@@ -212,7 +213,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const city = cityFromPath(flat)
     if (city) return locationMetadata({ params: Promise.resolve({ slug, city }) })
     if (getServicePage(flat)) {
-      return serviceMetadata({ params: Promise.resolve({ slug, service: flat }) })
+      // searchParams travel so the ?v=meta variant is noindexed here too.
+      return serviceMetadata({ params: Promise.resolve({ slug, service: flat }), searchParams })
     }
     // The insurance-claim page. It has no route file of its own on purpose —
     // one flat address per page — so this and the render below are the only
@@ -258,7 +260,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-export default async function CatchAllPage({ params }: PageProps) {
+export default async function CatchAllPage({ params, searchParams }: PageProps) {
   const { slug, path } = await params
   const { client, page, redirect } = await resolve(slug, path)
   if (!client) notFound()
@@ -285,7 +287,13 @@ export default async function CatchAllPage({ params }: PageProps) {
     // /sites/{slug} preview — the one place an operator checks the site
     // before pointing a domain at it.
     if (getServicePage(flat)) {
-      return <ServicePage params={Promise.resolve({ slug, service: flat })} atOverride={!!moved} />
+      return (
+        <ServicePage
+          params={Promise.resolve({ slug, service: flat })}
+          atOverride={!!moved}
+          searchParams={searchParams}
+        />
+      )
     }
     // The insurance-claim page — see lib/insurance-programs.ts. It 404s
     // itself unless THIS client's record names this programme and the page is
@@ -529,6 +537,7 @@ export default async function CatchAllPage({ params }: PageProps) {
       </main>
 
       <SiteChrome
+        privacyChoices={!!adsTracking?.privacyChoices}
         insuranceProgram={insuranceProgram}
         client={client}
         flags={flags}

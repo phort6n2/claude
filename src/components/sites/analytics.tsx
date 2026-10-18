@@ -43,6 +43,8 @@ export type SitePageType =
   | 'blog'
   | 'kept'
   | 'insurance'
+  /** The ?v=meta landing variant (components/sites/meta-variant.tsx). */
+  | 'meta'
 
 const LOADER = (projectId: string) =>
   `(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};` +

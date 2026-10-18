@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getPortalSession } from '@/lib/portal-auth'
 import { getCallsToRingBack } from '@/lib/call-patterns'
+import { TRAFFIC_SOURCES } from '@/lib/traffic-source'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,6 +20,8 @@ export async function GET(request: NextRequest) {
   const dateStr = searchParams.get('date') // Format: YYYY-MM-DD
   const limit = parseInt(searchParams.get('limit') || '100')
   const offset = parseInt(searchParams.get('offset') || '0')
+  // google | microsoft | meta | other | direct | unknown — lib/traffic-source.
+  const trafficSource = (searchParams.get('trafficSource') || '').trim()
 
   try {
     // Helper function to get start/end of day in client's timezone
@@ -50,6 +53,15 @@ export async function GET(request: NextRequest) {
 
     if (status) {
       where.status = status
+    }
+
+    if ((TRAFFIC_SOURCES as readonly string[]).includes(trafficSource)) {
+      // "unknown" includes rows the boot backfill has not reached yet.
+      where.AND = [
+        trafficSource === 'unknown'
+          ? { OR: [{ trafficSource: 'unknown' }, { trafficSource: null }] }
+          : { trafficSource },
+      ]
     }
 
     // Date filter - filter by the date the lead was created in client's timezone
@@ -91,6 +103,10 @@ export async function GET(request: NextRequest) {
           gclid: true,
           gbraid: true,
           wbraid: true,
+          msclkid: true,
+          fbclid: true,
+          trafficSource: true,
+          trafficMedium: true,
           utmSource: true,
           utmMedium: true,
           utmCampaign: true,
@@ -140,6 +156,10 @@ export async function GET(request: NextRequest) {
               gclid: true,
               gbraid: true,
               wbraid: true,
+              msclkid: true,
+              fbclid: true,
+              trafficSource: true,
+              trafficMedium: true,
               utmSource: true,
               utmMedium: true,
               utmCampaign: true,

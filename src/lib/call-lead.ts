@@ -4,6 +4,7 @@ import { earliestSameDayContact } from '@/lib/lead-dedup'
 import { notifyNewLead as notifyLeadRecipients } from '@/lib/lead-notifications'
 import { notifyNewLead as notifyAdminPush } from '@/lib/push-notifications'
 import { outcomeUrlFor } from '@/lib/lead-outcome-token'
+import { trafficSourceForNumber } from '@/lib/traffic-source'
 import type { TrackingNumber } from '@prisma/client'
 
 /**
@@ -117,6 +118,12 @@ export async function recordCall(
         callDurationSecs: facts.durationSeconds ?? null,
         callRecordingUrl: facts.recordingUrl ?? null,
         formName: number.label ? `Call — ${number.label}` : 'Call',
+        // A call carries no click id; the NUMBER dialled is the evidence. A
+        // Microsoft or Meta number is only ever shown to visitors those ads
+        // sent (lib/traffic-source.ts). The default number is everyone else —
+        // Google, organic, the Business Profile — so it says "unknown" rather
+        // than guessing which.
+        trafficSource: trafficSourceForNumber(number),
       },
     })
     leadId = lead.id

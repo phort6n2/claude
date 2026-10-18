@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma, withRetry } from '@/lib/db'
 import { auth } from '@/lib/auth'
+import { TRAFFIC_SOURCES } from '@/lib/traffic-source'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,6 +30,8 @@ export async function GET(request: NextRequest) {
   // page of rows, so a filter applied client-side searched those and quietly
   // reported "no leads found" for a customer who is in the database.
   const query = (searchParams.get('q') || '').trim()
+  // google | microsoft | meta | other | direct | unknown — lib/traffic-source.
+  const trafficSource = (searchParams.get('trafficSource') || '').trim()
 
   try {
     // Build where clause
@@ -44,6 +47,16 @@ export async function GET(request: NextRequest) {
 
     if (!includeDuplicates) {
       where.duplicateOfLeadId = null
+    }
+
+    if ((TRAFFIC_SOURCES as readonly string[]).includes(trafficSource)) {
+      // "unknown" includes rows the boot backfill has not reached yet.
+      where.AND = [
+        ...((where.AND as unknown[]) || []),
+        trafficSource === 'unknown'
+          ? { OR: [{ trafficSource: 'unknown' }, { trafficSource: null }] }
+          : { trafficSource },
+      ]
     }
 
     if (query) {
@@ -105,6 +118,10 @@ export async function GET(request: NextRequest) {
                 gclid: true,
                 gbraid: true,
                 wbraid: true,
+                msclkid: true,
+                fbclid: true,
+                trafficSource: true,
+                trafficMedium: true,
                 utmSource: true,
                 utmMedium: true,
                 utmCampaign: true,

@@ -76,6 +76,10 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       utmMedium: true,
       utmCampaign: true,
       gclid: true,
+      trafficSource: true,
+      trafficMedium: true,
+      msclkid: true,
+      fbclid: true,
     },
   })
 
@@ -84,6 +88,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     'Sale value', 'Sale date', 'Sale notes', 'Quote value', 'Form', 'Vehicle',
     'Service', 'ZIP', 'Landing page', 'UTM source', 'UTM medium',
     'UTM campaign', 'GCLID',
+    // Appended, not inserted: a sheet somebody built on the old column order
+    // keeps working.
+    'Traffic source', 'Traffic medium', 'MSCLKID', 'FBCLID',
   ]
 
   const rows = leads.map((l) =>
@@ -92,6 +99,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       l.saleValue, l.saleDate, l.saleNotes, l.quoteValue, l.formName,
       field(l.formData, 'vehicle'), field(l.formData, 'service'), field(l.formData, 'zip'),
       l.landingPageUrl, l.utmSource, l.utmMedium, l.utmCampaign, l.gclid,
+      l.trafficSource, l.trafficMedium, l.msclkid, l.fbclid,
     ].map(cell).join(',')
   )
 

@@ -50,6 +50,8 @@ import { getClientLocations } from '@/lib/client-locations'
 import { cityIsIndexable, getCityContent } from '@/lib/city-content'
 import { hostStanceFor, siteOriginFor, sitePathPrefixFor } from '@/lib/site-origin'
 import { getAdsTracking } from '@/lib/ads-tracking'
+import { MetaVariant } from '@/components/sites/meta-variant'
+import { isMetaVariant } from '@/lib/meta-variant'
 import { GoogleTag } from '@/components/sites/GoogleTag'
 import { CustomScripts } from '@/components/sites/CustomScripts'
 import { mergeServiceAreas } from '@/lib/site-locations'
@@ -72,6 +74,8 @@ interface PageProps {
    * fire on the very address it redirects TO, which is a loop.
    */
   atOverride?: boolean
+  /** ?v=meta renders the Meta landing variant — see lib/meta-variant.ts. */
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
 }
 
 async function getClient(slug: string) {
@@ -146,8 +150,9 @@ async function getReviews(clientId: string): Promise<ReviewsData | null> {
   }
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { slug, service } = await params
+  const metaVariant = isMetaVariant(await searchParams)
   const page = getServicePage(service)
   const client = await getClient(slug)
   if (!page || !client || !(await canViewSite(client.status))) return { title: 'Not Found' }
@@ -159,7 +164,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // The two are kept apart deliberately — see src/lib/site-origin.ts.
   const stance = hostStanceFor(client, (await headers()).get('host'))
   const siteRoot = stance.canonicalOrigin
-  const robots = stance.isCanonicalHost ? undefined : { index: false, follow: true }
+  // The Meta variant is never indexed; the canonical still names this page.
+  const robots = stance.isCanonicalHost && !metaVariant ? undefined : { index: false, follow: true }
   // The words of THIS address, which is what an ad promised and what the
   // visitor searched — see SERVICE_ALIASES.
   const heading = serviceHeading(service)
@@ -183,8 +189,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-export default async function ServicePage({ params, atOverride }: PageProps) {
+export default async function ServicePage({ params, atOverride, searchParams }: PageProps) {
   const { slug, service } = await params
+  const metaVariant = isMetaVariant(await searchParams)
   const page = getServicePage(service)
   if (!page) notFound()
 
@@ -274,6 +281,32 @@ export default async function ServicePage({ params, atOverride }: PageProps) {
   // The strip is told what the bullets above it already say, so the two
   // cannot repeat each other — see TRUST_TOPICS.
   const trustItems = wroteOwnBullets ? buildTrustItems(client, flags, extras, heroBullets) : []
+
+  if (metaVariant) {
+    // The service itself is the point of this page, so nothing is excluded
+    // and the form arrives with it chosen (unless it is a delivery method,
+    // not a glass type — see ServicePage.preselect).
+    return (
+      <MetaVariant
+        client={client}
+        preview={preview}
+        previewStatus={client.status}
+        clarityProjectId={client.clarityProjectId}
+        headScripts={client.headScripts}
+        bodyEndScripts={client.bodyEndScripts}
+        flags={flags}
+        reviews={reviews}
+        extras={extras}
+        services={services}
+        areas={areas}
+        basePath={basePath}
+        adsTracking={adsTracking}
+        heroTitle={`${heading} in ${headlineArea(client)}`}
+        eyebrow={areaWithState(client)}
+        service={page.preselect === false ? undefined : page.name}
+      />
+    )
+  }
 
   // The service's own copy leads the page, chapter-style, with body photos.
   // The service's own copy leads, then the client's real story follows: the
@@ -436,6 +469,7 @@ export default async function ServicePage({ params, atOverride }: PageProps) {
       </main>
 
       <SiteChrome
+        privacyChoices={!!adsTracking?.privacyChoices}
         insuranceProgram={insuranceProgram}
         client={client}
         flags={flags}

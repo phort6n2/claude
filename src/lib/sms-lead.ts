@@ -4,6 +4,7 @@ import { notifyNewLead as notifyLeadRecipients } from '@/lib/lead-notifications'
 import { notifyNewLead as notifyAdminPush } from '@/lib/push-notifications'
 import { outcomeUrlFor } from '@/lib/lead-outcome-token'
 import { isRenderableImage } from '@/lib/twilio-sms'
+import { trafficSourceForNumber } from '@/lib/traffic-source'
 import type { TrackingNumber } from '@prisma/client'
 
 /**
@@ -97,6 +98,8 @@ export async function recordInboundSms(
         status: 'NEW',
         trackingNumber: facts.to,
         formName: number.label ? `Text — ${number.label}` : 'Text',
+        // Same rule as a call: the number texted is the only evidence.
+        trafficSource: trafficSourceForNumber(number),
       },
     })
     leadId = lead.id

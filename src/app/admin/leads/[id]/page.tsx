@@ -31,9 +31,17 @@ import { STATUS_CONFIG, STATUS_OPTIONS, relativeAge, statusStyle } from '@/lib/l
 import { callOutcome } from '@/lib/call-display'
 import { LeadTexts, type LeadTextMessage } from '@/components/leads/DamagePhoto'
 import { Button } from '@/components/ui/Button'
+import { TrafficSourceBadge } from '@/components/leads/TrafficSourceBadge'
 
 interface Lead {
   id: string
+  trafficSource?: string | null
+  trafficMedium?: string | null
+  msclkid?: string | null
+  fbclid?: string | null
+  fbc?: string | null
+  fbp?: string | null
+  firstSeenAt?: string | null
   email: string | null
   phone: string | null
   firstName: string | null
@@ -582,6 +590,31 @@ export default function LeadDetailPage() {
               </h4>
 
               <div className="space-y-3">
+                {/* Where the visitor came from — lib/traffic-source.ts. */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-gray-500">Source</span>
+                  <TrafficSourceBadge source={lead.trafficSource} medium={lead.trafficMedium} />
+                </div>
+                {([
+                  ['MSCLKID', lead.msclkid],
+                  ['FBCLID', lead.fbclid],
+                  ['Meta fbc', lead.fbc],
+                  ['Meta fbp', lead.fbp],
+                ] as Array<[string, string | null | undefined]>)
+                  .filter(([, v]) => !!v)
+                  .map(([label, v]) => (
+                    <div key={label}>
+                      <span className="text-xs font-medium text-gray-500">{label}</span>
+                      <code className="mt-1 block text-xs bg-gray-100 px-2 py-1 rounded font-mono text-gray-700 break-all">
+                        {v}
+                      </code>
+                    </div>
+                  ))}
+                {lead.firstSeenAt && (
+                  <p className="text-xs text-gray-500">
+                    First on the site {new Date(lead.firstSeenAt).toLocaleString()}
+                  </p>
+                )}
                 {/* GCLID */}
                 <div>
                   <div className="flex items-center justify-between mb-1">

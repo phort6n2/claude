@@ -3,6 +3,16 @@ import { NextResponse, type NextRequest } from 'next/server'
 // and it means the flat addresses are defined once rather than in a list here
 // and another in site-paths that had to be kept in step by hand.
 import { FLAT_SERVICE_PATHS } from '@/lib/site-services'
+// Import-free as well, for the same reason.
+import {
+  MAX_AGE_DAYS,
+  SOURCE_COOKIE,
+  SOURCE_HEADER,
+  decodeTouch,
+  encodeTouch,
+  mergeTouch,
+  numberSourceFor,
+} from '@/lib/traffic-source'
 
 /**
  * Host-based routing for hosted client landing pages.
@@ -114,12 +124,73 @@ function flatToTemplatePath(pathname: string): string | null {
   return null
 }
 
+/**
+ * WHERE THIS VISITOR CAME FROM, decided before the page renders.
+ *
+ * The page picks its phone number from it (a Microsoft or Meta visitor sees
+ * that platform's tracking number, everyone else the default one), so it has
+ * to be known on the FIRST request, when the click id is on the URL and no
+ * cookie exists yet. Doing it here rather than in a script after load means
+ * the right number is in the HTML: no flash of the wrong one, and Google's own
+ * call swap — which reads the page once after load — sees exactly what it saw
+ * before for every Google visitor.
+ *
+ * The page is told through a request header that is always overwritten, so
+ * nothing outside can choose a number by sending one. The cookie is written
+ * only when the remembered touch changes, not on every page view.
+ */
+function withTrafficSource(req: NextRequest, respond: (headers: Headers) => NextResponse): NextResponse {
+  const hostHeader = req.headers.get('host') || req.nextUrl.host
+  // Built from the Host header, not req.nextUrl: the comparison that tells
+  // internal navigation from a real referrer needs the public host, and a
+  // clicked-around visitor must not be re-labelled "referral" by their own
+  // previous page.
+  const proto = req.headers.get('x-forwarded-proto')?.split(',')[0].trim() || req.nextUrl.protocol.replace(':', '')
+  const landingUrl = `${proto}://${hostHeader}${req.nextUrl.pathname}${req.nextUrl.search}`
+  const prev = decodeTouch(req.cookies.get(SOURCE_COOKIE)?.value)
+  const { touch, changed } = mergeTouch(prev, {
+    url: landingUrl,
+    referrer: req.headers.get('referer'),
+    now: Date.now(),
+  })
+  const headers = new Headers(req.headers)
+  const numberSource = numberSourceFor(touch)
+  if (numberSource) headers.set(SOURCE_HEADER, numberSource)
+  else headers.delete(SOURCE_HEADER)
+  const res = respond(headers)
+  if (changed) {
+    res.cookies.set(SOURCE_COOKIE, encodeTouch(touch), {
+      path: '/',
+      maxAge: MAX_AGE_DAYS * 24 * 60 * 60,
+      sameSite: 'lax',
+      secure: proto === 'https',
+      // The widget reads it as a fallback for its own storage.
+      httpOnly: false,
+    })
+  }
+  return res
+}
+
+/** A page a person reads, as opposed to a file, an API call or the admin. */
+function isPagePath(pathname: string): boolean {
+  return !/\.[a-z0-9]+$/i.test(pathname)
+}
+
 export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
   // /favicon.ico is checked below, BEFORE isAppPath — it ends in an extension,
   // so the "a request for a file is a request for a file" rule would hand a
   // client host the platform's own icon route, which has nothing there.
-  if (pathname !== FAVICON && isAppPath(pathname)) return NextResponse.next()
+  if (pathname !== FAVICON && isAppPath(pathname)) {
+    // /sites/{slug} on the app host is the PREVIEW form of a client page —
+    // what a Vercel preview deployment and the admin's own preview links
+    // serve. It gets the same source handling, so per-source numbers can be
+    // tested before a domain ever points at a deployment.
+    if (pathname.startsWith('/sites/') && isPagePath(pathname)) {
+      return withTrafficSource(req, (headers) => NextResponse.next({ request: { headers } }))
+    }
+    return NextResponse.next()
+  }
 
   const host = (req.headers.get('host') || '').split(':')[0].toLowerCase()
   if (isAppHost(host)) return NextResponse.next()
@@ -151,7 +222,7 @@ export default function middleware(req: NextRequest) {
   const mapped = flatToTemplatePath(pathname)
   const target = mapped || pathname
   url.pathname = target === '/' ? `/sites/${label}` : `/sites/${label}${target}`
-  return NextResponse.rewrite(url)
+  return withTrafficSource(req, (headers) => NextResponse.rewrite(url, { request: { headers } }))
 }
 
 /**

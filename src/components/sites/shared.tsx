@@ -1946,9 +1946,16 @@ export function SiteFooter({
   linkableCities,
   pages = [],
   network,
+  privacyChoices = false,
 }: {
   /** The repair-network mark, in the dark band. See NetworkBadge. */
   network?: NetworkHighlight | null
+  /**
+   * California's "Your Privacy Choices" link, for a client whose site runs
+   * advertising tags that count as sharing (a Meta Pixel at least). Off,
+   * the footer is exactly what it always was.
+   */
+  privacyChoices?: boolean
   client: SiteClient
   extras?: SiteExtras | null
   services?: Array<{ slug: string; name: string }>
@@ -2359,6 +2366,14 @@ export function SiteFooter({
             >
               Terms
             </a>
+            {privacyChoices && (
+              <a
+                href={`${basePath || ''}/privacy#your-privacy-choices`}
+                className="underline text-[var(--on-dark-2)] hover:text-white"
+              >
+                Your Privacy Choices
+              </a>
+            )}
             <a href={basePath || '/'} className="underline text-[var(--on-dark-2)] hover:text-white">
               Home
             </a>

@@ -10,6 +10,8 @@ import { SiteUnavailable } from '@/components/sites/shared'
 import { LegalShell, PrivacyContent } from '@/components/sites/legal'
 import { getSiteExtras } from '@/lib/site-content'
 import { keptPagesFor } from '@/lib/site-pages'
+import { getAdsTracking } from '@/lib/ads-tracking'
+import type { SiteMeasurement } from '@/components/sites/legal'
 
 export const revalidate = 3600
 
@@ -78,10 +80,26 @@ export default async function PrivacyPage({ params }: PageProps) {
   // would drop it. See site-phone.ts.
   Object.assign(client, await withSitePhone(client))
   const basePath = sitePathPrefixFor(client, (await headers()).get('host'))
-  const [extras, keptPages] = await Promise.all([
+  const [extras, keptPages, tracking, recordingNumbers] = await Promise.all([
     getSiteExtras(client.id),
     keptPagesFor(client.id, client.businessName),
+    getAdsTracking(client.id),
+    prisma.trackingNumber.count({ where: { clientId: client.id, active: true, recordCalls: true } }).catch(() => 0),
   ])
+  /* The tag-by-tag disclosure and the opt-out are rendered for a client with
+     privacy choices on (any client with a Meta Pixel, or switched on by
+     hand), so every other shop's policy reads exactly as it did. */
+  const measurement: SiteMeasurement | undefined = tracking?.privacyChoices
+    ? {
+        googleAds: !!tracking.conversionId,
+        googleAnalytics: !!tracking.ga4MeasurementId,
+        microsoftUet: !!tracking.bingUetTagId,
+        metaPixel: !!tracking.metaPixelId,
+        metaCapi: tracking.metaCapi,
+        privacyChoices: true,
+        recordsCalls: recordingNumbers > 0,
+      }
+    : undefined
 
   return (
     <LegalShell
@@ -91,7 +109,7 @@ export default async function PrivacyPage({ params }: PageProps) {
       registrationNumber={extras.registrationNumber}
       pages={keptPages}
     >
-      <PrivacyContent client={client} />
+      <PrivacyContent client={client} measurement={measurement} />
     </LegalShell>
   )
 }

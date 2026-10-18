@@ -175,6 +175,65 @@ arrive from the hosted sites' own form and from embedded widgets.
   captured client-side, persisted, and travel with the lead. `paid_click`
   is tracked separately from the site's nominal source.
 
+### Google, Microsoft and Meta on ONE site
+
+`traffic-source.ts` (the rules, import-free so middleware can run it),
+`middleware.ts` (`withTrafficSource`), `site-phone.ts`, `meta-capi.ts`,
+`meta-variant.tsx`, `lead-test-mode.ts`, the **Meta** tab on Advertising
+(`MetaPanel`), "Show instead to" on Lead delivery → Call tracking, bootstrap:
+`ATTRIBUTION_SQL`. `scripts/check-traffic-source.ts` holds the rules.
+
+- **Source is decided ONCE, on landing, by middleware**: click id
+  (gclid/gbraid/wbraid → google, msclkid → microsoft, fbclid → meta), then
+  `utm_source`, then the referrer, then direct. It is written to a first-party
+  `gl_src` cookie (90 days) and handed to the page as `x-gl-src`, which
+  middleware always OVERWRITES — nothing outside can pick a number by sending
+  the header. A paid touch is only replaced by another paid touch; a returning
+  visitor who types the address in is still the person the ad found.
+- **`Lead.trafficSource` is not `Lead.source`.** `source` is the channel
+  (form, phone, text) and half the app reads it. `trafficSource` is the
+  platform. Old rows were backfilled from click ids only — `formData.msclkid`
+  and `fbclid` lifted into columns — and everything else says `unknown`.
+- **THE NUMBER IS PICKED ON THE SERVER, and Google is never a choice.** A
+  tracking number with `showTo` microsoft/meta replaces the default number
+  only for visitors whose touch has AD evidence (a click id or a campaign
+  UTM) — an organic Bing visitor calling the Microsoft number would credit a
+  campaign with a call it did not buy. Google visitors see the default number,
+  which is what `phone_conversion_number` names, so Google's swap is exactly
+  as it was (re-verified with `#google-wcc-debug` Force: every link swaps for
+  `?gclid`). Rendering it rather than swapping in a script means no flash and
+  nothing racing Google's own swap. Pages already render per request
+  (`headers()`), so this costs no caching. A call or text to a platform
+  number writes that platform onto the lead; the default number writes
+  `unknown`, because it is everyone else.
+- **Meta: Pixel + Conversions API, deduped on ONE event id.** The widget makes
+  the id, fires the Pixel's Lead with it and posts it with the lead; the
+  intake queues a `MetaEventDelivery` with the same id, sends it in `after()`,
+  and the 15-minute webhook-retry cron retries it — the WebhookDelivery
+  pattern, because this app runs no job queue. Hashes only, Meta's own
+  normalisation (a phone without its country code matches nobody, silently).
+  The token is encrypted, never returned unmasked, and an empty box on save
+  keeps it. Call taps fire `Contact`, not `Lead`: Meta credits view-through,
+  and a call tap from somebody who once scrolled past an ad would otherwise
+  count as a Meta lead.
+- **California: an opt-out stops it at the source.** `privacyChoices` (always
+  on with a Pixel): the Global Privacy Control signal or the footer's "Your
+  Privacy Choices" link (`gl_optout`) means no Pixel, no UET, no CAPI event,
+  and Google in restricted data processing. The privacy policy lists each tag
+  the site actually runs, only for a client with privacy choices on — every
+  other shop's policy is what it was.
+- **`?v=meta` is the same page, shorter**: form, big call button, the
+  flag-gated insurance line, three live reviews, coverage, footer. noindex,
+  canonical to the real page, no second address. Excluded services come off
+  the variant's HOME page only; `/windshield-replacement?v=meta` is still that
+  service. Home and service pages (and `/mobile-auto-glass`); a city or kept
+  page ignores the parameter.
+- **Testing without a real lead: the dry-run link** (Meta tab → "Make a
+  dry-run link", two hours, one client). The intake runs everything, answers
+  with what it WOULD store and writes, alerts and forwards nothing; Google and
+  UET conversions stay quiet; the Meta event goes to Test Events only, and
+  only while a Test Events code is set.
+
 ### The quote form
 
 `WidgetMount` in `site-body.tsx` renders a **real, working `<form method="post">`**

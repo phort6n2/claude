@@ -36,6 +36,7 @@ import {
 } from '@/components/leads/DamagePhoto'
 import { getLeadDisplayName, displayNameIsPhone, formatPhoneDisplay, formatFieldValue } from '@/lib/lead-display'
 import { ChannelBadge } from '@/components/leads/ChannelBadge'
+import { TrafficSourceBadge, TRAFFIC_SOURCE_FILTER_OPTIONS } from '@/components/leads/TrafficSourceBadge'
 import { LeadSourceDetails } from '@/components/leads/LeadSourceDetails'
 import { useLeadStream, type LeadCallUpdate } from '@/hooks/useLeadStream'
 
@@ -73,6 +74,8 @@ interface Lead {
   lastName: string | null
   status: string
   source: string
+  trafficSource?: string | null
+  trafficMedium?: string | null
   quoteValue: number | null
   saleValue: number | null
   saleDate: string | null
@@ -133,6 +136,11 @@ export default function PortalLeadsPage() {
   const router = useRouter()
   const [session, setSession] = useState<Session | null>(null)
   const [leads, setLeads] = useState<Lead[]>([])
+  /* Which platform sent the lead — lib/traffic-source.ts. Filtered here
+     rather than on the server: the page already holds the whole day (limit
+     1000), and new leads arriving over the stream are then filtered by the
+     same rule as the ones loaded. */
+  const [sourceFilter, setSourceFilter] = useState('')
   const [loading, setLoading] = useState(true)
   const [sales, setSales] = useState<SalesStats | null>(null)
   const [ringBack, setRingBack] = useState<RingBackCall[]>([])
@@ -274,6 +282,14 @@ export default function PortalLeadsPage() {
     },
   })
 
+  const shownLeads = sourceFilter
+    ? leads.filter((l) =>
+        sourceFilter === 'unknown'
+          ? !l.trafficSource || l.trafficSource === 'unknown'
+          : l.trafficSource === sourceFilter
+      )
+    : leads
+
   function changeDate(days: number) {
     const date = new Date(selectedDate + 'T12:00:00')
     date.setDate(date.getDate() + days)
@@ -407,11 +423,25 @@ export default function PortalLeadsPage() {
         <CoachingFocusAreas trendHref="/portal/calls#call-quality" />
       </div>
 
-      {/* Lead Count */}
-      <div className="max-w-3xl mx-auto px-4 py-1.5">
+      {/* Lead Count + source filter */}
+      <div className="max-w-3xl mx-auto px-4 py-1.5 flex items-center justify-between gap-3">
         <p className="text-xs text-gray-600">
-          {loading ? 'Loading...' : `${leads.length} lead${leads.length !== 1 ? 's' : ''}`}
+          {loading
+            ? 'Loading...'
+            : `${shownLeads.length} lead${shownLeads.length !== 1 ? 's' : ''}${sourceFilter ? ` from ${TRAFFIC_SOURCE_FILTER_OPTIONS.find((o) => o.value === sourceFilter)?.label}` : ''}`}
         </p>
+        <select
+          value={sourceFilter}
+          onChange={(e) => setSourceFilter(e.target.value)}
+          aria-label="Show leads from"
+          className="text-xs border border-gray-200 rounded-lg bg-white px-2 py-1 text-gray-700"
+        >
+          {TRAFFIC_SOURCE_FILTER_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Leads List */}
@@ -432,7 +462,7 @@ export default function PortalLeadsPage() {
               </div>
             ))}
           </div>
-        ) : leads.length === 0 ? (
+        ) : shownLeads.length === 0 ? (
           <div className="bg-white rounded-xl p-10 text-center border border-gray-100">
             <Inbox className="h-14 w-14 mx-auto mb-3 text-gray-300" strokeWidth={1.5} />
             <p className="text-gray-700 font-medium">No leads on this date</p>
@@ -450,7 +480,7 @@ export default function PortalLeadsPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {leads.map((lead) => (
+            {shownLeads.map((lead) => (
               <LeadRow
                 key={lead.id}
                 lead={lead}
@@ -888,6 +918,7 @@ function LeadRow({
                 </span>
               )}
               <ChannelBadge lead={lead} />
+              <TrafficSourceBadge source={lead.trafficSource} medium={lead.trafficMedium} />
             </div>
             <div className="flex items-center gap-x-2 gap-y-0.5 text-sm text-gray-600 flex-wrap">
               {lead.phone && !displayNameIsPhone(lead) && (

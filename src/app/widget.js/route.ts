@@ -173,6 +173,93 @@ const WIDGET_SOURCE = String.raw`(function () {
 
   var attribution = captureAttribution();
 
+  /* THE SERVER'S VERDICT ON WHERE THIS VISITOR CAME FROM.
+     On our own sites middleware writes a first-party gl_src cookie on landing
+     (lib/traffic-source.ts): source, medium, the click ids and UTMs, and when
+     this browser was first seen. It is read here as the fallback for anything
+     this script's own storage is missing — a visitor whose localStorage was
+     cleared, or a browser that refuses it — and mirrored into sessionStorage
+     so it survives navigation inside a tab even where cookies are blocked
+     after the first page. On a site we do not host there is no cookie and
+     nothing changes. */
+  var SRC_COOKIE = 'gl_src';
+  var SRC_SESSION = 'glassleads_src';
+  function readCookie(name) {
+    try {
+      var parts = ('; ' + document.cookie).split('; ' + name + '=');
+      if (parts.length < 2) return null;
+      return decodeURIComponent(parts.pop().split(';').shift() || '') || null;
+    } catch (e) { return null; }
+  }
+  function decodeSource(value) {
+    if (!value) return null;
+    try {
+      var b64 = value.replace(/-/g, '+').replace(/_/g, '/');
+      b64 += '==='.slice((b64.length + 3) % 4);
+      var bin = atob(b64);
+      var bytes = [];
+      for (var i = 0; i < bin.length; i++) bytes.push('%' + ('0' + bin.charCodeAt(i).toString(16)).slice(-2));
+      var w = JSON.parse(decodeURIComponent(bytes.join('')));
+      return w && w.v === 1 ? w : null;
+    } catch (e) { return null; }
+  }
+  function readSource() {
+    var w = decodeSource(readCookie(SRC_COOKIE));
+    try {
+      if (w) sessionStorage.setItem(SRC_SESSION, JSON.stringify(w));
+      else w = JSON.parse(sessionStorage.getItem(SRC_SESSION) || 'null');
+    } catch (e) {}
+    return w;
+  }
+  var sourceTouch = readSource();
+  if (sourceTouch) {
+    var fill = function (from) {
+      if (!from) return;
+      Object.keys(from).forEach(function (k) { if (from[k] && !attribution[k]) attribution[k] = from[k]; });
+    };
+    fill(sourceTouch.k);
+    fill(sourceTouch.u);
+  }
+
+  /* CALIFORNIA'S "DO NOT SELL OR SHARE", as the visitor expressed it: the
+     browser's Global Privacy Control signal, or the opt-out link in the site
+     footer (which sets gl_optout). Sent with the lead so the server sends
+     nothing to Meta for this person, and read by the page's own tags. */
+  function optedOut() {
+    try {
+      if (navigator.globalPrivacyControl === true) return true;
+    } catch (e) {}
+    return readCookie('gl_optout') === '1';
+  }
+
+  /* A DRY-RUN LINK (lib/lead-test-mode.ts): ?gl_test=<token> on any page
+     makes every submission in this tab a test — the server answers with what
+     it WOULD store and writes, alerts and forwards nothing. Kept for the tab
+     so the token survives clicking from the landing page to the form. */
+  var TEST_TOKEN = null;
+  try {
+    var t = new URLSearchParams(window.location.search).get('gl_test');
+    if (t) sessionStorage.setItem('glassleads_test', t);
+    TEST_TOKEN = t || sessionStorage.getItem('glassleads_test');
+  } catch (e) {}
+
+  /* One id per lead, shared by the browser Pixel event and the server-side
+     Conversions API event — Meta dedupes the pair on it. */
+  function newEventId() {
+    try { if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID(); } catch (e) {}
+    return 'gl-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
+  }
+
+  /* Meta's own first-party cookies when its Pixel set them; otherwise _fbc is
+     built from the fbclid exactly as the Pixel would (fb.1.<ms>.<fbclid>), so
+     the server event still carries the click. */
+  function metaCookies(stored) {
+    var fbc = readCookie('_fbc');
+    var fbp = readCookie('_fbp');
+    if (!fbc && stored.fbclid) fbc = 'fb.1.' + (stored.ts || Date.now()) + '.' + stored.fbclid;
+    return { fbc: fbc || null, fbp: fbp || null };
+  }
+
   // ---- Widget UI ----------------------------------------------------------
   var CARRIERS = ['State Farm', 'GEICO', 'Progressive', 'AAA', 'USAA', 'Farmers', 'Allstate', 'Mercury', 'Other'];
 
@@ -801,7 +888,22 @@ const WIDGET_SOURCE = String.raw`(function () {
         submitted_at: new Date().toISOString(),
         _hp: data.hp
       };
-      CLICK_IDS.concat(UTM_KEYS).forEach(function (k) { if (stored[k]) payload[k] = stored[k]; });
+      CLICK_IDS.concat(UTM_KEYS).forEach(function (k) {
+        if (stored[k]) payload[k] = stored[k];
+        else if (attribution[k]) payload[k] = attribution[k];
+      });
+      var touch = readSource() || sourceTouch;
+      if (touch) {
+        payload.traffic_source = touch.s || null;
+        payload.traffic_medium = touch.m || null;
+        if (typeof touch.f === 'number') payload.first_seen_at = new Date(touch.f).toISOString();
+      }
+      var mc = metaCookies(stored.fbclid ? stored : attribution);
+      payload.fbc = mc.fbc;
+      payload.fbp = mc.fbp;
+      payload.meta_event_id = newEventId();
+      payload.privacy_opt_out = optedOut() ? 'yes' : 'no';
+      if (TEST_TOKEN) payload._test_token = TEST_TOKEN;
 
       /* Bounded. Without this the request can hang for as long as the
          network lets it, and the submit button sits disabled on "Sending…"
@@ -820,6 +922,11 @@ const WIDGET_SOURCE = String.raw`(function () {
       }).then(function (res) {
         if (timer) clearTimeout(timer);
         if (!res.ok) throw new Error('HTTP ' + res.status);
+        if (TEST_TOKEN) {
+          res.clone().json().then(function (j) {
+            try { console.info('[glassleads] DRY RUN — nothing was stored or sent to the shop', j); } catch (e) {}
+          }).catch(function () {});
+        }
 
         /* Announce the lead to the host page.
            This form lives in a shadow root, which Google's automatic event
@@ -836,7 +943,12 @@ const WIDGET_SOURCE = String.raw`(function () {
               email: payload.email || '',
               phone: payload.phone || '',
               service: payload.service || '',
-              paid_click: payload.paid_click
+              paid_click: payload.paid_click,
+              // The Meta Pixel's eventID; the server sent the same one.
+              event_id: payload.meta_event_id,
+              // A dry run must not report a conversion that never happened:
+              // the page's tags read this and stay quiet (GoogleTag.tsx).
+              test: !!TEST_TOKEN
             }
           }));
         } catch (e) {}

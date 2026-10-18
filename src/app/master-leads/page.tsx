@@ -29,6 +29,7 @@ import { LeadQuickActions } from '@/components/leads/LeadQuickActions'
 import { DamagePhoto, damagePhotoOf, VehicleDecode } from '@/components/leads/DamagePhoto'
 import { getLeadDisplayName, displayNameIsPhone, formatPhoneDisplay, formatFieldValue } from '@/lib/lead-display'
 import { ChannelBadge } from '@/components/leads/ChannelBadge'
+import { TrafficSourceBadge } from '@/components/leads/TrafficSourceBadge'
 import { LeadSourceDetails } from '@/components/leads/LeadSourceDetails'
 import { useLeadStream } from '@/hooks/useLeadStream'
 import { CallCoachingReport } from '@/components/portal/CallCoachingReport'
@@ -958,6 +959,10 @@ function LeadRow({
                 </span>
               )}
               <ChannelBadge lead={lead} />
+              <TrafficSourceBadge
+                source={(lead as { trafficSource?: string | null }).trafficSource}
+                medium={(lead as { trafficMedium?: string | null }).trafficMedium}
+              />
             </div>
             <div className="flex items-center gap-x-2 gap-y-0.5 text-sm text-gray-600 flex-wrap">
               {lead.phone && !displayNameIsPhone(lead) && (

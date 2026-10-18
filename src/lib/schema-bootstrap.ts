@@ -628,6 +628,70 @@ export const INSURANCE_PROGRAM_SQL: string[] = [
   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
 ]
 
+/**
+ * Multi-platform attribution (Google, Microsoft, Meta) — lib/traffic-source.ts.
+ *
+ * The backfill runs on every boot and is cheap after the first: it only
+ * touches rows whose trafficSource is still NULL, and every path that writes
+ * a lead now sets one. It labels a lead only where a CLICK ID proves the
+ * platform; everything else is "unknown", because a guess from a referrer we
+ * never stored would read as a fact on the lead list. msclkid and fbclid have
+ * lived in formData since the widget started capturing them, so they are
+ * lifted into their columns in the same statement.
+ */
+export const ATTRIBUTION_SQL: string[] = [
+  `ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "trafficSource" TEXT`,
+  `ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "trafficMedium" TEXT`,
+  `ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "msclkid" TEXT`,
+  `ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "fbclid" TEXT`,
+  `ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "fbc" TEXT`,
+  `ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "fbp" TEXT`,
+  `ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "firstSeenAt" TIMESTAMP(3)`,
+  `CREATE INDEX IF NOT EXISTS "Lead_clientId_trafficSource_idx" ON "Lead"("clientId", "trafficSource")`,
+  `UPDATE "Lead" SET
+     "msclkid" = COALESCE("msclkid", NULLIF("formData"->>'msclkid', '')),
+     "fbclid" = COALESCE("fbclid", NULLIF("formData"->>'fbclid', '')),
+     "trafficSource" = CASE
+       WHEN COALESCE("gclid", "gbraid", "wbraid") IS NOT NULL THEN 'google'
+       WHEN COALESCE("msclkid", NULLIF("formData"->>'msclkid', '')) IS NOT NULL THEN 'microsoft'
+       WHEN COALESCE("fbclid", NULLIF("formData"->>'fbclid', '')) IS NOT NULL THEN 'meta'
+       ELSE 'unknown' END,
+     "trafficMedium" = CASE
+       WHEN COALESCE("gclid", "gbraid", "wbraid", "msclkid", NULLIF("formData"->>'msclkid', '')) IS NOT NULL THEN 'paid'
+       WHEN COALESCE("fbclid", NULLIF("formData"->>'fbclid', '')) IS NOT NULL THEN 'social'
+       ELSE NULL END
+   WHERE "trafficSource" IS NULL`,
+  `ALTER TABLE "TrackingNumber" ADD COLUMN IF NOT EXISTS "showTo" TEXT`,
+  `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "bingCallEventAction" TEXT`,
+  `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "metaPixelId" TEXT`,
+  `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "metaCapiToken" TEXT`,
+  `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "metaTestEventCode" TEXT`,
+  `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "metaVariantOffer" TEXT`,
+  `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "metaVariantExcludedServices" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[]`,
+  `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "privacyChoices" BOOLEAN NOT NULL DEFAULT false`,
+  `CREATE TABLE IF NOT EXISTS "MetaEventDelivery" (
+    "id" TEXT NOT NULL,
+    "clientId" TEXT NOT NULL,
+    "leadId" TEXT,
+    "eventId" TEXT NOT NULL,
+    "eventName" TEXT NOT NULL,
+    "payload" JSONB NOT NULL,
+    "testEventCode" TEXT,
+    "status" "WebhookDeliveryStatus" NOT NULL DEFAULT 'PENDING',
+    "attempts" INTEGER NOT NULL DEFAULT 0,
+    "lastAttemptAt" TIMESTAMP(3),
+    "responseStatus" INTEGER,
+    "lastError" TEXT,
+    "response" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "MetaEventDelivery_pkey" PRIMARY KEY ("id")
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "MetaEventDelivery_clientId_eventId_eventName_key" ON "MetaEventDelivery"("clientId", "eventId", "eventName")`,
+  `CREATE INDEX IF NOT EXISTS "MetaEventDelivery_status_updatedAt_idx" ON "MetaEventDelivery"("status", "updatedAt")`,
+  `CREATE INDEX IF NOT EXISTS "MetaEventDelivery_leadId_idx" ON "MetaEventDelivery"("leadId")`,
+]
+
 export const BOOTSTRAP_SQL: string[] = [
   ...PATH_OVERRIDE_SQL,
   ...MARKET_AREA_SQL,
@@ -658,6 +722,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...SMS_INBOX_SQL,
   ...DIRECTORY_SIGNAL_SQL,
   ...INSURANCE_PROGRAM_SQL,
+  ...ATTRIBUTION_SQL,
 ]
 
 /**

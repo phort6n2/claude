@@ -1,5 +1,17 @@
 import { prisma } from '@/lib/db'
 import { formatPhoneDisplay } from '@/lib/lead-display'
+import { SOURCE_HEADER, numberSourceFromHeader, type NumberSource } from '@/lib/traffic-source'
+
+/** The ad platform middleware recorded for this request, or null outside one. */
+async function numberSourceForRequest(): Promise<NumberSource | null> {
+  try {
+    const { headers } = await import('next/headers')
+    return numberSourceFromHeader((await headers()).get(SOURCE_HEADER))
+  } catch {
+    // Not in a request (a script, a build step): the default number.
+    return null
+  }
+}
 
 /**
  * The phone number a hosted site should SHOW.
@@ -64,6 +76,26 @@ export async function withSitePhone<
   const callbackPhone = formatPhoneDisplay(client.phone) || client.phone
 
   try {
+    /* THE NUMBER FOR THIS VISITOR'S AD PLATFORM, when there is one.
+       Middleware decided where the visitor came from on landing
+       (lib/traffic-source.ts) and hands it over as a header: a Microsoft or
+       Meta ad click sees that platform's tracking number everywhere the page
+       shows a phone, so a call is attributed by the number dialled — a call
+       carries no click id of its own. Every other visitor, Google's included,
+       sees the default number below, which is the number Google's own
+       website-call swap is configured against; that is what keeps Google's
+       behaviour exactly as it was. A platform with no number of its own
+       falls through to the default. */
+    const platform = await numberSourceForRequest()
+    if (platform) {
+      const own = await prisma.trackingNumber.findFirst({
+        where: { clientId: client.id, active: true, showTo: platform },
+        select: { phoneNumber: true },
+      })
+      const ownDisplay = own ? formatPhoneDisplay(own.phoneNumber) : null
+      if (ownDisplay) return { ...client, phone: ownDisplay, callbackPhone }
+    }
+
     const number = await prisma.trackingNumber.findFirst({
       where: { clientId: client.id, active: true, useOnSite: true },
       select: { phoneNumber: true },

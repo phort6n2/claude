@@ -3,6 +3,25 @@ import { SiteAnalytics } from '@/components/sites/analytics'
 import { sitePaletteVars } from '@/lib/site-theme'
 import { canonicalHostFor } from '@/lib/site-origin'
 import { warrantyBody } from '@/lib/warranty-text'
+import { PrivacyChoicesControl } from '@/components/sites/PrivacyChoices'
+
+/**
+ * What actually runs on this client's pages, so the policy describes the
+ * site the reader is on and never a tag it does not use. Every flag comes
+ * from the same records that decide whether the tag renders (getAdsTracking,
+ * the tracking numbers), so the two cannot disagree.
+ */
+export interface SiteMeasurement {
+  googleAds: boolean
+  googleAnalytics: boolean
+  microsoftUet: boolean
+  metaPixel: boolean
+  metaCapi: boolean
+  /** California "Do Not Sell or Share" handling is on (GoogleTag.tsx). */
+  privacyChoices: boolean
+  /** At least one active tracking number records calls. */
+  recordsCalls: boolean
+}
 
 /**
  * Legal pages (privacy / terms) for hosted client sites, ported from the
@@ -110,7 +129,20 @@ export function LegalShell({
   )
 }
 
-export function PrivacyContent({ client }: { client: LegalClient }) {
+export function PrivacyContent({
+  client,
+  measurement,
+}: {
+  client: LegalClient
+  measurement?: SiteMeasurement
+}) {
+  const m = measurement
+  const adTags = !!m && (m.googleAds || m.microsoftUet || m.metaPixel)
+  const sharing = !!m && (m.metaPixel || m.metaCapi || m.microsoftUet)
+  // Sections are numbered as rendered: a section a site does not need is
+  // left out entirely, never shown empty.
+  let n = 0
+  const next = () => ++n
   return (
     <>
       <p>
@@ -120,7 +152,7 @@ export function PrivacyContent({ client }: { client: LegalClient }) {
         actual third parties, and the actual tracking involved.
       </p>
       <section>
-        <h2>1. Who we are</h2>
+        <h2>{next()}. Who we are</h2>
         <p>
           {client.businessName}
           {client.hasShopLocation
@@ -131,7 +163,7 @@ export function PrivacyContent({ client }: { client: LegalClient }) {
         </p>
       </section>
       <section>
-        <h2>2. What the quote form collects</h2>
+        <h2>{next()}. What the quote form collects</h2>
         <p>When you submit the quote form, we receive what you typed into it:</p>
         <ul>
           <li>Full name — so we know who to ask for when we call</li>
@@ -150,7 +182,7 @@ export function PrivacyContent({ client }: { client: LegalClient }) {
         </p>
       </section>
       <section>
-        <h2>3. Advertising identifiers captured automatically</h2>
+        <h2>{next()}. Advertising identifiers captured automatically</h2>
         <p>
           Many visitors reach this site by clicking an ad. When that happens the advertising
           platform adds an identifier to the web address, and we keep it so we can tell which
@@ -161,14 +193,16 @@ export function PrivacyContent({ client }: { client: LegalClient }) {
           on, the page you submitted from, and the referring website if your browser sent one).
         </p>
         <p>
-          These are stored in your browser&apos;s local storage for up to 90 days, so an enquiry
-          you send days after clicking the ad is still attributed correctly. They are attached to
-          your enquiry when you submit the form. You can clear them at any time by clearing this
-          site&apos;s data in your browser.
+          These are stored in your browser&apos;s local storage and in a first-party cookie set by
+          this site (gl_src) for up to 90 days, so an enquiry you send days after clicking the ad
+          is still attributed correctly. The same record decides which of our phone numbers this
+          site shows you, so that a call can be matched to the advertising that produced it. They
+          are attached to your enquiry when you submit the form. You can clear them at any time by
+          clearing this site&apos;s cookies and data in your browser.
         </p>
       </section>
       <section>
-        <h2>4. Where your enquiry goes</h2>
+        <h2>{next()}. Where your enquiry goes</h2>
         <p>
           {/* "run the shop" means "run the business" and is first person, so it
               is not the broker slip — but it still puts a premises word on a
@@ -178,12 +212,36 @@ export function PrivacyContent({ client }: { client: LegalClient }) {
           Form submissions are delivered to the lead-management systems we use to run the
           business —
           our website platform and our customer-relationship system — so we can quote, schedule,
-          and follow up on your enquiry. We do not sell your information, and we do not share it
-          with anyone except the service providers that process it on our behalf.
+          and follow up on your enquiry.{' '}
+          {sharing ? (
+            <>
+              We do not sell your information for money. The advertising tools described below
+              receive information about your visit and, when you submit the form, about your
+              enquiry; under California law that can count as &quot;sharing&quot;, and you can opt
+              out of it as described below. Otherwise we share your information only with the
+              service providers that process it on our behalf.
+            </>
+          ) : (
+            <>
+              We do not sell your information, and we do not share it with anyone except the service
+              providers that process it on our behalf.
+            </>
+          )}
         </p>
       </section>
+      {m?.recordsCalls && (
+        <section>
+          <h2>{next()}. Phone calls</h2>
+          <p>
+            Calls to the phone numbers shown on this site are connected through a call-tracking
+            service and may be recorded and transcribed, so we can follow up accurately and train our
+            team. We record the number you called from, when you called and how long the call
+            lasted, and the call becomes an enquiry like a form submission.
+          </p>
+        </section>
+      )}
       <section>
-        <h2>5. Content loaded from third parties</h2>
+        <h2>{next()}. Content loaded from third parties</h2>
         <p>
           This site embeds a Google map of our location and displays review content from our
           Google Business Profile. When the map loads, your browser connects to Google, which may
@@ -191,9 +249,63 @@ export function PrivacyContent({ client }: { client: LegalClient }) {
           served through an image-delivery network.
         </p>
       </section>
+      {adTags && m && (
+        <section>
+          <h2>{next()}. Advertising and conversion measurement</h2>
+          <p>
+            We advertise this business online and measure which advertising produces enquiries. To
+            do that, this site loads the following tags:
+          </p>
+          <ul>
+            {m.googleAds && (
+              <li>
+                <strong>Google Ads conversion tracking</strong> — tells Google Ads when an enquiry is
+                submitted or a call is placed from this site after an ad click. Google may show you a
+                Google forwarding number in place of ours so it can count calls from its ads. When
+                you submit the form, a hashed (scrambled) copy of your email address and phone number
+                is sent with the conversion so Google can match it to its own records.
+              </li>
+            )}
+            {m.googleAnalytics && (
+              <li>
+                <strong>Google Analytics</strong> — measures how visitors use this site.
+              </li>
+            )}
+            {m.microsoftUet && (
+              <li>
+                <strong>Microsoft Advertising (UET)</strong> — tells Microsoft Advertising when a page
+                is viewed, an enquiry is submitted or a call link is tapped after a Microsoft (Bing)
+                ad click, and lets Microsoft set its own cookies to do so.
+              </li>
+            )}
+            {m.metaPixel && (
+              <li>
+                <strong>Meta Pixel</strong> — tells Meta (Facebook and Instagram) when a page is
+                viewed, an enquiry is submitted or a call link is tapped, and lets Meta set its own
+                cookies to do so.
+              </li>
+            )}
+            {m.metaCapi && (
+              <li>
+                <strong>Meta Conversions API</strong> — when you submit the form, our server also
+                sends Meta a record of the enquiry: a hashed copy of your email address, phone number,
+                name and ZIP code, your IP address, your browser&apos;s user-agent string, Meta&apos;s
+                cookies if present, and the page you submitted from. This lets Meta count enquiries
+                its ads produced even where the Pixel is blocked.
+              </li>
+            )}
+          </ul>
+          <p>
+            Each platform handles what it receives under its own privacy policy.
+            {m.privacyChoices
+              ? ' None of these tags run, and nothing is sent to Meta, for a visitor who has opted out as described below.'
+              : ''}
+          </p>
+        </section>
+      )}
       {client.clarityProjectId && (
         <section>
-          <h2>6. How this site is measured</h2>
+          <h2>{next()}. How this site is measured</h2>
           <p>
             We use a session-analytics service to see how visitors move through this site — which
             pages get read, where people stop scrolling, and which buttons get tapped — so we can
@@ -203,8 +315,27 @@ export function PrivacyContent({ client }: { client: LegalClient }) {
           </p>
         </section>
       )}
+      {m?.privacyChoices && (
+        <section id="your-privacy-choices">
+          <h2>{next()}. Your privacy choices (California and other states)</h2>
+          <p>
+            California residents, and residents of other states with similar laws, have the right
+            to opt out of the &quot;sale&quot; or &quot;sharing&quot; of their personal
+            information, including sharing for advertising based on activity across websites. We
+            honor the Global Privacy Control (GPC) signal: if your browser sends it, you are opted
+            out automatically and none of the advertising tags above run for you. You can also opt
+            out here:
+          </p>
+          <PrivacyChoicesControl />
+          <p>
+            You also have the right to know what personal information we hold about you, to have it
+            corrected or deleted, and not to be treated differently for exercising any of these
+            rights. To make a request, use the contact details below.
+          </p>
+        </section>
+      )}
       <section>
-        <h2>{`${client.clarityProjectId ? 7 : 6}. Your choices`}</h2>
+        <h2>{`${next()}. Your choices`}</h2>
         <p>
           You can ask us what information we hold about your enquiry, ask us to correct it, or ask
           us to delete it — call {client.phone}

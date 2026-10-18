@@ -221,14 +221,29 @@ export interface LeadAttribution {
   adId?: string | null
   landingPageUrl?: string | null
   referrerUrl?: string | null
+  msclkid?: string | null
+  fbclid?: string | null
+  fbc?: string | null
+  fbp?: string | null
+  trafficSource?: string | null
+  trafficMedium?: string | null
 }
 
 const ATTRIBUTION_FIELDS: Array<keyof LeadAttribution> = [
-  'gclid', 'gbraid', 'wbraid',
+  'gclid', 'gbraid', 'wbraid', 'msclkid', 'fbclid', 'fbc', 'fbp',
   'utmSource', 'utmMedium', 'utmCampaign', 'utmContent', 'utmKeyword', 'utmMatchtype',
   'campaignId', 'adGroupId', 'adId',
   'landingPageUrl', 'referrerUrl',
 ]
+
+/**
+ * The source is the one field that is UPGRADED rather than filled: a
+ * canonical that reads "direct" or "unknown" — a call to the default number,
+ * a CRM copy with the click ids stripped — is not a fact that a duplicate
+ * carrying a click id should lose to. A platform already on the canonical is
+ * never replaced, for the same first-click reason as the click ids above.
+ */
+const WEAK_SOURCES = new Set([null, undefined, '', 'direct', 'unknown'])
 
 /**
  * Fill in attribution the canonical lead is missing from a duplicate that has
@@ -254,7 +269,7 @@ export async function mergeAttributionIntoCanonical(
     where: { id: canonicalId },
     select: ATTRIBUTION_FIELDS.reduce(
       (acc, f) => ({ ...acc, [f]: true }),
-      {} as Record<string, boolean>
+      { trafficSource: true, trafficMedium: true } as Record<string, boolean>
     ),
   })
   if (!canonical) return []
@@ -266,6 +281,11 @@ export async function mergeAttributionIntoCanonical(
     if (!existing && typeof value === 'string' && value.trim()) {
       patch[field] = value
     }
+  }
+  const current = (canonical as Record<string, unknown>).trafficSource as string | null | undefined
+  if (WEAK_SOURCES.has(current) && incoming.trafficSource && !WEAK_SOURCES.has(incoming.trafficSource)) {
+    patch.trafficSource = incoming.trafficSource
+    if (incoming.trafficMedium) patch.trafficMedium = incoming.trafficMedium
   }
 
   const filled = Object.keys(patch)

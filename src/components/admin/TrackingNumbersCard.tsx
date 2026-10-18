@@ -24,7 +24,21 @@ interface TrackingNumber {
   whisper: string | null
   active: boolean
   useOnSite: boolean
+  /** "microsoft" | "meta" — shown to that platform's ad visitors instead. */
+  showTo: string | null
 }
+
+/**
+ * Which visitors see a number on the site. The default number is everyone's
+ * (and the one Google's website-call swap watches); a platform number
+ * replaces it only for visitors that platform's ads sent, so a call to it is
+ * attributed by the number dialled. See lib/traffic-source.ts.
+ */
+const PLATFORM_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'No ad platform' },
+  { value: 'microsoft', label: 'Microsoft Ads visitors' },
+  { value: 'meta', label: 'Meta Ads visitors' },
+]
 
 const BLANK = {
   phoneNumber: '',
@@ -33,6 +47,7 @@ const BLANK = {
   recordCalls: true,
   announceRecording: true,
   whisper: '',
+  showTo: '',
 }
 
 export default function TrackingNumbersCard({ clientId }: { clientId: string }) {
@@ -179,6 +194,10 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
             // Only one number may front the site, so claiming it releases it
             // everywhere else, locally as well as on the server.
             if (patch.useOnSite === true && x.useOnSite) return { ...x, useOnSite: false }
+            // Likewise one number per ad platform.
+            if (typeof patch.showTo === 'string' && patch.showTo && x.showTo === patch.showTo) {
+              return { ...x, showTo: null }
+            }
             return x
           })
         : prev
@@ -359,6 +378,38 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
                     className="w-44 px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500"
                   />
                 </label>
+                <label className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                  Show instead to
+                  <select
+                    value={n.showTo ?? ''}
+                    aria-label={`Ad platform for ${formatPhoneDisplay(n.phoneNumber)}`}
+                    onChange={(e) => {
+                      const showTo = e.target.value || null
+                      patchNumber(
+                        n.id,
+                        { showTo, ...(showTo ? { useOnSite: false } : {}) },
+                        showTo
+                          ? `${formatPhoneDisplay(n.phoneNumber)} now shows on the site to ${
+                              showTo === 'meta' ? 'Meta' : 'Microsoft'
+                            } Ads visitors, and every call or text to it is tagged ${showTo === 'meta' ? 'Meta' : 'Microsoft'}.`
+                          : `${formatPhoneDisplay(n.phoneNumber)} is no longer tied to an ad platform.`
+                      )
+                    }}
+                    className="px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500"
+                  >
+                    {PLATFORM_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                  {n.showTo && (
+                    <span className="text-gray-500">
+                      everyone else sees the default number; Google&apos;s call tracking is untouched
+                    </span>
+                  )}
+                </label>
+                {!n.showTo && (
                 <button
                   type="button"
                   onClick={() => setSiteNumber(n.id, !n.useOnSite, n.phoneNumber)}
@@ -370,6 +421,7 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
                 >
                   {n.useOnSite ? '\u2713 Shown on the hosted site' : 'Show on the hosted site'}
                 </button>
+                )}
                 {/* The confirm on the way in is a single moment; this is here
                     every time anybody opens the tab. A call conversion action
                     pointed at the wrong number fails silently and looks like
@@ -454,6 +506,28 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
             </span>
           </label>
         </div>
+
+        <label className="block">
+          <span className="block text-sm font-medium text-gray-700 mb-1">
+            Show on the site instead to <span className="font-normal text-gray-400">(optional)</span>
+          </span>
+          <select
+            value={draft.showTo}
+            onChange={(e) => setDraft({ ...draft, showTo: e.target.value })}
+            className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+          >
+            {PLATFORM_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <span className="block text-xs text-gray-400 mt-1">
+            A Microsoft or Meta number replaces the default one only for visitors that platform&apos;s ads
+            sent, so its calls are tagged with the platform. Leave it on &ldquo;No ad platform&rdquo; for the
+            default number.
+          </span>
+        </label>
 
         <label className="block">
           <span className="block text-sm font-medium text-gray-700 mb-1">What this number is for</span>

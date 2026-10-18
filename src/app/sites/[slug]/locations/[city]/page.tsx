@@ -453,6 +453,7 @@ export default async function LocationPage({ params, atOverride }: PageProps) {
       </main>
 
       <SiteChrome
+        privacyChoices={!!adsTracking?.privacyChoices}
         insuranceProgram={insuranceProgram}
         client={client}
         flags={flags}

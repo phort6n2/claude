@@ -48,6 +48,8 @@ import { mergeServiceAreas } from '@/lib/site-locations'
 import { keptPagesFor } from '@/lib/site-pages'
 import { homeJsonLd } from '@/lib/site-schema'
 import { heroCostLineFor } from '@/lib/insurance-rules'
+import { MetaVariant, withoutExcluded } from '@/components/sites/meta-variant'
+import { isMetaVariant } from '@/lib/meta-variant'
 
 /**
  * Hosted client landing page, styled after the landing-template reference
@@ -68,6 +70,7 @@ export const revalidate = 300
 
 interface PageProps {
   params: Promise<{ slug: string }>
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
 }
 
 function homeServiceName(client: {
@@ -183,8 +186,9 @@ async function getReviews(clientId: string): Promise<ReviewsData | null> {
   }
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { slug } = await params
+  const metaVariant = isMetaVariant(await searchParams)
   const client = await getClient(slug)
   if (!client || !(await canViewSite(client.status))) return { title: 'Not Found' }
   // The number in a DESCRIPTION is the one a searcher dials straight out of
@@ -199,7 +203,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // The two are kept apart deliberately — see src/lib/site-origin.ts.
   const stance = hostStanceFor(client, (await headers()).get('host'))
   const siteRoot = stance.canonicalOrigin
-  const robots = stance.isCanonicalHost ? undefined : { index: false, follow: true }
+  // The ?v=meta variant is never indexed: a thinner duplicate of this page has
+  // nothing to give a search engine and ranking to take from the real one. The
+  // canonical below still names the real page.
+  const robots = stance.isCanonicalHost && !metaVariant ? undefined : { index: false, follow: true }
   // The area the shop SELLS to, which is the shop's city unless an operator
   // has said otherwise — see lib/site-area.ts. The schema below still carries
   // the real locality.
@@ -224,8 +231,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-export default async function ClientSitePage({ params }: PageProps) {
+export default async function ClientSitePage({ params, searchParams }: PageProps) {
   const { slug } = await params
+  const metaVariant = isMetaVariant(await searchParams)
   const client = await getClient(slug)
 
   if (!client) notFound()
@@ -305,6 +313,31 @@ export default async function ClientSitePage({ params }: PageProps) {
   // the map and the schema, none of which move.
   const area = headlineArea(client)
   const heroTitle = homeHeroTitle(client, area)
+
+  if (metaVariant) {
+    // Services the shop does not want from Meta come off the copy, the footer
+    // and the form here — see components/sites/meta-variant.tsx.
+    const variantClient = withoutExcluded(client, adsTracking?.metaVariantExcludedServices ?? [])
+    return (
+      <MetaVariant
+        client={variantClient}
+        preview={preview}
+        previewStatus={client.status}
+        clarityProjectId={client.clarityProjectId}
+        headScripts={client.headScripts}
+        bodyEndScripts={client.bodyEndScripts}
+        flags={{ ...flags, offersWindshieldRepair: variantClient.offersWindshieldRepair }}
+        reviews={reviews}
+        extras={extras}
+        services={servicesForClient(variantClient as Record<ServiceFlag, boolean>)}
+        areas={areas}
+        basePath={basePath}
+        adsTracking={adsTracking}
+        heroTitle={homeHeroTitle(variantClient, area)}
+        eyebrow={`${homeServiceName(variantClient)} · ${areaWithState(client)}`}
+      />
+    )
+  }
 
   // Cities the site is willing to link to: a shop is there, or the client has
   // written something specific about it.
@@ -481,6 +514,7 @@ export default async function ClientSitePage({ params }: PageProps) {
       </main>
 
       <SiteChrome
+        privacyChoices={!!adsTracking?.privacyChoices}
         insuranceProgram={insuranceProgram}
         client={client}
         flags={flags}

@@ -469,6 +469,7 @@ export default async function InsuranceProgramPage({ params }: PageProps) {
       </main>
 
       <SiteChrome
+        privacyChoices={!!adsTracking?.privacyChoices}
         insuranceProgram={{ program, record }}
         client={client}
         flags={flags}

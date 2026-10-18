@@ -675,9 +675,12 @@ export function SiteChrome({
   linkableCities,
   pages = [],
   insuranceProgram,
+  privacyChoices = false,
 }: {
   client: SiteClient
   flags: SiteFlags
+  /** Footer "Your Privacy Choices" link — see SiteFooter. */
+  privacyChoices?: boolean
   reviews: ReviewsData | null
   /** Same record SiteBody takes — the footer carries the network mark too. */
   insuranceProgram?: { program: InsuranceProgram | null; record: ProgramRecord | null }
@@ -708,6 +711,7 @@ export function SiteChrome({
         locations={locations}
         linkableCities={linkableCities}
         pages={pages}
+        privacyChoices={privacyChoices}
       />
       <MobileCallBar client={client} quoteHref="#quote" smsCapable={flags.smsCapable} />
     </>

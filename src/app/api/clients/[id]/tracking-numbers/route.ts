@@ -6,6 +6,16 @@ import { twilioCreds } from '@/lib/twilio-voice'
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * "microsoft" | "meta" | null from a request body. A platform number is shown
+ * to that platform's ad visitors instead of the default one (lib/site-phone),
+ * and is never the default itself — Google's website-call swap is configured
+ * against the default, so Google is not a choice here.
+ */
+function parseShowTo(value: unknown): 'microsoft' | 'meta' | null {
+  return value === 'microsoft' || value === 'meta' ? value : null
+}
+
 interface RouteContext {
   params: Promise<{ id: string }>
 }
@@ -238,7 +248,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   }
 
   try {
-    const useOnSite = body.useOnSite === true
+    const showTo = parseShowTo(body.showTo)
+    const useOnSite = body.useOnSite === true && !showTo
     const data = {
       clientId: id,
       phoneNumber,
@@ -254,11 +265,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       whisper: String(body.whisper || '').trim().slice(0, 200) || null,
       active: body.active !== false,
       useOnSite,
+      showTo,
     }
     // The pages show one phone, so exactly one number may front the site.
     if (useOnSite) {
       await prisma.trackingNumber
         .updateMany({ where: { clientId: id, useOnSite: true }, data: { useOnSite: false } })
+        .catch(() => {})
+    }
+    // One number per platform, for the same reason.
+    if (showTo) {
+      await prisma.trackingNumber
+        .updateMany({ where: { clientId: id, showTo }, data: { showTo: null } })
         .catch(() => {})
     }
     const number = existing
@@ -292,6 +310,12 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
   const data: Record<string, unknown> = {}
   if ('useOnSite' in body) data.useOnSite = body.useOnSite === true
+  if ('showTo' in body) {
+    data.showTo = parseShowTo(body.showTo)
+    // A platform number is never also the default one.
+    if (data.showTo) data.useOnSite = false
+  }
+  if (data.useOnSite === true) data.showTo = null
   if ('recordCalls' in body) data.recordCalls = body.recordCalls === true
   if ('announceRecording' in body) data.announceRecording = body.announceRecording === true
   if ('active' in body) data.active = body.active === true
@@ -343,6 +367,12 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       await prisma.trackingNumber.updateMany({
         where: { clientId: id, useOnSite: true },
         data: { useOnSite: false },
+      })
+    }
+    if (typeof data.showTo === 'string') {
+      await prisma.trackingNumber.updateMany({
+        where: { clientId: id, showTo: data.showTo, NOT: { id: numberId } },
+        data: { showTo: null },
       })
     }
     const number = await prisma.trackingNumber.update({
