@@ -176,6 +176,49 @@ export function MetaPanel({
         </div>
       </div>
 
+      <details className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2" open={!meta.metaPixelId}>
+        <summary className="cursor-pointer font-medium text-gray-800">How to set it up in Meta</summary>
+        <div className="mt-2 space-y-2 text-gray-700">
+          <p className="font-medium text-gray-900">1. The Pixel and the token</p>
+          <ol className="list-decimal ml-5 space-y-1">
+            <li>
+              Events Manager → <strong>Connect data</strong> → Web → create a dataset (Pixel) for this
+              shop. Copy its ID into the box below. Nothing to install: this app loads it.
+            </li>
+            <li>
+              In that dataset: <strong>Settings → Conversions API → Generate access token</strong>. Paste it
+              below. It is stored encrypted and never reaches the browser.
+            </li>
+          </ol>
+          <p className="font-medium text-gray-900">2. The events — nothing to create</p>
+          <p>
+            Meta&apos;s standard events arrive on their own once the Pixel is saved:{' '}
+            <strong>Lead</strong> for a quote form (sent from the browser and the server with one event id,
+            so Meta keeps one) and <strong>Contact</strong> for a tap on a call link. Optimise lead
+            campaigns for <strong>Lead</strong>. Contact is kept separate on purpose: Meta credits
+            view-through, so a call tap from somebody who once scrolled past an ad would otherwise inflate
+            the number Meta bids on.
+          </p>
+          <p className="font-medium text-gray-900">3. Calls</p>
+          <p>
+            Meta has no forwarding numbers and cannot hear a phone call. Buy a{' '}
+            <strong>Meta tracking number</strong> (Lead delivery → Call tracking → &ldquo;Show instead to:
+            Meta Ads visitors&rdquo;): visitors from a Meta ad see it on every page, and every call or text
+            to it lands here as a Meta lead, recorded and scored. Use the same number on any Call-button
+            ad.
+          </p>
+          <p className="font-medium text-gray-900">4. The ad</p>
+          <p>
+            Website URL: the Meta landing page below. URL parameters:{' '}
+            <code className="font-mono text-xs break-all">
+              utm_source={'{{site_source_name}}'}&amp;utm_medium=paid&amp;utm_campaign={'{{campaign.name}}'}&amp;utm_content={'{{ad.name}}'}&amp;utm_term={'{{adset.name}}'}
+            </code>{' '}
+            — <code className="font-mono text-xs">utm_medium=paid</code> is what tells a Meta ad visitor
+            apart from somebody clicking an ordinary post.
+          </p>
+        </div>
+      </details>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <label className="block">
           <span className="block font-medium text-gray-700 mb-1">Pixel ID or base code</span>

@@ -1001,12 +1001,50 @@ export default function AdsTrackingCard({
             </li>
             <li>Set the goal to count <strong>one</strong> conversion per interaction, then save.</li>
           </ol>
-          <p className="rounded border border-gray-300 bg-white p-2 mt-2">
+          {/* CALLS NEED THEIR OWN STEPS. This block used to stop at the lead
+              form, so the call-tap goal the field below fires had no
+              instructions anywhere, and an event with no goal behind it is
+              counted by nobody. */}
+          <p className="font-medium text-gray-900 mt-3">3. Calls from the website</p>
+          <p>
             Microsoft has no equivalent of Google&apos;s &ldquo;calls from a website&rdquo; number
-            swap. To measure calls on Bing, add a <strong>Call extension</strong> to the campaign
-            with call reporting on — the same idea as Google&apos;s calls-from-ads, reported by
-            Microsoft with nothing to install.
+            swap, so this app does the job two ways: Microsoft visitors see the shop&apos;s{' '}
+            <strong>Microsoft tracking number</strong> (Lead delivery → Call tracking → &ldquo;Show
+            instead to: Microsoft Ads visitors&rdquo;), so every call to it lands here as a Microsoft
+            lead, recorded and scored — and a tap on any call link fires a UET event, which is what
+            Microsoft can count.
           </p>
+          <ol className="list-decimal ml-5 space-y-1.5">
+            <li>
+              <strong>Conversions → Conversion goals → Create</strong>.
+            </li>
+            <li>
+              Kind: <strong>Website</strong>. Category: <strong>Contact us</strong>. Goal type:{' '}
+              <strong>Event</strong>.
+            </li>
+            <li>
+              Set <strong>Action</strong> to exactly <code className="font-mono text-xs">click_to_call</code>{' '}
+              and leave Category, Label and Value empty.
+            </li>
+            <li>Count <strong>one</strong> conversion per interaction, then save.</li>
+            <li>
+              Type the same <code className="font-mono text-xs">click_to_call</code> into{' '}
+              <strong>Call tap event action</strong> below. Until it is filled in, no call event fires.
+            </li>
+          </ol>
+          <p className="font-medium text-gray-900 mt-3">4. Calls from the ad itself</p>
+          <ol className="list-decimal ml-5 space-y-1.5">
+            <li>
+              Add a <strong>Call</strong> asset (call extension) to the campaign, with the phone number set
+              to the <strong>Microsoft tracking number</strong> — never the shop&apos;s own line, which
+              nothing records.
+            </li>
+            <li>
+              If you also switch on Microsoft&apos;s own call tracking there (a Microsoft forwarding
+              number), it forwards to our number, so the call is still recorded and tagged here — the
+              same arrangement as Google&apos;s calls from ads.
+            </li>
+          </ol>
         </Steps>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
