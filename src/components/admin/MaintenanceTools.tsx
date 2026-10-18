@@ -88,9 +88,24 @@ const READS: Tool[] = [
     method: 'POST',
     what: 'Asks the directory what it WOULD do with every client — matched to a listing it already holds, or a new page. Writes nothing on either side. Most shops should MATCH: the directory carries ~3,000 listings and ours are usually already among them, so a run that wants to create most of them means the matching is not seeing what it should.',
   },
+  {
+    key: 'reencrypt-secrets-dry',
+    name: 'Which stored keys are not encrypted? (reads only)',
+    path: '/api/admin/reencrypt-secrets?dryRun=1',
+    method: 'POST',
+    what: 'Lists every API key and per-client token stored without encryption — saved while ENCRYPTION_KEY was missing, which stores them as base64. Names only; no value, masked or otherwise, is ever shown. Refuses if ENCRYPTION_KEY is still not set on this deployment.',
+  },
 ]
 
 const WRITES: Tool[] = [
+  {
+    key: 'reencrypt-secrets',
+    name: 'Encrypt every stored key that is not encrypted',
+    path: '/api/admin/reencrypt-secrets',
+    method: 'POST',
+    what: 'Re-stores each of those keys encrypted with ENCRYPTION_KEY, so nobody has to retype a credential. Each one is read back after encrypting and only written if it reads back identical. Run the dry version first.',
+    cost: 'Rewrites rows in the Setting table and the per-client Clarity and Meta tokens. Safe to run twice — a second pass finds nothing. Do NOT change or remove ENCRYPTION_KEY afterwards: everything encrypted with it becomes unreadable and would have to be entered again.',
+  },
   {
     key: 'ads-daily-run',
     name: 'Google Ads: run the daily anomaly checks now',

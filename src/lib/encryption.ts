@@ -60,3 +60,37 @@ export function decrypt(encryptedText: string): string | null {
 export function isEncryptionConfigured(): boolean {
   return getKey() !== null
 }
+
+/**
+ * True for a value written by the no-key fallback in `encrypt()` above:
+ * base64, which anybody who can read the row can read.
+ *
+ * Production ran without a valid ENCRYPTION_KEY for long enough that every
+ * key saved through Settings → API keys went in this way, and nothing said
+ * so — `encrypt()` succeeds either way and `decrypt()` reads both. It
+ * surfaced only when the Meta token save, which refuses rather than falling
+ * back, reported the missing key.
+ */
+export function isUnencryptedFallback(stored: string | null | undefined): boolean {
+  return typeof stored === 'string' && stored.startsWith('b64:')
+}
+
+/**
+ * Re-store a readable secret under the real key, or say why not.
+ *
+ * Proven by ROUND TRIP before it is handed back: the new ciphertext is
+ * decrypted again and compared with the original. A re-encryption that
+ * cannot be read back would replace a working credential with garbage, and
+ * the first anybody would hear of it is alerts quietly stopping. So this
+ * never returns a value it has not just read back successfully.
+ */
+export function reencryptPlain(
+  plain: string
+): { ok: true; value: string } | { ok: false; reason: string } {
+  if (!getKey()) return { ok: false, reason: 'ENCRYPTION_KEY is not set, so there is nothing to encrypt with' }
+  if (!plain) return { ok: false, reason: 'empty value' }
+  const value = encrypt(plain)
+  if (isUnencryptedFallback(value)) return { ok: false, reason: 'encrypt() fell back to base64' }
+  if (decrypt(value) !== plain) return { ok: false, reason: 'did not read back after encrypting' }
+  return { ok: true, value }
+}

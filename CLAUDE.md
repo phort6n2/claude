@@ -101,6 +101,16 @@ their apex — CDNs and app subdomains are exactly what appears in a page source
 - **The repo is public.** Never commit credentials, and never paste key values
   into a chat transcript. Keys live in the encrypted `Setting` table (via
   Settings → API keys) or in Vercel env vars.
+- **`encrypt()` falls back to BASE64 without a valid `ENCRYPTION_KEY`** (64
+  hex characters), and production ran that way: every Settings key went in
+  readable, and nothing said so, because `decrypt()` reads both. Found when
+  the Meta token save — which REFUSES rather than falling back, as the Clarity
+  one does — reported the missing key. Anything new that stores a credential
+  refuses the same way. **Maintenance → "Encrypt every stored key that is not
+  encrypted"** (`/api/admin/reencrypt-secrets`, dry run first) upgrades what is
+  already stored, round-tripping each value before writing it, and never
+  returns a value. Once set, the key must never change: everything encrypted
+  with it becomes unreadable.
 - Admin-entered URLs that the server fetches go through `validatePublicUrl`
   (https-only, no private/link-local hosts) — see `src/lib/site-import.ts`.
 
