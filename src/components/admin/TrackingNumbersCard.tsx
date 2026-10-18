@@ -33,9 +33,15 @@ interface TrackingNumber {
  * (and the one Google's website-call swap watches); a platform number
  * replaces it only for visitors that platform's ads sent, so a call to it is
  * attributed by the number dialled. See lib/traffic-source.ts.
+ *
+ * The blank option is NAMED for Google, not for the absence of a platform:
+ * "No ad platform" read as "this number is not for ads" on the very number
+ * Google's call tracking watches. But it is not "Google Ads visitors" either
+ * — that number is everyone's, organic and direct included, and a Google-only
+ * label invites somebody to go looking for the organic number.
  */
 const PLATFORM_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: '', label: 'No ad platform' },
+  { value: '', label: 'Google Ads & everyone else (default)' },
   { value: 'microsoft', label: 'Microsoft Ads visitors' },
   { value: 'meta', label: 'Meta Ads visitors' },
 ]
@@ -392,7 +398,7 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
                           ? `${formatPhoneDisplay(n.phoneNumber)} now shows on the site to ${
                               showTo === 'meta' ? 'Meta' : 'Microsoft'
                             } Ads visitors, and every call or text to it is tagged ${showTo === 'meta' ? 'Meta' : 'Microsoft'}.`
-                          : `${formatPhoneDisplay(n.phoneNumber)} is no longer tied to an ad platform.`
+                          : `${formatPhoneDisplay(n.phoneNumber)} is back to the default: Google Ads and everyone else.`
                       )
                     }}
                     className="px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500"
@@ -524,8 +530,9 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
           </select>
           <span className="block text-xs text-gray-400 mt-1">
             A Microsoft or Meta number replaces the default one only for visitors that platform&apos;s ads
-            sent, so its calls are tagged with the platform. Leave it on &ldquo;No ad platform&rdquo; for the
-            default number.
+            sent, so its calls are tagged with the platform. Leave it on the default for the number Google
+            Ads visitors see &mdash; the one Google&apos;s call tracking watches &mdash; which is also what
+            organic and direct visitors see.
           </span>
         </label>
 
