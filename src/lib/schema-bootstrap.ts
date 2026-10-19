@@ -661,6 +661,16 @@ export const ATTRIBUTION_SQL: string[] = [
        WHEN COALESCE("fbclid", NULLIF("formData"->>'fbclid', '')) IS NOT NULL THEN 'social'
        ELSE NULL END
    WHERE "trafficSource" IS NULL`,
+  /* A Google ad click whose gclid a privacy browser stripped still lands with
+     Google's own gad_source/gad_campaignid (GOOGLE_ADS_PARAMS in
+     traffic-source.ts), and every such lead before that rule was labelled
+     direct, unknown or Google organic. Re-labelled from the landing page they
+     carry. Never over a PAID verdict, so a Microsoft or Meta lead stays its
+     platform's; and it can only ever move a row to google/paid, so re-running
+     it on every boot changes nothing the second time. */
+  `UPDATE "Lead" SET "trafficSource" = 'google', "trafficMedium" = 'paid'
+   WHERE "trafficMedium" IS DISTINCT FROM 'paid'
+     AND COALESCE("landingPageUrl", "formData"->>'landing_page', '') ~ '[?&]gad_(source|campaignid)=[^&#]'`,
   `ALTER TABLE "TrackingNumber" ADD COLUMN IF NOT EXISTS "showTo" TEXT`,
   `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "bingCallEventAction" TEXT`,
   `ALTER TABLE "ClientAdsTracking" ADD COLUMN IF NOT EXISTS "metaPixelId" TEXT`,

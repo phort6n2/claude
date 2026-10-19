@@ -195,7 +195,11 @@ arrive from the hosted sites' own form and from embedded widgets.
 
 - **Source is decided ONCE, on landing, by middleware**: click id
   (gclid/gbraid/wbraid → google, msclkid → microsoft, fbclid → meta), then
-  `utm_source`, then `?v=meta` (the Meta page exists only as a Meta ad's URL,
+  Google's own `gad_source`/`gad_campaignid` (`GOOGLE_ADS_PARAMS` — Google adds
+  them only to AD clicks, and privacy browsers strip the gclid but leave them;
+  Nima's AGK lead arrived that way and read "direct". Evidence, not a click id,
+  so nothing is uploaded offline; the undocumented `gc_id` is NOT evidence),
+  then `utm_source`, then `?v=meta` (the Meta page exists only as a Meta ad's URL,
   and it survives where fbclid does not — iOS strips it), then the referrer,
   then direct. It is written to a first-party
   `gl_src` cookie (90 days) and handed to the page as `x-gl-src`, which

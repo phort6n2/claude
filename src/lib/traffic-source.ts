@@ -11,7 +11,9 @@
  *
  *   1. A CLICK ID. gclid/gbraid/wbraid are Google's, msclkid is Microsoft's,
  *      fbclid is Meta's. An ad network appends it to the click, so it is the
- *      only thing on a URL that proves an ad sent this visitor.
+ *      only thing on a URL that proves an ad sent this visitor — except
+ *      Google's own gad_source/gad_campaignid, which prove a Google ad click
+ *      when a privacy browser has stripped the gclid (`GOOGLE_ADS_PARAMS`).
  *   2. utm_source, which somebody typed into a campaign's URL template.
  *   3. The REFERRER — an organic search or a shared post. It names a platform
  *      but proves no ad, so it never selects a platform's phone number (see
@@ -53,6 +55,38 @@ export type Evidence = 'click' | 'utm' | 'referrer' | 'none'
 
 export const CLICK_ID_KEYS = ['gclid', 'gbraid', 'wbraid', 'msclkid', 'fbclid'] as const
 export type ClickIdKey = (typeof CLICK_ID_KEYS)[number]
+
+/**
+ * GOOGLE ADS' OWN AGGREGATE PARAMETERS — evidence of a Google ad click when
+ * the click id itself is gone.
+ *
+ * Google appends gad_source (the ad network) and gad_campaignid (the campaign)
+ * to the final URL of an AD click, beside the gclid; they never appear on an
+ * organic result (support.google.com/google-ads/answer/13327296). Privacy
+ * browsers and Safari's Link Tracking Protection strip the gclid as a known
+ * identifier and leave these — they identify nobody — so a real Google ad
+ * visitor arrived with gad_source=1&gad_campaignid=… and no gclid, and was
+ * labelled "direct" (or "Google (organic)" when the referrer survived). Nima's
+ * lead at AGK on 2026-10-18 was exactly that, from a browser sending GPC.
+ *
+ * Evidence, not a click id: there is nothing to upload as an offline
+ * conversion, so `gclid` stays empty and the "booked jobs back to Google" path
+ * is unaffected. Only Google's params — `gc_id`/`g_special_campaign` ride on
+ * the same URLs but are undocumented, and a rule built on an undocumented
+ * parameter is one Google can change underneath.
+ */
+export const GOOGLE_ADS_PARAMS = ['gad_source', 'gad_campaignid'] as const
+
+/** Does this URL carry Google Ads' own parameters? */
+export function hasGoogleAdsParams(url: string | null | undefined): boolean {
+  if (!url) return false
+  try {
+    const q = new URL(url).searchParams
+    return GOOGLE_ADS_PARAMS.some((k) => !!clean(q.get(k)))
+  } catch {
+    return false
+  }
+}
 export const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const
 export type UtmKey = (typeof UTM_KEYS)[number]
 
@@ -180,6 +214,17 @@ export function touchFromLanding(landing: Landing): Omit<Touch, 'firstSeenAt'> |
   if (clickIds.fbclid) {
     const m = mediumFromUtm(utmMedium)
     return { ...base, source: 'meta', medium: m === 'paid' ? 'paid' : 'social', evidence: 'click' }
+  }
+  // 1b. Google Ads' own parameters, where the gclid was stripped. Ahead of
+  // utm_source because Google writes these and a person types the UTM.
+  if (GOOGLE_ADS_PARAMS.some((k) => clean(q.get(k)))) {
+    return {
+      ...base,
+      campaign: campaign || clean(q.get('gad_campaignid')),
+      source: 'google',
+      medium: 'paid',
+      evidence: 'utm',
+    }
   }
   // 2. utm_source.
   const fromUtm = sourceFromUtm(utm.utm_source || null)
@@ -449,6 +494,12 @@ export function leadTrafficSource(input: LeadAttributionInput): { source: Traffi
   }
   const claimed = oneOf(TRAFFIC_SOURCES, input.trafficSource)
   const claimedMedium = oneOf(TRAFFIC_MEDIUMS, input.trafficMedium)
+  // A paid verdict stands — it is the latest ad touch, by the replacement rule
+  // above. Anything weaker loses to Google Ads' own parameters on the landing
+  // page: a cookie written before this rule existed said "direct" for exactly
+  // the visitors it is for.
+  if (claimed && claimed !== 'unknown' && claimedMedium === 'paid') return { source: claimed, medium: 'paid' }
+  if (hasGoogleAdsParams(input.landingPage)) return { source: 'google', medium: 'paid' }
   if (claimed && claimed !== 'unknown') return { source: claimed, medium: claimedMedium || 'other' }
   const fromUtm = sourceFromUtm(input.utmSource || null)
   if (fromUtm) return { source: fromUtm, medium: mediumFromUtm(input.utmMedium || null) || 'other' }

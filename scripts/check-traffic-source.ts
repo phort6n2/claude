@@ -60,6 +60,26 @@ async function main() {
   check(touchFromLanding(land('/', null)) === null, 'nothing on the request says nothing')
   check(mergeTouch(null, land('/')).touch.source === 'direct', '…and with nothing remembered it is direct')
 
+  console.log('\nGOOGLE ADS\' OWN gad_* PARAMETERS ARE A GOOGLE AD WHEN THE gclid WAS STRIPPED')
+  // Silent cases first: nothing else may start reading as a Google ad.
+  check(touchFromLanding(land('/?gc_id=22874534569&g_special_campaign=true'))?.source !== 'google', 'undocumented gc_id / g_special_campaign alone are not evidence')
+  check(touchFromLanding(land('/?gad_source=')) === null, 'an empty gad_source is not evidence')
+  check(touchFromLanding(land('/', 'https://www.google.com/'))?.medium === 'organic', 'a bare google.com referrer is still organic')
+  // Nima's real landing page, 2026-10-18 (GPC browser, no gclid):
+  const nima = touchFromLanding(land('/auto-glass-repair?gc_id=22874534569&g_special_campaign=true&gad_source=1&gad_campaignid=23355809702'))
+  check(nima?.source === 'google' && nima?.medium === 'paid', 'gad_source + gad_campaignid → Google Ads (paid)')
+  check(nima?.campaign === '23355809702', '…carrying the campaign id')
+  check(nima ? numberSourceFor({ source: nima.source, evidence: nima.evidence }) === null : false, '…and still the default number (Google is never a choice)')
+  check(touchFromLanding(land('/?gad_source=1', 'https://www.google.com/'))?.medium === 'paid', 'stripped gclid + google.com referrer → paid, not organic')
+  check(touchFromLanding(land('/?gad_source=1&msclkid=b'))?.source === 'microsoft', 'a real click id still beats gad_*')
+  check(touchFromLanding(land('/?gad_source=1&utm_source=bing'))?.source === 'google', 'gad_* (written by Google) beats a typed utm_source')
+  const metaThenGoogle = mergeTouch(mergeTouch(null, land('/?fbclid=x&utm_medium=paid')).touch, land('/?gad_source=1', null, NOW + DAY))
+  check(metaThenGoogle.touch.source === 'google' && metaThenGoogle.changed, 'a later gad_* ad click replaces an earlier paid touch')
+  // The lead, when the cookie predates the rule (Nima's said "direct"):
+  check(JSON.stringify(leadTrafficSource({ trafficSource: 'direct', trafficMedium: 'none', landingPage: `${SITE}/?gad_source=1&gad_campaignid=1` })) === JSON.stringify({ source: 'google', medium: 'paid' }), 'a lead whose landing page has gad_* is Google Ads over a "direct" cookie')
+  check(leadTrafficSource({ trafficSource: 'meta', trafficMedium: 'paid', landingPage: `${SITE}/?gad_source=1` }).source === 'meta', '…but never over a PAID verdict from another platform')
+  check(leadTrafficSource({ trafficSource: 'direct', trafficMedium: 'none', landingPage: `${SITE}/?gc_id=1` }).source === 'direct', 'gc_id alone leaves a lead direct')
+
   console.log('\nAN ORGANIC VISIT NEVER SELECTS A PLATFORM NUMBER')
   const organicBing = mergeTouch(null, land('/', 'https://www.bing.com/')).touch
   check(organicBing.source === 'microsoft' && organicBing.medium === 'organic', 'organic Bing is recorded as Microsoft (organic)')

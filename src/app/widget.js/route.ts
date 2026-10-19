@@ -159,6 +159,10 @@ const WIDGET_SOURCE = String.raw`(function () {
       k = UTM_KEYS[i]; v = params.get(k);
       if (v) { stored[k] = v; sawUtm = true; }
     }
+    // Google Ads' own gad_source/gad_campaignid: a Google ad click whose gclid
+    // a privacy browser stripped. A fresh ad touch like a UTM, so the landing
+    // page that carries them is the one the lead reports (lib/traffic-source.ts).
+    if (params.get('gad_source') || params.get('gad_campaignid')) sawUtm = true;
     // A fresh ad click (or tagged visit) starts a new attribution session:
     // stamp the landing page and referrer of THIS visit. Otherwise keep the
     // first-seen values, and only fill them if we have none yet.
