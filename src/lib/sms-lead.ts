@@ -5,6 +5,7 @@ import { notifyNewLead as notifyAdminPush } from '@/lib/push-notifications'
 import { outcomeUrlFor } from '@/lib/lead-outcome-token'
 import { isRenderableImage } from '@/lib/twilio-sms'
 import { trafficSourceForNumber } from '@/lib/traffic-source'
+import { queueMetaPhoneLead } from '@/lib/meta-capi'
 import type { TrackingNumber } from '@prisma/client'
 
 /**
@@ -182,6 +183,10 @@ export async function recordInboundSms(
       timezone: number.client.timezone,
     })
     if (earliest.isEarliest) {
+      // Same as a call: a text to the Meta number is a Meta lead (meta-capi.ts).
+      if (number.showTo === 'meta') {
+        await queueMetaPhoneLead({ clientId: number.clientId, leadId, sid: facts.messageSid, phone: facts.from })
+      }
       const sentAtLabel = (() => {
         try {
           return new Intl.DateTimeFormat('en-US', {

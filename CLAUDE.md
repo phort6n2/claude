@@ -228,6 +228,27 @@ arrive from the hosted sites' own form and from embedded widgets.
   keeps it. Call taps fire `Contact`, not `Lead`: Meta credits view-through,
   and a call tap from somebody who once scrolled past an ad would otherwise
   count as a Meta lead.
+- **A call or text to the Meta number is a Meta `Lead`** (`queueMetaPhoneLead`,
+  `action_source: 'phone_call'`, event id `phone-{Sid}`), queued from
+  `call-lead.ts`/`sms-lead.ts` inside the same `earliestSameDayContact` gate
+  as the alert, so one person is one event a day and a form-then-call is the
+  form's event alone. Matched by the caller's hashed number ONLY — a call has
+  no fbc, fbp or IP — so expect many unmatched; our own count is the complete
+  one. **An opted-out visitor is never SHOWN the Meta number**
+  (`numberSourceAfterOptOut`, read in `site-phone.ts`): nothing on a phone call
+  can carry their choice to the server, so it is honoured on the page, and
+  their call lands as `unknown`. Microsoft's number is unaffected — it is sent
+  nowhere. The privacy policy says so only for a client with an active Meta
+  number (`SiteMeasurement.metaPhoneNumber`).
+- **The monthly report splits enquiries by AD PLATFORM** (`digest-platforms.ts`,
+  `adPlatformOf` in `traffic-source.ts`, `byPlatform` on the digest — optional,
+  because a stored report predates it). A partition like `byChannel`. A form
+  lead counts only when `paid` (organic Google and an fbclid off an ordinary
+  Facebook post do not); a call only by reaching a platform's own number.
+  **Silent unless Microsoft or Meta produced something**: for a Google-only
+  shop the default-number calls are mostly Google's and nothing can prove it,
+  so a table would show Google as a sliver of the work. The note under it is
+  ONE constant, read by the page and the email.
 - **California: an opt-out stops it at the source.** `privacyChoices` (always
   on with a Pixel): the Global Privacy Control signal or the footer's "Your
   Privacy Choices" link (`gl_optout`) means no Pixel, no UET, no CAPI event,

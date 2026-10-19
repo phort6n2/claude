@@ -256,6 +256,28 @@ export function numberSourceFor(touch: Pick<Touch, 'source' | 'evidence'> | null
   return touch.source === 'microsoft' || touch.source === 'meta' ? touch.source : null
 }
 
+/** The site's "Your Privacy Choices" cookie (components/sites/PrivacyChoices.tsx). */
+export const OPT_OUT_COOKIE = 'gl_optout'
+
+/**
+ * The platform number, after the visitor's privacy choice.
+ *
+ * A call to the META number is reported to Meta (meta-capi.ts,
+ * `queueMetaPhoneLead`), with the caller's number hashed. A visitor who opted
+ * out — Global Privacy Control, or the footer link — has said not to share
+ * with advertisers, and nothing on a phone call can carry that choice to the
+ * server afterwards. So the choice is honoured where it still exists, on the
+ * page: they see the default number, and their call is never Meta's to hear
+ * about. The cost is that one call is counted under "unknown" instead of
+ * Meta, which is the right way round for a California shop.
+ *
+ * Microsoft's number is unaffected: a call to it is attributed in our own
+ * database and sent nowhere.
+ */
+export function numberSourceAfterOptOut(platform: NumberSource | null, optedOut: boolean): NumberSource | null {
+  return platform === 'meta' && optedOut ? null : platform
+}
+
 /**
  * The lead's trafficSource for a call or text to a tracking number. A call
  * carries no click id, so the NUMBER is the evidence: a Microsoft or Meta
@@ -265,6 +287,35 @@ export function numberSourceFor(touch: Pick<Touch, 'source' | 'evidence'> | null
  */
 export function trafficSourceForNumber(number: { showTo?: string | null }): TrafficSource {
   return number.showTo === 'microsoft' || number.showTo === 'meta' ? number.showTo : 'unknown'
+}
+
+export const AD_PLATFORMS = ['google', 'microsoft', 'meta'] as const
+export type AdPlatform = (typeof AD_PLATFORMS)[number]
+
+/**
+ * The ad platform that PAID for a lead, or null — for counting, as in the
+ * monthly report's "where they came from".
+ *
+ * Stricter than `trafficSource`, which also says google for an organic search
+ * visitor and meta for somebody who tapped a link in an ordinary Facebook post
+ * (fbclid rides on every outbound Facebook link, which is why the backfill
+ * marks those `social`). So: a form lead needs `paid` — a click id, or the
+ * `utm_medium=paid` the Meta setup steps put on every ad — and a call or text
+ * needs to have reached that platform's own number, which is only ever shown
+ * to visitors its ads sent. A call to the default number is null whoever made
+ * it: that number is Google's AND everybody else's, and nothing on the call
+ * says which.
+ */
+export function adPlatformOf(lead: {
+  source?: string | null
+  trafficSource?: string | null
+  trafficMedium?: string | null
+}): AdPlatform | null {
+  const platform = oneOf(AD_PLATFORMS, lead.trafficSource)
+  if (!platform) return null
+  if (lead.trafficMedium === 'paid') return platform
+  const byNumber = (lead.source === 'PHONE' || lead.source === 'SMS') && platform !== 'google'
+  return byNumber ? platform : null
 }
 
 // ---------------------------------------------------------------------------

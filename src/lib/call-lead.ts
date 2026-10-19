@@ -5,6 +5,7 @@ import { notifyNewLead as notifyLeadRecipients } from '@/lib/lead-notifications'
 import { notifyNewLead as notifyAdminPush } from '@/lib/push-notifications'
 import { outcomeUrlFor } from '@/lib/lead-outcome-token'
 import { trafficSourceForNumber } from '@/lib/traffic-source'
+import { queueMetaPhoneLead } from '@/lib/meta-capi'
 import type { TrackingNumber } from '@prisma/client'
 
 /**
@@ -171,6 +172,13 @@ export async function recordCall(
       })()
 
       if (earliest.isEarliest) {
+        // A call to the Meta number is a Meta lead; tell Meta, once per person
+        // per day (meta-capi.ts). Ahead of the alert so a failing email cannot
+        // cost it. No-op for every other number and for a client without the
+        // Conversions API set up.
+        if (number.showTo === 'meta') {
+          await queueMetaPhoneLead({ clientId: number.clientId, leadId, sid: facts.callSid, phone: facts.from })
+        }
         await notifyLeadRecipients(
           number.clientId,
           number.client.businessName,

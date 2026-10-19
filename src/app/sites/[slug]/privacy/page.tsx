@@ -80,11 +80,12 @@ export default async function PrivacyPage({ params }: PageProps) {
   // would drop it. See site-phone.ts.
   Object.assign(client, await withSitePhone(client))
   const basePath = sitePathPrefixFor(client, (await headers()).get('host'))
-  const [extras, keptPages, tracking, recordingNumbers] = await Promise.all([
+  const [extras, keptPages, tracking, recordingNumbers, metaNumbers] = await Promise.all([
     getSiteExtras(client.id),
     keptPagesFor(client.id, client.businessName),
     getAdsTracking(client.id),
     prisma.trackingNumber.count({ where: { clientId: client.id, active: true, recordCalls: true } }).catch(() => 0),
+    prisma.trackingNumber.count({ where: { clientId: client.id, active: true, showTo: 'meta' } }).catch(() => 0),
   ])
   /* The tag-by-tag disclosure and the opt-out are rendered for a client with
      privacy choices on (any client with a Meta Pixel, or switched on by
@@ -96,6 +97,7 @@ export default async function PrivacyPage({ params }: PageProps) {
         microsoftUet: !!tracking.bingUetTagId,
         metaPixel: !!tracking.metaPixelId,
         metaCapi: tracking.metaCapi,
+        metaPhoneNumber: metaNumbers > 0,
         privacyChoices: true,
         recordsCalls: recordingNumbers > 0,
       }

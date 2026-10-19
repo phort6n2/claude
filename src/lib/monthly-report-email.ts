@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { monthLabel } from '@/lib/tz'
 import type { MonthlyDigest } from '@/lib/monthly-digest'
+import { PLATFORM_NOTE, platformRows } from '@/lib/digest-platforms'
 
 /**
  * The monthly report, as an email.
@@ -150,6 +151,35 @@ export function renderMonthlyReportEmail(
   } else {
     parts.push(`<p style="${P}">No enquiries came in last month.</p>`)
     lines.push('No enquiries last month.')
+  }
+
+  // Only for a shop on more than Google — see platformRows for why.
+  const platforms = platformRows(e.byPlatform)
+  if (platforms.length) {
+    const texts = platforms.some((p) => p.sms > 0)
+    parts.push(
+      `<p style="margin:8px 0 4px;font-size:13px;font-weight:700;color:#111827">Where they came from</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 8px;border-collapse:collapse">
+        <tr><th style="${TH}">From</th><th style="${TH}">Enquiries</th><th style="${TH}">Calls</th><th style="${TH}">Form</th>${
+          texts ? `<th style="${TH}">Texts</th>` : ''
+        }</tr>
+        ${platforms
+          .map(
+            (p) =>
+              `<tr><td style="${TD}">${esc(p.label)}</td><td style="${TD};font-weight:700">${num(p.total)}</td><td style="${TD}">${num(
+                p.phone
+              )}</td><td style="${TD}">${num(p.form)}</td>${texts ? `<td style="${TD}">${num(p.sms)}</td>` : ''}</tr>`
+          )
+          .join('')}
+      </table>
+      <p style="margin:0 0 12px;font-size:12px;line-height:1.5;color:#6b7280">${esc(PLATFORM_NOTE)}</p>`
+    )
+    lines.push(
+      'Where they came from: ' +
+        platforms
+          .map((p) => `${p.label} ${p.total} (${p.phone} call${p.phone === 1 ? '' : 's'}, ${p.form} form${texts ? `, ${p.sms} text` : ''})`)
+          .join('; ')
+    )
   }
 
   // --- Ads -----------------------------------------------------------------

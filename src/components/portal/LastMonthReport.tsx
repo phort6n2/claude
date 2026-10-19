@@ -1,5 +1,6 @@
 import type { MonthlyDigest } from '@/lib/monthly-digest'
 import SeoWorkSection from '@/components/portal/SeoWorkSection'
+import { PLATFORM_NOTE, platformRows } from '@/lib/digest-platforms'
 
 /**
  * Last month in depth, above the twelve-month trend on the same page.
@@ -55,6 +56,8 @@ export default function LastMonthReport({
 }) {
   const e = digest.enquiries
   const a = digest.ads
+  const platforms = platformRows(e.byPlatform)
+  const showTexts = platforms.some((p) => p.sms > 0)
 
   return (
     <div className="space-y-6 rounded-2xl border border-gray-200 bg-gray-50/60 p-4 sm:p-6">
@@ -92,6 +95,36 @@ export default function LastMonthReport({
           </p>
         ) : (
           <p className="text-sm text-gray-700">No enquiries came in last month.</p>
+        )}
+        {platforms.length > 0 && (
+          <div className="space-y-2 pt-1">
+            <h4 className="text-sm font-semibold text-gray-900">Where they came from</h4>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[280px] text-sm">
+                <thead>
+                  <tr className="text-left text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                    <th className="pb-2 pr-2">From</th>
+                    <th className="pb-2 pr-2">Enquiries</th>
+                    <th className="pb-2 pr-2">Calls</th>
+                    <th className="pb-2 pr-2">Form</th>
+                    {showTexts && <th className="pb-2">Texts</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {platforms.map((p) => (
+                    <tr key={p.key} className="border-t border-gray-200">
+                      <td className="py-2 pr-2 text-gray-900">{p.label}</td>
+                      <td className="py-2 pr-2 font-semibold tabular-nums text-gray-900">{p.total}</td>
+                      <td className="py-2 pr-2 tabular-nums text-gray-700">{p.phone}</td>
+                      <td className="py-2 pr-2 tabular-nums text-gray-700">{p.form}</td>
+                      {showTexts && <td className="py-2 tabular-nums text-gray-700">{p.sms}</td>}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-gray-500">{PLATFORM_NOTE}</p>
+          </div>
         )}
       </Section>
 

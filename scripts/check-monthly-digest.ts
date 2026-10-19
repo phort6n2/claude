@@ -27,6 +27,8 @@ import {
   type MonthlyDigest,
 } from '../src/lib/monthly-digest'
 import { renderMonthlyReportEmail } from '../src/lib/monthly-report-email'
+import { platformRows } from '../src/lib/digest-platforms'
+import { adPlatformOf } from '../src/lib/traffic-source'
 
 let failures = 0
 const fail = (msg: string) => {
@@ -73,6 +75,79 @@ console.log('\nEnquiries: the channels PARTITION the total, never add to it')
   const empty = summariseEnquiries([])
   if (empty.total === 0 && empty.revenue === 0) pass('an empty month is zeroes, not nulls')
   else fail('an empty month did not come out as zeroes')
+}
+
+// --- By ad platform --------------------------------------------------------
+
+console.log('\nBy ad platform: silent for a Google-only shop, a partition when shown')
+{
+  const base = { status: 'NEW', saleValue: null }
+  // SILENT CASES FIRST. A Google-only shop: its default-number calls are
+  // mostly Google's, and a table would say Google produced 1 of 4.
+  const googleOnly = summariseEnquiries([
+    { ...base, source: 'FORM', trafficSource: 'google', trafficMedium: 'paid' },
+    { ...base, source: 'PHONE', trafficSource: 'unknown', trafficMedium: null },
+    { ...base, source: 'PHONE', trafficSource: 'unknown', trafficMedium: null },
+    { ...base, source: 'FORM', trafficSource: 'direct', trafficMedium: 'none' },
+  ])
+  expectEqual('Google-only shop renders no platform rows', platformRows(googleOnly.byPlatform).length, 0)
+  expectEqual('a report stored before byPlatform existed renders none', platformRows(undefined).length, 0)
+
+  // Not paid, so not an ad: organic search, and a tap on an ordinary Facebook
+  // post (fbclid rides on every outbound Facebook link).
+  expectEqual('organic Google is not Google Ads', adPlatformOf({ source: 'FORM', trafficSource: 'google', trafficMedium: 'organic' }), null)
+  expectEqual('fbclid without utm_medium=paid is not Meta Ads', adPlatformOf({ source: 'FORM', trafficSource: 'meta', trafficMedium: 'social' }), null)
+  expectEqual('a call to the default number is nobody\'s', adPlatformOf({ source: 'PHONE', trafficSource: 'unknown' }), null)
+  expectEqual('a Google call cannot be credited by number', adPlatformOf({ source: 'PHONE', trafficSource: 'google', trafficMedium: null }), null)
+  // Credited.
+  expectEqual('a call to the Meta number is Meta', adPlatformOf({ source: 'PHONE', trafficSource: 'meta', trafficMedium: null }), 'meta')
+  expectEqual('a text to the Microsoft number is Microsoft', adPlatformOf({ source: 'SMS', trafficSource: 'microsoft', trafficMedium: null }), 'microsoft')
+  expectEqual('a ?v=meta form lead is Meta', adPlatformOf({ source: 'FORM', trafficSource: 'meta', trafficMedium: 'paid' }), 'meta')
+
+  const mixed = summariseEnquiries([
+    { ...base, source: 'FORM', trafficSource: 'google', trafficMedium: 'paid' },
+    { ...base, source: 'PHONE', trafficSource: 'meta', trafficMedium: null },
+    { ...base, source: 'PHONE', trafficSource: 'meta', trafficMedium: null },
+    { ...base, source: 'FORM', trafficSource: 'meta', trafficMedium: 'paid' },
+    { ...base, source: 'PHONE', trafficSource: 'unknown', trafficMedium: null },
+    { ...base, source: 'FORM', trafficSource: 'meta', trafficMedium: 'social' },
+  ])
+  const rows = platformRows(mixed.byPlatform)
+  expectEqual('rows: Google, Meta, everything else — no empty Microsoft row', rows.map((r) => r.key).join(','), 'google,meta,rest')
+  expectEqual('the rows sum to the enquiry total', rows.reduce((s, r) => s + r.total, 0), mixed.total)
+  const meta = rows.find((r) => r.key === 'meta')!
+  expectEqual('Meta: 3 enquiries', meta.total, 3)
+  expectEqual('Meta: 2 calls', meta.phone, 2)
+
+  const html = renderMonthlyReportEmail(
+    { ...sampleDigestShell(), enquiries: mixed },
+    null
+  ).html
+  if (html.includes('Where they came from') || html.includes('Meta Ads')) pass('the email carries the platform table')
+  else fail('the email has no platform table for a shop with Meta leads')
+  if (html.includes('cannot say which one it was')) pass('the email carries the caveat under it')
+  else fail('the email shows the table without the caveat')
+  const quiet = renderMonthlyReportEmail({ ...sampleDigestShell(), enquiries: googleOnly }, null).html
+  if (!quiet.includes('Everything else')) pass('a Google-only email has no platform table')
+  else fail('a Google-only email grew a platform table')
+}
+
+function sampleDigestShell(): MonthlyDigest {
+  return {
+    clientId: 'c1',
+    businessName: 'Example Auto Glass',
+    year: 2026,
+    month: 9,
+    label: 'September 2026',
+    timezone: 'America/Los_Angeles',
+    from: '2026-09-01T07:00:00.000Z',
+    to: '2026-10-01T07:00:00.000Z',
+    enquiries: summariseEnquiries([]),
+    ads: null,
+    work: [],
+    nextSteps: [],
+    note: null,
+  }
 }
 
 // --- Ads -------------------------------------------------------------------

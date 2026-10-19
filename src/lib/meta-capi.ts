@@ -84,6 +84,8 @@ export interface MetaLeadFacts {
   leadId: string | null
   eventId: string
   eventName?: 'Lead' | 'Contact'
+  /** 'phone_call' for a call or text to the Meta number; 'website' otherwise. */
+  actionSource?: 'website' | 'phone_call'
   eventTime: Date
   eventSourceUrl: string | null
   email?: string | null
@@ -125,7 +127,7 @@ export function buildMetaEvent(facts: MetaLeadFacts): Record<string, unknown> {
     event_name: facts.eventName || 'Lead',
     event_time: Math.floor(facts.eventTime.getTime() / 1000),
     event_id: facts.eventId,
-    action_source: 'website',
+    action_source: facts.actionSource || 'website',
     user_data: userData,
   }
   if (facts.eventSourceUrl) event.event_source_url = facts.eventSourceUrl
@@ -219,6 +221,66 @@ export async function queueMetaLead(facts: MetaLeadFacts): Promise<string | null
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') return null
     console.error('[Meta CAPI] Could not queue event:', e)
     return null
+  }
+}
+
+/**
+ * A call or text to the META tracking number, as a Meta Lead.
+ *
+ * WHY. That number is shown only to visitors Meta's ads sent (site-phone.ts),
+ * so a call to it is a Meta lead by construction — and before this Meta never
+ * heard about one. The Pixel sees a TAP on the number (`Contact`); it cannot
+ * see somebody who read the number off the page and dialled it, nor whether
+ * the call happened at all. So the server reports the call itself, with
+ * `action_source: 'phone_call'`.
+ *
+ * MATCHING IS BY THE CALLER'S NUMBER ALONE, hashed. A call carries no fbc,
+ * fbp or IP, so Meta can credit the ad only when that number is on the
+ * caller's own Meta account. Many will not match; they still count in our
+ * own reporting, which is the complete record. The event id is the
+ * CallSid/MessageSid, so a retried webhook cannot report one call twice.
+ *
+ * ONCE PER PERSON PER DAY — the caller decides that (`earliestSameDayContact`,
+ * the rule the alerts use): a form submission followed by a call is one
+ * enquiry, and the form already sent its own Lead.
+ *
+ * NEVER FOR AN OPTED-OUT VISITOR, because such a visitor is never shown this
+ * number (`numberSourceAfterOptOut`).
+ *
+ * Never throws: the lead is already saved and Meta is strictly additive.
+ * Outside a request `after()` is unavailable, and the 15-minute retry cron
+ * sends the queued row instead.
+ */
+export async function queueMetaPhoneLead(facts: {
+  clientId: string
+  leadId: string
+  /** Twilio's CallSid (CA…) or MessageSid (SM…/MM…): unique, and stable across retries. */
+  sid: string
+  phone: string
+  at?: Date
+}): Promise<void> {
+  try {
+    const id = await queueMetaLead({
+      clientId: facts.clientId,
+      leadId: facts.leadId,
+      eventId: `phone-${facts.sid}`,
+      eventName: 'Lead',
+      actionSource: 'phone_call',
+      eventTime: facts.at ?? new Date(),
+      eventSourceUrl: null,
+      phone: facts.phone,
+    })
+    if (!id) return
+    try {
+      const { after } = await import('next/server')
+      after(async () => {
+        await attemptMetaDelivery(id)
+      })
+    } catch {
+      // Not inside a request: the retry cron picks the row up.
+    }
+  } catch (e) {
+    console.error('[Meta CAPI] Could not queue phone lead:', e)
   }
 }
 

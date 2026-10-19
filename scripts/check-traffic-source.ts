@@ -16,6 +16,7 @@ import {
   encodeTouch,
   leadTrafficSource,
   mergeTouch,
+  numberSourceAfterOptOut,
   numberSourceFor,
   numberSourceFromHeader,
   sourceFromReferrer,
@@ -155,6 +156,30 @@ async function main() {
   check(!isValidTestToken(tok, 'client-b', NOW + 1000), 'refused for another client')
   check(!isValidTestToken(tok, 'client-a', NOW + 120_000), 'refused once expired')
   check(!isValidTestToken(tok.replace(/.$/, (c) => (c === 'a' ? 'b' : 'a')), 'client-a', NOW), 'refused when tampered')
+
+  console.log('\nAN OPTED-OUT VISITOR NEVER SEES THE META NUMBER (its calls are reported to Meta)')
+  check(numberSourceAfterOptOut('meta', true) === null, 'opted out + Meta ad → default number')
+  check(numberSourceAfterOptOut('microsoft', true) === 'microsoft', 'opted out + Microsoft ad → still the Microsoft number (sent nowhere)')
+  check(numberSourceAfterOptOut('meta', false) === 'meta', 'not opted out → the Meta number')
+  check(numberSourceAfterOptOut(null, true) === null, 'no platform → default number')
+
+  console.log('\nA CALL TO THE META NUMBER IS A phone_call LEAD, MATCHED BY THE CALLER ALONE')
+  const callEvent = buildMetaEvent({
+    clientId: 'c',
+    leadId: 'lead-1',
+    eventId: 'phone-CA123',
+    eventName: 'Lead',
+    actionSource: 'phone_call',
+    eventTime: new Date(NOW),
+    eventSourceUrl: null,
+    phone: '+17145550100',
+  })
+  const callUd = callEvent.user_data as Record<string, unknown>
+  check(callEvent.action_source === 'phone_call', 'action_source is phone_call')
+  check(callEvent.event_name === 'Lead' && callEvent.event_id === 'phone-CA123', 'a Lead, keyed on the Sid')
+  check(JSON.stringify(callUd.ph) === JSON.stringify([sha256('17145550100')]), 'caller number hashed with its country code')
+  check(!('event_source_url' in callEvent) && !callUd.client_user_agent && !callUd.fbc, 'no page, browser or cookie data invented for a call')
+  check(buildMetaEvent({ clientId: 'c', leadId: null, eventId: 'x', eventTime: new Date(NOW), eventSourceUrl: null }).action_source === 'website', 'a form lead is still action_source website')
 
   console.log('\nTHE META VARIANT IS ?v=meta AND NOTHING ELSE')
   check(isMetaVariant({ v: 'meta' }) && isMetaVariant({ v: 'META' }), '?v=meta')

@@ -4,6 +4,7 @@ import { getClientActivity } from '@/lib/client-activity'
 import { monthLabel, monthWindow } from '@/lib/tz'
 import { latestSeoSection } from '@/lib/seo-report-inbound'
 import type { SeoReportAi, SeoReportArticles, SeoReportLinks } from '@/lib/seo-report'
+import { countByPlatform, type ByPlatform } from '@/lib/digest-platforms'
 
 /**
  * THE MONTH'S REPORT for one shop: what came in, what the ads cost, what was
@@ -52,6 +53,12 @@ export interface DigestEnquiries {
    * half what it is.
    */
   byChannel: { form: number; phone: number; sms: number; other: number }
+  /**
+   * The same leads by the AD PLATFORM that paid for them — also a partition
+   * (lib/digest-platforms.ts). Optional because every report stored before it
+   * existed lacks it, and a sent report is never rebuilt.
+   */
+  byPlatform?: ByPlatform
   booked: number
   lost: number
   open: number
@@ -260,11 +267,18 @@ export function summariseAds(
 
 /** Count canonical leads into the shape the report renders. */
 export function summariseEnquiries(
-  leads: Array<{ source: string; status: string; saleValue: number | null }>
+  leads: Array<{
+    source: string
+    status: string
+    saleValue: number | null
+    trafficSource?: string | null
+    trafficMedium?: string | null
+  }>
 ): DigestEnquiries {
   const out: DigestEnquiries = {
     total: leads.length,
     byChannel: { form: 0, phone: 0, sms: 0, other: 0 },
+    byPlatform: countByPlatform(leads),
     booked: 0,
     lost: 0,
     open: 0,
@@ -361,7 +375,7 @@ export async function buildMonthlyDigest(
         // Canonical rows only. `lt end` because the month window's end is
         // exclusive — see lib/tz.
         where: { clientId, duplicateOfLeadId: null, createdAt: { gte: start, lt: end } },
-        select: { source: true, status: true, saleValue: true },
+        select: { source: true, status: true, saleValue: true, trafficSource: true, trafficMedium: true },
       })
       .catch(() => []),
     getClientActivity(clientId).catch(() => []),

@@ -1,12 +1,20 @@
 import { prisma } from '@/lib/db'
 import { formatPhoneDisplay } from '@/lib/lead-display'
-import { SOURCE_HEADER, numberSourceFromHeader, type NumberSource } from '@/lib/traffic-source'
+import {
+  OPT_OUT_COOKIE,
+  SOURCE_HEADER,
+  numberSourceAfterOptOut,
+  numberSourceFromHeader,
+  type NumberSource,
+} from '@/lib/traffic-source'
 
 /** The ad platform middleware recorded for this request, or null outside one. */
 async function numberSourceForRequest(): Promise<NumberSource | null> {
   try {
-    const { headers } = await import('next/headers')
-    return numberSourceFromHeader((await headers()).get(SOURCE_HEADER))
+    const { headers, cookies } = await import('next/headers')
+    const h = await headers()
+    const optedOut = h.get('sec-gpc') === '1' || (await cookies()).get(OPT_OUT_COOKIE)?.value === '1'
+    return numberSourceAfterOptOut(numberSourceFromHeader(h.get(SOURCE_HEADER)), optedOut)
   } catch {
     // Not in a request (a script, a build step): the default number.
     return null

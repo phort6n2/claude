@@ -17,6 +17,12 @@ export interface SiteMeasurement {
   microsoftUet: boolean
   metaPixel: boolean
   metaCapi: boolean
+  /**
+   * An active tracking number is shown to Meta ad visitors, so a call or text
+   * to it is reported to Meta (meta-capi.ts `queueMetaPhoneLead`). Only said
+   * when it is true, like every line here.
+   */
+  metaPhoneNumber: boolean
   /** California "Do Not Sell or Share" handling is on (GoogleTag.tsx). */
   privacyChoices: boolean
   /** At least one active tracking number records calls. */
@@ -292,13 +298,25 @@ export function PrivacyContent({
                 name and ZIP code, your IP address, your browser&apos;s user-agent string, Meta&apos;s
                 cookies if present, and the page you submitted from. This lets Meta count enquiries
                 its ads produced even where the Pixel is blocked.
+                {m.metaPhoneNumber && (
+                  <>
+                    {' '}
+                    If you reached this site from a Meta ad, the phone number shown to you is one we
+                    use only for those visitors. When you call or text it, our server sends Meta a
+                    record of the enquiry with a hashed copy of the number you called from.
+                  </>
+                )}
               </li>
             )}
           </ul>
           <p>
             Each platform handles what it receives under its own privacy policy.
             {m.privacyChoices
-              ? ' None of these tags run, and nothing is sent to Meta, for a visitor who has opted out as described below.'
+              ? ` None of these tags run, and nothing is sent to Meta, for a visitor who has opted out as described below.${
+                  m.metaCapi && m.metaPhoneNumber
+                    ? ' A visitor who has opted out is shown our main number, so their calls are not reported to Meta either.'
+                    : ''
+                }`
               : ''}
           </p>
         </section>
