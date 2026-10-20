@@ -1478,6 +1478,32 @@ walkthrough (`GettingStartedCard`, `/api/portal/onboarding`,
 - Prompt bias is **keep by default**. A drop-biased prompt once kept 1 photo
   of 17 by judging filenames it could not judge.
 
+### The campaign table on the admin home
+
+`campaign-report.ts` (the rules, import-free), `campaign-report-fetch.ts`,
+`CampaignReport.tsx`, `/api/admin/campaign-report`, above Client health on
+`/admin/dashboard`. Shaped like the Google Ads app's campaign list — budget,
+cost, impressions, clicks, conversions, conv. rate, calls; Today to 30 days —
+for EVERY account under the manager, bound to a client or not. Read-only.
+
+- **Ranges are Google's convention**: "last N days" ends YESTERDAY, in each
+  ACCOUNT's own zone (`customer_client.time_zone`). Sixty days come down once
+  and every range is summed in the browser, so the pills never refetch.
+- **TWO queries per account, and the undated one is not redundant**: a dated
+  query has NO ROW for a campaign with no impressions, so the most important
+  row on the page — an enabled campaign nobody can see — would be missing.
+- **Costs never add across currencies** (AGS is CAD); totals show per currency.
+- **A mark needs a fact**: Google's own NOT_ELIGIBLE/MISCONFIGURED/LIMITED
+  verdict, no impressions for a whole day or more, or spend past $50 and two
+  days of budget with no conversions. Three false marks were found on live
+  data and are held in `scripts/check-campaign-report.ts`: an ENABLED campaign
+  whose end date passed reads `primary_status: ENDED`, Google's
+  system-generated Local Services campaign has no impression rows, and the API
+  sends `UNKNOWN` beside real reasons.
+- "Calls" is Google's `metrics.phone_calls` (the ad's call button), not every
+  call to a tracking number, and the page says so. Cached three minutes per
+  instance; Refresh bypasses it.
+
 ### Google Ads scheduled checks (the heartbeat)
 
 `google-ads-checks.ts`, the `AdsFinding` table (bootstrap: `ADS_FINDING_SQL`),

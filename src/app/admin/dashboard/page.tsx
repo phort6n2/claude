@@ -7,6 +7,9 @@ import { PageContainer, PageHeader, DashboardSkeleton } from '@/components/ui/th
 import { requireAdminPage } from '@/lib/admin-guard'
 import { getClientHealth, HEALTH_COLUMNS } from '@/lib/client-health'
 import ClientHealthTable from '@/components/admin/ClientHealthTable'
+import CampaignReport from '@/components/admin/CampaignReport'
+import { getCampaignReport } from '@/lib/campaign-report-fetch'
+import { isRangeId, type RangeId } from '@/lib/campaign-report'
 
 /**
  * WHAT THE OPERATOR NEEDS AT 9PM, WHICH IS NOT A LEAD COUNT.
@@ -26,15 +29,26 @@ import ClientHealthTable from '@/components/admin/ClientHealthTable'
  *
  * So the dashboard IS that look: one row per client, one column per silent
  * failure, worst first. See client-health.ts for why a dash is not a cross.
+ *
+ * The Google Ads campaign table sits ABOVE it, shaped like Google's own app,
+ * because the money question — is any campaign broken, overspending or not
+ * showing — is the one the operator opens this on a phone to answer. It has
+ * its own Suspense: twenty-odd accounts are slower than the database, and the
+ * health board should not wait for Google.
  */
-export default async function AdminDashboard() {
+export default async function AdminDashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>
+}) {
   await requireAdminPage()
+  const { range } = await searchParams
 
   return (
     <PageContainer>
       <PageHeader
-        title="Client health"
-        subtitle="Every client, and whether the things that fail quietly are working."
+        title="Campaigns"
+        subtitle="Every Google Ads account, side by side, with the campaigns that need a look marked."
         actions={
           <div className="flex flex-wrap gap-2">
             <Link
@@ -55,6 +69,14 @@ export default async function AdminDashboard() {
         }
       />
 
+      <Suspense fallback={<CampaignSkeleton />}>
+        <Campaigns range={isRangeId(range) ? range : null} />
+      </Suspense>
+
+      <div className="mb-4 mt-10">
+        <h2 className="text-xl font-semibold text-gray-900">Client health</h2>
+        <p className="text-sm text-gray-500">Every client, and whether the things that fail quietly are working.</p>
+      </div>
       <Suspense fallback={<DashboardSkeleton />}>
         <HealthBoard />
       </Suspense>
@@ -80,6 +102,29 @@ export default async function AdminDashboard() {
         </Link>
       </div>
     </PageContainer>
+  )
+}
+
+async function Campaigns({ range }: { range: RangeId | null }) {
+  const data = await getCampaignReport()
+  return <CampaignReport initial={data} initialRange={range} />
+}
+
+function CampaignSkeleton() {
+  return (
+    <div className="animate-pulse space-y-3" aria-label="Loading campaigns">
+      <div className="flex gap-2">
+        {Array.from({ length: 7 }, (_, i) => (
+          <div key={i} className="h-8 w-20 shrink-0 rounded-full bg-gray-200" />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+        {Array.from({ length: 7 }, (_, i) => (
+          <div key={i} className="h-16 rounded-xl bg-gray-200" />
+        ))}
+      </div>
+      <div className="h-64 rounded-xl bg-gray-200" />
+    </div>
   )
 }
 
