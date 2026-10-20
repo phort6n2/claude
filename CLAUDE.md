@@ -846,8 +846,9 @@ the directory afterwards, as `PUT /api/clients/[id]` would.
   honours a `ClientRedirect` for an unticked service, because middleware
   rewrites service slugs before the catch-all can — no row, still a 404).
   **glassbc.com is AGS's OWN old site**, not another business's: the importer
-  hotlinked four of its images. Its `[YEARS]` placeholders render literally —
-  fill them in before applying.
+  hotlinked four of its images. The years figure is 25, confirmed by the
+  owner; the check fails on any `[PLACEHOLDER]` left in a patch, because one
+  renders literally on a live page.
 - **A public-insurer province drops the private-market "Insurance" section**
   (`privateMarketOnly` in `site-services.ts`): AGS's page told a British
   Columbian to check "your state" one section above the ICBC band. US shops

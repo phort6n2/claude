@@ -23,9 +23,8 @@ import type { ContentPatch } from '@/lib/content-patch'
  *   OEM-quality glass, the lifetime workmanship warranty. No new claim.
  * - The name is "AGS Affordable Glass Services" everywhere. The email was a
  *   typo of the address AGS publishes on its own site. The country is CA.
- * - "[YEARS]" stands where a years figure was ("25+", "over 25 years",
- *   "decades"), at the owner's request, until the owner confirms the number.
- *   IT RENDERS LITERALLY — fill it in before this goes live.
+ * - The years figure ("25+", "over 25 years", "decades" on the imported
+ *   copy) is one number everywhere: 25 years, confirmed by the owner.
  */
 export const AGS_2026_10: ContentPatch = {
   id: 'ags-2026-10',
@@ -49,7 +48,7 @@ export const AGS_2026_10: ContentPatch = {
     {
       field: 'footerBlurb',
       from: 'Affordable Glass Services ltd. is a Port Coquitlam auto glass shop with over 25 years of experience in windshield repair and replacement, side and back glass, and ADAS calibration, with lines open 7 days a week.',
-      to: 'AGS Affordable Glass Services is a Port Coquitlam auto glass shop with [YEARS] years of experience in windshield replacement, side and back glass, and ADAS calibration, serving the Tri-Cities with lines open 7 days a week.',
+      to: 'AGS Affordable Glass Services is a Port Coquitlam auto glass shop with 25 years of experience in windshield replacement, side and back glass, and ADAS calibration, serving the Tri-Cities with lines open 7 days a week.',
     },
   ],
 
@@ -106,7 +105,7 @@ export const AGS_2026_10: ContentPatch = {
         text: 'We use only the highest-quality auto glass — so your vehicle retains its integrity, safety, and performance.',
       },
       {
-        lead: '[YEARS] Years of Experience',
+        lead: '25 Years of Experience',
         text: 'We have built our reputation in the Tri-Cities on trust, reliability and excellence.',
       },
     ],

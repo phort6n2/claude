@@ -43,6 +43,9 @@ const written = JSON.stringify([AGS_2026_10.chapters?.add, AGS_2026_10.heroBulle
 check(!/glassbc\.com\/wp-content|glasabc/.test(json.replace(/"from":"[^"]*"/g, '')), 'no glassbc.com image or typo email in anything it writes')
 check(!/\bchip|windshield repair/i.test(written), 'the new copy never mentions chip or windshield repair')
 check(/Tri-Cities/.test(written), 'the new copy says Tri-Cities')
+// A placeholder renders literally on a live page.
+check(!/\[[A-Z_]+\]/.test(json), 'no [PLACEHOLDER] left anywhere in the patch')
+check(/25 years of experience/.test(json) && /"25 Years of Experience"/.test(json), 'the years figure is 25 in the footer and the hero bullet')
 check(!/\$\s?\d|\d+\s?(min|minute|hour|day)s?\b|same[- ]day|reviews?\b/i.test(written), 'no price, timing promise or review count in the new copy')
 check(AGS_2026_10.clientFields?.some((f) => f.field === 'offersRockChipRepair' && f.to === false) ?? false, 'rock chip repair is unticked')
 check(AGS_2026_10.redirects?.some((r) => r.from === '/rock-chip-repair' && r.to === '/windshield-replacement') ?? false, '…and its address redirects, not 404s')
