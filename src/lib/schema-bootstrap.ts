@@ -702,7 +702,17 @@ export const ATTRIBUTION_SQL: string[] = [
   `CREATE INDEX IF NOT EXISTS "MetaEventDelivery_leadId_idx" ON "MetaEventDelivery"("leadId")`,
 ]
 
+/**
+ * A shop's own line under a service page's H1 (SiteExtras.serviceHeroLines).
+ * NULL for every shop but the ones an operator wrote one for, which keeps the
+ * template line as it was. Fetched by its own guarded query, like `chapters`.
+ */
+export const SERVICE_HERO_SQL: string[] = [
+  `ALTER TABLE "ClientSiteContent" ADD COLUMN IF NOT EXISTS "serviceHeroLines" JSONB`,
+]
+
 export const BOOTSTRAP_SQL: string[] = [
+  ...SERVICE_HERO_SQL,
   ...PATH_OVERRIDE_SQL,
   ...MARKET_AREA_SQL,
   ...BUSINESS_PROFILE_SQL,

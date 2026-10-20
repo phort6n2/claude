@@ -52,8 +52,15 @@ export interface ServicePage {
    * only when that flag is on — the copy rule is "true for every shop it
    * renders for", and a page can be offered by a shop missing the service a
    * paragraph talks about.
+   *
+   * `privateMarketOnly` marks a section written for a PRIVATE insurance
+   * market ("depending on your deductible and your state…"). It is dropped
+   * in a public-insurer province (BC, SK, MB — `PUBLIC_INSURERS`), where the
+   * insurance band below already says who the insurer is: on AGS's page the
+   * two sat one above the other, one naming ICBC and one telling a British
+   * Columbian to check "your state". Every US shop renders exactly as before.
    */
-  sections: Array<{ heading: string; body: string; requires?: ServiceFlag }>
+  sections: Array<{ heading: string; body: string; requires?: ServiceFlag; privateMarketOnly?: true }>
   /**
    * Whether the quote form arrives with this service chosen. False for a way
    * of DELIVERING the work rather than a kind of glass: the form's service
@@ -95,6 +102,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       },
       {
         heading: 'Insurance',
+        privateMarketOnly: true,
         body: 'Windshield replacement is covered under the comprehensive portion of most auto policies. Depending on your deductible and your state, your out-of-pocket cost may be far less than you expect. Ask when you call — we can walk you through how your coverage applies before any work is done.',
       },
     ],
@@ -116,6 +124,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       },
       {
         heading: 'Insurance',
+        privateMarketOnly: true,
         body: 'Many insurers cover chip repair at no cost to you — they would rather pay for a repair now than a replacement later. Ask us to check how your policy handles glass repair.',
       },
     ],
@@ -137,6 +146,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       },
       {
         heading: 'Insurance',
+        privateMarketOnly: true,
         body: 'Chip repair is the case insurers most often cover in full, because it saves them the cost of a replacement claim. It’s worth a phone call before assuming you’ll pay out of pocket.',
       },
     ],
@@ -171,6 +181,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       },
       {
         heading: 'Insurance',
+        privateMarketOnly: true,
         body: 'Like windshields, back glass falls under comprehensive coverage on most policies. We can help you understand what your policy covers before work begins.',
       },
     ],
@@ -359,9 +370,11 @@ export const FLAT_SERVICE_PATHS: string[] = [
 /** The service's own sections that are true for THIS shop. */
 export function sectionsFor(
   page: ServicePage,
-  flags: Partial<Record<ServiceFlag, boolean | null>>
+  flags: Partial<Record<ServiceFlag, boolean | null>>,
+  opts: { publicInsurer?: boolean } = {}
 ): Array<{ heading: string; body: string }> {
   return page.sections
     .filter((s) => !s.requires || !!flags[s.requires])
+    .filter((s) => !(s.privateMarketOnly && opts.publicInsurer))
     .map(({ heading, body }) => ({ heading, body }))
 }

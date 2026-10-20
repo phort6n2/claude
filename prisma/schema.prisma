@@ -1493,6 +1493,10 @@ model ClientSiteContent {
   // Footer one-liner about the business.
   footerBlurb String?
 
+  // Per-service line under the H1, { slug: line }. Empty = the template's
+  // line. See SiteExtras.serviceHeroLines.
+  serviceHeroLines Json?
+
   // Regulator line (e.g. California ARD: 16 CCR § 3371.2 requires the
   // registered name and number in internet advertising). Renders only when
   // number is set.

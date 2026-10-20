@@ -831,6 +831,31 @@ fluently, and the only person who can see it is somebody who lives there.
   the auto insurer in Saskatchewan" is a fact about the province; what SGI
   pays for is a fact about a policy, and this platform is not the insurer.
 
+**A CLIENT'S CONTENT REWRITE IS A REVIEWED PATCH, NOT A DOZEN EDITORS**
+(`content-patch.ts`, `content-patches/`, `/api/admin/content-patch?id=…`,
+Maintenance → "AGS page fix", dry run first). The content lives in the
+production database, which nobody writing the copy can reach, across the
+Business tab, the content editor, the photo manager and the cutover
+redirects. So the copy is written once as data, committed, and applied in one
+press. **Every operation names what it expects to find live**, and ONE
+mismatch refuses the WHOLE patch — half a reviewed patch is copy nobody
+reviewed. Idempotent (a second press reports `already`); pushes the client to
+the directory afterwards, as `PUT /api/clients/[id]` would.
+- `ags-2026-10`: AGS is replacement-only, so rock chip is unticked and
+  `/rock-chip-repair` 308s to `/windshield-replacement` (the service route now
+  honours a `ClientRedirect` for an unticked service, because middleware
+  rewrites service slugs before the catch-all can — no row, still a 404).
+  **glassbc.com is AGS's OWN old site**, not another business's: the importer
+  hotlinked four of its images. Its `[YEARS]` placeholders render literally —
+  fill them in before applying.
+- **A public-insurer province drops the private-market "Insurance" section**
+  (`privateMarketOnly` in `site-services.ts`): AGS's page told a British
+  Columbian to check "your state" one section above the ICBC band. US shops
+  render byte-for-byte as before (`scripts/check-content-patch.ts`).
+- `SiteExtras.serviceHeroLines`: a shop's own line under a service H1 — on a
+  phone the whole first screen is H1, that line, then the form. Empty for
+  everyone else (bootstrap: `SERVICE_HERO_SQL`).
+
 **Headlines name an AREA, not the address** (`site-area.ts`, `Client.marketArea`,
 edited on the Website tab; bootstrap: `MARKET_AREA_SQL`). A shop sits in one
 city and sells to a region — Auto Glass Kings are in Huntington Beach and work

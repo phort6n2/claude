@@ -89,6 +89,13 @@ const READS: Tool[] = [
     what: 'Asks the directory what it WOULD do with every client — matched to a listing it already holds, or a new page. Writes nothing on either side. Most shops should MATCH: the directory carries ~3,000 listings and ours are usually already among them, so a run that wants to create most of them means the matching is not seeing what it should.',
   },
   {
+    key: 'content-patch-ags-dry',
+    name: 'AGS page fix: what would change? (reads only)',
+    path: '/api/admin/content-patch?id=ags-2026-10&dryRun=1',
+    method: 'POST',
+    what: "Compares the reviewed AGS patch (src/lib/content-patches/ags-2026-10.ts) with AGS's live content and lists every change it would make: chip repair off, the four imported sections replaced by one, the FAQ, hero bullets and line, name, email, photo captions and the /rock-chip-repair redirect. Any line marked conflict means the live content changed since the patch was written, and nothing will be applied.",
+  },
+  {
     key: 'reencrypt-secrets-dry',
     name: 'Which stored keys are not encrypted? (reads only)',
     path: '/api/admin/reencrypt-secrets?dryRun=1',
@@ -98,6 +105,14 @@ const READS: Tool[] = [
 ]
 
 const WRITES: Tool[] = [
+  {
+    key: 'content-patch-ags',
+    name: 'Apply the AGS page fix',
+    path: '/api/admin/content-patch?id=ags-2026-10',
+    method: 'POST',
+    what: "Applies the reviewed AGS patch in one transaction, then pushes AGS to its directory listing (the business name changes). Run the dry version first and read it.",
+    cost: 'AGS only. Refuses to write anything if any part no longer matches what is live. Safe to press twice — a second press finds everything already done. The removed sections, FAQ entries and photo are recorded in the patch file, so they can be put back.',
+  },
   {
     key: 'reencrypt-secrets',
     name: 'Encrypt every stored key that is not encrypted',

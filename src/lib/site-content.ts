@@ -40,6 +40,18 @@ export interface SiteExtras {
   registrationNumber: string | null
   galleryPhotos: Array<{ url: string; alt: string }>
   bodyPhotos: Array<{ url: string; alt: string }>
+  /**
+   * The line under a service page's H1, per service slug, for THIS shop.
+   *
+   * The template's line ("Full windshield replacement with quality glass and
+   * professional installation.") is true for every shop and says nothing a
+   * paid visitor came for. On a phone it is the only copy between the H1 and
+   * the form, so it is the whole first screen — and AGS needed theirs to say
+   * mobile, ICBC, ADAS, warranty and a free quote. Empty for every other
+   * shop, which keeps the template line exactly as it was. Typed by an
+   * operator from the shop's own claims, never drafted.
+   */
+  serviceHeroLines: Record<string, string>
 }
 
 const EMPTY_EXTRAS: SiteExtras = {
@@ -53,6 +65,17 @@ const EMPTY_EXTRAS: SiteExtras = {
   registrationNumber: null,
   galleryPhotos: [],
   bodyPhotos: [],
+  serviceHeroLines: {},
+}
+
+/** `{ slug: line }`, keeping only non-empty strings of a sane length. */
+export function asServiceHeroLines(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const out: Record<string, string> = {}
+  for (const [slug, line] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof line === 'string' && line.trim() && line.length <= 300) out[slug] = line.trim()
+  }
+  return out
 }
 
 export function asChapters(value: unknown): SiteChapter[] {
@@ -106,7 +129,7 @@ export async function getSiteExtras(clientId: string): Promise<SiteExtras> {
     // The main query names its columns so a DB that predates a newer column
     // never fails it; each newer column is fetched in its own guarded query
     // and simply strips when the ALTER hasn't run yet.
-    const [content, photos, chapterRow] = await Promise.all([
+    const [content, photos, chapterRow, heroRow] = await Promise.all([
       prisma.clientSiteContent.findUnique({
         where: { clientId },
         select: {
@@ -126,6 +149,9 @@ export async function getSiteExtras(clientId: string): Promise<SiteExtras> {
       prisma.clientSiteContent
         .findUnique({ where: { clientId }, select: { chapters: true } })
         .catch(() => null),
+      prisma.clientSiteContent
+        .findUnique({ where: { clientId }, select: { serviceHeroLines: true } })
+        .catch(() => null),
     ])
 
     return {
@@ -143,6 +169,7 @@ export async function getSiteExtras(clientId: string): Promise<SiteExtras> {
       bodyPhotos: photos
         .filter((p) => p.pool === 'BODY')
         .map((p) => ({ url: p.url, alt: p.alt })),
+      serviceHeroLines: asServiceHeroLines(heroRow?.serviceHeroLines),
     }
   } catch {
     return EMPTY_EXTRAS

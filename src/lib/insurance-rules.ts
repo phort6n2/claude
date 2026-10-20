@@ -95,8 +95,11 @@ export const PUBLIC_INSURERS: Record<string, PublicInsurer> = {
     // rest of what that page says — that a Repair Network facility can submit
     // the claim without the driver contacting ICBC — is gated on a per-shop
     // flag in insurance-programs.ts, because it is only true at such a shop.
+    // "and your deductible" from the owner of a BC shop (AGS, 2026-10): what a
+    // driver pays on an ICBC glass claim turns on both, and naming only one
+    // left the card sounding as if the coverage alone decided it.
     coverageLine:
-      'Glass sits under the comprehensive part of your coverage, so what you pay depends on the coverage you hold.',
+      'Glass sits under the comprehensive part of your coverage, so what you pay depends on the coverage you hold and your deductible.',
   },
   SK: {
     province: 'SK',

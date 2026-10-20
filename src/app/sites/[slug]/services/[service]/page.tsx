@@ -44,7 +44,7 @@ import {
 } from '@/components/sites/site-body'
 import { getSiteExtras, getInsuranceProgram } from '@/lib/site-content'
 import { networkHighlight } from '@/lib/insurance-programs'
-import { heroCostLineFor } from '@/lib/insurance-rules'
+import { heroCostLineFor, publicInsurerFor } from '@/lib/insurance-rules'
 import { sitePaletteVars } from '@/lib/site-theme'
 import { getClientLocations } from '@/lib/client-locations'
 import { cityIsIndexable, getCityContent } from '@/lib/city-content'
@@ -214,7 +214,25 @@ export default async function ServicePage({ params, atOverride, searchParams }: 
   // shop's own line for the callback and SMS copy, and taking only `.phone`
   // would drop it. See site-phone.ts.
   Object.assign(client, await withSitePhone(client))
-  if (!client[page.flag]) notFound()
+  if (!client[page.flag]) {
+    /* A service the shop has stopped offering 404s — unless the shop kept a
+       redirect for its old address. Middleware rewrites a service slug
+       straight to this route, so the catch-all that normally honours
+       ClientRedirect never sees the request, and a redirect row for
+       `/rock-chip-repair` would sit in the table doing nothing while the ad
+       or the Google result pointing at it hit a 404. Asked for AGS, who
+       stopped offering chip repair; with no row (every other shop) this is the
+       404 it always was. */
+    const asked = `/${service}`.toLowerCase()
+    const redirect = await prisma.clientRedirect
+      .findFirst({
+        where: { clientId: client.id, fromPath: { in: Array.from(new Set([asked, `/${page.slug}`])) } },
+        select: { toPath: true },
+      })
+      .catch(() => null)
+    if (redirect) permanentRedirect(`${sitePathPrefixFor(client, (await headers()).get('host'))}${redirect.toPath}`)
+    notFound()
+  }
 
   const [reviews, extras, locations, adsTracking, cityContent, keptPages, insuranceProgram] = await Promise.all([
     getReviews(client.id),
@@ -315,7 +333,7 @@ export default async function ServicePage({ params, atOverride, searchParams }: 
   // right call", "what the job involves") is objection handling and keeps the
   // high slot. The shop's general story is about the business, so it moves
   // below the proof like it does on the home page.
-  const serviceChapters = sectionsFor(page, client).map((s) => ({
+  const serviceChapters = sectionsFor(page, client, { publicInsurer: !!publicInsurerFor(client.state) }).map((s) => ({
     heading: s.heading,
     body: s.body,
     photoUrl: '',
@@ -389,7 +407,7 @@ export default async function ServicePage({ params, atOverride, searchParams }: 
               {heading} in {headlineArea(client)}
             </h1>
             <p className="mt-4 text-[17px] leading-[1.55] text-[var(--tx2)] max-w-[48ch]">
-              {page.heroLine}
+              {extras.serviceHeroLines[page.slug] || page.heroLine}
             </p>
           </div>
 
