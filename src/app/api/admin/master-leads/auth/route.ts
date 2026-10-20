@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { isMasterLeadsEmail } from '@/lib/master-leads-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,7 +22,7 @@ export async function GET() {
     return NextResponse.json({ authorized: false, reason: 'not_configured' })
   }
 
-  const isAuthorized = session.user.email.toLowerCase() === allowedEmail.toLowerCase()
+  const isAuthorized = isMasterLeadsEmail(session.user.email)
 
   return NextResponse.json({
     authorized: isAuthorized,

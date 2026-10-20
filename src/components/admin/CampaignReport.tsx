@@ -231,8 +231,9 @@ export default function CampaignReport({
   const compare = range !== 'today'
 
   const view = useMemo(() => {
-    const live = data.accounts.filter((a) => !isIdle(a))
-    const idle = data.accounts.filter((a) => isIdle(a))
+    // Every account is a row; the quiet ones sort to the foot, below the
+    // accounts that are spending money (the list stays alphabetical within each).
+    const ordered = [...data.accounts.filter((a) => !isIdle(a)), ...data.accounts.filter((a) => isIdle(a))]
     let now = ZERO
     let before = ZERO
     const cost: Array<{ currency: string; micros: number }> = []
@@ -240,7 +241,7 @@ export default function CampaignReport({
     const budgets: Array<{ currency: string; micros: number }> = []
     let issueCount = 0
 
-    const accounts = live.map((a) => {
+    const accounts = ordered.map((a) => {
       const w = rangeWindow(range, a.today)
       const pw = previousWindow(w)
       const rows: Row[] = visibleCampaigns(a, w).map(({ c, t }) => ({ c, t, issues: campaignIssues(c, t, range) }))
@@ -268,14 +269,15 @@ export default function CampaignReport({
         costBefore.push({ currency: a.currency, micros: prior.costMicros })
         if (budget != null) budgets.push({ currency: a.currency, micros: budget })
       }
-      const flagged = rows.filter((r) => r.issues.length > 0).length
+      const suspended = a.status === 'SUSPENDED'
+      const flagged = rows.filter((r) => r.issues.length > 0).length + (suspended ? 1 : 0)
       issueCount += flagged
-      return { a, w, rows, total, budget, flagged }
+      return { a, w, rows, total, budget, flagged, idle: isIdle(a), suspended }
     })
 
     const sample = accounts.find((x) => !x.a.error)?.w ?? null
     const singleCurrency = new Set(cost.map((c) => c.currency)).size <= 1
-    return { accounts, idle, now, before, cost, costBefore, budgets, issueCount, sample, singleCurrency }
+    return { accounts, now, before, cost, costBefore, budgets, issueCount, sample, singleCurrency }
   }, [data, range])
 
   const shown = onlyIssues ? view.accounts.filter((x) => x.flagged > 0 || x.a.error) : view.accounts
@@ -402,7 +404,7 @@ export default function CampaignReport({
                 </tr>
               </thead>
               <tbody>
-                {shown.map(({ a, rows, total, budget, flagged }) => (
+                {shown.map(({ a, rows, total, budget, flagged, idle, suspended }) => (
                   <AccountRows
                     key={a.customerId}
                     a={a}
@@ -410,6 +412,8 @@ export default function CampaignReport({
                     total={total}
                     budget={budget}
                     flagged={flagged}
+                    idle={idle}
+                    suspended={suspended}
                     open={open}
                     setOpen={setOpen}
                   />
@@ -425,11 +429,6 @@ export default function CampaignReport({
             </table>
           </div>
 
-          {view.idle.length > 0 && (
-            <p className="mt-2 text-xs text-gray-500">
-              Nothing running in the last 60 days: {view.idle.map((a) => a.name).join(', ')}.
-            </p>
-          )}
           <p className="mt-2 text-xs leading-relaxed text-gray-500">
             Every figure is Google’s own, in each account’s time zone, and ranges end yesterday as they do in Google Ads.
             Budget is per day. Conv. rate is conversions ÷ interactions. Calls are calls from the call button on the ads,
@@ -447,6 +446,8 @@ function AccountRows({
   total,
   budget,
   flagged,
+  idle,
+  suspended,
   open,
   setOpen,
 }: {
@@ -455,6 +456,8 @@ function AccountRows({
   total: Totals
   budget: number | null
   flagged: number
+  idle: boolean
+  suspended: boolean
   open: string | null
   setOpen: (v: string | null) => void
 }) {
@@ -470,11 +473,17 @@ function AccountRows({
       <tr className="border-t border-gray-200 bg-slate-50">
         <td className={`${STICKY} bg-slate-50 px-3 py-2`}>
           <div className="line-clamp-2 break-words font-semibold leading-snug text-gray-900">{name}</div>
-          <div className="text-[11px] text-gray-500">
-            {a.error
-              ? 'Could not read'
-              : `${rows.length} campaign${rows.length === 1 ? '' : 's'}${flagged ? ` · ${flagged} marked` : ''}`}
-          </div>
+          {suspended ? (
+            <div className="text-[11px] font-medium text-red-700">Account suspended by Google</div>
+          ) : (
+            <div className="text-[11px] text-gray-500">
+              {a.error
+                ? 'Could not read'
+                : idle
+                  ? 'Nothing running in 60 days'
+                  : `${rows.length} campaign${rows.length === 1 ? '' : 's'}${flagged ? ` · ${flagged} marked` : ''}`}
+            </div>
+          )}
         </td>
         {a.error ? (
           <td colSpan={7} className="px-3 py-2 text-xs text-red-700">
@@ -539,5 +548,25 @@ function AccountRows({
           )
         })}
     </>
+  )
+}
+
+/** Shown while twenty-odd accounts are read — the admin home and Master
+ *  Leads both stream the table in behind this, so neither waits for Google. */
+export function CampaignReportSkeleton() {
+  return (
+    <div className="animate-pulse space-y-3" aria-label="Loading campaigns">
+      <div className="grid grid-cols-7 gap-1 sm:flex sm:gap-2">
+        {Array.from({ length: 7 }, (_, i) => (
+          <div key={i} className="h-8 rounded-full bg-gray-200 sm:w-20" />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+        {Array.from({ length: 7 }, (_, i) => (
+          <div key={i} className="h-16 rounded-xl bg-gray-200" />
+        ))}
+      </div>
+      <div className="h-64 rounded-xl bg-gray-200" />
+    </div>
   )
 }

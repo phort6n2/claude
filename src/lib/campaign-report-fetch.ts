@@ -14,7 +14,8 @@ import {
  * Reads every account under the manager for the admin home page's campaign
  * table. See `campaign-report.ts` for the rules; this file only fetches.
  *
- * EVERY ACCOUNT UNDER THE MANAGER, not only the ones bound to a client here.
+ * EVERY OPEN ACCOUNT UNDER THE MANAGER (enabled or suspended — a cancelled
+ * account is closed and cannot serve), not only the ones bound to a client.
  * The question is "is anything I run in Google Ads broken", and an account
  * nobody bound to a client is exactly the one nothing else in this app looks
  * at. A bound account takes the client's name and links to its page.
@@ -71,6 +72,7 @@ interface ManagedAccount {
   name: string
   currency: string
   timeZone: string
+  status: string
 }
 
 async function listAccounts(): Promise<{ ok: true; accounts: ManagedAccount[] } | { ok: false; error: string }> {
@@ -80,9 +82,9 @@ async function listAccounts(): Promise<{ ok: true; accounts: ManagedAccount[] } 
   const res = await adsSearch(
     creds.loginCustomerId,
     `SELECT customer_client.id, customer_client.descriptive_name, customer_client.manager,
-            customer_client.time_zone, customer_client.currency_code
+            customer_client.time_zone, customer_client.currency_code, customer_client.status
      FROM customer_client
-     WHERE customer_client.status = 'ENABLED' AND customer_client.manager = false`
+     WHERE customer_client.status IN ('ENABLED', 'SUSPENDED') AND customer_client.manager = false`
   )
   if (!res.ok) return res
   const accounts = res.rows
@@ -93,6 +95,7 @@ async function listAccounts(): Promise<{ ok: true; accounts: ManagedAccount[] } 
       name: s(c.descriptiveName) || s(c.id),
       currency: s(c.currencyCode) || 'USD',
       timeZone: s(c.timeZone) || 'America/Denver',
+      status: s(c.status) || 'ENABLED',
     }))
   return { ok: true, accounts }
 }
@@ -108,6 +111,7 @@ async function readAccount(
     clientId: client?.id ?? null,
     currency: account.currency,
     timeZone: account.timeZone,
+    status: account.status,
     today,
     campaigns: [],
     error: null,

@@ -7,7 +7,7 @@ import { PageContainer, PageHeader, DashboardSkeleton } from '@/components/ui/th
 import { requireAdminPage } from '@/lib/admin-guard'
 import { getClientHealth, HEALTH_COLUMNS } from '@/lib/client-health'
 import ClientHealthTable from '@/components/admin/ClientHealthTable'
-import CampaignReport from '@/components/admin/CampaignReport'
+import CampaignReport, { CampaignReportSkeleton } from '@/components/admin/CampaignReport'
 import { getCampaignReport } from '@/lib/campaign-report-fetch'
 import { isRangeId, type RangeId } from '@/lib/campaign-report'
 
@@ -69,7 +69,7 @@ export default async function AdminDashboard({
         }
       />
 
-      <Suspense fallback={<CampaignSkeleton />}>
+      <Suspense fallback={<CampaignReportSkeleton />}>
         <Campaigns range={isRangeId(range) ? range : null} />
       </Suspense>
 
@@ -108,24 +108,6 @@ export default async function AdminDashboard({
 async function Campaigns({ range }: { range: RangeId | null }) {
   const data = await getCampaignReport()
   return <CampaignReport initial={data} initialRange={range} />
-}
-
-function CampaignSkeleton() {
-  return (
-    <div className="animate-pulse space-y-3" aria-label="Loading campaigns">
-      <div className="flex gap-2">
-        {Array.from({ length: 7 }, (_, i) => (
-          <div key={i} className="h-8 w-20 shrink-0 rounded-full bg-gray-200" />
-        ))}
-      </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-        {Array.from({ length: 7 }, (_, i) => (
-          <div key={i} className="h-16 rounded-xl bg-gray-200" />
-        ))}
-      </div>
-      <div className="h-64 rounded-xl bg-gray-200" />
-    </div>
-  )
 }
 
 async function HealthBoard() {

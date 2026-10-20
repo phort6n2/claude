@@ -59,6 +59,7 @@ const account0 = (): ReportAccount => ({
   clientId: null,
   currency: 'USD',
   timeZone: 'America/Chicago',
+  status: 'ENABLED',
   today: TODAY,
   error: null,
   campaigns: [],
@@ -134,6 +135,7 @@ const account: ReportAccount = {
   clientId: null,
   currency: 'CAD',
   timeZone: 'America/Vancouver',
+  status: 'ENABLED',
   today: TODAY,
   error: null,
   campaigns: [
@@ -161,6 +163,7 @@ const rows = visibleCampaigns(
 check(rows.join(',') === 'e1,e0,p1', 'enabled first by cost (unseen kept), paused only when it spent')
 check(isIdle({ ...account, campaigns: [campaign({ status: 'PAUSED' })] }), 'nothing enabled, nothing spent: idle, one line at the foot')
 check(!isIdle({ ...account, error: 'boom', campaigns: [] }), 'a failed read is never filed as idle')
+check(!isIdle({ ...account, status: 'SUSPENDED', campaigns: [] }), 'a suspended account with nothing running is not filed as idle')
 
 console.log(failures ? `\n${failures} FAILED` : '\nAll campaign-report checks passed')
 process.exit(failures ? 1 : 0)

@@ -1482,9 +1482,16 @@ walkthrough (`GettingStartedCard`, `/api/portal/onboarding`,
 
 `campaign-report.ts` (the rules, import-free), `campaign-report-fetch.ts`,
 `CampaignReport.tsx`, `/api/admin/campaign-report`, above Client health on
-`/admin/dashboard`. Shaped like the Google Ads app's campaign list — budget,
+`/admin/dashboard` AND at `/master-leads/campaigns` — the Master Leads app on
+the operator's phone, linked from its header at every width. One component,
+so the two can never disagree; the Master Leads page is gated server-side by
+`isMasterLeadsEmail` (`master-leads-access.ts`, the same rule the leads
+list's auth route reads). Shaped like the Google Ads app's campaign list — budget,
 cost, impressions, clicks, conversions, conv. rate, calls; Today to 30 days —
-for EVERY account under the manager, bound to a client or not. Read-only.
+for EVERY open account under the manager (enabled or suspended; cancelled
+accounts are closed), bound to a client or not, and every one is a ROW — an
+account with nothing running sorts to the foot rather than vanishing, and a
+suspended or unreadable one never does. Read-only.
 
 - **Ranges are Google's convention**: "last N days" ends YESTERDAY, in each
   ACCOUNT's own zone (`customer_client.time_zone`). Sixty days come down once

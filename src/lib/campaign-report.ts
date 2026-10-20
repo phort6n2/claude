@@ -104,6 +104,9 @@ export interface ReportAccount {
   clientId: string | null
   currency: string
   timeZone: string
+  /** customer_client.status: ENABLED, or SUSPENDED — which serves nothing
+   *  and is the one account-level fact worth a mark. */
+  status: string
   /** Today's date in the account's zone, when the report was built. */
   today: string
   campaigns: ReportCampaign[]
@@ -361,10 +364,13 @@ export function visibleCampaigns(a: ReportAccount, w: DateWindow): Array<{ c: Re
     })
 }
 
-/** An account with nothing enabled and nothing spent in the whole history is
- *  not a row — it is one line at the foot of the table. */
+/** Nothing running and nothing spent in the whole history. Still a ROW —
+ *  "every account on the list" means every one, and an account that went
+ *  quiet is exactly what someone scanning the list is looking for — but it
+ *  sorts to the foot, below the accounts that are spending money. */
 export function isIdle(a: ReportAccount): boolean {
-  if (a.error) return false
+  // A failed read or a suspension is a FINDING, so it never sinks to the foot.
+  if (a.error || a.status === 'SUSPENDED') return false
   return !a.campaigns.some(
     (c) => isRunning(c) || Object.values(c.days).some((m) => m[0] > 0 || m[1] > 0)
   )

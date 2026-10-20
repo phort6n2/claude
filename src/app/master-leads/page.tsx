@@ -20,6 +20,7 @@ import {
   Check,
   RefreshCw,
   BarChart3,
+  Target,
 } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
@@ -407,6 +408,16 @@ export default function StandaloneMasterLeadsPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {/* Visible at every width, unlike Dashboard: this app lives on
+                  a phone's home screen, and the campaign table is the other
+                  thing it gets opened for. */}
+              <Link
+                href="/master-leads/campaigns"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 px-3 py-1.5 rounded-md border border-blue-200 hover:bg-blue-50 transition-colors"
+              >
+                <Target className="h-3.5 w-3.5" />
+                Campaigns
+              </Link>
               <Link
                 href="/master-leads/dashboard"
                 className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 px-3 py-1.5 rounded-md border border-blue-200 hover:bg-blue-50 transition-colors"
