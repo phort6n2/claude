@@ -137,6 +137,8 @@ export interface TargetHint {
   /** The panel would apply this: underspending, and a higher .77 target spends it. */
   raise: boolean
   suggestedMicros: number | null
+  /** No simulation: the suggestion is one small step up, not Google's number. */
+  step?: boolean
   spendPct: number | null
   /** The target the snapshot read — compared with the live one, to drop a stale hint. */
   snapshotTargetMicros: number | null
@@ -168,7 +170,7 @@ export function targetLabel(c: ReportCampaign, hint?: TargetHint): TargetLabel |
  * snapshot read: somebody has already changed it, and a suggestion computed
  * against the old target is advice about a campaign that no longer exists.
  */
-export function targetAdvice(c: ReportCampaign, hint?: TargetHint): { suggestedMicros: number } | null {
+export function targetAdvice(c: ReportCampaign, hint?: TargetHint): { suggestedMicros: number; step: boolean } | null {
   if (!hint?.raise || hint.suggestedMicros == null) return null
   if (!hint.portfolio && c.targetCpaMicros !== undefined) {
     const live = c.targetCpaMicros
@@ -176,7 +178,7 @@ export function targetAdvice(c: ReportCampaign, hint?: TargetHint): { suggestedM
     const same = (live == null && then == null) || (live != null && then != null && Math.abs(live - then) < 5_000)
     if (!same) return null
   }
-  return { suggestedMicros: hint.suggestedMicros }
+  return { suggestedMicros: hint.suggestedMicros, step: !!hint.step }
 }
 
 export interface Totals {

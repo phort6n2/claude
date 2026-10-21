@@ -220,10 +220,14 @@ export function TargetLine({
             href="/admin/target-cpa"
             onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100"
-            title={`Underspending${hint?.spendPct != null ? ` (${Math.round(hint.spendPct * 100)}% of budget, last 7 days)` : ''}. Google's simulation says this target would spend the budget.`}
+            title={`Underspending${hint?.spendPct != null ? ` (${Math.round(hint.spendPct * 100)}% of budget, last 7 days)` : ''}. ${
+              advice.step
+                ? 'Google has no simulation for this campaign, so this is one step up of at most 15%.'
+                : "Google's simulation says this target would spend the budget."
+            }`}
           >
             <Gauge className="h-3 w-3" aria-hidden />
-            Target too low · try {money(advice.suggestedMicros, currency)}
+            {advice.step ? 'No simulation · step up to' : 'Target too low · try'} {money(advice.suggestedMicros, currency)}
           </Link>
           {apply?.canApply && (
             <button

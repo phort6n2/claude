@@ -14,6 +14,7 @@ import {
   enabledDays,
   roundUpTo77,
   simulationRows,
+  stepTarget,
   recommendationTarget,
   statusFlags,
   applyRefusal,
@@ -268,6 +269,68 @@ console.log('\nHints for the campaign table')
   check(!h['1:notlimit'].raise, 'underspending with a suggestion BELOW the target: no raise')
   check(h['1:low'].snapshotTargetMicros === 22_220_000, 'the hint carries the target it was computed against')
 }
+
+console.log('\nAd schedules — a weekday-only campaign is not underspending at the weekend')
+{
+  // Collision's AGMP Lead Gen, Oct 14–20 as Google reports it: Mon–Fri 7am–4pm,
+  // $200/day, target $40.77, no simulation, BUDGET_CONSTRAINED. Oct 17–18 are a
+  // Saturday and Sunday it never runs on.
+  const real: Record<string, [number, number]> = {
+    '2026-10-14': [55_870_000, 3],
+    '2026-10-15': [106_522_981, 5],
+    '2026-10-16': [231_468_900, 5],
+    '2026-10-19': [178_052_521, 4],
+    '2026-10-20': [172_201_931, 4.5],
+  }
+  const WEEKDAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']
+  const collision = (over: Partial<TcpaCampaign> = {}) =>
+    campaign({
+      budgetMicros: 200 * M,
+      ownTargetMicros: 40_770_000,
+      simulation: null,
+      days: real,
+      schedule: WEEKDAYS,
+      primaryStatus: 'LIMITED',
+      reasons: ['BUDGET_CONSTRAINED'],
+      ...over,
+    })
+
+  const [before] = buildRows(snapshot([collision({ schedule: undefined })]))
+  check(before.enabledDays === 7 && near(before.spendPct, 0.531, 0.001), 'a snapshot with no schedule stored reads as it did: 7 days, 53%')
+
+  const [r] = buildRows(snapshot([collision()]))
+  check(r.enabledDays === 5, 'Mon–Fri: five days it could run, not seven')
+  check(near(r.spendPct, 0.744, 0.001), '…so it spends 74% of budget on the days it runs ($148.80 of $200)')
+  check(r.spendByDay.filter((d) => d.off).map((d) => d.date).join() === '2026-10-17,2026-10-18', 'the Saturday and Sunday are marked off, not $0')
+  check(r.underspending, 'still under 80%, so still underspending')
+  check(r.suggestedMicros == null && r.suggestionSource == null, 'no simulation AND limited by budget: no step — the target is not what it is missing')
+  check(!!r.note && r.note.includes('limited by budget'), '…and the row says why')
+
+  const [s] = buildRows(snapshot([collision({ primaryStatus: 'ELIGIBLE', reasons: [] })]))
+  check(s.suggestionSource === 'step' && s.suggestedMicros === 46_770_000, 'no simulation, not budget-limited: one step, $40.77 → $46.77')
+  check(applyRefusal(s) == null, '…which can be applied')
+  check(targetHints(snapshot([collision({ primaryStatus: 'ELIGIBLE', reasons: [] })]))['1:1'].step === true, '…and the campaign table is told it is a step')
+
+  // Silent: a full spender with no simulation gets no step.
+  const [full] = buildRows(snapshot([campaign({ simulation: null, days: days(90 * M, '2026-09-21', '2026-10-20') })]))
+  check(full.suggestedMicros == null, 'no simulation but spending 90%: no step')
+  // Silent: Max Conversions with no target cannot be stepped from nothing.
+  const [none] = buildRows(snapshot([campaign({ simulation: null, ownTargetMicros: null, days: days(40 * M, '2026-09-21', '2026-10-20') })]))
+  check(none.suggestedMicros == null, 'no target set: nothing to step from')
+  // Silent: the lowest simulated point already spends it — the target is not the limit.
+  const [already] = buildRows(snapshot([campaign({ budgetMicros: 40 * M, days: days(20 * M, '2026-09-21', '2026-10-20') })]))
+  check(already.fullSpend.kind === 'already' && already.suggestedMicros == null, '"already spends budget" on the simulation: no step')
+
+  // The simulation's period total is divided by the days it RUNS in that period.
+  const sched = simulationRows(LEAD_GEN_SIM, WEEKDAYS)
+  check(near(sched[1].dailySpendMicros / M, 114.04), 'Oct 12–17 on Mon–Fri is five days: 570.22 / 5 = $114.04')
+}
+
+console.log('\nOne step up')
+check(stepTarget(40_770_000) === 46_770_000, '$40.77 → $46.77 (≤ 15%, rounded DOWN to .77)')
+check(stepTarget(29_770_000) === 33_770_000, '$29.77 → $33.77, not $34.77 (which is 16.8%)')
+check(stepTarget(5_770_000) === 6_770_000, '$5.77: no .77 fits inside 15%, so the next one, $6.77')
+check(stepTarget(100_000_000) === 114_770_000, '$100 → $114.77')
 
 console.log(failures ? `\n${failures} FAILED\n` : '\nAll passed\n')
 process.exit(failures ? 1 : 0)

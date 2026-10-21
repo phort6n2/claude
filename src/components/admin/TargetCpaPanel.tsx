@@ -7,6 +7,7 @@ import { ChevronDown, RefreshCw } from 'lucide-react'
 import {
   FLAG_LABELS,
   FULL_SPEND_SHARE,
+  STEP_SHARE,
   UNDERSPEND_SHARE,
   applyRefusal,
   biddingLabel,
@@ -68,6 +69,17 @@ function when(iso: string): string {
   })
 }
 
+const DAY_ORDER = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
+const DAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+/** "Mon–Fri", or a list when the days are not one run. */
+function scheduleText(days: string[]): string {
+  const idx = DAY_ORDER.map((d, i) => (days.includes(d) ? i : -1)).filter((i) => i >= 0)
+  const contiguous = idx.length > 2 && idx.every((v, i) => i === 0 || v === idx[i - 1] + 1)
+  if (contiguous) return `${DAY_SHORT[idx[0]]}–${DAY_SHORT[idx[idx.length - 1]]}`
+  return idx.map((i) => DAY_SHORT[i]).join(', ')
+}
+
 function range(a: string, b: string): string {
   return `${shortDate(a)}–${shortDate(b)}`
 }
@@ -124,6 +136,11 @@ function Suggested({ r }: { r: TcpaRow }) {
   return (
     <span>
       {money(r.suggestedMicros, r.currency)}
+      {r.suggestionSource === 'step' && (
+        <span className="block text-[11px] font-normal text-gray-500">
+          no simulation — one step, at most {Math.round(STEP_SHARE * 100)}%
+        </span>
+      )}
       {suggestionBelowTarget(r) && (
         <span className="block text-[11px] font-normal text-gray-500">below current — not the limit</span>
       )}
@@ -160,7 +177,12 @@ function Detail({
         Data as of {when(builtAt)}.{' '}
         {r.simulation
           ? `Google's simulation covers ${range(r.simulation.startDate, r.simulation.endDate)}; its spend is that period's total divided by its days.`
-          : 'Google has no target CPA simulation for this campaign (new, or not enough data).'}{' '}
+          : `Google has no target CPA simulation for this campaign (new, or not enough data)${
+              r.suggestionSource === 'step'
+                ? `, so the suggestion is one step up from the current target, at most ${Math.round(STEP_SHARE * 100)}%, rounded down to .77. Look again after a week at the new target.`
+                : '.'
+            }`}{' '}
+        {r.schedule && `Its ad schedule runs ${scheduleText(r.schedule)} only, so only those days count towards the average.`}{' '}
         &ldquo;Full spend&rdquo; is {Math.round(FULL_SPEND_SHARE * 100)}% of the daily budget
         {r.budgetShared ? ', less what the other campaigns on this shared budget already spend' : ''}
         {r.thresholdMicros != null ? ` — ${money(r.thresholdMicros, r.currency)}/day` : ''}.
@@ -209,13 +231,15 @@ function Detail({
 
       <div>
         <p className="mb-1 text-xs font-medium text-gray-500">
-          Spend by day, {range(r.window.start, r.window.end)} ({r.enabledDays} enabled day{r.enabledDays === 1 ? '' : 's'})
+          Spend by day, {range(r.window.start, r.window.end)} ({r.enabledDays} day{r.enabledDays === 1 ? '' : 's'} it could run)
         </p>
         <div className="grid grid-cols-7 gap-1 text-center text-[11px] tabular-nums">
           {r.spendByDay.map((d) => (
-            <div key={d.date} className="rounded bg-gray-50 px-1 py-1">
+            <div key={d.date} className={`rounded px-1 py-1 ${d.off && d.costMicros === 0 ? 'bg-white ring-1 ring-gray-100' : 'bg-gray-50'}`}>
               <div className="text-gray-500">{shortDate(d.date)}</div>
-              <div className="text-gray-900">{money(d.costMicros, r.currency, true)}</div>
+              <div className={d.off && d.costMicros === 0 ? 'text-gray-400' : 'text-gray-900'}>
+                {d.off && d.costMicros === 0 ? 'off' : money(d.costMicros, r.currency, true)}
+              </div>
             </div>
           ))}
         </div>
@@ -236,15 +260,16 @@ function Detail({
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        {applyEnabled && r.bidding === 'MAX_CONV' && (
+        {/* Only a button that can be pressed, and it says the number. A greyed
+            "Apply suggested target" over no suggestion read as a control with
+            its figure missing; the reason it cannot be pressed is the useful part. */}
+        {applyEnabled && r.bidding === 'MAX_CONV' && !refusal && r.suggestedMicros != null && (
           <button
             type="button"
-            disabled={!!refusal}
             onClick={() => onApply(r)}
-            title={refusal || undefined}
-            className="inline-flex h-10 items-center rounded-lg bg-blue-600 px-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500"
+            className="inline-flex h-10 items-center rounded-lg bg-blue-600 px-3 text-sm font-semibold text-white hover:bg-blue-700"
           >
-            Apply suggested target{r.suggestedMicros != null ? ` (${money(r.suggestedMicros, r.currency)})` : ''}
+            Set target to {money(r.suggestedMicros, r.currency)}
           </button>
         )}
         {applyEnabled && r.bidding === 'MAX_CONV' && refusal && <span className="text-xs text-gray-500">{refusal}</span>}

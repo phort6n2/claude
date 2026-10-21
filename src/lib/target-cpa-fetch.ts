@@ -20,8 +20,8 @@ import {
  *
  * ONE QUERY PER RESOURCE PER ACCOUNT, never per campaign: the campaigns, the
  * portfolio strategies (only when a campaign uses one), the simulations, the
- * recommendations, and thirty days of spend by day. Fifteen accounts at five
- * queries, six accounts at a time, is seconds — well inside the function's
+ * recommendations, the ad schedules, and thirty days of spend by day. Fifteen
+ * accounts at six queries, six accounts at a time, is seconds — well inside the function's
  * limit, and the run measures and stores its own duration to prove it.
  *
  * An account that fails is KEPT with its error, not dropped: a missing row on
@@ -118,7 +118,7 @@ export async function readTcpaAccount(
     error: null,
   }
 
-  const [list, sims, recs, spend] = await Promise.all([
+  const [list, sims, recs, spend, schedules] = await Promise.all([
     search(
       account.customerId,
       `SELECT campaign.id, campaign.name, campaign.advertising_channel_type, campaign.bidding_strategy_type,
@@ -156,6 +156,14 @@ export async function readTcpaAccount(
        FROM campaign
        WHERE segments.date BETWEEN '${w30.start}' AND '${w30.end}'`
     ),
+    // Ad schedules: a weekday-only campaign's weekend is not underspending.
+    search(
+      account.customerId,
+      `SELECT campaign.id, campaign_criterion.ad_schedule.day_of_week
+       FROM campaign_criterion
+       WHERE campaign_criterion.type = 'AD_SCHEDULE' AND campaign_criterion.status != 'REMOVED'
+         AND campaign.status = 'ENABLED' AND campaign.name LIKE 'AGMP%'`
+    ),
   ])
   // The campaign list and the spend are the panel; without either there is
   // nothing true to show. Simulations and recommendations are columns, and a
@@ -165,6 +173,9 @@ export async function readTcpaAccount(
   const partial: string[] = []
   if (!sims.ok) partial.push(`Simulations: ${sims.error}`)
   if (!recs.ok) partial.push(`Recommendations: ${recs.error}`)
+  // Without them every scheduled campaign reads its days off as $0 days, so
+  // the failure is said beside the rows rather than swallowed.
+  if (!schedules.ok) partial.push(`Ad schedules: ${schedules.error}`)
 
   const campaigns = new Map<string, TcpaCampaign>()
   const portfolioNames = new Set<string>()
@@ -193,6 +204,7 @@ export async function readTcpaAccount(
       budgetMicros: maybeNum(b.amountMicros),
       budgetShared: b.explicitlyShared === true,
       budgetResource: s(b.resourceName) || null,
+      schedule: null,
       days: {},
       simulation: null,
       recommendations: [],
@@ -262,6 +274,18 @@ export async function readTcpaAccount(
       if (!c || !REC_FIELDS[type]) continue
       const rec: Recommendation = { type, detail: obj(r[REC_FIELDS[type]]) }
       c.recommendations.push(rec)
+    }
+  }
+
+  if (schedules.ok) {
+    for (const row of schedules.rows) {
+      const r = obj(row)
+      const c = campaigns.get(s(obj(r.campaign).id))
+      const day = s(obj(obj(r.campaignCriterion).adSchedule).dayOfWeek)
+      if (!c || !day) continue
+      // Several windows on one day (morning and afternoon) are still one day.
+      const days = (c.schedule ||= [])
+      if (!days.includes(day)) days.push(day)
     }
   }
 

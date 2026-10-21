@@ -1606,7 +1606,18 @@ account's Oct 12–17 points.
   next .77. On a shared budget the threshold is what the other campaigns on it
   leave, and the spend counts every campaign on it, AGMP or not.
 - **Enabled days come from `start_date_time`** (`campaign.start_date` does not
-  exist on v25). A pause inside the week is NOT visible and reads as low spend.
+  exist on v25) **AND THE AD SCHEDULE** (`AD_SCHEDULE` criteria, read per
+  account). Collision's AGMP Lead Gen runs Mon–Fri 7–4: counting its weekend
+  as $0 days read it 53% of budget when it spends 74% on the days it runs. Days
+  off the schedule show "off" and leave the average and the simulation's day
+  count. A pause inside the week is still NOT visible and reads as low spend.
+- **NO SIMULATION: ONE STEP, AT MOST 15%** (`stepTarget`, `STEP_SHARE`) — the
+  highest .77 within 15% of the current target, rounded DOWN ($40.77 → $46.77),
+  only for an underspender with a target set, and labelled as a step on both
+  screens, never as Google's number. NOT when Google reports the campaign
+  BUDGET_CONSTRAINED: then the target is not what it is missing, and a higher
+  one only raises the cost per lead on the days it already spends; the row says
+  so instead of showing a dead button.
 - **Recommendation leaf fields are UNRECOGNIZED_FIELD in GAQL** (checked live):
   the parent sub-messages are selected and read by `recommendationTarget`. On
   2026-10-21 no account had any of the five types, so the shape is the

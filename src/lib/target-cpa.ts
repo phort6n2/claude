@@ -79,6 +79,11 @@ export interface TcpaCampaign {
   budgetMicros: number | null
   budgetShared: boolean
   budgetResource: string | null
+  /**
+   * The days of the week its ad schedule runs on ('MONDAY'…), or null for
+   * every day. Optional because snapshots stored before it was read have none.
+   */
+  schedule?: string[] | null
   /** date → [costMicros, conversions], last 30 complete days, days with a row only. */
   days: Record<string, [number, number]>
   simulation: Simulation | null
@@ -131,16 +136,42 @@ export function inclusiveDays(start: string, end: string): number {
   return Math.round((b - a) / 86_400_000) + 1
 }
 
+const WEEKDAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']
+
+/** Whether an ad schedule runs on this YYYY-MM-DD (dates are in the account's zone, as Google gives them). */
+export function runsOn(date: string, schedule: string[] | null | undefined): boolean {
+  if (!schedule || schedule.length === 0) return true
+  return schedule.includes(WEEKDAYS[new Date(`${date}T00:00:00Z`).getUTCDay()])
+}
+
+/** Days between two dates, inclusive, that the schedule runs on. */
+export function scheduledDays(start: string, end: string, schedule: string[] | null | undefined): number {
+  let count = 0
+  for (let d = start; d <= end; d = addDays(d, 1)) if (runsOn(d, schedule)) count++
+  return count
+}
+
 /**
- * Days of the window the campaign existed on. "Enabled" is read from the start
- * date: a campaign launched on Thursday has three days of spend in a seven-day
- * window, and dividing them by seven reads a full spender as half of one. A
- * pause inside the window is NOT visible here — it would take the change
- * history to see — so a campaign paused for part of the week reads low.
+ * Days of the window the campaign could spend on. "Enabled" is read from the
+ * start date: a campaign launched on Thursday has three days of spend in a
+ * seven-day window, and dividing them by seven reads a full spender as half
+ * of one.
+ *
+ * AND FROM THE AD SCHEDULE. Collision's AGMP Lead Gen runs Monday to Friday
+ * only, so its Saturday and Sunday were $0 days that counted, and it read 53%
+ * of budget — underspending — when on the days it runs it spent 74%. A
+ * weekday-only campaign is never going to spend at the weekend, whatever its
+ * target. A pause inside the window is still NOT visible here — it would take
+ * the change history to see — so a campaign paused for part of the week reads
+ * low.
  */
-export function enabledDays(startDate: string | null, window: { start: string; end: string }): number {
+export function enabledDays(
+  startDate: string | null,
+  window: { start: string; end: string },
+  schedule?: string[] | null
+): number {
   const from = startDate && startDate > window.start ? startDate : window.start
-  return inclusiveDays(from, window.end)
+  return scheduledDays(from, window.end, schedule)
 }
 
 /* ------------------------------------------------------------- simulation */
@@ -158,11 +189,12 @@ export interface SimRow {
  * point is a total over the simulation's start-to-end range, inclusive — the
  * Oct 12–17 simulations are six days, and reading a total as a day overstates
  * every point six-fold, which makes every campaign look as if a lower target
- * would already spend it.
+ * would already spend it. On an ad schedule only the days it runs count, the
+ * same as the spend it is compared with.
  */
-export function simulationRows(sim: Simulation | null): SimRow[] {
+export function simulationRows(sim: Simulation | null, schedule?: string[] | null): SimRow[] {
   if (!sim) return []
-  const days = inclusiveDays(sim.startDate, sim.endDate)
+  const days = scheduledDays(sim.startDate, sim.endDate, schedule)
   if (days <= 0) return []
   return sim.points
     .filter((p) => p.targetMicros > 0)
@@ -214,6 +246,24 @@ export function roundUpTo77(micros: number): number {
   let candidate = whole + 770_000
   // Half a cent of slack: 27.77 computed as 27.7700001 is 27.77, not 28.77.
   if (candidate < micros - 5_000) candidate += 1_000_000
+  return candidate
+}
+
+/** With no simulation to read, a raise is one step of at most this much. */
+export const STEP_SHARE = 0.15
+
+/**
+ * One step up from the current target when Google has given nothing to read:
+ * the highest .77 no more than STEP_SHARE above it — rounded DOWN, unlike the
+ * simulation's, because there is no number underneath this one to stay above,
+ * and the point of a step is that it is small ($40.77 → $46.77, not $47.77).
+ * A target so small that no .77 fits inside the step goes to the next .77.
+ */
+export function stepTarget(currentMicros: number): number {
+  const ceiling = currentMicros * (1 + STEP_SHARE)
+  let candidate = Math.floor(ceiling / 1_000_000) * 1_000_000 + 770_000
+  if (candidate > ceiling + 5_000) candidate -= 1_000_000
+  if (candidate <= currentMicros + 5_000) candidate = roundUpTo77(currentMicros + 10_000)
   return candidate
 }
 
@@ -322,12 +372,19 @@ export interface TcpaRow {
   spendPct: number | null
   enabledDays: number
   window: { start: string; end: string }
-  /** date → spend, for the expanded view: the seven days behind the average. */
-  spendByDay: Array<{ date: string; costMicros: number }>
+  /** date → spend, for the expanded view: the seven days behind the average. `off` = not on its ad schedule. */
+  spendByDay: Array<{ date: string; costMicros: number; off: boolean }>
+  /** The ad schedule's days, or null for every day. */
+  schedule: string[] | null
   fullSpend: FullSpend
   /** What the simulation's spend is compared with, per day. */
   thresholdMicros: number | null
   suggestedMicros: number | null
+  /**
+   * Where the suggestion came from: Google's simulation, or — when there is
+   * no simulation to read — one STEP_SHARE step up from the current target.
+   */
+  suggestionSource: 'simulation' | 'step' | null
   google: { type: string; micros: number } | null
   cpa30Micros: number | null
   conversions30: number
@@ -378,29 +435,39 @@ export function buildRows(snapshot: TcpaSnapshot): TcpaRow[] {
       // budget's spend — every campaign on it — over the longest-running one's
       // days, since the budget has existed at least that long.
       const ownSpend7 = sumSpend(c.days, w7)
+      const schedule = c.schedule && c.schedule.length > 0 ? c.schedule : null
       let spend7 = ownSpend7
-      let days7 = enabledDays(c.startDate, w7)
+      let days7 = enabledDays(c.startDate, w7, schedule)
       if (c.budgetShared && c.budgetResource) {
         const group = sharedGroups.get(c.budgetResource) || [c]
         const othersSpend = sumSpend(a.otherSharedSpend[c.budgetResource] || {}, w7)
         spend7 = group.reduce((t, g) => t + sumSpend(g.days, w7), 0) + othersSpend
         // Spend from a campaign outside the panel proves the budget was live
-        // all week; otherwise it is as old as its oldest AGMP campaign.
+        // all week, on whatever schedule that campaign keeps; otherwise it is
+        // as old as its oldest AGMP campaign and runs on the days any of them do.
         const starts = group.map((g) => g.startDate).filter(Boolean) as string[]
-        days7 = enabledDays(othersSpend > 0 ? null : (starts.sort()[0] ?? null), w7)
+        const unscheduled = othersSpend > 0 || group.some((g) => !g.schedule || g.schedule.length === 0)
+        const union = unscheduled ? null : [...new Set(group.flatMap((g) => g.schedule || []))]
+        days7 = enabledDays(othersSpend > 0 ? null : (starts.sort()[0] ?? null), w7, union)
       }
       const avgDaily = days7 > 0 ? spend7 / days7 : null
       const othersDaily = days7 > 0 ? (spend7 - ownSpend7) / days7 : 0
       const spendPct = avgDaily != null && c.budgetMicros ? avgDaily / c.budgetMicros : null
 
-      const simRows = simulationRows(c.simulation)
+      const simRows = simulationRows(c.simulation, schedule)
       // The simulation is THIS campaign alone. On a shared budget it only has
       // to fill what the others leave, so the threshold is the remainder.
       const thresholdMicros =
         c.budgetMicros != null ? Math.max(0, FULL_SPEND_SHARE * c.budgetMicros - othersDaily) : null
 
+      const lifetimeDays = c.startDate ? inclusiveDays(c.startDate, w7.end) : MIN_ENABLED_DAYS
+      const underspending =
+        bidding === 'MAX_CONV' && spendPct != null && spendPct < UNDERSPEND_SHARE && lifetimeDays >= MIN_ENABLED_DAYS
+      const flags = statusFlags(c)
+
       let fullSpend: FullSpend = { kind: 'none' }
       let suggestedMicros: number | null = null
+      let suggestionSource: TcpaRow['suggestionSource'] = null
       let note: string | null = null
       if (bidding === 'MAX_CLICKS') {
         note = 'Max Clicks has no target CPA.'
@@ -408,17 +475,27 @@ export function buildRows(snapshot: TcpaSnapshot): TcpaRow[] {
         note = 'No daily budget to compare with.'
       } else {
         fullSpend = fullSpendTarget(simRows, thresholdMicros)
-        if (fullSpend.kind === 'target') suggestedMicros = roundUpTo77(fullSpend.micros)
+        if (fullSpend.kind === 'target') {
+          suggestedMicros = roundUpTo77(fullSpend.micros)
+          suggestionSource = 'simulation'
+        } else if ((fullSpend.kind === 'none' || fullSpend.kind === 'above') && underspending && targetMicros != null) {
+          // NOTHING TO READ, so ONE SMALL STEP — never a guess at the answer.
+          // Not when Google itself says the BUDGET is what limits it: then the
+          // target is not holding it back, and a higher one only raises the
+          // cost per lead on the days it already spends.
+          if (flags.includes('budget-limited')) {
+            note = 'No suggestion: Google reports this campaign limited by budget, so a higher target is not what it is missing.'
+          } else {
+            suggestedMicros = stepTarget(targetMicros)
+            suggestionSource = 'step'
+          }
+        }
       }
 
       const cost30 = sumSpend(c.days, w30)
       const conv30 = Object.entries(c.days)
         .filter(([d]) => d >= w30.start && d <= w30.end)
         .reduce((t, [, v]) => t + v[1], 0)
-
-      const lifetimeDays = c.startDate ? inclusiveDays(c.startDate, w7.end) : MIN_ENABLED_DAYS
-      const underspending =
-        bidding === 'MAX_CONV' && spendPct != null && spendPct < UNDERSPEND_SHARE && lifetimeDays >= MIN_ENABLED_DAYS
 
       rows.push({
         key: `${a.customerId}:${c.id}`,
@@ -440,15 +517,17 @@ export function buildRows(snapshot: TcpaSnapshot): TcpaRow[] {
         spendPct,
         enabledDays: days7,
         window: w7,
-        spendByDay: listDays(w7).map((date) => ({ date, costMicros: c.days[date]?.[0] ?? 0 })),
+        spendByDay: listDays(w7).map((date) => ({ date, costMicros: c.days[date]?.[0] ?? 0, off: !runsOn(date, schedule) })),
+        schedule,
         fullSpend,
         thresholdMicros,
         suggestedMicros,
+        suggestionSource,
         google: bidding === 'MAX_CLICKS' ? null : googleSuggestion(c.recommendations),
         cpa30Micros: conv30 > 0 ? cost30 / conv30 : null,
         conversions30: conv30,
         cost30Micros: cost30,
-        flags: statusFlags(c),
+        flags,
         underspending,
         simulation: c.simulation ? { startDate: c.simulation.startDate, endDate: c.simulation.endDate, rows: simRows } : null,
         note,
@@ -518,6 +597,7 @@ export function targetHints(snapshot: TcpaSnapshot): Record<string, TargetHint> 
     out[r.key] = {
       raise: applyRefusal(r) == null,
       suggestedMicros: r.suggestedMicros,
+      ...(r.suggestionSource === 'step' ? { step: true } : {}),
       spendPct: r.spendPct,
       snapshotTargetMicros: r.targetMicros,
       portfolio: !!r.portfolio,
