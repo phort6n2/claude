@@ -44,6 +44,7 @@ let cache: { at: number; data: CampaignReportData } | null = null
 export const HIDDEN_ACCOUNT_IDS = new Set([
   '9840054401', // Noble Glass
   '3229860947', // Original Noble Glass
+  '2592044388', // Windshield Replacement LLC
 ])
 
 /** Parallel, but not all at once — the API answers bursts with RESOURCE_EXHAUSTED. */
