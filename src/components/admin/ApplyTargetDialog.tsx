@@ -14,7 +14,7 @@ import { money } from './campaign-report-ui'
  * read (`target-cpa-apply.ts`): the latest snapshot's suggestion, the target
  * still being the one shown here, AGMP only, Maximize Conversions only, the
  * shared-strategy rule, validate-only first, then the real change, then a
- * read-back. The flag `TARGET_CPA_APPLY_ENABLED` is checked there too.
+ * read-back. The kill switch `TARGET_CPA_APPLY_ENABLED=false` is checked there too.
  */
 
 export interface ApplyTarget {

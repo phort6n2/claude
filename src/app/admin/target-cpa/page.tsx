@@ -14,8 +14,8 @@ import TargetCpaPanel, { type ChangeEntry } from '@/components/admin/TargetCpaPa
  *
  * The owner's page (`requireTargetCpaPage`), read from the morning snapshot;
  * the rows are computed here from its stored inputs, so a rule fix applies to
- * the snapshot already on file. The apply button exists only with
- * TARGET_CPA_APPLY_ENABLED=true.
+ * the snapshot already on file. The apply button is on unless
+ * TARGET_CPA_APPLY_ENABLED=false.
  */
 export default async function Page() {
   await requireTargetCpaPage()

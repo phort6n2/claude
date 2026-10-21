@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 /**
- * POST /api/admin/target-cpa/apply — Phase 2, behind TARGET_CPA_APPLY_ENABLED.
+ * POST /api/admin/target-cpa/apply — Phase 2. On unless TARGET_CPA_APPLY_ENABLED=false.
  * Body: { customerId, campaignId, fromMicros, toMicros, scope }. Every check
  * that matters is in lib/target-cpa-apply.ts, against a live read.
  */

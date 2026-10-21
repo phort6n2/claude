@@ -168,7 +168,7 @@ export default function CampaignReport({
   /** Where the sticky control bar sits: under the Master Leads app's own
    *  sticky header there, at the top of the admin's scrolling column here. */
   stickyTop?: string
-  /** The "Set $X" button beside "try $X": the owner, with TARGET_CPA_APPLY_ENABLED on.
+  /** The "Set $X" button beside "try $X": the owner, unless TARGET_CPA_APPLY_ENABLED=false.
    *  Decided by the page on the server; the apply route checks both again. */
   canApplyTargets?: boolean
 }) {

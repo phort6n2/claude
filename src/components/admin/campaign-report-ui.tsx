@@ -176,7 +176,7 @@ export function IssueChip({ issue }: { issue: CampaignIssue }) {
 /**
  * Whether this screen may APPLY a suggested target, and how to ask. Provided
  * by the campaign report (true only for the owner, with
- * TARGET_CPA_APPLY_ENABLED on); absent, the "try $X" mark is just a link.
+ * unless TARGET_CPA_APPLY_ENABLED=false); absent, the "try $X" mark is just a link.
  * A context rather than a prop because the mark sits four components down,
  * in the phone cards and in the table alike.
  */

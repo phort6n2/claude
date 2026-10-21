@@ -5,7 +5,7 @@ import { applyRefusal, buildRows, isAgmpCampaign, n } from '@/lib/target-cpa'
 
 /**
  * PHASE 2: apply the suggested target to ONE campaign (or its portfolio
- * strategy). Off unless `TARGET_CPA_APPLY_ENABLED=true`.
+ * strategy). On unless `TARGET_CPA_APPLY_ENABLED=false` (the kill switch).
  *
  * What it will and will not do, each checked here on the server rather than
  * trusted from the page:
@@ -75,7 +75,7 @@ async function log(base: LogBase, status: string, extra: { error?: string; readB
 }
 
 export async function applyTargetCpa(userEmail: string, req: ApplyRequest): Promise<ApplyResult> {
-  if (!applyEnabled()) return { ok: false, status: 'disabled', error: 'Applying targets is switched off (TARGET_CPA_APPLY_ENABLED).' }
+  if (!applyEnabled()) return { ok: false, status: 'disabled', error: 'Applying targets is switched off (TARGET_CPA_APPLY_ENABLED=false).' }
 
   const customerId = digits(req.customerId)
   const campaignId = digits(req.campaignId)

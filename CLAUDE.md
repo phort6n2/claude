@@ -1561,8 +1561,8 @@ suspended or unreadable one never does. Read-only.
   problem button on every load** (`TargetCpaLink`, `targetRaises`), counting
   those same marks — it is the way to the panel from the phone, since Master
   Leads has no admin sidebar (its header carries a "Target CPA" button too).
-  **"Set $X" sits beside "try $X"** when applying is on and the viewer is the
-  owner (`canApplyTargets`, decided by the page; `TargetApplyContext` carries
+  **"Set $X" sits beside "try $X"** when the viewer is the owner (and the
+  kill switch is not set) (`canApplyTargets`, decided by the page; `TargetApplyContext` carries
   it to the line). It opens `ApplyTargetDialog` — the ONE confirm dialog, the
   panel's too — and sends the same request to the same route, so every
   Phase 2 check below runs on it unchanged. A success re-reads the accounts,
@@ -1611,7 +1611,10 @@ account's Oct 12–17 points.
   the parent sub-messages are selected and read by `recommendationTarget`. On
   2026-10-21 no account had any of the five types, so the shape is the
   documented one — the raw sub-message is stored for that reason.
-- **PHASE 2 is OFF unless `TARGET_CPA_APPLY_ENABLED=true`.** Only the latest
+- **PHASE 2 is ON by default; `TARGET_CPA_APPLY_ENABLED=false` is the kill
+  switch.** It shipped off behind that flag, and the flag could not be set
+  from where the work was done (the Vercel connection may not write
+  production env vars), so at the owner's call it became a built-in. Only the latest
   snapshot's suggested .77 target, only the value the dialog showed, against a
   LIVE re-read (a target changed by hand in Google since the snapshot wins),
   only `maximizeConversions.targetCpaMicros` by update mask, `validateOnly`

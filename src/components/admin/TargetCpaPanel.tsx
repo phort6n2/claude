@@ -350,7 +350,7 @@ export default function TargetCpaPanel({ builtAt, trigger, durationMs, rows, err
               Only underspending
             </label>
           )}
-          {!applyEnabled && <span className="text-xs text-gray-500">Applying targets is off (TARGET_CPA_APPLY_ENABLED).</span>}
+          {!applyEnabled && <span className="text-xs text-gray-500">Applying targets is switched off (TARGET_CPA_APPLY_ENABLED=false).</span>}
         </div>
       )}
 

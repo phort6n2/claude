@@ -38,9 +38,17 @@ const s = (v: unknown): string => (v == null ? '' : String(v))
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' ? (v as Record<string, unknown>) : {})
 const maybeNum = (v: unknown): number | null => (v == null || v === '' ? null : n(v))
 
-/** The flag for Phase 2. Off unless set to exactly "true". */
+/**
+ * Whether a suggested target may be APPLIED. ON by default, at the owner's
+ * call: it shipped behind an off-by-default flag, and the flag could not be
+ * set from where the work was done, so it became a built-in. The variable
+ * stays as a KILL SWITCH — `TARGET_CPA_APPLY_ENABLED=false` turns every Set
+ * button and the apply route off at the next deploy, without a code change.
+ * Every other guard (owner only, AGMP only, live re-read, validate-only,
+ * read-back, change log) is unaffected by it.
+ */
 export function applyEnabled(): boolean {
-  return process.env.TARGET_CPA_APPLY_ENABLED === 'true'
+  return process.env.TARGET_CPA_APPLY_ENABLED !== 'false'
 }
 
 export interface Listed {
