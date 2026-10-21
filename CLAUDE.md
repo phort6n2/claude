@@ -1512,6 +1512,13 @@ suspended or unreadable one never does. Read-only.
   whose end date passed reads `primary_status: ENDED`, Google's
   system-generated Local Services campaign has no impression rows, and the API
   sends `UNKNOWN` beside real reasons.
+- **Cost / conv. is Google's cost ÷ conversions** (`costPerConv`), blank — never
+  $0 — when nothing converted, and per currency in the scorecard.
+- **The column headings stick inside the table's own box** (`max-h-[75vh]`,
+  scrolling both ways): a box that scrolls sideways is already a scroll
+  container, so a sticky heading cannot stick to the page.
+- `HIDDEN_ACCOUNT_IDS` keeps accounts that are not part of the book off the
+  table (both Noble Glass accounts), by customer id, never by name.
 - "Calls" is Google's `metrics.phone_calls` (the ad's call button), not every
   call to a tracking number, and the page says so. Cached three minutes per
   instance; Refresh bypasses it.

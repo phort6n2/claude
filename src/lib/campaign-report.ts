@@ -177,6 +177,15 @@ export function convRate(t: Totals): number | null {
 }
 
 /**
+ * Cost per conversion in MICROS — Google's own figure, cost ÷ conversions,
+ * so it reconciles with their app (the monthly report's rule too). Null, not
+ * a cost, when nothing converted: "$0 per conversion" would read as free.
+ */
+export function costPerConv(t: Totals): number | null {
+  return t.conversions > 0 ? t.costMicros / t.conversions : null
+}
+
+/**
  * An account's daily budget: the distinct budgets of its ENABLED campaigns.
  * Deduped by budget id, because a shared budget is one amount spread over
  * several campaigns and summing it per campaign counts it once per campaign.

@@ -33,6 +33,19 @@ import {
 const CACHE_MS = 3 * 60_000
 let cache: { at: number; data: CampaignReportData } | null = null
 
+/**
+ * Accounts under the manager that are not part of this book and are left OFF
+ * the table, at the owner's request. By customer id, never by name: a name is
+ * whatever somebody typed into Google Ads and is not unique — there are two
+ * Noble Glass accounts, and a name match would also hide a future client that
+ * happens to share one. Not read anywhere else; the daily sweeps go by the
+ * clients bound here, not by the manager's list.
+ */
+export const HIDDEN_ACCOUNT_IDS = new Set([
+  '9840054401', // Noble Glass
+  '3229860947', // Original Noble Glass
+])
+
 /** Parallel, but not all at once — the API answers bursts with RESOURCE_EXHAUSTED. */
 const CONCURRENCY = 6
 
@@ -89,7 +102,7 @@ async function listAccounts(): Promise<{ ok: true; accounts: ManagedAccount[] } 
   if (!res.ok) return res
   const accounts = res.rows
     .map((row) => obj(obj(row).customerClient))
-    .filter((c) => c.id && !c.manager)
+    .filter((c) => c.id && !c.manager && !HIDDEN_ACCOUNT_IDS.has(s(c.id)))
     .map((c) => ({
       customerId: s(c.id),
       name: s(c.descriptiveName) || s(c.id),

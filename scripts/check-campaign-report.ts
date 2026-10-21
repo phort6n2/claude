@@ -15,6 +15,7 @@ import {
   campaignIssues,
   accountBudgetMicros,
   convRate,
+  costPerConv,
   visibleCampaigns,
   isIdle,
   statusLabel,
@@ -129,6 +130,8 @@ console.log('\nTOTALS')
 const pooled = campaign({ days: { '2026-10-18': [0, 10, 1, 1, 1, 0], '2026-10-19': [0, 900, 99, 99, 1, 0] } })
 check(Math.abs((convRate(campaignTotals(pooled, w7)) ?? 0) - 0.02) < 1e-9, 'conv. rate is pooled (2 / 100), not a mean of daily rates (50.5%)')
 check(convRate(campaignTotals(quiet, w7)) === null, 'no interactions: no rate, not 0%')
+check(costPerConv(campaignTotals(quiet, w7)) === null, 'no conversions: no cost per conversion, not $0')
+check(costPerConv({ costMicros: 300_000_000, impressions: 0, clicks: 0, interactions: 0, conversions: 2.5, calls: 0 }) === 120_000_000, 'cost per conversion is cost ÷ conversions, fractional conversions included ($300 / 2.5 = $120)')
 const account: ReportAccount = {
   customerId: '6109211627',
   name: 'AGS',

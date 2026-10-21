@@ -12,6 +12,7 @@ import {
   campaignIssues,
   change,
   convRate,
+  costPerConv,
   isIdle,
   isRangeId,
   previousWindow,
@@ -78,6 +79,18 @@ function byCurrency(entries: Array<{ currency: string; micros: number }>): strin
   return [...sums.entries()].map(([c, m]) => money(m, c, true)).join(' · ')
 }
 
+/** Cost per conversion per currency, for the same reason. */
+function perConvByCurrency(entries: Array<{ currency: string; micros: number; conv: number }>): string {
+  const sums = new Map<string, { micros: number; conv: number }>()
+  for (const e of entries) {
+    const s = sums.get(e.currency) || { micros: 0, conv: 0 }
+    sums.set(e.currency, { micros: s.micros + e.micros, conv: s.conv + e.conv })
+  }
+  const parts = [...sums.entries()].filter(([, v]) => v.conv > 0)
+  if (parts.length === 0) return '—'
+  return parts.map(([c, v]) => money(v.micros / v.conv, c)).join(' · ')
+}
+
 function Change({ now, before }: { now: number; before: number }) {
   const c = change(now, before)
   if (c == null) return <span className="text-xs text-gray-400">no prior data</span>
@@ -138,7 +151,14 @@ const NUM = 'whitespace-nowrap px-3 py-2 text-right tabular-nums'
 /* The name column is CAPPED, not sized to its content: uncapped, one long
    account name took the whole of a 390px screen and every number started
    off the edge. Names wrap to two lines instead. */
-const STICKY = 'sticky left-0 z-10 w-[9.5rem] min-w-[9.5rem] max-w-[9.5rem] sm:w-auto sm:min-w-[12rem] sm:max-w-[18rem]'
+const STICKY_COL = 'sticky left-0 w-[9.5rem] min-w-[9.5rem] max-w-[9.5rem] sm:w-auto sm:min-w-[12rem] sm:max-w-[18rem]'
+const STICKY = `${STICKY_COL} z-10`
+/* The column headings stay on screen while the rows scroll. The table box
+   scrolls BOTH ways for that (a box that scrolls sideways is already a scroll
+   container, so a sticky heading can only stick inside it), capped near a
+   screen's height. The line under the headings is a shadow, because a
+   border on the row does not travel with a sticky cell. */
+const HEAD = 'sticky top-0 z-20 bg-white shadow-[inset_0_-1px_0_#e5e7eb]'
 
 function MetricCells({
   t,
@@ -159,6 +179,7 @@ function MetricCells({
       <td className={cls}>{int(t.impressions)}</td>
       <td className={cls}>{int(t.clicks)}</td>
       <td className={cls}>{conv(t.conversions)}</td>
+      <td className={cls}>{costPerConv(t) == null ? '—' : money(costPerConv(t) as number, currency)}</td>
       <td className={cls}>{pct(convRate(t))}</td>
       <td className={cls}>{int(t.calls)}</td>
     </>
@@ -236,8 +257,8 @@ export default function CampaignReport({
     const ordered = [...data.accounts.filter((a) => !isIdle(a)), ...data.accounts.filter((a) => isIdle(a))]
     let now = ZERO
     let before = ZERO
-    const cost: Array<{ currency: string; micros: number }> = []
-    const costBefore: Array<{ currency: string; micros: number }> = []
+    const cost: Array<{ currency: string; micros: number; conv: number }> = []
+    const costBefore: Array<{ currency: string; micros: number; conv: number }> = []
     const budgets: Array<{ currency: string; micros: number }> = []
     let issueCount = 0
 
@@ -265,8 +286,8 @@ export default function CampaignReport({
       if (!a.error) {
         now = addTotals(now, total)
         before = addTotals(before, prior)
-        cost.push({ currency: a.currency, micros: total.costMicros })
-        costBefore.push({ currency: a.currency, micros: prior.costMicros })
+        cost.push({ currency: a.currency, micros: total.costMicros, conv: total.conversions })
+        costBefore.push({ currency: a.currency, micros: prior.costMicros, conv: prior.conversions })
         if (budget != null) budgets.push({ currency: a.currency, micros: budget })
       }
       const suspended = a.status === 'SUSPENDED'
@@ -342,7 +363,7 @@ export default function CampaignReport({
         </div>
       ) : (
         <>
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
             <Scorecard label="Daily budget" value={byCurrency(view.budgets)} compare={false} />
             <Scorecard
               label="Cost"
@@ -355,6 +376,13 @@ export default function CampaignReport({
             <Scorecard label="Impressions" value={int(view.now.impressions)} now={view.now.impressions} before={view.before.impressions} compare={compare} />
             <Scorecard label="Clicks" value={int(view.now.clicks)} now={view.now.clicks} before={view.before.clicks} compare={compare} />
             <Scorecard label="Conversions" value={conv(view.now.conversions)} now={view.now.conversions} before={view.before.conversions} compare={compare} />
+            <Scorecard
+              label="Cost / conv."
+              value={perConvByCurrency(view.cost)}
+              now={view.singleCurrency ? (costPerConv(view.now) ?? undefined) : undefined}
+              before={view.singleCurrency ? (costPerConv(view.before) ?? undefined) : undefined}
+              compare={compare}
+            />
             <Scorecard
               label="Conv. rate"
               value={pct(convRate(view.now))}
@@ -389,18 +417,19 @@ export default function CampaignReport({
           {/* Wide content scrolls inside its own box; the page never does.
               The campaign column stays put so a number is never orphaned
               from the name it belongs to. */}
-          <div className="mt-2 overflow-x-auto rounded-xl border border-gray-200 bg-white">
+          <div className="mt-2 max-h-[75vh] overflow-auto overscroll-contain rounded-xl border border-gray-200 bg-white">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-xs font-medium text-gray-500">
-                  <th className={`${STICKY} bg-white px-3 py-2 text-left`}>Campaign</th>
-                  <th className={NUM}>Budget</th>
-                  <th className={NUM}>Cost</th>
-                  <th className={NUM}>Impr.</th>
-                  <th className={NUM}>Clicks</th>
-                  <th className={NUM}>Conv.</th>
-                  <th className={NUM}>Conv. rate</th>
-                  <th className={NUM}>Calls</th>
+                <tr className="text-xs font-medium text-gray-500">
+                  <th className={`${STICKY_COL} top-0 z-30 bg-white px-3 py-2 text-left shadow-[inset_0_-1px_0_#e5e7eb]`}>Campaign</th>
+                  <th className={`${NUM} ${HEAD}`}>Budget</th>
+                  <th className={`${NUM} ${HEAD}`}>Cost</th>
+                  <th className={`${NUM} ${HEAD}`}>Impr.</th>
+                  <th className={`${NUM} ${HEAD}`}>Clicks</th>
+                  <th className={`${NUM} ${HEAD}`}>Conv.</th>
+                  <th className={`${NUM} ${HEAD}`}>Cost / conv.</th>
+                  <th className={`${NUM} ${HEAD}`}>Conv. rate</th>
+                  <th className={`${NUM} ${HEAD}`}>Calls</th>
                 </tr>
               </thead>
               <tbody>
@@ -420,7 +449,7 @@ export default function CampaignReport({
                 ))}
                 {shown.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-3 py-6 text-center text-gray-500">
+                    <td colSpan={9} className="px-3 py-6 text-center text-gray-500">
                       Nothing to show for this period.
                     </td>
                   </tr>
@@ -431,7 +460,7 @@ export default function CampaignReport({
 
           <p className="mt-2 text-xs leading-relaxed text-gray-500">
             Every figure is Google’s own, in each account’s time zone, and ranges end yesterday as they do in Google Ads.
-            Budget is per day. Conv. rate is conversions ÷ interactions. Calls are calls from the call button on the ads,
+            Budget is per day. Cost / conv. is Google’s cost ÷ conversions. Conv. rate is conversions ÷ interactions. Calls are calls from the call button on the ads,
             as Google counts them — not every call to a shop’s tracking number. Tap a marked campaign for the reason.
           </p>
         </>
@@ -486,7 +515,7 @@ function AccountRows({
           )}
         </td>
         {a.error ? (
-          <td colSpan={7} className="px-3 py-2 text-xs text-red-700">
+          <td colSpan={8} className="px-3 py-2 text-xs text-red-700">
             {a.error}
           </td>
         ) : (
@@ -561,8 +590,8 @@ export function CampaignReportSkeleton() {
           <div key={i} className="h-8 rounded-full bg-gray-200 sm:w-20" />
         ))}
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-        {Array.from({ length: 7 }, (_, i) => (
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
+        {Array.from({ length: 8 }, (_, i) => (
           <div key={i} className="h-16 rounded-xl bg-gray-200" />
         ))}
       </div>
