@@ -1517,6 +1517,12 @@ suspended or unreadable one never does. Read-only.
 - **The column headings stick inside the table's own box** (`max-h-[75vh]`,
   scrolling both ways): a box that scrolls sideways is already a scroll
   container, so a sticky heading cannot stick to the page.
+- **Every heading sorts** (`sortRows`/`sortValue`): accounts by their totals
+  and the campaigns inside each by the same figure, the grouping kept. A first
+  tap puts the biggest first, a second reverses, and blanks (no conversions to
+  divide by) sort LAST both ways. Costs in two currencies sort as plain
+  numbers — nothing here converts CAD. **Tapping a shop's name isolates it**
+  (`?account=`): scorecards, problem count and table all become that shop.
 - `HIDDEN_ACCOUNT_IDS` keeps accounts that are not part of the book off the
   table (both Noble Glass accounts, Windshield Replacement LLC, Kley's Hair
   Salon and both Precision accounts), by customer id, never by name.

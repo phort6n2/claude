@@ -390,3 +390,92 @@ export function change(now: number, before: number): number | null {
   if (before === 0) return null
   return (now - before) / before
 }
+
+// ---------------------------------------------------------------------------
+// Sorting. A tap on a heading sorts the ACCOUNTS by their totals and, inside
+// each, the campaigns by the same figure — the grouping stays, because a
+// campaign row without its account above it is a number with no owner.
+// ---------------------------------------------------------------------------
+
+export const SORT_KEYS = [
+  'name',
+  'budget',
+  'cost',
+  'impressions',
+  'clicks',
+  'conversions',
+  'costPerConv',
+  'convRate',
+  'calls',
+] as const
+export type SortKey = (typeof SORT_KEYS)[number]
+export type SortDir = 'asc' | 'desc'
+export interface SortState {
+  key: SortKey
+  dir: SortDir
+}
+/** Alphabetical — the order the admin home has always used, so a client
+ *  somebody already has in mind is where they left it. */
+export const DEFAULT_SORT: SortState = { key: 'name', dir: 'asc' }
+
+export function isSortState(v: unknown): v is SortState {
+  const s = v as SortState
+  return !!s && (SORT_KEYS as readonly string[]).includes(s.key) && (s.dir === 'asc' || s.dir === 'desc')
+}
+
+/** A first tap on a figure puts the BIGGEST first — the money and the
+ *  outliers are what a sort is reached for. Names start at A. */
+export function firstDir(key: SortKey): SortDir {
+  return key === 'name' ? 'asc' : 'desc'
+}
+
+export function nextSort(current: SortState, key: SortKey): SortState {
+  if (current.key !== key) return { key, dir: firstDir(key) }
+  return { key, dir: current.dir === 'asc' ? 'desc' : 'asc' }
+}
+
+/** The figure a row sorts on. Null where there is nothing to compare — no
+ *  budget, no conversions to divide by — and nulls always sort LAST in both
+ *  directions, so "lowest cost per conversion" is not a column of blanks. */
+export function sortValue(key: SortKey, t: Totals, budgetMicros: number | null): number | null {
+  switch (key) {
+    case 'budget':
+      return budgetMicros
+    case 'cost':
+      return t.costMicros
+    case 'impressions':
+      return t.impressions
+    case 'clicks':
+      return t.clicks
+    case 'conversions':
+      return t.conversions
+    case 'costPerConv':
+      return costPerConv(t)
+    case 'convRate':
+      return convRate(t)
+    case 'calls':
+      return t.calls
+    default:
+      return null
+  }
+}
+
+export function sortRows<T>(
+  rows: T[],
+  sort: SortState,
+  get: (row: T) => { name: string; value: number | null }
+): T[] {
+  const sign = sort.dir === 'asc' ? 1 : -1
+  return [...rows].sort((x, y) => {
+    const a = get(x)
+    const b = get(y)
+    if (sort.key !== 'name') {
+      if (a.value == null && b.value != null) return 1
+      if (b.value == null && a.value != null) return -1
+      if (a.value != null && b.value != null && a.value !== b.value) return sign * (a.value - b.value)
+      // Ties (and two blanks) fall back to the name, always A first.
+      return a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })
+    }
+    return sign * a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })
+  })
+}

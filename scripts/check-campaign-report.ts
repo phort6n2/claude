@@ -16,6 +16,9 @@ import {
   accountBudgetMicros,
   convRate,
   costPerConv,
+  nextSort,
+  sortRows,
+  DEFAULT_SORT,
   visibleCampaigns,
   isIdle,
   statusLabel,
@@ -167,6 +170,22 @@ check(rows.join(',') === 'e1,e0,p1', 'enabled first by cost (unseen kept), pause
 check(isIdle({ ...account, campaigns: [campaign({ status: 'PAUSED' })] }), 'nothing enabled, nothing spent: idle, one line at the foot')
 check(!isIdle({ ...account, error: 'boom', campaigns: [] }), 'a failed read is never filed as idle')
 check(!isIdle({ ...account, status: 'SUSPENDED', campaigns: [] }), 'a suspended account with nothing running is not filed as idle')
+
+console.log('\nSORTING')
+check(DEFAULT_SORT.key === 'name' && DEFAULT_SORT.dir === 'asc', 'alphabetical by default, as the admin home always was')
+const s1 = nextSort(DEFAULT_SORT, 'cost')
+check(s1.key === 'cost' && s1.dir === 'desc', 'a first tap on a figure puts the biggest first')
+check(nextSort(s1, 'cost').dir === 'asc', 'a second tap on the same heading reverses it')
+check(nextSort(nextSort(s1, 'cost'), 'name').dir === 'asc', 'switching to names starts at A')
+const cpa = [
+  { name: 'Blank', value: null },
+  { name: 'Cheap', value: 10 },
+  { name: 'Dear', value: 90 },
+]
+check(sortRows(cpa, { key: 'costPerConv', dir: 'desc' }, (x) => x).map((x) => x.name).join(',') === 'Dear,Cheap,Blank', 'highest first, a blank (nothing converted) last')
+check(sortRows(cpa, { key: 'costPerConv', dir: 'asc' }, (x) => x).map((x) => x.name).join(',') === 'Cheap,Dear,Blank', 'lowest first — and the blank is STILL last, not first')
+check(sortRows([{ name: 'b', value: 5 }, { name: 'A', value: 5 }], { key: 'cost', dir: 'desc' }, (x) => x).map((x) => x.name).join(',') === 'A,b', 'a tie falls back to the name, A first, ignoring case')
+check(sortRows([{ name: 'b', value: null }, { name: 'A', value: null }], { key: 'name', dir: 'desc' }, (x) => x).map((x) => x.name).join(',') === 'b,A', 'names reverse on a second tap')
 
 console.log(failures ? `\n${failures} FAILED` : '\nAll campaign-report checks passed')
 process.exit(failures ? 1 : 0)

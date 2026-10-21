@@ -2,11 +2,16 @@
 
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowDownRight, ArrowUpRight, RefreshCw, TriangleAlert, CircleAlert } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, ChevronDown, ChevronUp, RefreshCw, TriangleAlert, CircleAlert, X } from 'lucide-react'
 import {
   RANGES,
   ZERO,
   DEFAULT_RANGE,
+  DEFAULT_SORT,
+  isSortState,
+  nextSort,
+  sortRows,
+  sortValue,
   addTotals,
   accountBudgetMicros,
   campaignIssues,
@@ -23,6 +28,8 @@ import {
   type CampaignIssue,
   type CampaignReportData,
   type RangeId,
+  type SortKey,
+  type SortState,
   type ReportAccount,
   type ReportCampaign,
   type Totals,
@@ -40,6 +47,7 @@ import { errorFrom } from '@/lib/http-error'
  */
 
 const STORAGE_KEY = 'admin-campaign-range'
+const SORT_STORAGE_KEY = 'admin-campaign-sort'
 
 function money(micros: number, currency: string, whole = false): string {
   const v = micros / 1_000_000
@@ -186,6 +194,46 @@ function MetricCells({
   )
 }
 
+function SortHeader({
+  label,
+  k,
+  sort,
+  onSort,
+  first,
+}: {
+  label: string
+  k: SortKey
+  sort: SortState
+  onSort: (k: SortKey) => void
+  first?: boolean
+}) {
+  const active = sort.key === k
+  const Icon = sort.dir === 'asc' ? ChevronUp : ChevronDown
+  return (
+    <th
+      aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+      className={
+        first
+          ? `${STICKY_COL} top-0 z-30 bg-white px-3 py-2 text-left shadow-[inset_0_-1px_0_#e5e7eb]`
+          : `${NUM} ${HEAD}`
+      }
+    >
+      <button
+        type="button"
+        onClick={() => onSort(k)}
+        className={`inline-flex items-center gap-0.5 ${first ? '' : 'flex-row-reverse'} ${
+          active ? 'text-gray-900' : 'hover:text-gray-800'
+        }`}
+      >
+        {label}
+        {/* A fixed-width slot, so the column does not jump when the arrow
+            appears on it. */}
+        <span className="inline-block w-3.5">{active && <Icon className="h-3.5 w-3.5" />}</span>
+      </button>
+    </th>
+  )
+}
+
 interface Row {
   c: ReportCampaign
   t: Totals
@@ -205,6 +253,49 @@ export default function CampaignReport({
   const [open, setOpen] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState<string | null>(null)
+  const [sort, setSort] = useState<SortState>(DEFAULT_SORT)
+  /** One account isolated (by customer id), or every account. */
+  const [focus, setFocus] = useState<string | null>(null)
+
+  // The last sort this browser chose, and an isolated account from the URL
+  // (so the phone's back button and a shared link both keep it).
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SORT_STORAGE_KEY) || 'null')
+      if (isSortState(saved)) setSort(saved)
+    } catch {
+      /* the default is fine */
+    }
+    try {
+      const account = new URL(window.location.href).searchParams.get('account')
+      if (account) setFocus(account)
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
+  function sortBy(key: SortKey) {
+    const next = nextSort(sort, key)
+    setSort(next)
+    try {
+      localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(next))
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function isolate(customerId: string | null) {
+    setFocus(customerId)
+    setOpen(null)
+    try {
+      const url = new URL(window.location.href)
+      if (customerId) url.searchParams.set('account', customerId)
+      else url.searchParams.delete('account')
+      window.history.replaceState(null, '', url)
+    } catch {
+      /* ignore */
+    }
+  }
 
   // The URL wins (a shared link means that range); otherwise the last range
   // this browser picked. Read after mount so the server render matches.
@@ -252,20 +343,10 @@ export default function CampaignReport({
   const compare = range !== 'today'
 
   const view = useMemo(() => {
-    // Every account is a row; the quiet ones sort to the foot, below the
-    // accounts that are spending money (the list stays alphabetical within each).
-    const ordered = [...data.accounts.filter((a) => !isIdle(a)), ...data.accounts.filter((a) => isIdle(a))]
-    let now = ZERO
-    let before = ZERO
-    const cost: Array<{ currency: string; micros: number; conv: number }> = []
-    const costBefore: Array<{ currency: string; micros: number; conv: number }> = []
-    const budgets: Array<{ currency: string; micros: number }> = []
-    let issueCount = 0
-
-    const accounts = ordered.map((a) => {
+    const all = data.accounts.map((a) => {
       const w = rangeWindow(range, a.today)
       const pw = previousWindow(w)
-      const rows: Row[] = visibleCampaigns(a, w).map(({ c, t }) => ({ c, t, issues: campaignIssues(c, t, range) }))
+      let rows: Row[] = visibleCampaigns(a, w).map(({ c, t }) => ({ c, t, issues: campaignIssues(c, t, range) }))
       const total = rows.reduce((s, r) => addTotals(s, r.t), ZERO)
       const prior = a.campaigns.reduce((s, c) => {
         let t = s
@@ -283,23 +364,49 @@ export default function CampaignReport({
         return t
       }, ZERO)
       const budget = accountBudgetMicros(a)
-      if (!a.error) {
-        now = addTotals(now, total)
-        before = addTotals(before, prior)
-        cost.push({ currency: a.currency, micros: total.costMicros, conv: total.conversions })
-        costBefore.push({ currency: a.currency, micros: prior.costMicros, conv: prior.conversions })
-        if (budget != null) budgets.push({ currency: a.currency, micros: budget })
+      // Campaigns follow the same heading; by name they keep their own order
+      // (running first, biggest spend first), which is the useful default.
+      if (sort.key !== 'name') {
+        rows = sortRows(rows, sort, (r) => ({ name: r.c.name, value: sortValue(sort.key, r.t, r.c.budgetMicros) }))
       }
       const suspended = a.status === 'SUSPENDED'
       const flagged = rows.filter((r) => r.issues.length > 0).length + (suspended ? 1 : 0)
-      issueCount += flagged
-      return { a, w, rows, total, budget, flagged, idle: isIdle(a), suspended }
+      return { a, w, rows, total, prior, budget, flagged, idle: isIdle(a), suspended }
     })
+
+    // An isolated account is the WHOLE view: the scorecards, the count of
+    // problems and the table all describe that one shop.
+    const scope = focus ? all.filter((x) => x.a.customerId === focus) : all
+
+    let now = ZERO
+    let before = ZERO
+    const cost: Array<{ currency: string; micros: number; conv: number }> = []
+    const costBefore: Array<{ currency: string; micros: number; conv: number }> = []
+    const budgets: Array<{ currency: string; micros: number }> = []
+    let issueCount = 0
+    for (const x of scope) {
+      issueCount += x.flagged
+      if (x.a.error) continue
+      now = addTotals(now, x.total)
+      before = addTotals(before, x.prior)
+      cost.push({ currency: x.a.currency, micros: x.total.costMicros, conv: x.total.conversions })
+      costBefore.push({ currency: x.a.currency, micros: x.prior.costMicros, conv: x.prior.conversions })
+      if (x.budget != null) budgets.push({ currency: x.a.currency, micros: x.budget })
+    }
+
+    /* By name, the quiet accounts stay at the foot below the ones spending
+       money; by a figure, the figure decides, blanks last. */
+    const byName = (list: typeof scope) => sortRows(list, sort, (x) => ({ name: x.a.name, value: null }))
+    const accounts =
+      sort.key === 'name'
+        ? [...byName(scope.filter((x) => !x.idle)), ...byName(scope.filter((x) => x.idle))]
+        : sortRows(scope, sort, (x) => ({ name: x.a.name, value: sortValue(sort.key, x.total, x.budget) }))
 
     const sample = accounts.find((x) => !x.a.error)?.w ?? null
     const singleCurrency = new Set(cost.map((c) => c.currency)).size <= 1
-    return { accounts, now, before, cost, costBefore, budgets, issueCount, sample, singleCurrency }
-  }, [data, range])
+    const focused = focus ? (all.find((x) => x.a.customerId === focus)?.a ?? null) : null
+    return { accounts, now, before, cost, costBefore, budgets, issueCount, sample, singleCurrency, focused }
+  }, [data, range, sort, focus])
 
   const shown = onlyIssues ? view.accounts.filter((x) => x.flagged > 0 || x.a.error) : view.accounts
 
@@ -363,6 +470,29 @@ export default function CampaignReport({
         </div>
       ) : (
         <>
+          {focus && (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2">
+              <div className="min-w-0 text-sm text-blue-900">
+                Showing only <span className="font-semibold">{view.focused?.name ?? 'an account no longer on the list'}</span>
+                {view.focused?.clientId && (
+                  <>
+                    {' · '}
+                    <Link href={`/admin/clients/${view.focused.clientId}/advertising`} className="underline hover:text-blue-700">
+                      Client page
+                    </Link>
+                  </>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => isolate(null)}
+                className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+              >
+                <X className="h-3.5 w-3.5" />
+                Show all accounts
+              </button>
+            </div>
+          )}
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
             <Scorecard label="Daily budget" value={byCurrency(view.budgets)} compare={false} />
             <Scorecard
@@ -421,15 +551,15 @@ export default function CampaignReport({
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="text-xs font-medium text-gray-500">
-                  <th className={`${STICKY_COL} top-0 z-30 bg-white px-3 py-2 text-left shadow-[inset_0_-1px_0_#e5e7eb]`}>Campaign</th>
-                  <th className={`${NUM} ${HEAD}`}>Budget</th>
-                  <th className={`${NUM} ${HEAD}`}>Cost</th>
-                  <th className={`${NUM} ${HEAD}`}>Impr.</th>
-                  <th className={`${NUM} ${HEAD}`}>Clicks</th>
-                  <th className={`${NUM} ${HEAD}`}>Conv.</th>
-                  <th className={`${NUM} ${HEAD}`}>Cost / conv.</th>
-                  <th className={`${NUM} ${HEAD}`}>Conv. rate</th>
-                  <th className={`${NUM} ${HEAD}`}>Calls</th>
+                  <SortHeader label="Campaign" k="name" sort={sort} onSort={sortBy} first />
+                  <SortHeader label="Budget" k="budget" sort={sort} onSort={sortBy} />
+                  <SortHeader label="Cost" k="cost" sort={sort} onSort={sortBy} />
+                  <SortHeader label="Impr." k="impressions" sort={sort} onSort={sortBy} />
+                  <SortHeader label="Clicks" k="clicks" sort={sort} onSort={sortBy} />
+                  <SortHeader label="Conv." k="conversions" sort={sort} onSort={sortBy} />
+                  <SortHeader label="Cost / conv." k="costPerConv" sort={sort} onSort={sortBy} />
+                  <SortHeader label="Conv. rate" k="convRate" sort={sort} onSort={sortBy} />
+                  <SortHeader label="Calls" k="calls" sort={sort} onSort={sortBy} />
                 </tr>
               </thead>
               <tbody>
@@ -445,6 +575,8 @@ export default function CampaignReport({
                     suspended={suspended}
                     open={open}
                     setOpen={setOpen}
+                    focused={focus === a.customerId}
+                    onIsolate={() => isolate(focus === a.customerId ? null : a.customerId)}
                   />
                 ))}
                 {shown.length === 0 && (
@@ -461,7 +593,7 @@ export default function CampaignReport({
           <p className="mt-2 text-xs leading-relaxed text-gray-500">
             Every figure is Google’s own, in each account’s time zone, and ranges end yesterday as they do in Google Ads.
             Budget is per day. Cost / conv. is Google’s cost ÷ conversions. Conv. rate is conversions ÷ interactions. Calls are calls from the call button on the ads,
-            as Google counts them — not every call to a shop’s tracking number. Tap a marked campaign for the reason.
+            as Google counts them — not every call to a shop’s tracking number. Tap a marked campaign for the reason, a heading to sort by it (again to reverse), and a shop’s name to see only that shop.
           </p>
         </>
       )}
@@ -479,6 +611,8 @@ function AccountRows({
   suspended,
   open,
   setOpen,
+  focused,
+  onIsolate,
 }: {
   a: ReportAccount
   rows: Row[]
@@ -489,13 +623,22 @@ function AccountRows({
   suspended: boolean
   open: string | null
   setOpen: (v: string | null) => void
+  focused: boolean
+  onIsolate: () => void
 }) {
-  const name = a.clientId ? (
-    <Link href={`/admin/clients/${a.clientId}/advertising`} className="hover:text-blue-700 hover:underline">
+  /* The name ISOLATES the shop rather than leaving the page: on a phone this
+     table is the whole app, and "just this one" is the question. The client
+     page is one tap further, in the banner that appears. */
+  const name = (
+    <button
+      type="button"
+      onClick={onIsolate}
+      aria-pressed={focused}
+      className="text-left hover:text-blue-700 hover:underline"
+      title={focused ? 'Show all accounts' : `Show only ${a.name}`}
+    >
       {a.name}
-    </Link>
-  ) : (
-    a.name
+    </button>
   )
   return (
     <>
