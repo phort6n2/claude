@@ -8,7 +8,9 @@ import {
   type DayMetrics,
   type ReportAccount,
   type ReportCampaign,
+  type TargetHint,
 } from '@/lib/campaign-report'
+import { targetHints, type TcpaSnapshot } from '@/lib/target-cpa'
 
 /**
  * Reads every account under the manager for the admin home page's campaign
@@ -139,6 +141,8 @@ async function readAccount(
       account.customerId,
       `SELECT campaign.id, campaign.name, campaign.status, campaign.primary_status,
               campaign.primary_status_reasons, campaign.advertising_channel_type,
+              campaign.bidding_strategy_type, campaign.maximize_conversions.target_cpa_micros,
+              campaign.target_cpa.target_cpa_micros,
               campaign_budget.id, campaign_budget.amount_micros, campaign_budget.explicitly_shared
        FROM campaign
        WHERE campaign.status != 'REMOVED'`
@@ -175,6 +179,14 @@ async function readAccount(
       budgetMicros: b.amountMicros == null ? null : n(b.amountMicros),
       // Omitted when false — the protobuf rule `biddable` already taught us.
       budgetShared: b.explicitlyShared === true,
+      biddingType: s(c.biddingStrategyType) || null,
+      // Absent on Max Clicks and on a Max Conversions campaign with no target.
+      targetCpaMicros:
+        obj(c.maximizeConversions).targetCpaMicros != null
+          ? n(obj(c.maximizeConversions).targetCpaMicros)
+          : obj(c.targetCpa).targetCpaMicros != null
+            ? n(obj(c.targetCpa).targetCpaMicros)
+            : null,
       days: {},
     })
   }
@@ -230,7 +242,24 @@ export async function clientsByCustomerId(): Promise<Map<string, { id: string; b
   return clientFor
 }
 
+/**
+ * The Target CPA panel's morning conclusions, for the "target too low" mark.
+ * Read on every call rather than cached with the report: one small row, and a
+ * snapshot refreshed by hand should show up without waiting out the cache.
+ */
+async function latestTargetHints(): Promise<Record<string, TargetHint> | undefined> {
+  const row = await prisma.targetCpaSnapshot
+    .findFirst({ orderBy: { createdAt: 'desc' }, select: { payload: true } })
+    .catch(() => null)
+  return row ? targetHints(row.payload as unknown as TcpaSnapshot) : undefined
+}
+
 export async function getCampaignReport(opts: { fresh?: boolean } = {}): Promise<CampaignReportData> {
+  const [data, targets] = await Promise.all([readCampaignReport(opts), latestTargetHints()])
+  return { ...data, targets }
+}
+
+async function readCampaignReport(opts: { fresh?: boolean }): Promise<CampaignReportData> {
   if (!opts.fresh && cache && Date.now() - cache.at < CACHE_MS) return cache.data
 
   const listed = await listAccounts()

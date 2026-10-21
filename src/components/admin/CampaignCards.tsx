@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { ChevronDown, X } from 'lucide-react'
-import { costPerConv, statusLabel, worstSeverity, type Totals } from '@/lib/campaign-report'
-import { Change, IssueChip, conv, int, money, type AccountView, type Row } from './campaign-report-ui'
+import { costPerConv, statusLabel, targetAdvice, worstSeverity, type TargetHint, type Totals } from '@/lib/campaign-report'
+import { Change, IssueChip, TargetLine, conv, int, money, type AccountView, type Row } from './campaign-report-ui'
 
 /**
  * THE PHONE OVERVIEW: one card per shop, nothing to scroll sideways.
@@ -72,7 +72,17 @@ function Figures({
   )
 }
 
-function CampaignLine({ r, currency, showFigures }: { r: Row; currency: string; showFigures: boolean }) {
+function CampaignLine({
+  r,
+  currency,
+  showFigures,
+  hint,
+}: {
+  r: Row
+  currency: string
+  showFigures: boolean
+  hint?: TargetHint
+}) {
   const sev = worstSeverity(r.issues)
   return (
     <li
@@ -86,6 +96,7 @@ function CampaignLine({ r, currency, showFigures }: { r: Row; currency: string; 
         </span>
         <span className="shrink-0 text-[11px] text-gray-500">{statusLabel(r.c)}</span>
       </div>
+      <TargetLine c={r.c} hint={hint} currency={currency} />
       {r.issues.length > 0 && (
         <>
           <div className="mt-1 flex flex-wrap gap-1">
@@ -117,6 +128,7 @@ export default function CampaignCards({
   focus,
   onIsolate,
   compare,
+  targets,
 }: {
   accounts: AccountView[]
   onlyIssues: boolean
@@ -125,6 +137,8 @@ export default function CampaignCards({
   focus: string | null
   onIsolate: (customerId: string | null) => void
   compare: boolean
+  /** The Target CPA panel's morning conclusions, by `customerId:campaignId`. */
+  targets?: Record<string, TargetHint>
 }) {
   if (accounts.length === 0) {
     return <p className="rounded-xl bg-white px-4 py-6 text-center text-sm text-gray-500">Nothing to show for this period.</p>
@@ -134,7 +148,10 @@ export default function CampaignCards({
       {accounts.map((x) => {
         const { a } = x
         const isOpen = expanded.has(a.customerId) || focus === a.customerId
-        const flaggedRows = x.rows.filter((r) => r.issues.length > 0)
+        const hintFor = (r: Row) => targets?.[`${a.customerId}:${r.c.id}`]
+        // A target the panel would raise is as worth seeing as a mark, so it
+        // shows on a collapsed card too.
+        const flaggedRows = x.rows.filter((r) => r.issues.length > 0 || targetAdvice(r.c, hintFor(r)))
         const visible = isOpen && !onlyIssues ? x.rows : flaggedRows
         const listId = `acct-${a.customerId}`
         const pillBad = flaggedRows.some((r) => worstSeverity(r.issues) === 'bad') || x.suspended
@@ -187,7 +204,7 @@ export default function CampaignCards({
               {visible.length > 0 && (
                 <ul id={listId} className="mt-2 divide-y divide-gray-100 border-t border-gray-100">
                   {visible.map((r) => (
-                    <CampaignLine key={r.c.id} r={r} currency={a.currency} showFigures={isOpen} />
+                    <CampaignLine key={r.c.id} r={r} currency={a.currency} showFigures={isOpen} hint={hintFor(r)} />
                   ))}
                 </ul>
               )}

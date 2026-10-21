@@ -28,6 +28,9 @@ import {
   type ReportCampaign,
   type ReportAccount,
   type DayMetrics,
+  targetLabel,
+  targetAdvice,
+  type TargetHint,
 } from '../src/lib/campaign-report'
 import { findUnderspending, newSince } from '../src/lib/budget-pacing'
 
@@ -241,6 +244,39 @@ const byCpa = rankAccounts('costPerConv', inputs)
 check(byCpa[0].id === 'b' && byCpa[0].noConvSpend, 'cost / conv.: spent $300 and converted nothing LEADS, rather than sinking as a blank')
 check(byCpa[byCpa.length - 1].id === 'c' && !byCpa[byCpa.length - 1].noConvSpend, '…and a shop that spent nothing is last, not "no conversions"')
 check(Math.abs((rankAccounts('cost', inputs)[0].change ?? 0) - 0.25) < 1e-9, 'the change is against the same days before ($500 vs $400 = +25%)')
+
+console.log('\nTarget CPA on the table — silent cases first')
+{
+  const base: ReportCampaign = {
+    id: 'c1', name: 'AGMP Lead Gen', status: 'ENABLED', primaryStatus: 'ELIGIBLE', reasons: [], channel: 'SEARCH',
+    budgetId: 'b', budgetMicros: 150_000_000, budgetShared: false, days: {},
+    biddingType: 'MAXIMIZE_CONVERSIONS', targetCpaMicros: 29_770_000,
+  }
+  const hint: TargetHint = { raise: true, suggestedMicros: 41_770_000, spendPct: 0.43, snapshotTargetMicros: 29_770_000, portfolio: false, builtAt: '2026-10-21T10:20:00Z' }
+  check(targetAdvice(base, undefined) == null, 'no snapshot: no advice')
+  check(targetAdvice(base, { ...hint, raise: false }) == null, 'the panel would not raise it: no advice')
+  // Somebody raised it by hand after the morning read.
+  check(targetAdvice({ ...base, targetCpaMicros: 35_770_000 }, hint) == null, 'the live target moved since the snapshot: the stale advice is dropped')
+  check(targetAdvice({ ...base, targetCpaMicros: 29_770_004 }, hint)?.suggestedMicros === 41_770_000, 'float noise is not a change')
+  check(targetAdvice(base, hint)?.suggestedMicros === 41_770_000, 'underspending at 29.77: try 41.77')
+  // A stored report from before the field existed has no targetCpaMicros at all.
+  const { targetCpaMicros: _drop, ...old } = base
+  void _drop
+  check(targetAdvice(old as ReportCampaign, hint)?.suggestedMicros === 41_770_000, 'a report without live targets trusts the snapshot')
+  // Portfolio: the campaign has no target of its own; the strategy's is the snapshot's.
+  const pf = { ...hint, portfolio: true, snapshotTargetMicros: 150_000_000 }
+  check(targetAdvice({ ...base, targetCpaMicros: null }, pf)?.suggestedMicros === 41_770_000, 'portfolio campaigns are not compared with their own (absent) target')
+  const lp = targetLabel({ ...base, targetCpaMicros: null }, pf)
+  check(lp?.kind === 'max-conv' && lp.micros === 150_000_000 && lp.portfolio, "a portfolio campaign's line shows the strategy's target")
+
+  check(targetLabel({ ...base, biddingType: 'TARGET_SPEND', targetCpaMicros: null })?.kind === 'max-clicks', 'Max Clicks says so')
+  const l = targetLabel(base)
+  check(l?.kind === 'max-conv' && l.micros === 29_770_000, 'Max Conversions shows its target')
+  const none = targetLabel({ ...base, targetCpaMicros: null })
+  check(none?.kind === 'max-conv' && none.micros == null, 'Max Conversions with no target says "no target"')
+  check(targetLabel({ ...base, biddingType: 'MANUAL_CPC' }) == null, 'other bidding: no line')
+  check(targetLabel({ ...base, biddingType: undefined }) == null, 'a stored report without the field: no line')
+}
 
 console.log(failures ? `\n${failures} FAILED` : '\nAll campaign-report checks passed')
 process.exit(failures ? 1 : 0)

@@ -19,6 +19,7 @@ import {
   applyRefusal,
   suggestionBelowTarget,
   isAgmpCampaign,
+  targetHints,
   type TcpaAccount,
   type TcpaCampaign,
   type TcpaSnapshot,
@@ -251,6 +252,22 @@ check(
   'refuses a shared strategy that is not Maximize Conversions'
 )
 check(applyRefusal(base) == null, 'allows raising an underspender to its suggestion')
+
+console.log('\nHints for the campaign table')
+{
+  const snap = snapshot([
+    campaign({ id: 'ok', days: days(90 * M, '2026-09-21', '2026-10-20') }),
+    // Underspending at 22.22 with the real points: full spend at ~27.77, a raise.
+    campaign({ id: 'low', ownTargetMicros: 22_220_000, days: days(40 * M, '2026-09-21', '2026-10-20') }),
+    // Underspending, but the suggestion (27.77) is below the target: not a raise.
+    campaign({ id: 'notlimit', ownTargetMicros: 29_770_000, days: days(40 * M, '2026-09-21', '2026-10-20') }),
+  ])
+  const h = targetHints(snap)
+  check(!h['1:ok'].raise, 'spending its budget: no raise')
+  check(h['1:low'].raise && h['1:low'].suggestedMicros === 27_770_000, 'underspending below the full-spend target: raise to 27.77')
+  check(!h['1:notlimit'].raise, 'underspending with a suggestion BELOW the target: no raise')
+  check(h['1:low'].snapshotTargetMicros === 22_220_000, 'the hint carries the target it was computed against')
+}
 
 console.log(failures ? `\n${failures} FAILED\n` : '\nAll passed\n')
 process.exit(failures ? 1 : 0)

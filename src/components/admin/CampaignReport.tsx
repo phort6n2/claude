@@ -37,6 +37,7 @@ import {
   type RankInput,
   type ReportAccount,
   type Totals,
+  type TargetHint,
 } from '@/lib/campaign-report'
 import { errorFrom } from '@/lib/http-error'
 import {
@@ -51,6 +52,7 @@ import {
   perConvParts,
   Scorecard,
   IssueChip,
+  TargetLine,
   type AccountView,
   type Row,
 } from './campaign-report-ui'
@@ -532,6 +534,7 @@ export default function CampaignReport({
                   focus={focus}
                   onIsolate={isolate}
                   compare={compare}
+                  targets={data.targets}
                 />
               </div>
 
@@ -566,6 +569,7 @@ export default function CampaignReport({
                         setOpen={setOpen}
                         focused={focus === a.customerId}
                         onIsolate={() => isolate(focus === a.customerId ? null : a.customerId)}
+                        targets={data.targets}
                       />
                     ))}
                     {shown.length === 0 && (
@@ -661,6 +665,7 @@ function AccountRows({
   setOpen,
   focused,
   onIsolate,
+  targets,
 }: {
   a: ReportAccount
   rows: Row[]
@@ -673,6 +678,7 @@ function AccountRows({
   setOpen: (v: string | null) => void
   focused: boolean
   onIsolate: () => void
+  targets?: Record<string, TargetHint>
 }) {
   /* The name ISOLATES the shop rather than leaving the page: on a phone this
      table is the whole app, and "just this one" is the question. The client
@@ -740,6 +746,7 @@ function AccountRows({
                     {statusLabel(c)}
                     {c.budgetShared ? ' · shared budget' : ''}
                   </div>
+                  <TargetLine c={c} hint={targets?.[key]} currency={a.currency} />
                   {issues.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {issues.map((i) => (

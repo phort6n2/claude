@@ -1549,6 +1549,13 @@ suspended or unreadable one never does. Read-only.
   AdsFinding sweep cannot: a finding needs a bound client. `?dryRun=1` for a
   signed-in admin reports what it would send. First real reading: MAG
   Mobile's AGMP Lead Gen at $10/day of $107/day.
+- **Target CPA rides on every campaign line** (`targetLabel`/`targetAdvice`,
+  `TargetLine`): the bidding and target read LIVE in the undated query
+  ("Max Conv. · target $29.77"), and "Target too low · try $X" linking to the
+  Target CPA panel when that panel's latest snapshot would raise it — dropped
+  when the live target no longer matches the one the snapshot read, because
+  somebody has already changed it. A campaign with that mark shows on a
+  collapsed card like any marked one.
 - `HIDDEN_ACCOUNT_IDS` keeps accounts that are not part of the book off the
   table (both Noble Glass accounts, Windshield Replacement LLC, Kley's Hair
   Salon and both Precision accounts), by customer id, never by name.

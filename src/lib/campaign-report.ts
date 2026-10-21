@@ -94,6 +94,10 @@ export interface ReportCampaign {
   /** DAILY budget. Not additive over days; a budget is a rate. */
   budgetMicros: number | null
   budgetShared: boolean
+  /** campaign.bidding_strategy_type. Optional: a stored fixture predates it. */
+  biddingType?: string | null
+  /** The campaign's OWN target CPA, read live. A portfolio's is not here. */
+  targetCpaMicros?: number | null
   days: Record<string, DayMetrics>
 }
 
@@ -120,6 +124,56 @@ export interface CampaignReportData {
   accounts: ReportAccount[]
   /** The manager listing itself failed — nothing below is complete. */
   error: string | null
+  /** From the latest Target CPA snapshot, by `customerId:campaignId`. */
+  targets?: Record<string, TargetHint>
+}
+
+/**
+ * What the Target CPA panel (`target-cpa.ts`) concluded about a campaign this
+ * morning, carried onto the campaign table so the two screens agree. Declared
+ * here, not imported, so this module stays import-free.
+ */
+export interface TargetHint {
+  /** The panel would apply this: underspending, and a higher .77 target spends it. */
+  raise: boolean
+  suggestedMicros: number | null
+  spendPct: number | null
+  /** The target the snapshot read — compared with the live one, to drop a stale hint. */
+  snapshotTargetMicros: number | null
+  portfolio: boolean
+  builtAt: string
+}
+
+export type TargetLabel =
+  | { kind: 'max-clicks' }
+  | { kind: 'max-conv'; micros: number | null; portfolio: boolean }
+  | { kind: 'target-cpa'; micros: number | null }
+
+/** The bidding line under a campaign's name, or null for anything else. */
+export function targetLabel(c: ReportCampaign, hint?: TargetHint): TargetLabel | null {
+  if (c.biddingType === 'TARGET_SPEND') return { kind: 'max-clicks' }
+  // A portfolio campaign has no target of its own; the snapshot read the strategy's.
+  const micros = c.targetCpaMicros ?? (hint?.portfolio ? hint.snapshotTargetMicros : null)
+  if (c.biddingType === 'MAXIMIZE_CONVERSIONS') return { kind: 'max-conv', micros, portfolio: !!hint?.portfolio }
+  if (c.biddingType === 'TARGET_CPA') return { kind: 'target-cpa', micros }
+  return null
+}
+
+/**
+ * "Target too low — try $X", or nothing. Only what the Target CPA panel would
+ * apply, and DROPPED when the live target is no longer the one the morning
+ * snapshot read: somebody has already changed it, and a suggestion computed
+ * against the old target is advice about a campaign that no longer exists.
+ */
+export function targetAdvice(c: ReportCampaign, hint?: TargetHint): { suggestedMicros: number } | null {
+  if (!hint?.raise || hint.suggestedMicros == null) return null
+  if (!hint.portfolio && c.targetCpaMicros !== undefined) {
+    const live = c.targetCpaMicros
+    const then = hint.snapshotTargetMicros
+    const same = (live == null && then == null) || (live != null && then != null && Math.abs(live - then) < 5_000)
+    if (!same) return null
+  }
+  return { suggestedMicros: hint.suggestedMicros }
 }
 
 export interface Totals {

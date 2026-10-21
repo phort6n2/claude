@@ -1,4 +1,4 @@
-import { addDays } from '@/lib/campaign-report'
+import { addDays, type TargetHint } from '@/lib/campaign-report'
 
 /**
  * TARGET CPA VS GOOGLE — the rules, import-free so they can be checked against
@@ -509,4 +509,20 @@ export function applyRefusal(
 /** The suggestion is below the target that is already set — shown, never applied. */
 export function suggestionBelowTarget(row: Pick<TcpaRow, 'suggestedMicros' | 'targetMicros'>): boolean {
   return row.suggestedMicros != null && row.targetMicros != null && row.suggestedMicros < row.targetMicros - 5_000
+}
+
+/** Per campaign, what the campaign table shows from this panel (`targetAdvice`). */
+export function targetHints(snapshot: TcpaSnapshot): Record<string, TargetHint> {
+  const out: Record<string, TargetHint> = {}
+  for (const r of buildRows(snapshot)) {
+    out[r.key] = {
+      raise: applyRefusal(r) == null,
+      suggestedMicros: r.suggestedMicros,
+      spendPct: r.spendPct,
+      snapshotTargetMicros: r.targetMicros,
+      portfolio: !!r.portfolio,
+      builtAt: snapshot.builtAt,
+    }
+  }
+  return out
 }

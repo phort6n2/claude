@@ -1,7 +1,17 @@
 'use client'
 
-import { ArrowDownRight, ArrowUpRight, TriangleAlert, CircleAlert } from 'lucide-react'
-import { change, type CampaignIssue, type ReportAccount, type ReportCampaign, type Totals } from '@/lib/campaign-report'
+import Link from 'next/link'
+import { ArrowDownRight, ArrowUpRight, TriangleAlert, CircleAlert, Gauge } from 'lucide-react'
+import {
+  change,
+  targetAdvice,
+  targetLabel,
+  type CampaignIssue,
+  type ReportAccount,
+  type ReportCampaign,
+  type TargetHint,
+  type Totals,
+} from '@/lib/campaign-report'
 
 export interface Row {
   c: ReportCampaign
@@ -160,3 +170,39 @@ export function IssueChip({ issue }: { issue: CampaignIssue }) {
   )
 }
 
+
+/**
+ * The bidding line under a campaign's name — "Max Conv. · target $29.77" —
+ * and, when the Target CPA panel would raise it, a link there saying so. The
+ * cards and the table both draw this, so the two cannot describe one campaign
+ * differently.
+ */
+export function TargetLine({ c, hint, currency }: { c: ReportCampaign; hint?: TargetHint; currency: string }) {
+  const label = targetLabel(c, hint)
+  const advice = targetAdvice(c, hint)
+  if (!label && !advice) return null
+  const text =
+    label?.kind === 'max-clicks'
+      ? 'Max Clicks'
+      : label?.kind === 'max-conv'
+        ? `Max Conv. · ${label.micros == null ? 'no target' : `target ${money(label.micros, currency)}`}${label.portfolio ? ' (shared)' : ''}`
+        : label?.kind === 'target-cpa'
+          ? `Target CPA ${label.micros == null ? '—' : money(label.micros, currency)}`
+          : null
+  return (
+    <div className="mt-0.5">
+      {text && <div className="text-[11px] text-gray-500">{text}</div>}
+      {advice && (
+        <Link
+          href="/admin/target-cpa"
+          onClick={(e) => e.stopPropagation()}
+          className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100"
+          title={`Underspending${hint?.spendPct != null ? ` (${Math.round(hint.spendPct * 100)}% of budget, last 7 days)` : ''}. Google's simulation says this target would spend the budget.`}
+        >
+          <Gauge className="h-3 w-3" aria-hidden />
+          Target too low · try {money(advice.suggestedMicros, currency)}
+        </Link>
+      )}
+    </div>
+  )
+}
