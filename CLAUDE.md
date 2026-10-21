@@ -1556,6 +1556,47 @@ suspended or unreadable one never does. Read-only.
   call to a tracking number, and the page says so. Cached three minutes per
   instance; Refresh bypasses it.
 
+### Target CPA vs Google
+
+`target-cpa.ts` (the rules, import-free), `target-cpa-fetch.ts` (read + store),
+`target-cpa-apply.ts` (Phase 2), `TargetCpaSnapshot` / `TargetCpaChange`
+(bootstrap: `TARGET_CPA_SQL`), the cron `/api/cron/target-cpa` (10:20 UTC —
+6:20 am Eastern in summer, 5:20 in winter), and `/admin/target-cpa`
+("Target CPA" in the sidebar). A Maximize Conversions campaign whose target is
+below what Google needs STOPS SPENDING and nothing anywhere goes red; this puts
+every enabled AGMP campaign beside the target Google's own simulation says
+would spend its budget. `scripts/check-target-cpa.ts` holds the rules on a real
+account's Oct 12–17 points.
+
+- **The owner's page only** (`target-cpa-access.ts`): a signed-in admin AND
+  `MASTER_LEADS_EMAIL`, the Master Leads rule. Unset means nobody.
+- **AGMP campaigns only**, ENABLED, accounts `status = 'ENABLED'` under the
+  manager, minus `HIDDEN_ACCOUNT_IDS`.
+- **The snapshot stores INPUTS, not answers** — campaigns, 30 days of spend by
+  day, simulation points, recommendation sub-messages as they arrived — and
+  the page computes rows when it renders, so a rule fix reaches every snapshot
+  already stored. A run that cannot list the accounts stores nothing (an empty
+  page would read as "nothing is underspending"); an account that fails is
+  kept with its error and listed on the page.
+- **Simulation cost is a PERIOD TOTAL**: divide by the inclusive day count
+  (Oct 12–17 is SIX). Full spend = the lowest target whose daily spend reaches
+  95% of budget, interpolated between the points either side; then up to the
+  next .77. On a shared budget the threshold is what the other campaigns on it
+  leave, and the spend counts every campaign on it, AGMP or not.
+- **Enabled days come from `start_date_time`** (`campaign.start_date` does not
+  exist on v25). A pause inside the week is NOT visible and reads as low spend.
+- **Recommendation leaf fields are UNRECOGNIZED_FIELD in GAQL** (checked live):
+  the parent sub-messages are selected and read by `recommendationTarget`. On
+  2026-10-21 no account had any of the five types, so the shape is the
+  documented one — the raw sub-message is stored for that reason.
+- **PHASE 2 is OFF unless `TARGET_CPA_APPLY_ENABLED=true`.** Only the latest
+  snapshot's suggested .77 target, only the value the dialog showed, against a
+  LIVE re-read (a target changed by hand in Google since the snapshot wins),
+  only `maximizeConversions.targetCpaMicros` by update mask, `validateOnly`
+  first, then real, then READ BACK. A portfolio strategy is refused unless every
+  campaign on it is AGMP — AGS's "tcpa - windshield" also runs a campaign that
+  is not ours. Every attempt, refusals included, is a `TargetCpaChange` row.
+
 ### Google Ads scheduled checks (the heartbeat)
 
 `google-ads-checks.ts`, the `AdsFinding` table (bootstrap: `ADS_FINDING_SQL`),

@@ -321,6 +321,43 @@ export const CLIENT_ONBOARDING_SQL: string[] = [
 ]
 
 /** Findings filed by the scheduled Google Ads checks. */
+/* Target CPA vs Google (`target-cpa.ts`). The snapshot holds the INPUTS read
+   from every account each morning — the page computes the rows from them, so
+   a rule fix reaches snapshots already stored. The change log is every target
+   the panel has sent, refused attempts included: who, what, from and to. */
+export const TARGET_CPA_SQL: string[] = [
+  `CREATE TABLE IF NOT EXISTS "TargetCpaSnapshot" (
+     "id"         TEXT NOT NULL,
+     "createdAt"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     "trigger"    TEXT NOT NULL,
+     "accounts"   INTEGER NOT NULL DEFAULT 0,
+     "errors"     INTEGER NOT NULL DEFAULT 0,
+     "durationMs" INTEGER NOT NULL DEFAULT 0,
+     "payload"    JSONB NOT NULL,
+     CONSTRAINT "TargetCpaSnapshot_pkey" PRIMARY KEY ("id")
+   )`,
+  `CREATE INDEX IF NOT EXISTS "TargetCpaSnapshot_createdAt_idx" ON "TargetCpaSnapshot"("createdAt")`,
+  `CREATE TABLE IF NOT EXISTS "TargetCpaChange" (
+     "id"            TEXT NOT NULL,
+     "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     "userEmail"     TEXT NOT NULL,
+     "customerId"    TEXT NOT NULL,
+     "accountName"   TEXT NOT NULL,
+     "campaignId"    TEXT NOT NULL,
+     "campaignName"  TEXT NOT NULL,
+     "scope"         TEXT NOT NULL,
+     "resourceName"  TEXT NOT NULL,
+     "oldMicros"     BIGINT,
+     "newMicros"     BIGINT NOT NULL,
+     "readBackMicros" BIGINT,
+     "affectedCampaigns" INTEGER NOT NULL DEFAULT 1,
+     "status"        TEXT NOT NULL,
+     "error"         TEXT,
+     CONSTRAINT "TargetCpaChange_pkey" PRIMARY KEY ("id")
+   )`,
+  `CREATE INDEX IF NOT EXISTS "TargetCpaChange_createdAt_idx" ON "TargetCpaChange"("createdAt")`,
+]
+
 export const ADS_FINDING_SQL: string[] = [
   `CREATE TABLE IF NOT EXISTS "AdsFinding" (
      "id"          TEXT NOT NULL,
@@ -743,6 +780,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...DIRECTORY_SIGNAL_SQL,
   ...INSURANCE_PROGRAM_SQL,
   ...ATTRIBUTION_SQL,
+  ...TARGET_CPA_SQL,
 ]
 
 /**

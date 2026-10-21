@@ -219,6 +219,48 @@ export async function adsPost(
   }
 }
 
+/**
+ * `customers/{id}/{resource}:mutate` — e.g. `campaigns`, `biddingStrategies`.
+ * `adsPost` builds `customers/{id}:{endpoint}`, the customer-level form, which
+ * is the wrong path for a resource service; this is the same request with the
+ * resource in the path. The only writer so far is the Target CPA panel, and it
+ * sends `validateOnly: true` first.
+ */
+export async function adsMutate(
+  customerId: string,
+  resource: string,
+  body: Record<string, unknown>
+): Promise<{ ok: true; data: Record<string, unknown> } | { ok: false; error: string }> {
+  const creds = await getAdsCredentials()
+  if (!creds) return { ok: false, error: 'Google Ads credentials are not configured.' }
+  const token = await accessToken(creds)
+  if (!token) return { ok: false, error: 'Could not get an access token — check the refresh token.' }
+
+  const id = customerId.replace(/\D/g, '')
+  try {
+    const res = await fetch(`${BASE}/customers/${id}/${resource}:mutate`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'developer-token': creds.developerToken,
+        'Content-Type': 'application/json',
+        ...(creds.loginCustomerId ? { 'login-customer-id': creds.loginCustomerId } : {}),
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(30_000),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      const detail =
+        data?.error?.details?.[0]?.errors?.[0]?.message || data?.error?.message || `HTTP ${res.status}`
+      return { ok: false, error: detail }
+    }
+    return { ok: true, data }
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : 'Request failed' }
+  }
+}
+
 /** GAQL search, for callers outside this module. */
 export async function adsSearch(
   customerId: string,

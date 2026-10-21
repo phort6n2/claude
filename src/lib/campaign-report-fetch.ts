@@ -61,7 +61,7 @@ const s = (v: unknown): string => (v == null ? '' : String(v))
 const obj = (v: unknown): Record<string, unknown> =>
   v && typeof v === 'object' ? (v as Record<string, unknown>) : {}
 
-function todayIn(timeZone: string): string {
+export function todayIn(timeZone: string): string {
   try {
     const { year, month, day } = zoneParts(new Date(), timeZone)
     return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
@@ -70,7 +70,7 @@ function todayIn(timeZone: string): string {
   }
 }
 
-async function pool<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+export async function pool<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const out: R[] = new Array(items.length)
   let next = 0
   await Promise.all(
@@ -216,14 +216,8 @@ async function readAccount(
   return { ...base, campaigns: [...byId.values()] }
 }
 
-export async function getCampaignReport(opts: { fresh?: boolean } = {}): Promise<CampaignReportData> {
-  if (!opts.fresh && cache && Date.now() - cache.at < CACHE_MS) return cache.data
-
-  const listed = await listAccounts()
-  if (!listed.ok) {
-    return { builtAt: new Date().toISOString(), accounts: [], error: listed.error }
-  }
-
+/** customer id → the client bound to that Ads account, for its name and page. */
+export async function clientsByCustomerId(): Promise<Map<string, { id: string; businessName: string }>> {
   const bound = await prisma.clientAdsTracking.findMany({
     where: { googleAdsCustomerId: { not: null } },
     select: { googleAdsCustomerId: true, client: { select: { id: true, businessName: true } } },
@@ -233,7 +227,18 @@ export async function getCampaignReport(opts: { fresh?: boolean } = {}): Promise
     const id = (b.googleAdsCustomerId || '').replace(/\D/g, '')
     if (id && b.client) clientFor.set(id, b.client)
   }
+  return clientFor
+}
 
+export async function getCampaignReport(opts: { fresh?: boolean } = {}): Promise<CampaignReportData> {
+  if (!opts.fresh && cache && Date.now() - cache.at < CACHE_MS) return cache.data
+
+  const listed = await listAccounts()
+  if (!listed.ok) {
+    return { builtAt: new Date().toISOString(), accounts: [], error: listed.error }
+  }
+
+  const clientFor = await clientsByCustomerId()
   const accounts = await pool(listed.accounts, CONCURRENCY, (a) => readAccount(a, clientFor.get(a.customerId)))
   accounts.sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }))
 

@@ -24,6 +24,7 @@ import {
   Megaphone,
   Store,
   BarChart3,
+  Gauge,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -58,6 +59,9 @@ const navigation: NavSection[] = [
       // Not "Ads:" any more — the same queue now carries site checks that run
       // for every client, ads-managed or not.
       { name: 'Needs action', href: '/admin/ads-findings', icon: Megaphone },
+      // Every AGMP campaign beside the target Google says would spend its
+      // budget. The owner's page only (MASTER_LEADS_EMAIL); others are sent back.
+      { name: 'Target CPA', href: '/admin/target-cpa', icon: Gauge },
       // Shops on the directory that have shown they are in the market. Under
       // CRM rather than System: this is a list somebody rings, not a health
       // readout.

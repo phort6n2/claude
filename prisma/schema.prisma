@@ -1890,3 +1890,47 @@ model SeoReportEmail {
 
   @@index([clientId, year, month])
 }
+
+/// Target CPA vs Google: one row per morning run (or "Refresh now"). `payload`
+/// is the INPUTS — campaigns, spend by day, Google's simulation points and
+/// recommendations, per account — and the page computes its rows from them
+/// (`target-cpa.ts`), so a rule fix reaches every snapshot already stored.
+/// Bootstrap: TARGET_CPA_SQL.
+model TargetCpaSnapshot {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  /// cron | manual
+  trigger    String
+  accounts   Int      @default(0)
+  errors     Int      @default(0)
+  durationMs Int      @default(0)
+  payload    Json
+
+  @@index([createdAt])
+}
+
+/// Every target CPA the panel has sent to Google, and every attempt refused on
+/// the way — who, which campaign, from what, to what, and what Google said
+/// afterwards. Never edited, never deleted.
+model TargetCpaChange {
+  id                String   @id @default(cuid())
+  createdAt         DateTime @default(now())
+  userEmail         String
+  customerId        String
+  accountName       String
+  campaignId        String
+  campaignName      String
+  /// campaign | portfolio — a portfolio change moves every campaign on it.
+  scope             String
+  resourceName      String
+  oldMicros         BigInt?
+  newMicros         BigInt
+  /// The value read back from Google after the change — the proof it landed.
+  readBackMicros    BigInt?
+  affectedCampaigns Int      @default(1)
+  /// applied | validate-failed | failed | refused | unconfirmed
+  status            String
+  error             String?
+
+  @@index([createdAt])
+}
