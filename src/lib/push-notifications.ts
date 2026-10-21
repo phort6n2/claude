@@ -221,6 +221,29 @@ export async function notifyAdminUsers(
 }
 
 /**
+ * Every active admin subscription, whatever clients it follows — for alerts
+ * about the AGENCY's accounts rather than one shop's leads (the budget-pacing
+ * alert covers Google Ads accounts no client here is bound to).
+ */
+export async function notifyAllAdmins(payload: PushPayload): Promise<{ sent: number; failed: number }> {
+  const subscriptions = await prisma.adminPushSubscription.findMany({ where: { isActive: true } })
+  let sent = 0
+  let failed = 0
+  for (const sub of subscriptions) {
+    const result = await sendPushNotification(
+      { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+      payload
+    )
+    if (result.delivered) sent++
+    else failed++
+    await recordOutcome(result, sub, (data) =>
+      prisma.adminPushSubscription.update({ where: { id: sub.id }, data })
+    )
+  }
+  return { sent, failed }
+}
+
+/**
  * Send new lead notification to client users AND admin users
  */
 export async function notifyNewLead(

@@ -1523,6 +1523,32 @@ suspended or unreadable one never does. Read-only.
   divide by) sort LAST both ways. Costs in two currencies sort as plain
   numbers — nothing here converts CAD. **Tapping a shop's name isolates it**
   (`?account=`): scorecards, problem count and table all become that shop.
+- **ON A PHONE THERE IS NO TABLE** (`CampaignCards.tsx`, below `sm`): one card
+  per shop with cost, conversions, cost / conv. and clicks visible at once, and
+  marked campaigns shown under the card WITH their reason even collapsed. The
+  table scrolled both ways inside a box inside a scrolling page and its sticky
+  name column cut numbers in half; the owner's words were "I hate scrolling
+  tables up down left right on mobile". Wider screens keep the table. Sort on a
+  phone is a select (with "Needs a look") plus a reverse button.
+- **Quick screens** (`MetricRanking.tsx`, `rankAccounts`): Cost, Conv., Clicks,
+  $/conv. — one figure per shop, biggest first, a bar each scaled only against
+  the same currency. On $/conv. a shop that SPENT and converted nothing leads,
+  in red, instead of sinking as a blank. Tap a row to open that shop.
+- **The range pills, the view switcher and an isolated shop are ONE sticky
+  bar** (`stickyTop`: `top-[69px]` under the Master Leads header, whose
+  subtitle is `truncate` so that height holds; `top-0` in the admin's own
+  scrolling column).
+- **"NOT SPENDING ITS BUDGET"** (`underspendingBudgets`): under 50% of the
+  daily budget on average over 3+ complete days, per BUDGET (a shared budget
+  is one budget), skipping budgets under $10/day, capped, not-eligible, ended
+  and Local Services campaigns. A mark in the table, and every morning
+  (`/api/cron/budget-pacing`, 13:50 UTC, after the ads sweep) a PUSH to every
+  admin device plus an email to ADMIN_EMAIL — only for campaigns NEWLY
+  under-spending (`BUDGET_PACING_ALERTED` Setting row; recover and relapse to
+  be told again). It covers every account under the manager, which the
+  AdsFinding sweep cannot: a finding needs a bound client. `?dryRun=1` for a
+  signed-in admin reports what it would send. First real reading: MAG
+  Mobile's AGMP Lead Gen at $10/day of $107/day.
 - `HIDDEN_ACCOUNT_IDS` keeps accounts that are not part of the book off the
   table (both Noble Glass accounts, Windshield Replacement LLC, Kley's Hair
   Salon and both Precision accounts), by customer id, never by name.

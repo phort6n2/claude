@@ -1,0 +1,162 @@
+'use client'
+
+import { ArrowDownRight, ArrowUpRight, TriangleAlert, CircleAlert } from 'lucide-react'
+import { change, type CampaignIssue, type ReportAccount, type ReportCampaign, type Totals } from '@/lib/campaign-report'
+
+export interface Row {
+  c: ReportCampaign
+  t: Totals
+  issues: CampaignIssue[]
+}
+
+/** One account as every view of the report sees it. */
+export interface AccountView {
+  a: ReportAccount
+  rows: Row[]
+  total: Totals
+  prior: Totals
+  budget: number | null
+  flagged: number
+  idle: boolean
+  suspended: boolean
+}
+
+/** Formatting and small pieces shared by the campaign table, the phone cards
+ *  and the quick screens — one money format, so the three cannot disagree. */
+
+export function money(micros: number, currency: string, whole = false): string {
+  const v = micros / 1_000_000
+  const places = whole || v >= 1000 ? 0 : 2
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: places,
+      minimumFractionDigits: places,
+    }).format(v)
+  } catch {
+    return `${v.toFixed(2)} ${currency}`
+  }
+}
+export const int = (v: number) => Math.round(v).toLocaleString('en-US')
+// Google reports fractional conversions (data-driven attribution); it shows
+// two places, and rounding 0.99 to "1" here would disagree with its own app.
+export const conv = (v: number) => v.toLocaleString('en-US', { maximumFractionDigits: 2 })
+export const pct = (r: number | null) => (r == null ? '—' : `${(r * 100).toFixed(2)}%`)
+
+export function shortDate(d: string): string {
+  const [y, m, day] = d.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, day)).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  })
+}
+
+/** Cost summed per currency — a CAD account and a USD account do not add. */
+export function byCurrency(entries: Array<{ currency: string; micros: number }>): string {
+  const sums = new Map<string, number>()
+  for (const e of entries) sums.set(e.currency, (sums.get(e.currency) || 0) + e.micros)
+  if (sums.size === 0) return '—'
+  // Whole units: a scorecard holding two currencies has room for no cents.
+  return [...sums.entries()].map(([c, m]) => money(m, c, true)).join(' · ')
+}
+
+/** Cost per conversion per currency, for the same reason. */
+export function perConvByCurrency(entries: Array<{ currency: string; micros: number; conv: number }>): string {
+  const sums = new Map<string, { micros: number; conv: number }>()
+  for (const e of entries) {
+    const s = sums.get(e.currency) || { micros: 0, conv: 0 }
+    sums.set(e.currency, { micros: s.micros + e.micros, conv: s.conv + e.conv })
+  }
+  const parts = [...sums.entries()].filter(([, v]) => v.conv > 0)
+  if (parts.length === 0) return '—'
+  return parts.map(([c, v]) => money(v.micros / v.conv, c)).join(' · ')
+}
+
+export function Change({ now, before }: { now: number; before: number }) {
+  const c = change(now, before)
+  if (c == null) return <span className="text-xs text-gray-500">no prior data</span>
+  const up = c >= 0
+  const Icon = up ? ArrowUpRight : ArrowDownRight
+  // Neutral grey on purpose: cost up is not good or bad on its own, and a
+  // red arrow on every figure that moved is noise.
+  return (
+    <span
+      className="inline-flex items-center gap-0.5 text-xs font-medium text-gray-500"
+      aria-label={`${up ? 'up' : 'down'} ${Math.abs(c * 100).toFixed(0)}% on the period before`}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      {Math.abs(c * 100).toFixed(0)}%
+    </span>
+  )
+}
+
+export function Scorecard({
+  label,
+  value,
+  sub,
+  now,
+  before,
+  compare,
+  className = '',
+}: {
+  label: string
+  value: string
+  /** A second currency, small, under the first — "CA$642 · $7,308" in one
+   *  line wrapped badly on a phone. */
+  sub?: string
+  now?: number
+  before?: number
+  compare: boolean
+  className?: string
+}) {
+  return (
+    <div className={`rounded-xl border border-gray-200 bg-white px-3 py-2.5 ${className}`}>
+      <div className="text-xs font-medium text-gray-500">{label}</div>
+      <div className="mt-0.5 break-words text-lg font-semibold leading-tight text-gray-900 tabular-nums">{value}</div>
+      {sub && <div className="text-[11px] font-medium text-gray-500 tabular-nums">{sub}</div>}
+      {compare && now != null && before != null && (
+        <div className="mt-0.5">
+          <Change now={now} before={before} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Per-currency amounts, largest first, so the main one can be shown big. */
+export function currencyParts(entries: Array<{ currency: string; micros: number }>): string[] {
+  const sums = new Map<string, number>()
+  for (const e of entries) sums.set(e.currency, (sums.get(e.currency) || 0) + e.micros)
+  return [...sums.entries()].sort((a, b) => b[1] - a[1]).map(([c, m]) => money(m, c, true))
+}
+
+/** Cost per conversion per currency, largest spend first. */
+export function perConvParts(entries: Array<{ currency: string; micros: number; conv: number }>): string[] {
+  const sums = new Map<string, { micros: number; conv: number }>()
+  for (const e of entries) {
+    const s = sums.get(e.currency) || { micros: 0, conv: 0 }
+    sums.set(e.currency, { micros: s.micros + e.micros, conv: s.conv + e.conv })
+  }
+  return [...sums.entries()]
+    .filter(([, v]) => v.conv > 0)
+    .sort((a, b) => b[1].micros - a[1].micros)
+    .map(([c, v]) => money(v.micros / v.conv, c))
+}
+
+export function IssueChip({ issue }: { issue: CampaignIssue }) {
+  const bad = issue.severity === 'bad'
+  const Icon = bad ? CircleAlert : TriangleAlert
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-medium ${
+        bad ? 'bg-red-50 text-red-700 ring-1 ring-red-200' : 'bg-amber-50 text-amber-800 ring-1 ring-amber-200'
+      }`}
+    >
+      <Icon className="h-3 w-3 shrink-0" />
+      {issue.label}
+    </span>
+  )
+}
+

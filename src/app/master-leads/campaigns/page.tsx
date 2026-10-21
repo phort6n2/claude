@@ -38,7 +38,9 @@ export default async function MasterLeadsCampaignsPage({
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
             <h1 className="text-lg font-bold text-gray-900">Campaigns</h1>
-            <p className="text-xs text-gray-600">Master Leads · Google Ads, every account</p>
+            {/* One line at every width: the control bar below sticks at this
+                header's height, so a wrapped subtitle would slide under it. */}
+            <p className="truncate text-xs text-gray-600">Master Leads · Google Ads, every account</p>
           </div>
           <div className="flex items-center gap-2">
             {/* This is the app's opening screen, so the leads list is a
@@ -71,5 +73,6 @@ export default async function MasterLeadsCampaignsPage({
 
 async function Report({ range }: { range: RangeId | null }) {
   const data = await getCampaignReport()
-  return <CampaignReport initial={data} initialRange={range} />
+  // Under the sticky app header above (its measured height).
+  return <CampaignReport initial={data} initialRange={range} stickyTop="top-[69px]" />
 }

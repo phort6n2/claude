@@ -19,6 +19,9 @@ import {
   nextSort,
   sortRows,
   DEFAULT_SORT,
+  underspendingBudgets,
+  rankAccounts,
+  ZERO,
   visibleCampaigns,
   isIdle,
   statusLabel,
@@ -26,6 +29,7 @@ import {
   type ReportAccount,
   type DayMetrics,
 } from '../src/lib/campaign-report'
+import { findUnderspending, newSince } from '../src/lib/budget-pacing'
 
 let failures = 0
 const check = (ok: boolean, msg: string) => {
@@ -125,7 +129,7 @@ check(campaignIssues(unseen, campaignTotals(unseen, rangeWindow('yesterday', TOD
 const burning = campaign({ days: days('2026-10-13', '2026-10-19', [40_000_000, 90, 6, 6, 0, 0]) })
 const burn = campaignIssues(burning, campaignTotals(burning, w7), '7d')
 check(burn.length === 1 && burn[0].kind === 'no-conversions', '$280 over a week, no conversions: marked')
-check(campaignIssues(burning, campaignTotals(burning, w7), '7d')[0].detail.includes('280.00'), '…and it says how much')
+check(campaignIssues(burning, campaignTotals(burning, w7), '7d')[0].detail.includes('$280.00'), '…and it says how much')
 const odd = campaign({ primaryStatus: 'NOT_ELIGIBLE', reasons: ['SOMETHING_NEW_FROM_GOOGLE'] })
 check(campaignIssues(odd, campaignTotals(odd, w7), '7d')[0].label === 'Something new from google', 'an unknown reason is shown readably, not hidden')
 
@@ -186,6 +190,57 @@ check(sortRows(cpa, { key: 'costPerConv', dir: 'desc' }, (x) => x).map((x) => x.
 check(sortRows(cpa, { key: 'costPerConv', dir: 'asc' }, (x) => x).map((x) => x.name).join(',') === 'Cheap,Dear,Blank', 'lowest first — and the blank is STILL last, not first')
 check(sortRows([{ name: 'b', value: 5 }, { name: 'A', value: 5 }], { key: 'cost', dir: 'desc' }, (x) => x).map((x) => x.name).join(',') === 'A,b', 'a tie falls back to the name, A first, ignoring case')
 check(sortRows([{ name: 'b', value: null }, { name: 'A', value: null }], { key: 'name', dir: 'desc' }, (x) => x).map((x) => x.name).join(',') === 'b,A', 'names reverse on a second tap')
+
+console.log('\nUNDER-SPENDING: SILENT CASES FIRST')
+const w3 = { start: '2026-10-17', end: '2026-10-19', days: 3 }
+const acct = (campaigns: ReportCampaign[]): ReportAccount => ({ ...account0(), campaigns })
+// $100/day budget spending $60/day: 60% — fine.
+check(underspendingBudgets(acct([campaign({ days: days('2026-10-17', '2026-10-19', [60_000_000, 50, 5, 5, 1, 0]) })]), w3).length === 0, 'spending 60% of budget: silent')
+check(underspendingBudgets(acct([campaign({ budgetMicros: 5_000_000, days: {} })]), w3).length === 0, 'a $5/day budget spending nothing: silent (under the $10 floor)')
+check(underspendingBudgets(acct([campaign({ status: 'PAUSED', days: {} })]), w3).length === 0, 'paused: silent')
+check(underspendingBudgets(acct([campaign({ primaryStatus: 'ENDED', days: {} })]), w3).length === 0, 'ended: silent')
+check(underspendingBudgets(acct([campaign({ primaryStatus: 'NOT_ELIGIBLE', reasons: ['HAS_ADS_DISAPPROVED'], days: {} })]), w3).length === 0, 'not eligible: its own mark already says why, silent here')
+check(underspendingBudgets(acct([campaign({ primaryStatus: 'LIMITED', reasons: ['BUDGET_CONSTRAINED'], days: {} })]), w3).length === 0, 'limited BY budget is the opposite fault: silent')
+check(underspendingBudgets(acct([campaign({ channel: 'LOCAL_SERVICES', days: {} })]), w3).length === 0, 'Local Services: silent')
+check(underspendingBudgets({ ...acct([campaign({ days: {} })]), error: 'boom' }, w3).length === 0, 'an unreadable account files nothing')
+// Shared $100 budget, two campaigns spending $30/day each = 60%: fine as a budget.
+check(
+  underspendingBudgets(acct([
+    campaign({ id: 'a', budgetId: 'sh', budgetShared: true, days: days('2026-10-17', '2026-10-19', [30_000_000, 9, 1, 1, 0, 0]) }),
+    campaign({ id: 'b', budgetId: 'sh', budgetShared: true, days: days('2026-10-17', '2026-10-19', [30_000_000, 9, 1, 1, 0, 0]) }),
+  ]), w3).length === 0,
+  'a shared budget is judged as ONE budget (30% + 30% = 60%), not two under-spenders'
+)
+
+console.log('\nUNDER-SPENDING: MARKED')
+const low = underspendingBudgets(acct([campaign({ days: days('2026-10-17', '2026-10-19', [20_000_000, 9, 1, 1, 0, 0]) })]), w3)
+check(low.length === 1 && Math.abs(low[0].share - 0.2) < 1e-9, '$20/day of $100/day: marked at 20%')
+const none = underspendingBudgets(acct([campaign({ days: {} })]), w3)
+check(none.length === 1 && none[0].spentMicros === 0, 'an eligible campaign spending nothing for three days: marked')
+
+console.log('\nTHE ALERT TELLS YOU ONCE')
+const data = { builtAt: '', error: null, accounts: [acct([campaign({ days: {} })])] }
+const hits = findUnderspending(data)
+check(hits.length === 1, 'the alert reads the same rule over the last three complete days')
+check(newSince(hits, {}).length === 1, 'first morning: new, alert')
+check(newSince(hits, { [hits[0].key]: '2026-10-19' }).length === 0, 'next morning, still under-spending: already told, silent')
+
+console.log('\nQUICK SCREENS')
+const T = (cost: number, conv: number, clicks = 10) => ({ ...ZERO, costMicros: cost * 1_000_000, conversions: conv, clicks, interactions: clicks })
+const inputs = [
+  { id: 'a', name: 'Alpha', currency: 'USD', total: T(500, 10), prior: T(400, 10) },
+  { id: 'b', name: 'Bravo', currency: 'USD', total: T(300, 0), prior: T(300, 5) },
+  { id: 'c', name: 'Charlie', currency: 'USD', total: T(0, 0, 0), prior: T(0, 0, 0) },
+  { id: 'd', name: 'Delta', currency: 'CAD', total: T(100, 2), prior: T(100, 2) },
+]
+const byCost = rankAccounts('cost', inputs)
+check(byCost.map((r) => r.id).join(',') === 'a,b,d,c', 'cost: biggest first, a shop that spent nothing last')
+check(byCost.find((r) => r.id === 'd')!.bar === 1, 'a CAD bar is drawn against CAD accounts only (the only one, so full)')
+check(Math.abs(byCost.find((r) => r.id === 'b')!.bar - 0.6) < 1e-9, '…and a USD bar against the biggest USD one ($300 of $500)')
+const byCpa = rankAccounts('costPerConv', inputs)
+check(byCpa[0].id === 'b' && byCpa[0].noConvSpend, 'cost / conv.: spent $300 and converted nothing LEADS, rather than sinking as a blank')
+check(byCpa[byCpa.length - 1].id === 'c' && !byCpa[byCpa.length - 1].noConvSpend, '…and a shop that spent nothing is last, not "no conversions"')
+check(Math.abs((rankAccounts('cost', inputs)[0].change ?? 0) - 0.25) < 1e-9, 'the change is against the same days before ($500 vs $400 = +25%)')
 
 console.log(failures ? `\n${failures} FAILED` : '\nAll campaign-report checks passed')
 process.exit(failures ? 1 : 0)

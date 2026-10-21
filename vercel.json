@@ -39,6 +39,10 @@
       "schedule": "30 13 * * *"
     },
     {
+      "path": "/api/cron/budget-pacing",
+      "schedule": "50 13 * * *"
+    },
+    {
       "path": "/api/cron/ads-weekly",
       "schedule": "45 13 * * 1"
     },

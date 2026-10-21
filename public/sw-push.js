@@ -77,11 +77,13 @@ self.addEventListener('notificationclick', (event) => {
             : client.url.includes('/portal')
 
           if (isMatchingPage && 'focus' in client) {
-            // Master Leads opens on its Campaigns screen now, and an open app
-            // window may be sitting there (or on the Dashboard). A lead alert
-            // has to land on the LEADS list, so a window on any other screen
-            // is moved there first — focusing it would show no lead at all.
-            if (isMasterLeads && new URL(client.url).pathname !== '/master-leads' && 'navigate' in client) {
+            // Master Leads has several screens and an open app window may be on
+            // any of them. A lead alert has to land on the LEADS list and a
+            // budget alert on CAMPAIGNS, so a window on any other screen is
+            // moved to the alert's own page first — focusing it as it is would
+            // show the wrong thing.
+            const target = new URL(urlToOpen, self.location.origin).pathname
+            if (isMasterLeads && new URL(client.url).pathname !== target && 'navigate' in client) {
               return client
                 .navigate(urlToOpen)
                 .then((c) => (c || client).focus())

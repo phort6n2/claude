@@ -216,7 +216,7 @@ export const NO_CONVERSION_BUDGET_DAYS = 2
 export type IssueSeverity = 'bad' | 'warn'
 
 export interface CampaignIssue {
-  kind: 'not-serving' | 'limited' | 'no-impressions' | 'no-conversions'
+  kind: 'not-serving' | 'limited' | 'no-impressions' | 'no-conversions' | 'under-budget'
   severity: IssueSeverity
   label: string
   detail: string
@@ -291,7 +291,8 @@ const NO_IMPRESSION_DATA = new Set(['LOCAL_SERVICES'])
 export function campaignIssues(
   c: ReportCampaign,
   t: Totals,
-  range: RangeId
+  range: RangeId,
+  currency = 'USD'
 ): CampaignIssue[] {
   // Paused, ended or removed is a decision somebody made, not a fault.
   if (!isRunning(c)) return []
@@ -344,7 +345,7 @@ export function campaignIssues(
       kind: 'no-conversions',
       severity: 'bad',
       label: 'Spending, no conversions',
-      detail: `Spent ${cost.toFixed(2)} in this period with no conversions recorded.`,
+      detail: `Spent ${formatMoney(t.costMicros, currency)} in this period with no conversions recorded.`,
     })
   }
   return issues
@@ -399,6 +400,7 @@ export function change(now: number, before: number): number | null {
 
 export const SORT_KEYS = [
   'name',
+  'issues',
   'budget',
   'cost',
   'impressions',
@@ -426,6 +428,7 @@ export function isSortState(v: unknown): v is SortState {
 /** A first tap on a figure puts the BIGGEST first — the money and the
  *  outliers are what a sort is reached for. Names start at A. */
 export function firstDir(key: SortKey): SortDir {
+  // 'issues' (most marks first) is a figure like the others.
   return key === 'name' ? 'asc' : 'desc'
 }
 
@@ -477,5 +480,178 @@ export function sortRows<T>(
       return a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })
     }
     return sign * a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Under-spending. Google spends close to a daily budget on most days when
+// nothing is holding a campaign back, so a campaign spending well under it
+// for several COMPLETE days is being held back by something — bids,
+// targeting, keywords, a disapproval — and the budget the shop set is not
+// buying what they think it is. Judged per BUDGET, not per campaign: a shared
+// budget split over three campaigns would otherwise mark all three.
+// ---------------------------------------------------------------------------
+
+/** Under this share of the daily budget, on average, is under-spending. */
+export const UNDERSPEND_SHARE = 0.5
+/** Budgets below this (per day, account currency) are left alone — a $3/day
+ *  test is noise, not a finding. */
+export const UNDERSPEND_MIN_BUDGET = 10
+/** The alert's window: three complete days, so one quiet Sunday is silent. */
+export const UNDERSPEND_ALERT_DAYS = 3
+
+export interface Underspend {
+  /** The budget's id, or the campaign's own when it has no shared budget. */
+  budgetKey: string
+  campaignIds: string[]
+  names: string[]
+  budgetMicros: number
+  spentMicros: number
+  days: number
+  /** spent ÷ (budget × days) */
+  share: number
+}
+
+export function underspendingBudgets(a: ReportAccount, w: DateWindow): Underspend[] {
+  if (a.error || a.status === 'SUSPENDED' || w.days < 1) return []
+  const groups = new Map<string, { budgetMicros: number; running: ReportCampaign[]; all: ReportCampaign[] }>()
+  for (const c of a.campaigns) {
+    if (c.budgetMicros == null) continue
+    const key = c.budgetId || `campaign:${c.id}`
+    const g = groups.get(key) || { budgetMicros: c.budgetMicros, running: [], all: [] }
+    g.all.push(c)
+    // Only a campaign that is meant to serve, that Google has not already
+    // explained (not eligible = its own mark), that is not budget-capped (the
+    // opposite fault) and that reports delivery the usual way counts.
+    const explained =
+      c.primaryStatus === 'NOT_ELIGIBLE' ||
+      c.primaryStatus === 'MISCONFIGURED' ||
+      c.reasons.includes('BUDGET_CONSTRAINED') ||
+      c.channel === 'LOCAL_SERVICES'
+    if (isRunning(c) && !explained) g.running.push(c)
+    groups.set(key, g)
+  }
+  const out: Underspend[] = []
+  for (const [budgetKey, g] of groups) {
+    if (g.running.length === 0) continue
+    if (g.budgetMicros < UNDERSPEND_MIN_BUDGET * 1_000_000) continue
+    // Every campaign on the budget spends from it, paused ones included.
+    const spentMicros = g.all.reduce((s, c) => s + campaignTotals(c, w).costMicros, 0)
+    const share = spentMicros / (g.budgetMicros * w.days)
+    if (share >= UNDERSPEND_SHARE) continue
+    out.push({
+      budgetKey,
+      campaignIds: g.running.map((c) => c.id),
+      names: g.running.map((c) => c.name),
+      budgetMicros: g.budgetMicros,
+      spentMicros,
+      days: w.days,
+      share,
+    })
+  }
+  return out
+}
+
+function formatMoney(micros: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(micros / 1_000_000)
+  } catch {
+    return `${(micros / 1_000_000).toFixed(2)} ${currency}`
+  }
+}
+
+/** The mark a campaign row carries for it, in the table. */
+export function underspendIssue(u: Underspend, currency: string): CampaignIssue {
+  const fmt = (m: number) => {
+    try {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(m / 1_000_000)
+    } catch {
+      return `${Math.round(m / 1_000_000)} ${currency}`
+    }
+  }
+  const pct = Math.round(u.share * 100)
+  return {
+    kind: 'under-budget',
+    severity: 'warn',
+    label: u.spentMicros === 0 ? 'Not spending' : `Spending ${pct}% of budget`,
+    detail: `Spent ${fmt(u.spentMicros)} of ${fmt(u.budgetMicros * u.days)} over ${u.days} days (${fmt(u.budgetMicros)}/day${
+      u.names.length > 1 ? `, shared by ${u.names.length} campaigns` : ''
+    }). Something is holding it back — bids, targeting, keywords or ads.`,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The quick screens: ONE figure per account, ranked, for spotting the shop
+// that moved. The table answers "what is everything"; these answer "who
+// spent the most", "who stopped converting", "who got expensive".
+// ---------------------------------------------------------------------------
+
+export const VIEWS = [
+  { id: 'overview', label: 'Overview', short: 'All' },
+  { id: 'cost', label: 'Cost', short: 'Cost' },
+  { id: 'conversions', label: 'Conversions', short: 'Conv.' },
+  { id: 'clicks', label: 'Clicks', short: 'Clicks' },
+  { id: 'costPerConv', label: 'Cost / conv.', short: '$/conv.' },
+] as const
+export type ViewId = (typeof VIEWS)[number]['id']
+export type QuickMetric = Exclude<ViewId, 'overview'>
+export function isViewId(v: unknown): v is ViewId {
+  return VIEWS.some((x) => x.id === v)
+}
+
+export interface RankInput {
+  id: string
+  name: string
+  currency: string
+  total: Totals
+  prior: Totals
+}
+
+export interface RankRow {
+  id: string
+  name: string
+  currency: string
+  value: number | null
+  prior: number | null
+  change: number | null
+  /** Cost / conv. only: money spent and nothing converted — the worst cost
+   *  per conversion there is, and the one a blank would hide. */
+  noConvSpend: boolean
+  costMicros: number
+  /** 0–1, against the biggest value IN THE SAME CURRENCY: a CAD bar is never
+   *  drawn against a USD one. */
+  bar: number
+}
+
+export function rankAccounts(metric: QuickMetric, inputs: RankInput[]): RankRow[] {
+  const rows: RankRow[] = inputs.map((x) => {
+    const value = sortValue(metric, x.total, null)
+    const prior = sortValue(metric, x.prior, null)
+    return {
+      id: x.id,
+      name: x.name,
+      currency: x.currency,
+      value,
+      prior,
+      change: value != null && prior != null ? change(value, prior) : null,
+      noConvSpend: metric === 'costPerConv' && x.total.conversions === 0 && x.total.costMicros > 0,
+      costMicros: x.total.costMicros,
+      bar: 0,
+    }
+  })
+  const max = new Map<string, number>()
+  for (const r of rows) if (r.value != null) max.set(r.currency, Math.max(max.get(r.currency) || 0, r.value))
+  for (const r of rows) {
+    const m = max.get(r.currency) || 0
+    r.bar = r.noConvSpend ? 1 : r.value != null && m > 0 ? r.value / m : 0
+  }
+  const tier = (r: RankRow) => (r.noConvSpend ? 0 : r.value != null && r.value > 0 ? 1 : 2)
+  return rows.sort((a, b) => {
+    // Spending with nothing back leads the cost-per-conversion screen, most
+    // spent first; then the figure, biggest first; empty accounts last.
+    if (tier(a) !== tier(b)) return tier(a) - tier(b)
+    if (tier(a) === 0) return b.costMicros - a.costMicros
+    if (tier(a) === 1 && a.value !== b.value) return (b.value as number) - (a.value as number)
+    return a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })
   })
 }
