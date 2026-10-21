@@ -1518,8 +1518,8 @@ suspended or unreadable one never does. Read-only.
   scrolling both ways): a box that scrolls sideways is already a scroll
   container, so a sticky heading cannot stick to the page.
 - `HIDDEN_ACCOUNT_IDS` keeps accounts that are not part of the book off the
-  table (both Noble Glass accounts and Windshield Replacement LLC), by
-  customer id, never by name.
+  table (both Noble Glass accounts, Windshield Replacement LLC, Kley's Hair
+  Salon and both Precision accounts), by customer id, never by name.
 - "Calls" is Google's `metrics.phone_calls` (the ad's call button), not every
   call to a tracking number, and the page says so. Cached three minutes per
   instance; Refresh bypasses it.
