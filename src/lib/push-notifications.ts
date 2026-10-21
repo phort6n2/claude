@@ -1,5 +1,6 @@
 import webpush from 'web-push'
 import { prisma } from './db'
+import { LEADS_FROM_ALERT_URL } from './master-leads-launch'
 
 // Configure VAPID details
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || ''
@@ -252,7 +253,8 @@ export async function notifyNewLead(
     body: `${clientName} - ${sourceLabel}`,
     tag: `new-lead-${clientId}`,
     data: {
-      url: '/master-leads',
+      // Marked, so the app does not turn this into its Campaigns home screen.
+      url: LEADS_FROM_ALERT_URL,
       type: 'new-lead',
       clientId,
     },

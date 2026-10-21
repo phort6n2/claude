@@ -1486,7 +1486,12 @@ walkthrough (`GettingStartedCard`, `/api/portal/onboarding`,
 the operator's phone, linked from its header at every width. One component,
 so the two can never disagree; the Master Leads page is gated server-side by
 `isMasterLeadsEmail` (`master-leads-access.ts`, the same rule the leads
-list's auth route reads). Shaped like the Google Ads app's campaign list — budget,
+list's auth route reads). **Master Leads OPENS on it** (`master-leads-launch.ts`):
+the icon, the sidebar link and every lead alert all point at `/master-leads`,
+so that address stays the leads list and only the FIRST screen of a launch
+(a bare address, empty `sessionStorage`) is sent to Campaigns. Alerts carry
+`?from=alert` and land on the list; `sw-push.js` moves an open window that
+is on another Master Leads screen to the list before focusing it. Shaped like the Google Ads app's campaign list — budget,
 cost, impressions, clicks, conversions, conv. rate, calls; Today to 30 days —
 for EVERY open account under the manager (enabled or suspended; cancelled
 accounts are closed), bound to a client or not, and every one is a ROW — an

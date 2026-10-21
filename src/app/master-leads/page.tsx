@@ -36,6 +36,7 @@ import { useLeadStream } from '@/hooks/useLeadStream'
 import { CallCoachingReport } from '@/components/portal/CallCoachingReport'
 import { CallBadgeChip } from '@/components/leads/CallBadgeChip'
 import { Inbox } from 'lucide-react'
+import { markLaunched, shouldOpenOnCampaigns } from '@/lib/master-leads-launch'
 
 interface CallAnalysisSummary {
   id: string
@@ -145,6 +146,17 @@ export default function StandaloneMasterLeadsPage() {
 
   // Refresh state (manual button + background polling)
   const [refreshing, setRefreshing] = useState(false)
+
+  // The app opens on Campaigns; see lib/master-leads-launch.ts for why the
+  // leads list keeps its address and only the first screen of a launch moves.
+  useEffect(() => {
+    if (shouldOpenOnCampaigns(window.location.search)) {
+      markLaunched()
+      router.replace('/master-leads/campaigns')
+      return
+    }
+    markLaunched()
+  }, [router])
 
   // Check master leads authorization
   useEffect(() => {

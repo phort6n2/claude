@@ -77,6 +77,16 @@ self.addEventListener('notificationclick', (event) => {
             : client.url.includes('/portal')
 
           if (isMatchingPage && 'focus' in client) {
+            // Master Leads opens on its Campaigns screen now, and an open app
+            // window may be sitting there (or on the Dashboard). A lead alert
+            // has to land on the LEADS list, so a window on any other screen
+            // is moved there first — focusing it would show no lead at all.
+            if (isMasterLeads && new URL(client.url).pathname !== '/master-leads' && 'navigate' in client) {
+              return client
+                .navigate(urlToOpen)
+                .then((c) => (c || client).focus())
+                .catch(() => clients.openWindow && clients.openWindow(urlToOpen))
+            }
             client.postMessage({ type: 'NEW_LEAD', url: urlToOpen })
             return client.focus()
           }

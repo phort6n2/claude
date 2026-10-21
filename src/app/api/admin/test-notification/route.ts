@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { LEADS_FROM_ALERT_URL } from '@/lib/master-leads-launch'
 
 export const dynamic = 'force-dynamic'
 
@@ -115,7 +116,7 @@ export async function GET(request: NextRequest) {
           title: '🔔 Test Notification',
           body: `This is a test! Subscribed to: ${clientNames || 'No clients'}`,
           tag: 'test-notification',
-          data: { url: '/master-leads' },
+          data: { url: LEADS_FROM_ALERT_URL },
         }),
         { TTL: 60 * 60, urgency: 'high' }
       )
