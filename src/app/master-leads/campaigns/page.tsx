@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { BarChart3, Inbox } from 'lucide-react'
+import { BarChart3, Gauge, Inbox } from 'lucide-react'
 import { auth } from '@/lib/auth'
 import { isMasterLeadsEmail } from '@/lib/master-leads-access'
 import CampaignReport, { CampaignReportSkeleton } from '@/components/admin/CampaignReport'
@@ -42,15 +42,24 @@ export default async function MasterLeadsCampaignsPage({
                 header's height, so a wrapped subtitle would slide under it. */}
             <p className="truncate text-xs text-gray-600">Master Leads · Google Ads, every account</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {/* This is the app's opening screen, so the leads list is a
                 labelled button at every width, not a back arrow to guess at. */}
             <Link
               href="/master-leads"
-              className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-700"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-blue-200 px-2.5 py-1.5 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-700"
             >
               <Inbox className="h-3.5 w-3.5" />
               Leads
+            </Link>
+            {/* The Target CPA panel is an admin page; this is the way to it
+                from the phone, which has no admin sidebar. */}
+            <Link
+              href="/admin/target-cpa"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-blue-200 px-2.5 py-1.5 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-700"
+            >
+              <Gauge className="h-3.5 w-3.5" />
+              Target CPA
             </Link>
             <Link
               href="/master-leads/dashboard"

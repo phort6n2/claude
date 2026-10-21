@@ -718,3 +718,43 @@ export function rankAccounts(metric: QuickMetric, inputs: RankInput[]): RankRow[
     return a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })
   })
 }
+
+export interface TargetRaise {
+  customerId: string
+  accountName: string
+  currency: string
+  campaignId: string
+  campaignName: string
+  suggestedMicros: number
+}
+
+/**
+ * Every campaign the Target CPA panel would raise, by the same rule as the
+ * per-line mark (`targetAdvice`), so the count at the top of the page and the
+ * marks under it can never disagree.
+ */
+export function targetRaises(data: Pick<CampaignReportData, 'accounts' | 'targets'>): TargetRaise[] {
+  const out: TargetRaise[] = []
+  if (!data.targets) return out
+  for (const a of data.accounts) {
+    for (const c of a.campaigns) {
+      const advice = targetAdvice(c, data.targets[`${a.customerId}:${c.id}`])
+      if (!advice) continue
+      out.push({
+        customerId: a.customerId,
+        accountName: a.name,
+        currency: a.currency,
+        campaignId: c.id,
+        campaignName: c.name,
+        suggestedMicros: advice.suggestedMicros,
+      })
+    }
+  }
+  return out
+}
+
+/** When the Target CPA panel last read the accounts, or null if it never has. */
+export function targetsReadAt(data: Pick<CampaignReportData, 'targets'>): string | null {
+  const first = data.targets ? Object.values(data.targets)[0] : undefined
+  return first?.builtAt ?? null
+}

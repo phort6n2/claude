@@ -30,6 +30,8 @@ import {
   type DayMetrics,
   targetLabel,
   targetAdvice,
+  targetRaises,
+  targetsReadAt,
   type TargetHint,
 } from '../src/lib/campaign-report'
 import { findUnderspending, newSince } from '../src/lib/budget-pacing'
@@ -281,6 +283,22 @@ console.log('\nTarget CPA on the table — silent cases first')
   check(none?.kind === 'max-conv' && none.micros == null, 'Max Conversions with no target says "no target"')
   check(targetLabel({ ...base, biddingType: 'MANUAL_CPC' }) == null, 'other bidding: no line')
   check(targetLabel({ ...base, biddingType: undefined }) == null, 'a stored report without the field: no line')
+}
+
+console.log('\nThe Target CPA link at the top')
+{
+  const c = (id: string, target: number): ReportCampaign => ({
+    id, name: `AGMP ${id}`, status: 'ENABLED', primaryStatus: 'ELIGIBLE', reasons: [], channel: 'SEARCH',
+    budgetId: id, budgetMicros: 100_000_000, budgetShared: false, days: {},
+    biddingType: 'MAXIMIZE_CONVERSIONS', targetCpaMicros: target,
+  })
+  const hint = (raise: boolean, then: number): TargetHint => ({ raise, suggestedMicros: 41_770_000, spendPct: 0.4, snapshotTargetMicros: then, portfolio: false, builtAt: '2026-10-21T10:20:00Z' })
+  const acct = { ...account0(), customerId: '1', campaigns: [c('a', 29_770_000), c('b', 29_770_000), c('c', 35_770_000)] }
+  check(targetRaises({ accounts: [acct] }).length === 0 && targetsReadAt({}) == null, 'no snapshot: nothing to raise, and "not read yet"')
+  const targets = { '1:a': hint(true, 29_770_000), '1:b': hint(false, 29_770_000), '1:c': hint(true, 29_770_000) }
+  const r = targetRaises({ accounts: [acct], targets })
+  check(r.length === 1 && r[0].campaignId === 'a', 'counts only what the line marks: not a no-raise, not one changed since the snapshot')
+  check(targetsReadAt({ targets }) === '2026-10-21T10:20:00Z', 'says when the panel read the accounts')
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nAll campaign-report checks passed')

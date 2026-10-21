@@ -50,6 +50,8 @@ interface Props {
   accountCount: number
   changes: ChangeEntry[]
   applyEnabled: boolean
+  /** The read this page made on its own when it had nothing current, if it failed. */
+  autoError?: string | null
 }
 
 const pctText = (r: number | null) => (r == null ? '—' : `${Math.round(r * 100)}%`)
@@ -354,7 +356,7 @@ function ConfirmDialog({
   )
 }
 
-export default function TargetCpaPanel({ builtAt, trigger, durationMs, rows, errors, accountCount, changes, applyEnabled }: Props) {
+export default function TargetCpaPanel({ builtAt, trigger, durationMs, rows, errors, accountCount, changes, applyEnabled, autoError }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState<Set<string>>(new Set())
   const [refreshing, setRefreshing] = useState(false)
@@ -407,7 +409,7 @@ export default function TargetCpaPanel({ builtAt, trigger, durationMs, rows, err
           </p>
           <p className="mt-1 text-xs text-gray-500">
             {builtAt
-              ? `Data as of ${when(builtAt)} (${trigger === 'cron' ? 'morning run' : 'refreshed by hand'}, ${accountCount} accounts${durationMs != null ? `, ${(durationMs / 1000).toFixed(1)}s` : ''}). Runs daily at 6:20 am Eastern.`
+              ? `Data as of ${when(builtAt)} (${trigger === 'cron' ? 'morning run' : trigger === 'auto' ? 'read when this page opened' : 'refreshed by hand'}, ${accountCount} accounts${durationMs != null ? `, ${(durationMs / 1000).toFixed(1)}s` : ''}). Runs daily at 6:20 am Eastern.`
               : 'No snapshot yet. It runs daily at 6:20 am Eastern, or press Refresh now.'}
           </p>
         </div>
@@ -423,6 +425,9 @@ export default function TargetCpaPanel({ builtAt, trigger, durationMs, rows, err
       </div>
 
       {refreshError && <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{refreshError}</p>}
+      {autoError && (
+        <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">Could not read the accounts: {autoError}</p>
+      )}
       {notice && (
         <p className={`mt-3 rounded-lg p-3 text-sm ${notice.ok ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-900'}`}>
           {notice.text}

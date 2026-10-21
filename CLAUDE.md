@@ -1557,7 +1557,10 @@ suspended or unreadable one never does. Read-only.
   Target CPA panel when that panel's latest snapshot would raise it — dropped
   when the live target no longer matches the one the snapshot read, because
   somebody has already changed it. A campaign with that mark shows on a
-  collapsed card like any marked one.
+  collapsed card like any marked one. **A Target CPA link sits under the
+  problem button on every load** (`TargetCpaLink`, `targetRaises`), counting
+  those same marks — it is the way to the panel from the phone, since Master
+  Leads has no admin sidebar (its header carries a "Target CPA" button too).
 - `HIDDEN_ACCOUNT_IDS` keeps accounts that are not part of the book off the
   table (both Noble Glass accounts, Windshield Replacement LLC, Kley's Hair
   Salon and both Precision accounts), by customer id, never by name.
@@ -1579,6 +1582,10 @@ account's Oct 12–17 points.
 
 - **The owner's page only** (`target-cpa-access.ts`): a signed-in admin AND
   `MASTER_LEADS_EMAIL`, the Master Leads rule. Unset means nobody.
+- **The page reads the accounts itself when it has nothing current**
+  (`currentTcpaSnapshot`: no snapshot, or one older than 26 hours). Shipped
+  without that, the first visit said "no snapshot yet" a day before the first
+  morning run, and the campaign table's marks had nothing to read either.
 - **AGMP campaigns only**, ENABLED, accounts `status = 'ENABLED'` under the
   manager, minus `HIDDEN_ACCOUNT_IDS`.
 - **The snapshot stores INPUTS, not answers** — campaigns, 30 days of spend by

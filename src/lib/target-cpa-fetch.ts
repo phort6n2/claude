@@ -313,7 +313,7 @@ export async function buildTcpaSnapshot(): Promise<TcpaSnapshot> {
 }
 
 /** Read every account and store the result. Never throws past a stored error. */
-export async function runTargetCpaSnapshot(trigger: 'cron' | 'manual') {
+export async function runTargetCpaSnapshot(trigger: 'cron' | 'manual' | 'auto') {
   const started = Date.now()
   const snapshot = await buildTcpaSnapshot()
   const durationMs = Date.now() - started
@@ -354,4 +354,29 @@ export async function latestTcpaSnapshot(): Promise<{ snapshot: TcpaSnapshot; tr
     .catch(() => null)
   if (!row) return null
   return { snapshot: row.payload as unknown as TcpaSnapshot, trigger: row.trigger, durationMs: row.durationMs }
+}
+
+/** Older than this and the page reads again on open: a missed morning run. */
+const STALE_MS = 26 * 60 * 60 * 1000
+
+/**
+ * What the page shows. A page with no reading is a page that says nothing,
+ * and the morning run can be up to a day away — so the first visit, or one
+ * after a missed morning run, reads every account itself. The same read-only
+ * run "Refresh now" makes, and only when there is nothing current to show.
+ */
+export async function currentTcpaSnapshot(): Promise<{
+  latest: Awaited<ReturnType<typeof latestTcpaSnapshot>>
+  autoError: string | null
+}> {
+  const latest = await latestTcpaSnapshot()
+  if (latest && Date.now() - Date.parse(latest.snapshot.builtAt) <= STALE_MS) return { latest, autoError: null }
+  const run = await runTargetCpaSnapshot('auto')
+  console.log(
+    run.ok
+      ? `[TargetCpa] auto read on open: ${run.accounts} accounts, ${run.campaigns} campaigns, ${run.errors.length} errors, ${run.durationMs}ms`
+      : `[TargetCpa] auto read on open failed: ${run.error}`
+  )
+  if (!run.ok) return { latest, autoError: run.error }
+  return { latest: await latestTcpaSnapshot(), autoError: null }
 }

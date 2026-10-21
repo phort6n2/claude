@@ -1,7 +1,8 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { ArrowUpDown, ChevronDown, ChevronUp, RefreshCw, TriangleAlert, X } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowUpDown, ChevronDown, ChevronRight, ChevronUp, Gauge, RefreshCw, TriangleAlert, X } from 'lucide-react'
 import {
   RANGES,
   ZERO,
@@ -38,6 +39,8 @@ import {
   type ReportAccount,
   type Totals,
   type TargetHint,
+  targetRaises,
+  targetsReadAt,
 } from '@/lib/campaign-report'
 import { errorFrom } from '@/lib/http-error'
 import {
@@ -498,6 +501,8 @@ export default function CampaignReport({
             </button>
           )}
 
+          <TargetCpaLink data={data} />
+
           {viewId === 'overview' ? (
             <>
               {/* Phone: cards, and the sort as a control rather than headings. */}
@@ -795,5 +800,47 @@ export function CampaignReportSkeleton() {
       </div>
       <div className="h-64 rounded-xl bg-gray-200" />
     </div>
+  )
+}
+
+/**
+ * THE TARGET CPA PANEL, FROM THE MAIN PAGE. Always shown, so the panel can be
+ * found from the phone at all — it lives in the admin sidebar, which Master
+ * Leads does not have. It says what the panel found: how many campaigns would
+ * spend more with a higher target (the same rule as the "Target too low" mark
+ * under each one), or that it has not read the accounts yet.
+ */
+function TargetCpaLink({ data }: { data: CampaignReportData }) {
+  const raises = targetRaises(data)
+  const readAt = targetsReadAt(data)
+  const names = raises.map((r) => `${r.accountName} · ${r.campaignName}`)
+  return (
+    <Link
+      href="/admin/target-cpa"
+      className={`mt-2 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-sm ${
+        raises.length ? 'bg-amber-50 text-amber-900 ring-1 ring-amber-200' : 'bg-white text-gray-700 ring-1 ring-gray-200'
+      }`}
+    >
+      <span className="flex min-w-0 items-start gap-1.5">
+        <Gauge className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+        <span className="min-w-0">
+          <span className="block font-medium">
+            {!readAt
+              ? 'Target CPA vs Google — not read yet'
+              : raises.length
+                ? `Target CPA: ${raises.length} campaign${raises.length === 1 ? '' : 's'} would spend more with a higher target`
+                : 'Target CPA: no target is holding a campaign back'}
+          </span>
+          <span className="block truncate text-xs opacity-80">
+            {!readAt
+              ? 'Open it to read every account now'
+              : raises.length
+                ? names.join(', ')
+                : `As of ${new Date(readAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`}
+          </span>
+        </span>
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
+    </Link>
   )
 }

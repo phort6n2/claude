@@ -1,8 +1,10 @@
 export const dynamic = 'force-dynamic'
+// The first visit may read every account (see below): seconds, not minutes.
+export const maxDuration = 300
 
 import { prisma } from '@/lib/db'
 import { requireTargetCpaPage } from '@/lib/target-cpa-access'
-import { applyEnabled, latestTcpaSnapshot } from '@/lib/target-cpa-fetch'
+import { applyEnabled, currentTcpaSnapshot } from '@/lib/target-cpa-fetch'
 import { buildRows } from '@/lib/target-cpa'
 import TargetCpaPanel, { type ChangeEntry } from '@/components/admin/TargetCpaPanel'
 
@@ -18,7 +20,7 @@ import TargetCpaPanel, { type ChangeEntry } from '@/components/admin/TargetCpaPa
 export default async function Page() {
   await requireTargetCpaPage()
 
-  const latest = await latestTcpaSnapshot()
+  const { latest, autoError } = await currentTcpaSnapshot()
   const changes = await prisma.targetCpaChange
     .findMany({ orderBy: { createdAt: 'desc' }, take: 50 })
     .catch(() => [])
@@ -51,6 +53,7 @@ export default async function Page() {
       accountCount={latest?.snapshot.accounts.length ?? 0}
       changes={entries}
       applyEnabled={applyEnabled()}
+      autoError={autoError}
     />
   )
 }
