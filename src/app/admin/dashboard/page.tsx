@@ -9,6 +9,9 @@ import { getClientHealth, HEALTH_COLUMNS } from '@/lib/client-health'
 import ClientHealthTable from '@/components/admin/ClientHealthTable'
 import CampaignReport, { CampaignReportSkeleton } from '@/components/admin/CampaignReport'
 import { getCampaignReport } from '@/lib/campaign-report-fetch'
+import { applyEnabled } from '@/lib/target-cpa-fetch'
+import { isMasterLeadsEmail } from '@/lib/master-leads-access'
+import { auth } from '@/lib/auth'
 import { isRangeId, type RangeId } from '@/lib/campaign-report'
 
 /**
@@ -106,8 +109,10 @@ export default async function AdminDashboard({
 }
 
 async function Campaigns({ range }: { range: RangeId | null }) {
-  const data = await getCampaignReport()
-  return <CampaignReport initial={data} initialRange={range} />
+  const [data, session] = await Promise.all([getCampaignReport(), auth()])
+  // The "Set $X" button: the owner only, and only with applying switched on.
+  const canApply = applyEnabled() && isMasterLeadsEmail(session?.user?.email)
+  return <CampaignReport initial={data} initialRange={range} canApplyTargets={canApply} />
 }
 
 async function HealthBoard() {

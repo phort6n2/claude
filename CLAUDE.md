@@ -1561,6 +1561,12 @@ suspended or unreadable one never does. Read-only.
   problem button on every load** (`TargetCpaLink`, `targetRaises`), counting
   those same marks — it is the way to the panel from the phone, since Master
   Leads has no admin sidebar (its header carries a "Target CPA" button too).
+  **"Set $X" sits beside "try $X"** when applying is on and the viewer is the
+  owner (`canApplyTargets`, decided by the page; `TargetApplyContext` carries
+  it to the line). It opens `ApplyTargetDialog` — the ONE confirm dialog, the
+  panel's too — and sends the same request to the same route, so every
+  Phase 2 check below runs on it unchanged. A success re-reads the accounts,
+  and the mark drops because the live target no longer matches the snapshot's.
 - `HIDDEN_ACCOUNT_IDS` keeps accounts that are not part of the book off the
   table (both Noble Glass accounts, Windshield Replacement LLC, Kley's Hair
   Salon and both Precision accounts), by customer id, never by name.

@@ -521,6 +521,7 @@ export function targetHints(snapshot: TcpaSnapshot): Record<string, TargetHint> 
       spendPct: r.spendPct,
       snapshotTargetMicros: r.targetMicros,
       portfolio: !!r.portfolio,
+      ...(r.portfolio ? { portfolioName: r.portfolio.name, portfolioCampaigns: r.portfolio.campaignCount } : {}),
       builtAt: snapshot.builtAt,
     }
   }

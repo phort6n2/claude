@@ -8,6 +8,7 @@ import { auth } from '@/lib/auth'
 import { isMasterLeadsEmail } from '@/lib/master-leads-access'
 import CampaignReport, { CampaignReportSkeleton } from '@/components/admin/CampaignReport'
 import { getCampaignReport } from '@/lib/campaign-report-fetch'
+import { applyEnabled } from '@/lib/target-cpa-fetch'
 import { isRangeId, type RangeId } from '@/lib/campaign-report'
 import { MarkLaunched } from './mark-launched'
 
@@ -82,6 +83,7 @@ export default async function MasterLeadsCampaignsPage({
 
 async function Report({ range }: { range: RangeId | null }) {
   const data = await getCampaignReport()
-  // Under the sticky app header above (its measured height).
-  return <CampaignReport initial={data} initialRange={range} stickyTop="top-[69px]" />
+  // Under the sticky app header above (its measured height). The page is
+  // already the owner's only, so "Set $X" needs just the flag.
+  return <CampaignReport initial={data} initialRange={range} stickyTop="top-[69px]" canApplyTargets={applyEnabled()} />
 }

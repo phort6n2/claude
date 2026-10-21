@@ -55,11 +55,13 @@ import {
   perConvParts,
   Scorecard,
   IssueChip,
+  TargetApplyContext,
   TargetLine,
   type AccountView,
   type Row,
 } from './campaign-report-ui'
 import CampaignCards from './CampaignCards'
+import ApplyTargetDialog, { type ApplyTarget } from './ApplyTargetDialog'
 import MetricRanking from './MetricRanking'
 
 /**
@@ -159,14 +161,21 @@ export default function CampaignReport({
   initial,
   initialRange,
   stickyTop = 'top-0',
+  canApplyTargets = false,
 }: {
   initial: CampaignReportData
   initialRange: RangeId | null
   /** Where the sticky control bar sits: under the Master Leads app's own
    *  sticky header there, at the top of the admin's scrolling column here. */
   stickyTop?: string
+  /** The "Set $X" button beside "try $X": the owner, with TARGET_CPA_APPLY_ENABLED on.
+   *  Decided by the page on the server; the apply route checks both again. */
+  canApplyTargets?: boolean
 }) {
   const [data, setData] = useState(initial)
+  const [applying, setApplying] = useState<ApplyTarget | null>(null)
+  const [applyNotice, setApplyNotice] = useState<{ text: string; ok: boolean } | null>(null)
+  const applyContext = useMemo(() => ({ canApply: canApplyTargets, ask: setApplying }), [canApplyTargets])
   const [range, setRange] = useState<RangeId>(initialRange ?? DEFAULT_RANGE)
   const [onlyIssues, setOnlyIssues] = useState(false)
   const [open, setOpen] = useState<string | null>(null)
@@ -370,6 +379,7 @@ export default function CampaignReport({
   const cpaParts = perConvParts(view.cost)
 
   return (
+    <TargetApplyContext.Provider value={applyContext}>
     <section>
       {/* THE CONTROLS STAY PUT: range, view and an isolated shop are what the
           rest of the screen is ABOUT, so they never scroll away from it.
@@ -441,6 +451,11 @@ export default function CampaignReport({
         </button>
       </div>
       {refreshError && <p className="mt-1 text-xs text-red-600">{refreshError}</p>}
+      {applyNotice && (
+        <p className={`mt-2 rounded-lg p-3 text-sm ${applyNotice.ok ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-900'}`}>
+          {applyNotice.text}
+        </p>
+      )}
 
       {data.error ? (
         <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -608,6 +623,20 @@ export default function CampaignReport({
         </>
       )}
     </section>
+    {applying && (
+      <ApplyTargetDialog
+        target={applying}
+        onClose={() => setApplying(null)}
+        onDone={(text, ok) => {
+          setApplying(null)
+          setApplyNotice({ text, ok })
+          // Re-read the accounts: the live target now differs from the
+          // morning snapshot's, so the "try $X" mark drops by itself.
+          void refresh()
+        }}
+      />
+    )}
+    </TargetApplyContext.Provider>
   )
 }
 
@@ -751,7 +780,7 @@ function AccountRows({
                     {statusLabel(c)}
                     {c.budgetShared ? ' · shared budget' : ''}
                   </div>
-                  <TargetLine c={c} hint={targets?.[key]} currency={a.currency} />
+                  <TargetLine c={c} hint={targets?.[key]} currency={a.currency} account={{ customerId: a.customerId, name: a.name }} />
                   {issues.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {issues.map((i) => (

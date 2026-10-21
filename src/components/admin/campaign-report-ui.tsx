@@ -1,5 +1,6 @@
 'use client'
 
+import { createContext, useContext } from 'react'
 import Link from 'next/link'
 import { ArrowDownRight, ArrowUpRight, TriangleAlert, CircleAlert, Gauge } from 'lucide-react'
 import {
@@ -12,6 +13,7 @@ import {
   type TargetHint,
   type Totals,
 } from '@/lib/campaign-report'
+import type { ApplyTarget } from './ApplyTargetDialog'
 
 export interface Row {
   c: ReportCampaign
@@ -172,12 +174,32 @@ export function IssueChip({ issue }: { issue: CampaignIssue }) {
 
 
 /**
- * The bidding line under a campaign's name — "Max Conv. · target $29.77" —
- * and, when the Target CPA panel would raise it, a link there saying so. The
- * cards and the table both draw this, so the two cannot describe one campaign
- * differently.
+ * Whether this screen may APPLY a suggested target, and how to ask. Provided
+ * by the campaign report (true only for the owner, with
+ * TARGET_CPA_APPLY_ENABLED on); absent, the "try $X" mark is just a link.
+ * A context rather than a prop because the mark sits four components down,
+ * in the phone cards and in the table alike.
  */
-export function TargetLine({ c, hint, currency }: { c: ReportCampaign; hint?: TargetHint; currency: string }) {
+export const TargetApplyContext = createContext<{ canApply: boolean; ask: (t: ApplyTarget) => void } | null>(null)
+
+/**
+ * The bidding line under a campaign's name — "Max Conv. · target $29.77" —
+ * and, when the Target CPA panel would raise it, a link there saying so,
+ * plus a "Set" button where applying is switched on. The cards and the table
+ * both draw this, so the two cannot describe one campaign differently.
+ */
+export function TargetLine({
+  c,
+  hint,
+  currency,
+  account,
+}: {
+  c: ReportCampaign
+  hint?: TargetHint
+  currency: string
+  account: { customerId: string; name: string }
+}) {
+  const apply = useContext(TargetApplyContext)
   const label = targetLabel(c, hint)
   const advice = targetAdvice(c, hint)
   if (!label && !advice) return null
@@ -193,15 +215,41 @@ export function TargetLine({ c, hint, currency }: { c: ReportCampaign; hint?: Ta
     <div className="mt-0.5">
       {text && <div className="text-[11px] text-gray-500">{text}</div>}
       {advice && (
-        <Link
-          href="/admin/target-cpa"
-          onClick={(e) => e.stopPropagation()}
-          className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100"
-          title={`Underspending${hint?.spendPct != null ? ` (${Math.round(hint.spendPct * 100)}% of budget, last 7 days)` : ''}. Google's simulation says this target would spend the budget.`}
-        >
-          <Gauge className="h-3 w-3" aria-hidden />
-          Target too low · try {money(advice.suggestedMicros, currency)}
-        </Link>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <Link
+            href="/admin/target-cpa"
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100"
+            title={`Underspending${hint?.spendPct != null ? ` (${Math.round(hint.spendPct * 100)}% of budget, last 7 days)` : ''}. Google's simulation says this target would spend the budget.`}
+          >
+            <Gauge className="h-3 w-3" aria-hidden />
+            Target too low · try {money(advice.suggestedMicros, currency)}
+          </Link>
+          {apply?.canApply && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                apply.ask({
+                  customerId: account.customerId,
+                  campaignId: c.id,
+                  accountName: account.name,
+                  campaignName: c.name,
+                  currency,
+                  // What the snapshot read — the server refuses if Google's live target is no longer this.
+                  fromMicros: hint?.snapshotTargetMicros ?? null,
+                  toMicros: advice.suggestedMicros,
+                  portfolio: hint?.portfolio
+                    ? { name: hint.portfolioName || '', campaignCount: hint.portfolioCampaigns || 0 }
+                    : null,
+                })
+              }}
+              className="inline-flex h-8 items-center rounded-full bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700"
+            >
+              Set {money(advice.suggestedMicros, currency)}
+            </button>
+          )}
+        </div>
       )}
     </div>
   )

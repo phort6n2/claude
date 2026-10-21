@@ -141,6 +141,9 @@ export interface TargetHint {
   /** The target the snapshot read — compared with the live one, to drop a stale hint. */
   snapshotTargetMicros: number | null
   portfolio: boolean
+  /** For the confirm dialog's warning: a shared strategy moves every campaign on it. */
+  portfolioName?: string
+  portfolioCampaigns?: number
   builtAt: string
 }
 

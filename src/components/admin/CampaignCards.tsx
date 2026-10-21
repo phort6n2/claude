@@ -77,11 +77,13 @@ function CampaignLine({
   currency,
   showFigures,
   hint,
+  account,
 }: {
   r: Row
   currency: string
   showFigures: boolean
   hint?: TargetHint
+  account: { customerId: string; name: string }
 }) {
   const sev = worstSeverity(r.issues)
   return (
@@ -96,7 +98,7 @@ function CampaignLine({
         </span>
         <span className="shrink-0 text-[11px] text-gray-500">{statusLabel(r.c)}</span>
       </div>
-      <TargetLine c={r.c} hint={hint} currency={currency} />
+      <TargetLine c={r.c} hint={hint} currency={currency} account={account} />
       {r.issues.length > 0 && (
         <>
           <div className="mt-1 flex flex-wrap gap-1">
@@ -204,7 +206,7 @@ export default function CampaignCards({
               {visible.length > 0 && (
                 <ul id={listId} className="mt-2 divide-y divide-gray-100 border-t border-gray-100">
                   {visible.map((r) => (
-                    <CampaignLine key={r.c.id} r={r} currency={a.currency} showFigures={isOpen} hint={hintFor(r)} />
+                    <CampaignLine key={r.c.id} r={r} currency={a.currency} showFigures={isOpen} hint={hintFor(r)} account={{ customerId: a.customerId, name: a.name }} />
                   ))}
                 </ul>
               )}
