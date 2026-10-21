@@ -114,8 +114,13 @@ check(visibleCampaigns({ ...account0(), campaigns: [ended] }, w7).length === 0, 
 const lsa = campaign({ name: 'LocalServicesCampaign:SystemGenerated:0006', channel: 'LOCAL_SERVICES', days: {} })
 check(campaignIssues(lsa, campaignTotals(lsa, w7), '7d').length === 0, 'Local Services with no impression rows: unmarked')
 // Found on ElitePro's live account: the API sent UNKNOWN beside a real reason.
-const withUnknown = campaign({ primaryStatus: 'LIMITED', reasons: ['BUDGET_CONSTRAINED', 'UNKNOWN'], days: ags.days })
-check(campaignIssues(withUnknown, campaignTotals(withUnknown, w7), '7d')[0]?.label === 'Limited by budget', '"UNKNOWN" is not shown as a reason')
+const withUnknown = campaign({ primaryStatus: 'LIMITED', reasons: ['BIDDING_STRATEGY_CONSTRAINED', 'UNKNOWN'], days: ags.days })
+check(campaignIssues(withUnknown, campaignTotals(withUnknown, w7), '7d')[0]?.label === 'Bid strategy constrained', '"UNKNOWN" is not shown as a reason')
+// The owner's call: limited BY budget is a campaign spending all of it. Nothing to fix.
+const budgetLimited = campaign({ primaryStatus: 'LIMITED', reasons: ['BUDGET_CONSTRAINED'], days: ags.days })
+check(campaignIssues(budgetLimited, campaignTotals(budgetLimited, w7), '7d').length === 0, 'Limited by budget: unmarked')
+const budgetAndUnknown = campaign({ primaryStatus: 'LIMITED', reasons: ['BUDGET_CONSTRAINED', 'UNKNOWN'], days: ags.days })
+check(campaignIssues(budgetAndUnknown, campaignTotals(budgetAndUnknown, w7), '7d').length === 0, 'Limited by budget plus UNKNOWN: still unmarked')
 const limitedLearning = campaign({ primaryStatus: 'LIMITED', reasons: ['BIDDING_STRATEGY_LEARNING'], days: ags.days })
 check(campaignIssues(limitedLearning, campaignTotals(limitedLearning, w7), '7d').length === 0, 'Limited only by learning: unmarked')
 
@@ -123,9 +128,9 @@ console.log('\nMARKED: GOOGLE SAYS IT CANNOT SERVE, NOBODY SAW IT, OR MONEY WITH
 const disapproved = campaign({ primaryStatus: 'NOT_ELIGIBLE', reasons: ['HAS_ADS_DISAPPROVED'] })
 const d = campaignIssues(disapproved, campaignTotals(disapproved, w7), '7d')
 check(d.length === 1 && d[0].kind === 'not-serving' && d[0].label === 'Ads disapproved', 'not eligible: one mark, in Google’s words, not doubled by "no impressions"')
-const budgetLimited = campaign({ primaryStatus: 'LIMITED', reasons: ['BUDGET_CONSTRAINED'], days: ags.days })
-const b = campaignIssues(budgetLimited, campaignTotals(budgetLimited, w7), '7d')
-check(b.length === 1 && b[0].severity === 'warn' && b[0].label === 'Limited by budget', 'limited by budget: a warning')
+const mixed = campaign({ primaryStatus: 'LIMITED', reasons: ['BUDGET_CONSTRAINED', 'BIDDING_STRATEGY_CONSTRAINED'], days: ags.days })
+const b = campaignIssues(mixed, campaignTotals(mixed, w7), '7d')
+check(b.length === 1 && b[0].severity === 'warn' && b[0].label === 'Bid strategy constrained', 'budget AND bid strategy: marked, naming only the fixable one')
 const unseen = campaign({ days: {} })
 check(campaignIssues(unseen, campaignTotals(unseen, w7), '7d').some((i) => i.kind === 'no-impressions'), 'enabled, eligible, a week of no impressions: marked')
 check(campaignIssues(unseen, campaignTotals(unseen, rangeWindow('yesterday', TODAY)), 'yesterday').some((i) => i.kind === 'no-impressions'), '…and for a whole day yesterday')

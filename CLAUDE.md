@@ -1511,7 +1511,9 @@ suspended or unreadable one never does. Read-only.
   data and are held in `scripts/check-campaign-report.ts`: an ENABLED campaign
   whose end date passed reads `primary_status: ENDED`, Google's
   system-generated Local Services campaign has no impression rows, and the API
-  sends `UNKNOWN` beside real reasons.
+  sends `UNKNOWN` beside real reasons. **Limited BY BUDGET is not a mark**
+  (`NOT_A_FAULT`), at the owner's call: only what can be fixed this morning
+  marks, and a campaign spending all of its budget is not broken.
 - **Cost / conv. is Google's cost ÷ conversions** (`costPerConv`), blank — never
   $0 — when nothing converted, and per currency in the scorecard.
 - **The column headings stick inside the table's own box** (`max-h-[75vh]`,

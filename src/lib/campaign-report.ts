@@ -334,6 +334,11 @@ export function isRunning(c: ReportCampaign): boolean {
    "Limited by budget, Unknown" — seen on ElitePro — adds a word nobody can
    act on to one they can. */
 const NOT_A_REASON = new Set(['UNKNOWN', 'UNSPECIFIED', 'BIDDING_STRATEGY_LEARNING'])
+/* Limited reasons that are not a FAULT, at the owner's call: a campaign
+   limited by its budget is spending all of it, which is the budget doing its
+   job — nothing to fix this morning. The other Limited reasons (bid strategy
+   constrained, ads limited by policy, …) still mark. */
+const NOT_A_FAULT = new Set(['BUDGET_CONSTRAINED'])
 
 /* Local Services campaigns are Google's own, system-generated and managed
    outside the campaign screens; the API does not report their delivery the
@@ -361,13 +366,17 @@ export function campaignIssues(
       label: why || statusLabel(c),
       detail: `Google says this campaign is ${statusLabel(c).toLowerCase()}${why ? `: ${why}` : ''}. It is enabled and cannot show.`,
     })
-  } else if (c.primaryStatus === 'LIMITED' && reasons.length > 0) {
-    issues.push({
-      kind: 'limited',
-      severity: 'warn',
-      label: why,
-      detail: `Google marks this campaign Limited: ${why}.`,
-    })
+  } else if (c.primaryStatus === 'LIMITED') {
+    const faults = reasons.filter((r) => !NOT_A_FAULT.has(r))
+    if (faults.length > 0) {
+      const what = faults.map(reasonLabel).join(', ')
+      issues.push({
+        kind: 'limited',
+        severity: 'warn',
+        label: what,
+        detail: `Google marks this campaign Limited: ${what}.`,
+      })
+    }
   }
 
   /* NOT FOR TODAY. At 7am an enabled campaign with no impressions yet is an
