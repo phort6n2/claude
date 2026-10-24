@@ -1633,6 +1633,65 @@ account's Oct 12–17 points.
   campaign on it is AGMP — AGS's "tcpa - windshield" also runs a campaign that
   is not ours. Every attempt, refusals included, is a `TargetCpaChange` row.
 
+### Bad leads → negative keywords
+
+`bad-lead.ts` (the rules, import-free), `bad-lead-trace.ts` (read-only GAQL),
+`bad-lead-ai.ts` (the model's pick), `negative-keywords.ts` (read + write),
+`bad-lead-run.ts` (the pipeline), `BadLeadMark` / `NegativeKeywordChange` /
+`Client.autoNegatives` (bootstrap: `BAD_LEAD_SQL`), `BadLeadButton` on every
+lead screen (admin list + detail, Master Leads, the portal), and
+`/admin/bad-leads` ("Bad leads" in the sidebar, the owner's page).
+`scripts/check-bad-lead.ts` holds AGS's and Collision's real 2026-10-22 rows.
+
+- **A mark is NOT a LeadStatus.** Status drives response time, the monthly
+  report and the ring-back list; a junk lead can still have been called back.
+- **THE TRACE, strongest first**: gclid → `click_view` (one day per query, so
+  the lead's day, the day before and the first-landing day are tried); a call
+  → `call_view`, area code + start within 3 minutes, one-to-one against every
+  call that day (`matchCalls`); a call the log lacks → the AGMP campaign with
+  ad calls LEFT in that hour once the logged ones are subtracted (PMax calls
+  never reach `call_view`; Collision's 3pm hour reads Lead Gen 1 / PMax 4 and
+  Lead Gen's is the 15:29 call in the log); the landing URL's ids. Organic and
+  direct leads are not traced.
+- **SEARCH TERMS HAVE NO HOUR.** `search_term_view` and
+  `campaign_search_term_view` refuse `segments.hour` (checked live), so the
+  candidates are the ad group's (Search) or campaign's (PMax) whole day. The
+  one way to single a term out is COST: when the hour had exactly one click,
+  the term that cost the same is the best match (AGS: $7.76, "west can near
+  me"). PMax hours run 20–50 clicks, so a PMax trace is "hour match" with no
+  best match, and the reason ranks the candidates instead.
+- **THE AI PICKS, THE CODE DECIDES.** At the owner's request the negatives are
+  chosen and added without him. The model sees only the reported searches and
+  the lead's own words (form fields, the call transcript); `negativeProblems`
+  then refuses, deterministically: a word not in a reported search, the
+  shop's name (to THREE letters — `defaultBrandTerms` stops at four and
+  "ags" is AGS), anything about glass (a competitor glass shop is a customer
+  too), a negative made only of service words and served places, an insurer
+  alone (and ICBC/SGI/MPI for their province at all), a one-word phrase, broad
+  match, anything blocking a keyword the campaign buys, and a duplicate of one
+  already on the campaign, the ad group or an attached list (a phrase "aaa"
+  covers "aaa oregon"). A check that could not READ what it guards against
+  has not passed. Any problem → the review queue, one click (with "add
+  anyway") for the owner.
+- **Auto-add needs all of**: no problems, a trace that placed the lead (not
+  "same day"), `Client.autoNegatives` (default on, per client on the Bad
+  leads page), ≤5 per lead, ≤15 per account per 24h, campaign level only,
+  and `BAD_LEAD_AUTO_NEGATIVES` not `false` — the kill switch. Without the
+  model the fallback is the best match only, EXACT.
+- **The shop can mark, never write.** The portal shows its mark and which
+  searches were stopped, and its API carries no trace, no decision and no
+  campaign. Undoing a mark removes the negatives the PIPELINE added for it;
+  ones the owner added stay.
+- **Writes**: validate-only, real, READ BACK, every attempt logged with the
+  resource name; Undo removes exactly that criterion. Campaign negatives work
+  on PMax through `campaignCriteria` (Matt added ~58 to Collision's PMax that
+  way on 2026-10-23). The shared "AGMP Negative Keyword List" lives in the
+  MANAGER account (1,403 terms) and is written there, with a warning that it
+  reaches every client using it; a manager-owned list reads empty from the
+  client account, so its members are read from the manager.
+- Not built: retracting the lead-form conversion for a bad lead (the old
+  "Phase 2"). It needs the tag's transaction id stored on the lead first.
+
 ### Google Ads scheduled checks (the heartbeat)
 
 `google-ads-checks.ts`, the `AdsFinding` table (bootstrap: `ADS_FINDING_SQL`),

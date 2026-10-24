@@ -43,6 +43,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
         callRecordingUrl: true,
         createdAt: true,
         updatedAt: true,
+        badLeadMark: { select: { reason: true, status: true, undoneAt: true } },
       },
     })
 

@@ -92,6 +92,8 @@ export async function GET(request: NextRequest) {
                 slug: true,
               },
             },
+            // The "Bad lead" badge on the row.
+            badLeadMark: { select: { reason: true, status: true, undoneAt: true } },
             callAnalyses: {
               orderBy: { createdAt: 'desc' },
               take: 1,

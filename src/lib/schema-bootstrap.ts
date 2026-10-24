@@ -358,6 +358,72 @@ export const TARGET_CPA_SQL: string[] = [
   `CREATE INDEX IF NOT EXISTS "TargetCpaChange_createdAt_idx" ON "TargetCpaChange"("createdAt")`,
 ]
 
+/**
+ * "Bad lead" marks and the negative keywords added because of them
+ * (lib/bad-lead.ts). The Client column defaults ON: the owner asked for the
+ * negatives to be added without him, and the safety checks are the gate.
+ */
+export const BAD_LEAD_SQL: string[] = [
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "autoNegatives" BOOLEAN NOT NULL DEFAULT true`,
+  `CREATE TABLE IF NOT EXISTS "BadLeadMark" (
+     "id"           TEXT NOT NULL,
+     "leadId"       TEXT NOT NULL,
+     "clientId"     TEXT NOT NULL,
+     "reason"       TEXT NOT NULL,
+     "notes"        TEXT,
+     "markedBy"     TEXT NOT NULL,
+     "markedByRole" TEXT NOT NULL,
+     "status"       TEXT NOT NULL DEFAULT 'tracing',
+     "confidence"   TEXT,
+     "trace"        JSONB,
+     "decision"     JSONB,
+     "error"        TEXT,
+     "createdAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     "updatedAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     "undoneAt"     TIMESTAMP(3),
+     CONSTRAINT "BadLeadMark_pkey" PRIMARY KEY ("id")
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "BadLeadMark_leadId_key" ON "BadLeadMark"("leadId")`,
+  `CREATE INDEX IF NOT EXISTS "BadLeadMark_clientId_createdAt_idx" ON "BadLeadMark"("clientId", "createdAt")`,
+  `CREATE INDEX IF NOT EXISTS "BadLeadMark_status_idx" ON "BadLeadMark"("status")`,
+  `DO $$ BEGIN
+     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'BadLeadMark_leadId_fkey') THEN
+       ALTER TABLE "BadLeadMark" ADD CONSTRAINT "BadLeadMark_leadId_fkey"
+         FOREIGN KEY ("leadId") REFERENCES "Lead"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+     END IF;
+   END $$`,
+  `CREATE TABLE IF NOT EXISTS "NegativeKeywordChange" (
+     "id"              TEXT NOT NULL,
+     "createdAt"       TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     "clientId"        TEXT NOT NULL,
+     "customerId"      TEXT NOT NULL,
+     "ownerCustomerId" TEXT NOT NULL,
+     "badLeadMarkId"   TEXT,
+     "leadId"          TEXT,
+     "level"           TEXT NOT NULL,
+     "campaignId"      TEXT,
+     "campaignName"    TEXT,
+     "adGroupId"       TEXT,
+     "adGroupName"     TEXT,
+     "sharedSetId"     TEXT,
+     "sharedSetName"   TEXT,
+     "text"            TEXT NOT NULL,
+     "matchType"       TEXT NOT NULL,
+     "resourceName"    TEXT,
+     "status"          TEXT NOT NULL,
+     "source"          TEXT NOT NULL,
+     "userEmail"       TEXT NOT NULL,
+     "rationale"       TEXT,
+     "warnings"        JSONB,
+     "error"           TEXT,
+     "removedAt"       TIMESTAMP(3),
+     "removedBy"       TEXT,
+     CONSTRAINT "NegativeKeywordChange_pkey" PRIMARY KEY ("id")
+   )`,
+  `CREATE INDEX IF NOT EXISTS "NegativeKeywordChange_clientId_createdAt_idx" ON "NegativeKeywordChange"("clientId", "createdAt")`,
+  `CREATE INDEX IF NOT EXISTS "NegativeKeywordChange_badLeadMarkId_idx" ON "NegativeKeywordChange"("badLeadMarkId")`,
+]
+
 export const ADS_FINDING_SQL: string[] = [
   `CREATE TABLE IF NOT EXISTS "AdsFinding" (
      "id"          TEXT NOT NULL,
@@ -781,6 +847,7 @@ export const BOOTSTRAP_SQL: string[] = [
   ...INSURANCE_PROGRAM_SQL,
   ...ATTRIBUTION_SQL,
   ...TARGET_CPA_SQL,
+  ...BAD_LEAD_SQL,
 ]
 
 /**

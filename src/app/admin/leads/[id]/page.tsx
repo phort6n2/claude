@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { postalCodeLabel } from '@/lib/postal-code'
+import BadLeadButton, { type BadLeadSummary } from '@/components/BadLeadButton'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -34,6 +35,7 @@ import { Button } from '@/components/ui/Button'
 import { TrafficSourceBadge } from '@/components/leads/TrafficSourceBadge'
 
 interface Lead {
+  badLeadMark?: BadLeadSummary | null
   id: string
   trafficSource?: string | null
   trafficMedium?: string | null
@@ -285,6 +287,7 @@ export default function LeadDetailPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <BadLeadButton leadId={lead.id} api="admin" initial={lead.badLeadMark} />
               <Button
                 variant="outline"
                 size="sm"

@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import {
+  Ban,
   MapPin,
   LayoutDashboard,
   Users,
@@ -62,6 +63,9 @@ const navigation: NavSection[] = [
       // Every AGMP campaign beside the target Google says would spend its
       // budget. The owner's page only (MASTER_LEADS_EMAIL); others are sent back.
       { name: 'Target CPA', href: '/admin/target-cpa', icon: Gauge },
+      // Leads marked as junk, traced to the search that bought them, and the
+      // negative keywords added because of them. The owner's page too.
+      { name: 'Bad leads', href: '/admin/bad-leads', icon: Ban },
       // Shops on the directory that have shown they are in the market. Under
       // CRM rather than System: this is a list somebody rings, not a health
       // readout.

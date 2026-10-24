@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import BadLeadButton, { type BadLeadSummary } from '@/components/BadLeadButton'
 import {
   Phone,
   Mail,
@@ -23,6 +24,7 @@ import { LeadQuickActions } from '@/components/leads/LeadQuickActions'
 import { telHref } from '@/lib/contact-links'
 
 interface Lead {
+  badLeadMark?: BadLeadSummary | null
   id: string
   email: string | null
   phone: string | null
@@ -241,6 +243,7 @@ export default function PortalLeadDetailPage({ params }: { params: Promise<{ id:
               email={lead.email}
               lead={{ firstName: lead.firstName, businessName: session.user?.businessName }}
             />
+            <BadLeadButton leadId={lead.id} api="portal" initial={lead.badLeadMark} />
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">

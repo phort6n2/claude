@@ -71,6 +71,10 @@ model Client {
   /// the Google-dependent checks can read not-applicable instead of red. A
   /// stored Place ID always wins over it. See lib/business-profile.ts.
   noBusinessProfile      Boolean  @default(false)
+  /// A lead marked BAD may have its negative keywords added to this shop's
+  /// AGMP campaigns automatically, once they pass every safety check
+  /// (lib/bad-lead.ts). Off sends every suggestion to the review queue.
+  autoNegatives          Boolean  @default(true)
   offersMobileService    Boolean  @default(false)
   serviceAreas           String[] // Array of cities/neighborhoods
   /// What the site's HEADLINES call the area this shop covers — "Orange
@@ -163,25 +167,25 @@ model Client {
   customPages ClientPage[]
 
   // Brand Settings
-  logoUrl        String?
+  logoUrl           String?
   /// The logo the FOOTER draws, when the header's own logo cannot be used
   /// there. The footer band is dark; a logo drawn in black on transparency
   /// disappears into it, which is most of the logo files a shop actually
   /// owns. Empty means "use logoUrl", so a shop whose logo works on both
   /// backgrounds sets nothing.
-  footerLogoUrl  String?
+  footerLogoUrl     String?
   /// Which background the header logo was drawn for — 'light' or 'dark' —
   /// MEASURED from its pixels (lib/logo-surface.ts). Counts only while
   /// logoSurfaceUrl still equals logoUrl: several paths write the logo, and a
   /// verdict about the previous file must not colour the header for this one.
-  logoSurface    String?
-  logoSurfaceUrl String?
+  logoSurface       String?
+  logoSurfaceUrl    String?
   /// The operator's override on the logo card: 'light', 'dark', or null to
   /// follow the logo. See headerIsDark().
-  headerTheme    String?
-  primaryColor   String? @default("#1e40af")
-  secondaryColor String? @default("#3b82f6")
-  accentColor    String? @default("#f59e0b")
+  headerTheme       String?
+  primaryColor      String?   @default("#1e40af")
+  secondaryColor    String?   @default("#3b82f6")
+  accentColor       String?   @default("#f59e0b")
   /// Where the three colours above came from: 'site' (read off the shop's own
   /// website, lib/brand-scan.ts), 'manual' (changed by hand on the Business
   /// tab — never replaced automatically), or null (still the defaults, or set
@@ -467,6 +471,9 @@ model Lead {
   duplicateOf       Lead?   @relation("LeadDuplicates", fields: [duplicateOfLeadId], references: [id], onDelete: SetNull)
   duplicates        Lead[]  @relation("LeadDuplicates")
 
+  /// "Bad lead": why it was junk, and the search it was traced back to.
+  badLeadMark BadLeadMark?
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -718,13 +725,13 @@ enum WebhookDeliveryStatus {
 /// picks up anything PENDING. The payload holds HASHED identifiers only — the
 /// access token is read from ClientAdsTracking at send time, never stored here.
 model MetaEventDelivery {
-  id       String  @id @default(cuid())
-  clientId String
-  leadId   String?
+  id            String  @id @default(cuid())
+  clientId      String
+  leadId        String?
   /// Shared with the browser Pixel's eventID, which is how Meta dedupes the two.
-  eventId   String
-  eventName String
-  payload   Json
+  eventId       String
+  eventName     String
+  payload       Json
   /// Set when the event was sent to the Test Events tab rather than live.
   testEventCode String?
 
@@ -1309,9 +1316,9 @@ model ClientAdsTracking {
    * code routes events to Events Manager's Test Events tab instead of the
    * live dataset; it is for a verification session and should be cleared.
    */
-  metaPixelId        String?
-  metaCapiToken      String? // Encrypted
-  metaTestEventCode  String?
+  metaPixelId                 String?
+  metaCapiToken               String? // Encrypted
+  metaTestEventCode           String?
   /**
    * The ?v=meta landing variant. The offer line is optional and only ever
    * what an operator typed for this shop (§2: never invented). Excluded
@@ -1427,11 +1434,9 @@ model ClientLocation {
 
 /**
  * The insurer-specific landing page — see lib/insurance-programs.ts.
- *
  * One programme per client: a shop is in one province, and the province
  * decides which public insurer its drivers claim through. Two programmes
  * would be two pages competing for the same intent on the same site.
- *
  * Everything here that states a FACT about the programme is typed by an
  * operator and strips itself when empty. `inNetwork` is a verified claim
  * about this shop's membership of the insurer's repair network, and it is a
@@ -1879,14 +1884,14 @@ model SeoReportEmail {
 
   /// Our own copy of the PDF. ADMIN ONLY: the client sees the figures inside
   /// our report, never the supplier's document.
-  pdfUrl   String?
+  pdfUrl  String?
   /// What was read — see SeoReport in lib/seo-report.ts.
-  parsed   Json?
+  parsed  Json?
   /// The raw lines the reader produced, so a parser fix is a re-read rather
   /// than a lost month.
-  readout  Json?
+  readout Json?
   /// Why it was not used, in words. Null when it went into the report.
-  problem  String?
+  problem String?
 
   @@index([clientId, year, month])
 }
@@ -1933,4 +1938,80 @@ model TargetCpaChange {
   error             String?
 
   @@index([createdAt])
+}
+
+/// A lead somebody marked as junk, and what was done about it.
+///
+/// NOT a LeadStatus. Status drives the response-time metric, the monthly
+/// report and the ring-back list, and a shop can call a junk lead back and
+/// still have it be junk. This is a claim about the AD that bought the lead.
+model BadLeadMark {
+  id           String    @id @default(cuid())
+  leadId       String    @unique
+  lead         Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  clientId     String
+  /// A key of BAD_LEAD_REASONS (lib/bad-lead.ts).
+  reason       String
+  notes        String?
+  /// The email of whoever pressed it, admin or portal user.
+  markedBy     String
+  /// admin | client
+  markedByRole String
+  /// tracing | applied | review | untraced | no-action | failed | undone
+  status       String    @default("tracing")
+  /// gclid | call | utm | hour | day | none
+  confidence   String?
+  /// The trace as it was found: the campaign, the ad group, the candidate
+  /// searches with their clicks and cost. Kept whole, so a reader fix costs a
+  /// recompute and the queue can show what the decision was made on.
+  trace        Json?
+  /// What the model proposed and what the safety checks made of each one.
+  decision     Json?
+  error        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  undoneAt     DateTime?
+
+  @@index([clientId, createdAt])
+  @@index([status])
+}
+
+/// Every negative keyword this app has written to Google Ads, and every
+/// attempt that was refused. The resource name is what Undo removes.
+model NegativeKeywordChange {
+  id              String    @id @default(cuid())
+  createdAt       DateTime  @default(now())
+  clientId        String
+  /// The client's account.
+  customerId      String
+  /// The account the criterion lives in: the client's, or the manager's for
+  /// the shared "AGMP Negative Keyword List".
+  ownerCustomerId String
+  badLeadMarkId   String?
+  leadId          String?
+  /// campaign | ad_group | shared_list
+  level           String
+  campaignId      String?
+  campaignName    String?
+  adGroupId       String?
+  adGroupName     String?
+  sharedSetId     String?
+  sharedSetName   String?
+  text            String
+  /// PHRASE | EXACT | BROAD
+  matchType       String
+  resourceName    String?
+  /// applied | unconfirmed | refused | validate-failed | failed | removed | duplicate
+  status          String
+  /// auto | admin
+  source          String
+  userEmail       String
+  rationale       String?
+  warnings        Json?
+  error           String?
+  removedAt       DateTime?
+  removedBy       String?
+
+  @@index([clientId, createdAt])
+  @@index([badLeadMarkId])
 }

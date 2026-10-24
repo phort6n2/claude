@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/Button'
 import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
 import { LeadQuickActions } from '@/components/leads/LeadQuickActions'
+import BadLeadButton, { BadLeadTag, type BadLeadSummary } from '@/components/BadLeadButton'
 import { DamagePhoto, damagePhotoOf, VehicleDecode } from '@/components/leads/DamagePhoto'
 import { getLeadDisplayName, displayNameIsPhone, formatPhoneDisplay, formatFieldValue } from '@/lib/lead-display'
 import { ChannelBadge } from '@/components/leads/ChannelBadge'
@@ -65,6 +66,7 @@ interface LeadDuplicate {
 }
 
 interface Lead {
+  badLeadMark?: BadLeadSummary | null
   id: string
   email: string | null
   phone: string | null
@@ -986,6 +988,7 @@ function LeadRow({
                 source={(lead as { trafficSource?: string | null }).trafficSource}
                 medium={(lead as { trafficMedium?: string | null }).trafficMedium}
               />
+              <BadLeadTag mark={lead.badLeadMark} />
             </div>
             <div className="flex items-center gap-x-2 gap-y-0.5 text-sm text-gray-600 flex-wrap">
               {lead.phone && !displayNameIsPhone(lead) && (
@@ -1070,6 +1073,9 @@ function LeadRow({
                   vehicle: details.vehicle,
                 }}
               />
+            </div>
+            <div className="flex justify-end">
+              <BadLeadButton leadId={lead.id} api="admin" initial={lead.badLeadMark} />
             </div>
 
             {/* Edit Lead Info - Expandable */}

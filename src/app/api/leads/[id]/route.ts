@@ -37,6 +37,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
         // webhook exists; an alert from three days ago is not where somebody
         // working the job will find one.
         messages: { orderBy: { createdAt: 'asc' } },
+        badLeadMark: { select: { reason: true, status: true, undoneAt: true } },
       },
     })
 

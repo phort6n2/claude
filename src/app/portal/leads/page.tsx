@@ -27,6 +27,7 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefresh'
 import { SourceIcon } from '@/components/leads/SourceIcon'
 import { LeadQuickActions } from '@/components/leads/LeadQuickActions'
+import BadLeadButton, { BadLeadTag, type BadLeadSummary } from '@/components/BadLeadButton'
 import {
   DamagePhoto,
   damagePhotoOf,
@@ -67,6 +68,7 @@ interface LeadDuplicate {
 }
 
 interface Lead {
+  badLeadMark?: BadLeadSummary | null
   id: string
   email: string | null
   phone: string | null
@@ -919,6 +921,7 @@ function LeadRow({
               )}
               <ChannelBadge lead={lead} />
               <TrafficSourceBadge source={lead.trafficSource} medium={lead.trafficMedium} />
+              <BadLeadTag mark={lead.badLeadMark} />
             </div>
             <div className="flex items-center gap-x-2 gap-y-0.5 text-sm text-gray-600 flex-wrap">
               {lead.phone && !displayNameIsPhone(lead) && (
@@ -1006,6 +1009,9 @@ function LeadRow({
                   vehicle: details.vehicle,
                 }}
               />
+            </div>
+            <div className="flex justify-end">
+              <BadLeadButton leadId={lead.id} api="portal" initial={lead.badLeadMark} />
             </div>
 
             {/* Edit Lead Info - Expandable */}

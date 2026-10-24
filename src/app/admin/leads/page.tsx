@@ -36,10 +36,12 @@ import { PoweredByFooter } from '@/components/ui/PoweredByFooter'
 import { SourceIcon } from '@/components/leads/SourceIcon'
 import { TrafficSourceBadge, TRAFFIC_SOURCE_FILTER_OPTIONS } from '@/components/leads/TrafficSourceBadge'
 import { LeadQuickActions } from '@/components/leads/LeadQuickActions'
+import BadLeadButton, { BadLeadTag, type BadLeadSummary } from '@/components/BadLeadButton'
 import { DamagePhoto, damagePhotoOf, VehicleDecode } from '@/components/leads/DamagePhoto'
 import { useLeadStream } from '@/hooks/useLeadStream'
 
 interface Lead {
+  badLeadMark?: BadLeadSummary | null
   id: string
   email: string | null
   phone: string | null
@@ -680,6 +682,7 @@ function LeadRow({
             <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
               <span className="font-medium text-gray-900">{fullName}</span>
               <TrafficSourceBadge source={lead.trafficSource} medium={lead.trafficMedium} />
+              <BadLeadTag mark={lead.badLeadMark} />
               {lead.callRecordingUrl && (
                 <PlayCircle className="h-4 w-4 text-violet-500 flex-shrink-0" />
               )}
@@ -789,6 +792,9 @@ function LeadRow({
                 <Building2 className="h-4 w-4" />
                 Client
               </Link>
+            </div>
+            <div className="flex justify-end">
+              <BadLeadButton leadId={lead.id} api="admin" initial={lead.badLeadMark} />
             </div>
 
             {/* Edit Lead Info - Expandable */}
