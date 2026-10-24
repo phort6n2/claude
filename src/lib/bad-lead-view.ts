@@ -8,12 +8,12 @@ import { reasonsFor, REASON_KEYS } from '@/lib/bad-lead'
  * stopped — and nothing about how the decision was made.
  */
 
-export async function reasonsForLead(clientId: string) {
+export async function reasonsForLead(clientId: string, audience: 'admin' | 'client' = 'admin') {
   const client = await prisma.client.findUnique({
     where: { id: clientId },
     select: { offersWindshieldRepair: true, offersRockChipRepair: true },
   })
-  return reasonsFor(client || { offersWindshieldRepair: true, offersRockChipRepair: true }).map((r) => ({ key: r.key, label: r.label }))
+  return reasonsFor(client || { offersWindshieldRepair: true, offersRockChipRepair: true }, audience).map((r) => ({ key: r.key, label: r.label }))
 }
 
 export function validReason(key: unknown): key is string {
@@ -37,7 +37,7 @@ export async function adminView(leadId: string) {
 export async function portalView(leadId: string) {
   const lead = await prisma.lead.findUnique({ where: { id: leadId }, select: { id: true, clientId: true } })
   if (!lead) return null
-  const [reasons, mark] = await Promise.all([reasonsForLead(lead.clientId), prisma.badLeadMark.findUnique({ where: { leadId } })])
+  const [reasons, mark] = await Promise.all([reasonsForLead(lead.clientId, 'client'), prisma.badLeadMark.findUnique({ where: { leadId } })])
   const stopped = mark
     ? await prisma.negativeKeywordChange.findMany({
         where: { badLeadMarkId: mark.id, status: { in: ['applied', 'unconfirmed'] }, removedAt: null },

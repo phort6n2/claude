@@ -96,11 +96,32 @@ export interface ShopFacts {
   offersMobileService: boolean
 }
 
+/**
+ * NOT FOR "THEY DIDN'T BOOK". A shop's version of the button is only for a
+ * caller who wanted something OTHER than auto glass. A price shopper, a
+ * no-show, somebody who went with another shop — every one of them wanted
+ * auto glass, came from exactly the search the ads should buy, and a
+ * negative built from their search stops the ads reaching the next customer
+ * like them. So the shop is not offered "Outside service area" (an auto glass
+ * customer in the wrong place is a targeting question, for the owner), its
+ * "Other" says "not auto glass", and the panel says all of this in words.
+ */
+export const CLIENT_HIDDEN_REASONS = new Set(['out-of-area'])
+
+const CLIENT_LABELS: Record<string, string> = {
+  other: 'Something else (not auto glass)',
+}
+
 /** The reasons offered for this shop. "Chip repair" only when it really is the wrong service here. */
-export function reasonsFor(shop: Pick<ShopFacts, 'offersWindshieldRepair' | 'offersRockChipRepair'>): BadLeadReason[] {
+export function reasonsFor(
+  shop: Pick<ShopFacts, 'offersWindshieldRepair' | 'offersRockChipRepair'>,
+  audience: 'admin' | 'client' = 'admin'
+): BadLeadReason[] {
   // Chip repair and windshield repair are the same resin job (story-sections.ts).
   const doesChips = shop.offersRockChipRepair || shop.offersWindshieldRepair
   return BAD_LEAD_REASONS.filter((r) => r.key !== 'chip' || !doesChips)
+    .filter((r) => audience === 'admin' || !CLIENT_HIDDEN_REASONS.has(r.key))
+    .map((r) => (audience === 'client' && CLIENT_LABELS[r.key] ? { ...r, label: CLIENT_LABELS[r.key] } : r))
 }
 
 /* ------------------------------------------------------------- confidence */

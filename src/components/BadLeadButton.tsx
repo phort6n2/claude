@@ -98,13 +98,20 @@ interface PortalData {
   mark: null | { reason: string; notes: string | null; status: string; undone: boolean; createdAt: string; stopped: string[] }
 }
 
+/**
+ * What the SHOP calls it. "Bad lead" reads to a shop owner as "a lead that
+ * did not turn into a job", and that is the one thing the button must not be
+ * pressed for — so on the portal it says what it is for.
+ */
+export const CLIENT_LABEL = 'Not auto glass'
+
 /** The marker on a collapsed lead row. Nothing at all for an unmarked lead. */
-export function BadLeadTag({ mark }: { mark?: BadLeadSummary | null }) {
+export function BadLeadTag({ mark, client }: { mark?: BadLeadSummary | null; client?: boolean }) {
   if (!mark || mark.undoneAt) return null
   return (
     <span className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700" title={reasonLabel(mark.reason)}>
       <Ban className="h-3 w-3" aria-hidden />
-      Bad lead
+      {client ? CLIENT_LABEL : 'Bad lead'}
     </span>
   )
 }
@@ -148,10 +155,20 @@ export default function BadLeadButton({
             ? `inline-flex items-center gap-1 rounded-full bg-red-50 font-semibold text-red-700 ring-1 ring-red-200 hover:bg-red-100 ${compact ? 'h-7 px-2 text-[11px]' : 'h-9 px-3 text-xs'}`
             : `inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white font-medium text-gray-700 hover:bg-gray-50 ${compact ? 'h-7 px-2 text-[11px]' : 'h-9 px-3 text-sm'}`
         }
-        title={marked ? reasonLabel(summary!.reason) : 'Mark this lead as junk'}
+        title={
+          marked
+            ? reasonLabel(summary!.reason)
+            : api === 'portal'
+              ? 'Only for a caller who wanted something other than auto glass'
+              : 'Mark this lead as junk'
+        }
       >
         <Ban className={compact ? 'h-3 w-3' : 'h-4 w-4'} aria-hidden />
-        {marked ? `Bad lead${compact ? '' : ` · ${reasonLabel(summary!.reason)}`}` : 'Bad lead'}
+        {api === 'portal'
+          ? CLIENT_LABEL
+          : marked
+            ? `Bad lead${compact ? '' : ` · ${reasonLabel(summary!.reason)}`}`
+            : 'Bad lead'}
       </button>
       {/* Into document.body: inside a lead row or the admin shell the
           overlay is trapped under the shell's sticky header and inside any
@@ -187,6 +204,7 @@ function Panel({
   const [error, setError] = useState<string | null>(null)
   const [reason, setReason] = useState('')
   const [notes, setNotes] = useState('')
+  const [notGlass, setNotGlass] = useState(false)
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState(false)
   const polls = useRef(0)
@@ -228,13 +246,14 @@ function Panel({
 
   async function save() {
     if (!reason) return setError('Choose a reason.')
-    if (reason === 'other' && !notes.trim()) return setError('Say what was wrong with it.')
+    if (api === 'portal' && !notGlass) return setError('Tick the box to confirm they wanted something other than auto glass.')
+    if (reason === 'other' && !notes.trim()) return setError(api === 'portal' ? 'Tell us what they wanted instead.' : 'Say what was wrong with it.')
     setBusy(true)
     setError(null)
     const res = await fetch(endpoint(api, leadId), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reason, notes }),
+      body: JSON.stringify({ reason, notes, notAutoGlass: api === 'portal' ? notGlass : undefined }),
     })
     const json = await res.json().catch(() => ({}))
     setBusy(false)
@@ -271,7 +290,13 @@ function Panel({
       <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white p-5 text-left shadow-xl sm:rounded-2xl">
         <div className="flex items-start justify-between gap-3">
           <h2 id="bad-lead-title" className="text-base font-semibold text-gray-900">
-            {active && !editing ? `Bad lead · ${reasonLabel(mark!.reason)}` : 'Mark as a bad lead'}
+            {api === 'portal'
+              ? active && !editing
+                ? `${CLIENT_LABEL} · ${reasonLabel(mark!.reason)}`
+                : 'Did they want something other than auto glass?'
+              : active && !editing
+                ? `Bad lead · ${reasonLabel(mark!.reason)}`
+                : 'Mark as a bad lead'}
           </h2>
           <button type="button" onClick={onClose} className="-m-2 p-2 text-gray-400 hover:text-gray-600" aria-label="Close">
             <X className="h-5 w-5" />
@@ -286,11 +311,22 @@ function Panel({
 
         {data && showForm && (
           <div className="mt-4 space-y-3">
-            <p className="text-sm text-gray-600">
-              {api === 'portal'
-                ? 'Tell us why this one was junk. We trace it back to the Google search that sent it and stop paying for searches like it.'
-                : 'Why was it junk? It is traced to the search that bought it, and the negatives that pass every check are added.'}
-            </p>
+            {api === 'portal' ? (
+              <div className="space-y-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-950 ring-1 ring-amber-200">
+                <p>
+                  <strong>Only use this when the caller wanted something other than auto glass</strong> — a mechanic, AAA or
+                  their insurance company, a body shop, tint. We trace it to the Google search that sent them and stop paying
+                  for searches like it.
+                </p>
+                <p>
+                  <strong>Not because they didn’t book.</strong> A price shopper, a no-show or someone who went with another
+                  shop still wanted auto glass. They came from the right search — marking them would stop your ads reaching
+                  the next customer like them.
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-600">Why was it junk? It is traced to the search that bought it, and the negatives that pass every check are added.</p>
+            )}
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {data.reasons.map((r) => (
                 <label
@@ -305,10 +341,26 @@ function Panel({
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder={reason === 'other' ? 'What was wrong with it? (required)' : 'Anything else? (optional)'}
+              placeholder={
+                reason === 'other'
+                  ? api === 'portal'
+                    ? 'What did they want instead? (required)'
+                    : 'What was wrong with it? (required)'
+                  : api === 'portal'
+                    ? 'What did they ask for? (optional)'
+                    : 'Anything else? (optional)'
+              }
               rows={2}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
             />
+            {api === 'portal' && (
+              <label className="flex min-h-11 cursor-pointer items-start gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900">
+                <input type="checkbox" checked={notGlass} onChange={(e) => setNotGlass(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0" />
+                <span>
+                  This person wanted something <strong>other than auto glass</strong> — it is not just a lead that didn’t book.
+                </span>
+              </label>
+            )}
             <div className="flex justify-end gap-2">
               {editing && (
                 <button type="button" onClick={() => setEditing(false)} className="h-11 rounded-lg px-4 text-sm font-medium text-gray-700 hover:bg-gray-100">
@@ -321,7 +373,7 @@ function Panel({
                 disabled={busy}
                 className="h-11 rounded-lg bg-red-600 px-4 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
               >
-                {busy ? 'Saving…' : 'Mark as bad lead'}
+                {busy ? 'Saving…' : api === 'portal' ? 'Mark as not auto glass' : 'Mark as bad lead'}
               </button>
             </div>
           </div>
@@ -336,11 +388,11 @@ function Panel({
             )}
             {'stopped' in mark! ? <PortalResult mark={mark as PortalData['mark'] & object} /> : <AdminResult data={data as AdminData} reload={load} setError={setError} />}
             <div className="flex flex-wrap justify-end gap-2 border-t border-gray-100 pt-3">
-              <button type="button" onClick={() => { setReason(mark!.reason); setNotes(mark!.notes || ''); setEditing(true) }} className="h-10 rounded-lg px-3 text-sm font-medium text-gray-700 hover:bg-gray-100">
+              <button type="button" onClick={() => { setReason(mark!.reason); setNotes(mark!.notes || ''); setNotGlass(false); setEditing(true) }} className="h-10 rounded-lg px-3 text-sm font-medium text-gray-700 hover:bg-gray-100">
                 Change reason
               </button>
               <button type="button" onClick={undo} disabled={busy} className="inline-flex h-10 items-center gap-1 rounded-lg border border-gray-300 px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60">
-                <RotateCcw className="h-4 w-4" aria-hidden /> Not a bad lead (undo)
+                <RotateCcw className="h-4 w-4" aria-hidden /> {api === 'portal' ? 'Undo — it was an auto glass customer' : 'Not a bad lead (undo)'}
               </button>
             </div>
           </div>

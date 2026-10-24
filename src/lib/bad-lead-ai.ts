@@ -79,7 +79,8 @@ RULES
 5. match_type is "PHRASE" or "EXACT". Use EXACT when only that exact search is junk. Never BROAD.
 6. If there is a BEST MATCH and it fits the reason, it must be one of your negatives.
 7. If the trace is not exact (hour match or same day), only negate searches that clearly fit "${reasonLabel(input.reason)}" — you do not know which one was this lead, so leave anything that could be a real customer.
-8. At most 5. It is fine to return none — say why.
+8. If the shop’s note or the customer’s own words show they DID want auto glass — they asked for a price, did not book, went with someone else, or simply never answered — return NO negatives and say so. That is a real customer from a search the ads should keep buying; blocking it costs the next job.
+9. At most 5. It is fine to return none — say why.
 
 Return ONLY JSON, no other text:
 {"negatives":[{"text":"…","match_type":"PHRASE","from_term":"the search it came from","why":"one short sentence"}],"none_reason":null}`

@@ -921,7 +921,7 @@ function LeadRow({
               )}
               <ChannelBadge lead={lead} />
               <TrafficSourceBadge source={lead.trafficSource} medium={lead.trafficMedium} />
-              <BadLeadTag mark={lead.badLeadMark} />
+              <BadLeadTag mark={lead.badLeadMark} client />
             </div>
             <div className="flex items-center gap-x-2 gap-y-0.5 text-sm text-gray-600 flex-wrap">
               {lead.phone && !displayNameIsPhone(lead) && (

@@ -1678,6 +1678,16 @@ lead screen (admin list + detail, Master Leads, the portal), and
   leads page), ≤5 per lead, ≤15 per account per 24h, campaign level only,
   and `BAD_LEAD_AUTO_NEGATIVES` not `false` — the kill switch. Without the
   model the fallback is the best match only, EXACT.
+- **ON THE PORTAL IT IS "NOT AUTO GLASS", NOT "BAD LEAD"**, at the owner's
+  call. A shop owner reads "bad lead" as "did not book", and that is the one
+  press that does damage: a price shopper or a no-show came from exactly the
+  search the ads should buy, and a negative built from it stops the next
+  customer. So the shop's panel says what it is for and what it is not, the
+  shop is not offered "Outside service area" (an auto glass customer in the
+  wrong place is a targeting question), its "Other" reads "Something else
+  (not auto glass)", a tick confirming it is REQUIRED — by the page and again
+  by the route — and the model is told that a note showing the caller wanted
+  auto glass means no negatives at all.
 - **The shop can mark, never write.** The portal shows its mark and which
   searches were stopped, and its API carries no trace, no decision and no
   campaign. Undoing a mark removes the negatives the PIPELINE added for it;

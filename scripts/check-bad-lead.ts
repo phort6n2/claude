@@ -246,6 +246,10 @@ async function main() {
     check(kinds('ags', 'EXACT', ags).includes('brand'), '"ags" for AGS → review (three letters: the brand floor is 3, not 4)')
     check(kinds('icbc glass claim', 'PHRASE', ags).includes('insurer'), 'ICBC for a BC shop is every customer’s insurer → review')
     check(reasonsFor(AGS).some((r) => r.key === 'chip') && !reasonsFor(COLLISION).some((r) => r.key === 'chip'), '"Chip repair" is a reason only for a shop that does not do chips')
+    // A shop marks only callers who wanted something OTHER than auto glass.
+    const shopSees = reasonsFor(COLLISION, 'client')
+    check(!shopSees.some((r) => r.key === 'out-of-area') && reasonsFor(COLLISION).some((r) => r.key === 'out-of-area'), 'a shop is not offered "Outside service area" — an auto glass customer in the wrong place is a targeting question; the owner still has it')
+    check(shopSees.find((r) => r.key === 'other')?.label === 'Something else (not auto glass)', 'a shop’s "Other" says "not auto glass"')
   }
   {
     const withKw = { ...col, searchTerms: ['back glass replacement cost'], positives: [{ text: 'back glass replacement', matchType: 'PHRASE', adGroupName: 'Back Glass' }] }
