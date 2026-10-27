@@ -96,6 +96,13 @@ const READS: Tool[] = [
     what: "Compares the reviewed AGS patch (src/lib/content-patches/ags-2026-10.ts) with AGS's live content and lists every change it would make: chip repair off, the four imported sections replaced by one, the FAQ, hero bullets and line, name, email, photo captions and the /rock-chip-repair redirect. Any line marked conflict means the live content changed since the patch was written, and nothing will be applied.",
   },
   {
+    key: 'content-patch-ags-cities-dry',
+    name: 'AGS city pages: what would change? (reads only)',
+    path: '/api/admin/content-patch?id=ags-2026-10-cities&dryRun=1',
+    method: 'POST',
+    what: "Compares the reviewed AGS city-page patch (src/lib/content-patches/ags-2026-10-cities.ts) with the live Coquitlam, Port Coquitlam and Port Moody copy and lists the rock-chip sentences it would replace. Any line marked conflict means the copy changed since the patch was written, and nothing will be applied.",
+  },
+  {
     key: 'reencrypt-secrets-dry',
     name: 'Which stored keys are not encrypted? (reads only)',
     path: '/api/admin/reencrypt-secrets?dryRun=1',
@@ -112,6 +119,14 @@ const WRITES: Tool[] = [
     method: 'POST',
     what: "Applies the reviewed AGS patch in one transaction, then pushes AGS to its directory listing (the business name changes). Run the dry version first and read it.",
     cost: 'AGS only. Refuses to write anything if any part no longer matches what is live. Safe to press twice — a second press finds everything already done. The removed sections, FAQ entries and photo are recorded in the patch file, so they can be put back.',
+  },
+  {
+    key: 'content-patch-ags-cities',
+    name: 'Apply the AGS city-page fix',
+    path: '/api/admin/content-patch?id=ags-2026-10-cities',
+    method: 'POST',
+    what: "Replaces the rock-chip sentence in each of AGS's three city pages with one about cracks spreading. The headlines and meta descriptions follow the service flags already. Run the dry version first and read it.",
+    cost: 'AGS only, three city paragraphs. Refuses to write anything if any part no longer matches what is live. Safe to press twice. The original sentences are recorded in the patch file.',
   },
   {
     key: 'reencrypt-secrets',

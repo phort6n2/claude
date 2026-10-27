@@ -853,6 +853,15 @@ the directory afterwards, as `PUT /api/clients/[id]` would.
   (`privateMarketOnly` in `site-services.ts`): AGS's page told a British
   Columbian to check "your state" one section above the ICBC band. US shops
   render byte-for-byte as before (`scripts/check-content-patch.ts`).
+- **A city page's H1, lead-in and meta description follow the service flags**
+  (`city-page-copy.ts`, `scripts/check-city-page-copy.ts`). They said
+  "windshield repair and replacement" for every shop, so AGS's three ad
+  landing pages headlined the one service it does not do. "Repair" now needs
+  windshield or rock chip repair ticked; a repair shop's H1 is unchanged. The
+  description adds the network (the badge's gate) and the LIVE rating — never
+  a warranty name (its terms cannot fit) or "in minutes". `ags-2026-10-cities`
+  replaces the rock-chip sentence in each city's own copy; reviews are the
+  customer's words and are never edited.
 - `SiteExtras.serviceHeroLines`: a shop's own line under a service H1 — on a
   phone the whole first screen is H1, that line, then the form. Empty for
   everyone else (bootstrap: `SERVICE_HERO_SQL`).

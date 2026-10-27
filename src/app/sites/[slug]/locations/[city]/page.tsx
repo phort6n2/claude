@@ -48,6 +48,7 @@ import { getAdsTracking } from '@/lib/ads-tracking'
 import { GoogleTag } from '@/components/sites/GoogleTag'
 import { CustomScripts } from '@/components/sites/CustomScripts'
 import { locationJsonLd } from '@/lib/site-schema'
+import { cityHeadline, cityMetaDescription, windshieldWork } from '@/lib/city-page-copy'
 
 /**
  * Per-city location page — the full homepage shell with a city-specific hero.
@@ -162,7 +163,23 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     cityIsIndexable(location.area, cityContent, locations.map((l) => l.city))
   const robots = indexable ? undefined : { index: false, follow: true }
   const title = `Auto Glass in ${location.area}, ${client.state} | ${client.businessName}`
-  const description = `Windshield repair and replacement in ${location.area}, ${client.state}${client.offersMobileService ? ' — mobile service to your home or office' : ''}. Free quotes from ${client.businessName}. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
+  // The same network gate as the badge, and the rating from the live feed —
+  // see city-page-copy.ts for what is deliberately left out.
+  const [reviews, insuranceProgram] = await Promise.all([getReviews(client.id), getInsuranceProgram(client.id)])
+  const network = networkHighlight(insuranceProgram.program, insuranceProgram.record, {
+    businessName: client.businessName,
+    filesClaims: client.filesInsuranceClaims,
+  })
+  const description = cityMetaDescription({
+    work: windshieldWork(client),
+    area: location.area,
+    state: client.state,
+    mobile: client.offersMobileService,
+    networkLabel: network?.label ?? null,
+    rating: reviews,
+    businessName: client.businessName,
+    phone: formatPhoneDisplay(sitePhone) || sitePhone,
+  })
   return {
     title,
     description,
@@ -265,8 +282,9 @@ export default async function LocationPage({ params, atOverride }: PageProps) {
   // contradicts the rest of the page and sends them to the wrong door. When no
   // shop sits in the city, the map section shows the real addresses instead.
   const shopClause = shopInCity ? `, or visit our ${shopInCity.label} shop at ${shopInCity.streetAddress}` : ''
+  const work = windshieldWork(client)
   const heroSub = client.offersMobileService
-    ? `Our mobile unit covers ${location.area} — windshield repair and replacement at your home, office, or roadside${shopClause}. Free quotes and help with your insurance claim.`
+    ? `Our mobile unit covers ${location.area} — windshield ${work} at your home, office, or roadside${shopClause}. Free quotes and help with your insurance claim.`
     : shopInCity
       ? `${client.businessName} is in ${location.area} at ${shopInCity.streetAddress}. Free quotes and help with your insurance claim.`
       : `${client.businessName} serves ${location.area} and the surrounding area. Free quotes and help with your insurance claim.`
@@ -376,7 +394,7 @@ export default async function LocationPage({ params, atOverride }: PageProps) {
                   reads as an unknown surcharge — and this is the headline on
                   the page bought with "windshield ___ in {city}" money.
                   Calibration still earns its place twice below the fold. */}
-              {`Windshield repair and replacement in ${location.area}`}
+              {cityHeadline(work, location.area)}
             </h1>
             <p className="mt-4 text-[17px] leading-[1.55] text-[var(--tx2)] max-w-[48ch]">{heroSub}</p>
           </div>

@@ -135,7 +135,7 @@ export const AGS_2026_10: ContentPatch = {
 
   // Three city pages listed chip repair among the services. The road-damage
   // lines ("grit … is what starts most rock chips") describe the road, not a
-  // service, and stay.
+  // service, and stayed — until the owner asked otherwise: ags-2026-10-cities.
   cityText: [
     {
       city: 'Coquitlam',
