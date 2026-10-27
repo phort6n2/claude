@@ -96,11 +96,11 @@ const READS: Tool[] = [
     what: "Compares the reviewed AGS patch (src/lib/content-patches/ags-2026-10.ts) with AGS's live content and lists every change it would make: chip repair off, the four imported sections replaced by one, the FAQ, hero bullets and line, name, email, photo captions and the /rock-chip-repair redirect. Any line marked conflict means the live content changed since the patch was written, and nothing will be applied.",
   },
   {
-    key: 'content-patch-ags-cities-dry',
-    name: 'AGS city pages: what would change? (reads only)',
-    path: '/api/admin/content-patch?id=ags-2026-10-cities&dryRun=1',
+    key: 'content-patch-ags-replacement-dry',
+    name: 'AGS replacement only: what would change? (reads only)',
+    path: '/api/admin/content-patch?id=ags-2026-10-replacement-only&dryRun=1',
     method: 'POST',
-    what: "Compares the reviewed AGS city-page patch (src/lib/content-patches/ags-2026-10-cities.ts) with the live Coquitlam, Port Coquitlam and Port Moody copy and lists the rock-chip sentences it would replace. Any line marked conflict means the copy changed since the patch was written, and nothing will be applied.",
+    what: "Compares the reviewed AGS patch (src/lib/content-patches/ags-2026-10-replacement-only.ts) with what is live and lists every change: Windshield Repair unticked with its page kept as a crack-and-replacement page, that page's description, line under the H1 and two sections, the repair FAQ answer, and the rock-chip sentence on the three city pages. Any line marked conflict means the live content changed since the patch was written, and nothing will be applied.",
   },
   {
     key: 'reencrypt-secrets-dry',
@@ -121,12 +121,12 @@ const WRITES: Tool[] = [
     cost: 'AGS only. Refuses to write anything if any part no longer matches what is live. Safe to press twice — a second press finds everything already done. The removed sections, FAQ entries and photo are recorded in the patch file, so they can be put back.',
   },
   {
-    key: 'content-patch-ags-cities',
-    name: 'Apply the AGS city-page fix',
-    path: '/api/admin/content-patch?id=ags-2026-10-cities',
+    key: 'content-patch-ags-replacement',
+    name: 'Apply the AGS replacement-only fix',
+    path: '/api/admin/content-patch?id=ags-2026-10-replacement-only',
     method: 'POST',
-    what: "Replaces the rock-chip sentence in each of AGS's three city pages with one about cracks spreading. The headlines and meta descriptions follow the service flags already. Run the dry version first and read it.",
-    cost: 'AGS only, three city paragraphs. Refuses to write anything if any part no longer matches what is live. Safe to press twice. The original sentences are recorded in the patch file.',
+    what: "Unticks Windshield Repair for AGS and keeps /windshield-repair as a crack-and-replacement page, with its own description, hero line and sections; answers the repair FAQ as a replacement shop; and replaces the rock-chip sentence on the three city pages. Then pushes AGS to its directory listing (repair comes off it). Run the dry version first and read it.",
+    cost: 'AGS only. Refuses to write anything if any part no longer matches what is live. Safe to press twice. Every original sentence is recorded in the patch file.',
   },
   {
     key: 'reencrypt-secrets',

@@ -52,6 +52,22 @@ export interface SiteExtras {
    * operator from the shop's own claims, never drafted.
    */
   serviceHeroLines: Record<string, string>
+  /**
+   * A shop's own meta description and sections for a service page, by slug.
+   * Each REPLACES the template's whole — a description is one sentence and a
+   * section list is one argument, and splicing a shop's half into the
+   * template's half is how a page ends up saying both "repair it" and "we
+   * only replace". Written for AGS's windshield-repair page, which exists for
+   * the search term while the shop replaces only. Empty for everyone else.
+   * Typed by an operator from the shop's own claims (a content patch), never
+   * drafted.
+   */
+  servicePageCopy: Record<string, ServicePageCopy>
+}
+
+export interface ServicePageCopy {
+  metaDescription?: string
+  sections?: Array<{ heading: string; body: string }>
 }
 
 const EMPTY_EXTRAS: SiteExtras = {
@@ -66,6 +82,7 @@ const EMPTY_EXTRAS: SiteExtras = {
   galleryPhotos: [],
   bodyPhotos: [],
   serviceHeroLines: {},
+  servicePageCopy: {},
 }
 
 /** `{ slug: line }`, keeping only non-empty strings of a sane length. */
@@ -74,6 +91,30 @@ export function asServiceHeroLines(value: unknown): Record<string, string> {
   const out: Record<string, string> = {}
   for (const [slug, line] of Object.entries(value as Record<string, unknown>)) {
     if (typeof line === 'string' && line.trim() && line.length <= 300) out[slug] = line.trim()
+  }
+  return out
+}
+
+export function asServicePageCopy(value: unknown): Record<string, ServicePageCopy> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const out: Record<string, ServicePageCopy> = {}
+  for (const [slug, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (!raw || typeof raw !== 'object') continue
+    const r = raw as { metaDescription?: unknown; sections?: unknown }
+    const copy: ServicePageCopy = {}
+    if (typeof r.metaDescription === 'string' && r.metaDescription.trim() && r.metaDescription.length <= 320) {
+      copy.metaDescription = r.metaDescription.trim()
+    }
+    if (Array.isArray(r.sections)) {
+      const sections = r.sections
+        .filter(
+          (x): x is { heading: string; body: string } =>
+            !!x && typeof x.heading === 'string' && typeof x.body === 'string' && !!x.heading.trim() && !!x.body.trim()
+        )
+        .map((x) => ({ heading: x.heading.trim(), body: x.body.trim() }))
+      if (sections.length) copy.sections = sections
+    }
+    if (copy.metaDescription || copy.sections) out[slug] = copy
   }
   return out
 }
@@ -129,7 +170,7 @@ export async function getSiteExtras(clientId: string): Promise<SiteExtras> {
     // The main query names its columns so a DB that predates a newer column
     // never fails it; each newer column is fetched in its own guarded query
     // and simply strips when the ALTER hasn't run yet.
-    const [content, photos, chapterRow, heroRow] = await Promise.all([
+    const [content, photos, chapterRow, heroRow, pageCopyRow] = await Promise.all([
       prisma.clientSiteContent.findUnique({
         where: { clientId },
         select: {
@@ -152,6 +193,11 @@ export async function getSiteExtras(clientId: string): Promise<SiteExtras> {
       prisma.clientSiteContent
         .findUnique({ where: { clientId }, select: { serviceHeroLines: true } })
         .catch(() => null),
+      // Its own guarded query, like the two above: a database that predates
+      // the column costs this copy, not the whole page's content.
+      prisma.clientSiteContent
+        .findUnique({ where: { clientId }, select: { servicePageCopy: true } })
+        .catch(() => null),
     ])
 
     return {
@@ -170,6 +216,7 @@ export async function getSiteExtras(clientId: string): Promise<SiteExtras> {
         .filter((p) => p.pool === 'BODY')
         .map((p) => ({ url: p.url, alt: p.alt })),
       serviceHeroLines: asServiceHeroLines(heroRow?.serviceHeroLines),
+      servicePageCopy: asServicePageCopy(pageCopyRow?.servicePageCopy),
     }
   } catch {
     return EMPTY_EXTRAS

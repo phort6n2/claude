@@ -859,9 +859,24 @@ the directory afterwards, as `PUT /api/clients/[id]` would.
   landing pages headlined the one service it does not do. "Repair" now needs
   windshield or rock chip repair ticked; a repair shop's H1 is unchanged. The
   description adds the network (the badge's gate) and the LIVE rating — never
-  a warranty name (its terms cannot fit) or "in minutes". `ags-2026-10-cities`
-  replaces the rock-chip sentence in each city's own copy; reviews are the
+  a warranty name (its terms cannot fit) or "in minutes". Reviews are the
   customer's words and are never edited.
+- **A WINDSHIELD REPAIR PAGE FOR A SHOP THAT DOES NOT REPAIR**
+  (`Client.repairSearchPage`, `REPAIR_SEARCH_PAGE`/`servicePageFor` in
+  `site-services.ts`, bootstrap: `REPAIR_SEARCH_PAGE_SQL`, the tick under the
+  services on the Business tab, `scripts/check-repair-search-page.ts`). People
+  search "windshield repair" with a crack, and AGS's ads buy that search, so
+  somebody re-ticked Windshield Repair to bring `/windshield-repair` back. That
+  box is read EVERYWHERE as "does resin repair": the page's sections ("injecting
+  resin"), the services lead ("a chip caught early…"), the insurance band, the
+  default FAQ, the city H1s, the home title and the directory listing. So
+  `offersWindshieldRepair` stays the FACT, and the new tick keeps only the PAGE:
+  same address, nav name and sitemap entry, crack-and-replacement copy, the
+  form preselecting Windshield Replacement, and `claimsRepair()` false.
+  `SiteExtras.servicePageCopy` (bootstrap: same array) is a shop's own
+  description and sections for a service page, each replacing the template's
+  whole. `ags-2026-10-replacement-only` sets all of it for AGS and carries the
+  city-page sentences (it replaced `ags-2026-10-cities`, never applied).
 - `SiteExtras.serviceHeroLines`: a shop's own line under a service H1 — on a
   phone the whole first screen is H1, that line, then the form. Empty for
   everyone else (bootstrap: `SERVICE_HERO_SQL`).

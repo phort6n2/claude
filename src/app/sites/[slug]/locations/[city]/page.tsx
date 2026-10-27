@@ -8,7 +8,7 @@ import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
 import { SiteAnalytics } from '@/components/sites/analytics'
 import { withSitePhone } from '@/lib/site-phone'
-import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
+import { servicesForClient, type PageFlags } from '@/lib/site-services'
 import { findLocation, mergeServiceAreas } from '@/lib/site-locations'
 import { keptPagesFor } from '@/lib/site-pages'
 import {
@@ -104,6 +104,7 @@ async function getClient(slug: string) {
       hasShopLocation: true,
       offersMobileService: true,
       offersWindshieldRepair: true,
+      repairSearchPage: true,
       offersWindshieldReplacement: true,
       offersSideWindowRepair: true,
       offersBackWindowRepair: true,
@@ -235,7 +236,7 @@ export default async function LocationPage({ params, atOverride }: PageProps) {
     permanentRedirect(`${sitePathPrefixFor(client, (await headers()).get('host'))}${moved}`)
   }
 
-  const services = servicesForClient(client as Record<ServiceFlag, boolean>)
+  const services = servicesForClient(client as PageFlags)
   const basePath = sitePathPrefixFor(client, (await headers()).get('host'))
   const palette = sitePaletteVars(client.primaryColor, client.accentColor)
   const flags = {

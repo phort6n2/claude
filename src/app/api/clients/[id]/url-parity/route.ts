@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
 import { checkUrlParity } from '@/lib/url-parity'
-import type { ServiceFlag } from '@/lib/site-services'
+import type { PageFlags } from '@/lib/site-services'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -28,6 +28,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         websiteUrl: true,
         serviceAreas: true,
         offersWindshieldRepair: true,
+        repairSearchPage: true,
         offersWindshieldReplacement: true,
         offersSideWindowRepair: true,
         offersBackWindowRepair: true,
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const report = await checkUrlParity(target, {
     serviceAreas: client.serviceAreas || [],
     shopCities: client.locations.map((l) => l.city),
-    flags: client as unknown as Record<ServiceFlag, boolean>,
+    flags: client as unknown as PageFlags,
   })
 
   return NextResponse.json({ ...report, checked: target })

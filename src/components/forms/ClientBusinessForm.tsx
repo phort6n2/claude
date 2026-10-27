@@ -45,6 +45,8 @@ interface ClientData {
   offersSunroofRepair: boolean
   offersRockChipRepair: boolean
   offersAdasCalibration: boolean
+  /** Keep the Windshield Repair page for a shop that does not repair — see REPAIR_SEARCH_PAGE. */
+  repairSearchPage?: boolean
   serviceAreas: string[]
   logoUrl: string | null
   primaryColor: string | null
@@ -420,6 +422,30 @@ export default function ClientBusinessForm({ client }: { client: ClientData }) {
                   <span className="text-sm">Mobile Service</span>
                 </label>
               </div>
+              {/* Only when repair is OFF: with it on, the page is the ordinary
+                  repair page and this tick would mean nothing. A shop that
+                  replaces only can still want the address, because people
+                  search "windshield repair" with a crack — and ticking
+                  Windshield Repair to get it says, everywhere that box is
+                  read, that they do resin repair. */}
+              {!formData.offersWindshieldRepair && formData.offersWindshieldReplacement && (
+                <label className="mt-3 flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={!!formData.repairSearchPage}
+                    onChange={(e) => updateField('repairSearchPage', e.target.checked)}
+                    className="rounded mt-0.5"
+                  />
+                  <span className="text-sm">
+                    Keep a Windshield Repair page — we replace only
+                    <span className="block text-xs text-gray-500">
+                      For people who search &ldquo;windshield repair&rdquo; with a crack. The page stays at
+                      /windshield-repair and in the menu, and talks about cracks and replacement. Nothing on
+                      the site says you repair.
+                    </span>
+                  </span>
+                </label>
+              )}
             </div>
 
             {/* Claims, not services. The site used to assert both of these

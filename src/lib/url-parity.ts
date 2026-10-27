@@ -1,6 +1,6 @@
 import { validatePublicUrl } from '@/lib/site-import'
 import { servicePath, locationPath, readPathOverrides } from '@/lib/site-paths'
-import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
+import { servicesForClient, type PageFlags } from '@/lib/site-services'
 import { locationPages, mergeServiceAreas } from '@/lib/site-locations'
 
 /**
@@ -230,7 +230,7 @@ async function collectOldUrls(
 export interface ParityClient {
   serviceAreas: string[]
   shopCities: string[]
-  flags: Record<ServiceFlag, boolean>
+  flags: PageFlags
   /** Pages already moved onto one of the old site's addresses. */
   pathOverrides?: unknown
   /**

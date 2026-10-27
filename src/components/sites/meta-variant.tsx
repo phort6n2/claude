@@ -81,6 +81,8 @@ export function withoutExcluded<T extends Record<string, unknown>>(client: T, ex
   if (!excluded.length) return client
   const off: Record<string, boolean> = {}
   for (const page of GLASS_SERVICE_PAGES) if (excluded.includes(page.name)) off[page.flag] = false
+  // The search-only repair page wears the same name, so excluding it excludes both.
+  if (off.offersWindshieldRepair === false) off.repairSearchPage = false
   return { ...client, ...off }
 }
 

@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { asServiceHeroLines, type HeroBullet, type SiteChapter } from '@/lib/site-content'
+import { asServiceHeroLines, asServicePageCopy, type HeroBullet, type ServicePageCopy, type SiteChapter } from '@/lib/site-content'
 import { syncClientPhotosToWrhq } from '@/lib/wrhq-sync'
 
 /**
@@ -36,7 +36,7 @@ export interface ContentPatch {
   client: string
   /** Fields on Client. `from` must equal the live value (or `to` already). */
   clientFields?: Array<{
-    field: 'businessName' | 'email' | 'country' | 'offersRockChipRepair' | 'offersWindshieldRepair' | 'marketArea'
+    field: 'businessName' | 'email' | 'country' | 'offersRockChipRepair' | 'offersWindshieldRepair' | 'repairSearchPage' | 'marketArea'
     from: string | boolean | null
     to: string | boolean | null
   }>
@@ -45,11 +45,18 @@ export interface ContentPatch {
   /** Story sections, matched on their heading. */
   chapters?: { remove?: string[]; add?: SiteChapter[] }
   /** FAQ entries, matched on their question. */
-  faq?: { remove?: string[]; replaceInAnswer?: Array<{ q: string; from: string; to: string }> }
+  faq?: {
+    remove?: string[]
+    replaceInAnswer?: Array<{ q: string; from: string; to: string }>
+    /** A question of the shop's own, added at the END. One already there with other words is a conflict. */
+    add?: FaqRow[]
+  }
   /** The whole bullet list, guarded by the leads it expects to replace. */
   heroBullets?: { fromLeads: string[]; to: HeroBullet[] }
   /** Per-service line under the H1, by service slug. */
   serviceHeroLines?: Record<string, string>
+  /** A shop's own description and sections for a service page, by slug — see SiteExtras.servicePageCopy. */
+  servicePageCopy?: Record<string, ServicePageCopy>
   photos?: { removeByAlt?: string[]; renameAlt?: Array<{ from: string; to: string }> }
   redirects?: Array<{ from: string; to: string }>
   /** Substring replacements in a city page's own copy (ClientCityContent.body). */
@@ -105,6 +112,7 @@ async function plan(patch: ContentPatch) {
       country: true,
       offersRockChipRepair: true,
       offersWindshieldRepair: true,
+      repairSearchPage: true,
       marketArea: true,
     },
   })
@@ -193,6 +201,15 @@ async function plan(patch: ContentPatch) {
       } else if (item.a.includes(r.to)) ops.push({ op, status: 'already' })
       else ops.push({ op, status: 'conflict', live: short(item.a), why: 'text to replace not found' })
     }
+    for (const add of patch.faq.add || []) {
+      const op = `Add FAQ "${short(add.q, 60)}"`
+      const item = faq.find((f) => norm(f.q || '') === norm(add.q))
+      if (!item) {
+        faq.push({ q: add.q, a: add.a })
+        ops.push({ op, status: 'apply', becomes: short(add.a) })
+      } else if (item.a === add.a) ops.push({ op, status: 'already' })
+      else ops.push({ op, status: 'conflict', live: short(item.a), why: 'the shop already answers that question differently' })
+    }
     contentData.faq = faq
   }
 
@@ -220,6 +237,25 @@ async function plan(patch: ContentPatch) {
       }
     }
     contentData.serviceHeroLines = next
+  }
+
+  if (patch.servicePageCopy) {
+    const live = asServicePageCopy(content?.servicePageCopy)
+    const next = { ...live }
+    for (const [slug, copy] of Object.entries(patch.servicePageCopy)) {
+      const op = `Own copy on /${slug}`
+      if (JSON.stringify(live[slug]) === JSON.stringify(asServicePageCopy({ [slug]: copy })[slug])) ops.push({ op, status: 'already' })
+      else if (live[slug]) ops.push({ op, status: 'conflict', live: short(live[slug]), why: 'different copy is already set' })
+      else {
+        next[slug] = copy
+        ops.push({
+          op,
+          status: 'apply',
+          becomes: short([copy.metaDescription, ...(copy.sections || []).map((x) => x.heading)].filter(Boolean).join(' | ')),
+        })
+      }
+    }
+    contentData.servicePageCopy = next
   }
 
   const photoDeletes: string[] = []

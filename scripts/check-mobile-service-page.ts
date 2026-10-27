@@ -48,9 +48,10 @@ const GLASS: GlassServiceFlag[] = [
 ]
 const glass = (on: boolean, except: Partial<Record<GlassServiceFlag, boolean>> = {}) =>
   Object.fromEntries(GLASS.map((f) => [f, except[f] ?? on])) as Record<GlassServiceFlag, boolean>
-const flags = (mobile: boolean, services = glass(true)): Record<ServiceFlag, boolean> => ({
+const flags = (mobile: boolean, services = glass(true)): Record<ServiceFlag, boolean> & { repairSearchPage: boolean } => ({
   ...services,
   offersMobileService: mobile,
+  repairSearchPage: false,
 })
 
 const page = getServicePage(SLUG)

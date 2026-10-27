@@ -814,8 +814,19 @@ export const SERVICE_HERO_SQL: string[] = [
   `ALTER TABLE "ClientSiteContent" ADD COLUMN IF NOT EXISTS "serviceHeroLines" JSONB`,
 ]
 
+/**
+ * A Windshield Repair page for a shop that does not repair
+ * (Client.repairSearchPage), and a shop's own copy for a service page
+ * (SiteExtras.servicePageCopy). Both off/NULL for every shop but AGS.
+ */
+export const REPAIR_SEARCH_PAGE_SQL: string[] = [
+  `ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "repairSearchPage" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "ClientSiteContent" ADD COLUMN IF NOT EXISTS "servicePageCopy" JSONB`,
+]
+
 export const BOOTSTRAP_SQL: string[] = [
   ...SERVICE_HERO_SQL,
+  ...REPAIR_SEARCH_PAGE_SQL,
   ...PATH_OVERRIDE_SQL,
   ...MARKET_AREA_SQL,
   ...BUSINESS_PROFILE_SQL,

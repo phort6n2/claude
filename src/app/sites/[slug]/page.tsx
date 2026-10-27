@@ -9,7 +9,7 @@ import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
 import { SiteAnalytics } from '@/components/sites/analytics'
 import { withSitePhone } from '@/lib/site-phone'
-import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
+import { servicesForClient, type PageFlags } from '@/lib/site-services'
 import {
   UtilBar,
   SiteHeader,
@@ -152,6 +152,7 @@ async function getClient(slug: string) {
       hasShopLocation: true,
       offersMobileService: true,
       offersWindshieldRepair: true,
+      repairSearchPage: true,
       offersWindshieldReplacement: true,
       offersSideWindowRepair: true,
       offersBackWindowRepair: true,
@@ -252,7 +253,7 @@ export default async function ClientSitePage({ params, searchParams }: PageProps
     keptPagesFor(client.id, client.businessName),
     getInsuranceProgram(client.id),
   ])
-  const services = servicesForClient(client as Record<ServiceFlag, boolean>)
+  const services = servicesForClient(client as PageFlags)
   // Shop cities are part of the coverage list and lead the location pages —
   // a city we have an address in outranks one we only drive to.
   const areas = mergeServiceAreas(client.serviceAreas || [], locations.map((l) => l.city))
@@ -329,7 +330,7 @@ export default async function ClientSitePage({ params, searchParams }: PageProps
         flags={{ ...flags, offersWindshieldRepair: variantClient.offersWindshieldRepair }}
         reviews={reviews}
         extras={extras}
-        services={servicesForClient(variantClient as Record<ServiceFlag, boolean>)}
+        services={servicesForClient(variantClient as PageFlags)}
         areas={areas}
         basePath={basePath}
         adsTracking={adsTracking}

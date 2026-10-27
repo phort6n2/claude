@@ -9,7 +9,7 @@
  */
 import { cityHeadline, cityMetaDescription, windshieldWork } from '../src/lib/city-page-copy'
 import { claimProblem } from '../src/lib/copy-claims'
-import { AGS_2026_10_CITIES } from '../src/lib/content-patches/ags-2026-10-cities'
+import { AGS_2026_10_REPLACEMENT_ONLY as PATCH } from '../src/lib/content-patches/ags-2026-10-replacement-only'
 import { CONTENT_PATCHES } from '../src/lib/content-patches'
 
 let failures = 0
@@ -62,16 +62,17 @@ check(bare === 'Windshield repair and replacement in Dallas, TX. Free quotes fro
 check(!/stars/.test(cityMetaDescription({ work, area: 'A', state: 'BC', mobile: false, networkLabel: null, rating: { rating: 0, reviewCount: 0 }, businessName: 'X', phone: '' })), 'an empty feed row shows no rating')
 check(!/Call/.test(cityMetaDescription({ work, area: 'A', state: 'BC', mobile: false, networkLabel: null, rating: null, businessName: 'X', phone: '' })), 'no number, no "Call"')
 
-console.log('\nTHE AGS CITY PATCH')
-check(CONTENT_PATCHES['ags-2026-10-cities'] === AGS_2026_10_CITIES, 'registered, so the Maintenance button can find it')
-const rows = AGS_2026_10_CITIES.cityText || []
+console.log('\nTHE AGS PATCH, CITY ROWS')
+check(CONTENT_PATCHES['ags-2026-10-replacement-only'] === PATCH, 'registered, so the Maintenance button can find it')
+const rows = PATCH.cityText || []
 check(rows.map((r) => r.city).join('|') === 'Coquitlam|Port Coquitlam|Port Moody', 'the three cities, one row each')
 check(rows.every((r) => /\bchip/i.test(r.from)), 'each replaces a sentence that mentions a chip')
 check(rows.every((r) => !/\bchip|\brepair/i.test(r.to)), 'no replacement mentions a chip or a repair')
 check(rows.every((r) => /crack/i.test(r.to) && /replac|new windshield/i.test(r.to)), 'each says a crack spreads and means replacement')
 check(
-  AGS_2026_10_CITIES.clientFields?.every((f) => f.from === false && f.to === false) ?? false,
-  'asserts both repair flags are still off (so the headline matches the copy)'
+  (PATCH.clientFields || []).some((f) => f.field === 'offersWindshieldRepair' && f.to === false) &&
+    (PATCH.clientFields || []).some((f) => f.field === 'offersRockChipRepair' && f.to === false),
+  'leaves both repair flags off (so the headline matches the copy)'
 )
 const ctx = {
   hasShopLocation: true,
@@ -92,7 +93,7 @@ for (const r of rows) {
   const p = claimProblem(r.to, ctx)
   check(!p, `${r.city}: passes the drafters' claim screen${p ? ` — ${p.reason} ("${p.match}")` : ''}`)
 }
-check(!/\[[A-Z_]+\]/.test(JSON.stringify(AGS_2026_10_CITIES)), 'no [PLACEHOLDER] left anywhere in the patch')
+check(!/\[[A-Z_]+\]/.test(JSON.stringify(PATCH)), 'no [PLACEHOLDER] left anywhere in the patch')
 
 console.log(failures ? `\n${failures} FAILED` : '\nAll city-page copy checks passed')
 process.exit(failures ? 1 : 0)

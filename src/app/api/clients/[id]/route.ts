@@ -198,6 +198,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       'offersSunroofRepair',
       'offersRockChipRepair',
       'offersAdasCalibration',
+      'repairSearchPage',
       'filesInsuranceClaims',
       'seoClient',
       'smsCapable',

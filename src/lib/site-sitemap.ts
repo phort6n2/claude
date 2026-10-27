@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
 import { servicePath, locationPath, readPathOverrides, keptPathProblem } from '@/lib/site-paths'
-import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
+import { servicesForClient, type PageFlags } from '@/lib/site-services'
 import { locationPages, mergeServiceAreas } from '@/lib/site-locations'
 import { canonicalHostFor } from '@/lib/site-origin'
 import { cityIsIndexable, getCityContent } from '@/lib/city-content'
@@ -100,6 +100,7 @@ export async function siteSitemap(
           take: 1,
         },
         offersWindshieldRepair: true,
+        repairSearchPage: true,
         offersWindshieldReplacement: true,
         offersSideWindowRepair: true,
         offersBackWindowRepair: true,
@@ -176,7 +177,7 @@ export async function siteSitemap(
 
   const entries: SitemapEntry[] = [
     at('/', 'home', '1.0', 'weekly'),
-    ...servicesForClient(client as unknown as Record<ServiceFlag, boolean>).map((s) =>
+    ...servicesForClient(client as unknown as PageFlags).map((s) =>
       at(servicePath(s.slug, overrides), 'service', '0.8', 'monthly')
     ),
     ...indexable.map((l) => at(locationPath(l.slug, overrides), 'city', '0.7', 'monthly')),

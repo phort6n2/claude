@@ -97,6 +97,12 @@ model Client {
 
   // Services Offered
   offersWindshieldRepair      Boolean @default(true)
+  // Keep the Windshield Repair PAGE for a shop that does NOT repair: people
+  // search "windshield repair" with a crack, and a replacement-only shop's ads
+  // buy that search. offersWindshieldRepair stays the FACT (false); this keeps
+  // the address, nav link and sitemap entry, with copy that never claims a
+  // repair. See REPAIR_SEARCH_PAGE in site-services.ts.
+  repairSearchPage            Boolean @default(false)
   offersWindshieldReplacement Boolean @default(true)
   offersSideWindowRepair      Boolean @default(false)
   offersBackWindowRepair      Boolean @default(false)
@@ -1501,6 +1507,9 @@ model ClientSiteContent {
   // Per-service line under the H1, { slug: line }. Empty = the template's
   // line. See SiteExtras.serviceHeroLines.
   serviceHeroLines Json?
+  // A shop's own meta description and sections for a service page, by slug.
+  // See SiteExtras.servicePageCopy.
+  servicePageCopy  Json?
 
   // Regulator line (e.g. California ARD: 16 CCR § 3371.2 requires the
   // registered name and number in internet advertising). Renders only when

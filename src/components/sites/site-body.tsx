@@ -1,6 +1,6 @@
 import { servicePath, readPathOverrides } from '@/lib/site-paths'
 import { widgetCtaColors } from '@/lib/site-theme'
-import { formServiceNames } from '@/lib/site-services'
+import { claimsRepair, formServiceNames, replacementOnlyLead } from '@/lib/site-services'
 import { postalCountryFor } from '@/lib/postal-code'
 import {
   ArrowRight,
@@ -279,7 +279,7 @@ const GRID_PRIORITY = [
   'sunroof-repair',
 ]
 
-export function prioritizeServices(services: Array<{ slug: string; name: string; short: string }>) {
+export function prioritizeServices<T extends { slug: string; name: string; short: string; searchOnly?: true }>(services: T[]) {
   return [...services].sort(
     (a, b) => GRID_PRIORITY.indexOf(a.slug) - GRID_PRIORITY.indexOf(b.slug)
   )
@@ -462,7 +462,7 @@ export function SiteBody({
   storyChapters?: Array<{ heading: string; body: string; photoUrl: string }>
   storyFallbackPhotos?: Array<{ url: string; alt: string }>
   extras: SiteExtras
-  services: Array<{ slug: string; name: string; short: string }>
+  services: Array<{ slug: string; name: string; short: string; searchOnly?: true }>
   areas: string[]
   basePath: string
   /** On a service page, that service's card links stay but the grid heading
@@ -476,9 +476,10 @@ export function SiteBody({
   linkableCities?: Set<string>
 }) {
   const prioritized = prioritizeServices(services)
-  const offersRepair = prioritized.some(
-    (service) => service.slug === 'windshield-repair' || service.slug === 'rock-chip-repair'
-  )
+  // The search-only repair page (REPAIR_SEARCH_PAGE) is in the list for its
+  // address, not because the shop repairs — so it never counts as repair.
+  const offersRepair = claimsRepair(prioritized)
+  const searchOnlyRepair = prioritized.some((service) => service.searchOnly)
   // Never the page you are standing on. On a service page the grid is headed
   // "Everything we handle" and included the current service — one of only six
   // cards, a full screen tall on a phone, linking to itself.
@@ -514,7 +515,12 @@ export function SiteBody({
               lead={
                 offersRepair
                   ? "Not sure whether yours is a repair or a replacement? Send a photo with your quote and we'll tell you — a chip caught early is a great deal cheaper than the crack it turns into."
-                  : "Send the vehicle details with your quote and we'll identify the correct replacement glass before anything is scheduled."
+                  : searchOnlyRepair
+                    ? replacementOnlyLead(prioritized, {
+                        filesClaims: !!flags.filesInsuranceClaims,
+                        insurer: insurerNoun(client.state),
+                      })
+                    : "Send the vehicle details with your quote and we'll identify the correct replacement glass before anything is scheduled."
               }
             />
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -685,7 +691,7 @@ export function SiteChrome({
   /** Same record SiteBody takes — the footer carries the network mark too. */
   insuranceProgram?: { program: InsuranceProgram | null; record: ProgramRecord | null }
   extras: SiteExtras
-  services: Array<{ slug: string; name: string; short: string }>
+  services: Array<{ slug: string; name: string; short: string; searchOnly?: true }>
   areas: string[]
   basePath: string
   locations?: SiteLocation[]

@@ -82,6 +82,10 @@ export interface ServicePage {
    * the template page at the same flat address.
    */
   yieldsToKeptPages?: true
+  /** The search-page stand-in for a repair page — see REPAIR_SEARCH_PAGE. */
+  searchOnly?: true
+  /** The form option to preselect when it is not this page's own name. */
+  preselectAs?: string
 }
 
 export const SERVICE_PAGES: ServicePage[] = [
@@ -278,8 +282,93 @@ export const SERVICE_PAGES: ServicePage[] = [
   },
 ]
 
-export function servicesForClient(flags: Record<ServiceFlag, boolean>): ServicePage[] {
-  return SERVICE_PAGES.filter((s) => flags[s.flag])
+/**
+ * THE WINDSHIELD REPAIR PAGE, FOR A SHOP THAT DOES NOT REPAIR
+ * (`Client.repairSearchPage`). People search "windshield repair" with a
+ * crack, a replacement-only shop's ads buy that search, and AGS needed the
+ * address. Ticking "Windshield repair" to get it said, in every place that
+ * box is read, that AGS does resin repair: the page's own sections, the
+ * services lead ("a chip caught early…"), the insurance band, the default
+ * FAQ, the city H1s, the home title and the directory listing.
+ *
+ * So `offersWindshieldRepair` stays the FACT and this is a separate tick that
+ * only keeps the PAGE: same slug, same name in the nav (it is what the
+ * visitor searched), and copy about cracks and replacement that is true for
+ * any replacement-only shop. A shop's own sections and description, when it
+ * has them (`SiteExtras.servicePageCopy`), take its place.
+ */
+const REPAIR_PAGE = SERVICE_PAGES.find((s) => s.slug === 'windshield-repair')!
+export const REPAIR_SEARCH_PAGE: ServicePage = {
+  ...REPAIR_PAGE,
+  short: 'Cracked windshield? We assess it and replace it properly.',
+  heroLine: 'Cracked windshield? We will assess it and tell you straight whether the glass needs replacing.',
+  searchOnly: true,
+  // The form has no "Windshield Repair" option for this shop; a crack is a
+  // replacement enquiry, and a lead with nothing chosen says less.
+  preselectAs: 'Windshield Replacement',
+  sections: [
+    {
+      heading: 'When a cracked windshield needs replacing',
+      body: 'Cracks longer than a few inches, cracks that reach the edge of the glass, damage in the driver’s line of sight, or more than one crack usually mean the windshield needs replacing. The windshield is a structural part of the vehicle — it supports the roof and gives the airbag a surface to deploy against — so it is a safety decision, not a cosmetic one.',
+    },
+    {
+      heading: 'Don’t wait on a crack',
+      body: 'Cracks spread with temperature swings and road vibration, so a crack that is short today rarely stays that way. Glass damage usually falls under the comprehensive part of your coverage — ask us to check how yours applies before anything is booked.',
+    },
+  ],
+}
+
+export interface PageFlags extends Record<ServiceFlag, boolean> {
+  /** REQUIRED: a page whose select forgot it would drop the page silently. */
+  repairSearchPage: boolean
+}
+
+/** The page this shop serves at a service slug, or null when it serves none. */
+export function servicePageFor(page: ServicePage, flags: PageFlags): ServicePage | null {
+  if (flags[page.flag]) return page
+  if (page.slug === REPAIR_PAGE.slug && flags.repairSearchPage && flags.offersWindshieldReplacement) {
+    return REPAIR_SEARCH_PAGE
+  }
+  return null
+}
+
+/** Whether the services shown claim resin repair. The search-only page does not. */
+export function claimsRepair(services: Array<{ slug: string; searchOnly?: true }>): boolean {
+  return services.some(
+    (s) => (s.slug === 'windshield-repair' && !s.searchOnly) || s.slug === 'rock-chip-repair'
+  )
+}
+
+/**
+ * The services lead on a shop with the search-only repair page. Its visitors
+ * arrived asking about a repair, so the line says plainly what the shop DOES,
+ * from the pages it actually has — never the "send a photo and we'll tell you
+ * if it's a repair" line, which offers a repair this shop does not do.
+ */
+export function replacementOnlyLead(services: Array<{ slug: string }>, opts: { filesClaims: boolean; insurer: string }): string {
+  const has = (slug: string) => services.some((s) => s.slug === slug)
+  const glass = [
+    has('windshield-replacement') ? 'windshields' : null,
+    has('side-window-replacement') && has('back-glass-replacement')
+      ? 'side and back glass'
+      : has('side-window-replacement')
+        ? 'side windows'
+        : has('back-glass-replacement')
+          ? 'back glass'
+          : null,
+  ].filter(Boolean)
+  const parts = [
+    glass.length ? `We replace ${glass.join(', ')}` : null,
+    has('adas-calibration') ? 'recalibrate ADAS cameras' : null,
+    has('mobile-auto-glass') ? 'come to you at home or work' : null,
+  ].filter(Boolean) as string[]
+  const what = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts[0] || ''
+  const claim = opts.filesClaims ? ` — and we handle the claim with ${opts.insurer}` : ''
+  return `${what}${claim}. Send the vehicle details with your quote and we'll identify the correct glass before anything is scheduled.`
+}
+
+export function servicesForClient(flags: PageFlags): ServicePage[] {
+  return SERVICE_PAGES.map((s) => servicePageFor(s, flags)).filter((s): s is ServicePage => !!s)
 }
 
 /** The pages that are a kind of glass work — see GlassServiceFlag. */

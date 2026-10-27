@@ -9,7 +9,7 @@ import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
 import { SiteAnalytics } from '@/components/sites/analytics'
 import { withSitePhone } from '@/lib/site-phone'
-import { servicesForClient, type ServiceFlag } from '@/lib/site-services'
+import { servicesForClient, type PageFlags } from '@/lib/site-services'
 import { mergeServiceAreas } from '@/lib/site-locations'
 import { keptPagesFor, stripSeoTail } from '@/lib/site-pages'
 import {
@@ -136,6 +136,7 @@ async function getClient(slug: string) {
       hasShopLocation: true,
       offersMobileService: true,
       offersWindshieldRepair: true,
+      repairSearchPage: true,
       offersWindshieldReplacement: true,
       offersSideWindowRepair: true,
       offersBackWindowRepair: true,
@@ -325,7 +326,7 @@ export default async function CatchAllPage({ params, searchParams }: PageProps) 
     getInsuranceProgram(client.id),
   ])
 
-  const services = servicesForClient(client as Record<ServiceFlag, boolean>)
+  const services = servicesForClient(client as PageFlags)
   const areas = mergeServiceAreas(client.serviceAreas || [], locations.map((l) => l.city))
   const basePath = sitePathPrefixFor(client, (await headers()).get('host'))
   const palette = sitePaletteVars(client.primaryColor, client.accentColor)
@@ -384,7 +385,7 @@ export default async function CatchAllPage({ params, searchParams }: PageProps) 
       ...hostedPathsFor({
         serviceAreas: client.serviceAreas || [],
         shopCities: locations.map((l) => l.city),
-        flags: client as unknown as Record<ServiceFlag, boolean>,
+        flags: client as unknown as PageFlags,
       }),
       ...publishedPaths.map((p) => p.path),
     ],

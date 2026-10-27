@@ -12,9 +12,10 @@ import { withSitePhone } from '@/lib/site-phone'
 import {
   getServicePage,
   servicesForClient,
+  servicePageFor,
   serviceHeading,
   sectionsFor,
-  type ServiceFlag,
+  type PageFlags,
 } from '@/lib/site-services'
 import {
   UtilBar,
@@ -116,6 +117,7 @@ async function getClient(slug: string) {
       hasShopLocation: true,
       offersMobileService: true,
       offersWindshieldRepair: true,
+      repairSearchPage: true,
       offersWindshieldReplacement: true,
       offersSideWindowRepair: true,
       offersBackWindowRepair: true,
@@ -153,9 +155,12 @@ async function getReviews(clientId: string): Promise<ReviewsData | null> {
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { slug, service } = await params
   const metaVariant = isMetaVariant(await searchParams)
-  const page = getServicePage(service)
+  const template = getServicePage(service)
   const client = await getClient(slug)
-  if (!page || !client || !(await canViewSite(client.status))) return { title: 'Not Found' }
+  if (!template || !client || !(await canViewSite(client.status))) return { title: 'Not Found' }
+  // The search-only repair page has its own copy — see REPAIR_SEARCH_PAGE.
+  const page = servicePageFor(template, client) || template
+  const own = (await getSiteExtras(client.id)).servicePageCopy[page.slug]
   // Tracked number in the description — see the note on the home page.
   const sitePhone = (await withSitePhone(client)).phone
 
@@ -170,7 +175,11 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   // visitor searched — see SERVICE_ALIASES.
   const heading = serviceHeading(service)
   const title = `${heading} in ${areaWithState(client)} | ${client.businessName}`
-  const description = `${page.short} Free quotes from ${client.businessName} in ${headlineArea(client)}. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
+  // A shop's own description, typed by an operator from the shop's claims,
+  // replaces the template's whole sentence rather than leading it.
+  const description =
+    own?.metaDescription ||
+    `${page.short} Free quotes from ${client.businessName} in ${headlineArea(client)}. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
   return {
     title,
     description,
@@ -192,8 +201,8 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
 export default async function ServicePage({ params, atOverride, searchParams }: PageProps) {
   const { slug, service } = await params
   const metaVariant = isMetaVariant(await searchParams)
-  const page = getServicePage(service)
-  if (!page) notFound()
+  const template = getServicePage(service)
+  if (!template) notFound()
 
   const client = await getClient(slug)
   if (!client) notFound()
@@ -203,7 +212,7 @@ export default async function ServicePage({ params, atOverride, searchParams }: 
   // that both answer 200 split the ranking between them, which is the whole
   // thing an override exists to avoid.
   const overrides = readPathOverrides(client.pathOverrides)
-  const moved = overrides[`/${page.slug}`]
+  const moved = overrides[`/${template.slug}`]
   if (moved && !atOverride) {
     permanentRedirect(`${sitePathPrefixFor(client, (await headers()).get('host'))}${moved}`)
   }
@@ -214,7 +223,10 @@ export default async function ServicePage({ params, atOverride, searchParams }: 
   // shop's own line for the callback and SMS copy, and taking only `.phone`
   // would drop it. See site-phone.ts.
   Object.assign(client, await withSitePhone(client))
-  if (!client[page.flag]) {
+  // The page THIS shop serves here: the template's, the search-only stand-in
+  // for a repair page (REPAIR_SEARCH_PAGE), or none.
+  const offered = servicePageFor(template, client)
+  if (!offered) {
     /* A service the shop has stopped offering 404s — unless the shop kept a
        redirect for its old address. Middleware rewrites a service slug
        straight to this route, so the catch-all that normally honours
@@ -226,13 +238,14 @@ export default async function ServicePage({ params, atOverride, searchParams }: 
     const asked = `/${service}`.toLowerCase()
     const redirect = await prisma.clientRedirect
       .findFirst({
-        where: { clientId: client.id, fromPath: { in: Array.from(new Set([asked, `/${page.slug}`])) } },
+        where: { clientId: client.id, fromPath: { in: Array.from(new Set([asked, `/${template.slug}`])) } },
         select: { toPath: true },
       })
       .catch(() => null)
     if (redirect) permanentRedirect(`${sitePathPrefixFor(client, (await headers()).get('host'))}${redirect.toPath}`)
     notFound()
   }
+  const page = offered
 
   const [reviews, extras, locations, adsTracking, cityContent, keptPages, insuranceProgram] = await Promise.all([
     getReviews(client.id),
@@ -243,7 +256,7 @@ export default async function ServicePage({ params, atOverride, searchParams }: 
     keptPagesFor(client.id, client.businessName),
     getInsuranceProgram(client.id),
   ])
-  const services = servicesForClient(client as Record<ServiceFlag, boolean>)
+  const services = servicesForClient(client as PageFlags)
   // Shop cities are part of the coverage list and lead the location pages —
   // a city we have an address in outranks one we only drive to.
   const areas = mergeServiceAreas(client.serviceAreas || [], locations.map((l) => l.city))
@@ -321,7 +334,7 @@ export default async function ServicePage({ params, atOverride, searchParams }: 
         adsTracking={adsTracking}
         heroTitle={`${heading} in ${headlineArea(client)}`}
         eyebrow={areaWithState(client)}
-        service={page.preselect === false ? undefined : page.name}
+        service={page.preselect === false ? undefined : page.preselectAs || page.name}
       />
     )
   }
@@ -333,7 +346,12 @@ export default async function ServicePage({ params, atOverride, searchParams }: 
   // right call", "what the job involves") is objection handling and keeps the
   // high slot. The shop's general story is about the business, so it moves
   // below the proof like it does on the home page.
-  const serviceChapters = sectionsFor(page, client, { publicInsurer: !!publicInsurerFor(client.state) }).map((s) => ({
+  // A shop's own sections for this page, when an operator wrote them, take
+  // the template's place whole — see SiteExtras.servicePageCopy.
+  const ownSections = extras.servicePageCopy[page.slug]?.sections
+  const serviceChapters = (
+    ownSections?.length ? ownSections : sectionsFor(page, client, { publicInsurer: !!publicInsurerFor(client.state) })
+  ).map((s) => ({
     heading: s.heading,
     body: s.body,
     photoUrl: '',
@@ -412,7 +430,7 @@ export default async function ServicePage({ params, atOverride, searchParams }: 
           </div>
 
           <div id="quote" className="w-full scroll-mt-24 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:justify-self-end">
-            <WidgetMount client={client} service={page.preselect === false ? undefined : page.name} />
+            <WidgetMount client={client} service={page.preselect === false ? undefined : page.preselectAs || page.name} />
           </div>
 
           <div className="lg:col-start-1 lg:row-start-2">

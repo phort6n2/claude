@@ -3,7 +3,7 @@ import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
 import { normalisePath, hostedPathsFor } from '@/lib/url-parity'
 import { readPathOverrides, pathOverrideProblem, keptPathProblem } from '@/lib/site-paths'
-import type { ServiceFlag } from '@/lib/site-services'
+import type { PageFlags } from '@/lib/site-services'
 import { capturePage } from '@/lib/page-capture'
 import { splitKeptSections, dropKeptSections } from '@/lib/kept-content'
 import { validatePublicUrl } from '@/lib/site-import'
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const hosted = hostedPathsFor({
       serviceAreas: full.serviceAreas || [],
       shopCities: shopCities.map((s) => s.city),
-      flags: full as unknown as Record<ServiceFlag, boolean>,
+      flags: full as unknown as PageFlags,
       // Deliberately WITHOUT the current overrides: `hosted` is used to check
       // the template page exists and that the new address is not already a
       // page, and both questions are about the template's own shape.
