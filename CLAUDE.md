@@ -2772,6 +2772,18 @@ client says the leads are bad.
   network dependency inside a build looks like when it breaks. Do not put it
   back. Refreshing the files means re-reading Google's `css2` output; they rev
   the URL when the font revs.
+- **THE FALLBACK FACES ARE OURS, PER WEIGHT AND PER PLATFORM** (the
+  `gl-display-*`/`gl-sans-*` `@font-face` rules in `globals.css`,
+  `adjustFontFallback: false` + `fallback` in `layout.tsx`). next/font's own
+  fallback is one `local("Arial")` face sized at weight 400 — and Android and
+  Linux have no Arial, so the stack fell to `system-ui` (DejaVu Sans in a Linux
+  lab browser, 22% wider than Inter Tight at 800). AGS's
+  /back-glass-replacement H1 set on three lines until the web font landed and
+  then two, pulling the quote form up 35px: CLS 0.218, now 0.000 on a
+  throttled mobile load (slow 4G, 4× CPU, fonts held 3s), every other page
+  under 0.002. Arial/Liberation Sans first, Roboto second, each in weight bands
+  with a size-adjust MEASURED against real page copy. Swap a font file and the
+  numbers are wrong: re-measure, do not guess.
 - `insurance-rules.ts` — per-state glass deductible rules, `PUBLIC_INSURERS`
   / `insurerNoun()` for the provinces with one public insurer, and
   `heroCostLineFor()` for the above-the-fold cost line. All of it already

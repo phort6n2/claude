@@ -13,13 +13,19 @@ import "./globals.css";
 // built green on the branch two seconds earlier, which is what a third-party
 // network dependency in a build looks like when it breaks. Nothing about the
 // rendered output changes: same families, same latin subset, same variable
-// weight range, and next/font still hashes, preloads and metric-adjusts them.
+// weight range, and next/font still hashes and preloads them. The metric
+// adjustment is ours, not next/font's — see the fallback faces in globals.css.
 const sans = localFont({
   src: "../assets/fonts/Inter-latin.woff2",
   weight: "100 900",
   style: "normal",
   variable: "--font-sans-next",
   display: "swap",
+  // Our own size-adjusted faces, per weight and per platform — see the note
+  // above them in globals.css. next/font's single local("Arial") face does not
+  // exist on Android or Linux, which is where the headline re-wrapped.
+  adjustFontFallback: false,
+  fallback: ["gl-sans-arial", "gl-sans-roboto"],
 });
 
 const display = localFont({
@@ -28,6 +34,8 @@ const display = localFont({
   style: "normal",
   variable: "--font-display-next",
   display: "swap",
+  adjustFontFallback: false,
+  fallback: ["gl-display-arial", "gl-display-roboto"],
 });
 
 export const metadata: Metadata = {

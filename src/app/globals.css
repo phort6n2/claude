@@ -1,6 +1,52 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* FALLBACK FACES THAT ACTUALLY RESOLVE, sized per WEIGHT. Read by the
+   `fallback` lists in layout.tsx.
+
+   next/font's own fallback (adjustFontFallback) is ONE face, `local("Arial")`,
+   sized for the REGULAR weight. Two things defeated it:
+   - Android and Linux have no font called Arial, so the face never loads and
+     the stack fell through to `system-ui` — DejaVu Sans on a Linux lab
+     browser, 22% wider than Inter Tight at 800. Measured on AGS's
+     /back-glass-replacement: the H1 set on THREE lines (105px) until the web
+     font arrived and then TWO (70px), dragging the lead-in and the quote form
+     up 35px at about 4s on slow 4G. CLS 0.218, against 0.010 on a page whose
+     H1 happened to wrap the same either way.
+   - A face sized at 400 is wrong at 800: Inter Tight gains ~10% in width from
+     regular to extrabold, Arial ~8% to bold, so a headline in the "adjusted"
+     fallback still breaks differently.
+   So one family per fallback source — Arial with its metric clone Liberation
+   Sans (Windows, macOS, iOS, Linux), then Roboto (Android) — each in weight
+   bands: the regular file under 600, the bold file from 600, with its own
+   size-adjust. Ratios are real-font width / fallback width over a page's own
+   copy plus the H1s, measured in Chromium on 2026-10-28 (Roboto loaded from
+   @fontsource 5.1.0). Ascent/descent are Inter's (1984/494 of 2048) divided
+   by each face's size-adjust, as next/font computes them.
+
+   A face whose local() names are all missing does not load, and the browser
+   moves to the next family in the stack, so listing both sources costs
+   nothing on a device that has only one. If these fonts are ever replaced,
+   these numbers are wrong: re-measure rather than guess. */
+@font-face { font-family: "gl-display-arial"; src: local("Arial"), local("ArialMT"), local("Liberation Sans"), local("LiberationSans"); font-weight: 100 549; size-adjust: 95.85%; ascent-override: 101.07%; descent-override: 25.17%; line-gap-override: 0%; }
+@font-face { font-family: "gl-display-arial"; src: local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold"), local("LiberationSans-Bold"); font-weight: 550 649; size-adjust: 93.24%; ascent-override: 103.90%; descent-override: 25.87%; line-gap-override: 0%; }
+@font-face { font-family: "gl-display-arial"; src: local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold"), local("LiberationSans-Bold"); font-weight: 650 749; size-adjust: 95.20%; ascent-override: 101.76%; descent-override: 25.34%; line-gap-override: 0%; }
+@font-face { font-family: "gl-display-arial"; src: local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold"), local("LiberationSans-Bold"); font-weight: 750 1000; size-adjust: 97.15%; ascent-override: 99.72%; descent-override: 24.83%; line-gap-override: 0%; }
+@font-face { font-family: "gl-display-roboto"; src: local("Roboto"), local("Roboto-Regular"); font-weight: 100 549; size-adjust: 96.93%; ascent-override: 99.94%; descent-override: 24.89%; line-gap-override: 0%; }
+@font-face { font-family: "gl-display-roboto"; src: local("Roboto Bold"), local("Roboto-Bold"); font-weight: 550 649; size-adjust: 99.45%; ascent-override: 97.41%; descent-override: 24.25%; line-gap-override: 0%; }
+@font-face { font-family: "gl-display-roboto"; src: local("Roboto Bold"), local("Roboto-Bold"); font-weight: 650 749; size-adjust: 101.53%; ascent-override: 95.42%; descent-override: 23.76%; line-gap-override: 0%; }
+@font-face { font-family: "gl-display-roboto"; src: local("Roboto Bold"), local("Roboto-Bold"); font-weight: 750 1000; size-adjust: 103.62%; ascent-override: 93.49%; descent-override: 23.28%; line-gap-override: 0%; }
+@font-face { font-family: "gl-sans-arial"; src: local("Arial"), local("ArialMT"), local("Liberation Sans"), local("LiberationSans"); font-weight: 100 449; size-adjust: 106.46%; ascent-override: 91.00%; descent-override: 22.66%; line-gap-override: 0%; }
+@font-face { font-family: "gl-sans-arial"; src: local("Arial"), local("ArialMT"), local("Liberation Sans"), local("LiberationSans"); font-weight: 450 549; size-adjust: 107.39%; ascent-override: 90.21%; descent-override: 22.46%; line-gap-override: 0%; }
+@font-face { font-family: "gl-sans-arial"; src: local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold"), local("LiberationSans-Bold"); font-weight: 550 649; size-adjust: 100.95%; ascent-override: 95.96%; descent-override: 23.89%; line-gap-override: 0%; }
+@font-face { font-family: "gl-sans-arial"; src: local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold"), local("LiberationSans-Bold"); font-weight: 650 749; size-adjust: 101.80%; ascent-override: 95.16%; descent-override: 23.69%; line-gap-override: 0%; }
+@font-face { font-family: "gl-sans-arial"; src: local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold"), local("LiberationSans-Bold"); font-weight: 750 1000; size-adjust: 102.85%; ascent-override: 94.19%; descent-override: 23.45%; line-gap-override: 0%; }
+@font-face { font-family: "gl-sans-roboto"; src: local("Roboto"), local("Roboto-Regular"); font-weight: 100 449; size-adjust: 107.66%; ascent-override: 89.98%; descent-override: 22.40%; line-gap-override: 0%; }
+@font-face { font-family: "gl-sans-roboto"; src: local("Roboto"), local("Roboto-Regular"); font-weight: 450 549; size-adjust: 108.60%; ascent-override: 89.20%; descent-override: 22.21%; line-gap-override: 0%; }
+@font-face { font-family: "gl-sans-roboto"; src: local("Roboto Bold"), local("Roboto-Bold"); font-weight: 550 649; size-adjust: 107.67%; ascent-override: 89.97%; descent-override: 22.40%; line-gap-override: 0%; }
+@font-face { font-family: "gl-sans-roboto"; src: local("Roboto Bold"), local("Roboto-Bold"); font-weight: 650 749; size-adjust: 108.57%; ascent-override: 89.23%; descent-override: 22.22%; line-gap-override: 0%; }
+@font-face { font-family: "gl-sans-roboto"; src: local("Roboto Bold"), local("Roboto-Bold"); font-weight: 750 1000; size-adjust: 109.70%; ascent-override: 88.31%; descent-override: 21.99%; line-gap-override: 0%; }
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
