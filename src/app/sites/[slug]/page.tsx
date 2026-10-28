@@ -1,4 +1,7 @@
 import { formatPhoneDisplay } from '@/lib/lead-display'
+import { pageFaq } from '@/lib/site-faq'
+import { siteDescription } from '@/lib/meta-description'
+import { descriptionFacts } from '@/lib/site-meta'
 import { headlineArea, areaWithState, servingLine } from '@/lib/site-area'
 import { canViewSite, isPreview, siteIsLive } from '@/lib/site-preview'
 import PreviewBanner from '@/components/sites/PreviewBanner'
@@ -214,7 +217,13 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const area = areaWithState(client)
   const serviceName = homeServiceName(client)
   const title = `${client.businessName} | ${serviceName} in ${area}`
-  const description = `Fast, professional ${serviceName.toLowerCase()} in ${area}. Free quotes, insurance assistance${client.offersMobileService ? ', mobile service to your home or office' : ''}. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
+  // Service and area first, then the shop's strongest facts while it fits 155
+  // (lib/meta-description.ts). It opened "Fast, professional…" — a speed
+  // claim on fifteen shops' behalf, which §2 does not allow the template.
+  const description = siteDescription(
+    `${serviceName} in ${area}`,
+    await descriptionFacts(client, formatPhoneDisplay(sitePhone) || sitePhone)
+  )
 
   return {
     title,
@@ -289,6 +298,8 @@ export default async function ClientSitePage({ params, searchParams }: PageProps
     services: services.map((s) => ({ slug: s.slug, name: s.name })),
     extras,
     locations,
+    // The questions SiteBody renders below, by the same call — see pageFaq.
+    faq: pageFaq(extras.faq, flags, client.state),
   })
 
   // From here down the page is for humans, so the tracking number takes over

@@ -50,7 +50,8 @@ const desc = cityMetaDescription({
   phone: '(778) 907-9359',
 })
 check(
-  desc === 'Mobile windshield replacement in Coquitlam, BC. ICBC Repair Network shop, 4.9 stars on Google. Free quotes from AGS Affordable Glass Services. Call (778) 907-9359.',
+  // The shared builder (lib/meta-description.ts): lead, then facts while ≤ 155.
+  desc === 'Mobile windshield replacement in Coquitlam, BC. ICBC Repair Network shop. 4.9 stars on Google. Free quotes. Call (778) 907-9359.' && desc.length <= 155,
   `meta description: ${desc}`
 )
 check(!/\brepair\b(?! Network)/i.test(desc), 'no "repair" in it but the network’s own name')
@@ -58,7 +59,7 @@ check(!/warrant|minute|same[- ]day|\bfast\b/i.test(desc), 'no warranty name (ter
 
 console.log('\nEVERY TRUST CLAUSE NEEDS ITS FACT')
 const bare = cityMetaDescription({ work: 'repair and replacement', area: 'Dallas', state: 'TX', mobile: false, networkLabel: null, rating: null, businessName: 'X Auto Glass', phone: '(214) 555-0100' })
-check(bare === 'Windshield repair and replacement in Dallas, TX. Free quotes from X Auto Glass. Call (214) 555-0100.', 'no network, no feed: no trust clause at all')
+check(bare === 'Windshield repair and replacement in Dallas, TX. Free quotes. Call (214) 555-0100.', 'no network, no feed: no trust clause at all')
 check(!/stars/.test(cityMetaDescription({ work, area: 'A', state: 'BC', mobile: false, networkLabel: null, rating: { rating: 0, reviewCount: 0 }, businessName: 'X', phone: '' })), 'an empty feed row shows no rating')
 check(!/Call/.test(cityMetaDescription({ work, area: 'A', state: 'BC', mobile: false, networkLabel: null, rating: null, businessName: 'X', phone: '' })), 'no number, no "Call"')
 

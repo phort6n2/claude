@@ -33,7 +33,17 @@ const display = localFont({
   weight: "100 900",
   style: "normal",
   variable: "--font-display-next",
-  display: "swap",
+  // OPTIONAL, not swap: the heading face is the one whose arrival moves the
+  // page. Every hero H1 is display type at 30px+, and the size-adjusted
+  // fallbacks only match where Arial, Liberation Sans or Roboto exist — on a
+  // machine with none of them the stack falls to system-ui, AGS's
+  // /windshield-replacement H1 re-wrapped from three lines to two at ~4s and
+  // pushed the quote form (CLS 0.209 in that case). With `optional` the
+  // browser gives the file ~100ms (it is preloaded, so a warm or fast visit
+  // gets it) and otherwise keeps the matched fallback for that page view
+  // instead of swapping late. Body text stays `swap`: at 17px its re-flow
+  // measured 0.003.
+  display: "optional",
   adjustFontFallback: false,
   fallback: ["gl-display-arial", "gl-display-roboto"],
 });

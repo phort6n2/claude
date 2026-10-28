@@ -1,4 +1,7 @@
 import { formatPhoneDisplay } from '@/lib/lead-display'
+import { pageFaq } from '@/lib/site-faq'
+import { siteDescription } from '@/lib/meta-description'
+import { descriptionFacts } from '@/lib/site-meta'
 import { headlineArea, areaWithState, servingLine } from '@/lib/site-area'
 import { canViewSite, isPreview, siteIsLive } from '@/lib/site-preview'
 import PreviewBanner from '@/components/sites/PreviewBanner'
@@ -177,9 +180,11 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const title = `${heading} in ${areaWithState(client)} | ${client.businessName}`
   // A shop's own description, typed by an operator from the shop's claims,
   // replaces the template's whole sentence rather than leading it.
+  // The template's is the service and the area, then the shop's strongest
+  // facts while it fits 155 — see lib/meta-description.ts.
   const description =
     own?.metaDescription ||
-    `${page.short} Free quotes from ${client.businessName} in ${headlineArea(client)}. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
+    siteDescription(`${heading} in ${areaWithState(client)}`, await descriptionFacts(client, formatPhoneDisplay(sitePhone) || sitePhone))
   return {
     title,
     description,
@@ -294,6 +299,8 @@ export default async function ServicePage({ params, atOverride, searchParams }: 
     origin: siteOrigin,
     client,
     service: { slug: page.slug, name: page.name },
+    // The questions SiteBody renders below, by the same call — see pageFaq.
+    faq: pageFaq(extras.faq, flags, client.state),
   })
 
   // Cities the site is willing to link to: a shop is there, or the client has

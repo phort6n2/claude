@@ -1,3 +1,4 @@
+import { indefiniteArticle, siteDescription, type DescriptionFacts } from '@/lib/meta-description'
 import {
   insuranceForState,
   insurerNoun,
@@ -281,6 +282,14 @@ export interface ProgramCopyContext {
   filesClaims: boolean
   /** `Client.offersMobileService`. */
   mobile: boolean
+  /**
+   * Whether the shop does resin repair (windshield or rock chip repair ticked
+   * — `claimsRepair`). REQUIRED: AGS replaces only, and its ICBC page opened
+   * "Chipped or cracked glass…" and told the reader a small chip "can usually
+   * still be repaired — which is quicker, cheaper…", an offer of the one job
+   * the shop does not do, on the page its insurance ads land on.
+   */
+  repair: boolean
 }
 
 export interface ProgramSection {
@@ -293,12 +302,14 @@ export function programTitle(program: InsuranceProgram, ctx: ProgramCopyContext)
   return `${program.short} glass claims in ${ctx.area}`
 }
 
-export function programHeroLine(program: InsuranceProgram): string {
+export function programHeroLine(program: InsuranceProgram, ctx: Pick<ProgramCopyContext, 'repair'>): string {
   // No timing promise, no coverage claim, no cost. It says what the page is.
+  // "Chipped" only for a shop that repairs chips — see ProgramCopyContext.repair.
+  const damage = ctx.repair ? 'Chipped or cracked glass' : 'Cracked or broken glass'
   if (program.key === 'general') {
-    return 'Chipped or cracked glass and going through insurance? This page covers what your policy usually pays for, what we do with your carrier, and how to book.'
+    return `${damage} and going through insurance? This page covers what your policy usually pays for, what we do with your carrier, and how to book.`
   }
-  return `Chipped or cracked glass and going through ${program.short}? This page covers how the claim works with us, what to have ready, and how to book.`
+  return `${damage} and going through ${program.short}? This page covers how the claim works with us, what to have ready, and how to book.`
 }
 
 /**
@@ -351,7 +362,9 @@ export function programSections(
     body: [
       'It goes faster if you have these to hand when you call or fill in the form:',
       `Your driver's licence, the vehicle's plate number, where and when the damage happened, and a photo of the damage if you can get one. If ${claimNumberHolder(program, ctx)} has already given you a claim number, have that too.`,
-      `Not sure whether it is a repair or a replacement? Send the photo with your quote request and we will tell you. ${CHIP_REPAIRABLE_NOTE}`,
+      ctx.repair
+        ? `Not sure whether it is a repair or a replacement? Send the photo with your quote request and we will tell you. ${CHIP_REPAIRABLE_NOTE}`
+        : 'Not sure what yours needs? Send the photo with your quote request and we will tell you.',
     ].join('\n\n'),
   })
 
@@ -456,11 +469,21 @@ export function affiliationLine(
 export function programDescription(
   program: InsuranceProgram,
   record: ProgramRecord,
-  ctx: ProgramCopyContext
+  ctx: ProgramCopyContext,
+  facts: DescriptionFacts
 ): string {
   if (record.metaDescription) return record.metaDescription
-  const who = program.key === 'general' ? 'an insurance' : `a ${program.short}`
-  return `How ${who} glass claim works with ${ctx.businessName} in ${ctx.area}: what to have ready, what we do with your carrier, and how to book. Free quotes.`
+  // "a ICBC glass claim … what we do with your carrier" was this sentence:
+  // the article was a hard-coded "a", and "your carrier" is the private
+  // market's word, in a province whose one insurer this page is named after.
+  // A named programme says its own name; the general page says the
+  // province's insurer where there is one (insurerNoun) and "your insurer"
+  // otherwise.
+  const insurer = program.key === 'general' ? insurerNoun(ctx.state).replace(/^your carrier$/, 'your insurer') : program.short
+  const kind = program.key === 'general' ? 'insurance' : program.short
+  const process = `How ${indefiniteArticle(kind)} ${kind} glass claim works with us and what we do with ${insurer}`
+  const lead = `${programTitle(program, ctx)}${ctx.state ? `, ${ctx.state}` : ''}`
+  return siteDescription(lead, facts, [process])
 }
 
 // ---------------------------------------------------------------------------

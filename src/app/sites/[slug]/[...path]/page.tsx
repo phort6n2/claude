@@ -1,4 +1,6 @@
 import { formatPhoneDisplay } from '@/lib/lead-display'
+import { siteDescription } from '@/lib/meta-description'
+import { descriptionFacts } from '@/lib/site-meta'
 import { areaWithState, servingLine } from '@/lib/site-area'
 import { isPreview, siteIsLive } from '@/lib/site-preview'
 import PreviewBanner from '@/components/sites/PreviewBanner'
@@ -239,7 +241,10 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const title = `${heading} | ${client.businessName}`
   const description =
     page.metaDescription ||
-    `${heading} from ${client.businessName} in ${areaWithState(client)}. Free quotes. Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
+    siteDescription(
+      `${heading} from ${client.businessName} in ${areaWithState(client)}`,
+      await descriptionFacts(client, formatPhoneDisplay(sitePhone) || sitePhone)
+    )
   return {
     title,
     description,

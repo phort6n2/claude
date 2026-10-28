@@ -103,6 +103,13 @@ const READS: Tool[] = [
     what: "Compares the reviewed AGS patch (src/lib/content-patches/ags-2026-10-replacement-only.ts) with what is live and lists every change: Windshield Repair unticked with its page kept as a crack-and-replacement page, that page's description, line under the H1 and two sections, the repair FAQ answer, and the rock-chip sentence on the three city pages. Any line marked conflict means the live content changed since the patch was written, and nothing will be applied.",
   },
   {
+    key: 'content-patch-ags-icbc-dry',
+    name: 'AGS ICBC page caption: what would change? (reads only)',
+    path: '/api/admin/content-patch?id=ags-2026-10-icbc&dryRun=1',
+    method: 'POST',
+    what: "Compares the reviewed patch (src/lib/content-patches/ags-2026-10-icbc.ts) with AGS's live photos and lists the caption it would change: \"Cracked windshield with a rock chip and spreading cracks\" becomes \"Cracked windshield with spreading cracks\". A conflict means the caption changed since the patch was written, and nothing will be applied.",
+  },
+  {
     key: 'reencrypt-secrets-dry',
     name: 'Which stored keys are not encrypted? (reads only)',
     path: '/api/admin/reencrypt-secrets?dryRun=1',
@@ -127,6 +134,14 @@ const WRITES: Tool[] = [
     method: 'POST',
     what: "Unticks Windshield Repair for AGS and keeps /windshield-repair as a crack-and-replacement page, with its own description, hero line and sections; answers the repair FAQ as a replacement shop; and replaces the rock-chip sentence on the three city pages. Then pushes AGS to its directory listing (repair comes off it). Run the dry version first and read it.",
     cost: 'AGS only. Refuses to write anything if any part no longer matches what is live. Safe to press twice. Every original sentence is recorded in the patch file.',
+  },
+  {
+    key: 'content-patch-ags-icbc',
+    name: 'Apply the AGS ICBC page caption fix',
+    path: '/api/admin/content-patch?id=ags-2026-10-icbc',
+    method: 'POST',
+    what: "Renames one AGS photo's caption and alt, which the ICBC claim page shows under the image. The photo itself is unchanged. Run the dry version first.",
+    cost: 'AGS only, one photo caption. Refuses if the caption no longer matches. Safe to press twice. The original caption is recorded in the patch file.',
   },
   {
     key: 'reencrypt-secrets',

@@ -49,7 +49,7 @@ import {
   type ProgramRecord,
 } from '@/lib/insurance-programs'
 import { insurerNoun } from '@/lib/insurance-rules'
-import { withDefaultFaq } from '@/lib/site-faq'
+import { pageFaq } from '@/lib/site-faq'
 import type { SiteLocation } from '@/lib/client-locations'
 
 /**
@@ -653,11 +653,7 @@ export function SiteBody({
           the FAQ where it read as the end of the page. */}
       <FaqSection
         extras={null}
-        extraFaq={withDefaultFaq(extras.faq, {
-          state: client.state,
-          offersWindshieldRepair: flags.offersWindshieldRepair,
-          offersAdasCalibration: flags.offersAdasCalibration,
-        })}
+        extraFaq={pageFaq(extras.faq, flags, client.state)}
       />
 
       {/* Service areas — dark coverage band */}

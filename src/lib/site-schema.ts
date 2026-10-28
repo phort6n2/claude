@@ -1,5 +1,7 @@
 import type { SiteExtras } from '@/lib/site-content'
 import { servicePath, locationPath, readPathOverrides } from '@/lib/site-paths'
+import { parseOpeningHours } from '@/lib/opening-hours'
+import type { FaqItem } from '@/lib/site-content'
 
 /**
  * JSON-LD for hosted client sites.
@@ -113,6 +115,8 @@ function branchEntities(origin: string, businessName: string, locations: SchemaL
         entity.sameAs = [l.googleMapsUrl]
         entity.hasMap = l.googleMapsUrl
       }
+      const hours = parseOpeningHours(l.hours)
+      if (hours) entity.openingHoursSpecification = hours
       return entity
     })
 }
@@ -153,6 +157,10 @@ function businessEntity(
     },
   }
   if (client.email) entity.email = client.email
+  // From the hours typed on the primary shop — the string its contact card
+  // shows — and only when every part of it parses (lib/opening-hours.ts).
+  const hours = parseOpeningHours(primary?.hours ?? locations.find((l) => l.isPrimary)?.hours)
+  if (hours) entity.openingHoursSpecification = hours
   if (client.serviceAreas?.length) {
     entity.areaServed = client.serviceAreas.map((a) => ({ '@type': 'City', name: a }))
   }
@@ -195,12 +203,15 @@ export function homeJsonLd({
   services,
   extras,
   locations = [],
+  faq,
 }: {
   origin: string
   client: SchemaClient
   services: SchemaService[]
   extras: SiteExtras
   locations?: SchemaLocation[]
+  /** The FAQ the page shows (`pageFaq`). Defaults to the shop's own questions. */
+  faq?: FaqItem[]
 }) {
   const graph: Record<string, unknown>[] = [
     {
@@ -218,29 +229,40 @@ export function homeJsonLd({
       ? []
       : branchEntities(origin, client.businessName, locations)),
   ]
-  if (extras.faq.length) {
-    graph.push({
-      '@type': 'FAQPage',
-      '@id': `${origin}/#faq`,
-      mainEntityOfPage: { '@id': `${origin}/` },
-      mainEntity: extras.faq.map((item) => ({
-        '@type': 'Question',
-        name: item.q,
-        acceptedAnswer: { '@type': 'Answer', text: item.a },
-      })),
-    })
-  }
+  const homeFaq = faq ?? extras.faq
+  if (homeFaq.length) graph.push(faqPageNode(`${origin}/`, homeFaq))
   return { '@context': 'https://schema.org', '@graph': graph }
+}
+
+/**
+ * FAQPage for a page, from exactly the questions it SHOWS (`pageFaq`). It is
+ * a node of its own page — `@id` on that URL — so the home page's and a
+ * service page's are two FAQs, not one claimed twice.
+ */
+function faqPageNode(pageUrl: string, faq: FaqItem[]) {
+  return {
+    '@type': 'FAQPage',
+    '@id': `${pageUrl}#faq`,
+    mainEntityOfPage: { '@id': pageUrl },
+    mainEntity: faq.map((item) => ({
+      '@type': 'Question',
+      name: item.q,
+      acceptedAnswer: { '@type': 'Answer', text: item.a },
+    })),
+  }
 }
 
 export function serviceJsonLd({
   origin,
   client,
   service,
+  faq = [],
 }: {
   origin: string
   client: SchemaClient
   service: SchemaService
+  /** The FAQ the page shows (`pageFaq`); none, no FAQPage node. */
+  faq?: FaqItem[]
 }) {
   const url = `${origin}${servicePath(service.slug, readPathOverrides(client.pathOverrides))}`
   const svc: Record<string, unknown> = {
@@ -267,6 +289,7 @@ export function serviceJsonLd({
       },
       // Reference only — the full entity lives on the home page.
       { '@type': 'AutoRepair', '@id': businessId(origin) },
+      ...(faq.length ? [faqPageNode(url, faq)] : []),
     ],
   }
 }

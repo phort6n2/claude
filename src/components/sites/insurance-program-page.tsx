@@ -1,4 +1,5 @@
 import { formatPhoneDisplay } from '@/lib/lead-display'
+import { descriptionFacts } from '@/lib/site-meta'
 import { headlineArea, areaWithState, servingLine } from '@/lib/site-area'
 import { canViewSite, isPreview, siteIsLive } from '@/lib/site-preview'
 import PreviewBanner from '@/components/sites/PreviewBanner'
@@ -175,7 +176,16 @@ async function resolve(slug: string, programSlug: string) {
 }
 
 function contextFor(
-  client: { businessName: string; city: string; state: string; marketArea: string | null; filesInsuranceClaims: boolean; offersMobileService: boolean },
+  client: {
+    businessName: string
+    city: string
+    state: string
+    marketArea: string | null
+    filesInsuranceClaims: boolean
+    offersMobileService: boolean
+    offersWindshieldRepair: boolean
+    offersRockChipRepair: boolean
+  },
 ): ProgramCopyContext {
   return {
     businessName: client.businessName,
@@ -183,6 +193,9 @@ function contextFor(
     state: client.state,
     filesClaims: client.filesInsuranceClaims,
     mobile: client.offersMobileService,
+    // The FACT, not the page: a shop keeping a search-only repair page
+    // (repairSearchPage) still does not repair.
+    repair: client.offersWindshieldRepair || client.offersRockChipRepair,
   }
 }
 
@@ -220,7 +233,9 @@ export async function insuranceProgramMetadata({ params }: PageProps): Promise<M
       : undefined
 
   const title = `${programTitle(program, ctx)} | ${client.businessName}`
-  const description = `${programDescription(program, record, ctx)} Call ${formatPhoneDisplay(sitePhone) || sitePhone}.`
+  // Programme and area, the network, how the claim works — then the number,
+  // if it still fits 155 (lib/meta-description.ts).
+  const description = programDescription(program, record, ctx, await descriptionFacts(client, formatPhoneDisplay(sitePhone) || sitePhone))
   return {
     title,
     description,
@@ -387,7 +402,7 @@ export default async function InsuranceProgramPage({ params }: PageProps) {
                 {heading}
               </h1>
               <p className="mt-4 text-[17px] leading-[1.55] text-[var(--tx2)] max-w-[48ch]">
-                {programHeroLine(program)}
+                {programHeroLine(program, ctx)}
               </p>
             </div>
 

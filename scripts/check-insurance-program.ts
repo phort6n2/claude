@@ -80,6 +80,8 @@ const AGS: ProgramCopyContext = {
   state: 'BC',
   filesClaims: true,
   mobile: true,
+  // AGS replaces only.
+  repair: false,
 }
 // A Texas shop with no programme of its own — the other fourteen.
 const US: ProgramCopyContext = {
@@ -88,6 +90,7 @@ const US: ProgramCopyContext = {
   state: 'TX',
   filesClaims: false,
   mobile: true,
+  repair: true,
 }
 
 console.log('\nThe page says NOTHING about a network nobody ticked')

@@ -2784,6 +2784,35 @@ client says the leads are bad.
   under 0.002. Arial/Liberation Sans first, Roboto second, each in weight bands
   with a size-adjust MEASURED against real page copy. Swap a font file and the
   numbers are wrong: re-measure, do not guess.
+  - **The heading face is `display: "optional"`, and that is the guarantee.**
+    The matched fallbacks only help where one of those fonts EXISTS; on a
+    machine with none of them (a lab browser, an Android that does not expose
+    Roboto) the stack still fell to system-ui and /windshield-replacement read
+    0.209. With `optional` the browser gives the preloaded file ~100ms and
+    otherwise keeps the fallback for that view, so a hero H1 cannot re-wrap
+    late. Every AGS service page: 0.000 normally and with NO local font. Body
+    text stays `swap` (its re-flow measured 0.003). Test the worst case by
+    rewriting the served CSS's `local(…)` names — the minifier strips their
+    quotes, so match `local\([^)]+\)`, not the quoted form.
+- **META DESCRIPTIONS ARE BUILT, NOT WRITTEN, AND FIT 155**
+  (`meta-description.ts`, facts from `site-meta.ts`, every page type). A lead
+  (service + city, always kept), then the network (the badge's gate), mobile,
+  the live rating, "Free quotes.", the number — each only if the whole still
+  fits; one that does not is skipped and the next still tried. They ran
+  160–180 and lost the phone to the ellipsis, the home one opened "Fast,
+  professional…" (a speed claim for fifteen shops) and the claim page said "a
+  ICBC glass claim … your carrier". `indefiniteArticle` reads acronyms by
+  letter (an ICBC, an SGI). A shop's own typed description still wins whole.
+- **Schema:** `openingHoursSpecification` is PARSED from the hours typed on the
+  shop's location (`opening-hours.ts`) — the string its card shows — and
+  every segment must parse or nothing is emitted ("9–5" with no am/pm is
+  refused, not guessed). FAQPage on the home and service pages is `pageFaq`,
+  the same call that renders the visible FAQ, so the markup cannot list a
+  question the page does not show. Still no aggregateRating (§ top of
+  site-schema.ts). The claim page's copy takes `ProgramCopyContext.repair`
+  (REQUIRED): "Cracked or broken glass…" and no "can usually still be
+  repaired" for a shop that does not repair. `ags-2026-10-icbc` renames the
+  one AGS photo whose caption said "rock chip".
 - `insurance-rules.ts` — per-state glass deductible rules, `PUBLIC_INSURERS`
   / `insurerNoun()` for the provinces with one public insurer, and
   `heroCostLineFor()` for the above-the-fold cost line. All of it already

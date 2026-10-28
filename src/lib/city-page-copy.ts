@@ -11,6 +11,8 @@
  * offers it does repair windshields (see the chips note in story-sections.ts).
  */
 
+import { siteDescription } from './meta-description'
+
 export interface WindshieldFlags {
   offersWindshieldRepair: boolean
   offersRockChipRepair: boolean
@@ -39,13 +41,11 @@ export function cityHeadline(work: WindshieldWork, area: string): string {
 }
 
 /**
- * The meta description. Every clause is a stored fact or is omitted:
- * - the network only when `networkHighlight` returned one (ticked, and a
- *   network name this platform has confirmed) — the same gate as the badge;
- * - the rating only from the live Business Profile feed, never typed;
- * - NO warranty: a named warranty must state its terms (§2), and a snippet
- *   cannot; the page's warranty band does.
- * - NO "in minutes": a timing promise.
+ * The meta description: "{Mobile }windshield {work} in {city}, {state}." and
+ * then the shop's strongest facts while it fits 155 — the same builder every
+ * page type uses (lib/meta-description.ts), which is where the rules about
+ * what may be said live: the network only behind the badge's gate, the rating
+ * only from the live feed, no warranty name and no timing promise.
  */
 export function cityMetaDescription(input: {
   work: WindshieldWork
@@ -57,14 +57,6 @@ export function cityMetaDescription(input: {
   businessName: string
   phone: string
 }): string {
-  const trust = [
-    input.networkLabel ? `${input.networkLabel} shop` : null,
-    input.rating && input.rating.reviewCount > 0 && input.rating.rating > 0
-      ? `${input.rating.rating.toFixed(1)} stars on Google`
-      : null,
-  ].filter(Boolean)
-  const lead = `${input.mobile ? 'Mobile windshield' : 'Windshield'} ${input.work} in ${input.area}, ${input.state}.`
-  return [lead, trust.length ? `${trust.join(', ')}.` : null, `Free quotes from ${input.businessName}.`, input.phone ? `Call ${input.phone}.` : null]
-    .filter(Boolean)
-    .join(' ')
+  const lead = `${input.mobile ? 'Mobile windshield' : 'Windshield'} ${input.work} in ${input.area}, ${input.state}`
+  return siteDescription(lead, { networkLabel: input.networkLabel, mobile: input.mobile, rating: input.rating, phone: input.phone })
 }

@@ -98,3 +98,21 @@ export function withDefaultFaq(
   const seen = new Set(own.map((f) => key(f.q)))
   return [...own, ...defaultFaq(opts).filter((f) => !seen.has(key(f.q)))]
 }
+
+/**
+ * The FAQ a page SHOWS — and therefore the only FAQ its FAQPage markup may
+ * carry. One function for both, because FAQPage that lists a question the page
+ * does not show (or misses one it does) is markup that disagrees with the
+ * page, which is the one thing Google's structured-data rules forbid outright.
+ */
+export function pageFaq(
+  own: FaqItem[],
+  flags: { offersWindshieldRepair: boolean; offersAdasCalibration: boolean },
+  state: string | null | undefined
+): FaqItem[] {
+  return withDefaultFaq(own, {
+    state,
+    offersWindshieldRepair: flags.offersWindshieldRepair,
+    offersAdasCalibration: flags.offersAdasCalibration,
+  })
+}
