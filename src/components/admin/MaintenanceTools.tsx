@@ -114,7 +114,7 @@ const READS: Tool[] = [
     name: 'Speedy location pages: what would change? (reads only)',
     path: '/api/admin/content-patch?id=speedy-2026-10-locations&dryRun=1',
     method: 'POST',
-    what: "Compares the reviewed patch (src/lib/content-patches/speedy-2026-10-locations.ts) with Speedy's live record and lists every change: fourteen service areas added (Riverside County, its ten largest cities, Orange County, Irvine, Los Angeles County), each with its own page copy; and the general insurance claims page switched on, which /insurance-claims renders. Any line marked conflict means the live content differs from what the patch expects, and nothing will be applied.",
+    what: "Compares the reviewed patch (src/lib/content-patches/speedy-2026-10-locations.ts) with Speedy's live record and lists every change: the region set to 'Southern California'; fourteen service areas added (Riverside County, ten of its largest cities without Indio, Orange County, Irvine, Los Angeles County), each with its own page copy; and the general insurance claims page switched on, which /insurance-claims renders. Any line marked conflict means the live content differs from what the patch expects, and nothing will be applied.",
   },
   {
     key: 'reencrypt-secrets-dry',
@@ -155,7 +155,7 @@ const WRITES: Tool[] = [
     name: 'Apply the Speedy location pages',
     path: '/api/admin/content-patch?id=speedy-2026-10-locations',
     method: 'POST',
-    what: "Adds the fourteen service areas and their page copy and the general insurance claims page for Speedy, in one transaction, then pushes Speedy to its directory listing. No redirects. Run the dry version first and read it.",
+    what: "Sets the region to 'Southern California' and adds the fourteen service areas, their page copy and the general insurance claims page for Speedy, in one transaction, then pushes Speedy to its directory listing. No redirects. Run the dry version first and read it.",
     cost: "Speedy only. Adds; never removes or overwrites — a city that already has copy, or a different claims page, is a conflict and nothing is written. Safe to press twice. To undo a city, remove it from Service areas on the Business tab.",
   },
   {

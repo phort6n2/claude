@@ -301,6 +301,12 @@ export interface ProgramCopyContext {
    * the shop does not do, on the page its insurance ads land on.
    */
   repair: boolean
+  /**
+   * `area` is the shop's typed region (`usesMarketArea`), not its city — so
+   * the description does not add the state: "Southern California, CA" is what
+   * Speedy's read. REQUIRED for the reason `repair` is.
+   */
+  areaIsRegion: boolean
 }
 
 export interface ProgramSection {
@@ -493,7 +499,7 @@ export function programDescription(
   const insurer = program.key === 'general' ? insurerNoun(ctx.state).replace(/^your carrier$/, 'your insurer') : program.short
   const kind = program.key === 'general' ? 'insurance' : program.short
   const process = `How ${indefiniteArticle(kind)} ${kind} glass claim works with us and what we do with ${insurer}`
-  const lead = `${programTitle(program, ctx)}${ctx.state ? `, ${ctx.state}` : ''}`
+  const lead = `${programTitle(program, ctx)}${ctx.state && !ctx.areaIsRegion ? `, ${ctx.state}` : ''}`
   return siteDescription(lead, facts, [process])
 }
 

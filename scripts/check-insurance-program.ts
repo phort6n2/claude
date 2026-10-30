@@ -82,6 +82,8 @@ const AGS: ProgramCopyContext = {
   mobile: true,
   // AGS replaces only.
   repair: false,
+  // 'the Lower Mainland' is a typed region.
+  areaIsRegion: true,
 }
 // A Texas shop with no programme of its own — the other fourteen.
 const US: ProgramCopyContext = {
@@ -91,6 +93,7 @@ const US: ProgramCopyContext = {
   filesClaims: false,
   mobile: true,
   repair: true,
+  areaIsRegion: true,
 }
 
 console.log('\nThe page says NOTHING about a network nobody ticked')

@@ -51,7 +51,7 @@ console.log('\nTHE ICBC PAGE')
 check(indefiniteArticle('ICBC') === 'an' && indefiniteArticle('SGI') === 'an' && indefiniteArticle('MPI') === 'an' && indefiniteArticle('insurance') === 'an' && indefiniteArticle('USAA') === 'a', 'an ICBC, an SGI, an MPI, an insurance, a USAA')
 const icbc = programFor('icbc')!
 const general = programFor('general')!
-const agsCtx: ProgramCopyContext = { businessName: 'AGS Affordable Glass Services', area: 'Port Coquitlam', state: 'BC', filesClaims: true, mobile: true, repair: false }
+const agsCtx: ProgramCopyContext = { businessName: 'AGS Affordable Glass Services', area: 'Port Coquitlam', state: 'BC', filesClaims: true, mobile: true, repair: false, areaIsRegion: false }
 const record = { programKey: 'icbc', inNetwork: true, coverageNote: null, claimSteps: [], metaDescription: null, publishedAt: new Date() }
 const icbcDesc = programDescription(icbc, record as never, agsCtx, AGS)
 check(icbcDesc.length <= META_DESCRIPTION_MAX, `${icbcDesc.length}: ${icbcDesc}`)
@@ -59,6 +59,9 @@ check(/an ICBC glass claim/.test(icbcDesc) && !/a ICBC/.test(icbcDesc) && !/carr
 check(/^ICBC glass claims in Port Coquitlam, BC\. ICBC Repair Network shop\./.test(icbcDesc), 'leads with the service, the city and the network')
 const tx = programDescription(general, { ...record, programKey: 'general' } as never, { ...agsCtx, state: 'TX', area: 'Dallas', repair: true }, BARE)
 check(/an insurance glass claim/.test(tx) && /your insurer/.test(tx) && !/carrier/.test(tx), `the general page elsewhere: ${tx}`)
+check(/^Insurance glass claims in Dallas, TX\./.test(tx), 'a shop named by its city keeps the state')
+const socal = programDescription(general, { ...record, programKey: 'general' } as never, { ...agsCtx, state: 'CA', area: 'Southern California', repair: true, areaIsRegion: true }, BARE)
+check(/^Insurance glass claims in Southern California\./.test(socal) && !/California, CA/.test(socal), `a typed region does not add the state: ${socal}`)
 check(programHeroLine(icbc, { repair: false }).startsWith('Cracked or broken glass and going through ICBC?'), 'a replacement-only shop: "Cracked or broken glass and going through ICBC?"')
 check(programHeroLine(icbc, { repair: true }).startsWith('Chipped or cracked glass and going through ICBC?'), 'a shop that repairs keeps "Chipped or cracked…"')
 const agsSections = JSON.stringify(programSections(icbc, { ...record, ...programDefaultCopy(icbc, { filesClaims: true, mobile: true, hasShopLocation: true, inNetwork: true }) } as never, agsCtx))

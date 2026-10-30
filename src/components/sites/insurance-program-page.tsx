@@ -1,6 +1,6 @@
 import { formatPhoneDisplay } from '@/lib/lead-display'
 import { descriptionFacts } from '@/lib/site-meta'
-import { headlineArea, areaWithState, servingLine } from '@/lib/site-area'
+import { headlineArea, areaWithState, servingLine, usesMarketArea } from '@/lib/site-area'
 import { canViewSite, isPreview, siteIsLive } from '@/lib/site-preview'
 import PreviewBanner from '@/components/sites/PreviewBanner'
 import { headers } from 'next/headers'
@@ -196,6 +196,7 @@ function contextFor(
     // The FACT, not the page: a shop keeping a search-only repair page
     // (repairSearchPage) still does not repair.
     repair: client.offersWindshieldRepair || client.offersRockChipRepair,
+    areaIsRegion: usesMarketArea(client),
   }
 }
 

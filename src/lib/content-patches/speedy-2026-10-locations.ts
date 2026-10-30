@@ -7,11 +7,18 @@ import type { ContentPatch } from '@/lib/content-patch'
  * TWO JOBS.
  *
  * 1. RIVERSIDE COUNTY, at the owner's request: a page for the county and for
- *    its ten largest cities by the 2020 census (Riverside, Moreno Valley,
- *    Corona, Murrieta, Temecula, Jurupa Valley, Menifee, Hemet, Indio,
- *    Perris). Indio is in the Coachella Valley, about seventy miles east of
- *    the rest — it is on the list because it is tenth, and the county page
- *    names the cities rather than claiming the whole county.
+ *    its ten largest cities by the 2020 census that Speedy drives to
+ *    (Riverside, Moreno Valley, Corona, Murrieta, Temecula, Jurupa Valley,
+ *    Menifee, Hemet, Perris, Lake Elsinore). Indio, ninth, is OUT at the
+ *    owner's call — it is in the Coachella Valley, far east of the rest — and
+ *    Lake Elsinore, eleventh, takes its place. The county page names the
+ *    cities rather than claiming the whole county.
+ *
+ *    THE REGION becomes "Southern California", at the owner's call: the ads
+ *    now cover San Diego, Orange, Los Angeles and Riverside counties, and an
+ *    H1 saying "in San Diego" was the first thing an LA+OC click would read.
+ *    Headlines only (site-area.ts) — the address, schema and city pages keep
+ *    their own place.
  *
  * 2. LANDING-PAGE PARITY. Every final URL on an ENABLED ad, asset group or
  *    sitelink in an ENABLED AGMP campaign (read 2026-10-30) was requested
@@ -48,6 +55,7 @@ export const SPEEDY_2026_10_LOCATIONS: ContentPatch = {
     { field: 'offersWindshieldRepair', from: true, to: true },
     { field: 'offersRockChipRepair', from: true, to: true },
     { field: 'offersAdasCalibration', from: true, to: true },
+    { field: 'marketArea', from: null, to: 'Southern California' },
   ],
 
   serviceAreasAdd: [
@@ -60,8 +68,8 @@ export const SPEEDY_2026_10_LOCATIONS: ContentPatch = {
     'Jurupa Valley',
     'Menifee',
     'Hemet',
-    'Indio',
     'Perris',
+    'Lake Elsinore',
     'Orange County',
     'Irvine',
     'Los Angeles County',
@@ -71,7 +79,7 @@ export const SPEEDY_2026_10_LOCATIONS: ContentPatch = {
     {
       city: 'Riverside County',
       heading: 'Mobile windshield service across Riverside County',
-      body: 'Riverside County covers a lot of road, and these are the cities we work: Riverside, Corona and Jurupa Valley in the west; Moreno Valley, Perris and Menifee along the 215; Murrieta and Temecula, where the 215 meets the 15; Hemet in the San Jacinto Valley; and Indio in the Coachella Valley. Between the truck traffic on the 15, the 215, the 60 and the 91 and the summer heat inland, chipped and cracked windshields are an everyday problem here. We come to you — at home, at work, or wherever the car is parked — for chip repairs and windshield replacements, and we calibrate driver-assist cameras after a replacement. Not sure we reach you? Ask when you request your quote.',
+      body: 'Riverside County covers a lot of road, and these are the cities we work: Riverside, Corona and Jurupa Valley in the west; Moreno Valley, Perris and Menifee along the 215; Murrieta and Temecula, where the 215 meets the 15, and Lake Elsinore farther up the 15; and Hemet in the San Jacinto Valley. Between the truck traffic on the 15, the 215, the 60 and the 91 and the summer heat inland, chipped and cracked windshields are an everyday problem here. We come to you — at home, at work, or wherever the car is parked — for chip repairs and windshield replacements, and we calibrate driver-assist cameras after a replacement. Not sure we reach you? Ask when you request your quote.',
     },
     {
       city: 'Riverside',
@@ -114,14 +122,14 @@ export const SPEEDY_2026_10_LOCATIONS: ContentPatch = {
       body: 'Hemet sits in the San Jacinto Valley, with the 74 and the 79 as its main roads in and out and Diamond Valley Lake just to the southwest. Summer afternoons in the valley are hot, and a chipped windshield is under the most stress when sun-heated glass meets cold air-conditioning. We come to you — at home, at work, or wherever the car is parked in Hemet — for a chip repair before it spreads, or a full replacement once it has. If your vehicle has a driver-assist camera behind the windshield, we calibrate it after the replacement so lane-keeping and emergency braking read the road correctly.',
     },
     {
-      city: 'Indio',
-      heading: 'Windshield repair and replacement in Indio',
-      body: 'Indio is in the Coachella Valley, along the 10, and its summers are among the hottest in California. Desert heat is hard on damaged glass: a windshield that bakes in a parking lot and then meets the air-conditioning can turn a small chip into a long crack, and windblown sand pits the glass over time. We come to you in Indio — at home, at work, or wherever the car is parked. A chip caught early can usually be repaired; a crack across the glass means a replacement. If your vehicle has a camera behind the windshield, we calibrate it after the new glass is in.',
-    },
-    {
       city: 'Perris',
       heading: 'Windshield repair and replacement in Perris',
       body: 'Perris sits on the 215 south of Moreno Valley, with Lake Perris to the northeast and the Ramona Expressway running east toward the San Jacinto Valley. The warehouses along the 215 and the Ramona Expressway put a lot of trucks on the road, and trucks throw the stones that chip windshields. We come to you, wherever the car is parked in Perris. A chip is worth repairing while it is small; one left alone through a hot summer tends to spread into a crack, and then the windshield needs replacing. If your car has a driver-assist camera behind the glass, we calibrate it after a replacement.',
+    },
+    {
+      city: 'Lake Elsinore',
+      heading: 'Windshield repair and replacement in Lake Elsinore',
+      body: 'Lake Elsinore sits on the 15 around the largest natural freshwater lake in Southern California, with the Ortega Highway climbing west over the Santa Ana Mountains toward the coast. The 15 carries heavy traffic between the Inland Empire and San Diego, and the newer neighborhoods in the hills, like Canyon Hills and Tuscany Hills, still see construction traffic and loose gravel. We come to you — at home, at work, or wherever the car is parked in Lake Elsinore. A chip caught while it is small can usually be repaired; through a hot inland summer it can spread into a crack, and then the windshield needs replacing. If your car has a driver-assist camera behind the glass, we calibrate it after a replacement.',
     },
     {
       city: 'Orange County',

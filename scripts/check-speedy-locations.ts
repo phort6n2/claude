@@ -110,9 +110,15 @@ for (const slug of ['auto-glass-replacement', 'windshield-crack-repair']) {
   check(FLAT_SERVICE_PATHS.includes(slug), `/${slug} still rewritten in middleware, as before`)
 }
 
-console.log('\nRIVERSIDE COUNTY: THE COUNTY AND ITS TEN LARGEST CITIES (2020 census)')
-const TEN = ['Riverside', 'Moreno Valley', 'Corona', 'Murrieta', 'Temecula', 'Jurupa Valley', 'Menifee', 'Hemet', 'Indio', 'Perris']
+console.log('\nRIVERSIDE COUNTY: THE COUNTY AND ITS TEN LARGEST CITIES SPEEDY DRIVES TO (2020 census, Indio out)')
+const TEN = ['Riverside', 'Moreno Valley', 'Corona', 'Murrieta', 'Temecula', 'Jurupa Valley', 'Menifee', 'Hemet', 'Perris', 'Lake Elsinore']
 for (const c of ['Riverside County', ...TEN]) check(copyFor.has(c.toLowerCase()), `${c} → /auto-glass-repair-${citySlug(c)}`)
+const everything = JSON.stringify([P.serviceAreasAdd, P.cityContent])
+check(!/indio|coachella/i.test(everything), 'no Indio page, and the county page does not name it or the Coachella Valley')
+
+console.log('\nTHE REGION')
+const region = (P.clientFields || []).find((f) => f.field === 'marketArea')
+check(region?.from === null && region?.to === 'Southern California', 'marketArea: empty → "Southern California"')
 
 if (failures) {
   console.log(`\n${failures} FAILED`)

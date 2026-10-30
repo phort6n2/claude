@@ -4,7 +4,7 @@ import { ReviewsGrid } from '@/components/sites/reviews-grid'
 import GalleryPhotos from '@/components/sites/gallery-lightbox'
 import { wordmarkParts } from '@/lib/wordmark'
 import { smsHref } from '@/lib/contact-links'
-import { headlineArea, servingShort } from '@/lib/site-area'
+import { headlineArea, servingShort, usesMarketArea } from '@/lib/site-area'
 import { headerIsDark } from '@/lib/logo-surface'
 import { warrantyBody, warrantyLead } from '@/lib/warranty-text'
 import { mostMentionedName } from '@/lib/review-names'
@@ -1793,8 +1793,14 @@ export function AreasBand({
             Areas we serve
           </h2>
           <p className="mt-3 mb-0 text-[17px] leading-[1.55] text-[var(--on-dark-2)]">
-            {headlineArea(client)} and the surrounding communities — if you’re close but don’t see
-            your city, call and ask.
+            {/* "and the surrounding communities" only after a CITY: a typed
+                region already is the surroundings, and "Southern California
+                and the surrounding communities" (Speedy) reads as a slip —
+                servingShort drops "and nearby" for the same reason. */}
+            {usesMarketArea(client)
+              ? `Across ${headlineArea(client)}`
+              : `${headlineArea(client)} and the surrounding communities`}{' '}
+            — if you’re close but don’t see your city, call and ask.
           </p>
         </div>
         <ul
