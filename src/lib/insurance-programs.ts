@@ -98,6 +98,14 @@ export interface InsuranceProgram {
   networkProcessLine: string | null
   /** True when the page's coverage copy has to be typed by an operator. */
   needsTypedCoverage: boolean
+  /**
+   * Old-site addresses that RENDER this page, canonical to `slug` — a live ad
+   * already points at them (Speedy's LA+OC campaign: /insurance-claims). Served
+   * by the catch-all after kept pages and redirects, so a shop that kept a page
+   * at one keeps it; and the page still 404s itself unless this client has it
+   * published. Not in PROGRAM_PATHS, so an override can still claim one.
+   */
+  aliases?: string[]
 }
 
 /**
@@ -133,6 +141,7 @@ export const INSURANCE_PROGRAMS: Record<ProgramKey, InsuranceProgram> = {
     networkProcessLine: null,
     // Its coverage copy is the reviewed per-state rule. Nothing to type.
     needsTypedCoverage: false,
+    aliases: ['insurance-claims'],
   },
   // Confirmed against the shop's own published ICBC page and with the
   // operator, for this one programme. The others stay null until somebody
@@ -170,7 +179,9 @@ export function programFor(key: string | null | undefined): InsuranceProgram | n
 export function programForPath(bare: string): InsuranceProgram | null {
   const clean = String(bare || '').replace(/^\/+|\/+$/g, '').toLowerCase()
   if (!clean || clean.includes('/')) return null
-  return PROGRAM_KEYS.map((k) => INSURANCE_PROGRAMS[k]).find((p) => p.slug === clean) || null
+  return (
+    PROGRAM_KEYS.map((k) => INSURANCE_PROGRAMS[k]).find((p) => p.slug === clean || p.aliases?.includes(clean)) || null
+  )
 }
 
 /** Every address a programme page could occupy, for the reserved-path checks. */

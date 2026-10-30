@@ -110,6 +110,13 @@ const READS: Tool[] = [
     what: "Compares the reviewed patch (src/lib/content-patches/ags-2026-10-icbc.ts) with AGS's live photos and lists the caption it would change: \"Cracked windshield with a rock chip and spreading cracks\" becomes \"Cracked windshield with spreading cracks\". A conflict means the caption changed since the patch was written, and nothing will be applied.",
   },
   {
+    key: 'content-patch-speedy-locations-dry',
+    name: 'Speedy location pages: what would change? (reads only)',
+    path: '/api/admin/content-patch?id=speedy-2026-10-locations&dryRun=1',
+    method: 'POST',
+    what: "Compares the reviewed patch (src/lib/content-patches/speedy-2026-10-locations.ts) with Speedy's live record and lists every change: fourteen service areas added (Riverside County, its ten largest cities, Orange County, Irvine, Los Angeles County), each with its own page copy; and the general insurance claims page switched on, which /insurance-claims renders. Any line marked conflict means the live content differs from what the patch expects, and nothing will be applied.",
+  },
+  {
     key: 'reencrypt-secrets-dry',
     name: 'Which stored keys are not encrypted? (reads only)',
     path: '/api/admin/reencrypt-secrets?dryRun=1',
@@ -142,6 +149,14 @@ const WRITES: Tool[] = [
     method: 'POST',
     what: "Renames one AGS photo's caption and alt, which the ICBC claim page shows under the image. The photo itself is unchanged. Run the dry version first.",
     cost: 'AGS only, one photo caption. Refuses if the caption no longer matches. Safe to press twice. The original caption is recorded in the patch file.',
+  },
+  {
+    key: 'content-patch-speedy-locations',
+    name: 'Apply the Speedy location pages',
+    path: '/api/admin/content-patch?id=speedy-2026-10-locations',
+    method: 'POST',
+    what: "Adds the fourteen service areas and their page copy and the general insurance claims page for Speedy, in one transaction, then pushes Speedy to its directory listing. No redirects. Run the dry version first and read it.",
+    cost: "Speedy only. Adds; never removes or overwrites — a city that already has copy, or a different claims page, is a conflict and nothing is written. Safe to press twice. To undo a city, remove it from Service areas on the Business tab.",
   },
   {
     key: 'reencrypt-secrets',

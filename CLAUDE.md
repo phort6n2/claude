@@ -1353,6 +1353,21 @@ and anything shaped like a city page — **middleware rewrites both before any
 of this app's routing sees them, and middleware cannot read the database**,
 so such an override would be accepted and then silently ignored.
 
+**AN OLD AD ADDRESS RENDERS A PAGE; IT DOES NOT REDIRECT** (the owner's
+call, on Speedy). Every live final URL must answer 200 with a real page at
+its own address once the domain moves, never a 308. Three alias lists do it,
+each canonical to the page it renders: `SERVICE_ALIASES` (headed by the
+alias's own name — and side/door glass is "Replacement" even at
+`/car-window-repair`), the general claims page's `aliases`
+(`/insurance-claims`), and `HOME_ALIASES` (`/home`, `/free-quote`). An alias
+added now is `yieldsToKeptPages`: served by the catch-all AFTER kept pages,
+redirects and overrides, never rewritten in middleware, so another shop's
+kept page at the same address still wins. A content patch can add service
+areas, write city copy for a city with none (`cityContent` — existing copy is
+a conflict, never overwritten) and switch on the general claims page.
+`speedy-2026-10-locations` is the first; `scripts/check-speedy-locations.ts`
+lists the live addresses it was read against.
+
 **City copy can be written for EVERY empty page in one press**
 (`POST /api/clients/[id]/city-content/draft-all`, the button above the list in
 `CityContentEditor`). The per-city draft deliberately does NOT save — a human

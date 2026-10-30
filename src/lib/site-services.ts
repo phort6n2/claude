@@ -407,8 +407,20 @@ export function formServiceNames(flags: Partial<Record<ServiceFlag, boolean | nu
  *
  * The names are written out, never derived from the slug. Title-casing turns
  * "adas-calibration" into "Adas Calibration", and the list is short and fixed.
+ *
+ * The name says what the PAGE does, which is not always the address's word:
+ * Speedy's ads buy "car window repair" and "door glass repair", and side glass
+ * is replaced, never repaired (see the sunroof/side/back note in CLAUDE.md),
+ * so those addresses headline "Replacement". The address keeps the ad's
+ * destination; the H1 stays true.
+ *
+ * `yieldsToKeptPages`, as on a service page: an alias added LATER may already
+ * be another shop's kept page ("car window repair" is exactly what an old site
+ * calls one), and middleware would replace it silently. Those are served by
+ * the catch-all after kept pages and redirects instead. The first six predate
+ * every kept page and stay in middleware.
  */
-export const SERVICE_ALIASES: Record<string, { service: string; name: string }> = {
+export const SERVICE_ALIASES: Record<string, { service: string; name: string; yieldsToKeptPages?: true }> = {
   'auto-glass-replacement': { service: 'windshield-replacement', name: 'Auto Glass Replacement' },
   'mobile-windshield-replacement': {
     service: 'windshield-replacement',
@@ -418,6 +430,10 @@ export const SERVICE_ALIASES: Record<string, { service: string; name: string }> 
   'mobile-windshield-repair': { service: 'windshield-repair', name: 'Mobile Windshield Repair' },
   'windshield-crack-repair': { service: 'windshield-repair', name: 'Windshield Crack Repair' },
   'windshield-chip-repair': { service: 'rock-chip-repair', name: 'Windshield Chip Repair' },
+  'mobile-service': { service: 'mobile-auto-glass', name: 'Mobile Auto Glass Service', yieldsToKeptPages: true },
+  'car-window-replacement': { service: 'side-window-replacement', name: 'Car Window Replacement', yieldsToKeptPages: true },
+  'car-window-repair': { service: 'side-window-replacement', name: 'Car Window Replacement', yieldsToKeptPages: true },
+  'door-glass-repair': { service: 'side-window-replacement', name: 'Door Glass Replacement', yieldsToKeptPages: true },
 }
 
 /**
@@ -453,7 +469,9 @@ export function serviceHeading(slug: string): string {
  */
 export const FLAT_SERVICE_PATHS: string[] = [
   ...SERVICE_PAGES.filter((s) => !s.yieldsToKeptPages).map((s) => s.slug),
-  ...Object.keys(SERVICE_ALIASES),
+  ...Object.entries(SERVICE_ALIASES)
+    .filter(([, a]) => !a.yieldsToKeptPages)
+    .map(([slug]) => slug),
 ]
 
 /** The service's own sections that are true for THIS shop. */

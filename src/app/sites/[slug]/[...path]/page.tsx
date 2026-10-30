@@ -57,7 +57,8 @@ import { normalisePath } from '@/lib/url-parity'
 import LocationPage, { generateMetadata as locationMetadata } from '@/app/sites/[slug]/locations/[city]/page'
 import ServicePage, { generateMetadata as serviceMetadata } from '@/app/sites/[slug]/services/[service]/page'
 import { getServicePage } from '@/lib/site-services'
-import { cityFromPath, canonicalForCustom, readPathOverrides } from '@/lib/site-paths'
+import { cityFromPath, canonicalForCustom, readPathOverrides, HOME_ALIASES } from '@/lib/site-paths'
+import HomePage, { generateMetadata as homeMetadata } from '@/app/sites/[slug]/page'
 import InsuranceProgramPage, {
   insuranceProgramMetadata,
 } from '@/components/sites/insurance-program-page'
@@ -227,6 +228,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     if (programForPath(flat)) {
       return insuranceProgramMetadata({ params: Promise.resolve({ slug, program: flat }) })
     }
+    if (HOME_ALIASES.has(flat)) return homeMetadata({ params: Promise.resolve({ slug }), searchParams })
     return { title: 'Not Found' }
   }
 
@@ -307,6 +309,8 @@ export default async function CatchAllPage({ params, searchParams }: PageProps) 
     if (programForPath(flat)) {
       return <InsuranceProgramPage params={Promise.resolve({ slug, program: flat })} />
     }
+    // See HOME_ALIASES. Canonical "/", so only the home page is indexed.
+    if (HOME_ALIASES.has(flat)) return <HomePage params={Promise.resolve({ slug })} searchParams={searchParams} />
 
     notFound()
   }

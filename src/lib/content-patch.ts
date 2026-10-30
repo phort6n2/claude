@@ -2,6 +2,9 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { asServiceHeroLines, asServicePageCopy, type HeroBullet, type ServicePageCopy, type SiteChapter } from '@/lib/site-content'
 import { syncClientPhotosToWrhq } from '@/lib/wrhq-sync'
+import { LOCATION_PAGE_LIMIT } from '@/lib/site-locations'
+import { countWords } from '@/lib/city-content'
+import { publishProblem } from '@/lib/insurance-programs'
 
 /**
  * A REVIEWED SET OF CONTENT CHANGES FOR ONE CLIENT, applied by a button.
@@ -36,10 +39,37 @@ export interface ContentPatch {
   client: string
   /** Fields on Client. `from` must equal the live value (or `to` already). */
   clientFields?: Array<{
-    field: 'businessName' | 'email' | 'country' | 'offersRockChipRepair' | 'offersWindshieldRepair' | 'repairSearchPage' | 'marketArea'
+    field:
+      | 'businessName'
+      | 'email'
+      | 'country'
+      | 'offersRockChipRepair'
+      | 'offersWindshieldRepair'
+      | 'offersMobileService'
+      | 'offersAdasCalibration'
+      | 'repairSearchPage'
+      | 'marketArea'
     from: string | boolean | null
     to: string | boolean | null
   }>
+  /**
+   * Names appended to Client.serviceAreas — each one gets a city page. One
+   * already there (any case) is `already`; nothing is reordered or removed,
+   * because the order decides which cities have pages.
+   */
+  serviceAreasAdd?: string[]
+  /**
+   * A city page's own copy, for a city with none. A city whose copy somebody
+   * has already written is a CONFLICT, never overwritten — the bulk drafter's
+   * rule, for the same reason.
+   */
+  cityContent?: Array<{ city: string; heading: string; body: string }>
+  /**
+   * Switch on and publish an insurance-claim page. Only the general page,
+   * which needs nothing typed (its coverage copy is the reviewed per-state
+   * rule); a named programme needs an operator's coverage note first.
+   */
+  insuranceProgram?: { programKey: 'general' }
   /** Substring replacements inside a text field of ClientSiteContent. */
   textReplace?: Array<{ field: 'warrantyText' | 'footerBlurb'; from: string; to: string }>
   /** Story sections, matched on their heading. */
@@ -112,20 +142,27 @@ async function plan(patch: ContentPatch) {
       country: true,
       offersRockChipRepair: true,
       offersWindshieldRepair: true,
+      offersMobileService: true,
+      offersAdasCalibration: true,
       repairSearchPage: true,
       marketArea: true,
+      serviceAreas: true,
     },
   })
   if (matches.length !== 1) {
     return { error: `Expected exactly one client for "${patch.client}", found ${matches.length}.` } as const
   }
   const client = matches[0]
-  const [content, photos, redirects, locations, cities] = await Promise.all([
+  const [content, photos, redirects, locations, cities, program] = await Promise.all([
     prisma.clientSiteContent.findUnique({ where: { clientId: client.id } }),
     prisma.clientSitePhoto.findMany({ where: { clientId: client.id } }),
     prisma.clientRedirect.findMany({ where: { clientId: client.id } }),
     prisma.clientLocation.findMany({ where: { clientId: client.id }, select: { id: true, label: true, country: true } }),
-    prisma.clientCityContent.findMany({ where: { clientId: client.id }, select: { id: true, city: true, body: true } }),
+    prisma.clientCityContent.findMany({
+      where: { clientId: client.id },
+      select: { id: true, city: true, heading: true, body: true },
+    }),
+    patch.insuranceProgram ? prisma.clientInsuranceProgram.findUnique({ where: { clientId: client.id } }) : null,
   ])
 
   const ops: OpReport[] = []
@@ -142,6 +179,27 @@ async function plan(patch: ContentPatch) {
       ops.push({ op, status: 'apply', live: short(live), becomes: short(f.to) })
       clientData[f.field] = f.to
     } else ops.push({ op, status: 'conflict', live: short(live), why: `expected ${short(f.from)}` })
+  }
+
+  if (patch.serviceAreasAdd?.length) {
+    const areas = [...(client.serviceAreas || [])]
+    for (const name of patch.serviceAreasAdd) {
+      const op = `Service area "${name}"`
+      if (areas.some((a) => norm(a) === norm(name))) ops.push({ op, status: 'already' })
+      else {
+        areas.push(name)
+        ops.push({ op, status: 'apply', becomes: 'a city page' })
+      }
+    }
+    // Past the sanity bound the last ones would silently get no page.
+    if (areas.length > LOCATION_PAGE_LIMIT) {
+      ops.push({
+        op: 'Service areas',
+        status: 'conflict',
+        live: `${areas.length} areas`,
+        why: `more than the ${LOCATION_PAGE_LIMIT} that get a page`,
+      })
+    } else if (areas.length !== (client.serviceAreas || []).length) clientData.serviceAreas = areas
   }
 
   const texts: Record<string, string | null> = {
@@ -302,6 +360,47 @@ async function plan(patch: ContentPatch) {
     else ops.push({ op, status: 'conflict', live: short(live), why: 'text to replace not found' })
   }
 
+  const cityWrites: Array<{ id: string | null; city: string; heading: string; body: string }> = []
+  for (const c of patch.cityContent || []) {
+    const op = `${c.city} page copy`
+    const row = cities.find((x) => norm(x.city) === norm(c.city))
+    if (row && (row.body || '').trim() === c.body.trim() && (row.heading || '') === c.heading) {
+      ops.push({ op, status: 'already' })
+    } else if (row && (row.body || '').trim()) {
+      ops.push({ op, status: 'conflict', live: short(row.body), why: 'this city already has copy somebody wrote' })
+    } else {
+      cityWrites.push({ id: row?.id ?? null, city: c.city, heading: c.heading, body: c.body })
+      ops.push({ op, status: 'apply', becomes: `${c.heading} — ${countWords(c.body)} words` })
+    }
+  }
+
+  let programWrite: { create: boolean } | null = null
+  if (patch.insuranceProgram) {
+    const op = `Insurance claims page (${patch.insuranceProgram.programKey})`
+    if (!program) {
+      programWrite = { create: true }
+      ops.push({ op, status: 'apply', becomes: 'switched on and published' })
+    } else if (program.programKey !== patch.insuranceProgram.programKey) {
+      ops.push({ op, status: 'conflict', live: program.programKey, why: 'a different claims page is set up' })
+    } else if (program.publishedAt) ops.push({ op, status: 'already' })
+    else {
+      // The same check the Website tab's Publish runs.
+      const problem = publishProblem({
+        programKey: program.programKey,
+        inNetwork: program.inNetwork,
+        coverageNote: program.coverageNote,
+        claimSteps: Array.isArray(program.claimSteps) ? (program.claimSteps as string[]) : [],
+        metaDescription: program.metaDescription,
+        publishedAt: null,
+      })
+      if (problem) ops.push({ op, status: 'conflict', why: problem })
+      else {
+        programWrite = { create: false }
+        ops.push({ op, status: 'apply', becomes: 'published' })
+      }
+    }
+  }
+
   const locationUpdates: string[] = []
   if (patch.locationCountry) {
     const { from, to } = patch.locationCountry
@@ -315,7 +414,20 @@ async function plan(patch: ContentPatch) {
     }
   }
 
-  return { client, contentExists: !!content, ops, clientData, contentData, photoDeletes, photoRenames, redirectCreates, locationUpdates, cityUpdates } as const
+  return {
+    client,
+    contentExists: !!content,
+    ops,
+    clientData,
+    contentData,
+    photoDeletes,
+    photoRenames,
+    redirectCreates,
+    locationUpdates,
+    cityUpdates,
+    cityWrites,
+    programWrite,
+  } as const
 }
 
 export async function runContentPatch(patch: ContentPatch, opts: { dryRun: boolean }): Promise<PatchReport> {
@@ -357,6 +469,17 @@ export async function runContentPatch(patch: ContentPatch, opts: { dryRun: boole
     if (p.photoDeletes.length) await tx.clientSitePhoto.deleteMany({ where: { id: { in: p.photoDeletes } } })
     for (const r of p.photoRenames) await tx.clientSitePhoto.update({ where: { id: r.id }, data: { alt: r.alt } })
     for (const [id, body] of p.cityUpdates) await tx.clientCityContent.update({ where: { id }, data: { body } })
+    for (const c of p.cityWrites) {
+      if (c.id) await tx.clientCityContent.update({ where: { id: c.id }, data: { heading: c.heading, body: c.body } })
+      else await tx.clientCityContent.create({ data: { clientId: p.client.id, city: c.city, heading: c.heading, body: c.body } })
+    }
+    if (p.programWrite?.create) {
+      await tx.clientInsuranceProgram.create({
+        data: { clientId: p.client.id, programKey: patch.insuranceProgram!.programKey, publishedAt: new Date() },
+      })
+    } else if (p.programWrite) {
+      await tx.clientInsuranceProgram.update({ where: { clientId: p.client.id }, data: { publishedAt: new Date() } })
+    }
     if (p.locationUpdates.length && patch.locationCountry) {
       await tx.clientLocation.updateMany({ where: { id: { in: p.locationUpdates } }, data: { country: patch.locationCountry.to } })
     }

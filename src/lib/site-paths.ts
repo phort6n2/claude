@@ -98,6 +98,17 @@ export function canonicalForCustom(path: string, overrides?: PathOverrides): str
 export const MIDDLEWARE_FLAT_PATHS = new Set(FLAT_SERVICE_PATHS)
 
 /**
+ * Old-site addresses that RENDER the home page, canonical to "/". Live
+ * sitelinks point at them (Speedy's "We Work With Insurance" at /home, "Free
+ * Quotes" at /free-quote — the home page opens on the quote form). Rendered,
+ * not redirected, for the same reason as the flat city and service addresses:
+ * a redirect is a hop on a paid click. Resolved by the catch-all LAST, after
+ * kept pages, redirects and overrides, so a shop with its own page at one of
+ * these keeps it.
+ */
+export const HOME_ALIASES = new Set(['home', 'free-quote'])
+
+/**
  * Why a KEPT PAGE at this address can never be seen, or null when it can.
  *
  * Middleware rewrites the flat service slugs and their aliases to the template
