@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { postalCodeLabel } from '@/lib/postal-code'
+import { describeAlert, type AlertLogEntry } from '@/lib/alert-plan'
 import BadLeadButton, { type BadLeadSummary } from '@/components/BadLeadButton'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
@@ -70,6 +71,8 @@ interface Lead {
   /** Twilio's DialCallStatus, and how long the forwarding leg lasted. */
   callStatus?: string | null
   callDurationSecs?: number | null
+  /** What the alert did — lib/lead-alert-log.ts. Null on leads before it existed. */
+  alertLog?: AlertLogEntry[] | null
   trackingNumber?: string | null
   twilioCallSid?: string | null
   highlevelContactId: string | null
@@ -384,6 +387,33 @@ export default function LeadDetailPage() {
                 </p>
               </div>
             )}
+
+            {/* WHO WAS TOLD. "We didn't get notified" (MAG Mobile, about a call
+                and two missed calls) could not be answered from anywhere: the
+                call path discarded the alert's result and Vercel's log was
+                gone in a day. This is the stored answer — see
+                lib/lead-alert-log.ts. */}
+            <div className="rounded-2xl border border-gray-200 p-3">
+              <h4 className="text-sm font-medium text-gray-900">Alert</h4>
+              {Array.isArray(lead.alertLog) && lead.alertLog.length > 0 ? (
+                <ul className="mt-1 space-y-1.5">
+                  {lead.alertLog.map((e, i) => (
+                    <li key={i} className="text-xs text-gray-600">
+                      <span className="text-gray-400">{new Date(e.at).toLocaleString()} · </span>
+                      {describeAlert(e)}
+                      {e.errors?.length ? (
+                        <span className="block text-red-700">Failed: {e.errors.join(' · ')}</span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-xs text-gray-500">
+                  No alert record. Leads before 31 Oct 2026 predate it. After that it means the alert has not run
+                  yet — a call&apos;s alert waits for the call to end — or this lead never reached it.
+                </p>
+              )}
+            </div>
 
             {/* Contact Info */}
             <div className="bg-gray-50 rounded-2xl p-4 space-y-3">

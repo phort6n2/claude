@@ -324,6 +324,21 @@ server-side; `widget.js` upgrades it in place.
 **"AUTO GLASS LEAD"** with subject `[NEW LEAD - {shop}] - Call Immediately`,
 and carry Call / Text / damage-photo / "did this one book?" buttons.
 
+**EVERY ALERT LEAVES A RECORD ON ITS LEAD** (`Lead.alertLog`, `lead-alert-log.ts`,
+`alert-plan.ts`, bootstrap: `ALERT_LOG_SQL`, the Alert box on the admin lead
+page). MAG Mobile wrote "we didn't get notified" about a call and two missed
+calls, and it could not be answered: the call and text paths threw
+`notifyNewLead`'s result away, so a Resend error or a refused SMS was logged
+nowhere, and Vercel's log of the call was gone a day later — the complaint
+arrives after the evidence expires. Now every alert (calls, texts, forms)
+stores who it was emailed, texted and pushed to, the errors, a same-day repeat
+skip, and — when a channel sent nothing on purpose — which reason of the five
+(`alertPlan`: no settings, email off, call emails off, no address; SMS add-on
+off, no number, answered call is email-only by design). Leads before 31 Oct
+2026 have none. Note what the record makes plain: an ANSWERED call is email
+only and pushes nobody's phone, and a same-day repeat caller is not alerted at
+all. `scripts/check-alert-log.ts` holds each silent case.
+
 The admin "send test" button is a **faithful replica** of a real alert. This
 matters: a test that omits pieces is how missing pieces go unnoticed, and also
 how present pieces get reported as broken. That exact bug has happened here.

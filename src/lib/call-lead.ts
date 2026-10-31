@@ -6,6 +6,7 @@ import { notifyNewLead as notifyAdminPush } from '@/lib/push-notifications'
 import { outcomeUrlFor } from '@/lib/lead-outcome-token'
 import { trafficSourceForNumber } from '@/lib/traffic-source'
 import { queueMetaPhoneLead } from '@/lib/meta-capi'
+import { alertEntry, recordAlert } from '@/lib/lead-alert-log'
 import type { TrackingNumber } from '@prisma/client'
 
 /**
@@ -179,7 +180,7 @@ export async function recordCall(
         if (number.showTo === 'meta') {
           await queueMetaPhoneLead({ clientId: number.clientId, leadId, sid: facts.callSid, phone: facts.from })
         }
-        await notifyLeadRecipients(
+        const sent = await notifyLeadRecipients(
           number.clientId,
           number.client.businessName,
           {
@@ -210,16 +211,25 @@ export async function recordCall(
           // An answered call is a note for the record, not an interruption.
           { kind: missed ? 'urgent' : 'record' }
         )
-        if (missed) {
-          notifyAdminPush(number.clientId, {
-            firstName: 'Missed call',
-            phone: facts.from,
-            source: 'PHONE',
-          }).catch(() => {})
-        }
+        // Awaited now, for the counts: whether any shop phone was told is
+        // half of what the alert record is for.
+        const push = missed
+          ? await notifyAdminPush(number.clientId, {
+              firstName: 'Missed call',
+              phone: facts.from,
+              source: 'PHONE',
+            }).catch(() => null)
+          : null
+        await recordAlert(leadId, alertEntry('call', missed ? 'urgent' : 'record', sent, { pushShop: push?.shop ?? null }))
       } else {
         console.log(
           `[Twilio] ${missed ? 'Missed' : 'Answered'} call ${facts.callSid} not alerted — already heard from ${facts.from} today`
+        )
+        await recordAlert(
+          leadId,
+          alertEntry('call', missed ? 'urgent' : 'record', null, {
+            skipped: `already heard from ${facts.from} today — that first contact was the alert (lead ${earliest.earliestId})`,
+          })
         )
       }
     } catch (error) {

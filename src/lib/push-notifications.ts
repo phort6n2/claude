@@ -249,7 +249,7 @@ export async function notifyAllAdmins(payload: PushPayload): Promise<{ sent: num
 export async function notifyNewLead(
   clientId: string,
   leadInfo: { firstName?: string | null; phone?: string | null; source: string }
-): Promise<void> {
+): Promise<{ shop: { sent: number; failed: number }; admin: { sent: number; failed: number } }> {
   const clientName = leadInfo.firstName || 'New customer'
   const sourceLabel = leadInfo.source === 'PHONE' ? '📞 Phone Call' : '📝 Form Submission'
 
@@ -259,8 +259,9 @@ export async function notifyNewLead(
     select: { businessName: true },
   })
 
-  // Notify portal users (client employees)
-  await notifyClientUsers(clientId, {
+  // Notify portal users (client employees). The counts are returned so the
+  // lead can record whether anybody's phone was actually told (lead-alert-log).
+  const shop = await notifyClientUsers(clientId, {
     title: '🎉 New Lead!',
     body: `${clientName} - ${sourceLabel}`,
     tag: 'new-lead',
@@ -271,7 +272,7 @@ export async function notifyNewLead(
   })
 
   // Notify admin users subscribed to this client
-  await notifyAdminUsers(clientId, {
+  const admin = await notifyAdminUsers(clientId, {
     title: `🎉 New Lead - ${client?.businessName || 'Client'}`,
     body: `${clientName} - ${sourceLabel}`,
     tag: `new-lead-${clientId}`,
@@ -282,4 +283,5 @@ export async function notifyNewLead(
       clientId,
     },
   })
+  return { shop, admin }
 }

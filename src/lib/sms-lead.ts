@@ -6,6 +6,7 @@ import { outcomeUrlFor } from '@/lib/lead-outcome-token'
 import { isRenderableImage } from '@/lib/twilio-sms'
 import { trafficSourceForNumber } from '@/lib/traffic-source'
 import { queueMetaPhoneLead } from '@/lib/meta-capi'
+import { alertEntry, recordAlert } from '@/lib/lead-alert-log'
 import type { TrackingNumber } from '@prisma/client'
 
 /**
@@ -201,7 +202,7 @@ export async function recordInboundSms(
         }
       })()
 
-      await notifyLeadRecipients(
+      const sent = await notifyLeadRecipients(
         number.clientId,
         number.client.businessName,
         {
@@ -223,15 +224,22 @@ export async function recordInboundSms(
         },
         { kind: 'urgent' }
       )
-      notifyAdminPush(number.clientId, {
+      const push = await notifyAdminPush(number.clientId, {
         firstName: describe(facts),
         phone: facts.from,
         source: 'SMS',
-      }).catch(() => {})
+      }).catch(() => null)
+      await recordAlert(leadId, alertEntry('text', 'urgent', sent, { pushShop: push?.shop ?? null }))
       alerted = true
     } else {
       console.log(
         `[Twilio SMS] ${facts.messageSid} stored on lead ${leadId} without a second alert — already heard from ${facts.from} today`
+      )
+      await recordAlert(
+        leadId,
+        alertEntry('text', 'urgent', null, {
+          skipped: `a text from ${facts.from}, already heard from today — the message is on this lead, the first contact was the alert`,
+        })
       )
     }
   } catch (error) {

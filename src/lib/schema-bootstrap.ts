@@ -824,7 +824,14 @@ export const REPAIR_SEARCH_PAGE_SQL: string[] = [
   `ALTER TABLE "ClientSiteContent" ADD COLUMN IF NOT EXISTS "servicePageCopy" JSONB`,
 ]
 
+/**
+ * What each lead's alert did (lib/lead-alert-log.ts). NULL on every lead
+ * before it — those predate the record, and the lead page says so.
+ */
+export const ALERT_LOG_SQL: string[] = [`ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "alertLog" JSONB`]
+
 export const BOOTSTRAP_SQL: string[] = [
+  ...ALERT_LOG_SQL,
   ...SERVICE_HERO_SQL,
   ...REPAIR_SEARCH_PAGE_SQL,
   ...PATH_OVERRIDE_SQL,

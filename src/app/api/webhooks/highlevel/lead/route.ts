@@ -11,6 +11,7 @@ import {
 import { createDeliveriesForLead, attemptDelivery } from '@/lib/webhook-forwarding'
 // Aliased: push-notifications already exports a notifyNewLead (admin web push).
 import { notifyNewLead as notifyLeadRecipients } from '@/lib/lead-notifications'
+import { alertEntry, recordAlert } from '@/lib/lead-alert-log'
 import { decideOrigin, requestHost } from '@/lib/lead-origin-policy'
 import { outcomeUrlFor } from '@/lib/lead-outcome-token'
 import { decodeVin, calibrationLabel } from '@/lib/vin-decode'
@@ -914,6 +915,12 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
             console.error('[HighLevel Webhook] Attribution merge failed:', err)
           }
         }
+        await recordAlert(
+          lead.id,
+          alertEntry(leadSource === 'PHONE' ? 'call' : 'form', 'urgent', null, {
+            skipped: `same-day duplicate${survivorId ? ` of lead ${survivorId}` : ''} — that first contact was the alert`,
+          })
+        )
         return
       }
 
@@ -950,12 +957,15 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
 
       // One decision governs the email, the SMS and the push. They used to be
       // guarded separately, which is how they drift apart.
-      notifyNewLead(client.id, {
+      // Started now, awaited after the email/SMS so the two still run side by
+      // side — the counts go on the lead's alert record (lead-alert-log.ts).
+      const pushing = notifyNewLead(client.id, {
         firstName: finalFirstName,
         phone,
         source: leadSource,
       }).catch((err) => {
         console.error(`[HighLevel Webhook] Failed to send push notification:`, err)
+        return null
       })
 
       try {
@@ -1029,6 +1039,11 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
         if (result.errors.length) {
           console.error('[HighLevel Webhook] Notification errors:', result.errors.join(' | '))
         }
+        const push = await pushing
+        await recordAlert(
+          lead.id,
+          alertEntry(leadSource === 'PHONE' ? 'call' : 'form', 'urgent', result, { pushShop: push?.shop ?? null })
+        )
       } catch (err) {
         console.error('[HighLevel Webhook] Notification failed:', err)
       }

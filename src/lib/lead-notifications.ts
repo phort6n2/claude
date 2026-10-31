@@ -3,6 +3,7 @@ import { postalCodeLabel } from './postal-code'
 import { decrypt } from '@/lib/encryption'
 import { toE164, telHref, smsHref, firstTextTo } from '@/lib/contact-links'
 import { countSegments, fitSegments } from '@/lib/sms-segments'
+import { alertPlan } from '@/lib/alert-plan'
 
 /**
  * Email and SMS alerts when a lead arrives.
@@ -467,6 +468,12 @@ export interface NotifyResult {
   emailSent: number
   smsSent: number
   errors: string[]
+  /** Who it was handed to — what the lead page shows. */
+  emailTo?: string[]
+  smsTo?: string[]
+  /** Why a channel sent nothing on purpose (alert-plan.ts). */
+  noEmail?: string | null
+  noSms?: string | null
 }
 
 /**
@@ -505,7 +512,6 @@ export async function notifyNewLead(
   const result: NotifyResult = { emailSent: 0, smsSent: 0, errors: [] }
 
   const config = await prisma.clientNotification.findUnique({ where: { clientId } }).catch(() => null)
-  if (!config) return result
 
   // ONLY THE ADDRESSES AND NUMBERS SET ON THIS CLIENT. There is deliberately
   // no fallback here — not the shop's own `Client.email`, not an operator
@@ -518,10 +524,14 @@ export async function notifyNewLead(
   // forms. The phone ringing is not news to a shop whose phone is answered by
   // a person; a form submitted at 9pm is. SMS is deliberately not gated by
   // this — a text about a call is what surfaces the one nobody picked up.
-  const emailThisOne = config.emailEnabled && !(lead.isCall && !config.emailCallLeads)
-  const emails = emailThisOne ? config.emailTo.filter(Boolean) : []
+  // The rules, and the reason when a channel sends nothing, are alert-plan.ts.
   const isRecord = options.kind === 'record'
-  const numbers = config.smsEnabled && !isRecord ? config.smsTo.filter(Boolean) : []
+  const plan = alertPlan(config, lead, isRecord ? 'record' : 'urgent')
+  const { emails, numbers } = plan
+  result.emailTo = emails
+  result.smsTo = numbers
+  result.noEmail = plan.noEmail
+  result.noSms = plan.noSms
   if (emails.length === 0 && numbers.length === 0) return result
 
   if (emails.length > 0) {

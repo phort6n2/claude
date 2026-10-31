@@ -426,6 +426,9 @@ model Lead {
    */
   callStatus       String?
   callDurationSecs Int?
+  /// What this lead's alert did — who it was emailed, texted and pushed to,
+  /// errors, and why a channel sent nothing. See lib/lead-alert-log.ts.
+  alertLog         Json?
 
   /**
    * Offline conversion upload to Google Ads. Stamped when the booked value
