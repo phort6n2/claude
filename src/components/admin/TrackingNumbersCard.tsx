@@ -419,10 +419,15 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
                     </span>
                   )}
                 </label>
-                {/* A NUMBER PER REGION (lib/regional-number.ts). Not for the
-                    default number — that one is everybody else's — and not for
-                    a platform number, which already has its own rule. */}
-                {!n.showTo && !n.useOnSite && (
+                {/* A NUMBER PER REGION (lib/regional-number.ts). Not for a
+                    platform number, which already has its own rule. It WAS
+                    hidden on the default number too, on the reasoning that the
+                    default is everybody else's — wrong: Speedy's San Diego line
+                    is the default AND needs its own city pages, or an LA+OC ad
+                    visitor reading the San Diego page is shown the LA line
+                    (the campaign rule outranks the default). Ticking "Shown on
+                    the hosted site" made the San Diego pages uneditable. */}
+                {!n.showTo && (
                   <div className="mt-1.5 space-y-1">
                     <label className="block text-xs text-gray-600">
                       Region: city pages
@@ -465,9 +470,12 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
                     {(n.showForAreas?.length || n.adCampaignIds?.length) ? (
                       <p className="text-xs text-gray-500">
                         Shown on {n.showForAreas?.length || 0} city page{n.showForAreas?.length === 1 ? '' : 's'} and
-                        to clicks from {n.adCampaignIds?.length || 0} campaign{n.adCampaignIds?.length === 1 ? '' : 's'};
-                        everyone else sees the default number. Google&apos;s call tracking follows whichever number a
-                        page shows.
+                        to clicks from {n.adCampaignIds?.length || 0} campaign{n.adCampaignIds?.length === 1 ? '' : 's'}
+                        {n.useOnSite
+                          ? ', and to everyone no other number claims (it is the default).'
+                          : '; everyone else sees the default number.'}{' '}
+                        A visit that lands on one of these city pages keeps this number on the shared pages too.
+                        Google&apos;s call tracking follows whichever number a page shows.
                       </p>
                     ) : null}
                   </div>
