@@ -1199,6 +1199,12 @@ model TrackingNumber {
    */
   showTo String?
 
+  /// A shop with a number per region (lib/regional-number.ts): the city
+  /// pages that show this number — area names as in Client.serviceAreas.
+  showForAreas  String[] @default([])
+  /// …and the Google Ads campaign ids whose ad clicks see it on shared pages.
+  adCampaignIds String[] @default([])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

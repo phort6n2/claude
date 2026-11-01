@@ -26,6 +26,10 @@ interface TrackingNumber {
   useOnSite: boolean
   /** "microsoft" | "meta" — shown to that platform's ad visitors instead. */
   showTo: string | null
+  /** A number per region (lib/regional-number.ts): these city pages show it… */
+  showForAreas?: string[]
+  /** …and so do clicks from these Google Ads campaigns, on shared pages. */
+  adCampaignIds?: string[]
 }
 
 /**
@@ -415,6 +419,59 @@ export default function TrackingNumbersCard({ clientId }: { clientId: string }) 
                     </span>
                   )}
                 </label>
+                {/* A NUMBER PER REGION (lib/regional-number.ts). Not for the
+                    default number — that one is everybody else's — and not for
+                    a platform number, which already has its own rule. */}
+                {!n.showTo && !n.useOnSite && (
+                  <div className="mt-1.5 space-y-1">
+                    <label className="block text-xs text-gray-600">
+                      Region: city pages
+                      <input
+                        key={`${n.id}-ar-${(n.showForAreas ?? []).join('|')}`}
+                        defaultValue={(n.showForAreas ?? []).join(', ')}
+                        placeholder="e.g. Riverside County, Riverside, Corona"
+                        aria-label={`City pages that show ${formatPhoneDisplay(n.phoneNumber)}`}
+                        onBlur={(e) => {
+                          const value = e.target.value.trim()
+                          if (value !== (n.showForAreas ?? []).join(', '))
+                            patchNumber(
+                              n.id,
+                              { showForAreas: value.split(/[\n,]+/).map((x) => x.trim()).filter(Boolean) },
+                              'Saved. Those city pages show this number now.'
+                            )
+                        }}
+                        className="mt-0.5 block w-full px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500"
+                      />
+                    </label>
+                    <label className="block text-xs text-gray-600">
+                      Region: ad campaign IDs
+                      <input
+                        key={`${n.id}-cp-${(n.adCampaignIds ?? []).join('|')}`}
+                        defaultValue={(n.adCampaignIds ?? []).join(', ')}
+                        placeholder="Google Ads campaign IDs, comma separated"
+                        aria-label={`Ad campaigns whose clicks see ${formatPhoneDisplay(n.phoneNumber)}`}
+                        onBlur={(e) => {
+                          const value = e.target.value.trim()
+                          if (value !== (n.adCampaignIds ?? []).join(', '))
+                            patchNumber(
+                              n.id,
+                              { adCampaignIds: value.split(/[\s,]+/).map((x) => x.replace(/[^0-9]/g, '')).filter(Boolean) },
+                              'Saved. Clicks from those campaigns see this number on the shared pages.'
+                            )
+                        }}
+                        className="mt-0.5 block w-full px-2 py-1 border rounded text-xs font-mono focus:ring-2 focus:ring-blue-500"
+                      />
+                    </label>
+                    {(n.showForAreas?.length || n.adCampaignIds?.length) ? (
+                      <p className="text-xs text-gray-500">
+                        Shown on {n.showForAreas?.length || 0} city page{n.showForAreas?.length === 1 ? '' : 's'} and
+                        to clicks from {n.adCampaignIds?.length || 0} campaign{n.adCampaignIds?.length === 1 ? '' : 's'};
+                        everyone else sees the default number. Google&apos;s call tracking follows whichever number a
+                        page shows.
+                      </p>
+                    ) : null}
+                  </div>
+                )}
                 {!n.showTo && (
                 <button
                   type="button"

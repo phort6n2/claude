@@ -309,7 +309,8 @@ export default async function ClientSitePage({ params, searchParams }: PageProps
   // Object.assign, not `client.phone = …`: the swap now also carries the
   // shop's own line for the callback and SMS copy, and taking only `.phone`
   // would drop it. See site-phone.ts.
-  Object.assign(client, await withSitePhone(client))
+  const swapped = await withSitePhone(client)
+  Object.assign(client, swapped)
 
   // Headline names the location and the highest-value service the client
   // actually offers, like the reference — never a generic slogan.
@@ -380,7 +381,7 @@ export default async function ClientSitePage({ params, searchParams }: PageProps
         slug={client.slug}
         pageType="home"
       />
-      <GoogleTag tracking={adsTracking} />
+      <GoogleTag tracking={adsTracking} callNumber={swapped.googleCallNumber} />
       <CustomScripts head={client.headScripts} bodyEnd={client.bodyEndScripts} />
       <script
         type="application/ld+json"

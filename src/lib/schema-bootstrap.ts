@@ -830,7 +830,18 @@ export const REPAIR_SEARCH_PAGE_SQL: string[] = [
  */
 export const ALERT_LOG_SQL: string[] = [`ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "alertLog" JSONB`]
 
+/**
+ * A tracking number per region (lib/regional-number.ts): which city pages show
+ * it, and which ad campaigns' clicks see it. Empty for every existing number,
+ * which is the one-number behaviour unchanged.
+ */
+export const REGIONAL_NUMBER_SQL: string[] = [
+  `ALTER TABLE "TrackingNumber" ADD COLUMN IF NOT EXISTS "showForAreas" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[]`,
+  `ALTER TABLE "TrackingNumber" ADD COLUMN IF NOT EXISTS "adCampaignIds" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[]`,
+]
+
 export const BOOTSTRAP_SQL: string[] = [
+  ...REGIONAL_NUMBER_SQL,
   ...ALERT_LOG_SQL,
   ...SERVICE_HERO_SQL,
   ...REPAIR_SEARCH_PAGE_SQL,

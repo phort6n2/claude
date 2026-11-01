@@ -273,7 +273,8 @@ export default async function InsuranceProgramPage({ params }: PageProps) {
   // Visitors see the tracking number when one is set; see lib/site-phone.ts.
   // Object.assign, not `client.phone = …`: the swap also carries the shop's
   // own line for the callback copy, and taking only `.phone` would drop it.
-  Object.assign(client, await withSitePhone(client))
+  const swapped = await withSitePhone(client)
+  Object.assign(client, swapped)
 
   const [reviews, extras, locations, adsTracking, cityContent, keptPages] = await Promise.all([
     getReviews(client.id),
@@ -356,7 +357,7 @@ export default async function InsuranceProgramPage({ params }: PageProps) {
         slug={client.slug}
         pageType="insurance"
       />
-      <GoogleTag tracking={adsTracking} />
+      <GoogleTag tracking={adsTracking} callNumber={swapped.googleCallNumber} />
       <CustomScripts head={client.headScripts} bodyEnd={client.bodyEndScripts} />
       <script
         type="application/ld+json"

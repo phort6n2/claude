@@ -5,9 +5,11 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { FLAT_SERVICE_PATHS } from '@/lib/site-services'
 // Import-free as well, for the same reason.
 import {
+  CAMPAIGN_HEADER,
   MAX_AGE_DAYS,
   SOURCE_COOKIE,
   SOURCE_HEADER,
+  adCampaignFor,
   decodeTouch,
   encodeTouch,
   mergeTouch,
@@ -157,6 +159,11 @@ function withTrafficSource(req: NextRequest, respond: (headers: Headers) => Next
   const numberSource = numberSourceFor(touch)
   if (numberSource) headers.set(SOURCE_HEADER, numberSource)
   else headers.delete(SOURCE_HEADER)
+  // The ad campaign, for a shop with a number per region — overwritten the
+  // same way, so nothing outside can choose which region's line it is shown.
+  const campaignId = adCampaignFor(touch)
+  if (campaignId) headers.set(CAMPAIGN_HEADER, campaignId)
+  else headers.delete(CAMPAIGN_HEADER)
   const res = respond(headers)
   if (changed) {
     res.cookies.set(SOURCE_COOKIE, encodeTouch(touch), {

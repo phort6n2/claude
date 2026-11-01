@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/admin-guard'
 import { prisma } from '@/lib/db'
 import { toE164 } from '@/lib/contact-links'
 import { twilioCreds } from '@/lib/twilio-voice'
+import { cleanAreas, cleanCampaignIds } from '@/lib/regional-number'
 
 export const dynamic = 'force-dynamic'
 
@@ -316,6 +317,10 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     if (data.showTo) data.useOnSite = false
   }
   if (data.useOnSite === true) data.showTo = null
+  // A number per region (lib/regional-number.ts). Cleaned here so a stray
+  // space or a pasted "123-456-7890" campaign id cannot half-match.
+  if ('showForAreas' in body) data.showForAreas = cleanAreas(body.showForAreas)
+  if ('adCampaignIds' in body) data.adCampaignIds = cleanCampaignIds(body.adCampaignIds)
   if ('recordCalls' in body) data.recordCalls = body.recordCalls === true
   if ('announceRecording' in body) data.announceRecording = body.announceRecording === true
   if ('active' in body) data.active = body.active === true

@@ -232,6 +232,19 @@ arrive from the hosted sites' own form and from embedded widgets.
   keeps it. Call taps fire `Contact`, not `Lead`: Meta credits view-through,
   and a call tap from somebody who once scrolled past an ad would otherwise
   count as a Meta lead.
+- **A NUMBER PER REGION** (`regional-number.ts`, `TrackingNumber.showForAreas`
+  / `adCampaignIds`, bootstrap: `REGIONAL_NUMBER_SQL`, the "Region" fields on
+  a number in Lead delivery → Call tracking; `scripts/check-regional-number.ts`).
+  Speedy runs San Diego, LA/OC and Riverside lines, and the site showed one
+  default number everywhere. The owner's order: the platform number for
+  Microsoft/Meta visitors (unchanged), then a CITY PAGE's own region, then on
+  shared pages the AD CAMPAIGN the click came from — `gad_campaignid`, which
+  Google adds to ad clicks, kept in the `gl_src` cookie and handed over as
+  `x-gl-cid`, overwritten by middleware exactly like `x-gl-src` — then the
+  default. **Google's call swap is told the number the page SHOWS**
+  (`googleCallNumber` → `<GoogleTag callNumber>`), or it finds nothing to
+  replace on a regional page and those calls go uncounted. A shop with no
+  regional rules reads byte-for-byte as before.
 - **A call or text to the Meta number is a Meta `Lead`** (`queueMetaPhoneLead`,
   `action_source: 'phone_call'`, event id `phone-{Sid}`), queued from
   `call-lead.ts`/`sms-lead.ts` inside the same `earliestSameDayContact` gate

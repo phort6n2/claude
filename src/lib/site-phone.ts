@@ -1,12 +1,15 @@
 import { prisma } from '@/lib/db'
 import { formatPhoneDisplay } from '@/lib/lead-display'
 import {
+  CAMPAIGN_HEADER,
   OPT_OUT_COOKIE,
   SOURCE_HEADER,
+  adCampaignFromHeader,
   numberSourceAfterOptOut,
   numberSourceFromHeader,
   type NumberSource,
 } from '@/lib/traffic-source'
+import { pickSiteNumber } from '@/lib/regional-number'
 
 /** The ad platform middleware recorded for this request, or null outside one. */
 async function numberSourceForRequest(): Promise<NumberSource | null> {
@@ -17,6 +20,16 @@ async function numberSourceForRequest(): Promise<NumberSource | null> {
     return numberSourceAfterOptOut(numberSourceFromHeader(h.get(SOURCE_HEADER)), optedOut)
   } catch {
     // Not in a request (a script, a build step): the default number.
+    return null
+  }
+}
+
+/** The Google Ads campaign middleware recorded for this visitor, or null. */
+async function adCampaignForRequest(): Promise<string | null> {
+  try {
+    const { headers } = await import('next/headers')
+    return adCampaignFromHeader((await headers()).get(CAMPAIGN_HEADER))
+  } catch {
     return null
   }
 }
@@ -42,7 +55,11 @@ async function numberSourceForRequest(): Promise<NumberSource | null> {
  */
 export async function withSitePhone<
   T extends { id: string; phone: string; siteDisplayPhone?: string | null },
->(client: T): Promise<T & { callbackPhone: string }> {
+>(
+  client: T,
+  /** A city page's area, for a shop with a number per region (regional-number.ts). */
+  opts: { area?: string | null } = {}
+): Promise<T & { callbackPhone: string; googleCallNumber: string | null }> {
   /**
    * THE SHOP'S OWN LINE, KEPT ALONGSIDE THE SWAP.
    *
@@ -94,22 +111,30 @@ export async function withSitePhone<
        website-call swap is configured against; that is what keeps Google's
        behaviour exactly as it was. A platform with no number of its own
        falls through to the default. */
-    const platform = await numberSourceForRequest()
-    if (platform) {
-      const own = await prisma.trackingNumber.findFirst({
-        where: { clientId: client.id, active: true, showTo: platform },
-        select: { phoneNumber: true },
-      })
-      const ownDisplay = own ? formatPhoneDisplay(own.phoneNumber) : null
-      if (ownDisplay) return { ...client, phone: ownDisplay, callbackPhone }
+    /* Then, for a shop with a number per REGION, the city page's own number
+       or the ad campaign's — see regional-number.ts for the order and why.
+       A shop with one number has no regional rules, and this reads exactly
+       as it always did: platform number, else the default. */
+    const [platform, adCampaignId, numbers] = await Promise.all([
+      numberSourceForRequest(),
+      adCampaignForRequest(),
+      prisma.trackingNumber.findMany({
+        where: { clientId: client.id, active: true },
+        select: { phoneNumber: true, useOnSite: true, showTo: true, showForAreas: true, adCampaignIds: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ])
+    const picked = pickSiteNumber(numbers, { platform, area: opts.area ?? null, adCampaignId })
+    const display = picked ? formatPhoneDisplay(picked.phoneNumber) : null
+    if (picked && display) {
+      // GOOGLE'S CALL SWAP has to be told the number THIS page shows, or it
+      // finds nothing to replace and the calls a regional number takes from
+      // Google's visitors go uncounted. Only for a regional pick: the default
+      // is what the configured snippet already names, and a platform number
+      // is shown to visitors Google did not send.
+      const googleCallNumber = picked.why === 'area' || picked.why === 'campaign' ? display : null
+      return { ...client, phone: display, callbackPhone, googleCallNumber }
     }
-
-    const number = await prisma.trackingNumber.findFirst({
-      where: { clientId: client.id, active: true, useOnSite: true },
-      select: { phoneNumber: true },
-    })
-    const display = number ? formatPhoneDisplay(number.phoneNumber) : null
-    if (display) return { ...client, phone: display, callbackPhone }
   } catch {
     // Table missing or DB hiccup: fall through to the answers below, which
     // do not depend on it.
@@ -124,12 +149,12 @@ export async function withSitePhone<
   if (external) {
     // The display number is somebody else's tracking pool, but the callback
     // still comes from the shop's own handset.
-    return { ...client, phone: formatPhoneDisplay(external) || external, callbackPhone }
+    return { ...client, phone: formatPhoneDisplay(external) || external, callbackPhone, googleCallNumber: null }
   }
 
   // The shop's own line, exactly as typed into the intake — which can be
   // "3215995777". Every path out of here formats for display; tel: links
   // are unaffected because telHref strips to digits anyway. With no swap at
   // all the two are the same number, and the copy reads as it always did.
-  return { ...client, phone: callbackPhone, callbackPhone }
+  return { ...client, phone: callbackPhone, callbackPhone, googleCallNumber: null }
 }

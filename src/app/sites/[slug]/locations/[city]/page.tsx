@@ -148,8 +148,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     city
   )
   if (!location) return { title: 'Not Found' }
-  // Tracked number in the description — see the note on the home page.
-  const sitePhone = (await withSitePhone(client)).phone
+  // Tracked number in the description — see the note on the home page —
+  // this city's own line where the shop has one per region.
+  const sitePhone = (await withSitePhone(client, { area: location.area })).phone
 
   // Which host is this request on? Only the canonical one may be indexed;
   // every other host self-canonicalises and asks to stay out of the index.
@@ -209,6 +210,7 @@ export default async function LocationPage({ params, atOverride }: PageProps) {
   // Object.assign, not `client.phone = …`: the swap now also carries the
   // shop's own line for the callback and SMS copy, and taking only `.phone`
   // would drop it. See site-phone.ts.
+  const realPhone = client.phone
   Object.assign(client, await withSitePhone(client))
 
   const [reviews, extras, locations, adsTracking, cityContent, keptPages, insuranceProgram] = await Promise.all([
@@ -227,6 +229,12 @@ export default async function LocationPage({ params, atOverride }: PageProps) {
   const areas = mergeServiceAreas(client.serviceAreas || [], locations.map((l) => l.city))
   const location = findLocation(areas, city)
   if (!location) notFound()
+  // Now the city is known: a shop with a number per region shows THIS
+  // region's line here (regional-number.ts). Re-run from the real line so the
+  // callback number stays the shop's own; a one-number shop gets the same
+  // answer it got above.
+  const swapped = await withSitePhone({ ...client, phone: realPhone }, { area: location.area })
+  Object.assign(client, swapped)
 
   // Moved onto one of the old site's addresses — see ServicePage. One address
   // per page: the template one sends its traffic there and stops answering.
@@ -339,7 +347,7 @@ export default async function LocationPage({ params, atOverride }: PageProps) {
         slug={client.slug}
         pageType="location"
       />
-      <GoogleTag tracking={adsTracking} />
+      <GoogleTag tracking={adsTracking} callNumber={swapped.googleCallNumber} />
       <CustomScripts head={client.headScripts} bodyEnd={client.bodyEndScripts} />
       <script
         type="application/ld+json"

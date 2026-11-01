@@ -94,6 +94,12 @@ export type UtmKey = (typeof UTM_KEYS)[number]
 export const SOURCE_COOKIE = 'gl_src'
 /** The request header middleware hands the page — never trusted from outside. */
 export const SOURCE_HEADER = 'x-gl-src'
+/**
+ * The Google Ads campaign an ad click came from (regional-number.ts), set and
+ * cleared by middleware on every request exactly like SOURCE_HEADER, so an
+ * outside caller cannot pick a region's number by sending it.
+ */
+export const CAMPAIGN_HEADER = 'x-gl-cid'
 export const MAX_AGE_DAYS = 90
 const MAX_AGE_MS = MAX_AGE_DAYS * 24 * 60 * 60 * 1000
 /** A click id is an opaque token; anything longer than this is not one. */
@@ -112,6 +118,37 @@ export interface Touch {
   firstSeenAt: number
   /** When the touch that decided `source` happened — the 90 days run from here. */
   touchedAt: number
+  /**
+   * Google Ads' numeric campaign id for an ad click — `gad_campaignid`, which
+   * Google appends to ad clicks itself, else a tracking template's
+   * `campaign_id`. Picks a regional number (regional-number.ts). Optional: a
+   * cookie written before it existed simply has none.
+   */
+  adCampaignId?: string | null
+}
+
+/** A campaign id is all digits; anything else on the URL is not one. */
+function campaignIdFrom(q: URLSearchParams): string | null {
+  for (const k of ['gad_campaignid', 'campaign_id']) {
+    const v = (q.get(k) || '').trim()
+    if (/^\d{6,20}$/.test(v)) return v
+  }
+  return null
+}
+
+/**
+ * The campaign id the page may use to pick a number: only a GOOGLE AD touch's.
+ * An organic visit that happens to carry a stale parameter picks nothing.
+ */
+export function adCampaignFor(touch: Pick<Touch, 'source' | 'medium' | 'adCampaignId'> | null): string | null {
+  if (!touch || touch.source !== 'google' || touch.medium !== 'paid') return null
+  return touch.adCampaignId || null
+}
+
+/** The page's view of the campaign header (middleware overwrites it every request). */
+export function adCampaignFromHeader(value: string | null | undefined): string | null {
+  const v = (value || '').trim()
+  return /^\d{6,20}$/.test(v) ? v : null
 }
 
 function clean(v: string | null | undefined): string | null {
@@ -204,7 +241,7 @@ export function touchFromLanding(landing: Landing): Omit<Touch, 'firstSeenAt'> |
   const referrer = clean(landing.referrer)
   const utmMedium = utm.utm_medium || null
   const campaign = utm.utm_campaign || null
-  const base = { clickIds, utm, landingPage, referrer, campaign, touchedAt: landing.now }
+  const base = { clickIds, utm, landingPage, referrer, campaign, touchedAt: landing.now, adCampaignId: campaignIdFrom(q) }
 
   // 1. Click ids, in the stated order.
   if (clickIds.gclid || clickIds.gbraid || clickIds.wbraid) {
@@ -377,6 +414,8 @@ interface Wire {
   u?: Touch['utm']
   l?: string
   r?: string
+  /** adCampaignId */
+  g?: string
   f: number
   t: number
 }
@@ -405,6 +444,7 @@ export function encodeTouch(t: Touch): string {
   // and the widget's own storage keeps the rest.
   if (t.landingPage) w.l = t.landingPage.slice(0, 400)
   if (t.referrer) w.r = t.referrer.slice(0, 200)
+  if (t.adCampaignId) w.g = t.adCampaignId
   return b64urlEncode(JSON.stringify(w))
 }
 
@@ -444,6 +484,7 @@ export function decodeTouch(value: string | null | undefined): Touch | null {
       referrer: clean(w.r),
       firstSeenAt: w.f,
       touchedAt: w.t,
+      adCampaignId: typeof w.g === 'string' && /^\d{6,20}$/.test(w.g) ? w.g : null,
     }
   } catch {
     return null

@@ -227,7 +227,8 @@ export default async function ServicePage({ params, atOverride, searchParams }: 
   // Object.assign, not `client.phone = …`: the swap now also carries the
   // shop's own line for the callback and SMS copy, and taking only `.phone`
   // would drop it. See site-phone.ts.
-  Object.assign(client, await withSitePhone(client))
+  const swapped = await withSitePhone(client)
+  Object.assign(client, swapped)
   // The page THIS shop serves here: the template's, the search-only stand-in
   // for a repair page (REPAIR_SEARCH_PAGE), or none.
   const offered = servicePageFor(template, client)
@@ -376,7 +377,7 @@ export default async function ServicePage({ params, atOverride, searchParams }: 
         slug={client.slug}
         pageType="service"
       />
-      <GoogleTag tracking={adsTracking} />
+      <GoogleTag tracking={adsTracking} callNumber={swapped.googleCallNumber} />
       <CustomScripts head={client.headScripts} bodyEnd={client.bodyEndScripts} />
       <script
         type="application/ld+json"

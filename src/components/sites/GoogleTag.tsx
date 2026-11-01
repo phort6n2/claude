@@ -29,7 +29,19 @@ import type { AdsTracking } from '@/lib/ads-tracking'
  * The lead path dedupes through sessionStorage on a transaction id, so a
  * refresh cannot report the same submission twice.
  */
-export function GoogleTag({ tracking }: { tracking: AdsTracking | null }) {
+export function GoogleTag({
+  tracking,
+  callNumber,
+}: {
+  tracking: AdsTracking | null
+  /**
+   * The regional number THIS page shows, when it is not the default one
+   * (withSitePhone's `googleCallNumber`). Google's swap looks for the number
+   * it is given in the page text, so it has to be the one printed here.
+   * Only replaces a configured call conversion; never creates one.
+   */
+  callNumber?: string | null
+}) {
   if (!tracking) return null
 
   const {
@@ -70,7 +82,7 @@ export function GoogleTag({ tracking }: { tracking: AdsTracking | null }) {
           leadValue={leadValue}
           leadCurrency={leadCurrency}
           callSendTo={callSendTo}
-          callPhoneNumber={callPhoneNumber}
+          callPhoneNumber={callPhoneNumber ? callNumber || callPhoneNumber : null}
           enhancedConversions={enhancedConversions}
           privacyChoices={privacyChoices}
         />

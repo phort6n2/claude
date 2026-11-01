@@ -322,7 +322,8 @@ export default async function CatchAllPage({ params, searchParams }: PageProps) 
   // Object.assign, not `client.phone = …`: the swap now also carries the
   // shop's own line for the callback and SMS copy, and taking only `.phone`
   // would drop it. See site-phone.ts.
-  Object.assign(client, await withSitePhone(client))
+  const swapped = await withSitePhone(client)
+  Object.assign(client, swapped)
   const siteOwnsTracking = client.phone !== realPhone
 
   const [reviews, extras, locations, adsTracking, cityContent, keptPages, insuranceProgram] = await Promise.all([
@@ -415,7 +416,7 @@ export default async function CatchAllPage({ params, searchParams }: PageProps) 
       {preview && <PreviewBanner status={client.status} />}
       <SiteBaseStyles />
       <SiteAnalytics projectId={client.clarityProjectId} slug={client.slug} pageType="kept" />
-      <GoogleTag tracking={adsTracking} />
+      <GoogleTag tracking={adsTracking} callNumber={swapped.googleCallNumber} />
       <CustomScripts head={client.headScripts} bodyEnd={client.bodyEndScripts} />
       <script
         type="application/ld+json"
