@@ -238,7 +238,11 @@ arrive from the hosted sites' own form and from embedded widgets.
   Speedy runs San Diego, LA/OC and Riverside lines, and the site showed one
   default number everywhere. The owner's order: the platform number for
   Microsoft/Meta visitors (unchanged), then a CITY PAGE's own region, then on
-  shared pages the AD CAMPAIGN the click came from — `gad_campaignid`, which
+  shared pages the region of the CITY PAGE THE VISIT LANDED ON (`x-gl-lc`,
+  `landingCitySlug`, matched by URL slug against `showForAreas` — so nothing is
+  set per ad group: the owner folded Riverside INTO the LA+OC campaign, and only
+  the landing page can tell a Riverside click from an Irvine one; organic city
+  landings count too), then the AD CAMPAIGN the click came from — `gad_campaignid`, which
   Google adds to ad clicks, kept in the `gl_src` cookie and handed over as
   `x-gl-cid`, overwritten by middleware exactly like `x-gl-src` — then the
   default. **Google's call swap is told the number the page SHOWS**

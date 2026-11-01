@@ -145,6 +145,37 @@ export function adCampaignFor(touch: Pick<Touch, 'source' | 'medium' | 'adCampai
   return touch.adCampaignId || null
 }
 
+/**
+ * THE CITY PAGE THIS VISIT LANDED ON, as its URL slug — or null when the
+ * landing was any other page. regional-number.ts uses it so a visitor who
+ * arrived on /auto-glass-repair-temecula keeps the Riverside line on the
+ * service pages they open next, which the campaign id cannot do once one
+ * campaign covers several regions.
+ *
+ * Read off the path alone (both city shapes, and the /sites/{slug} preview),
+ * because middleware cannot reach the database. A shop that moved a city page
+ * onto a custom address through `pathOverrides` is not recognised here and
+ * falls through to the campaign rule — the old behaviour, never a wrong one.
+ */
+export const LANDING_CITY_HEADER = 'x-gl-lc'
+const CITY_PATH = /^\/(?:sites\/[^/]+\/)?(?:locations\/|auto-glass-repair-)([a-z0-9-]{1,80})\/?$/
+
+export function landingCitySlug(touch: Pick<Touch, 'landingPage'> | null): string | null {
+  if (!touch?.landingPage) return null
+  try {
+    const m = new URL(touch.landingPage).pathname.toLowerCase().match(CITY_PATH)
+    return m ? m[1] : null
+  } catch {
+    return null
+  }
+}
+
+/** The page's view of the landing-city header — slug characters only. */
+export function landingCityFromHeader(value: string | null | undefined): string | null {
+  const v = (value || '').trim()
+  return /^[a-z0-9-]{1,80}$/.test(v) ? v : null
+}
+
 /** The page's view of the campaign header (middleware overwrites it every request). */
 export function adCampaignFromHeader(value: string | null | undefined): string | null {
   const v = (value || '').trim()

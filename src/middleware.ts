@@ -6,12 +6,14 @@ import { FLAT_SERVICE_PATHS } from '@/lib/site-services'
 // Import-free as well, for the same reason.
 import {
   CAMPAIGN_HEADER,
+  LANDING_CITY_HEADER,
   MAX_AGE_DAYS,
   SOURCE_COOKIE,
   SOURCE_HEADER,
   adCampaignFor,
   decodeTouch,
   encodeTouch,
+  landingCitySlug,
   mergeTouch,
   numberSourceFor,
 } from '@/lib/traffic-source'
@@ -164,6 +166,11 @@ function withTrafficSource(req: NextRequest, respond: (headers: Headers) => Next
   const campaignId = adCampaignFor(touch)
   if (campaignId) headers.set(CAMPAIGN_HEADER, campaignId)
   else headers.delete(CAMPAIGN_HEADER)
+  // The city page the visit landed on, same treatment: one campaign can cover
+  // several regions, and the landing page is what tells them apart.
+  const landingCity = landingCitySlug(touch)
+  if (landingCity) headers.set(LANDING_CITY_HEADER, landingCity)
+  else headers.delete(LANDING_CITY_HEADER)
   const res = respond(headers)
   if (changed) {
     res.cookies.set(SOURCE_COOKIE, encodeTouch(touch), {

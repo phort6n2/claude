@@ -2,9 +2,11 @@ import { prisma } from '@/lib/db'
 import { formatPhoneDisplay } from '@/lib/lead-display'
 import {
   CAMPAIGN_HEADER,
+  LANDING_CITY_HEADER,
   OPT_OUT_COOKIE,
   SOURCE_HEADER,
   adCampaignFromHeader,
+  landingCityFromHeader,
   numberSourceAfterOptOut,
   numberSourceFromHeader,
   type NumberSource,
@@ -24,13 +26,17 @@ async function numberSourceForRequest(): Promise<NumberSource | null> {
   }
 }
 
-/** The Google Ads campaign middleware recorded for this visitor, or null. */
-async function adCampaignForRequest(): Promise<string | null> {
+/** The Google Ads campaign and landing city middleware recorded for this visitor. */
+async function visitForRequest(): Promise<{ adCampaignId: string | null; landingCity: string | null }> {
   try {
     const { headers } = await import('next/headers')
-    return adCampaignFromHeader((await headers()).get(CAMPAIGN_HEADER))
+    const h = await headers()
+    return {
+      adCampaignId: adCampaignFromHeader(h.get(CAMPAIGN_HEADER)),
+      landingCity: landingCityFromHeader(h.get(LANDING_CITY_HEADER)),
+    }
   } catch {
-    return null
+    return { adCampaignId: null, landingCity: null }
   }
 }
 
@@ -115,16 +121,16 @@ export async function withSitePhone<
        or the ad campaign's — see regional-number.ts for the order and why.
        A shop with one number has no regional rules, and this reads exactly
        as it always did: platform number, else the default. */
-    const [platform, adCampaignId, numbers] = await Promise.all([
+    const [platform, { adCampaignId, landingCity }, numbers] = await Promise.all([
       numberSourceForRequest(),
-      adCampaignForRequest(),
+      visitForRequest(),
       prisma.trackingNumber.findMany({
         where: { clientId: client.id, active: true },
         select: { phoneNumber: true, useOnSite: true, showTo: true, showForAreas: true, adCampaignIds: true },
         orderBy: { createdAt: 'asc' },
       }),
     ])
-    const picked = pickSiteNumber(numbers, { platform, area: opts.area ?? null, adCampaignId })
+    const picked = pickSiteNumber(numbers, { platform, area: opts.area ?? null, adCampaignId, landingCity })
     const display = picked ? formatPhoneDisplay(picked.phoneNumber) : null
     if (picked && display) {
       // GOOGLE'S CALL SWAP has to be told the number THIS page shows, or it
@@ -132,7 +138,8 @@ export async function withSitePhone<
       // Google's visitors go uncounted. Only for a regional pick: the default
       // is what the configured snippet already names, and a platform number
       // is shown to visitors Google did not send.
-      const googleCallNumber = picked.why === 'area' || picked.why === 'campaign' ? display : null
+      const googleCallNumber =
+        picked.why === 'area' || picked.why === 'landing' || picked.why === 'campaign' ? display : null
       return { ...client, phone: display, callbackPhone, googleCallNumber }
     }
   } catch {
